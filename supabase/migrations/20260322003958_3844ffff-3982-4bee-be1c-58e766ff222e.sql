@@ -1,0 +1,1 @@
+ALTER TABLE public.diarios_obra ADD COLUMN clima text DEFAULT NULL;

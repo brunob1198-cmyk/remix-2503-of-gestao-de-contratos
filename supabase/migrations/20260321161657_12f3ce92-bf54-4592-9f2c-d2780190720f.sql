@@ -1,0 +1,1 @@
+ALTER TABLE public.recursos ADD COLUMN placa text DEFAULT NULL;

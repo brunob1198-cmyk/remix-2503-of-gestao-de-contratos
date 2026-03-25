@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos ADD COLUMN IF NOT EXISTS cliente_id uuid REFERENCES public.clientes(id) ON DELETE SET NULL;
