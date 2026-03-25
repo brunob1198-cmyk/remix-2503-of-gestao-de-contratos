@@ -21,12 +21,12 @@ export function useMunicipios(uf?: string) {
     queryFn: async () => {
       if (!uf) return [];
       const { data, error } = await supabase
-        .from("municipios_ibge" as any)
+        .from("municipios_ibge")
         .select("*")
         .eq("uf", uf)
         .order("nome");
       if (error) throw error;
-      return data as unknown as Municipio[];
+      return (data ?? []) as Municipio[];
     },
     enabled: !!uf,
     staleTime: Infinity, // Municipalities don't change
