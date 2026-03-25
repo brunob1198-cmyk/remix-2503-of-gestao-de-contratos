@@ -27,7 +27,7 @@ export function useSites(projetoId?: string) {
   });
 
   const createSite = useMutation({
-    mutationFn: async (site: { projeto_id: string; codigo: string; nome: string; municipio?: string; uf?: string; cliente_id?: string }) => {
+    mutationFn: async ({ cliente_id, ...site }: { projeto_id: string; codigo: string; nome: string; municipio?: string; uf?: string; cliente_id?: string }) => {
       const { error } = await supabase
         .from("sites")
         .insert([site]);
