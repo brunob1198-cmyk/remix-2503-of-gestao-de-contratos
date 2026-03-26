@@ -1425,6 +1425,72 @@ export type Database = {
           },
         ]
       }
+      timeline_eventos: {
+        Row: {
+          created_at: string
+          data: string
+          equipe_id: string | null
+          id: string
+          imagem_url: string | null
+          item: string | null
+          latitude: number | null
+          longitude: number | null
+          observacao: string | null
+          projeto_id: string
+          quantidade: number | null
+          status: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          equipe_id?: string | null
+          id?: string
+          imagem_url?: string | null
+          item?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          projeto_id: string
+          quantidade?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          equipe_id?: string | null
+          id?: string
+          imagem_url?: string | null
+          item?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          projeto_id?: string
+          quantidade?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_eventos_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           created_at: string | null

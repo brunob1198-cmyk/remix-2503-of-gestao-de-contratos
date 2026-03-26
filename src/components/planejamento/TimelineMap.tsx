@@ -1,0 +1,116 @@
+import { useEffect, useMemo, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import { TimelineEvento } from "@/hooks/useTimelineEventos";
+import { format, parseISO } from "date-fns";
+import "leaflet/dist/leaflet.css";
+
+// Fix leaflet default icons
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+const TIPO_HEX: Record<string, string> = {
+  producao: "#10b981",
+  medicao: "#3b82f6",
+  foto: "#f59e0b",
+  problema: "#ef4444",
+};
+
+function createColoredIcon(tipo: string, isActive: boolean = false) {
+  const color = TIPO_HEX[tipo] || "#6b7280";
+  const size = isActive ? 16 : 10;
+  const border = isActive ? 3 : 2;
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:${size}px;height:${size}px;
+      border-radius:50%;
+      background:${color};
+      border:${border}px solid white;
+      box-shadow:0 2px 6px rgba(0,0,0,0.4);
+      ${isActive ? 'animation:pulse 1s infinite;' : ''}
+    "></div>
+    <style>@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}</style>`,
+    iconSize: [size + border * 2, size + border * 2],
+    iconAnchor: [(size + border * 2) / 2, (size + border * 2) / 2],
+  });
+}
+
+function FitBounds({ eventos }: { eventos: TimelineEvento[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (eventos.length === 0) return;
+    const bounds = L.latLngBounds(
+      eventos.map((e) => [e.latitude!, e.longitude!] as [number, number])
+    );
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+  }, [eventos, map]);
+  return null;
+}
+
+function FlyToActive({ evento }: { evento: TimelineEvento | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (evento?.latitude && evento?.longitude) {
+      map.flyTo([evento.latitude, evento.longitude], 15, { duration: 0.8 });
+    }
+  }, [evento, map]);
+  return null;
+}
+
+interface TimelineMapProps {
+  eventos: TimelineEvento[];
+  activeEvento: TimelineEvento | null;
+  onSelectEvento: (e: TimelineEvento) => void;
+}
+
+export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineMapProps) {
+  const defaultCenter: [number, number] = [-14.235, -51.9253]; // Brazil center
+
+  if (eventos.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+        Nenhum evento com coordenadas para exibir no mapa
+      </div>
+    );
+  }
+
+  return (
+    <MapContainer
+      center={defaultCenter}
+      zoom={5}
+      style={{ height: "100%", width: "100%", borderRadius: "inherit" }}
+      className="z-0"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <FitBounds eventos={eventos} />
+      <FlyToActive evento={activeEvento} />
+
+      {eventos.map((evt) => (
+        <Marker
+          key={evt.id}
+          position={[evt.latitude!, evt.longitude!]}
+          icon={createColoredIcon(evt.tipo, activeEvento?.id === evt.id)}
+          eventHandlers={{
+            click: () => onSelectEvento(evt),
+          }}
+        >
+          <Popup>
+            <div className="text-xs">
+              <p className="font-bold">{evt.item || evt.tipo}</p>
+              <p>{format(parseISO(evt.data), "dd/MM/yyyy")}</p>
+              {evt.quantidade > 0 && <p>Qtd: {evt.quantidade}</p>}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+  );
+}
