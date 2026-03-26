@@ -181,6 +181,14 @@ export default function PlanejamentoObra() {
           <TabsContent value="timeline" className="mt-4">
             <TimelineObra projetoId={projetoId} />
           </TabsContent>
+
+          <TabsContent value="simulacao" className="mt-4">
+            <SimulacaoEquipes atividades={atividades} frentes={frentes} />
+          </TabsContent>
+
+          <TabsContent value="produtividade" className="mt-4">
+            <ProdutividadeMapa projetoId={projetoId} />
+          </TabsContent>
         </Tabs>
       ) : (
         <Card>
