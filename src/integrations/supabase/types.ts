@@ -43,6 +43,99 @@ export type Database = {
           },
         ]
       }
+      atividade_recursos: {
+        Row: {
+          atividade_id: string
+          created_at: string
+          id: string
+          recurso_id: string
+        }
+        Insert: {
+          atividade_id: string
+          created_at?: string
+          id?: string
+          recurso_id: string
+        }
+        Update: {
+          atividade_id?: string
+          created_at?: string
+          id?: string
+          recurso_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividade_recursos_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividade_recursos_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atividades_planejamento: {
+        Row: {
+          created_at: string
+          data_fim_prevista: string | null
+          data_inicio: string | null
+          frente_id: string
+          id: string
+          item_lpu_id: string | null
+          nome: string
+          ordem: number
+          producao_diaria_prevista: number
+          quantidade_total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          frente_id: string
+          id?: string
+          item_lpu_id?: string | null
+          nome: string
+          ordem?: number
+          producao_diaria_prevista?: number
+          quantidade_total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          frente_id?: string
+          id?: string
+          item_lpu_id?: string | null
+          nome?: string
+          ordem?: number
+          producao_diaria_prevista?: number
+          quantidade_total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividades_planejamento_frente_id_fkey"
+            columns: ["frente_id"]
+            isOneToOne: false
+            referencedRelation: "frentes_obra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_planejamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cep: string | null
@@ -83,6 +176,42 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dependencias_atividade: {
+        Row: {
+          atividade_id: string
+          created_at: string
+          id: string
+          predecessora_id: string
+        }
+        Insert: {
+          atividade_id: string
+          created_at?: string
+          id?: string
+          predecessora_id: string
+        }
+        Update: {
+          atividade_id?: string
+          created_at?: string
+          id?: string
+          predecessora_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dependencias_atividade_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dependencias_atividade_predecessora_id_fkey"
+            columns: ["predecessora_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
             referencedColumns: ["id"]
           },
         ]
@@ -549,6 +678,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "faturamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      frentes_obra: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          projeto_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          projeto_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          projeto_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frentes_obra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "projetos"
