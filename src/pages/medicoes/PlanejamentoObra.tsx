@@ -76,7 +76,13 @@ export default function PlanejamentoObra() {
               <BarChart3 className="h-4 w-4" /> Gantt
             </TabsTrigger>
             <TabsTrigger value="timeline" className="gap-1.5">
-              <Map className="h-4 w-4" /> Timeline da Obra
+              <Map className="h-4 w-4" /> Timeline
+            </TabsTrigger>
+            <TabsTrigger value="simulacao" className="gap-1.5">
+              <Users className="h-4 w-4" /> Simulação
+            </TabsTrigger>
+            <TabsTrigger value="produtividade" className="gap-1.5">
+              <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
           </TabsList>
 
