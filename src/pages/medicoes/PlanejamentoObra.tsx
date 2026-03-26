@@ -12,7 +12,8 @@ import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { TimelineObra } from "@/components/planejamento/TimelineObra";
 import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin } from "lucide-react";
+import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp } from "lucide-react";
 
 export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
@@ -83,6 +84,9 @@ export default function PlanejamentoObra() {
             </TabsTrigger>
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
+            </TabsTrigger>
+            <TabsTrigger value="curvas" className="gap-1.5">
+              <TrendingUp className="h-4 w-4" /> Curva S
             </TabsTrigger>
           </TabsList>
 
@@ -189,6 +193,10 @@ export default function PlanejamentoObra() {
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} />
           </TabsContent>
+          <TabsContent value="curvas" className="mt-4">
+            <CurvaSDashboard atividades={atividades} frentes={frentes} />
+          </TabsContent>
+
         </Tabs>
       ) : (
         <Card>
