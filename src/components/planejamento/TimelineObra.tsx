@@ -45,7 +45,7 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
     item?: string;
   }>({});
 
-  const { data: eventos = [], isLoading } = useTimelineEventos(projetoId, filters);
+  const { data: eventos = [], isLoading, refetch } = useTimelineEventos(projetoId, filters);
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<TimelineEvento | null>(null);
