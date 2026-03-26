@@ -1430,6 +1430,10 @@ export type Database = {
           created_at: string
           data: string
           equipe_id: string | null
+          geo_confianca: string | null
+          geo_descricao: string | null
+          geo_metodo: string | null
+          geo_validado: boolean
           id: string
           imagem_url: string | null
           item: string | null
@@ -1446,6 +1450,10 @@ export type Database = {
           created_at?: string
           data: string
           equipe_id?: string | null
+          geo_confianca?: string | null
+          geo_descricao?: string | null
+          geo_metodo?: string | null
+          geo_validado?: boolean
           id?: string
           imagem_url?: string | null
           item?: string | null
@@ -1462,6 +1470,10 @@ export type Database = {
           created_at?: string
           data?: string
           equipe_id?: string | null
+          geo_confianca?: string | null
+          geo_descricao?: string | null
+          geo_metodo?: string | null
+          geo_validado?: boolean
           id?: string
           imagem_url?: string | null
           item?: string | null

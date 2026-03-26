@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useTimelineEventos, TimelineEvento } from "@/hooks/useTimelineEventos";
 import { TimelineMap } from "./TimelineMap";
+import { EvidenciaUpload } from "./EvidenciaUpload";
 import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -44,7 +45,7 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
     item?: string;
   }>({});
 
-  const { data: eventos = [], isLoading } = useTimelineEventos(projetoId, filters);
+  const { data: eventos = [], isLoading, refetch } = useTimelineEventos(projetoId, filters);
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<TimelineEvento | null>(null);
@@ -113,6 +114,7 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
     <div className="space-y-4">
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2">
+        <EvidenciaUpload projetoId={projetoId} onEventoCreated={() => refetch()} />
         <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="h-4 w-4 mr-1" /> Filtros
         </Button>
