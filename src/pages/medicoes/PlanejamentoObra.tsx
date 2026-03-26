@@ -10,7 +10,9 @@ import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailS
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { TimelineObra } from "@/components/planejamento/TimelineObra";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map } from "lucide-react";
+import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
+import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin } from "lucide-react";
 
 export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
@@ -74,7 +76,13 @@ export default function PlanejamentoObra() {
               <BarChart3 className="h-4 w-4" /> Gantt
             </TabsTrigger>
             <TabsTrigger value="timeline" className="gap-1.5">
-              <Map className="h-4 w-4" /> Timeline da Obra
+              <Map className="h-4 w-4" /> Timeline
+            </TabsTrigger>
+            <TabsTrigger value="simulacao" className="gap-1.5">
+              <Users className="h-4 w-4" /> Simulação
+            </TabsTrigger>
+            <TabsTrigger value="produtividade" className="gap-1.5">
+              <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
           </TabsList>
 
@@ -172,6 +180,14 @@ export default function PlanejamentoObra() {
 
           <TabsContent value="timeline" className="mt-4">
             <TimelineObra projetoId={projetoId} />
+          </TabsContent>
+
+          <TabsContent value="simulacao" className="mt-4">
+            <SimulacaoEquipes atividades={atividades} frentes={frentes} />
+          </TabsContent>
+
+          <TabsContent value="produtividade" className="mt-4">
+            <ProdutividadeMapa projetoId={projetoId} />
           </TabsContent>
         </Tabs>
       ) : (
