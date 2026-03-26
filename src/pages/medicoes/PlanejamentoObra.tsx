@@ -193,6 +193,10 @@ export default function PlanejamentoObra() {
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} />
           </TabsContent>
+          <TabsContent value="curvas" className="mt-4">
+            <CurvaSDashboard atividades={atividades} frentes={frentes} />
+          </TabsContent>
+
         </Tabs>
       ) : (
         <Card>
