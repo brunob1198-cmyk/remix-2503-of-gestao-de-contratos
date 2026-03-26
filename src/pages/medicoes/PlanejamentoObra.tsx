@@ -10,7 +10,9 @@ import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailS
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { TimelineObra } from "@/components/planejamento/TimelineObra";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map } from "lucide-react";
+import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
+import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin } from "lucide-react";
 
 export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
