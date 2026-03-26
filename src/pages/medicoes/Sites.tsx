@@ -39,7 +39,7 @@ export default function SitesPage() {
 
   const getColValue = (s: any, col: ColKey): string => {
     if (col === "projeto") return (s.projeto as any)?.codigo || "-";
-    if (col === "cliente") return s.clienteObj?.razao_social || "-";
+    if (col === "cliente") return (s.projeto as any)?.clienteObj?.razao_social || "-";
     return s[col] || "-";
   };
 
@@ -191,7 +191,7 @@ export default function SitesPage() {
                     <TableCell className="font-mono">{(s.projeto as any)?.codigo || "-"}</TableCell>
                     <TableCell className="font-mono font-semibold">{s.codigo}</TableCell>
                     <TableCell>{s.nome}</TableCell>
-                    <TableCell>{s.clienteObj?.razao_social || "-"}</TableCell>
+                    <TableCell>{(s.projeto as any)?.clienteObj?.razao_social || "-"}</TableCell>
                     <TableCell>{s.municipio || "-"}</TableCell>
                     <TableCell>{s.uf || "-"}</TableCell>
                     <TableCell>
