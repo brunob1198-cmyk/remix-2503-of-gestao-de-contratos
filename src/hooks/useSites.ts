@@ -12,7 +12,7 @@ export function useSites(projetoId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("sites")
-        .select("*, projeto:projetos(*), clienteObj:clientes(*)")
+        .select("*, projeto:projetos(*, clienteObj:clientes(*))")
         .order("codigo")
         .limit(100000);
       
