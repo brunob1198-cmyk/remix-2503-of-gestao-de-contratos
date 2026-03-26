@@ -14,6 +14,7 @@ import {
   LayoutDashboard, FolderKanban, MapPin, FileSpreadsheet,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
+  CalendarRange,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -36,6 +37,7 @@ const menuItems: MenuItem[] = [
   { title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
   { title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },
   { title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise" },
+  { title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento" },
   { title: "Recursos", url: "/medicoes/recursos", icon: Boxes, telaId: "recursos" },
   { title: "Lançar Produção", url: "/medicoes/producao", icon: ClipboardList, telaId: "producao" },
   { title: "Lançar Medição", url: "/medicoes/medicao", icon: Receipt, telaId: "medicao" },

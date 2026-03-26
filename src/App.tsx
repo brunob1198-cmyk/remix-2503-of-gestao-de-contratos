@@ -30,6 +30,7 @@ import IntegracaoErpPage from "./pages/medicoes/IntegracaoErp";
 import RdoPage from "./pages/medicoes/Rdo";
 import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
 import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
+import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="integracao-erp" element={<IntegracaoErpPage />} />
               <Route path="rdo" element={<RdoPage />} />
               <Route path="usuarios" element={<GerenciarUsuariosPage />} />
+              <Route path="planejamento" element={<PlanejamentoObraPage />} />
               <Route path="perfil" element={<MeuPerfilPage />} />
             </Route>
 
