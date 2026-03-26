@@ -11,7 +11,7 @@ import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 
 export default function PlanejamentoObra() {
-  const { data: projetos = [] } = useProjetos();
+  const { projetos = [] } = useProjetos();
   const [projetoId, setProjetoId] = useState<string>("");
   const [frenteFilter, setFrenteFilter] = useState<string>("all");
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
