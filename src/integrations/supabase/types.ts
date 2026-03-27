@@ -694,6 +694,7 @@ export type Database = {
           id: string
           nome: string
           projeto_id: string
+          site_id: string | null
           updated_at: string
         }
         Insert: {
@@ -704,6 +705,7 @@ export type Database = {
           id?: string
           nome: string
           projeto_id: string
+          site_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -714,6 +716,7 @@ export type Database = {
           id?: string
           nome?: string
           projeto_id?: string
+          site_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -722,6 +725,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frentes_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
