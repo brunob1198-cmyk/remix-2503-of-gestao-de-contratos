@@ -1,0 +1,1 @@
+ALTER TABLE public.frentes_obra ADD COLUMN site_id uuid REFERENCES public.sites(id) ON DELETE SET NULL;

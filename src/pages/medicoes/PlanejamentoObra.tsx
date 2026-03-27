@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useFrentes, useAtividades, AtividadePlanejamento } from "@/hooks/usePlanejamento";
+import { useSites } from "@/hooks/useSites";
+import { useRecursos } from "@/hooks/useRecursos";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { GanttChart } from "@/components/planejamento/GanttChart";
 import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailSheet";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
@@ -14,20 +16,60 @@ import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
 import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
-  const [projetoId, setProjetoId] = useState<string>("");
-  const [frenteFilter, setFrenteFilter] = useState<string>("all");
+  const [projetoId, setProjetoId] = usePersistedState<string>("planejamento_projeto_id", "");
+  const [frenteFilter, setFrenteFilter] = usePersistedState<string>("planejamento_frente_filter", "all");
+  const [siteFilter, setSiteFilter] = usePersistedState<string>("planejamento_site_filter", "all");
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: frentes = [], create: createFrente } = useFrentes(projetoId || undefined);
-  const { data: atividades = [], create: createAtividade } = useAtividades(projetoId || undefined);
+  const { data: atividades = [], create: createAtividade, update: updateAtividade } = useAtividades(projetoId || undefined);
+  const { sites } = useSites(projetoId || undefined);
+  const { recursos, alocacoes } = useRecursos();
+
+  // Recursos alocados neste projeto
+  const projetoRecursos = useMemo(() => {
+    if (!projetoId) return [];
+    const recursoIdsAlocados = new Set(
+      alocacoes
+        .filter((a) => a.projeto_id === projetoId && !a.data_fim)
+        .map((a) => a.recurso_id)
+    );
+    return recursos.filter((r) => recursoIdsAlocados.has(r.id));
+  }, [projetoId, recursos, alocacoes]);
+
+  // Load atividade_recursos for selected atividade
+  const { data: atividadeRecursos = [] } = useQuery({
+    queryKey: ["atividade_recursos", selectedAtividade?.id],
+    queryFn: async () => {
+      if (!selectedAtividade?.id) return [];
+      const { data, error } = await supabase
+        .from("atividade_recursos")
+        .select("recurso_id")
+        .eq("atividade_id", selectedAtividade.id);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.recurso_id);
+    },
+    enabled: !!selectedAtividade?.id,
+  });
 
   const filteredAtividades = useMemo(() => {
-    if (frenteFilter === "all") return atividades;
-    return atividades.filter((a) => a.frente_id === frenteFilter);
-  }, [atividades, frenteFilter]);
+    let result = atividades;
+    if (frenteFilter !== "all") {
+      result = result.filter((a) => a.frente_id === frenteFilter);
+    }
+    if (siteFilter !== "all") {
+      const frenteIdsForSite = new Set(frentes.filter((f) => (f as any).site_id === siteFilter).map((f) => f.id));
+      result = result.filter((a) => frenteIdsForSite.has(a.frente_id));
+    }
+    return result;
+  }, [atividades, frenteFilter, siteFilter, frentes]);
 
   const stats = useMemo(() => {
     const total = atividades.length;
@@ -38,6 +80,31 @@ export default function PlanejamentoObra() {
     const avgPct = total ? atividades.reduce((s, a) => s + (a.percentual_executado || 0), 0) / total : 0;
     return { total, adiantado, noPrazo, atrasado, concluido, avgPct };
   }, [atividades]);
+
+  const handleDragUpdate = useCallback(async (id: string, newStartDate: string) => {
+    const at = atividades.find((a) => a.id === id);
+    if (!at) return;
+    const dur = at.duracao_dias || 1;
+    const { addDays, format } = await import("date-fns");
+    const newEnd = format(addDays(new Date(newStartDate), dur), "yyyy-MM-dd");
+    updateAtividade.mutate({ id, data_inicio: newStartDate, data_fim_prevista: newEnd });
+  }, [atividades, updateAtividade]);
+
+  const handleUpdateAtividade = useCallback((data: any) => {
+    updateAtividade.mutate(data);
+  }, [updateAtividade]);
+
+  const handleUpdateRecursos = useCallback(async (atividadeId: string, recursoIds: string[]) => {
+    // Delete existing
+    await supabase.from("atividade_recursos").delete().eq("atividade_id", atividadeId);
+    // Insert new
+    if (recursoIds.length) {
+      const rows = recursoIds.map((rid) => ({ atividade_id: atividadeId, recurso_id: rid }));
+      await supabase.from("atividade_recursos").insert(rows);
+    }
+    queryClient.invalidateQueries({ queryKey: ["atividade_recursos", atividadeId] });
+    toast.success("Recursos atualizados");
+  }, [queryClient]);
 
   return (
     <div className="space-y-6">
@@ -57,7 +124,7 @@ export default function PlanejamentoObra() {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="w-64">
           <label className="text-sm font-medium mb-1 block">Projeto</label>
-          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); }}>
+          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSiteFilter("all"); }}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o projeto" />
             </SelectTrigger>
@@ -93,6 +160,21 @@ export default function PlanejamentoObra() {
           <TabsContent value="gantt" className="space-y-4 mt-4">
             {/* Gantt controls */}
             <div className="flex flex-wrap gap-3 items-end">
+              {sites.length > 0 && (
+                <div className="w-52">
+                  <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
+                  <Select value={siteFilter} onValueChange={setSiteFilter}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os sites</SelectItem>
+                      {sites.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {frentes.length > 0 && (
                 <div className="w-52">
                   <label className="text-sm font-medium mb-1 block">Filtrar por Frente</label>
@@ -111,7 +193,11 @@ export default function PlanejamentoObra() {
               <div className="flex gap-2">
                 <FrenteForm
                   projetoId={projetoId}
-                  onCreate={(data) => createFrente.mutate(data)}
+                  sites={sites as any}
+                  onCreate={(data) => {
+                    if (data.site_id === "none") delete data.site_id;
+                    createFrente.mutate(data);
+                  }}
                   isLoading={createFrente.isPending}
                 />
                 {frentes.length > 0 && (
@@ -179,6 +265,7 @@ export default function PlanejamentoObra() {
             <GanttChart
               atividades={filteredAtividades}
               onSelectAtividade={setSelectedAtividade}
+              onDragUpdate={handleDragUpdate}
             />
           </TabsContent>
 
@@ -196,7 +283,6 @@ export default function PlanejamentoObra() {
           <TabsContent value="curvas" className="mt-4">
             <CurvaSDashboard atividades={atividades} frentes={frentes} />
           </TabsContent>
-
         </Tabs>
       ) : (
         <Card>
@@ -210,6 +296,10 @@ export default function PlanejamentoObra() {
         atividade={selectedAtividade}
         onClose={() => setSelectedAtividade(null)}
         allAtividades={atividades}
+        onUpdate={handleUpdateAtividade}
+        projetoRecursos={projetoRecursos}
+        atividadeRecursoIds={atividadeRecursos}
+        onUpdateRecursos={handleUpdateRecursos}
       />
     </div>
   );
