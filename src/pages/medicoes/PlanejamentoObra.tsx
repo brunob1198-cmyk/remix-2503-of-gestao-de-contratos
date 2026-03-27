@@ -15,7 +15,9 @@ import { TimelineObra } from "@/components/planejamento/TimelineObra";
 import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp } from "lucide-react";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -28,7 +30,7 @@ export default function PlanejamentoObra() {
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: frentes = [], create: createFrente } = useFrentes(projetoId || undefined);
+  const { data: frentes = [], create: createFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
   const { data: atividades = [], create: createAtividade, update: updateAtividade } = useAtividades(projetoId || undefined);
   const { sites } = useSites(projetoId || undefined);
   const { recursos, alocacoes } = useRecursos();
@@ -190,7 +192,7 @@ export default function PlanejamentoObra() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <FrenteForm
                   projetoId={projetoId}
                   sites={sites as any}
@@ -209,6 +211,43 @@ export default function PlanejamentoObra() {
                   />
                 )}
               </div>
+
+              {/* Frentes list with delete */}
+              {frentes.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {frentes.map((f) => (
+                    <div key={f.id} className="flex items-center gap-1 border rounded-md px-2 py-1 bg-muted/30 text-xs">
+                      <span className="font-medium">{f.nome}</span>
+                      {(f as any).site_id && (
+                        <span className="text-muted-foreground">
+                          ({sites.find((s) => s.id === (f as any).site_id)?.nome || "Site"})
+                        </span>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir frente "{f.nome}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Todas as atividades vinculadas a esta frente serão removidas. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeFrente.mutate(f.id)}>
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stats cards */}
