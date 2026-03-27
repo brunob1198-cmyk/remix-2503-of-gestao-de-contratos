@@ -2,20 +2,28 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { FrenteObra } from "@/hooks/usePlanejamento";
+
+interface Site {
+  id: string;
+  codigo: string;
+  nome: string;
+}
 
 interface Props {
   projetoId: string;
+  sites?: Site[];
   onCreate: (data: any) => void;
   isLoading?: boolean;
 }
 
-export function FrenteForm({ projetoId, onCreate, isLoading }: Props) {
+export function FrenteForm({ projetoId, sites = [], onCreate, isLoading }: Props) {
   const [open, setOpen] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [siteId, setSiteId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 
@@ -25,11 +33,13 @@ export function FrenteForm({ projetoId, onCreate, isLoading }: Props) {
       projeto_id: projetoId,
       nome: nome.trim(),
       descricao: descricao || undefined,
+      site_id: siteId || undefined,
       data_inicio: dataInicio || undefined,
       data_fim: dataFim || undefined,
     });
     setNome("");
     setDescricao("");
+    setSiteId("");
     setDataInicio("");
     setDataFim("");
     setOpen(false);
@@ -55,6 +65,22 @@ export function FrenteForm({ projetoId, onCreate, isLoading }: Props) {
             <Label>Descrição</Label>
             <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
           </div>
+          {sites.length > 0 && (
+            <div>
+              <Label>Site (opcional)</Label>
+              <Select value={siteId} onValueChange={setSiteId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vincular a um site" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Data Início</Label>
