@@ -319,3 +319,25 @@ function generateColumns(start: Date, end: Date) {
   }
   return cols;
 }
+
+function generateMonthColumns(columns: { date: Date }[]) {
+  const months: { label: string; width: number }[] = [];
+  if (columns.length === 0) return months;
+
+  let currentMonth = format(columns[0].date, "MMM/yy", { locale: ptBR });
+  let currentWidth = 0;
+
+  columns.forEach((col) => {
+    const monthLabel = format(col.date, "MMM/yy", { locale: ptBR });
+    if (monthLabel === currentMonth) {
+      currentWidth += 32; // DAY_W
+    } else {
+      months.push({ label: currentMonth, width: currentWidth });
+      currentMonth = monthLabel;
+      currentWidth = 32;
+    }
+  });
+
+  months.push({ label: currentMonth, width: currentWidth });
+  return months;
+}
