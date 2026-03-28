@@ -36,7 +36,7 @@ export function DataPreview({ results }: DataPreviewProps) {
               <TableRow>
                 <TableHead className="min-w-[150px]">Arquivo</TableHead>
                 <TableHead className="min-w-[100px]">Nº Pedido</TableHead>
-                <TableHead className="min-w-[150px]">Site</TableHead>
+                <TableHead className="min-w-[150px]">OI</TableHead>
                 <TableHead className="min-w-[100px]">Data</TableHead>
                 <TableHead className="min-w-[120px]">Valor Total</TableHead>
                 <TableHead className="min-w-[200px]">Fornecedor</TableHead>
