@@ -37,11 +37,18 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
   const [dragOffset, setDragOffset] = useState(0);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  const { chartStart, chartEnd, totalDays, columns } = useMemo(() => {
+  const { chartStart, chartEnd, totalDays, columns, monthColumns } = useMemo(() => {
     if (!atividades.length) {
       const s = today;
       const e = addDays(today, 30);
-      return { chartStart: s, chartEnd: e, totalDays: 30, columns: generateColumns(s, e) };
+      const cols = generateColumns(s, e);
+      return { 
+        chartStart: s, 
+        chartEnd: e, 
+        totalDays: 30, 
+        columns: cols,
+        monthColumns: generateMonthColumns(cols)
+      };
     }
     let minDate = today;
     let maxDate = addDays(today, 30);
@@ -62,13 +69,15 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
     minDate = addDays(minDate, -3);
     maxDate = addDays(maxDate, 5);
     const total = differenceInDays(maxDate, minDate);
+    const cols = generateColumns(minDate, maxDate);
     return {
       chartStart: minDate,
       chartEnd: maxDate,
       totalDays: Math.max(total, 7),
-      columns: generateColumns(minDate, maxDate),
+      columns: cols,
+      monthColumns: generateMonthColumns(cols)
     };
-  }, [atividades]);
+  }, [atividades, today]);
 
   // Build dependency lines data
   const depLines = useMemo(() => {
@@ -156,7 +165,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
         <div className="flex" style={{ minWidth: LABEL_W + chartW }}>
           {/* Left labels */}
           <div className="flex-shrink-0 sticky left-0 z-20 bg-card" style={{ width: LABEL_W }}>
-            <div className="h-10 border-b border-r bg-muted/50 flex items-center px-3 text-xs font-semibold text-muted-foreground sticky top-0 z-30">
+            <div className="h-[60px] border-b border-r bg-muted/50 flex items-center px-3 text-xs font-semibold text-muted-foreground sticky top-0 z-30">
               Atividade
             </div>
             {atividades.map((a) => (
@@ -177,24 +186,39 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
           {/* Right chart area */}
           <div className="flex-1 relative" style={{ width: chartW }} ref={chartRef}>
             {/* Date header */}
-            <div className="h-10 border-b bg-muted/50 flex sticky top-0 z-10">
-              {columns.map((col, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "flex-shrink-0 border-r text-[10px] text-center flex flex-col justify-center",
-                    col.isWeekend && "bg-muted/40"
-                  )}
-                  style={{ width: DAY_W }}
-                >
-                  <div className="text-muted-foreground leading-none">
-                    {format(col.date, "dd", { locale: ptBR })}
+            <div className="sticky top-0 z-10">
+              {/* Months row */}
+              <div className="h-6 border-b bg-muted/30 flex">
+                {monthColumns.map((m, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 border-r text-[10px] text-center flex items-center justify-center font-semibold text-muted-foreground uppercase"
+                    style={{ width: m.width }}
+                  >
+                    {m.label}
                   </div>
-                  <div className="text-muted-foreground/60 leading-none mt-0.5">
-                    {format(col.date, "EEE", { locale: ptBR }).slice(0, 3)}
+                ))}
+              </div>
+              {/* Days row */}
+              <div className="h-[34px] border-b bg-muted/50 flex">
+                {columns.map((col, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex-shrink-0 border-r text-[10px] text-center flex flex-col justify-center",
+                      col.isWeekend && "bg-muted/40"
+                    )}
+                    style={{ width: DAY_W }}
+                  >
+                    <div className="text-muted-foreground leading-none">
+                      {format(col.date, "dd", { locale: ptBR })}
+                    </div>
+                    <div className="text-muted-foreground/60 leading-none mt-0.5">
+                      {format(col.date, "EEE", { locale: ptBR }).slice(0, 3)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* Dependency arrows SVG */}
@@ -318,4 +342,26 @@ function generateColumns(start: Date, end: Date) {
     cols.push({ date: d, isWeekend: d.getDay() === 0 || d.getDay() === 6 });
   }
   return cols;
+}
+
+function generateMonthColumns(columns: { date: Date }[]) {
+  const months: { label: string; width: number }[] = [];
+  if (columns.length === 0) return months;
+
+  let currentMonth = format(columns[0].date, "MMM/yy", { locale: ptBR });
+  let currentWidth = 0;
+
+  columns.forEach((col) => {
+    const monthLabel = format(col.date, "MMM/yy", { locale: ptBR });
+    if (monthLabel === currentMonth) {
+      currentWidth += DAY_W;
+    } else {
+      months.push({ label: currentMonth, width: currentWidth });
+      currentMonth = monthLabel;
+      currentWidth = DAY_W;
+    }
+  });
+
+  months.push({ label: currentMonth, width: currentWidth });
+  return months;
 }
