@@ -33,7 +33,7 @@ export default function PlanejamentoObra() {
   const { data: frentes = [], create: createFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
   const { data: atividades = [], create: createAtividade, update: updateAtividade } = useAtividades(projetoId || undefined);
   const { sites } = useSites(projetoId || undefined);
-  const { recursos } = useRecursos();
+  const { recursos, alocacoes } = useRecursos();
 
   // Recursos alocados neste projeto
   const projetoRecursos = useMemo(() => {
