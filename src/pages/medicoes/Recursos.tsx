@@ -560,8 +560,18 @@ export default function RecursosPage() {
                         <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
                         {/* Gantt month headers */}
                         {ganttMonths.map((m, i) => (
-                          <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH }}>
-                            {format(m, "MMM/yy", { locale: ptBR })}
+                          <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH }}>
+                            <div className="flex flex-col h-full">
+                              <div className="py-2 border-b bg-muted/20 font-semibold text-muted-foreground uppercase">
+                                {format(m, "MMM/yy", { locale: ptBR })}
+                              </div>
+                              <div className="flex justify-around items-center flex-1 text-[9px] opacity-60 font-normal px-1 text-muted-foreground">
+                                <span>1</span>
+                                <span>10</span>
+                                <span>20</span>
+                                <span>30</span>
+                              </div>
+                            </div>
                           </TableHead>
                         ))}
                       </TableRow>
