@@ -15,8 +15,7 @@ import { TimelineObra } from "@/components/planejamento/TimelineObra";
 import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
-import { RecursosGantt } from "@/components/planejamento/RecursosGantt";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2, Wrench } from "lucide-react";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,9 +156,6 @@ export default function PlanejamentoObra() {
             </TabsTrigger>
             <TabsTrigger value="curvas" className="gap-1.5">
               <TrendingUp className="h-4 w-4" /> Curva S
-            </TabsTrigger>
-            <TabsTrigger value="recursos" className="gap-1.5">
-              <Wrench className="h-4 w-4" /> Recursos
             </TabsTrigger>
           </TabsList>
 
@@ -325,14 +321,6 @@ export default function PlanejamentoObra() {
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
             <CurvaSDashboard atividades={atividades} frentes={frentes} />
-          </TabsContent>
-          <TabsContent value="recursos" className="mt-4">
-            <RecursosGantt
-              recursos={recursos}
-              alocacoes={alocacoes}
-              projetoId={projetoId}
-              sites={sites as any}
-            />
           </TabsContent>
         </Tabs>
       ) : (

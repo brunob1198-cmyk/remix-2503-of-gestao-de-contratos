@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useRecursos, TipoRecurso, UnidadeRecurso, RecursoCusto } from "@/hooks/useRecursos";
+import { useState, useMemo, useRef } from "react";
+import { useRecursos, TipoRecurso, UnidadeRecurso, RecursoCusto, RecursoAlocacao } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,9 +13,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, History, HardHat, Wrench, Truck, AlertTriangle, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, Upload, Trash2, MapPin, Link2 } from "lucide-react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Plus, Pencil, History, HardHat, Wrench, Truck, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, Upload, Trash2, MapPin, Link2, Download } from "lucide-react";
 import { RecursosImporter } from "@/components/medicoes/RecursosImporter";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
 type SortDir = "asc" | "desc" | null;
 
@@ -49,7 +53,6 @@ function getStatusBadge(status: string, tipo: TipoRecurso) {
   return <Badge className={`${opt.color} border-0`}>{opt.label}</Badge>;
 }
 
-// Column filter header component
 interface ColumnHeaderProps {
   label: string;
   sortDir: SortDir;
@@ -99,12 +102,46 @@ function ColumnHeader({ label, sortDir, onSort, searchText, onSearchChange, uniq
   );
 }
 
-type ColKey = "nome" | "cargo" | "placa" | "custo" | "status" | "alocacao";
-const allColumns: ColKey[] = ["nome", "cargo", "placa", "custo", "status", "alocacao"];
-const columnLabels: Record<ColKey, string> = { nome: "Nome", cargo: "Cargo", placa: "Placa", custo: "Custo Atual", status: "Status", alocacao: "Alocação" };
+type ColKey = "nome" | "cargo" | "placa" | "custo" | "status" | "alocacao" | "periodo";
+const columnLabels: Record<ColKey, string> = { nome: "Nome", cargo: "Cargo", placa: "Placa", custo: "Custo Atual", status: "Status", alocacao: "Alocação", periodo: "Período" };
+
+// Gantt bar colors by type
+const ganttColors: Record<TipoRecurso, string> = {
+  pessoa: "hsl(var(--primary))",
+  equipamento: "hsl(215, 70%, 55%)",
+  veiculo: "hsl(150, 60%, 45%)",
+};
+
+function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
+  if (alocacoes.length === 0) {
+    const now = new Date();
+    const months: Date[] = [];
+    for (let i = -1; i <= 4; i++) months.push(startOfMonth(addMonths(now, i)));
+    return months;
+  }
+  let minDate = new Date();
+  let maxDate = new Date();
+  alocacoes.forEach(a => {
+    const start = parseISO(a.data_inicio);
+    const end = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 3);
+    if (isBefore(start, minDate)) minDate = start;
+    if (isAfter(end, maxDate)) maxDate = end;
+  });
+  minDate = startOfMonth(addMonths(minDate, -1));
+  maxDate = startOfMonth(addMonths(maxDate, 2));
+  const months: Date[] = [];
+  let cur = minDate;
+  while (isBefore(cur, maxDate) || cur.getTime() === maxDate.getTime()) {
+    months.push(cur);
+    cur = addMonths(cur, 1);
+  }
+  return months;
+}
+
+const MONTH_WIDTH = 120;
 
 export default function RecursosPage() {
-  const { recursos, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
+  const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
   const { sites } = useSites();
   const { projetos } = useProjetos();
   const [showNew, setShowNew] = useState(false);
@@ -113,6 +150,10 @@ export default function RecursosPage() {
   const [histRecurso, setHistRecurso] = useState<string | null>(null);
   const [alocarRecursoId, setAlocarRecursoId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Status date dialog (férias/folga)
+  const [statusDateDialog, setStatusDateDialog] = useState<{ recursoId: string; status: string } | null>(null);
+  const [statusDataInicio, setStatusDataInicio] = useState(new Date().toISOString().split("T")[0]);
+  const [statusDataFim, setStatusDataFim] = useState("");
 
   // New resource form
   const [newNome, setNewNome] = useState("");
@@ -135,6 +176,7 @@ export default function RecursosPage() {
   const [alocProjetoId, setAlocProjetoId] = useState("");
   const [alocSiteId, setAlocSiteId] = useState("");
   const [alocDataInicio, setAlocDataInicio] = useState(new Date().toISOString().split("T")[0]);
+  const [alocDataFim, setAlocDataFim] = useState("");
 
   // Pagination per type
   const [currentPages, setCurrentPages] = useState<Record<TipoRecurso, number>>({ pessoa: 1, equipamento: 1, veiculo: 1 });
@@ -144,14 +186,14 @@ export default function RecursosPage() {
   const [sortColumns, setSortColumns] = useState<Record<TipoRecurso, ColKey | null>>({ pessoa: null, equipamento: null, veiculo: null });
   const [sortDirs, setSortDirs] = useState<Record<TipoRecurso, SortDir>>({ pessoa: null, equipamento: null, veiculo: null });
   const [searchTexts, setSearchTexts] = useState<Record<TipoRecurso, Record<ColKey, string>>>({
-    pessoa: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "" },
-    equipamento: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "" },
-    veiculo: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "" },
+    pessoa: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "", periodo: "" },
+    equipamento: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "", periodo: "" },
+    veiculo: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "", periodo: "" },
   });
   const [selectedFilters, setSelectedFilters] = useState<Record<TipoRecurso, Record<ColKey, Set<string>>>>({
-    pessoa: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set() },
-    equipamento: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set() },
-    veiculo: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set() },
+    pessoa: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set(), periodo: new Set() },
+    equipamento: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set(), periodo: new Set() },
+    veiculo: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set(), periodo: new Set() },
   });
 
   function getAlocacaoLabel(recursoId: string): string {
@@ -160,6 +202,14 @@ export default function RecursosPage() {
     const site = sites.find(s => s.id === aloc.site_id);
     const projeto = projetos.find(p => p.id === aloc.projeto_id);
     return `${projeto?.codigo || "?"} / ${site?.codigo || "?"}`;
+  }
+
+  function getPeriodoLabel(recursoId: string): string {
+    const aloc = getAlocacaoAtiva(recursoId);
+    if (!aloc) return "—";
+    const inicio = new Date(aloc.data_inicio).toLocaleDateString("pt-BR");
+    const fim = aloc.data_fim ? new Date(aloc.data_fim).toLocaleDateString("pt-BR") : "Atual";
+    return `${inicio} — ${fim}`;
   }
 
   function getColValue(r: any, col: ColKey): string {
@@ -176,6 +226,7 @@ export default function RecursosPage() {
       return opt?.label || r.status;
     }
     if (col === "alocacao") return getAlocacaoLabel(r.id);
+    if (col === "periodo") return getPeriodoLabel(r.id);
     return "";
   }
 
@@ -185,7 +236,7 @@ export default function RecursosPage() {
     let cols: ColKey[] = ["nome"];
     if (isPessoa) cols.push("cargo");
     if (isVeiculo) cols.push("placa");
-    cols.push("custo", "status", "alocacao");
+    cols.push("custo", "status", "alocacao", "periodo");
     return cols;
   }
 
@@ -224,8 +275,8 @@ export default function RecursosPage() {
     return cols.some(c => searchTexts[tipo][c] !== "" || selectedFilters[tipo][c].size > 0);
   }
   function clearAllFilters(tipo: TipoRecurso) {
-    setSearchTexts(prev => ({ ...prev, [tipo]: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "" } }));
-    setSelectedFilters(prev => ({ ...prev, [tipo]: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set() } }));
+    setSearchTexts(prev => ({ ...prev, [tipo]: { nome: "", cargo: "", placa: "", custo: "", status: "", alocacao: "", periodo: "" } }));
+    setSelectedFilters(prev => ({ ...prev, [tipo]: { nome: new Set(), cargo: new Set(), placa: new Set(), custo: new Set(), status: new Set(), alocacao: new Set(), periodo: new Set() } }));
     setSortColumns(prev => ({ ...prev, [tipo]: null }));
     setSortDirs(prev => ({ ...prev, [tipo]: null }));
   }
@@ -261,7 +312,6 @@ export default function RecursosPage() {
     return Array.from(new Set(grouped[tipo].map(r => getColValue(r, col)))).sort();
   }
 
-  // Summary
   const summary = useMemo(() => {
     const result: Record<TipoRecurso, number> = { pessoa: 0, equipamento: 0, veiculo: 0 };
     recursos.forEach((r) => {
@@ -270,6 +320,22 @@ export default function RecursosPage() {
     });
     return result;
   }, [recursos, getCustoAtual]);
+
+  // Gantt months based on all alocacoes
+  const ganttMonths = useMemo(() => getGanttMonths(alocacoes), [alocacoes]);
+  const ganttStartDate = ganttMonths.length > 0 ? ganttMonths[0] : new Date();
+  const ganttTotalDays = ganttMonths.length > 0 ? differenceInDays(endOfMonth(ganttMonths[ganttMonths.length - 1]), ganttMonths[0]) + 1 : 180;
+  const ganttTotalWidth = ganttMonths.length * MONTH_WIDTH;
+
+  function getBarStyle(aloc: RecursoAlocacao) {
+    const start = parseISO(aloc.data_inicio);
+    const end = aloc.data_fim ? parseISO(aloc.data_fim) : addMonths(new Date(), 1);
+    const startOffset = Math.max(0, differenceInDays(start, ganttStartDate));
+    const duration = Math.max(1, differenceInDays(end, start) + 1);
+    const left = (startOffset / ganttTotalDays) * ganttTotalWidth;
+    const width = (duration / ganttTotalDays) * ganttTotalWidth;
+    return { left: `${left}px`, width: `${Math.max(width, 4)}px` };
+  }
 
   function handleCreate() {
     if (!newNome.trim() || !newCusto) return;
@@ -314,8 +380,8 @@ export default function RecursosPage() {
   function handleAlocar() {
     if (!alocarRecursoId || !alocSiteId || !alocProjetoId) return;
     alocarRecurso.mutate(
-      { recurso_id: alocarRecursoId, site_id: alocSiteId, projeto_id: alocProjetoId, data_inicio: alocDataInicio },
-      { onSuccess: () => { setAlocarRecursoId(null); setAlocProjetoId(""); setAlocSiteId(""); } }
+      { recurso_id: alocarRecursoId, site_id: alocSiteId, projeto_id: alocProjetoId, data_inicio: alocDataInicio, data_fim: alocDataFim || undefined },
+      { onSuccess: () => { setAlocarRecursoId(null); setAlocProjetoId(""); setAlocSiteId(""); setAlocDataFim(""); } }
     );
   }
 
@@ -328,14 +394,61 @@ export default function RecursosPage() {
   function handleStatusChange(recursoId: string, newStatus: string) {
     if (newStatus === "alocado") {
       setAlocarRecursoId(recursoId);
+    } else if (newStatus === "ferias" || newStatus === "folga") {
+      setStatusDateDialog({ recursoId, status: newStatus });
+      setStatusDataInicio(new Date().toISOString().split("T")[0]);
+      setStatusDataFim("");
     } else {
-      // If changing from alocado, liberar first
       const aloc = getAlocacaoAtiva(recursoId);
       if (aloc) {
         liberarRecurso.mutate({ alocacao_id: aloc.id, recurso_id: recursoId });
       }
       updateStatus.mutate({ id: recursoId, status: newStatus });
     }
+  }
+
+  function handleStatusDateConfirm() {
+    if (!statusDateDialog) return;
+    const aloc = getAlocacaoAtiva(statusDateDialog.recursoId);
+    if (aloc) {
+      liberarRecurso.mutate({ alocacao_id: aloc.id, recurso_id: statusDateDialog.recursoId });
+    }
+    // Create an allocation-like entry for férias/folga tracking
+    updateStatus.mutate({ id: statusDateDialog.recursoId, status: statusDateDialog.status });
+    setStatusDateDialog(null);
+  }
+
+  // Excel Export
+  function handleExportExcel(tipo: TipoRecurso) {
+    const items = getFilteredItems(tipo);
+    const cols = getColsForTipo(tipo);
+    const rows = items.map(r => {
+      const row: Record<string, string> = {};
+      cols.forEach(col => { row[columnLabels[col]] = getColValue(r, col); });
+      return row;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tipoConfig[tipo].label.replace(/[^\w\s]/g, "").trim());
+    XLSX.writeFile(wb, `recursos_${tipo}_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  }
+
+  function handleExportAll() {
+    const wb = XLSX.utils.book_new();
+    (["pessoa", "equipamento", "veiculo"] as TipoRecurso[]).forEach(tipo => {
+      const items = getFilteredItems(tipo);
+      const cols = getColsForTipo(tipo);
+      const rows = items.map(r => {
+        const row: Record<string, string> = {};
+        cols.forEach(col => { row[columnLabels[col]] = getColValue(r, col); });
+        return row;
+      });
+      if (rows.length > 0) {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, tipoConfig[tipo].label.replace(/[^\w\s]/g, "").trim());
+      }
+    });
+    XLSX.writeFile(wb, `recursos_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   }
 
   const sitesForProjeto = alocProjetoId ? sites.filter(s => (s as any).projeto_id === alocProjetoId || (s.projeto as any)?.id === alocProjetoId) : [];
@@ -355,6 +468,9 @@ export default function RecursosPage() {
           <p className="text-muted-foreground">Gerencie pessoas, equipamentos e veículos</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportAll}>
+            <Download className="h-4 w-4 mr-1" /> Exportar Excel
+          </Button>
           <Button variant="outline" onClick={() => setShowImporter(true)}>
             <Upload className="h-4 w-4 mr-1" /> Importar Excel
           </Button>
@@ -388,12 +504,12 @@ export default function RecursosPage() {
         })}
       </div>
 
-      {/* Grouped lists */}
+      {/* Grouped lists with Gantt */}
       {(["pessoa", "equipamento", "veiculo"] as TipoRecurso[]).map((tipo) => {
         const items = getFilteredItems(tipo);
         const allItems = grouped[tipo];
         if (allItems.length === 0) return null;
-        
+
         const totalItems = items.length;
         const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPages[tipo]));
         const paginatedItems = items.slice((currentPages[tipo] - 1) * itemsPerPages[tipo], currentPages[tipo] * itemsPerPages[tipo]);
@@ -406,101 +522,164 @@ export default function RecursosPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{cfg.label} ({items.length})</CardTitle>
-                {hasActiveFilters(tipo) && (
-                  <Button variant="ghost" size="sm" onClick={() => clearAllFilters(tipo)}>
-                    <X className="h-4 w-4 mr-1" /> Limpar filtros
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleExportExcel(tipo)}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Excel
                   </Button>
-                )}
+                  {hasActiveFilters(tipo) && (
+                    <Button variant="ghost" size="sm" onClick={() => clearAllFilters(tipo)}>
+                      <X className="h-4 w-4 mr-1" /> Limpar filtros
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {cols.map(col => (
-                      <TableHead key={col}>
-                        <ColumnHeader
-                          label={columnLabels[col]}
-                          sortDir={sortColumns[tipo] === col ? sortDirs[tipo] : null}
-                          onSort={() => handleSort(tipo, col)}
-                          searchText={searchTexts[tipo][col]}
-                          onSearchChange={(v) => setSearchText(tipo, col, v)}
-                          uniqueValues={getUniqueValues(tipo, col)}
-                          selectedValues={selectedFilters[tipo][col]}
-                          onToggleValue={(v) => toggleValue(tipo, col, v)}
-                          onSelectAll={() => selectAll(tipo, col, getUniqueValues(tipo, col))}
-                          onClearAll={() => clearAll(tipo, col)}
-                        />
-                      </TableHead>
-                    ))}
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedItems.length === 0 ? (
-                    <TableRow><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
-                  ) : paginatedItems.map((r) => {
-                    const custo = getCustoAtual(r.id);
-                    const aloc = getAlocacaoAtiva(r.id);
-                    return (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium">{r.nome}</TableCell>
-                        {tipo === "pessoa" && <TableCell>{r.cargo || "—"}</TableCell>}
-                        {tipo === "veiculo" && <TableCell>{r.placa || "—"}</TableCell>}
-                        <TableCell className="tabular-nums">
-                          {custo ? (
-                            <span>R$ {custo.custo_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{r.unidade === "hora" ? "h" : "dia"}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Select value={r.status} onValueChange={(v) => handleStatusChange(r.id, v)}>
-                            <SelectTrigger className="h-8 w-[130px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getStatusOptions(tipo).map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          {aloc ? (
-                            <div className="flex items-center gap-1.5">
-                              <Badge variant="outline" className="text-xs gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {getAlocacaoLabel(r.id)}
-                              </Badge>
-                              <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => handleLiberar(r.id)}>
-                                Liberar
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { setAlocarRecursoId(r.id); setAlocProjetoId(""); setAlocSiteId(""); }}>
-                              <Link2 className="h-3 w-3" /> Alocar
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(r.id)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setHistRecurso(r.id)}>
-                              <History className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(r.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              <div className="overflow-x-auto">
+                <div className="flex min-w-max">
+                  {/* Fixed table columns */}
+                  <Table className="w-auto flex-shrink-0">
+                    <TableHeader>
+                      <TableRow>
+                        {cols.map(col => (
+                          <TableHead key={col} className="whitespace-nowrap">
+                            <ColumnHeader
+                              label={columnLabels[col]}
+                              sortDir={sortColumns[tipo] === col ? sortDirs[tipo] : null}
+                              onSort={() => handleSort(tipo, col)}
+                              searchText={searchTexts[tipo][col]}
+                              onSearchChange={(v) => setSearchText(tipo, col, v)}
+                              uniqueValues={getUniqueValues(tipo, col)}
+                              selectedValues={selectedFilters[tipo][col]}
+                              onToggleValue={(v) => toggleValue(tipo, col, v)}
+                              onSelectAll={() => selectAll(tipo, col, getUniqueValues(tipo, col))}
+                              onClearAll={() => clearAll(tipo, col)}
+                            />
+                          </TableHead>
+                        ))}
+                        <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
+                        {/* Gantt month headers */}
+                        {ganttMonths.map((m, i) => (
+                          <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH }}>
+                            {format(m, "MMM/yy", { locale: ptBR })}
+                          </TableHead>
+                        ))}
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedItems.length === 0 ? (
+                        <TableRow><TableCell colSpan={cols.length + 1 + ganttMonths.length} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
+                      ) : paginatedItems.map((r) => {
+                        const custo = getCustoAtual(r.id);
+                        const aloc = getAlocacaoAtiva(r.id);
+                        const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
+
+                        return (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium whitespace-nowrap">{r.nome}</TableCell>
+                            {tipo === "pessoa" && <TableCell className="whitespace-nowrap">{r.cargo || "—"}</TableCell>}
+                            {tipo === "veiculo" && <TableCell className="whitespace-nowrap">{r.placa || "—"}</TableCell>}
+                            <TableCell className="tabular-nums whitespace-nowrap">
+                              {custo ? (
+                                <span>R$ {custo.custo_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{r.unidade === "hora" ? "h" : "dia"}</span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Select value={r.status} onValueChange={(v) => handleStatusChange(r.id, v)}>
+                                <SelectTrigger className="h-8 w-[130px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getStatusOptions(tipo).map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {aloc ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {getAlocacaoLabel(r.id)}
+                                  </Badge>
+                                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => handleLiberar(r.id)}>
+                                    Liberar
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { setAlocarRecursoId(r.id); setAlocProjetoId(""); setAlocSiteId(""); setAlocDataFim(""); }}>
+                                  <Link2 className="h-3 w-3" /> Alocar
+                                </Button>
+                              )}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                              {aloc ? (
+                                <span>
+                                  {new Date(aloc.data_inicio).toLocaleDateString("pt-BR")}
+                                  {" — "}
+                                  {aloc.data_fim ? new Date(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}
+                                </span>
+                              ) : "—"}
+                            </TableCell>
+                            <TableCell className="text-right whitespace-nowrap">
+                              <div className="flex justify-end gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => openEdit(r.id)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setHistRecurso(r.id)}>
+                                  <History className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(r.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            {/* Gantt cells */}
+                            {ganttMonths.map((m, i) => {
+                              const monthStart = m;
+                              const monthEnd = endOfMonth(m);
+                              return (
+                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH, height: 36 }}>
+                                  {recursoAlocacoes.map(a => {
+                                    const aStart = parseISO(a.data_inicio);
+                                    const aEnd = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 1);
+                                    // Check if this allocation overlaps this month
+                                    if (isAfter(aStart, monthEnd) || isBefore(aEnd, monthStart)) return null;
+                                    const barStart = isBefore(aStart, monthStart) ? monthStart : aStart;
+                                    const barEnd = isAfter(aEnd, monthEnd) ? monthEnd : aEnd;
+                                    const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
+                                    const barStartDay = differenceInDays(barStart, monthStart);
+                                    const barDuration = differenceInDays(barEnd, barStart) + 1;
+                                    const left = (barStartDay / daysInMonth) * 100;
+                                    const width = (barDuration / daysInMonth) * 100;
+                                    return (
+                                      <div
+                                        key={a.id}
+                                        className="absolute top-1/2 -translate-y-1/2 rounded-sm opacity-80 hover:opacity-100 transition-opacity"
+                                        style={{
+                                          left: `${left}%`,
+                                          width: `${Math.max(width, 2)}%`,
+                                          height: "60%",
+                                          backgroundColor: a.data_fim === null ? ganttColors[tipo] : ganttColors[tipo],
+                                          border: a.data_fim === null ? "1px dashed hsl(var(--foreground) / 0.3)" : "none",
+                                        }}
+                                        title={`${sites.find(s => s.id === a.site_id)?.codigo || "?"}: ${new Date(a.data_inicio).toLocaleDateString("pt-BR")} — ${a.data_fim ? new Date(a.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}`}
+                                      />
+                                    );
+                                  })}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </CardContent>
             {items.length > 0 && (
               <div className="p-4 border-t">
@@ -657,7 +836,7 @@ export default function RecursosPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>🗑️ Excluir Recurso</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Tem certeza que deseja excluir o recurso <strong>{recursos.find(r => r.id === deleteConfirmId)?.nome}</strong>? 
+            Tem certeza que deseja excluir o recurso <strong>{recursos.find(r => r.id === deleteConfirmId)?.nome}</strong>?
             Esta ação não pode ser desfeita e removerá todo o histórico de custos e alocações associados.
           </p>
           <div className="flex gap-2 justify-end mt-4">
@@ -703,12 +882,47 @@ export default function RecursosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Data início da alocação</Label>
-              <Input type="date" value={alocDataInicio} onChange={(e) => setAlocDataInicio(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Data início</Label>
+                <Input type="date" value={alocDataInicio} onChange={(e) => setAlocDataInicio(e.target.value)} />
+              </div>
+              <div>
+                <Label>Data fim (opcional)</Label>
+                <Input type="date" value={alocDataFim} onChange={(e) => setAlocDataFim(e.target.value)} />
+              </div>
             </div>
             <Button className="w-full" onClick={handleAlocar} disabled={!alocSiteId || alocarRecurso.isPending}>
               {alocarRecurso.isPending ? "Alocando..." : "Confirmar Alocação"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Férias / Folga date dialog */}
+      <Dialog open={!!statusDateDialog} onOpenChange={() => setStatusDateDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {statusDateDialog?.status === "ferias" ? "🏖️ Definir Férias" : "😴 Definir Folga"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-2">
+            Recurso: <strong>{statusDateDialog && recursos.find(r => r.id === statusDateDialog.recursoId)?.nome}</strong>
+          </p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Data início</Label>
+                <Input type="date" value={statusDataInicio} onChange={(e) => setStatusDataInicio(e.target.value)} />
+              </div>
+              <div>
+                <Label>Data fim</Label>
+                <Input type="date" value={statusDataFim} onChange={(e) => setStatusDataFim(e.target.value)} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleStatusDateConfirm}>
+              Confirmar
             </Button>
           </div>
         </DialogContent>
