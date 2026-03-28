@@ -138,7 +138,7 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
   return months;
 }
 
-const MONTH_WIDTH = 120;
+const MONTH_WIDTH = 140;
 
 export default function RecursosPage() {
   const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
