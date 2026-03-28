@@ -157,9 +157,6 @@ export default function PlanejamentoObra() {
             <TabsTrigger value="curvas" className="gap-1.5">
               <TrendingUp className="h-4 w-4" /> Curva S
             </TabsTrigger>
-            <TabsTrigger value="recursos" className="gap-1.5">
-              <Wrench className="h-4 w-4" /> Recursos
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="gantt" className="space-y-4 mt-4">
@@ -324,14 +321,6 @@ export default function PlanejamentoObra() {
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
             <CurvaSDashboard atividades={atividades} frentes={frentes} />
-          </TabsContent>
-          <TabsContent value="recursos" className="mt-4">
-            <RecursosGantt
-              recursos={recursos}
-              alocacoes={alocacoes}
-              projetoId={projetoId}
-              sites={sites as any}
-            />
           </TabsContent>
         </Tabs>
       ) : (
