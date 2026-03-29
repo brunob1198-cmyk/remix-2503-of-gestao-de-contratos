@@ -310,7 +310,9 @@ export default function PlanejamentoObra() {
           </TabsContent>
 
           <TabsContent value="timeline" className="mt-4">
-            <TimelineObra projetoId={projetoId} />
+            <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
+              <TimelineObra projetoId={projetoId} />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="simulacao" className="mt-4">
