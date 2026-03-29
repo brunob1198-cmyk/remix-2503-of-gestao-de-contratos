@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { ErrorBoundary } from "@/components/planejamento/ErrorBoundary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
