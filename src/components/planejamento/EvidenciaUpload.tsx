@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ interface EvidenciaUploadProps {
 }
 
 interface UploadState {
+  id: string; // unique ID per upload
   file: File;
   preview: string;
   exifData: ExifGeoData | null;
@@ -41,6 +42,19 @@ const TIPO_OPTIONS = [
   { value: "problema", label: "Problema" },
 ];
 
+let uploadCounter = 0;
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadProps) {
   const [open, setOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadState[]>([]);
@@ -49,9 +63,15 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
   const [observacao, setObservacao] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const updateUploadById = useCallback((id: string, patch: Partial<UploadState>) => {
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  }, []);
+
   const processFile = useCallback(async (file: File) => {
     const preview = URL.createObjectURL(file);
+    const id = `upload_${++uploadCounter}_${Date.now()}`;
     const state: UploadState = {
+      id,
       file,
       preview,
       exifData: null,
@@ -67,94 +87,70 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
     };
 
     setUploads((prev) => [...prev, state]);
-    const idx = uploads.length;
-
-    // Step 1: Extract EXIF
-    const exifData = await extractExifGeoData(file);
-
-    if (exifData.hasGps) {
-      setUploads((prev) =>
-        prev.map((u, i) =>
-          i === idx
-            ? {
-                ...u,
-                exifData,
-                status: "exif_found",
-                finalLat: exifData.latitude,
-                finalLng: exifData.longitude,
-                finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
-                geoValidado: true,
-                geoMetodo: "exif",
-                geoConfianca: "high",
-                geoDescricao: "GPS extraído dos metadados EXIF da imagem",
-              }
-            : u
-        )
-      );
-      return;
-    }
-
-    // Step 2: No EXIF GPS → OCR fallback
-    setUploads((prev) =>
-      prev.map((u, i) =>
-        i === idx ? { ...u, exifData, status: "ocr_running" } : u
-      )
-    );
 
     try {
-      // Convert to base64
-      const arrayBuffer = await file.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce(
-          (data, byte) => data + String.fromCharCode(byte),
-          ""
-        )
-      );
+      // Step 1: Extract EXIF
+      const exifData = await extractExifGeoData(file);
 
-      const { data: ocrResult, error } = await supabase.functions.invoke(
-        "extract-geolocation",
-        { body: { imageBase64: base64 } }
-      );
+      if (exifData.hasGps) {
+        updateUploadById(id, {
+          exifData,
+          status: "exif_found",
+          finalLat: exifData.latitude,
+          finalLng: exifData.longitude,
+          finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
+          geoValidado: true,
+          geoMetodo: "exif",
+          geoConfianca: "high",
+          geoDescricao: "GPS extraído dos metadados EXIF da imagem",
+        });
+        return;
+      }
 
-      if (error) throw error;
+      // Step 2: No EXIF GPS → OCR fallback
+      updateUploadById(id, { exifData, status: "ocr_running" });
 
-      setUploads((prev) =>
-        prev.map((u, i) =>
-          i === idx
-            ? {
-                ...u,
-                ocrResult,
-                status: "ocr_done",
-                finalLat: ocrResult?.latitude || null,
-                finalLng: ocrResult?.longitude || null,
-                finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
-                geoValidado: false,
-                geoMetodo: ocrResult?.method || "ocr",
-                geoConfianca: ocrResult?.confidence || "low",
-                geoDescricao: ocrResult?.location_description || "Localização estimada via IA",
-              }
-            : u
-        )
-      );
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = arrayBufferToBase64(arrayBuffer);
+
+        const { data: ocrResult, error } = await supabase.functions.invoke(
+          "extract-geolocation",
+          { body: { imageBase64: base64 } }
+        );
+
+        if (error) throw error;
+
+        updateUploadById(id, {
+          ocrResult,
+          status: "ocr_done",
+          finalLat: ocrResult?.latitude || null,
+          finalLng: ocrResult?.longitude || null,
+          finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
+          geoValidado: false,
+          geoMetodo: ocrResult?.method || "ocr",
+          geoConfianca: ocrResult?.confidence || "low",
+          geoDescricao: ocrResult?.location_description || "Localização estimada via IA",
+        });
+      } catch (err) {
+        console.error("OCR fallback failed:", err);
+        updateUploadById(id, {
+          status: "ocr_done",
+          finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
+          geoValidado: false,
+          geoMetodo: "none",
+          geoConfianca: "none",
+          geoDescricao: "Não foi possível extrair localização",
+        });
+      }
     } catch (err) {
-      console.error("OCR fallback failed:", err);
-      setUploads((prev) =>
-        prev.map((u, i) =>
-          i === idx
-            ? {
-                ...u,
-                status: "ocr_done",
-                finalDate: exifData.dateTime || new Date().toISOString().split("T")[0],
-                geoValidado: false,
-                geoMetodo: "none",
-                geoConfianca: "none",
-                geoDescricao: "Não foi possível extrair localização",
-              }
-            : u
-        )
-      );
+      console.error("File processing failed:", err);
+      updateUploadById(id, {
+        status: "error",
+        geoDescricao: "Erro ao processar arquivo",
+      });
     }
-  }, [uploads.length]);
+  }, [updateUploadById]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -175,6 +171,8 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
     try {
       for (const upload of uploads) {
+        if (upload.status === "error") continue;
+
         // Upload image to storage
         const ext = upload.file.name.split(".").pop() || "jpg";
         const fileName = `${projetoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -212,12 +210,15 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
       }
 
       toast.success(`${uploads.length} evidência(s) salva(s) com sucesso`);
+      // Clean up object URLs
+      uploads.forEach((u) => URL.revokeObjectURL(u.preview));
       setUploads([]);
       setItem("");
       setObservacao("");
       setOpen(false);
       onEventoCreated();
     } catch (err: any) {
+      console.error("Save error:", err);
       toast.error(err.message || "Erro ao salvar evidências");
     } finally {
       setSaving(false);
@@ -225,11 +226,17 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
   };
 
   const allReady = uploads.length > 0 && uploads.every(
-    (u) => u.status === "exif_found" || u.status === "ocr_done"
+    (u) => u.status === "exif_found" || u.status === "ocr_done" || u.status === "error"
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => {
+      if (!v) {
+        uploads.forEach((u) => URL.revokeObjectURL(u.preview));
+        setUploads([]);
+      }
+      setOpen(v);
+    }}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-1.5">
           <Camera className="h-4 w-4" /> Upload Evidência
@@ -263,8 +270,8 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
           </div>
 
           {/* Upload items */}
-          {uploads.map((upload, idx) => (
-            <Card key={idx} className="overflow-hidden">
+          {uploads.map((upload) => (
+            <Card key={upload.id} className="overflow-hidden">
               <CardContent className="p-3">
                 <div className="flex gap-3">
                   <img
@@ -332,6 +339,13 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
                       </div>
                     )}
 
+                    {upload.status === "error" && (
+                      <div className="flex items-center gap-1.5 text-xs text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Erro ao processar arquivo
+                      </div>
+                    )}
+
                     {upload.finalDate && (
                       <p className="text-[11px] text-muted-foreground">
                         Data: {upload.finalDate}
@@ -379,7 +393,11 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setUploads([]); setOpen(false); }}>
+            <Button variant="outline" onClick={() => {
+              uploads.forEach((u) => URL.revokeObjectURL(u.preview));
+              setUploads([]);
+              setOpen(false);
+            }}>
               Cancelar
             </Button>
             <Button onClick={handleSave} disabled={!allReady || saving}>
