@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useTimelineEventos, TimelineEvento } from "@/hooks/useTimelineEventos";
-const TimelineMap = lazy(() => import("./TimelineMap").then(m => ({ default: m.TimelineMap })));
+import { TimelineMap } from "./TimelineMap";
 import { EvidenciaUpload } from "./EvidenciaUpload";
 import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -193,13 +193,11 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
         <div className="lg:col-span-2">
           <Card className="h-full">
             <CardContent className="p-0 h-full" style={{ minHeight: 400 }}>
-              <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Carregando mapa...</div>}>
-                <TimelineMap
-                  eventos={mapEvents}
-                  activeEvento={activePlayEvent}
-                  onSelectEvento={setSelectedEvento}
-                />
-              </Suspense>
+              <TimelineMap
+                eventos={mapEvents}
+                activeEvento={activePlayEvent}
+                onSelectEvento={setSelectedEvento}
+              />
             </CardContent>
           </Card>
         </div>
