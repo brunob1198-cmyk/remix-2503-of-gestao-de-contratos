@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { ErrorBoundary } from "@/components/planejamento/ErrorBoundary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -309,7 +310,9 @@ export default function PlanejamentoObra() {
           </TabsContent>
 
           <TabsContent value="timeline" className="mt-4">
-            <TimelineObra projetoId={projetoId} />
+            <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
+              <TimelineObra projetoId={projetoId} />
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="simulacao" className="mt-4">
