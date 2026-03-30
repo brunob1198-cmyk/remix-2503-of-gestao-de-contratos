@@ -210,6 +210,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
               </>
             )}
             <input 
+              id="contract-upload-input"
               type="file" 
               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" 
               className="absolute inset-0 opacity-0 cursor-pointer z-10"
