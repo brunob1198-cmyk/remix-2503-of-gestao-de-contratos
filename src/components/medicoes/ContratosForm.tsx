@@ -109,23 +109,25 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     }
     const result = await extrairContrato(selectedFile);
     if (result) {
-      setValorTotal(cleanCurrencyOrNumber(result.valor_total));
-      setPrazoInicio(result.prazo_inicio || "");
-      setPrazoFim(result.prazo_fim || "");
-      setEscopo(result.escopo || "");
-      setCondicoesPagamento(result.condicoes_pagamento || "");
-      setGarantias(result.garantias || "");
-      setLiberacaoGarantias(result.liberacao_garantias || "");
-      setMedicoes(result.medicoes || "");
-      setMultas(result.multas || "");
-      setReajuste(result.reajuste || "");
-      setObservacoes(result.observacoes || "");
+      const { data: extractedData, path } = result;
+      setArquivoUrl(path);
+      setValorTotal(cleanCurrencyOrNumber(extractedData.valor_total));
+      setPrazoInicio(extractedData.prazo_inicio || "");
+      setPrazoFim(extractedData.prazo_fim || "");
+      setEscopo(extractedData.escopo || "");
+      setCondicoesPagamento(extractedData.condicoes_pagamento || "");
+      setGarantias(extractedData.garantias || "");
+      setLiberacaoGarantias(extractedData.liberacao_garantias || "");
+      setMedicoes(extractedData.medicoes || "");
+      setMultas(extractedData.multas || "");
+      setReajuste(extractedData.reajuste || "");
+      setObservacoes(extractedData.observacoes || "");
       setStatusProcessamento("concluido");
       
       // Auto-match CNPJs to Clients
-      if (result.cnpjs_clientes && result.cnpjs_clientes.length > 0) {
+      if (extractedData.cnpjs_clientes && extractedData.cnpjs_clientes.length > 0) {
         const foundClientIds: string[] = [];
-        result.cnpjs_clientes.forEach(cnpjExtraido => {
+        extractedData.cnpjs_clientes.forEach(cnpjExtraido => {
           const digitsOnly = cnpjExtraido.replace(/[^\d]/g, "");
           const match = clientes.find(c => c.cnpj?.replace(/[^\d]/g, "") === digitsOnly);
           if (match && !foundClientIds.includes(match.id)) {
