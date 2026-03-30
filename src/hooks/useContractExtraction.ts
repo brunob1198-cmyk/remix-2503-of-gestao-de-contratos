@@ -40,7 +40,11 @@ export function useContractExtraction() {
     let result: { data: ContratoExtraido, path: string } | null = null;
     
     try {
-      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const sanitized = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // only safe chars
+        .replace(/_+/g, '_'); // collapse multiple underscores
+      const fileName = `${Date.now()}-${sanitized}`;
       const filePath = `uploads/${fileName}`;
 
       console.log('Uploading file to storage:', filePath);
