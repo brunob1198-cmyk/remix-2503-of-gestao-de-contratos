@@ -180,6 +180,87 @@ export type Database = {
           },
         ]
       }
+      contratos: {
+        Row: {
+          arquivo_url: string | null
+          cliente_ids: string[] | null
+          condicoes_pagamento: string | null
+          contrato_pai_id: string | null
+          created_at: string
+          empresa_id: string
+          escopo: string | null
+          garantias: string | null
+          id: string
+          liberacao_garantias: string | null
+          medicoes: string | null
+          multas: string | null
+          observacoes: string | null
+          prazo_fim: string | null
+          prazo_inicio: string | null
+          reajuste: string | null
+          status_processamento: string | null
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          cliente_ids?: string[] | null
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          created_at?: string
+          empresa_id: string
+          escopo?: string | null
+          garantias?: string | null
+          id?: string
+          liberacao_garantias?: string | null
+          medicoes?: string | null
+          multas?: string | null
+          observacoes?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          reajuste?: string | null
+          status_processamento?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          cliente_ids?: string[] | null
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          created_at?: string
+          empresa_id?: string
+          escopo?: string | null
+          garantias?: string | null
+          id?: string
+          liberacao_garantias?: string | null
+          medicoes?: string | null
+          multas?: string | null
+          observacoes?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          reajuste?: string | null
+          status_processamento?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dependencias_atividade: {
         Row: {
           atividade_id: string
