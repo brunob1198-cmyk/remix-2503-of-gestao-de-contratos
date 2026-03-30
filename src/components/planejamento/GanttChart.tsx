@@ -1,9 +1,10 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { AtividadePlanejamento } from "@/hooks/usePlanejamento";
-import { format, addDays, differenceInDays, startOfDay } from "date-fns";
+import { format, addDays, differenceInDays, startOfDay, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronRight, ChevronDown, CheckCircle2 } from "lucide-react";
 
 interface GanttChartProps {
   atividades: AtividadePlanejamento[];
@@ -28,13 +29,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const ROW_H = 36;
-const LABEL_W = 280;
-const DAY_W = 32;
+const LABEL_W = 400; // Increased width for more columns
+const DAY_W = 36; // Wider for numbers
 
 export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: GanttChartProps) {
   const today = startOfDay(new Date());
-  const [dragging, setDragging] = useState<{ id: string; startX: number; origLeft: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
+  const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);
 
   const { chartStart, chartEnd, totalDays, columns, monthColumns } = useMemo(() => {
@@ -79,56 +79,18 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
     };
   }, [atividades, today]);
 
-  // Build dependency lines data
-  const depLines = useMemo(() => {
-    const lines: { fromX: number; fromY: number; toX: number; toY: number }[] = [];
-    const atMap = new Map(atividades.map((a, i) => [a.id, { a, i }]));
-    atividades.forEach((a, idx) => {
-      (a.predecessoras || []).forEach((pId) => {
-        const pred = atMap.get(pId);
-        if (!pred || !pred.a.data_inicio || !a.data_inicio) return;
-        const predStart = startOfDay(new Date(pred.a.data_inicio));
-        const predLeft = differenceInDays(predStart, chartStart) * DAY_W;
-        const predWidth = (pred.a.duracao_dias || 1) * DAY_W;
-        const fromX = predLeft + predWidth;
-        const fromY = pred.i * ROW_H + ROW_H / 2;
-        const curStart = startOfDay(new Date(a.data_inicio));
-        const toX = differenceInDays(curStart, chartStart) * DAY_W;
-        const toY = idx * ROW_H + ROW_H / 2;
-        lines.push({ fromX, fromY, toX, toY });
-      });
-    });
-    return lines;
-  }, [atividades, chartStart]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, id: string, origLeft: number) => {
-    e.stopPropagation();
-    setDragging({ id, startX: e.clientX, origLeft });
-    setDragOffset(0);
-  }, []);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging) return;
-    setDragOffset(e.clientX - dragging.startX);
-  }, [dragging]);
-
-  const handleMouseUp = useCallback(() => {
-    if (!dragging || !onDragUpdate) {
-      setDragging(null);
-      setDragOffset(0);
-      return;
-    }
-    const daysMoved = Math.round(dragOffset / DAY_W);
-    if (daysMoved !== 0) {
-      const at = atividades.find((a) => a.id === dragging.id);
-      if (at?.data_inicio) {
-        const newStart = addDays(new Date(at.data_inicio), daysMoved);
-        onDragUpdate(dragging.id, format(newStart, "yyyy-MM-dd"));
+  // Group atividades by frente
+  const frentes = useMemo(() => {
+    const groups: Record<string, { id: string; nome: string; atividades: AtividadePlanejamento[] }> = {};
+    atividades.forEach((a) => {
+      const fId = a.frente_id;
+      if (!groups[fId]) {
+        groups[fId] = { id: fId, nome: a.frente_nome || `Frente ${fId}`, atividades: [] };
       }
-    }
-    setDragging(null);
-    setDragOffset(0);
-  }, [dragging, dragOffset, onDragUpdate, atividades]);
+      groups[fId].atividades.push(a);
+    });
+    return Object.values(groups);
+  }, [atividades]);
 
   if (!atividades.length) {
     return (
@@ -141,191 +103,200 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
   const chartW = totalDays * DAY_W;
   const todayOffset = differenceInDays(today, chartStart) * DAY_W;
 
+  const toggleCollapse = (id: string) => {
+    setCollapsedFrentes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
-      {/* Legend */}
-      <div className="flex gap-4 px-4 py-2 border-b bg-muted/30 text-xs flex-wrap">
+      <div className="flex gap-4 px-4 py-2 border-b bg-muted/30 text-xs flex-wrap items-center">
         {Object.entries(STATUS_LABELS).map(([key, label]) => (
           <div key={key} className="flex items-center gap-1.5">
             <div className={cn("w-3 h-3 rounded-sm", STATUS_COLORS[key])} />
             <span>{label}</span>
           </div>
         ))}
-        {onDragUpdate && (
-          <span className="ml-auto text-muted-foreground italic">Arraste as barras para alterar datas</span>
-        )}
+        <div className="flex items-center gap-1.5 ml-4 border-l pl-4">
+           <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+           <span className="font-semibold text-purple-700">Atividade Principal</span>
+        </div>
+        <span className="ml-auto text-muted-foreground italic">Arraste para visualizar produção diária</span>
       </div>
 
-      <div
-        className="overflow-auto max-h-[calc(100vh-320px)]"
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <div className="flex" style={{ minWidth: LABEL_W + chartW }}>
-          {/* Left labels */}
-          <div className="flex-shrink-0 sticky left-0 z-20 bg-card" style={{ width: LABEL_W }}>
-            <div className="h-[60px] border-b border-r bg-muted/50 flex items-center px-3 text-xs font-semibold text-muted-foreground sticky top-0 z-30">
-              Atividade
-            </div>
-            {atividades.map((a) => (
-              <div
-                key={a.id}
-                className="border-b border-r flex items-center px-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                style={{ height: ROW_H }}
-                onClick={() => onSelectAtividade(a)}
-              >
-                <div className="truncate text-xs">
-                  <span className="text-muted-foreground mr-1.5">{a.frente_nome}:</span>
-                  <span className="font-medium">{a.nome}</span>
-                </div>
+      <div className="overflow-auto max-h-[calc(100vh-320px)] relative">
+        <div className="flex w-max min-w-full">
+          {/* Left Panel: Table Grid */}
+          <div className="flex-shrink-0 sticky left-0 z-30 bg-card border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style={{ width: LABEL_W }}>
+            <div className="h-[60px] border-b bg-muted/90 flex flex-col justify-end px-3 pb-1 text-[11px] font-bold text-muted-foreground sticky top-0 z-40 backdrop-blur-sm">
+              <div className="flex w-full">
+                <div className="flex-1">ITEM / FRENTE</div>
+                <div className="w-20 text-right">TOTAL</div>
+                <div className="w-20 text-right">M.DIÁRIA</div>
+                <div className="w-16 text-right">EXEC</div>
               </div>
-            ))}
+            </div>
+
+            {frentes.map((frente) => {
+              const isCollapsed = !!collapsedFrentes[frente.id];
+              const totalFrente = frente.atividades.reduce((acc, a) => acc + (a.quantidade_total || 0), 0);
+              const totalExecFrente = frente.atividades.reduce((acc, a) => acc + (a.qtd_produzida || 0), 0);
+              const pctFrente = totalFrente > 0 ? (totalExecFrente / totalFrente) * 100 : 0;
+              
+              return (
+                <div key={frente.id}>
+                  {/* Frente Group Header */}
+                  <div 
+                    className="border-b flex items-center px-2 bg-muted/40 cursor-pointer hover:bg-muted/60 transition-colors"
+                    style={{ height: ROW_H }}
+                    onClick={() => toggleCollapse(frente.id)}
+                  >
+                    <div className="flex items-center flex-1 overflow-hidden">
+                       {isCollapsed ? <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground" />}
+                       <span className="font-bold text-xs truncate uppercase tracking-tight">{frente.nome}</span>
+                    </div>
+                    <div className="w-20 text-right text-[11px] font-semibold text-muted-foreground">...</div>
+                    <div className="w-20 text-right text-[11px] font-semibold text-muted-foreground">...</div>
+                    <div className="w-16 text-right text-[11px] font-bold">
+                       {pctFrente.toFixed(0)}%
+                    </div>
+                  </div>
+
+                  {/* Frente Items */}
+                  {!isCollapsed && frente.atividades.map((a) => (
+                    <div
+                      key={a.id}
+                      className={cn(
+                        "border-b flex items-center px-2 cursor-pointer transition-colors group",
+                        a.is_principal ? "bg-purple-50/50 hover:bg-purple-50" : "hover:bg-muted/30"
+                      )}
+                      style={{ height: ROW_H }}
+                      onClick={() => onSelectAtividade(a)}
+                    >
+                      <div className="flex-1 flex items-center gap-1.5 overflow-hidden pl-5">
+                        <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", STATUS_COLORS[a.status || "nao_iniciado"])} />
+                        <span className="text-xs truncate" title={a.nome}>
+                          {a.is_principal ? <span className="font-bold text-purple-700 mr-1">{a.nome}</span> : a.nome}
+                        </span>
+                      </div>
+                      <div className="w-20 text-right text-[11px] text-muted-foreground tracking-tight">
+                         {a.quantidade_total.toLocaleString('pt-BR')}
+                      </div>
+                      <div className="w-20 text-right text-[11px] font-medium text-blue-600 tracking-tight">
+                         {a.media_diaria_realizada ? a.media_diaria_realizada.toFixed(1) : "-"}
+                      </div>
+                      <div className="w-16 text-right text-[11px] font-bold">
+                         {a.percentual_executado?.toFixed(0)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Right chart area */}
-          <div className="flex-1 relative" style={{ width: chartW }} ref={chartRef}>
-            {/* Date header */}
-            <div className="sticky top-0 z-10">
-              {/* Months row */}
-              <div className="h-6 border-b bg-muted/30 flex">
+          {/* Right Panel: Calendar Matrix */}
+          <div className="flex-1 relative bg-white/50" style={{ width: chartW }} ref={chartRef}>
+            {/* Header Timeline */}
+            <div className="sticky top-0 z-20 bg-card">
+              <div className="h-6 border-b bg-muted/80 flex">
                 {monthColumns.map((m, i) => (
                   <div
                     key={i}
-                    className="flex-shrink-0 border-r text-[10px] text-center flex items-center justify-center font-semibold text-muted-foreground uppercase"
+                    className="flex-shrink-0 border-r text-[10px] text-center flex items-center justify-center font-bold text-muted-foreground uppercase tracking-widest"
                     style={{ width: m.width }}
                   >
                     {m.label}
                   </div>
                 ))}
               </div>
-              {/* Days row */}
-              <div className="h-[34px] border-b bg-muted/50 flex">
+              <div className="h-[34px] border-b bg-muted/40 flex">
                 {columns.map((col, i) => (
                   <div
                     key={i}
                     className={cn(
                       "flex-shrink-0 border-r text-[10px] text-center flex flex-col justify-center",
-                      col.isWeekend && "bg-muted/40"
+                      col.isWeekend && "bg-muted/60 text-muted-foreground/50",
+                      isSameDay(col.date, today) && "bg-red-50 text-red-600 font-bold"
                     )}
                     style={{ width: DAY_W }}
                   >
-                    <div className="text-muted-foreground leading-none">
-                      {format(col.date, "dd", { locale: ptBR })}
-                    </div>
-                    <div className="text-muted-foreground/60 leading-none mt-0.5">
-                      {format(col.date, "EEE", { locale: ptBR }).slice(0, 3)}
-                    </div>
+                    <div className="leading-none">{format(col.date, "dd")}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Dependency arrows SVG */}
-            <svg
-              className="absolute top-10 left-0 pointer-events-none z-10"
-              width={chartW}
-              height={atividades.length * ROW_H}
-              style={{ overflow: "visible" }}
-            >
-              <defs>
-                <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                  <polygon points="0 0, 8 3, 0 6" className="fill-muted-foreground/60" />
-                </marker>
-              </defs>
-              {depLines.map((line, i) => {
-                const midX = line.fromX + (line.toX - line.fromX) / 2;
+            {/* Matrix Cells Timeline */}
+            <div className="relative">
+              {/* Background Columns */}
+              <div className="absolute inset-0 flex pointer-events-none z-0">
+                {columns.map((col, i) => (
+                  <div key={i} className={cn("flex-shrink-0 border-r", col.isWeekend && "bg-muted/20")} style={{ width: DAY_W }} />
+                ))}
+              </div>
+
+              {/* Rows Data */}
+              {frentes.map((frente) => {
+                const isCollapsed = !!collapsedFrentes[frente.id];
                 return (
-                  <path
-                    key={i}
-                    d={`M ${line.fromX} ${line.fromY} C ${midX} ${line.fromY}, ${midX} ${line.toY}, ${line.toX} ${line.toY}`}
-                    className="stroke-muted-foreground/50"
-                    strokeWidth={1.5}
-                    fill="none"
-                    markerEnd="url(#arrowhead)"
-                  />
+                  <div key={frente.id}>
+                    {/* Frente Group Header Ghost Row */}
+                     <div className="border-b bg-muted/5 z-0" style={{ height: ROW_H }} />
+                    
+                    {/* Items Timeline Rows */}
+                    {!isCollapsed && frente.atividades.map((a) => {
+                       const hasStart = !!a.data_inicio;
+                       const start = hasStart ? startOfDay(new Date(a.data_inicio!)) : null;
+                       const dur = a.duracao_dias || 1;
+                       const left = start ? differenceInDays(start, chartStart) * DAY_W : 0;
+                       const width = dur * DAY_W;
+
+                       return (
+                         <div key={a.id} className={cn("border-b relative z-10 flex items-center", a.is_principal ? "bg-purple-50/20" : "")} style={{ height: ROW_H }}>
+                           
+                           {/* Gantt Ghost Bar (Planned) */}
+                           {hasStart && width > 0 && (
+                             <div 
+                               className={cn(
+                                 "absolute h-full opacity-20 pointer-events-none",
+                                 STATUS_COLORS[a.status || "nao_iniciado"]
+                               )}
+                               style={{ left: Math.max(left, 0), width: Math.max(width, DAY_W) }}
+                             />
+                           )}
+                           
+                           {/* Executed Data Cells overlay */}
+                           {columns.map((col, j) => {
+                             const dataStr = format(col.date, "yyyy-MM-dd");
+                             const qty = a.matriz_producao?.[dataStr];
+                             
+                             if (!qty) return null; // Only render cell if has qty
+                             
+                             return (
+                               <div 
+                                 key={j}
+                                 className="absolute h-full border-x bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-[inset_0_0_0_1px_rgba(16,185,129,0.2)]"
+                                 style={{ left: j * DAY_W, width: DAY_W }}
+                                 title={`${qty} produzido em ${format(col.date, "dd/MM/yyyy")}`}
+                               >
+                                 {qty > 999 ? '999+' : qty}
+                               </div>
+                             );
+                           })}
+                         </div>
+                       );
+                    })}
+                  </div>
                 );
               })}
-            </svg>
+            </div>
 
-            {/* Rows */}
-            {atividades.map((a) => {
-              const hasStart = !!a.data_inicio;
-              const start = hasStart ? startOfDay(new Date(a.data_inicio!)) : null;
-              const dur = a.duracao_dias || 1;
-              const left = start ? differenceInDays(start, chartStart) * DAY_W : 0;
-              const width = dur * DAY_W;
-              const isDragging = dragging?.id === a.id;
-              const barLeft = isDragging ? left + dragOffset : left;
-
-              return (
-                <div key={a.id} className="border-b relative" style={{ height: ROW_H }}>
-                  {/* Grid bg */}
-                  <div className="absolute inset-0 flex">
-                    {columns.map((col, i) => (
-                      <div
-                        key={i}
-                        className={cn("flex-shrink-0 border-r", col.isWeekend && "bg-muted/20")}
-                        style={{ width: DAY_W }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Bar */}
-                  {hasStart && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "absolute top-1.5 rounded-md transition-opacity hover:opacity-80 z-10",
-                            STATUS_COLORS[a.status || "nao_iniciado"],
-                            onDragUpdate ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
-                            isDragging && "opacity-70 shadow-lg"
-                          )}
-                          style={{
-                            left: Math.max(barLeft, 0),
-                            width: Math.max(width, DAY_W),
-                            height: ROW_H - 12,
-                          }}
-                          onClick={(e) => {
-                            if (!isDragging) onSelectAtividade(a);
-                          }}
-                          onMouseDown={(e) => onDragUpdate && handleMouseDown(e, a.id, left)}
-                        >
-                          <div
-                            className="absolute inset-0 rounded-md bg-white/20"
-                            style={{ width: `${100 - (a.percentual_executado || 0)}%`, right: 0, left: "auto" }}
-                          />
-                          <span className="absolute inset-0 flex items-center justify-center text-[10px] text-white font-bold drop-shadow select-none">
-                            {a.percentual_executado?.toFixed(0)}%
-                          </span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs max-w-xs">
-                        <p className="font-semibold">{a.nome}</p>
-                        <p>Duração: {dur} dias</p>
-                        <p>Produzido: {a.qtd_produzida}/{a.quantidade_total}</p>
-                        <p>Status: {STATUS_LABELS[a.status || "nao_iniciado"]}</p>
-                        {(a.predecessoras?.length || 0) > 0 && (
-                          <p>Predecessoras: {a.predecessoras?.length}</p>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Today line */}
+            {/* Today line marker */}
             {todayOffset >= 0 && todayOffset <= chartW && (
               <div
                 className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none"
                 style={{ left: todayOffset }}
-              >
-                <div className="absolute -top-0 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] px-1 rounded-b">
-                  Hoje
-                </div>
-              </div>
+              />
             )}
           </div>
         </div>

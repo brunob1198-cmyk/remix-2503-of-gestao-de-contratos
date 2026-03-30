@@ -32,6 +32,9 @@ export interface AtividadePlanejamento {
   status?: "adiantado" | "no_prazo" | "atrasado" | "nao_iniciado" | "concluido";
   duracao_dias?: number;
   predecessoras?: string[];
+  is_principal?: boolean;
+  matriz_producao?: Record<string, number>;
+  media_diaria_realizada?: number;
 }
 
 export interface DependenciaAtividade {
@@ -97,6 +100,7 @@ export function useFrentes(projetoId?: string) {
             nome: a.nome,
             quantidade_total: a.quantidade_total,
             producao_diaria_prevista: a.producao_diaria_prevista,
+            is_principal: a.is_principal || false,
             data_inicio: frenteData.data_inicio || null,
             data_fim_prevista: expectedEnd,
             ordem: ordemAtual++
@@ -105,6 +109,14 @@ export function useFrentes(projetoId?: string) {
         
         const { error: errAtv } = await supabase.from("atividades_planejamento").insert(atividadesDb);
         if (errAtv) console.error("Erro inserindo atividades geradas:", errAtv);
+
+        // Se tiver atividade principal sem data fim na frente, atualiza a data da frente
+        if (!frenteData.data_fim) {
+          const princAtiv = atividadesDb.find((a: any) => a.is_principal);
+          if (princAtiv && princAtiv.data_fim_prevista) {
+            await supabase.from("frentes_obra").update({ data_fim: princAtiv.data_fim_prevista }).eq("id", novaFrenteId);
+          }
+        }
       }
 
       return data;
@@ -185,6 +197,8 @@ export function useAtividades(projetoId?: string) {
         .map((a) => a.item_lpu_id!);
 
       let prodMap: Record<string, number> = {};
+      let matrizGeral: Record<string, Record<string, number>> = {};
+      
       if (itemLpuIds.length) {
         // Get sites for this project
         const { data: sites } = await supabase
@@ -196,11 +210,15 @@ export function useAtividades(projetoId?: string) {
         if (siteIds.length) {
           const { data: prods } = await supabase
             .from("lancamentos_producao")
-            .select("item_lpu_id, quantidade")
+            .select("item_lpu_id, quantidade, data_producao")
             .in("site_id", siteIds)
             .in("item_lpu_id", itemLpuIds);
+            
           (prods ?? []).forEach((p) => {
             prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + Number(p.quantidade);
+            // Matriz diária:
+            if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
+            matrizGeral[p.item_lpu_id][p.data_producao] = (matrizGeral[p.item_lpu_id][p.data_producao] || 0) + Number(p.quantidade);
           });
         }
       }
@@ -213,7 +231,8 @@ export function useAtividades(projetoId?: string) {
 
       const today = new Date();
 
-      return (atividades ?? []).map((a) => {
+      return (atividades ?? []).map((aBase) => {
+        const a = aBase as any;
         const qtdProd = a.item_lpu_id ? (prodMap[a.item_lpu_id] || 0) : 0;
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
@@ -230,11 +249,16 @@ export function useAtividades(projetoId?: string) {
           } else {
             const diasPassados = Math.ceil((today.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
             const pctEsperado = Math.min(100, (diasPassados / duracao) * 100);
-            if (pct >= pctEsperado + 5) status = "adiantado";
-            else if (pct >= pctEsperado - 5) status = "no_prazo";
+            if (pct >= 100) status = "concluido";
+            else if (pct >= pctEsperado + 5) status = "adiantado";
+            else if (pct >= Math.max(0, pctEsperado - 5)) status = "no_prazo";
             else status = "atrasado";
           }
         }
+
+        const matriz = a.item_lpu_id ? matrizGeral[a.item_lpu_id] || {} : {};
+        const diasComProducao = Object.keys(matriz).length;
+        const mediaDiaria = diasComProducao > 0 ? qtdProd / diasComProducao : 0;
 
         return {
           ...a,
@@ -246,6 +270,9 @@ export function useAtividades(projetoId?: string) {
           status,
           duracao_dias: duracao,
           predecessoras: depsMap[a.id] || [],
+          is_principal: !!a.is_principal,
+          matriz_producao: matriz,
+          media_diaria_realizada: mediaDiaria,
         } as AtividadePlanejamento;
       });
     },

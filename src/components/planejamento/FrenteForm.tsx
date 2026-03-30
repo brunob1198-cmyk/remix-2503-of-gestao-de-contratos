@@ -39,6 +39,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
 
   const [selectedRecursos, setSelectedRecursos] = useState<string[]>([]);
   const [selectedLpus, setSelectedLpus] = useState<Record<string, { producao_diaria_prevista: string }>>({});
+  const [principalLpuId, setPrincipalLpuId] = useState<string | null>(null);
 
   const { itens: escopoItens } = useEscopos(siteId);
 
@@ -52,6 +53,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
     setSelectedLpus((prev) => {
       const isSelected = !!prev[id];
       if (isSelected) {
+        if (principalLpuId === id) setPrincipalLpuId(null);
         const next = { ...prev };
         delete next[id];
         return next;
@@ -79,6 +81,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
         nome: escopoItem ? escopoItem.nome : "Atividade",
         quantidade_total: escopoItem ? escopoItem.quantidade : 1,
         producao_diaria_prevista: Number(selectedLpus[lpuId].producao_diaria_prevista) || 1,
+        is_principal: lpuId === principalLpuId
       }
     });
 
@@ -100,6 +103,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
     setDataFim("");
     setSelectedRecursos([]);
     setSelectedLpus({});
+    setPrincipalLpuId(null);
     setOpen(false);
   };
 
@@ -134,6 +138,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
                 <Select value={siteId} onValueChange={(v) => {
                   setSiteId(v === "none" ? "" : v);
                   setSelectedLpus({}); // Limpa as seleções se mudar o site
+                  setPrincipalLpuId(null);
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Vincular a um site" />
@@ -185,15 +190,25 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
                           </div>
                         </div>
                         {isSelected && (
-                          <div className="flex items-center gap-2 pl-6 mt-1">
-                            <Label className="text-xs whitespace-nowrap">Produção Diária Prevista:</Label>
-                            <Input 
-                              type="number" 
-                              className="h-7 w-24 text-xs" 
-                              value={selectedLpus[item.item_lpu_id].producao_diaria_prevista}
-                              onChange={(e) => setLpuProdDiaria(item.item_lpu_id as string, e.target.value)}
-                            />
-                            <span className="text-xs text-muted-foreground">{item.unidade}/dia</span>
+                          <div className="flex items-center gap-4 pl-6 mt-1 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs whitespace-nowrap">Produção Prevista:</Label>
+                              <Input 
+                                type="number" 
+                                className="h-7 w-20 text-xs" 
+                                value={selectedLpus[item.item_lpu_id].producao_diaria_prevista}
+                                onChange={(e) => setLpuProdDiaria(item.item_lpu_id as string, e.target.value)}
+                              />
+                              <span className="text-xs text-muted-foreground">{item.unidade}/d</span>
+                            </div>
+                            <div className="flex items-center gap-2 border-l pl-3">
+                              <Checkbox 
+                                id={`princ-${item.item_lpu_id}`} 
+                                checked={principalLpuId === item.item_lpu_id}
+                                onCheckedChange={(checked) => setPrincipalLpuId(checked ? item.item_lpu_id as string : null)}
+                              />
+                              <Label htmlFor={`princ-${item.item_lpu_id}`} className="text-xs cursor-pointer text-purple-600 font-medium whitespace-nowrap">Ativ. Principal</Label>
+                            </div>
                           </div>
                         )}
                       </div>
