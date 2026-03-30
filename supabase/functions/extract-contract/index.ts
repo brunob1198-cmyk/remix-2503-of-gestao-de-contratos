@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,24 +39,27 @@ serve(async (req) => {
 
     const { pdfBase64, fileName, contentType, filePath } = await req.json();
 
+    let fileData = pdfBase64;
     let effectiveType = contentType || 'application/pdf';
-    let documentUrl: string | null = null;
 
     if (filePath) {
-      console.log('Creating signed URL for file in storage:', filePath);
-      const { data: signedData, error: signedError } = await supabase.storage
+      console.log('Fetching file from storage:', filePath);
+      const { data: fileBlob, error: downloadError } = await supabase.storage
         .from('contratos')
-        .createSignedUrl(filePath, 60 * 15);
+        .download(filePath);
 
-      if (signedError || !signedData?.signedUrl) {
-        console.error('Error creating signed URL:', signedError);
-        throw new Error(`Failed to access file from storage: ${signedError?.message || 'signed URL not generated'}`);
+      if (downloadError) {
+        console.error('Error downloading file:', downloadError);
+        throw new Error(`Failed to download file from storage: ${downloadError.message}`);
       }
 
-      documentUrl = signedData.signedUrl;
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      fileData = encodeBase64(uint8Array);
+      effectiveType = fileBlob.type || effectiveType;
     }
 
-    if (!documentUrl && !pdfBase64) {
+    if (!fileData) {
       return new Response(
         JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -128,7 +132,7 @@ O JSON deve seguir exatamente este formato:
               {
                 type: 'image_url',
                 image_url: {
-                  url: documentUrl || `data:${effectiveType};base64,${pdfBase64}`
+                  url: `data:${effectiveType};base64,${fileData}`
                 }
               }
             ]
