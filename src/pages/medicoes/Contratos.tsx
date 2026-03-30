@@ -116,8 +116,33 @@ export default function ContratosPage() {
                           {c.escopo || "Contrato s/ Objeto Definido"}
                         </div>
                         {c.aditivos && c.aditivos.length > 0 && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            + {c.aditivos.length} aditivo(s) viculado(s)
+                          <div className="mt-2 space-y-1">
+                            <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                              Aditivos ({c.aditivos.length})
+                            </div>
+                            {c.aditivos.map((ad, idx) => (
+                              <div key={ad.id} className="flex items-center justify-between bg-muted/50 p-1.5 rounded border border-muted-foreground/10 text-[11px]">
+                                <span className="font-medium truncate max-w-[120px]">
+                                  Aditivo #{idx + 1}
+                                </span>
+                                <div className="flex gap-1">
+                                  {ad.arquivo_url && (
+                                    <button 
+                                      className="text-blue-600 hover:text-blue-800"
+                                      onClick={async () => {
+                                        const { data } = await supabase.storage.from('contratos').createSignedUrl(ad.arquivo_url!, 3600);
+                                        if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleEdit(ad)} className="text-muted-foreground hover:text-primary">
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </TableCell>
