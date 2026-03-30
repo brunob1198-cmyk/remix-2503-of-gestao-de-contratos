@@ -37,28 +37,38 @@ serve(async (req) => {
     console.log('Contract extraction requested by user:', user.id);
 
     const { pdfBase64, fileName, contentType, filePath } = await req.json();
-    
-    let fileData = pdfBase64;
+
     let effectiveType = contentType || 'application/pdf';
+    let contractDocument: { type: string; file?: { file_data: string; filename?: string }; image_url?: { url: string } } | null = null;
 
     if (filePath) {
-      console.log('Fetching file from storage:', filePath);
-      const { data: fileBlob, error: downloadError } = await supabase.storage
+      console.log('Creating signed URL for file from storage:', filePath);
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('contratos')
-        .download(filePath);
+        .createSignedUrl(filePath, 60 * 15);
 
-      if (downloadError) {
-        console.error('Error downloading file:', downloadError);
-        throw new Error(`Failed to download file from storage: ${downloadError.message}`);
+      if (signedError || !signedData?.signedUrl) {
+        console.error('Error creating signed URL:', signedError);
+        throw new Error(`Failed to access file from storage: ${signedError?.message || 'signed URL not generated'}`);
       }
 
-      const arrayBuffer = await fileBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      fileData = btoa(String.fromCharCode(...uint8Array));
-      effectiveType = fileBlob.type;
+      contractDocument = {
+        type: 'file',
+        file: {
+          file_data: signedData.signedUrl,
+          filename: fileName || 'contrato.pdf',
+        },
+      };
+    } else if (pdfBase64) {
+      contractDocument = {
+        type: 'image_url',
+        image_url: {
+          url: `data:${effectiveType};base64,${pdfBase64}`,
+        },
+      };
     }
 
-    if (!fileData) {
+    if (!contractDocument) {
       return new Response(
         JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -118,7 +128,7 @@ O JSON deve seguir exatamente este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -128,16 +138,11 @@ O JSON deve seguir exatamente este formato:
                 type: 'text',
                 text: `Analise este documento de Contrato/Aditivo e extraia todos os dados estruturados conforme as regras. Nome do arquivo: ${fileName}`
               },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${effectiveType};base64,${pdfBase64}`
-                }
-              }
+              contractDocument
             ]
           }
         ],
-        max_tokens: 4096,
+        max_tokens: 1200,
       }),
     });
 
