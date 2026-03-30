@@ -12,8 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication (temporarily disabled for testing)
-    /*
+    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
@@ -34,9 +33,8 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
     console.log('Contract extraction requested by user:', user.id);
-    */
-    console.log('Contract extraction requested (auth disabled)');
 
     const { pdfBase64, fileName, contentType } = await req.json();
     
