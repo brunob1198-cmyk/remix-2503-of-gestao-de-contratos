@@ -104,6 +104,7 @@ export function useAnaliseObra(siteId?: string) {
       let equipamentosData: any[] = [];
       let veiculosData: any[] = [];
       let diarioProducaoData: any[] = [];
+      let fotosData: any[] = [];
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
