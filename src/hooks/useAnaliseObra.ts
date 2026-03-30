@@ -444,6 +444,7 @@ export function useAnaliseObra(siteId?: string) {
         custoVeiculos,
         totalMedido,
         totalFaturado,
+        fotos: fotosData,
       };
     },
     enabled: !!siteId,
