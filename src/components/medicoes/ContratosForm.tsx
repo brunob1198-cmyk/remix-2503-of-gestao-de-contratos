@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useContratos } from "@/hooks/useContratos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContractExtraction } from "@/hooks/useContractExtraction";
-import { Loader2, UploadCloud, FileType2, BrainCircuit } from "lucide-react";
+import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   contratoToEdit: Contrato | null;
