@@ -23,6 +23,7 @@ interface ProdRegiao {
   totalQuantidade: number;
   totalItens: number;
   avgQuantidade: number;
+  photos: string[];
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
@@ -98,7 +99,16 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number; lng: number; total: number; count: number }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number; lng: number; total: number; count: number; photos: string[] }> = {};
+
+      // Get photos for these sites
+      const { data: photosData } = await supabase
+        .from("diario_fotos")
+        .select(`
+          url,
+          diario:diarios_obra!inner(municipio, uf, site_id)
+        `)
+        .in("diario.site_id", siteIds);
 
       prods.forEach((p) => {
         const mun = p.municipio || sites.find((s) => s.id === p.site_id)?.municipio || "";
@@ -109,7 +119,11 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
         if (!coords) return;
 
         if (!aggMap[mun]) {
-          aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0 };
+          const munPhotos = (photosData ?? [])
+            .filter((f: any) => f.diario.municipio === mun)
+            .map((f: any) => f.url);
+            
+          aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0, photos: munPhotos };
         }
         aggMap[mun].total += Number(p.quantidade);
         aggMap[mun].count += 1;
@@ -123,6 +137,7 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
         totalQuantidade: a.total,
         totalItens: a.count,
         avgQuantidade: a.count > 0 ? a.total / a.count : 0,
+        photos: Array.from(new Set(a.photos)).slice(0, 10), // Unique photos, limit 10
       })) as ProdRegiao[];
     },
     enabled: !!projetoId,
@@ -219,11 +234,27 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
                       }}
                     >
                       <Popup>
-                        <div className="text-xs space-y-1">
-                          <p className="font-bold">{r.municipio}/{r.uf}</p>
-                          <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
-                          <p>Lançamentos: <strong>{r.totalItens}</strong></p>
-                          <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
+                        <div className="text-xs space-y-2">
+                          <p className="font-bold border-b pb-1">{r.municipio}/{r.uf}</p>
+                          <div className="space-y-0.5">
+                            <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
+                            <p>Lançamentos: <strong>{r.totalItens}</strong></p>
+                            <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
+                          </div>
+                          
+                          {r.photos.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
+                              <div className="grid grid-cols-2 gap-1 max-w-[140px]">
+                                {r.photos.slice(0, 4).map((url, i) => (
+                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt="" />
+                                ))}
+                              </div>
+                              {r.photos.length > 4 && (
+                                <p className="text-[10px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </Popup>
                     </CircleMarker>

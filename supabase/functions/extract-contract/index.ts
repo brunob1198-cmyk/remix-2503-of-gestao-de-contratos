@@ -36,11 +36,31 @@ serve(async (req) => {
 
     console.log('Contract extraction requested by user:', user.id);
 
-    const { pdfBase64, fileName } = await req.json();
+    const { pdfBase64, fileName, contentType, filePath } = await req.json();
     
-    if (!pdfBase64) {
+    let fileData = pdfBase64;
+    let effectiveType = contentType || 'application/pdf';
+
+    if (filePath) {
+      console.log('Fetching file from storage:', filePath);
+      const { data: fileBlob, error: downloadError } = await supabase.storage
+        .from('contratos')
+        .download(filePath);
+
+      if (downloadError) {
+        console.error('Error downloading file:', downloadError);
+        throw new Error(`Failed to download file from storage: ${downloadError.message}`);
+      }
+
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      fileData = btoa(String.fromCharCode(...uint8Array));
+      effectiveType = fileBlob.type;
+    }
+
+    if (!fileData) {
       return new Response(
-        JSON.stringify({ error: 'PDF content is required' }),
+        JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -98,7 +118,7 @@ O JSON deve seguir exatamente este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -111,7 +131,7 @@ O JSON deve seguir exatamente este formato:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`
+                  url: `data:${effectiveType};base64,${pdfBase64}`
                 }
               }
             ]

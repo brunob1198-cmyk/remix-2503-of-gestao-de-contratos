@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useContratos } from "@/hooks/useContratos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContractExtraction } from "@/hooks/useContractExtraction";
-import { Loader2, UploadCloud, FileType2, BrainCircuit } from "lucide-react";
+import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   contratoToEdit: Contrato | null;
@@ -88,7 +89,17 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
 
   const cleanCurrencyOrNumber = (val: string | null) => {
     if (!val) return "";
-    const cleaned = val.replace(/[^\d.,]/g, "").replace(",", ".");
+    // Remove all non-numeric characters except dots and commas
+    let cleaned = val.replace(/[^\d.,]/g, "");
+    
+    // If there's both a dot and a comma, it's likely Brazilian format (e.g. 1.234,56)
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else if (cleaned.includes(',')) {
+      // Just a comma (e.g. 1234,56)
+      cleaned = cleaned.replace(",", ".");
+    }
+    
     return cleaned;
   };
 
@@ -99,23 +110,25 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     }
     const result = await extrairContrato(selectedFile);
     if (result) {
-      setValorTotal(cleanCurrencyOrNumber(result.valor_total));
-      setPrazoInicio(result.prazo_inicio || "");
-      setPrazoFim(result.prazo_fim || "");
-      setEscopo(result.escopo || "");
-      setCondicoesPagamento(result.condicoes_pagamento || "");
-      setGarantias(result.garantias || "");
-      setLiberacaoGarantias(result.liberacao_garantias || "");
-      setMedicoes(result.medicoes || "");
-      setMultas(result.multas || "");
-      setReajuste(result.reajuste || "");
-      setObservacoes(result.observacoes || "");
+      const { data: extractedData, path } = result;
+      setArquivoUrl(path);
+      setValorTotal(cleanCurrencyOrNumber(extractedData.valor_total));
+      setPrazoInicio(extractedData.prazo_inicio || "");
+      setPrazoFim(extractedData.prazo_fim || "");
+      setEscopo(extractedData.escopo || "");
+      setCondicoesPagamento(extractedData.condicoes_pagamento || "");
+      setGarantias(extractedData.garantias || "");
+      setLiberacaoGarantias(extractedData.liberacao_garantias || "");
+      setMedicoes(extractedData.medicoes || "");
+      setMultas(extractedData.multas || "");
+      setReajuste(extractedData.reajuste || "");
+      setObservacoes(extractedData.observacoes || "");
       setStatusProcessamento("concluido");
       
       // Auto-match CNPJs to Clients
-      if (result.cnpjs_clientes && result.cnpjs_clientes.length > 0) {
+      if (extractedData.cnpjs_clientes && extractedData.cnpjs_clientes.length > 0) {
         const foundClientIds: string[] = [];
-        result.cnpjs_clientes.forEach(cnpjExtraido => {
+        extractedData.cnpjs_clientes.forEach(cnpjExtraido => {
           const digitsOnly = cnpjExtraido.replace(/[^\d]/g, "");
           const match = clientes.find(c => c.cnpj?.replace(/[^\d]/g, "") === digitsOnly);
           if (match && !foundClientIds.includes(match.id)) {
@@ -180,11 +193,40 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       <div className="flex gap-6 h-full min-h-[500px]">
         {/* Left Col - PDF / Extractor */}
         <div className="w-1/3 flex flex-col gap-4 border-r pr-6">
-          <div className="p-4 border-2 border-dashed rounded-lg bg-slate-50 relative h-32 flex items-center justify-center flex-col gap-2">
+          <div className={`p-4 border-2 border-dashed rounded-lg relative h-40 flex items-center justify-center flex-col gap-2 transition-colors ${selectedFile ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'}`}>
+            {selectedFile ? (
+              <>
+                <FileType2 className="h-8 w-8 text-blue-500" />
+                <span className="text-sm font-medium text-center break-all px-2 text-blue-700">{selectedFile.name}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-1 h-6 text-[10px] text-blue-600 hover:text-blue-800 relative z-20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFile(null);
+                    setStatusProcessamento("pendente");
+                    const input = document.getElementById('contract-upload-input') as HTMLInputElement;
+                    if (input) input.value = '';
+                  }}
+                >
+                  Remover
+                </Button>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-8 w-8 text-slate-400" />
+                <span className="text-sm text-slate-500 font-medium text-center">
+                  Arraste ou clique para upar contrato<br/>
+                  <span className="text-[10px] text-slate-400">(PDF, Word ou Imagem)</span>
+                </span>
+              </>
+            )}
             <input 
+              id="contract-upload-input"
               type="file" 
-              accept=".pdf,.png,.jpg,.jpeg" 
-              className="absolute inset-0 opacity-0 cursor-pointer"
+              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" 
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
               onChange={(e) => {
                 if(e.target.files?.[0]) {
                   setSelectedFile(e.target.files[0]);
@@ -192,17 +234,6 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 }
               }}
             />
-            {selectedFile ? (
-              <>
-                <FileType2 className="h-8 w-8 text-blue-500" />
-                <span className="text-sm font-medium text-center break-all px-2">{selectedFile.name}</span>
-              </>
-            ) : (
-              <>
-                <UploadCloud className="h-8 w-8 text-slate-400" />
-                <span className="text-sm text-slate-500 font-medium">Arraste ou clique para upar PDF</span>
-              </>
-            )}
           </div>
           
           <Button 
@@ -225,6 +256,28 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
           {statusProcessamento === "erro" && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
               ❌ Falha ao processar arquivo com a IA.
+            </div>
+          )}
+
+          {arquivoUrl && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-blue-700 text-sm font-medium">
+                <FileType2 className="h-4 w-4" />
+                Arquivo salvo no sistema
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
+                onClick={async () => {
+                  const { data } = await supabase.storage.from('contratos').createSignedUrl(arquivoUrl, 3600);
+                  if (data?.signedUrl) {
+                    window.open(data.signedUrl, '_blank');
+                  }
+                }}
+              >
+                Visualizar Arquivo Original
+              </Button>
             </div>
           )}
 

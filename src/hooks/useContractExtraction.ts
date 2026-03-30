@@ -21,28 +21,44 @@ export function useContractExtraction() {
   const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const fileToBase64 = (file: File): Promise<{ base64: string, type: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        resolve(base64);
+        const [meta, base64] = result.split(',');
+        const type = meta.split(':')[1].split(';')[0];
+        resolve({ base64, type });
       };
       reader.onerror = reject;
     });
   };
 
-  const extrairContrato = useCallback(async (file: File): Promise<ContratoExtraido | null> => {
+  const extrairContrato = useCallback(async (file: File): Promise<{ data: ContratoExtraido, path: string } | null> => {
     setIsExtracting(true);
-    let extractedData: ContratoExtraido | null = null;
+    let result: { data: ContratoExtraido, path: string } | null = null;
     
     try {
-      const base64 = await fileToBase64(file);
-      
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const filePath = `uploads/${fileName}`;
+
+      console.log('Uploading file to storage:', filePath);
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('contratos')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Erro ao salvar arquivo: ${uploadError.message}`);
+      }
+
+      console.log('File uploaded, calling extraction function...');
       const { data, error } = await supabase.functions.invoke('extract-contract', {
-        body: { pdfBase64: base64, fileName: file.name }
+        body: { 
+          filePath: uploadData.path, 
+          fileName: file.name
+        }
       });
 
       if (error) {
@@ -53,7 +69,10 @@ export function useContractExtraction() {
         throw new Error(data.error || 'Falha na extração de contrato');
       }
 
-      extractedData = data.data as ContratoExtraido;
+      result = { 
+        data: data.data as ContratoExtraido, 
+        path: uploadData.path 
+      };
       
       toast({
         title: 'Leitura concluída',
@@ -71,7 +90,7 @@ export function useContractExtraction() {
       setIsExtracting(false);
     }
     
-    return extractedData;
+    return result;
   }, [toast]);
 
   return {
