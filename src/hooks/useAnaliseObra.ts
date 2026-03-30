@@ -63,6 +63,7 @@ export interface ProducaoItem {
   diasComProducao: number;
   primeiraData: string | null;
   ultimaData: string | null;
+  fotos?: string[];
 }
 
 export function useAnaliseObra(siteId?: string) {
