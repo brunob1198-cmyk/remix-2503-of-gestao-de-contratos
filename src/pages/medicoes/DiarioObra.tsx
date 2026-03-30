@@ -62,6 +62,9 @@ export default function DiarioObraPage() {
 
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
 
+  // Build previsoes map (daily production targets from planejamento)
+  const previsoes: Record<string, number> = {};
+
   // Sync uf/municipio from diario when loaded
   useEffect(() => {
     if (diario) {
