@@ -234,11 +234,27 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
                       }}
                     >
                       <Popup>
-                        <div className="text-xs space-y-1">
-                          <p className="font-bold">{r.municipio}/{r.uf}</p>
-                          <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
-                          <p>Lançamentos: <strong>{r.totalItens}</strong></p>
-                          <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
+                        <div className="text-xs space-y-2">
+                          <p className="font-bold border-b pb-1">{r.municipio}/{r.uf}</p>
+                          <div className="space-y-0.5">
+                            <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
+                            <p>Lançamentos: <strong>{r.totalItens}</strong></p>
+                            <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
+                          </div>
+                          
+                          {r.photos.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
+                              <div className="grid grid-cols-2 gap-1 max-w-[140px]">
+                                {r.photos.slice(0, 4).map((url, i) => (
+                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt="" />
+                                ))}
+                              </div>
+                              {r.photos.length > 4 && (
+                                <p className="text-[10px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </Popup>
                     </CircleMarker>
