@@ -16,7 +16,8 @@ import { TimelineObra } from "@/components/planejamento/TimelineObra";
 import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2 } from "lucide-react";
+import { ProducaoTab } from "@/components/analise/ProducaoTab";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,6 +158,9 @@ export default function PlanejamentoObra() {
             </TabsTrigger>
             <TabsTrigger value="curvas" className="gap-1.5">
               <TrendingUp className="h-4 w-4" /> Curva S
+            </TabsTrigger>
+            <TabsTrigger value="producao" className="gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Produção
             </TabsTrigger>
           </TabsList>
 
@@ -324,6 +328,42 @@ export default function PlanejamentoObra() {
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
             <CurvaSDashboard atividades={atividades} frentes={frentes} />
+          </TabsContent>
+
+          <TabsContent value="producao" className="mt-4">
+            <div className="space-y-4">
+              {sites.length > 0 && (
+                <div className="w-64">
+                  <label className="text-sm font-medium mb-1 block">Site para Acompanhamento</label>
+                  <Select 
+                    value={siteFilter === "all" ? "" : siteFilter} 
+                    onValueChange={setSiteFilter}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um site" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sites.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {siteFilter !== "all" ? (
+                <ProducaoTab siteId={siteFilter} />
+              ) : (
+                <Card>
+                  <CardContent className="flex items-center justify-center h-48 text-muted-foreground text-center">
+                    <div>
+                      <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                      <p>Selecione um site para visualizar o acompanhamento de produção</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       ) : (
