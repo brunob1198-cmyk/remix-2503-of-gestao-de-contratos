@@ -137,6 +137,7 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
         totalQuantidade: a.total,
         totalItens: a.count,
         avgQuantidade: a.count > 0 ? a.total / a.count : 0,
+        photos: Array.from(new Set(a.photos)).slice(0, 10), // Unique photos, limit 10
       })) as ProdRegiao[];
     },
     enabled: !!projetoId,
