@@ -3,8 +3,9 @@ import ProjetosPage from "./Projetos";
 import SitesPage from "./Sites";
 import LpuPage from "./Lpu";
 import ClientesPage from "./Clientes";
+import ContratosPage from "./Contratos";
 import { usePermissions } from "@/hooks/usePermissions";
-import { FolderKanban, MapPin, FileSpreadsheet, Building2 } from "lucide-react";
+import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText } from "lucide-react";
 
 export default function CadastrosPage() {
   const { canView } = usePermissions();
@@ -13,8 +14,9 @@ export default function CadastrosPage() {
   const showSites = canView("sites");
   const showLpu = canView("lpu");
   const showClientes = true; // Todo: add strict permission later
+  const showContratos = true;
 
-  const defaultValue = showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
+  const defaultValue = showContratos ? "contratos" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
 
   if (!defaultValue) {
     return (
@@ -33,6 +35,11 @@ export default function CadastrosPage() {
 
       <Tabs defaultValue={defaultValue} className="space-y-4">
         <TabsList>
+          {showContratos && (
+            <TabsTrigger value="contratos" className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4" /> Contratos e Aditivos
+            </TabsTrigger>
+          )}
           {showClientes && (
             <TabsTrigger value="clientes" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> Clientes
@@ -55,6 +62,11 @@ export default function CadastrosPage() {
           )}
         </TabsList>
 
+        {showContratos && (
+          <TabsContent value="contratos" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <ContratosPage />
+          </TabsContent>
+        )}
         {showClientes && (
           <TabsContent value="clientes" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
             <ClientesPage />

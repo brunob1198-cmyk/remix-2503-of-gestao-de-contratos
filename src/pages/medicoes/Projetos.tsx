@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
+import { useContratos } from "@/hooks/useContratos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 
 type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status";
 type SortDir = "asc" | "desc" | null;
@@ -26,13 +28,17 @@ export default function ProjetosPage() {
   const { projetos, isLoading, createProjeto, updateProjeto, deleteProjeto } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [coordenador, setCoordenador] = useState("");
   const [clienteId, setClienteId] = useState("");
+  const [contratoId, setContratoId] = useState("none");
+  const [valorTotal, setValorTotal] = useState("");
   const { clientes } = useClientes();
+  const { contratos } = useContratos();
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -49,6 +55,8 @@ export default function ProjetosPage() {
     setDescricao("");
     setCoordenador("");
     setClienteId("");
+    setContratoId("none");
+    setValorTotal("");
     setEditingId(null);
   };
 
@@ -59,11 +67,39 @@ export default function ProjetosPage() {
     setDescricao(projeto.descricao || "");
     setCoordenador(projeto.coordenador || "");
     setClienteId(projeto.cliente_id || "");
+    setContratoId(projeto.contrato_id || "none");
+    setValorTotal(projeto.valor_total?.toString() || "");
     setIsOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedValorTotal = valorTotal ? parseFloat(valorTotal.replace(",", ".")) : 0;
+    
+    // Validação do Contrato Vinculado
+    if (contratoId && contratoId !== "none") {
+      const selectedContrato = contratos.find(c => c.id === contratoId);
+      if (selectedContrato) {
+        // Soma dos aditivos
+        const aditivosVal = selectedContrato.aditivos?.reduce((acc, ad) => acc + (ad.valor_total || 0), 0) || 0;
+        const limitContrato = (selectedContrato.valor_total || 0) + aditivosVal;
+        
+        // Soma dos projetos vinculados, excluindo o atual se for edição
+        const existingSum = projetos
+          .filter(p => p.contrato_id === contratoId && p.id !== editingId)
+          .reduce((sum, p) => sum + (p.valor_total || 0), 0);
+          
+        if (existingSum + parsedValorTotal > limitContrato) {
+          toast({
+            title: "Limite Excedido",
+            description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
+            variant: "destructive",
+          });
+          return; // Block
+        }
+      }
+    }
+
     const clienteObj = clientes.find(c => c.id === clienteId);
     const data = { 
       codigo, 
@@ -71,7 +107,9 @@ export default function ProjetosPage() {
       descricao, 
       coordenador, 
       cliente: clienteObj ? clienteObj.razao_social : "", 
-      cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId 
+      cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
+      contrato_id: contratoId === "none" || !contratoId ? undefined : contratoId,
+      valor_total: parsedValorTotal
     };
 
     if (editingId) {
@@ -203,13 +241,31 @@ export default function ProjetosPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Nome *</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do projeto" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Nome *</Label>
+                  <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do projeto" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor Orçado / Distribuído do Contrato</Label>
+                  <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 50000.00" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Contrato Gerador</Label>
+                  <Select value={contratoId || "none"} onValueChange={(v) => setContratoId(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0, 30) || c.id}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Coordenador</Label>

@@ -20,9 +20,34 @@ export interface Projeto {
   status: string;
   empresa_id?: string;
   cliente_id?: string;
+  contrato_id?: string;
+  valor_total?: number;
   clienteObj?: Cliente;
   created_at: string;
   updated_at: string;
+}
+
+export interface Contrato {
+  id: string;
+  empresa_id: string;
+  arquivo_url?: string;
+  status_processamento?: string;
+  cliente_ids?: string[];
+  valor_total?: number;
+  prazo_inicio?: string;
+  prazo_fim?: string;
+  escopo?: string;
+  condicoes_pagamento?: string;
+  garantias?: string;
+  liberacao_garantias?: string;
+  medicoes?: string;
+  multas?: string;
+  reajuste?: string;
+  observacoes?: string;
+  contrato_pai_id?: string;
+  created_at: string;
+  updated_at: string;
+  aditivos?: Contrato[]; // Field for populated hierarchical structure in UI
 }
 
 export interface Site {

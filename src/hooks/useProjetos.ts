@@ -33,7 +33,7 @@ export function useProjetos() {
   });
 
   const createProjeto = useMutation({
-    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; status?: string }) => {
+    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string; valor_total?: number; status?: string }) => {
       const empresaId = await getEmpresaId();
       const { error } = await supabase
         .from("projetos")
