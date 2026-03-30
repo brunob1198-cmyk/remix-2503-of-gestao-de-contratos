@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useContratos } from "@/hooks/useContratos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContractExtraction } from "@/hooks/useContractExtraction";
-import { Loader2, UploadCloud, FileType2, BrainCircuit } from "lucide-react";
+import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   contratoToEdit: Contrato | null;
@@ -109,23 +110,25 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     }
     const result = await extrairContrato(selectedFile);
     if (result) {
-      setValorTotal(cleanCurrencyOrNumber(result.valor_total));
-      setPrazoInicio(result.prazo_inicio || "");
-      setPrazoFim(result.prazo_fim || "");
-      setEscopo(result.escopo || "");
-      setCondicoesPagamento(result.condicoes_pagamento || "");
-      setGarantias(result.garantias || "");
-      setLiberacaoGarantias(result.liberacao_garantias || "");
-      setMedicoes(result.medicoes || "");
-      setMultas(result.multas || "");
-      setReajuste(result.reajuste || "");
-      setObservacoes(result.observacoes || "");
+      const { data: extractedData, path } = result;
+      setArquivoUrl(path);
+      setValorTotal(cleanCurrencyOrNumber(extractedData.valor_total));
+      setPrazoInicio(extractedData.prazo_inicio || "");
+      setPrazoFim(extractedData.prazo_fim || "");
+      setEscopo(extractedData.escopo || "");
+      setCondicoesPagamento(extractedData.condicoes_pagamento || "");
+      setGarantias(extractedData.garantias || "");
+      setLiberacaoGarantias(extractedData.liberacao_garantias || "");
+      setMedicoes(extractedData.medicoes || "");
+      setMultas(extractedData.multas || "");
+      setReajuste(extractedData.reajuste || "");
+      setObservacoes(extractedData.observacoes || "");
       setStatusProcessamento("concluido");
       
       // Auto-match CNPJs to Clients
-      if (result.cnpjs_clientes && result.cnpjs_clientes.length > 0) {
+      if (extractedData.cnpjs_clientes && extractedData.cnpjs_clientes.length > 0) {
         const foundClientIds: string[] = [];
-        result.cnpjs_clientes.forEach(cnpjExtraido => {
+        extractedData.cnpjs_clientes.forEach(cnpjExtraido => {
           const digitsOnly = cnpjExtraido.replace(/[^\d]/g, "");
           const match = clientes.find(c => c.cnpj?.replace(/[^\d]/g, "") === digitsOnly);
           if (match && !foundClientIds.includes(match.id)) {
@@ -253,6 +256,28 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
           {statusProcessamento === "erro" && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
               ❌ Falha ao processar arquivo com a IA.
+            </div>
+          )}
+
+          {arquivoUrl && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-blue-700 text-sm font-medium">
+                <FileType2 className="h-4 w-4" />
+                Arquivo salvo no sistema
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
+                onClick={async () => {
+                  const { data } = await supabase.storage.from('contratos').createSignedUrl(arquivoUrl, 3600);
+                  if (data?.signedUrl) {
+                    window.open(data.signedUrl, '_blank');
+                  }
+                }}
+              >
+                Visualizar Arquivo Original
+              </Button>
             </div>
           )}
 

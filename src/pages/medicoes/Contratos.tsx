@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText } from "lucide-react";
 import ContratosForm from "@/components/medicoes/ContratosForm";
+import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
 import { differenceInDays, parseISO, isBefore, startOfDay } from "date-fns";
 
@@ -115,8 +116,33 @@ export default function ContratosPage() {
                           {c.escopo || "Contrato s/ Objeto Definido"}
                         </div>
                         {c.aditivos && c.aditivos.length > 0 && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            + {c.aditivos.length} aditivo(s) viculado(s)
+                          <div className="mt-2 space-y-1">
+                            <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                              Aditivos ({c.aditivos.length})
+                            </div>
+                            {c.aditivos.map((ad, idx) => (
+                              <div key={ad.id} className="flex items-center justify-between bg-muted/50 p-1.5 rounded border border-muted-foreground/10 text-[11px]">
+                                <span className="font-medium truncate max-w-[120px]">
+                                  Aditivo #{idx + 1}
+                                </span>
+                                <div className="flex gap-1">
+                                  {ad.arquivo_url && (
+                                    <button 
+                                      className="text-blue-600 hover:text-blue-800"
+                                      onClick={async () => {
+                                        const { data } = await supabase.storage.from('contratos').createSignedUrl(ad.arquivo_url!, 3600);
+                                        if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleEdit(ad)} className="text-muted-foreground hover:text-primary">
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </TableCell>
@@ -141,6 +167,19 @@ export default function ContratosPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {c.arquivo_url && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Ver arquivo original"
+                              onClick={async () => {
+                                const { data } = await supabase.storage.from('contratos').createSignedUrl(c.arquivo_url, 3600);
+                                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                              }}
+                            >
+                              <FileText className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
