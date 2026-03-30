@@ -258,6 +258,28 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
             </div>
           )}
 
+          {arquivoUrl && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-blue-700 text-sm font-medium">
+                <FileType2 className="h-4 w-4" />
+                Arquivo salvo no sistema
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
+                onClick={async () => {
+                  const { data } = await supabase.storage.from('contratos').createSignedUrl(arquivoUrl, 3600);
+                  if (data?.signedUrl) {
+                    window.open(data.signedUrl, '_blank');
+                  }
+                }}
+              >
+                Visualizar Arquivo Original
+              </Button>
+            </div>
+          )}
+
           <div className="text-xs text-muted-foreground bg-accent p-3 rounded-md mt-auto">
             <strong>Nota:</strong> A Inteligência Artificial tenta preencher todos os dados, verifique atentamente se os números de datas e valores estão corretos.
           </div>
