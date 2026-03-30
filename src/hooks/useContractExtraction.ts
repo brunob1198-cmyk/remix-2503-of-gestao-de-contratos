@@ -90,7 +90,7 @@ export function useContractExtraction() {
       setIsExtracting(false);
     }
     
-    return extractedData;
+    return result;
   }, [toast]);
 
   return {
