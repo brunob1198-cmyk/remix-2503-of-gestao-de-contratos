@@ -114,7 +114,7 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
     <div className="space-y-4">
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <EvidenciaUpload projetoId={projetoId} onEventoCreated={() => refetch()} />
+
         <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="h-4 w-4 mr-1" /> Filtros
         </Button>
