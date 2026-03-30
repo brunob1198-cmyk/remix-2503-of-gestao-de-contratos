@@ -392,6 +392,13 @@ export function useAnaliseObra(siteId?: string) {
           diasComProducao,
           primeiraData: prod?.primeiraData || null,
           ultimaData: prod?.ultimaData || null,
+          fotos: (fotosData ?? []).filter(f => {
+            if (f.diario_producao_id) {
+              const dp = diarioProducaoData.find(d => d.id === f.diario_producao_id);
+              return dp?.item_lpu_id === itemLpuId;
+            }
+            return false;
+          }).map(f => f.url),
         });
       });
 
