@@ -778,7 +778,7 @@ export default function DiarioObraPage() {
                                   {Number(p.quantidade)}
                                 </span>
                                 {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
-                                  <AlertTriangle className="h-3 w-3 text-red-500" title="Abaixo da Meta" />
+                                  <AlertTriangle className="h-3 w-3 text-red-500" />
                                 )}
                               </div>
                             </TableCell>
