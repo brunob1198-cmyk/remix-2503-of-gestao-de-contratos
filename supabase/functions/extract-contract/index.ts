@@ -36,14 +36,16 @@ serve(async (req) => {
 
     console.log('Contract extraction requested by user:', user.id);
 
-    const { pdfBase64, fileName } = await req.json();
+    const { pdfBase64, fileName, contentType } = await req.json();
     
     if (!pdfBase64) {
       return new Response(
-        JSON.stringify({ error: 'PDF content is required' }),
+        JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const effectiveType = contentType || 'application/pdf';
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
