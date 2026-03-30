@@ -50,26 +50,37 @@ export function useTimelineEventos(projetoId?: string, filters?: {
       const { data: timelineData, error: timelineError } = await q;
       if (timelineError) throw timelineError;
 
-      // 2. Get photos from diario_fotos (linked via diarios_obra)
-      // Since they are the "official" photos, they always appear as "foto" type
-      const { data: diarioData, error: diarioError } = await supabase
-        .from("diario_fotos")
-        .select(`
-          id,
-          url,
-          legenda,
-          classificacao,
-          created_at,
-          diario:diarios_obra!inner(data, projeto_id)
-        `)
-        .eq("diario.projeto_id", projetoId);
+      // Fetch sites for this project to filter diaries
+      const { data: sitesProj } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("projeto_id", projetoId);
+        
+      const siteIds = sitesProj ? sitesProj.map(s => s.id) : [];
 
-      if (diarioError) throw diarioError;
+      // 2. Get photos from diario_fotos (linked via diarios_obra -> site_id)
+      let diarioData: any[] = [];
+      if (siteIds.length > 0) {
+        const { data: photos, error: diarioError } = await supabase
+          .from("diario_fotos")
+          .select(`
+            id,
+            url,
+            legenda,
+            classificacao,
+            created_at,
+            diario:diarios_obra!inner(data, site_id)
+          `)
+          .in("diario.site_id", siteIds);
+
+        if (diarioError) throw diarioError;
+        diarioData = photos || [];
+      }
 
       // Map daily report photos to TimelineEvento format
       const diarioEvents: TimelineEvento[] = (diarioData ?? []).map((f: any) => ({
         id: f.id,
-        projeto_id: f.diario.projeto_id,
+        projeto_id: projetoId,
         data: f.diario.data,
         tipo: "foto",
         item: f.legenda || f.classificacao || "Foto Diário",
