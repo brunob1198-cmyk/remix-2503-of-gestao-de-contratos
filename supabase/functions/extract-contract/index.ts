@@ -128,7 +128,7 @@ O JSON deve seguir exatamente este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -142,7 +142,7 @@ O JSON deve seguir exatamente este formato:
             ]
           }
         ],
-        max_tokens: 4096,
+        max_tokens: 1200,
       }),
     });
 
