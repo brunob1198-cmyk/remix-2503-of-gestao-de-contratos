@@ -88,7 +88,17 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
 
   const cleanCurrencyOrNumber = (val: string | null) => {
     if (!val) return "";
-    const cleaned = val.replace(/[^\d.,]/g, "").replace(",", ".");
+    // Remove all non-numeric characters except dots and commas
+    let cleaned = val.replace(/[^\d.,]/g, "");
+    
+    // If there's both a dot and a comma, it's likely Brazilian format (e.g. 1.234,56)
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else if (cleaned.includes(',')) {
+      // Just a comma (e.g. 1234,56)
+      cleaned = cleaned.replace(",", ".");
+    }
+    
     return cleaned;
   };
 
