@@ -99,7 +99,16 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number; lng: number; total: number; count: number }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number; lng: number; total: number; count: number; photos: string[] }> = {};
+
+      // Get photos for these sites
+      const { data: photosData } = await supabase
+        .from("diario_fotos")
+        .select(`
+          url,
+          diario:diarios_obra!inner(municipio, uf, site_id)
+        `)
+        .in("diario.site_id", siteIds);
 
       prods.forEach((p) => {
         const mun = p.municipio || sites.find((s) => s.id === p.site_id)?.municipio || "";
@@ -110,7 +119,11 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
         if (!coords) return;
 
         if (!aggMap[mun]) {
-          aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0 };
+          const munPhotos = (photosData ?? [])
+            .filter((f: any) => f.diario.municipio === mun)
+            .map((f: any) => f.url);
+            
+          aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0, photos: munPhotos };
         }
         aggMap[mun].total += Number(p.quantidade);
         aggMap[mun].count += 1;
