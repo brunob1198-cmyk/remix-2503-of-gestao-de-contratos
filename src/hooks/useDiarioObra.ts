@@ -427,6 +427,29 @@ export function useDiarioObra(siteId?: string, data?: string) {
   const custoTotal = custoEquipe + custoEquipamentos + custoVeiculos;
   const margem = totalProducao - custoTotal;
 
+  const { data: previsoes = {} } = useQuery({
+    queryKey: ["previsoes_diario", siteId],
+    queryFn: async () => {
+      if (!siteId) return {};
+      const { data, error } = await supabase
+        .from("frentes_obra")
+        .select("id, atividades_planejamento(item_lpu_id, producao_diaria_prevista)")
+        .eq("site_id", siteId);
+      if (error) throw error;
+      
+      const prevMap: Record<string, number> = {};
+      data?.forEach((f: any) => {
+        f.atividades_planejamento?.forEach((a: any) => {
+           if (a.item_lpu_id && a.producao_diaria_prevista) {
+             prevMap[a.item_lpu_id] = (prevMap[a.item_lpu_id] || 0) + Number(a.producao_diaria_prevista);
+           }
+        });
+      });
+      return prevMap;
+    },
+    enabled: !!siteId
+  });
+
   return {
     diario, loadingDiario, criarDiario,
     atualizarObservacoes, atualizarClima, atualizarLocalizacao,
@@ -437,6 +460,6 @@ export function useDiarioObra(siteId?: string, data?: string) {
     fotos, addFoto, removeFoto,
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
-    duplicarDiarioAnterior,
+    duplicarDiarioAnterior, previsoes,
   };
 }

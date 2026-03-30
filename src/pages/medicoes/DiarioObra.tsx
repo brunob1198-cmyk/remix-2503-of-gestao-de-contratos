@@ -677,8 +677,15 @@ export default function DiarioObraPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="w-[120px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">Quantidade</label>
+                <div className="w-[140px]">
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Qtd
+                    {prodItemId && previsoes[prodItemId] > 0 && (
+                      <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 ml-1 leading-none text-blue-600 bg-blue-50">
+                        Meta: {previsoes[prodItemId]}
+                      </Badge>
+                    )}
+                  </label>
                   <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="0" />
                 </div>
                 <div className="w-[140px]">
@@ -744,8 +751,9 @@ export default function DiarioObraPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead>Item do Escopo</TableHead>
+                        <TableHead className="text-right">Meta (Dia)</TableHead>
+                        <TableHead className="text-right">Qtd Real</TableHead>
                         <TableHead className="text-right">Preço Unit.</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                         <TableHead>Fotos</TableHead>
@@ -757,8 +765,20 @@ export default function DiarioObraPage() {
                         const itemFotos = fotos.filter(f => f.diario_producao_id === p.id);
                         return (
                           <TableRow key={p.id} className="align-top">
-                            <TableCell className="font-medium">{p.item_lpu?.codigo} — {p.item_lpu?.descricao}</TableCell>
-                            <TableCell className="text-right tabular-nums">{Number(p.quantidade)}</TableCell>
+                            <TableCell className="font-medium text-xs">{p.item_lpu?.codigo} — {p.item_lpu?.descricao}</TableCell>
+                            <TableCell className="text-right tabular-nums text-muted-foreground">
+                              {previsoes[p.item_lpu_id] ? previsoes[p.item_lpu_id] : "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              <div className="flex items-center justify-end gap-1">
+                                <span className={previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
+                                  {Number(p.quantidade)}
+                                </span>
+                                {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
+                                  <AlertTriangle className="h-3 w-3 text-red-500" title="Abaixo da Meta" />
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right tabular-nums">{formatCurrency(Number(p.preco_unitario_congelado))}</TableCell>
                             <TableCell className="text-right tabular-nums font-medium">{formatCurrency(Number(p.valor_total))}</TableCell>
                             <TableCell>

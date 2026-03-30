@@ -16,7 +16,7 @@ import { TimelineObra } from "@/components/planejamento/TimelineObra";
 import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2 } from "lucide-react";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2, Sparkles } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ export default function PlanejamentoObra() {
   const queryClient = useQueryClient();
 
   const { data: frentes = [], create: createFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
-  const { data: atividades = [], create: createAtividade, update: updateAtividade } = useAtividades(projetoId || undefined);
+  const { data: atividades = [], create: createAtividade, update: updateAtividade, analyzeGanttAi } = useAtividades(projetoId || undefined);
   const { sites } = useSites(projetoId || undefined);
   const { recursos, alocacoes } = useRecursos();
 
@@ -194,9 +194,21 @@ export default function PlanejamentoObra() {
               )}
 
               <div className="flex gap-2 flex-wrap">
+                {atividades.length > 0 && (
+                  <Button 
+                    variant="secondary" 
+                    onClick={() => analyzeGanttAi.mutate(filteredAtividades)} 
+                    disabled={analyzeGanttAi.isPending}
+                    className="gap-1.5"
+                  >
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    {analyzeGanttAi.isPending ? "Analisando Cronograma..." : "Analisar via IA"}
+                  </Button>
+                )}
                 <FrenteForm
                   projetoId={projetoId}
                   sites={sites as any}
+                  recursos={recursos}
                   onCreate={(data) => {
                     if (data.site_id === "none") delete data.site_id;
                     createFrente.mutate(data);

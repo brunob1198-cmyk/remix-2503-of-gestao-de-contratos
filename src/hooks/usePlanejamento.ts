@@ -59,9 +59,54 @@ export function useFrentes(projetoId?: string) {
   });
 
   const create = useMutation({
-    mutationFn: async (frente: Partial<FrenteObra> & { projeto_id: string; nome: string }) => {
-      const { data, error } = await supabase.from("frentes_obra").insert(frente).select().single();
+    mutationFn: async (payload: any) => {
+      const { recursos, atividades_geradas, ...frenteData } = payload;
+      
+      // 1. Cria a frente
+      const { data, error } = await supabase.from("frentes_obra").insert(frenteData).select().single();
       if (error) throw error;
+      
+      const novaFrenteId = data.id;
+
+      // 2. Vincula Recursos
+      if (recursos && recursos.length > 0) {
+        const recursosDb = recursos.map((rid: string) => ({
+          frente_id: novaFrenteId,
+          recurso_id: rid
+        }));
+        const { error: errRec } = await (supabase as any).from("frentes_recursos").insert(recursosDb);
+        if (errRec) console.error("Erro vinculando recursos:", errRec);
+      }
+
+      // 3. Cria Atividades a partir do Escopo
+      if (atividades_geradas && atividades_geradas.length > 0) {
+        let ordemAtual = 1;
+        const atividadesDb = atividades_geradas.map((a: any) => {
+          let expectedEnd = null;
+          if (frenteData.data_inicio) {
+            const duracao = Math.ceil((Number(a.quantidade_total) || 1) / (Number(a.producao_diaria_prevista) || 1));
+            const startStr = frenteData.data_inicio;
+            const endD = new Date(startStr);
+            endD.setDate(endD.getDate() + duracao);
+            expectedEnd = endD.toISOString().split("T")[0];
+          }
+
+          return {
+            frente_id: novaFrenteId,
+            item_lpu_id: a.item_lpu_id,
+            nome: a.nome,
+            quantidade_total: a.quantidade_total,
+            producao_diaria_prevista: a.producao_diaria_prevista,
+            data_inicio: frenteData.data_inicio || null,
+            data_fim_prevista: expectedEnd,
+            ordem: ordemAtual++
+          };
+        });
+        
+        const { error: errAtv } = await supabase.from("atividades_planejamento").insert(atividadesDb);
+        if (errAtv) console.error("Erro inserindo atividades geradas:", errAtv);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -266,5 +311,25 @@ export function useAtividades(projetoId?: string) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  return { ...query, create, update, remove };
+  const analyzeGanttAi = useMutation({
+    mutationFn: async (atividades: AtividadePlanejamento[]) => {
+      const { data, error } = await supabase.functions.invoke("analyze-gantt", {
+        body: { atividades }
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || "Falha na análise");
+      
+      return data.data as { id: string; nova_data_fim: string }[];
+    },
+    onSuccess: async (suggestions) => {
+      for (const sug of suggestions) {
+        await supabase.from("atividades_planejamento").update({ data_fim_prevista: sug.nova_data_fim }).eq("id", sug.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["atividades_planejamento", projetoId] });
+      toast.success("Cronograma recalculado via IA!");
+    },
+    onError: (e: Error) => toast.error("Erro na IA: " + e.message)
+  });
+
+  return { ...query, create, update, remove, analyzeGanttAi };
 }
