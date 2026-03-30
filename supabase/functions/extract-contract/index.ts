@@ -100,7 +100,7 @@ O JSON deve seguir exatamente este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-1.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -113,7 +113,7 @@ O JSON deve seguir exatamente este formato:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`
+                  url: `data:${effectiveType};base64,${pdfBase64}`
                 }
               }
             ]
