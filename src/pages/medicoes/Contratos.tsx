@@ -142,6 +142,19 @@ export default function ContratosPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end">
+                          {c.arquivo_url && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Ver arquivo original"
+                              onClick={async () => {
+                                const { data } = await supabase.storage.from('contratos').createSignedUrl(c.arquivo_url, 3600);
+                                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                              }}
+                            >
+                              <FileText className="h-4 w-4 text-blue-600" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
