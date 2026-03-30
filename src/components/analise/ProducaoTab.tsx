@@ -90,6 +90,7 @@ export function ProducaoTab({ siteId }: { siteId: string }) {
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Fotos</th>
                   </tr>
                 </thead>
                 <tbody>
