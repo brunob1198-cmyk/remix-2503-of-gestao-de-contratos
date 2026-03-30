@@ -36,14 +36,16 @@ serve(async (req) => {
 
     console.log('Contract extraction requested by user:', user.id);
 
-    const { pdfBase64, fileName } = await req.json();
+    const { pdfBase64, fileName, contentType } = await req.json();
     
     if (!pdfBase64) {
       return new Response(
-        JSON.stringify({ error: 'PDF content is required' }),
+        JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const effectiveType = contentType || 'application/pdf';
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -98,7 +100,7 @@ O JSON deve seguir exatamente este formato:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-1.5-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { 
@@ -111,7 +113,7 @@ O JSON deve seguir exatamente este formato:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`
+                  url: `data:${effectiveType};base64,${pdfBase64}`
                 }
               }
             ]

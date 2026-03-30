@@ -180,11 +180,40 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       <div className="flex gap-6 h-full min-h-[500px]">
         {/* Left Col - PDF / Extractor */}
         <div className="w-1/3 flex flex-col gap-4 border-r pr-6">
-          <div className="p-4 border-2 border-dashed rounded-lg bg-slate-50 relative h-32 flex items-center justify-center flex-col gap-2">
+          <div className={`p-4 border-2 border-dashed rounded-lg relative h-40 flex items-center justify-center flex-col gap-2 transition-colors ${selectedFile ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'}`}>
+            {selectedFile ? (
+              <>
+                <FileType2 className="h-8 w-8 text-blue-500" />
+                <span className="text-sm font-medium text-center break-all px-2 text-blue-700">{selectedFile.name}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-1 h-6 text-[10px] text-blue-600 hover:text-blue-800 relative z-20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFile(null);
+                    setStatusProcessamento("pendente");
+                    const input = document.getElementById('contract-upload-input') as HTMLInputElement;
+                    if (input) input.value = '';
+                  }}
+                >
+                  Remover
+                </Button>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-8 w-8 text-slate-400" />
+                <span className="text-sm text-slate-500 font-medium text-center">
+                  Arraste ou clique para upar contrato<br/>
+                  <span className="text-[10px] text-slate-400">(PDF, Word ou Imagem)</span>
+                </span>
+              </>
+            )}
             <input 
+              id="contract-upload-input"
               type="file" 
-              accept=".pdf,.png,.jpg,.jpeg" 
-              className="absolute inset-0 opacity-0 cursor-pointer"
+              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" 
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
               onChange={(e) => {
                 if(e.target.files?.[0]) {
                   setSelectedFile(e.target.files[0]);
@@ -192,17 +221,6 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 }
               }}
             />
-            {selectedFile ? (
-              <>
-                <FileType2 className="h-8 w-8 text-blue-500" />
-                <span className="text-sm font-medium text-center break-all px-2">{selectedFile.name}</span>
-              </>
-            ) : (
-              <>
-                <UploadCloud className="h-8 w-8 text-slate-400" />
-                <span className="text-sm text-slate-500 font-medium">Arraste ou clique para upar PDF</span>
-              </>
-            )}
           </div>
           
           <Button 

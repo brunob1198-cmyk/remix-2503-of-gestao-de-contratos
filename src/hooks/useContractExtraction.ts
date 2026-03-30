@@ -21,14 +21,15 @@ export function useContractExtraction() {
   const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const fileToBase64 = (file: File): Promise<{ base64: string, type: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        resolve(base64);
+        const [meta, base64] = result.split(',');
+        const type = meta.split(':')[1].split(';')[0];
+        resolve({ base64, type });
       };
       reader.onerror = reject;
     });
@@ -39,10 +40,10 @@ export function useContractExtraction() {
     let extractedData: ContratoExtraido | null = null;
     
     try {
-      const base64 = await fileToBase64(file);
+      const { base64, type } = await fileToBase64(file);
       
       const { data, error } = await supabase.functions.invoke('extract-contract', {
-        body: { pdfBase64: base64, fileName: file.name }
+        body: { pdfBase64: base64, fileName: file.name, contentType: type }
       });
 
       if (error) {
