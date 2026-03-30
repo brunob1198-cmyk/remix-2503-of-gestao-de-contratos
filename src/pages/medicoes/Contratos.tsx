@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText } from "lucide-react";
 import ContratosForm from "@/components/medicoes/ContratosForm";
+import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
 import { differenceInDays, parseISO, isBefore, startOfDay } from "date-fns";
 
