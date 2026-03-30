@@ -22,7 +22,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit,
+  CalendarDays, ClipboardEdit, AlertTriangle,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
