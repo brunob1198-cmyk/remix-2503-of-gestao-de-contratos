@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,7 +55,7 @@ serve(async (req) => {
 
       const arrayBuffer = await fileBlob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
-      fileData = btoa(String.fromCharCode(...uint8Array));
+      fileData = encodeBase64(uint8Array);
       effectiveType = fileBlob.type;
     }
 
@@ -131,7 +132,7 @@ O JSON deve seguir exatamente este formato:
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${effectiveType};base64,${pdfBase64}`
+                  url: `data:${effectiveType};base64,${fileData}`
                 }
               }
             ]
