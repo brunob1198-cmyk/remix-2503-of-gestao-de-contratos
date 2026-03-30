@@ -36,16 +36,34 @@ serve(async (req) => {
 
     console.log('Contract extraction requested by user:', user.id);
 
-    const { pdfBase64, fileName, contentType } = await req.json();
+    const { pdfBase64, fileName, contentType, filePath } = await req.json();
     
-    if (!pdfBase64) {
+    let fileData = pdfBase64;
+    let effectiveType = contentType || 'application/pdf';
+
+    if (filePath) {
+      console.log('Fetching file from storage:', filePath);
+      const { data: fileBlob, error: downloadError } = await supabase.storage
+        .from('contratos')
+        .download(filePath);
+
+      if (downloadError) {
+        console.error('Error downloading file:', downloadError);
+        throw new Error(`Failed to download file from storage: ${downloadError.message}`);
+      }
+
+      const arrayBuffer = await fileBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      fileData = btoa(String.fromCharCode(...uint8Array));
+      effectiveType = fileBlob.type;
+    }
+
+    if (!fileData) {
       return new Response(
         JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const effectiveType = contentType || 'application/pdf';
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
