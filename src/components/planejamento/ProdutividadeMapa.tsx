@@ -23,6 +23,7 @@ interface ProdRegiao {
   totalQuantidade: number;
   totalItens: number;
   avgQuantidade: number;
+  photos: string[];
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
