@@ -63,6 +63,7 @@ export interface ProducaoItem {
   diasComProducao: number;
   primeiraData: string | null;
   ultimaData: string | null;
+  fotos?: string[];
 }
 
 export function useAnaliseObra(siteId?: string) {
@@ -104,20 +105,23 @@ export function useAnaliseObra(siteId?: string) {
       let equipamentosData: any[] = [];
       let veiculosData: any[] = [];
       let diarioProducaoData: any[] = [];
+      let fotosData: any[] = [];
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
           const chunk = diarioIds.slice(i, i + 100);
-          const [eq, eqp, vec, dprod] = await Promise.all([
+          const [eq, eqp, vec, dprod, fts] = await Promise.all([
             supabase.from("diario_equipe").select("*").in("diario_id", chunk),
             supabase.from("diario_equipamentos").select("*").in("diario_id", chunk),
             supabase.from("diario_veiculos").select("*").in("diario_id", chunk),
             supabase.from("diario_producao").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("diario_id", chunk),
+            supabase.from("diario_fotos").select("*, diario:diarios_obra(data)").in("diario_id", chunk),
           ]);
           equipeData = [...equipeData, ...(eq.data || [])];
           equipamentosData = [...equipamentosData, ...(eqp.data || [])];
           veiculosData = [...veiculosData, ...(vec.data || [])];
           diarioProducaoData = [...diarioProducaoData, ...(dprod.data || [])];
+          fotosData = [...fotosData, ...(fts.data || [])];
         }
       }
 
@@ -389,6 +393,13 @@ export function useAnaliseObra(siteId?: string) {
           diasComProducao,
           primeiraData: prod?.primeiraData || null,
           ultimaData: prod?.ultimaData || null,
+          fotos: (fotosData ?? []).filter(f => {
+            if (f.diario_producao_id) {
+              const dp = diarioProducaoData.find(d => d.id === f.diario_producao_id);
+              return dp?.item_lpu_id === itemLpuId;
+            }
+            return false;
+          }).map(f => f.url),
         });
       });
 
@@ -420,6 +431,13 @@ export function useAnaliseObra(siteId?: string) {
           diasComProducao: prod.diasSet.size,
           primeiraData: prod.primeiraData,
           ultimaData: prod.ultimaData,
+          fotos: (fotosData ?? []).filter(f => {
+            if (f.diario_producao_id) {
+              const dp = diarioProducaoData.find(d => d.id === f.diario_producao_id);
+              return dp?.item_lpu_id === itemLpuId;
+            }
+            return false;
+          }).map(f => f.url),
         });
       });
 
@@ -441,6 +459,7 @@ export function useAnaliseObra(siteId?: string) {
         custoVeiculos,
         totalMedido,
         totalFaturado,
+        fotos: fotosData,
       };
     },
     enabled: !!siteId,

@@ -90,6 +90,7 @@ export function ProducaoTab({ siteId }: { siteId: string }) {
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Fotos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -133,6 +134,20 @@ export function ProducaoTab({ siteId }: { siteId: string }) {
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaDiaria)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaSemanal)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaMensal)}</td>
+                        <td className="px-2 py-2 text-center">
+                          {item.fotos && item.fotos.length > 0 ? (
+                            <div className="flex justify-center -space-x-2">
+                              {item.fotos.slice(0, 2).map((url, i) => (
+                                <img key={i} src={url} className="w-6 h-6 rounded-full border border-white shadow-sm object-cover" alt="" />
+                              ))}
+                              {item.fotos.length > 2 && (
+                                <div className="w-6 h-6 rounded-full bg-muted border border-white flex items-center justify-center text-[10px]">+</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
