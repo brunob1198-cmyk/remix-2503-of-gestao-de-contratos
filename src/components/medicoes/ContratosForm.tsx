@@ -180,18 +180,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       <div className="flex gap-6 h-full min-h-[500px]">
         {/* Left Col - PDF / Extractor */}
         <div className="w-1/3 flex flex-col gap-4 border-r pr-6">
-          <div className="p-4 border-2 border-dashed rounded-lg bg-slate-50 relative h-32 flex items-center justify-center flex-col gap-2">
-            <input 
-              type="file" 
-              accept=".pdf,.png,.jpg,.jpeg" 
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              onChange={(e) => {
-                if(e.target.files?.[0]) {
-                  setSelectedFile(e.target.files[0]);
-                  setStatusProcessamento("pendente");
-                }
-              }}
-            />
+          <div className="p-4 border-2 border-dashed rounded-lg bg-slate-50 relative h-40 flex items-center justify-center flex-col gap-2 hover:bg-slate-100 transition-colors">
             {selectedFile ? (
               <>
                 <FileType2 className="h-8 w-8 text-blue-500" />
@@ -200,9 +189,23 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
             ) : (
               <>
                 <UploadCloud className="h-8 w-8 text-slate-400" />
-                <span className="text-sm text-slate-500 font-medium">Arraste ou clique para upar PDF</span>
+                <span className="text-sm text-slate-500 font-medium text-center">
+                  Arraste ou clique para upar contrato<br/>
+                  <span className="text-[10px] text-slate-400">(PDF, Word ou Imagem)</span>
+                </span>
               </>
             )}
+            <input 
+              type="file" 
+              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" 
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
+              onChange={(e) => {
+                if(e.target.files?.[0]) {
+                  setSelectedFile(e.target.files[0]);
+                  setStatusProcessamento("pendente");
+                }
+              }}
+            />
           </div>
           
           <Button 
