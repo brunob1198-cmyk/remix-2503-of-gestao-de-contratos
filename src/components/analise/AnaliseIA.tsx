@@ -326,6 +326,12 @@ export function AnaliseIA({ siteId, siteName }: { siteId: string; siteName: stri
           diasComProducao: p.diasComProducao,
         })),
         escopoTotal: obraData.escopoTotal,
+        fotos: (obraData as any).fotos?.slice(0, 20).map((f: any) => ({
+          url: f.url,
+          legenda: f.legenda,
+          classificacao: f.classificacao,
+          data: f.diario?.data
+        })),
       };
 
       const { data, error } = await supabase.functions.invoke("analyze-obra", {
