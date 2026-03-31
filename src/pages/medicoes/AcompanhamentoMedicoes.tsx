@@ -600,6 +600,7 @@ export default function AcompanhamentoMedicoesPage() {
     if (selectedItens.length === 0) return;
 
     const today = new Date().toISOString().split("T")[0];
+    const customLogo = localStorage.getItem("custom_logo_url") || "/logo.png";
     const items = selectedItens.map(item => ({
       site_id: item.site_id,
       item_lpu_id: item.item_lpu_id,
@@ -609,6 +610,7 @@ export default function AcompanhamentoMedicoesPage() {
       status: "enviada",
       periodo_inicio: gerarPeriodoInicio,
       periodo_fim: gerarPeriodoFim,
+      logo_empresa_url: customLogo,
     }));
 
     bulkCreateLancamento.mutate(items, {
