@@ -126,7 +126,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string, newCategoria: string }) => {
-      const { error } = await (supabase.from("custo_real_erp") as any)
+      const { error } = await (supabase as any).from("custo_real_erp")
          .update({ categoria_interna: newCategoria })
          .eq("erp_id", erpId);
       if (error) throw error;
