@@ -171,6 +171,10 @@ export default function ProjetosPage() {
     for (const [field, value] of Object.entries(dropdownFilters)) {
       if (value) {
         result = result.filter((p: any) => {
+          if (field === "contrato_id") {
+            const cellVal = p.contratoObj?.escopo || "-";
+            return cellVal === value;
+          }
           const cellVal = (p[field] || "-").toString();
           return cellVal === value;
         });
