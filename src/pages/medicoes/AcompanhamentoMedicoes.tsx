@@ -1054,6 +1054,17 @@ export default function AcompanhamentoMedicoesPage() {
                   <Label>Nº Medição</Label>
                   <Input value={gerarNumeroMedicao} onChange={(e) => setGerarNumeroMedicao(e.target.value)} placeholder="Ex: MED-001" />
                 </div>
+                <div className="space-y-2">
+                  <Label>Logo da Empresa (Permanente)</Label>
+                  <div className="flex items-center gap-4 p-2 border rounded-md bg-muted/20">
+                    <img 
+                      src={localStorage.getItem("custom_logo_url") || "/logo.png"} 
+                      alt="Logo" 
+                      className="h-10 object-contain" 
+                    />
+                    <span className="text-xs text-muted-foreground">Esta logo será fixada nesta medição</span>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowGerarDialog(false)}>Cancelar</Button>
