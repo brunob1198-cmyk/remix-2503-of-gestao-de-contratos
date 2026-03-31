@@ -193,6 +193,7 @@ export default function AcompanhamentoMedicoesPage() {
       total_aprovada: number;
       total_rejeitada: number;
       total_pendente: number;
+      logo_empresa_url?: string;
     }>();
 
     let filtered = [...lancamentos];
