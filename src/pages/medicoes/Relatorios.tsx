@@ -301,6 +301,7 @@ export default function RelatoriosPage() {
           </TabsTrigger>
           <TabsTrigger value="geral">Relatórios Gerais</TabsTrigger>
           <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
+          <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
         </TabsList>
 
         <TabsContent value="quadro_geral" className="space-y-4">
