@@ -43,6 +43,41 @@ export type Database = {
           },
         ]
       }
+      areas: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       atividade_recursos: {
         Row: {
           atividade_id: string

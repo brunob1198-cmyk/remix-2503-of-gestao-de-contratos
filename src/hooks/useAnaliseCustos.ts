@@ -47,7 +47,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
   const { data: orcamentos = [], isLoading: loadOrc } = useQuery({
     queryKey: ["orcamento_projetos", projetoId, siteId, startDate],
     queryFn: async () => {
-      let q = (supabase.from("orcamento_projetos") as any).select("*").eq("projeto_id", projetoId);
+      let q = (supabase as any).from("orcamento_projetos").select("*").eq("projeto_id", projetoId);
       if (siteId) q = q.eq("site_id", siteId);
       if (startDate) q = q.gte("mes_referencia", startDate).lte("mes_referencia", endDate);
       
@@ -60,8 +60,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
 
   const saveOrcamento = useMutation({
     mutationFn: async (orcamento: Partial<OrcamentoProjeto>) => {
-      const { data, error } = await (supabase
-        .from("orcamento_projetos") as any)
+      const { data, error } = await (supabase as any)
+        .from("orcamento_projetos")
         .upsert(orcamento, { onConflict: "projeto_id, site_id, mes_referencia" })
         .select()
         .single();
@@ -79,7 +79,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp", projetoId, siteId, startDate],
     queryFn: async () => {
-      let q = (supabase.from("custo_real_erp") as any).select("*").eq("projeto_id", projetoId);
+      let q = (supabase as any).from("custo_real_erp").select("*").eq("projeto_id", projetoId);
       if (siteId) q = q.eq("site_id", siteId);
       if (startDate) {
         q = q.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
@@ -126,7 +126,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string, newCategoria: string }) => {
-      const { error } = await (supabase.from("custo_real_erp") as any)
+      const { error } = await (supabase as any).from("custo_real_erp")
          .update({ categoria_interna: newCategoria })
          .eq("erp_id", erpId);
       if (error) throw error;
