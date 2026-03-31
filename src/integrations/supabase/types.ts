@@ -1,0 +1,1855 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.4"
+  }
+  public: {
+    Tables: {
+      analises_ia: {
+        Row: {
+          created_at: string
+          id: string
+          resultado: Json
+          site_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resultado: Json
+          site_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resultado?: Json
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analises_ia_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atividade_recursos: {
+        Row: {
+          atividade_id: string
+          created_at: string
+          id: string
+          recurso_id: string
+        }
+        Insert: {
+          atividade_id: string
+          created_at?: string
+          id?: string
+          recurso_id: string
+        }
+        Update: {
+          atividade_id?: string
+          created_at?: string
+          id?: string
+          recurso_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividade_recursos_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividade_recursos_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atividades_planejamento: {
+        Row: {
+          created_at: string
+          data_fim_prevista: string | null
+          data_inicio: string | null
+          frente_id: string
+          id: string
+          item_lpu_id: string | null
+          nome: string
+          ordem: number
+          producao_diaria_prevista: number
+          quantidade_total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          frente_id: string
+          id?: string
+          item_lpu_id?: string | null
+          nome: string
+          ordem?: number
+          producao_diaria_prevista?: number
+          quantidade_total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          frente_id?: string
+          id?: string
+          item_lpu_id?: string | null
+          nome?: string
+          ordem?: number
+          producao_diaria_prevista?: number
+          quantidade_total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividades_planejamento_frente_id_fkey"
+            columns: ["frente_id"]
+            isOneToOne: false
+            referencedRelation: "frentes_obra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_planejamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          cep: string | null
+          cnpj: string | null
+          created_at: string
+          empresa_id: string
+          endereco_completo: string | null
+          id: string
+          logo_url: string | null
+          razao_social: string
+          updated_at: string
+        }
+        Insert: {
+          cep?: string | null
+          cnpj?: string | null
+          created_at?: string
+          empresa_id: string
+          endereco_completo?: string | null
+          id?: string
+          logo_url?: string | null
+          razao_social: string
+          updated_at?: string
+        }
+        Update: {
+          cep?: string | null
+          cnpj?: string | null
+          created_at?: string
+          empresa_id?: string
+          endereco_completo?: string | null
+          id?: string
+          logo_url?: string | null
+          razao_social?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos: {
+        Row: {
+          arquivo_url: string | null
+          cliente_ids: string[] | null
+          condicoes_pagamento: string | null
+          contrato_pai_id: string | null
+          created_at: string
+          empresa_id: string
+          escopo: string | null
+          garantias: string | null
+          id: string
+          liberacao_garantias: string | null
+          medicoes: string | null
+          multas: string | null
+          observacoes: string | null
+          prazo_fim: string | null
+          prazo_inicio: string | null
+          reajuste: string | null
+          status_processamento: string | null
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          arquivo_url?: string | null
+          cliente_ids?: string[] | null
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          created_at?: string
+          empresa_id: string
+          escopo?: string | null
+          garantias?: string | null
+          id?: string
+          liberacao_garantias?: string | null
+          medicoes?: string | null
+          multas?: string | null
+          observacoes?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          reajuste?: string | null
+          status_processamento?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          arquivo_url?: string | null
+          cliente_ids?: string[] | null
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          created_at?: string
+          empresa_id?: string
+          escopo?: string | null
+          garantias?: string | null
+          id?: string
+          liberacao_garantias?: string | null
+          medicoes?: string | null
+          multas?: string | null
+          observacoes?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          reajuste?: string | null
+          status_processamento?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dependencias_atividade: {
+        Row: {
+          atividade_id: string
+          created_at: string
+          id: string
+          predecessora_id: string
+        }
+        Insert: {
+          atividade_id: string
+          created_at?: string
+          id?: string
+          predecessora_id: string
+        }
+        Update: {
+          atividade_id?: string
+          created_at?: string
+          id?: string
+          predecessora_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dependencias_atividade_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dependencias_atividade_predecessora_id_fkey"
+            columns: ["predecessora_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_planejamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diario_equipamentos: {
+        Row: {
+          created_at: string | null
+          custo_hora: number
+          custo_total: number
+          descricao: string
+          diario_id: string
+          horas: number
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custo_hora?: number
+          custo_total?: number
+          descricao: string
+          diario_id: string
+          horas?: number
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          custo_hora?: number
+          custo_total?: number
+          descricao?: string
+          diario_id?: string
+          horas?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_equipamentos_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diario_equipe: {
+        Row: {
+          created_at: string | null
+          custo_hora: number
+          custo_total: number
+          diario_id: string
+          funcao: string | null
+          horas: number
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string | null
+          custo_hora?: number
+          custo_total?: number
+          diario_id: string
+          funcao?: string | null
+          horas?: number
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string | null
+          custo_hora?: number
+          custo_total?: number
+          diario_id?: string
+          funcao?: string | null
+          horas?: number
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_equipe_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diario_fotos: {
+        Row: {
+          classificacao: string
+          created_at: string | null
+          diario_id: string
+          diario_producao_id: string | null
+          id: string
+          legenda: string | null
+          url: string
+        }
+        Insert: {
+          classificacao?: string
+          created_at?: string | null
+          diario_id: string
+          diario_producao_id?: string | null
+          id?: string
+          legenda?: string | null
+          url: string
+        }
+        Update: {
+          classificacao?: string
+          created_at?: string | null
+          diario_id?: string
+          diario_producao_id?: string | null
+          id?: string
+          legenda?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_fotos_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diario_fotos_diario_producao_id_fkey"
+            columns: ["diario_producao_id"]
+            isOneToOne: false
+            referencedRelation: "diario_producao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diario_producao: {
+        Row: {
+          created_at: string | null
+          diario_id: string
+          id: string
+          item_lpu_id: string
+          preco_unitario_congelado: number
+          quantidade: number
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string | null
+          diario_id: string
+          id?: string
+          item_lpu_id: string
+          preco_unitario_congelado?: number
+          quantidade?: number
+          valor_total?: number
+        }
+        Update: {
+          created_at?: string | null
+          diario_id?: string
+          id?: string
+          item_lpu_id?: string
+          preco_unitario_congelado?: number
+          quantidade?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_producao_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diario_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diario_veiculos: {
+        Row: {
+          created_at: string | null
+          custo_diaria: number
+          descricao: string
+          diario_id: string
+          id: string
+          km_rodados: number | null
+          placa: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          custo_diaria?: number
+          descricao: string
+          diario_id: string
+          id?: string
+          km_rodados?: number | null
+          placa?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          custo_diaria?: number
+          descricao?: string
+          diario_id?: string
+          id?: string
+          km_rodados?: number | null
+          placa?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_veiculos_diario_id_fkey"
+            columns: ["diario_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diarios_obra: {
+        Row: {
+          clima: string | null
+          created_at: string | null
+          data: string
+          id: string
+          municipio: string | null
+          observacoes: string | null
+          site_id: string
+          uf: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          clima?: string | null
+          created_at?: string | null
+          data: string
+          id?: string
+          municipio?: string | null
+          observacoes?: string | null
+          site_id: string
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          clima?: string | null
+          created_at?: string | null
+          data?: string
+          id?: string
+          municipio?: string | null
+          observacoes?: string | null
+          site_id?: string
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          cnpj: string | null
+          created_at: string | null
+          id: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      escopo_itens: {
+        Row: {
+          created_at: string | null
+          custo_unitario: number
+          id: string
+          item_lpu_id: string | null
+          nome: string
+          quantidade: number
+          site_id: string
+          unidade: string
+          updated_at: string | null
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string | null
+          custo_unitario?: number
+          id?: string
+          item_lpu_id?: string | null
+          nome: string
+          quantidade?: number
+          site_id: string
+          unidade: string
+          updated_at?: string | null
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string | null
+          custo_unitario?: number
+          id?: string
+          item_lpu_id?: string | null
+          nome?: string
+          quantidade?: number
+          site_id?: string
+          unidade?: string
+          updated_at?: string | null
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escopo_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escopo_itens_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escopos_historico: {
+        Row: {
+          created_at: string | null
+          id: string
+          site_id: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          site_id: string
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          site_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escopos_historico_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faturamento_itens: {
+        Row: {
+          created_at: string
+          faturamento_id: string
+          id: string
+          item_lpu_id: string
+          quantidade_faturada: number
+          site_id: string
+          valor_faturado: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          faturamento_id: string
+          id?: string
+          item_lpu_id: string
+          quantidade_faturada?: number
+          site_id: string
+          valor_faturado?: number
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string
+          faturamento_id?: string
+          id?: string
+          item_lpu_id?: string
+          quantidade_faturada?: number
+          site_id?: string
+          valor_faturado?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturamento_itens_faturamento_id_fkey"
+            columns: ["faturamento_id"]
+            isOneToOne: false
+            referencedRelation: "faturamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamento_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamento_itens_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faturamentos: {
+        Row: {
+          created_at: string
+          data_emissao: string
+          descontos: number
+          id: string
+          impostos_percentual: number
+          impostos_valor: number
+          numero_fatura: string | null
+          observacao: string | null
+          projeto_id: string
+          status: string
+          updated_at: string
+          valor_bruto: number
+          valor_liquido: number
+        }
+        Insert: {
+          created_at?: string
+          data_emissao?: string
+          descontos?: number
+          id?: string
+          impostos_percentual?: number
+          impostos_valor?: number
+          numero_fatura?: string | null
+          observacao?: string | null
+          projeto_id: string
+          status?: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Update: {
+          created_at?: string
+          data_emissao?: string
+          descontos?: number
+          id?: string
+          impostos_percentual?: number
+          impostos_valor?: number
+          numero_fatura?: string | null
+          observacao?: string | null
+          projeto_id?: string
+          status?: string
+          updated_at?: string
+          valor_bruto?: number
+          valor_liquido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      frentes_obra: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          projeto_id: string
+          site_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          projeto_id: string
+          site_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          projeto_id?: string
+          site_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frentes_obra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frentes_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integracoes_erp_config: {
+        Row: {
+          ativo: boolean
+          auth_token: string | null
+          auth_type: string
+          created_at: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          updated_at: string | null
+          webhook_url: string
+        }
+        Insert: {
+          ativo?: boolean
+          auth_token?: string | null
+          auth_type?: string
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          nome?: string
+          updated_at?: string | null
+          webhook_url: string
+        }
+        Update: {
+          ativo?: boolean
+          auth_token?: string | null
+          auth_type?: string
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          updated_at?: string | null
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integracoes_erp_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integracoes_erp_log: {
+        Row: {
+          config_id: string
+          created_at: string | null
+          empresa_id: string
+          erro: string | null
+          evento: string
+          id: string
+          payload: Json
+          resposta: Json | null
+          status: string
+          tentativas: number
+          updated_at: string | null
+        }
+        Insert: {
+          config_id: string
+          created_at?: string | null
+          empresa_id: string
+          erro?: string | null
+          evento: string
+          id?: string
+          payload?: Json
+          resposta?: Json | null
+          status?: string
+          tentativas?: number
+          updated_at?: string | null
+        }
+        Update: {
+          config_id?: string
+          created_at?: string | null
+          empresa_id?: string
+          erro?: string | null
+          evento?: string
+          id?: string
+          payload?: Json
+          resposta?: Json | null
+          status?: string
+          tentativas?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integracoes_erp_log_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "integracoes_erp_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integracoes_erp_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      itens_lpu: {
+        Row: {
+          ativo: boolean | null
+          bdi: number
+          categoria: string | null
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+          preco_unitario: number
+          projeto_id: string | null
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          bdi?: number
+          categoria?: string | null
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+          preco_unitario?: number
+          projeto_id?: string | null
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          bdi?: number
+          categoria?: string | null
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          preco_unitario?: number
+          projeto_id?: string | null
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_lpu_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lancamentos_faturamento: {
+        Row: {
+          created_at: string
+          data_faturamento: string
+          id: string
+          item_lpu_id: string
+          numero_nf: string | null
+          numero_po: string | null
+          observacao: string | null
+          quantidade: number
+          site_id: string
+          updated_at: string
+          valor_faturado: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_faturamento: string
+          id?: string
+          item_lpu_id: string
+          numero_nf?: string | null
+          numero_po?: string | null
+          observacao?: string | null
+          quantidade: number
+          site_id: string
+          updated_at?: string
+          valor_faturado?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_faturamento?: string
+          id?: string
+          item_lpu_id?: string
+          numero_nf?: string | null
+          numero_po?: string | null
+          observacao?: string | null
+          quantidade?: number
+          site_id?: string
+          updated_at?: string
+          valor_faturado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_faturamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_faturamento_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lancamentos_medicao: {
+        Row: {
+          created_at: string
+          data_medicao: string
+          data_resposta: string | null
+          id: string
+          item_lpu_id: string
+          logo_empresa_url: string | null
+          numero_medicao: string | null
+          numero_po: string | null
+          observacao: string | null
+          observacao_acompanhamento: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          quantidade: number
+          quantidade_aprovada: number | null
+          quantidade_pendente: number | null
+          quantidade_rejeitada: number | null
+          site_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_medicao: string
+          data_resposta?: string | null
+          id?: string
+          item_lpu_id: string
+          logo_empresa_url?: string | null
+          numero_medicao?: string | null
+          numero_po?: string | null
+          observacao?: string | null
+          observacao_acompanhamento?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          quantidade: number
+          quantidade_aprovada?: number | null
+          quantidade_pendente?: number | null
+          quantidade_rejeitada?: number | null
+          site_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_medicao?: string
+          data_resposta?: string | null
+          id?: string
+          item_lpu_id?: string
+          logo_empresa_url?: string | null
+          numero_medicao?: string | null
+          numero_po?: string | null
+          observacao?: string | null
+          observacao_acompanhamento?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          quantidade?: number
+          quantidade_aprovada?: number | null
+          quantidade_pendente?: number | null
+          quantidade_rejeitada?: number | null
+          site_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_medicao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_medicao_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lancamentos_producao: {
+        Row: {
+          created_at: string
+          data_producao: string
+          empresa_executora: string | null
+          id: string
+          item_lpu_id: string
+          municipio: string | null
+          observacao: string | null
+          quantidade: number
+          site_id: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_producao: string
+          empresa_executora?: string | null
+          id?: string
+          item_lpu_id: string
+          municipio?: string | null
+          observacao?: string | null
+          quantidade: number
+          site_id: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_producao?: string
+          empresa_executora?: string | null
+          id?: string
+          item_lpu_id?: string
+          municipio?: string | null
+          observacao?: string | null
+          quantidade?: number
+          site_id?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_producao_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicao_status_historico: {
+        Row: {
+          data_mudanca: string | null
+          id: string
+          numero_medicao: string | null
+          observacao: string | null
+          site_id: string
+          status_anterior: string | null
+          status_novo: string
+        }
+        Insert: {
+          data_mudanca?: string | null
+          id?: string
+          numero_medicao?: string | null
+          observacao?: string | null
+          site_id: string
+          status_anterior?: string | null
+          status_novo: string
+        }
+        Update: {
+          data_mudanca?: string | null
+          id?: string
+          numero_medicao?: string | null
+          observacao?: string | null
+          site_id?: string
+          status_anterior?: string | null
+          status_novo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicao_status_historico_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      municipios_ibge: {
+        Row: {
+          codigo_ibge: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string
+          uf: string
+        }
+        Insert: {
+          codigo_ibge: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome: string
+          uf: string
+        }
+        Update: {
+          codigo_ibge?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string
+          uf?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          aprovado: boolean
+          avatar_url: string | null
+          cargo: string | null
+          cpf: string | null
+          created_at: string | null
+          data_nascimento: string | null
+          empresa_id: string | null
+          id: string
+          nome: string | null
+          sexo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aprovado?: boolean
+          avatar_url?: string | null
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          empresa_id?: string | null
+          id: string
+          nome?: string | null
+          sexo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aprovado?: boolean
+          avatar_url?: string | null
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string | null
+          sexo?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projetos: {
+        Row: {
+          cliente: string | null
+          cliente_id: string | null
+          codigo: string
+          contrato_id: string | null
+          coordenador: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          status: string | null
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          cliente?: string | null
+          cliente_id?: string | null
+          codigo: string
+          contrato_id?: string | null
+          coordenador?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          status?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          cliente?: string | null
+          cliente_id?: string | null
+          codigo?: string
+          contrato_id?: string | null
+          coordenador?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          status?: string | null
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurso_alocacoes: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          projeto_id: string
+          recurso_id: string
+          site_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          projeto_id: string
+          recurso_id: string
+          site_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          projeto_id?: string
+          recurso_id?: string
+          site_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurso_alocacoes_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurso_alocacoes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurso_custos: {
+        Row: {
+          created_at: string
+          custo_unitario: number
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          motivo: string | null
+          recurso_id: string
+        }
+        Insert: {
+          created_at?: string
+          custo_unitario?: number
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          motivo?: string | null
+          recurso_id: string
+        }
+        Update: {
+          created_at?: string
+          custo_unitario?: number
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          motivo?: string | null
+          recurso_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurso_custos_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recursos: {
+        Row: {
+          ativo: boolean
+          cargo: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          placa: string | null
+          status: string
+          tipo: string
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cargo?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          placa?: string | null
+          status?: string
+          tipo: string
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cargo?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          placa?: string | null
+          status?: string
+          tipo?: string
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recursos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sites: {
+        Row: {
+          codigo: string
+          created_at: string
+          id: string
+          municipio: string | null
+          nome: string
+          projeto_id: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          nome: string
+          projeto_id: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          id?: string
+          municipio?: string | null
+          nome?: string
+          projeto_id?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timeline_eventos: {
+        Row: {
+          created_at: string
+          data: string
+          equipe_id: string | null
+          geo_confianca: string | null
+          geo_descricao: string | null
+          geo_metodo: string | null
+          geo_validado: boolean
+          id: string
+          imagem_url: string | null
+          item: string | null
+          latitude: number | null
+          longitude: number | null
+          observacao: string | null
+          projeto_id: string
+          quantidade: number | null
+          status: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          equipe_id?: string | null
+          geo_confianca?: string | null
+          geo_descricao?: string | null
+          geo_metodo?: string | null
+          geo_validado?: boolean
+          id?: string
+          imagem_url?: string | null
+          item?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          projeto_id: string
+          quantidade?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          equipe_id?: string | null
+          geo_confianca?: string | null
+          geo_descricao?: string | null
+          geo_metodo?: string | null
+          geo_validado?: boolean
+          id?: string
+          imagem_url?: string | null
+          item?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          observacao?: string | null
+          projeto_id?: string
+          quantidade?: number | null
+          status?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_eventos_equipe_id_fkey"
+            columns: ["equipe_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permissions: {
+        Row: {
+          created_at: string | null
+          id: string
+          pode_editar: boolean
+          pode_visualizar: boolean
+          tela: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pode_editar?: boolean
+          pode_visualizar?: boolean
+          tela: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pode_editar?: boolean
+          pode_visualizar?: boolean
+          tela?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_sites: {
+        Row: {
+          created_at: string | null
+          id: string
+          site_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          site_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          site_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sites_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
+      get_user_role: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_user_approved: { Args: { _user_id: string }; Returns: boolean }
+      join_empresa_by_cnpj: { Args: { _cnpj: string }; Returns: string }
+      setup_empresa: {
+        Args: { _cnpj?: string; _nome: string }
+        Returns: string
+      }
+      user_can_access_diario: {
+        Args: { _diario_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_projeto: {
+        Args: { _projeto_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_site: {
+        Args: { _site_id: string; _user_id: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      app_role: "admin" | "interno" | "cliente"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "interno", "cliente"],
+    },
+  },
+} as const
