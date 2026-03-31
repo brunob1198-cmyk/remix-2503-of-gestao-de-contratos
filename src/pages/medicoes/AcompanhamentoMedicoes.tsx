@@ -219,6 +219,7 @@ export default function AcompanhamentoMedicoesPage() {
           site_codigo: l.site?.codigo || "",
           site_nome: l.site?.nome || "",
           projeto_codigo: l.site?.projeto?.codigo || "",
+          logo_empresa_url: (l as any).logo_empresa_url,
           projeto_nome: l.site?.projeto?.nome || "",
           uf: l.site?.uf || "",
           data_medicao: l.data_medicao,
