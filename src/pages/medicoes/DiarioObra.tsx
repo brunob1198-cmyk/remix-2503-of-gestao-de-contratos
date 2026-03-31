@@ -22,7 +22,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit,
+  CalendarDays, ClipboardEdit, AlertTriangle,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,6 +61,9 @@ export default function DiarioObraPage() {
   } = useDiarioObra(selectedSiteId, selectedDate);
 
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
+
+  // Build previsoes map (daily production targets from planejamento)
+  const previsoes: Record<string, number> = {};
 
   // Sync uf/municipio from diario when loaded
   useEffect(() => {
@@ -775,7 +778,7 @@ export default function DiarioObraPage() {
                                   {Number(p.quantidade)}
                                 </span>
                                 {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
-                                  <AlertTriangle className="h-3 w-3 text-red-500" title="Abaixo da Meta" />
+                                  <AlertTriangle className="h-3 w-3 text-red-500" />
                                 )}
                               </div>
                             </TableCell>

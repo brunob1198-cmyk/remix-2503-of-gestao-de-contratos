@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowU
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 
-type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status";
+type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id";
 type SortDir = "asc" | "desc" | null;
 
 function useColumnFilter(projetos: any[], field: SortField) {
@@ -89,7 +89,7 @@ export default function ProjetosPage() {
           .filter(p => p.contrato_id === contratoId && p.id !== editingId)
           .reduce((sum, p) => sum + (p.valor_total || 0), 0);
           
-        if (existingSum + parsedValorTotal > limitContrato) {
+        if (limitContrato > 0 && existingSum + parsedValorTotal > limitContrato) {
           toast({
             title: "Limite Excedido",
             description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
@@ -108,7 +108,7 @@ export default function ProjetosPage() {
       coordenador, 
       cliente: clienteObj ? clienteObj.razao_social : "", 
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
-      contrato_id: contratoId === "none" || !contratoId ? undefined : contratoId,
+      contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
       valor_total: parsedValorTotal
     };
 
@@ -171,6 +171,10 @@ export default function ProjetosPage() {
     for (const [field, value] of Object.entries(dropdownFilters)) {
       if (value) {
         result = result.filter((p: any) => {
+          if (field === "contrato_id") {
+            const cellVal = p.contratoObj?.escopo || "-";
+            return cellVal === value;
+          }
           const cellVal = (p[field] || "-").toString();
           return cellVal === value;
         });
@@ -203,6 +207,7 @@ export default function ProjetosPage() {
     { field: "nome", label: "Nome" },
     { field: "cliente", label: "Cliente" },
     { field: "coordenador", label: "Coordenador" },
+    { field: "contrato_id", label: "Contrato" },
     { field: "status", label: "Status" },
   ];
 
@@ -258,7 +263,7 @@ export default function ProjetosPage() {
                     <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0, 30) || c.id}</SelectItem>)}
+                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -317,7 +322,11 @@ export default function ProjetosPage() {
                       onFilterText={(v) => setFilter(col.field, v)}
                       dropdownValue={dropdownFilters[col.field] || ""}
                       onDropdownChange={(v) => setDropdownFilter(col.field, v)}
-                      options={[...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()}
+                      options={
+                        col.field === "contrato_id" 
+                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.escopo || "-"))].sort()
+                          : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
+                      }
                     />
                   ))}
                   <TableHead></TableHead>
@@ -337,8 +346,15 @@ export default function ProjetosPage() {
                       <TableCell>{p.nome}</TableCell>
                       <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                       <TableCell>{p.coordenador || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {p.contratoObj ? (
+                          <span className="text-xs text-muted-foreground" title={p.contratoObj.escopo}>
+                            {p.contratoObj.escopo?.slice(0, 30)}...
+                          </span>
+                        ) : "-"}
+                      </TableCell>
                       <TableCell>
-                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                        <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
                           {p.status}
                         </span>
                       </TableCell>

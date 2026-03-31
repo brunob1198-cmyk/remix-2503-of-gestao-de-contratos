@@ -23,6 +23,7 @@ export interface Projeto {
   contrato_id?: string;
   valor_total?: number;
   clienteObj?: Cliente;
+  contratoObj?: Contrato;
   created_at: string;
   updated_at: string;
 }
