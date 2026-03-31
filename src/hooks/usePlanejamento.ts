@@ -209,18 +209,33 @@ export function useAtividades(projetoId?: string) {
         const siteIds = (sites ?? []).map((s) => s.id);
 
         if (siteIds.length) {
-          const { data: prods } = await supabase
-            .from("lancamentos_producao")
-            .select("item_lpu_id, quantidade, data_producao")
-            .in("site_id", siteIds)
-            .in("item_lpu_id", itemLpuIds);
-            
-          (prods ?? []).forEach((p) => {
-            prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + Number(p.quantidade);
-            // Matriz diária:
-            if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
-            matrizGeral[p.item_lpu_id][p.data_producao] = (matrizGeral[p.item_lpu_id][p.data_producao] || 0) + Number(p.quantidade);
-          });
+          // Busca os diários desse site
+          const { data: diariosDoSite } = await supabase
+            .from("diarios_obra")
+            .select("id, data")
+            .in("site_id", siteIds);
+
+          if (diariosDoSite && diariosDoSite.length > 0) {
+            const diarioIds = diariosDoSite.map(d => d.id);
+            const dataDiarioMap = Object.fromEntries(diariosDoSite.map(d => [d.id, d.data]));
+
+            const { data: prods } = await supabase
+              .from("diario_producao")
+              .select("item_lpu_id, quantidade, diario_id")
+              .in("diario_id", diarioIds)
+              .in("item_lpu_id", itemLpuIds);
+              
+            (prods ?? []).forEach((p) => {
+              const qtd = Number(p.quantidade) || 0;
+              const dataRealizada = dataDiarioMap[p.diario_id];
+              prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + qtd;
+              // Matriz diária:
+              if (dataRealizada) {
+                if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
+                matrizGeral[p.item_lpu_id][dataRealizada] = (matrizGeral[p.item_lpu_id][dataRealizada] || 0) + qtd;
+              }
+            });
+          }
         }
       }
 
@@ -283,23 +298,35 @@ export function useAtividades(projetoId?: string) {
 
   const create = useMutation({
     mutationFn: async (at: any) => {
-      const { predecessoras, ...rest } = at;
-      const { data, error } = await supabase.from("atividades_planejamento").insert(rest).select().single();
-      if (error) throw error;
+      if (Array.isArray(at)) {
+        // Múltiplos itens (Vindos do Vincular Escopo)
+        const itemsToInsert = at.map(a => {
+           const { predecessoras, ...rest } = a;
+           return rest;
+        });
+        const { data, error } = await supabase.from("atividades_planejamento").insert(itemsToInsert).select();
+        if (error) throw error;
+        return data;
+      } else {
+        // Item Único (Legado/Geral)
+        const { predecessoras, ...rest } = at;
+        const { data, error } = await supabase.from("atividades_planejamento").insert(rest).select().single();
+        if (error) throw error;
 
-      if (predecessoras?.length) {
-        const deps = predecessoras.map((pId: string) => ({
-          atividade_id: data.id,
-          predecessora_id: pId,
-        }));
-        const { error: dErr } = await supabase.from("dependencias_atividade").insert(deps);
-        if (dErr) throw dErr;
+        if (predecessoras?.length) {
+          const deps = predecessoras.map((pId: string) => ({
+            atividade_id: data.id,
+            predecessora_id: pId,
+          }));
+          const { error: dErr } = await supabase.from("dependencias_atividade").insert(deps);
+          if (dErr) throw dErr;
+        }
+        return data;
       }
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["atividades_planejamento", projetoId] });
-      toast.success("Atividade criada");
+      toast.success("Itens/Atividades criados com sucesso!");
     },
     onError: (e: any) => toast.error(e.message),
   });
