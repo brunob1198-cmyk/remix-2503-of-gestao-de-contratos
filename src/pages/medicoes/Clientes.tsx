@@ -116,9 +116,12 @@ export default function ClientesPage() {
 
     setIsUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const fileExt = file.name.split(".").pop() || "png";
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `clientes-logos/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
       
       const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file);
       
