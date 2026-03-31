@@ -46,9 +46,10 @@ export const pdfGlobalStyles = `
   </style>
 `;
 
-export const getLogoHtml = () => `
-  <img src="/logo.png" alt="Logo da Empresa" class="header-logo" onerror="this.outerHTML='<div class=\\'header-logo-fallback\\'>LOGO DA EMPRESA</div>'" />
-`;
+export const getLogoHtml = (url?: string | null) => {
+  const logoUrl = url || localStorage.getItem("custom_logo_url") || "/logo.png";
+  return `<img src="${logoUrl}" alt="Logo da Empresa" class="header-logo" onerror="this.outerHTML='<div class=\\'header-logo-fallback\\'>LOGO DA EMPRESA</div>'" />`;
+};
 
 export const getClientLogoHtml = (url?: string | null) => {
   if (!url) return '';
