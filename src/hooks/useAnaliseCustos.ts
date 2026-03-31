@@ -60,8 +60,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
 
   const saveOrcamento = useMutation({
     mutationFn: async (orcamento: Partial<OrcamentoProjeto>) => {
-      const { data, error } = await (supabase
-        .from("orcamento_projetos") as any)
+      const { data, error } = await (supabase as any)
+        .from("orcamento_projetos")
         .upsert(orcamento, { onConflict: "projeto_id, site_id, mes_referencia" })
         .select()
         .single();
