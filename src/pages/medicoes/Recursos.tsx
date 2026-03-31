@@ -22,6 +22,7 @@ import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 
 type SortDir = "asc" | "desc" | null;
+const MONTH_WIDTH = 120;
 
 const tipoConfig = {
   pessoa: { label: "👷 Pessoas", icon: HardHat },
