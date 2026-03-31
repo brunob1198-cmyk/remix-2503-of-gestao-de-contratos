@@ -116,9 +116,12 @@ export default function ClientesPage() {
 
     setIsUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const fileExt = file.name.split(".").pop() || "png";
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `clientes-logos/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
       
       const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file);
       
@@ -170,6 +173,24 @@ export default function ClientesPage() {
         setIsLoadingCep(false);
       }
     }
+  };
+  
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 14) value = value.slice(0, 14);
+    
+    // Mask: XX.XXX.XXX/XXXX-XX
+    let masked = value;
+    if (value.length > 12) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8, 12)}-${value.slice(12)}`;
+    } else if (value.length > 8) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8)}`;
+    } else if (value.length > 5) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5)}`;
+    } else if (value.length > 2) {
+      masked = `${value.slice(0, 2)}.${value.slice(2)}`;
+    }
+    setCnpj(masked);
   };
 
   return (
@@ -279,21 +300,40 @@ export default function ClientesPage() {
                 <Label>Logo do Cliente (opcional)</Label>
                 <div className="flex items-center gap-4">
                   {logoUrl ? (
-                    <div className="relative h-16 w-32 bg-white border rounded-md overflow-hidden flex items-center justify-center group">
-                      <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <Button variant="ghost" size="sm" className="text-white h-auto py-1" onClick={() => setLogoUrl("")}>Remover</Button>
+                    <div className="relative h-20 w-32 bg-white border-2 border-primary/20 rounded-lg overflow-hidden flex items-center justify-center group shadow-sm">
+                      <img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain p-2" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 backdrop-blur-[1px]">
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="h-8 px-3" 
+                          onClick={() => setLogoUrl("")}
+                        >
+                          Remover
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <Button type="button" variant="outline" onClick={handleUploadClick} disabled={isUploading} className="h-16 w-32 border-dashed">
-                      {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      <span className="ml-2 text-xs">Upload</span>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleUploadClick} 
+                      disabled={isUploading} 
+                      className="h-20 w-32 border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-1 rounded-lg"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      ) : (
+                        <>
+                          <Upload className="h-5 w-5 text-primary/60" />
+                          <span className="text-[11px] font-medium text-primary/70">Upload Logo</span>
+                        </>
+                      )}
                     </Button>
                   )}
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg,image/png,image/svg+xml" onChange={handleFileChange} />
                 </div>
-                <p className="text-[10px] text-muted-foreground">Esta logo será exibida nos relatórios (PNG, JPG, SVG. Max 5MB).</p>
+                <p className="text-[10px] text-muted-foreground italic">Arquivos PNG, JPG ou SVG de até 5MB.</p>
               </div>
 
               <div className="space-y-2">
@@ -303,7 +343,7 @@ export default function ClientesPage() {
               
               <div className="space-y-2">
                 <Label>CNPJ</Label>
-                <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+                <Input value={cnpj} onChange={handleCnpjChange} placeholder="00.000.000/0000-00" maxLength={18} />
               </div>
 
               <div className="space-y-2">
