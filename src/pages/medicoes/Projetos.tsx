@@ -203,6 +203,7 @@ export default function ProjetosPage() {
     { field: "nome", label: "Nome" },
     { field: "cliente", label: "Cliente" },
     { field: "coordenador", label: "Coordenador" },
+    { field: "contrato_id", label: "Contrato" },
     { field: "status", label: "Status" },
   ];
 
