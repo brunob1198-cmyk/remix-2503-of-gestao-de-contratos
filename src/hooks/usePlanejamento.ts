@@ -35,6 +35,7 @@ export interface AtividadePlanejamento {
   is_principal?: boolean;
   matriz_producao?: Record<string, number>;
   media_diaria_realizada?: number;
+  unidade?: string;
 }
 
 export interface DependenciaAtividade {
@@ -175,7 +176,7 @@ export function useAtividades(projetoId?: string) {
 
       const { data: atividades, error: aErr } = await supabase
         .from("atividades_planejamento")
-        .select("*")
+        .select("*, lpu:itens_lpu(unidade)")
         .in("frente_id", frenteIds)
         .order("ordem");
       if (aErr) throw aErr;
@@ -273,6 +274,7 @@ export function useAtividades(projetoId?: string) {
           is_principal: !!a.is_principal,
           matriz_producao: matriz,
           media_diaria_realizada: mediaDiaria,
+          unidade: a.lpu?.unidade || "-",
         } as AtividadePlanejamento;
       });
     },

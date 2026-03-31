@@ -29,8 +29,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const ROW_H = 36;
-const LABEL_W = 400; // Increased width for more columns
-const DAY_W = 36; // Wider for numbers
+const LABEL_W = 450; // Increased width for more columns
+const DAY_W = 38; // Wider for numbers
 
 export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: GanttChartProps) {
   const today = startOfDay(new Date());
@@ -130,9 +130,10 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
             <div className="h-[60px] border-b bg-muted/90 flex flex-col justify-end px-3 pb-1 text-[11px] font-bold text-muted-foreground sticky top-0 z-40 backdrop-blur-sm">
               <div className="flex w-full">
                 <div className="flex-1">ITEM / FRENTE</div>
-                <div className="w-20 text-right">TOTAL</div>
-                <div className="w-20 text-right">M.DIÁRIA</div>
-                <div className="w-16 text-right">EXEC</div>
+                <div className="w-10 text-center">UND</div>
+                <div className="w-[70px] text-right">QTD PREV</div>
+                <div className="w-[70px] text-right">QTD REAL</div>
+                <div className="w-[70px] text-right">A EXEC</div>
               </div>
             </div>
 
@@ -154,10 +155,11 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                        {isCollapsed ? <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground" />}
                        <span className="font-bold text-xs truncate uppercase tracking-tight">{frente.nome}</span>
                     </div>
-                    <div className="w-20 text-right text-[11px] font-semibold text-muted-foreground">...</div>
-                    <div className="w-20 text-right text-[11px] font-semibold text-muted-foreground">...</div>
-                    <div className="w-16 text-right text-[11px] font-bold">
-                       {pctFrente.toFixed(0)}%
+                    <div className="w-10 text-center text-[11px] font-semibold text-muted-foreground">-</div>
+                    <div className="w-[70px] text-right text-[11px] font-semibold text-muted-foreground">{totalFrente.toLocaleString('pt-BR')}</div>
+                    <div className="w-[70px] text-right text-[11px] font-semibold text-muted-foreground">{totalExecFrente.toLocaleString('pt-BR')}</div>
+                    <div className="w-[70px] text-right text-[11px] font-bold">
+                       {(totalFrente - totalExecFrente).toLocaleString('pt-BR')}
                     </div>
                   </div>
 
@@ -178,14 +180,17 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                           {a.is_principal ? <span className="font-bold text-purple-700 mr-1">{a.nome}</span> : a.nome}
                         </span>
                       </div>
-                      <div className="w-20 text-right text-[11px] text-muted-foreground tracking-tight">
+                      <div className="w-10 text-center text-[11px] text-muted-foreground tracking-tight">
+                         {a.unidade}
+                      </div>
+                      <div className="w-[70px] text-right text-[11px] text-muted-foreground tracking-tight">
                          {a.quantidade_total.toLocaleString('pt-BR')}
                       </div>
-                      <div className="w-20 text-right text-[11px] font-medium text-blue-600 tracking-tight">
-                         {a.media_diaria_realizada ? a.media_diaria_realizada.toFixed(1) : "-"}
+                      <div className="w-[70px] text-right text-[11px] font-medium text-emerald-600 tracking-tight">
+                         {a.qtd_produzida?.toLocaleString('pt-BR') || "-"}
                       </div>
-                      <div className="w-16 text-right text-[11px] font-bold">
-                         {a.percentual_executado?.toFixed(0)}%
+                      <div className="w-[70px] text-right text-[11px] font-bold">
+                         {(a.quantidade_total - (a.qtd_produzida || 0)).toLocaleString('pt-BR')}
                       </div>
                     </div>
                   ))}
@@ -265,21 +270,42 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                              />
                            )}
                            
-                           {/* Executed Data Cells overlay */}
                            {columns.map((col, j) => {
                              const dataStr = format(col.date, "yyyy-MM-dd");
-                             const qty = a.matriz_producao?.[dataStr];
+                             const qtyReal = a.matriz_producao?.[dataStr] || 0;
                              
-                             if (!qty) return null; // Only render cell if has qty
+                             const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
+                               (col.date >= startOfDay(new Date(a.data_inicio!))) && 
+                               (col.date <= startOfDay(new Date(a.data_fim_prevista)));
+                             
+                             const qtyPrev = isDentroPlanejamento ? (a.producao_diaria_prevista || 0) : 0;
+                             
+                             if (!qtyPrev && !qtyReal) return null;
+                             
+                             const atingiuMeta = qtyReal >= qtyPrev;
                              
                              return (
                                <div 
                                  key={j}
-                                 className="absolute h-full border-x bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 flex items-center justify-center text-[10px] font-bold shadow-[inset_0_0_0_1px_rgba(16,185,129,0.2)]"
+                                 className="absolute h-full border-x flex flex-col justify-between overflow-hidden shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)] z-10"
                                  style={{ left: j * DAY_W, width: DAY_W }}
-                                 title={`${qty} produzido em ${format(col.date, "dd/MM/yyyy")}`}
+                                 title={`Previsto: ${qtyPrev} | Realizado: ${qtyReal} em ${format(col.date, "dd/MM/yyyy")}`}
                                >
-                                 {qty > 999 ? '999+' : qty}
+                                 <div className={cn(
+                                   "h-1/2 flex items-center justify-center text-[9px] font-medium border-b border-black/5",
+                                   qtyPrev > 0 ? "bg-muted/80 text-muted-foreground" : "bg-transparent text-transparent"
+                                 )}>
+                                   {qtyPrev > 0 ? (qtyPrev > 999 ? '999+' : qtyPrev.toFixed(0)) : ''}
+                                 </div>
+                                 <div className={cn(
+                                   "h-1/2 flex items-center justify-center text-[10px] font-bold",
+                                   qtyReal > 0 ? (
+                                      atingiuMeta ? "bg-emerald-500/20 text-emerald-700" : 
+                                      (qtyPrev > 0 ? "bg-amber-500/20 text-amber-700" : "bg-emerald-500/10 text-emerald-600")
+                                   ) : "bg-transparent text-transparent"
+                                 )}>
+                                   {qtyReal > 0 ? (qtyReal > 999 ? '999+' : qtyReal) : ''}
+                                 </div>
                                </div>
                              );
                            })}
