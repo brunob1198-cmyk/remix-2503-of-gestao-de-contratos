@@ -618,6 +618,10 @@ export default function RelatoriosPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="producao_mensal" className="space-y-4">
+          <ProducaoMensal />
+        </TabsContent>
       </Tabs>
     </div>
   );
