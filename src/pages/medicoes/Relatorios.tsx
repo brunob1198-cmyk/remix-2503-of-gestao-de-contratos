@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid } from "lucide-react";
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
+import ProducaoMensal from "@/components/relatorios/ProducaoMensal";
 import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoesExport";
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
