@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid } from "lucide-react";
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
+import ProducaoMensal from "@/components/relatorios/ProducaoMensal";
 import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoesExport";
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -300,6 +301,7 @@ export default function RelatoriosPage() {
           </TabsTrigger>
           <TabsTrigger value="geral">Relatórios Gerais</TabsTrigger>
           <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
+          <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
         </TabsList>
 
         <TabsContent value="quadro_geral" className="space-y-4">
@@ -615,6 +617,10 @@ export default function RelatoriosPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="producao_mensal" className="space-y-4">
+          <ProducaoMensal />
         </TabsContent>
       </Tabs>
     </div>
