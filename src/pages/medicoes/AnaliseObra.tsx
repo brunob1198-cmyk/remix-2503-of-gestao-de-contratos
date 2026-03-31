@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, Calculator, ClipboardList, Brain } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { CalculoCustos } from "@/components/analise/CalculoCustos";
-
+import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
+import { CustosErp } from "@/components/analise/CustosErp";
 import { AnaliseIA } from "@/components/analise/AnaliseIA";
 import { usePersistedState } from "@/hooks/usePersistedState";
 
@@ -75,9 +76,13 @@ export default function AnaliseObraPage() {
               <BarChart3 className="h-4 w-4" />
               Visão Executiva
             </TabsTrigger>
-            <TabsTrigger value="custos" className="gap-2">
+            <TabsTrigger value="custos-erp" className="gap-2">
               <Calculator className="h-4 w-4" />
-              Cálculo de Custos
+              Análise de Custos
+            </TabsTrigger>
+            <TabsTrigger value="auditoria-erp" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Auditoria ERP
             </TabsTrigger>
             <TabsTrigger value="ia" className="gap-2">
               <Brain className="h-4 w-4" />
@@ -89,9 +94,12 @@ export default function AnaliseObraPage() {
             <VisaoExecutiva siteId={siteId} siteName={selectedSite?.nome || ""} />
           </TabsContent>
 
+          <TabsContent value="custos-erp">
+            <AnaliseCustos projetoId={projetoId} siteId={siteId} />
+          </TabsContent>
 
-          <TabsContent value="custos">
-            <CalculoCustos siteId={siteId} />
+          <TabsContent value="auditoria-erp">
+            <CustosErp projetoId={projetoId} siteId={siteId} />
           </TabsContent>
 
           <TabsContent value="ia">
