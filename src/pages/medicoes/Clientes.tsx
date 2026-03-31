@@ -343,7 +343,7 @@ export default function ClientesPage() {
               
               <div className="space-y-2">
                 <Label>CNPJ</Label>
-                <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+                <Input value={cnpj} onChange={handleCnpjChange} placeholder="00.000.000/0000-00" maxLength={18} />
               </div>
 
               <div className="space-y-2">
