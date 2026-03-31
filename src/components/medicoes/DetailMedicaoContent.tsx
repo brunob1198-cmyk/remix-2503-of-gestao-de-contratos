@@ -27,6 +27,7 @@ interface DetailMedicaoContentProps {
     periodo_inicio?: string;
     periodo_fim?: string;
     lancamentoIds: string[];
+    logo_empresa_url?: string;
   };
   detailLancamentos: any[];
   sites: any[];
