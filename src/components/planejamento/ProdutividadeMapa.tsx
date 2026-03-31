@@ -74,21 +74,30 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const siteIds = sites.map((s) => s.id);
 
-      // Get production per site using Diario de Obra directly!
+      // Get diaries for these sites
+      const { data: diariosGeral } = await supabase
+        .from("diarios_obra")
+        .select("id, site_id, municipio, uf")
+        .in("site_id", siteIds);
+
+      if (!diariosGeral?.length) return [];
+      
+      const diarioIds = diariosGeral.map(d => d.id);
+      const diarioMap = Object.fromEntries(diariosGeral.map(d => [d.id, d]));
+
+      // Get production per site using Diario de Obra
       const { data: prods } = await supabase
         .from("diario_producao")
-        .select(`
-          quantidade, 
-          diario:diarios_obra!inner(site_id, municipio, uf)
-        `)
-        .in("diario.site_id", siteIds);
+        .select("diario_id, quantidade")
+        .in("diario_id", diarioIds);
 
       if (!prods?.length) return [];
 
       // Get municipality coordinates
       const municipios = new Set<string>();
       prods.forEach((p: any) => {
-        const mun = p.diario.municipio || sites.find((s) => s.id === p.diario.site_id)?.municipio;
+        const dInfo = diarioMap[p.diario_id];
+        const mun = dInfo?.municipio || sites.find((s) => s.id === dInfo?.site_id)?.municipio;
         if (mun) municipios.add(mun);
       });
 
@@ -121,8 +130,11 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         .in("diario.site_id", siteIds);
 
       prods.forEach((p: any) => {
-        const mun = p.diario.municipio || sites.find((s) => s.id === p.diario.site_id)?.municipio || "";
-        const uf = p.diario.uf || sites.find((s) => s.id === p.diario.site_id)?.uf || "";
+        const dInfo = diarioMap[p.diario_id];
+        if (!dInfo) return;
+        
+        const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
+        const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun) return;
 
         const coords = munCoords[mun];
@@ -130,7 +142,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
         if (!aggMap[mun]) {
           const munPhotos = (photosData ?? [])
-            .filter((f: any) => f.diario.municipio === mun)
+            .filter((f: any) => f.diario?.municipio === mun)
             .map((f: any) => f.url);
             
           aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0, photos: munPhotos };
