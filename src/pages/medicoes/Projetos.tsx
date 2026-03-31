@@ -338,6 +338,13 @@ export default function ProjetosPage() {
                       <TableCell>{p.nome}</TableCell>
                       <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                       <TableCell>{p.coordenador || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {p.contratoObj ? (
+                          <span className="text-xs text-muted-foreground" title={p.contratoObj.escopo}>
+                            {p.contratoObj.escopo?.slice(0, 30)}...
+                          </span>
+                        ) : "-"}
+                      </TableCell>
                       <TableCell>
                         <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
                           {p.status}
