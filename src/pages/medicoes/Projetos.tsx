@@ -108,7 +108,7 @@ export default function ProjetosPage() {
       coordenador, 
       cliente: clienteObj ? clienteObj.razao_social : "", 
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
-      contrato_id: contratoId === "none" || !contratoId ? undefined : contratoId,
+      contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
       valor_total: parsedValorTotal
     };
 
