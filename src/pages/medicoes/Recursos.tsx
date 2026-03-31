@@ -17,7 +17,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Pencil, History, HardHat, Wrench, Truck, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, Upload, Trash2, MapPin, Link2, Download } from "lucide-react";
 import { RecursosImporter } from "@/components/medicoes/RecursosImporter";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 
@@ -138,7 +138,7 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
   return months;
 }
 
-const MONTH_WIDTH = 140;
+const DAY_WIDTH = 24;
 
 export default function RecursosPage() {
   const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
@@ -559,21 +559,26 @@ export default function RecursosPage() {
                         ))}
                         <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
                         {/* Gantt month headers */}
-                        {ganttMonths.map((m, i) => (
-                          <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH }}>
-                            <div className="flex flex-col h-full">
-                              <div className="py-2 border-b bg-muted/20 font-semibold text-muted-foreground uppercase">
-                                {format(m, "MMM/yy", { locale: ptBR })}
+                        {ganttMonths.map((m, i) => {
+                          const daysInMonth = getDaysInMonth(m);
+                          const monthWidth = daysInMonth * DAY_WIDTH;
+                          return (
+                            <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: monthWidth, width: monthWidth }}>
+                              <div className="flex flex-col h-full w-full">
+                                <div className="py-2 bg-muted/20 font-semibold text-muted-foreground uppercase flex-none">
+                                  {format(m, "MMMM/yyyy", { locale: ptBR })}
+                                </div>
+                                <div className="flex items-center flex-1 w-full border-t bg-muted/5">
+                                  {Array.from({ length: daysInMonth }).map((_, d) => (
+                                    <div key={d} className="flex-1 text-center border-r last:border-0 border-muted-foreground/20 text-[10px] text-muted-foreground" style={{ minWidth: DAY_WIDTH }}>
+                                      {d + 1}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="flex justify-around items-center flex-1 text-[9px] opacity-60 font-normal px-1 text-muted-foreground">
-                                <span>1</span>
-                                <span>10</span>
-                                <span>20</span>
-                                <span>30</span>
-                              </div>
-                            </div>
-                          </TableHead>
-                        ))}
+                            </TableHead>
+                          );
+                        })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -651,8 +656,19 @@ export default function RecursosPage() {
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
+                              const daysInMonth = getDaysInMonth(m);
+                              const monthWidth = daysInMonth * DAY_WIDTH;
+
                               return (
-                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: MONTH_WIDTH, width: MONTH_WIDTH, height: 36 }}>
+                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 40 }}>
+                                  {/* Grid Lines */}
+                                  <div className="absolute inset-0 flex z-0 pointer-events-none">
+                                    {Array.from({ length: daysInMonth }).map((_, d) => (
+                                      <div key={d} className="flex-1 h-full border-r border-muted/20" style={{ minWidth: DAY_WIDTH }} />
+                                    ))}
+                                  </div>
+                                  
+                                  {/* Bars */}
                                   {recursoAlocacoes.map(a => {
                                     const aStart = parseISO(a.data_inicio);
                                     const aEnd = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 1);
@@ -660,21 +676,21 @@ export default function RecursosPage() {
                                     if (isAfter(aStart, monthEnd) || isBefore(aEnd, monthStart)) return null;
                                     const barStart = isBefore(aStart, monthStart) ? monthStart : aStart;
                                     const barEnd = isAfter(aEnd, monthEnd) ? monthEnd : aEnd;
-                                    const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
                                     const barStartDay = differenceInDays(barStart, monthStart);
                                     const barDuration = differenceInDays(barEnd, barStart) + 1;
+                                    
                                     const left = (barStartDay / daysInMonth) * 100;
                                     const width = (barDuration / daysInMonth) * 100;
                                     return (
                                       <div
                                         key={a.id}
-                                        className="absolute top-1/2 -translate-y-1/2 rounded-sm opacity-80 hover:opacity-100 transition-opacity"
+                                        className="absolute top-1/2 -translate-y-1/2 rounded-sm opacity-90 hover:opacity-100 transition-opacity z-10 shadow-sm"
                                         style={{
                                           left: `${left}%`,
-                                          width: `${Math.max(width, 2)}%`,
+                                          width: `${Math.min(width, 100)}%`,
                                           height: "60%",
-                                          backgroundColor: a.data_fim === null ? ganttColors[tipo] : ganttColors[tipo],
-                                          border: a.data_fim === null ? "1px dashed hsl(var(--foreground) / 0.3)" : "none",
+                                          backgroundColor: ganttColors[tipo],
+                                          border: a.data_fim === null ? "1px dashed hsl(var(--foreground) / 0.5)" : "none",
                                         }}
                                         title={`${sites.find(s => s.id === a.site_id)?.codigo || "?"}: ${new Date(a.data_inicio).toLocaleDateString("pt-BR")} — ${a.data_fim ? new Date(a.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}`}
                                       />
