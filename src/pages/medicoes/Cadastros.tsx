@@ -4,6 +4,7 @@ import SitesPage from "./Sites";
 import LpuPage from "./Lpu";
 import ClientesPage from "./Clientes";
 import ContratosPage from "./Contratos";
+import AreasPage from "./Areas";
 import { usePermissions } from "@/hooks/usePermissions";
 import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText } from "lucide-react";
 
@@ -15,8 +16,9 @@ export default function CadastrosPage() {
   const showLpu = canView("lpu");
   const showClientes = true; // Todo: add strict permission later
   const showContratos = true;
+  const showAreas = true;
 
-  const defaultValue = showContratos ? "contratos" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
+  const defaultValue = showContratos ? "contratos" : showAreas ? "areas" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
 
   if (!defaultValue) {
     return (
@@ -55,6 +57,11 @@ export default function CadastrosPage() {
               <MapPin className="h-4 w-4" /> Sites
             </TabsTrigger>
           )}
+          {showAreas && (
+            <TabsTrigger value="areas" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" /> Áreas Centros Custo
+            </TabsTrigger>
+          )}
           {showLpu && (
             <TabsTrigger value="lpu" className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4" /> LPU
@@ -80,6 +87,11 @@ export default function CadastrosPage() {
         {showSites && (
           <TabsContent value="sites" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
             <SitesPage />
+          </TabsContent>
+        )}
+        {showAreas && (
+          <TabsContent value="areas" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <AreasPage />
           </TabsContent>
         )}
         {showLpu && (

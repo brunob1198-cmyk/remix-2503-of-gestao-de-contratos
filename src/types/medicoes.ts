@@ -10,6 +10,15 @@ export interface Cliente {
   updated_at: string;
 }
 
+export interface Area {
+  id: string;
+  empresa_id: string;
+  nome: string;
+  descricao?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Projeto {
   id: string;
   codigo: string;
@@ -21,9 +30,11 @@ export interface Projeto {
   empresa_id?: string;
   cliente_id?: string;
   contrato_id?: string;
+  area_id?: string;
   valor_total?: number;
   clienteObj?: Cliente;
   contratoObj?: Contrato;
+  areaObj?: Area;
   created_at: string;
   updated_at: string;
 }

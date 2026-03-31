@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContratos } from "@/hooks/useContratos";
+import { useAreas } from "@/hooks/useAreas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowU
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 
-type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id";
+type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id" | "area_id";
 type SortDir = "asc" | "desc" | null;
 
 function useColumnFilter(projetos: any[], field: SortField) {
@@ -36,9 +36,11 @@ export default function ProjetosPage() {
   const [coordenador, setCoordenador] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [contratoId, setContratoId] = useState("none");
+  const [areaId, setAreaId] = useState("");
   const [valorTotal, setValorTotal] = useState("");
   const { clientes } = useClientes();
   const { contratos } = useContratos();
+  const { areas } = useAreas();
 
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -56,6 +58,7 @@ export default function ProjetosPage() {
     setCoordenador("");
     setClienteId("");
     setContratoId("none");
+    setAreaId("");
     setValorTotal("");
     setEditingId(null);
   };
@@ -68,6 +71,7 @@ export default function ProjetosPage() {
     setCoordenador(projeto.coordenador || "");
     setClienteId(projeto.cliente_id || "");
     setContratoId(projeto.contrato_id || "none");
+    setAreaId(projeto.area_id || "");
     setValorTotal(projeto.valor_total?.toString() || "");
     setIsOpen(true);
   };
@@ -109,6 +113,7 @@ export default function ProjetosPage() {
       cliente: clienteObj ? clienteObj.razao_social : "", 
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
       contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
+      area_id: areaId,
       valor_total: parsedValorTotal
     };
 
@@ -175,6 +180,10 @@ export default function ProjetosPage() {
             const cellVal = p.contratoObj?.escopo || "-";
             return cellVal === value;
           }
+          if (field === "area_id") {
+            const cellVal = p.areaObj?.nome || "-";
+            return cellVal === value;
+          }
           const cellVal = (p[field] || "-").toString();
           return cellVal === value;
         });
@@ -205,6 +214,7 @@ export default function ProjetosPage() {
   const columns: { field: SortField; label: string }[] = [
     { field: "codigo", label: "Código" },
     { field: "nome", label: "Nome" },
+    { field: "area_id", label: "Área" },
     { field: "cliente", label: "Cliente" },
     { field: "coordenador", label: "Coordenador" },
     { field: "contrato_id", label: "Contrato" },
@@ -252,11 +262,20 @@ export default function ProjetosPage() {
                   <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do projeto" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Valor Orçado / Distribuído do Contrato</Label>
-                  <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 50000.00" />
+                  <Label>Área (Centro de Custo) *</Label>
+                  <Select value={areaId} onValueChange={setAreaId} required>
+                    <SelectTrigger><SelectValue placeholder="Selecione a área" /></SelectTrigger>
+                    <SelectContent>
+                      {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Valor Orçado / Distribuído do Contrato</Label>
+                  <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 50000.00" />
+                </div>
                 <div className="space-y-2">
                   <Label>Contrato Gerador</Label>
                   <Select value={contratoId || "none"} onValueChange={(v) => setContratoId(v === "none" ? "" : v)}>
@@ -325,6 +344,8 @@ export default function ProjetosPage() {
                       options={
                         col.field === "contrato_id" 
                           ? [...new Set(projetos.map((p: any) => p.contratoObj?.escopo || "-"))].sort()
+                          : col.field === "area_id"
+                          ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
                           : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
                       }
                     />
@@ -344,6 +365,11 @@ export default function ProjetosPage() {
                     <TableRow key={p.id}>
                       <TableCell className="font-mono font-semibold">{p.codigo}</TableCell>
                       <TableCell>{p.nome}</TableCell>
+                      <TableCell>
+                        <span className="font-medium text-xs border bg-muted/20 px-2 py-1 rounded">
+                          {p.areaObj?.nome || "-"}
+                        </span>
+                      </TableCell>
                       <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                       <TableCell>{p.coordenador || "-"}</TableCell>
                       <TableCell className="max-w-[200px] truncate">

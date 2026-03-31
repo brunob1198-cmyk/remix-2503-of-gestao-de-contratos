@@ -25,7 +25,7 @@ export function useProjetos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projetos")
-        .select("*, clienteObj:clientes(*), contratoObj:contratos(*)")
+        .select("*, clienteObj:clientes(*), contratoObj:contratos(*), areaObj:areas(*)")
         .order("codigo");
       if (error) throw error;
       return data as unknown as Projeto[];
@@ -33,7 +33,7 @@ export function useProjetos() {
   });
 
   const createProjeto = useMutation({
-    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string; valor_total?: number; status?: string }) => {
+    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string; area_id?: string; valor_total?: number; status?: string }) => {
       const empresaId = await getEmpresaId();
       const { error } = await supabase
         .from("projetos")
