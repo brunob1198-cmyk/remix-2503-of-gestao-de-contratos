@@ -139,6 +139,21 @@ export default function PlanejamentoObra() {
             </SelectContent>
           </Select>
         </div>
+        
+        {projetoId && sites.length > 0 && (
+          <div className="w-52">
+            <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os sites</SelectItem>
+                {sites.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {projetoId ? (
@@ -167,20 +182,6 @@ export default function PlanejamentoObra() {
           <TabsContent value="gantt" className="space-y-4 mt-4">
             {/* Gantt controls */}
             <div className="flex flex-wrap gap-3 items-end">
-              {sites.length > 0 && (
-                <div className="w-52">
-                  <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
-                  <Select value={siteFilter} onValueChange={setSiteFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os sites</SelectItem>
-                      {sites.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               {frentes.length > 0 && (
                 <div className="w-52">
@@ -327,41 +328,24 @@ export default function PlanejamentoObra() {
 
           <TabsContent value="timeline" className="mt-4">
             <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
-              <TimelineObra projetoId={projetoId} />
+              <TimelineObra projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
             </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="simulacao" className="mt-4">
-            <SimulacaoEquipes atividades={atividades} frentes={frentes} />
+            <SimulacaoEquipes atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
           </TabsContent>
 
           <TabsContent value="produtividade" className="mt-4">
-            <ProdutividadeMapa projetoId={projetoId} />
+            <ProdutividadeMapa projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
-            <CurvaSDashboard atividades={atividades} frentes={frentes} />
+            <CurvaSDashboard atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
           </TabsContent>
 
           <TabsContent value="producao" className="mt-4">
             <div className="space-y-4">
-              {sites.length > 0 && (
-                <div className="w-64">
-                  <label className="text-sm font-medium mb-1 block">Site para Acompanhamento</label>
-                  <Select 
-                    value={siteFilter === "all" ? "" : siteFilter} 
-                    onValueChange={setSiteFilter}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um site" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sites.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {/* Selector remvido porque já está no topo  */}
               
               {siteFilter !== "all" ? (
                 <ProducaoTab siteId={siteFilter} />

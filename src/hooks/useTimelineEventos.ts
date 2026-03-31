@@ -26,6 +26,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
   dateEnd?: string;
   tipo?: string;
   item?: string;
+  siteFilter?: string;
 }) {
   const queryClient = useQueryClient();
 
@@ -56,7 +57,10 @@ export function useTimelineEventos(projetoId?: string, filters?: {
         .select("id")
         .eq("projeto_id", projetoId);
         
-      const siteIds = sitesProj ? sitesProj.map(s => s.id) : [];
+      let siteIds = sitesProj ? sitesProj.map((s) => s.id) : [];
+      if (filters?.siteFilter) {
+        siteIds = siteIds.filter(id => id === filters.siteFilter);
+      }
 
       // 2. Get photos from diario_fotos (linked via diarios_obra -> site_id)
       let diarioData: any[] = [];

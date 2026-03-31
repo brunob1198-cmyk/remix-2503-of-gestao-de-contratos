@@ -34,9 +34,10 @@ const TIPO_LABELS: Record<string, string> = {
 
 interface TimelineObraProps {
   projetoId: string;
+  siteFilter?: string;
 }
 
-export function TimelineObra({ projetoId }: TimelineObraProps) {
+export function TimelineObra({ projetoId, siteFilter }: TimelineObraProps) {
   const [filters, setFilters] = useState<{
     dateStart?: string;
     dateEnd?: string;
@@ -44,7 +45,11 @@ export function TimelineObra({ projetoId }: TimelineObraProps) {
     item?: string;
   }>({});
 
-  const { data: eventos = [], isLoading, refetch } = useTimelineEventos(projetoId, filters);
+  const combinedFilters = useMemo(() => {
+    return { ...filters, siteFilter };
+  }, [filters, siteFilter]);
+
+  const { data: eventos = [], isLoading, refetch } = useTimelineEventos(projetoId, combinedFilters);
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEvento, setSelectedEvento] = useState<TimelineEvento | null>(null);

@@ -13,6 +13,7 @@ import { useEffect } from "react";
 
 interface ProdutividadeMapaProps {
   projetoId: string;
+  siteFilter?: string;
 }
 
 interface ProdRegiao {
@@ -51,34 +52,43 @@ function getRadius(value: number, max: number): number {
   return Math.max(8, Math.min(30, 8 + ratio * 22));
 }
 
-export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
+export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaProps) {
   const [metrica, setMetrica] = useState<"totalQuantidade" | "totalItens" | "avgQuantidade">("totalQuantidade");
 
   // Fetch production data with municipality info
   const { data: regioes = [], isLoading } = useQuery({
-    queryKey: ["produtividade-mapa", projetoId],
+    queryKey: ["produtividade-mapa", projetoId, siteFilter],
     queryFn: async () => {
       // Get project sites
-      const { data: sites } = await supabase
+      let querySites = supabase
         .from("sites")
         .select("id, municipio, uf")
         .eq("projeto_id", projetoId);
+        
+      if (siteFilter) {
+        querySites = querySites.eq("id", siteFilter);
+      }
+      
+      const { data: sites } = await querySites;
       if (!sites?.length) return [];
 
       const siteIds = sites.map((s) => s.id);
 
-      // Get production per site
+      // Get production per site using Diario de Obra directly!
       const { data: prods } = await supabase
-        .from("lancamentos_producao")
-        .select("site_id, quantidade, municipio, uf")
-        .in("site_id", siteIds);
+        .from("diario_producao")
+        .select(`
+          quantidade, 
+          diario:diarios_obra!inner(site_id, municipio, uf)
+        `)
+        .in("diario.site_id", siteIds);
 
       if (!prods?.length) return [];
 
       // Get municipality coordinates
       const municipios = new Set<string>();
-      prods.forEach((p) => {
-        const mun = p.municipio || sites.find((s) => s.id === p.site_id)?.municipio;
+      prods.forEach((p: any) => {
+        const mun = p.diario.municipio || sites.find((s) => s.id === p.diario.site_id)?.municipio;
         if (mun) municipios.add(mun);
       });
 
@@ -110,9 +120,9 @@ export function ProdutividadeMapa({ projetoId }: ProdutividadeMapaProps) {
         `)
         .in("diario.site_id", siteIds);
 
-      prods.forEach((p) => {
-        const mun = p.municipio || sites.find((s) => s.id === p.site_id)?.municipio || "";
-        const uf = p.uf || sites.find((s) => s.id === p.site_id)?.uf || "";
+      prods.forEach((p: any) => {
+        const mun = p.diario.municipio || sites.find((s) => s.id === p.diario.site_id)?.municipio || "";
+        const uf = p.diario.uf || sites.find((s) => s.id === p.diario.site_id)?.uf || "";
         if (!mun) return;
 
         const coords = munCoords[mun];
