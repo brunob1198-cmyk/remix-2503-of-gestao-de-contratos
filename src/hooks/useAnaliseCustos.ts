@@ -47,7 +47,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
   const { data: orcamentos = [], isLoading: loadOrc } = useQuery({
     queryKey: ["orcamento_projetos", projetoId, siteId, startDate],
     queryFn: async () => {
-      let q = (supabase.from("orcamento_projetos") as any).select("*").eq("projeto_id", projetoId);
+      let q = (supabase as any).from("orcamento_projetos").select("*").eq("projeto_id", projetoId);
       if (siteId) q = q.eq("site_id", siteId);
       if (startDate) q = q.gte("mes_referencia", startDate).lte("mes_referencia", endDate);
       
