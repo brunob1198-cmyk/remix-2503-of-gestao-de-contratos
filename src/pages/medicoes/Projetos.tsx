@@ -89,7 +89,7 @@ export default function ProjetosPage() {
           .filter(p => p.contrato_id === contratoId && p.id !== editingId)
           .reduce((sum, p) => sum + (p.valor_total || 0), 0);
           
-        if (existingSum + parsedValorTotal > limitContrato) {
+        if (limitContrato > 0 && existingSum + parsedValorTotal > limitContrato) {
           toast({
             title: "Limite Excedido",
             description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
