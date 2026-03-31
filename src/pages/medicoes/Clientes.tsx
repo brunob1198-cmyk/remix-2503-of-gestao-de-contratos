@@ -174,6 +174,24 @@ export default function ClientesPage() {
       }
     }
   };
+  
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 14) value = value.slice(0, 14);
+    
+    // Mask: XX.XXX.XXX/XXXX-XX
+    let masked = value;
+    if (value.length > 12) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8, 12)}-${value.slice(12)}`;
+    } else if (value.length > 8) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8)}`;
+    } else if (value.length > 5) {
+      masked = `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5)}`;
+    } else if (value.length > 2) {
+      masked = `${value.slice(0, 2)}.${value.slice(2)}`;
+    }
+    setCnpj(masked);
+  };
 
   return (
     <div className="space-y-4">
