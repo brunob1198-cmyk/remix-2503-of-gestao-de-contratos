@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowU
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 
-type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status";
+type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id";
 type SortDir = "asc" | "desc" | null;
 
 function useColumnFilter(projetos: any[], field: SortField) {
