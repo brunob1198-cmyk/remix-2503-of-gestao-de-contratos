@@ -1141,7 +1141,9 @@ export default function DiarioObraPage() {
                     <TableRow>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Placa</TableHead>
-                      <TableHead className="text-right">KM</TableHead>
+                      <TableHead className="text-right">KM Inicial</TableHead>
+                      <TableHead className="text-right">KM Final</TableHead>
+                      <TableHead className="text-right">KM Rodados</TableHead>
                       <TableHead className="text-right">Custo Diária</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -1149,17 +1151,28 @@ export default function DiarioObraPage() {
                   <TableBody>
                     {veiculos.map(v => {
                       const isEditing = editingVeicId === v.id;
+                      const kmIni = isEditing ? Number(editVeicKmInicial) : Number((v as any).km_inicial || 0);
+                      const kmFim = isEditing ? Number(editVeicKmFinal) : Number((v as any).km_final || 0);
+                      const kmCalc = Math.max(0, kmFim - kmIni);
                       return (
                         <TableRow key={v.id}>
                           <TableCell className="font-medium">{v.descricao}</TableCell>
                           <TableCell>{v.placa || "—"}</TableCell>
                           <TableCell className="text-right tabular-nums">
                             {isEditing ? (
-                              <Input type="number" value={editVeicKm} onChange={ev => setEditVeicKm(ev.target.value)} className="w-[70px] ml-auto h-8 text-right" />
+                              <Input type="number" value={editVeicKmInicial} onChange={ev => setEditVeicKmInicial(ev.target.value)} className="w-[80px] ml-auto h-8 text-right" />
                             ) : (
-                              Number(v.km_rodados)
+                              kmIni
                             )}
                           </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {isEditing ? (
+                              <Input type="number" value={editVeicKmFinal} onChange={ev => setEditVeicKmFinal(ev.target.value)} className="w-[80px] ml-auto h-8 text-right" />
+                            ) : (
+                              kmFim
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-medium">{kmCalc}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium">
                             {isEditing ? (
                               <Input type="number" value={editVeicCusto} onChange={ev => setEditVeicCusto(ev.target.value)} className="w-[90px] ml-auto h-8 text-right" />
