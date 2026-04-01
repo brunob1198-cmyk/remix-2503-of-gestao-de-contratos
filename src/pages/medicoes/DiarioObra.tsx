@@ -435,12 +435,16 @@ export default function DiarioObraPage() {
 
   const startEditVeic = (v: any) => {
     setEditingVeicId(v.id);
-    setEditVeicKm(String(v.km_rodados || 0));
+    setEditVeicKmInicial(String(v.km_inicial || 0));
+    setEditVeicKmFinal(String(v.km_final || 0));
     setEditVeicCusto(String(v.custo_diaria));
   };
   const saveEditVeic = async () => {
     if (!editingVeicId) return;
-    await updateVeiculo.mutateAsync({ id: editingVeicId, km_rodados: Number(editVeicKm), custo_diaria: Number(editVeicCusto) });
+    const kmInicial = Number(editVeicKmInicial);
+    const kmFinal = Number(editVeicKmFinal);
+    const kmRodados = Math.max(0, kmFinal - kmInicial);
+    await updateVeiculo.mutateAsync({ id: editingVeicId, km_inicial: kmInicial, km_final: kmFinal, km_rodados: kmRodados, custo_diaria: Number(editVeicCusto) });
     setEditingVeicId(null);
   };
 
