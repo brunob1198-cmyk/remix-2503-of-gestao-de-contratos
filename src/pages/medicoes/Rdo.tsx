@@ -181,7 +181,12 @@ async function fetchImageAsBlob(url: string): Promise<Blob | null> {
 export default function RdoPage() {
   const { role } = useAuth();
   const isCliente = role === "cliente";
+  const { projetos } = useProjetos();
+  const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("rdo_projeto_id", "all");
   const { sites } = useSites();
+  const filteredSites = selectedProjetoId && selectedProjetoId !== "all"
+    ? sites.filter(s => s.projeto_id === selectedProjetoId)
+    : sites;
 
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("rdo_site_id", "");
   const selectedSite = sites.find(s => s.id === selectedSiteId);
