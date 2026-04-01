@@ -747,9 +747,13 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
                     {diario.veiculos.map(v => (
                       <div key={v.id} className="flex justify-between text-sm py-1">
                         <span>{v.descricao}{v.placa ? ` (${v.placa})` : ""}</span>
-                        {v.km_rodados > 0 && (
-                          <span className="text-muted-foreground tabular-nums">{v.km_rodados} km</span>
-                        )}
+                        <div className="flex items-center gap-3 text-muted-foreground tabular-nums">
+                          <span className="text-xs">KM Ini: {Number(v.km_inicial || 0)}</span>
+                          <span className="text-xs">KM Fin: {Number(v.km_final || 0)}</span>
+                          {Number(v.km_rodados) > 0 && (
+                            <span className="font-medium text-foreground">{Number(v.km_rodados)} km</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
