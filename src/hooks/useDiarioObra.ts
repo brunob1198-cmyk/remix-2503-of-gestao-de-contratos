@@ -358,7 +358,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
   });
 
   const addVeiculo = useMutation({
-    mutationFn: async (item: { diario_id: string; descricao: string; placa?: string; km_rodados?: number; custo_diaria: number }) => {
+    mutationFn: async (item: { diario_id: string; descricao: string; placa?: string; km_inicial?: number; km_final?: number; km_rodados?: number; custo_diaria: number }) => {
       const { error } = await supabase.from("diario_veiculos").insert([item]);
       if (error) throw error;
     },
