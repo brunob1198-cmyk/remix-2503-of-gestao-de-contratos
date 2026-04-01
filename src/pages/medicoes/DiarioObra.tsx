@@ -362,15 +362,21 @@ export default function DiarioObraPage() {
       return;
     }
 
+    const kmInicial = veicKmInicial ? Number(veicKmInicial) : 0;
+    const kmFinal = veicKmFinal ? Number(veicKmFinal) : 0;
+    const kmRodados = Math.max(0, kmFinal - kmInicial);
+
     const diarioId = await ensureDiario();
     await addVeiculo.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
       placa: veicPlaca,
-      km_rodados: veicKm ? Number(veicKm) : undefined,
+      km_inicial: kmInicial,
+      km_final: kmFinal,
+      km_rodados: kmRodados,
       custo_diaria: Number(veicCusto),
     });
-    setVeicRecursoId(""); setVeicPlaca(""); setVeicKm(""); setVeicCusto("");
+    setVeicRecursoId(""); setVeicPlaca(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
   const handleSelectRecurso = (tipo: "pessoa" | "equipamento" | "veiculo", recursoId: string) => {
