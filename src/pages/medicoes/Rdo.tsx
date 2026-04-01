@@ -332,18 +332,34 @@ export default function RdoPage() {
       </div>
 
       {/* Site selector */}
-      <div className="flex items-center gap-2 max-w-sm">
-        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o site" />
-          </SelectTrigger>
-          <SelectContent>
-            {sites.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={selectedProjetoId} onValueChange={(v) => { setSelectedProjetoId(v); setSelectedSiteId(""); setSelectedDiarioId(null); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os projetos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os projetos</SelectItem>
+              {projetos.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o site" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredSites.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {!selectedSiteId && (
