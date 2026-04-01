@@ -728,8 +728,6 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
                 Recursos Utilizados
               </CardTitle>
             </CardHeader>
-              </CardTitle>
-            </CardHeader>
             <CardContent className="space-y-4">
               {diario.equipe.length > 0 && (
                 <div>
