@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSites } from "@/hooks/useSites";
+import { useProjetos } from "@/hooks/useProjetos";
 import { useItensLpu } from "@/hooks/useItensLpu";
 import { useRdo, RdoDiarioResumo, RdoFoto } from "@/hooks/useRdo";
 import { useAuth } from "@/contexts/AuthContext";
@@ -180,7 +181,12 @@ async function fetchImageAsBlob(url: string): Promise<Blob | null> {
 export default function RdoPage() {
   const { role } = useAuth();
   const isCliente = role === "cliente";
+  const { projetos } = useProjetos();
+  const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("rdo_projeto_id", "all");
   const { sites } = useSites();
+  const filteredSites = selectedProjetoId && selectedProjetoId !== "all"
+    ? sites.filter(s => s.projeto_id === selectedProjetoId)
+    : sites;
 
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("rdo_site_id", "");
   const selectedSite = sites.find(s => s.id === selectedSiteId);
@@ -326,18 +332,34 @@ export default function RdoPage() {
       </div>
 
       {/* Site selector */}
-      <div className="flex items-center gap-2 max-w-sm">
-        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-        <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o site" />
-          </SelectTrigger>
-          <SelectContent>
-            {sites.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={selectedProjetoId} onValueChange={(v) => { setSelectedProjetoId(v); setSelectedSiteId(""); setSelectedDiarioId(null); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os projetos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os projetos</SelectItem>
+              {projetos.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2 min-w-[220px]">
+          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o site" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredSites.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {!selectedSiteId && (
@@ -590,6 +612,12 @@ function DayCard({ diario, isSelected, isCliente, onClick }: {
               </span>
             )}
           </div>
+          {diario.observacoes && (
+            <p className="text-xs text-muted-foreground truncate mt-1 italic">
+              <MessageSquare className="h-3 w-3 inline mr-1" />
+              {diario.observacoes}
+            </p>
+          )}
         </div>
         {thumbs.length > 0 && (
           <div className="flex -space-x-2 shrink-0">
@@ -622,9 +650,7 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
     return groups;
   }, [diario.fotos]);
 
-  const custoEquipe = diario.equipe.reduce((s, e) => s + Number(e.custo_total), 0);
-  const custoEquipamentos = diario.equipamentos.reduce((s, e) => s + Number(e.custo_total), 0);
-  const custoVeiculos = diario.veiculos.reduce((s, v) => s + Number(v.custo_diaria), 0);
+
 
   return (
     <ScrollArea className="h-[calc(100vh-420px)]">
@@ -700,9 +726,6 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-600" />
                 Recursos Utilizados
-                {!isCliente && diario.custoTotal > 0 && (
-                  <Badge variant="secondary" className="ml-auto text-xs">{formatCurrency(diario.custoTotal)}</Badge>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
