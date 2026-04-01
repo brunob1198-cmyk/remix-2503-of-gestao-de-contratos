@@ -612,6 +612,12 @@ function DayCard({ diario, isSelected, isCliente, onClick }: {
               </span>
             )}
           </div>
+          {diario.observacoes && (
+            <p className="text-xs text-muted-foreground truncate mt-1 italic">
+              <MessageSquare className="h-3 w-3 inline mr-1" />
+              {diario.observacoes}
+            </p>
+          )}
         </div>
         {thumbs.length > 0 && (
           <div className="flex -space-x-2 shrink-0">
