@@ -1112,8 +1112,20 @@ export default function DiarioObraPage() {
                   <Input value={veicPlaca} onChange={e => setVeicPlaca(e.target.value)} placeholder="ABC-1234" required />
                 </div>
                 <div className="w-[100px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">KM rodados</label>
-                  <Input type="number" value={veicKm} onChange={e => setVeicKm(e.target.value)} placeholder="0" />
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Inicial</label>
+                  <Input type="number" value={veicKmInicial} onChange={e => setVeicKmInicial(e.target.value)} placeholder="0" />
+                </div>
+                <div className="w-[100px]">
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Final</label>
+                  <Input type="number" value={veicKmFinal} onChange={e => setVeicKmFinal(e.target.value)} placeholder="0" />
+                </div>
+                <div className="w-[100px]">
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Rodados</label>
+                  <Input 
+                    readOnly 
+                    value={veicKmInicial && veicKmFinal ? Math.max(0, Number(veicKmFinal) - Number(veicKmInicial)) : "—"} 
+                    className="bg-muted" 
+                  />
                 </div>
                 <div className="w-[120px]">
                   <label className="text-xs text-muted-foreground mb-1 block">Custo diária</label>
