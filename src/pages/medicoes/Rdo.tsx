@@ -118,11 +118,26 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
 
       ${diario.veiculos.length > 0 ? `
         <h2>🚛 Veículos</h2>
-        <div class="summary-box">
-          <ul>
-            ${diario.veiculos.map(v => `<li>${v.descricao}${v.placa ? ` (${v.placa})` : ""}${v.km_rodados ? ` — <strong>${v.km_rodados} km</strong>` : ""}</li>`).join('')}
-          </ul>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Veículo</th>
+              <th class="text-right">KM Inicial</th>
+              <th class="text-right">KM Final</th>
+              <th class="text-right">KM Rodados</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${diario.veiculos.map(v => `
+              <tr>
+                <td>${v.descricao}${v.placa ? ` (${v.placa})` : ""}</td>
+                <td class="text-right">${Number(v.km_inicial || 0)}</td>
+                <td class="text-right">${Number(v.km_final || 0)}</td>
+                <td class="text-right"><strong>${Number(v.km_rodados || 0)} km</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       ` : ''}
 
       ${diario.observacoes ? `
