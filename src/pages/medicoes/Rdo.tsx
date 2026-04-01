@@ -726,9 +726,8 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-600" />
                 Recursos Utilizados
-                {!isCliente && diario.custoTotal > 0 && (
-                  <Badge variant="secondary" className="ml-auto text-xs">{formatCurrency(diario.custoTotal)}</Badge>
-                )}
+              </CardTitle>
+            </CardHeader>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
