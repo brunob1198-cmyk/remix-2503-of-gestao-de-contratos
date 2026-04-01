@@ -650,9 +650,7 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
     return groups;
   }, [diario.fotos]);
 
-  const custoEquipe = diario.equipe.reduce((s, e) => s + Number(e.custo_total), 0);
-  const custoEquipamentos = diario.equipamentos.reduce((s, e) => s + Number(e.custo_total), 0);
-  const custoVeiculos = diario.veiculos.reduce((s, v) => s + Number(v.custo_diaria), 0);
+
 
   return (
     <ScrollArea className="h-[calc(100vh-420px)]">
