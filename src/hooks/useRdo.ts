@@ -28,7 +28,7 @@ export interface RdoDiarioResumo {
   }>;
   equipe: Array<{ id: string; nome: string; funcao: string | null; horas: number; custo_hora: number; custo_total: number }>;
   equipamentos: Array<{ id: string; descricao: string; horas: number; custo_hora: number; custo_total: number }>;
-  veiculos: Array<{ id: string; descricao: string; placa: string | null; km_rodados: number; custo_diaria: number }>;
+  veiculos: Array<{ id: string; descricao: string; placa: string | null; km_inicial: number; km_final: number; km_rodados: number; custo_diaria: number }>;
   fotos: RdoFoto[];
   custoTotal: number;
 }

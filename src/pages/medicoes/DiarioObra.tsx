@@ -117,7 +117,8 @@ export default function DiarioObraPage() {
   // Veículo form state
   const [veicRecursoId, setVeicRecursoId] = useState("");
   const [veicPlaca, setVeicPlaca] = useState("");
-  const [veicKm, setVeicKm] = useState("");
+  const [veicKmInicial, setVeicKmInicial] = useState("");
+  const [veicKmFinal, setVeicKmFinal] = useState("");
   const [veicCusto, setVeicCusto] = useState("");
 
   // Edit states
@@ -130,7 +131,8 @@ export default function DiarioObraPage() {
   const [editEquipCustoHora, setEditEquipCustoHora] = useState("");
 
   const [editingVeicId, setEditingVeicId] = useState<string | null>(null);
-  const [editVeicKm, setEditVeicKm] = useState("");
+  const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
+  const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
 
   // Filtered resources
@@ -360,15 +362,21 @@ export default function DiarioObraPage() {
       return;
     }
 
+    const kmInicial = veicKmInicial ? Number(veicKmInicial) : 0;
+    const kmFinal = veicKmFinal ? Number(veicKmFinal) : 0;
+    const kmRodados = Math.max(0, kmFinal - kmInicial);
+
     const diarioId = await ensureDiario();
     await addVeiculo.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
       placa: veicPlaca,
-      km_rodados: veicKm ? Number(veicKm) : undefined,
+      km_inicial: kmInicial,
+      km_final: kmFinal,
+      km_rodados: kmRodados,
       custo_diaria: Number(veicCusto),
     });
-    setVeicRecursoId(""); setVeicPlaca(""); setVeicKm(""); setVeicCusto("");
+    setVeicRecursoId(""); setVeicPlaca(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
   const handleSelectRecurso = (tipo: "pessoa" | "equipamento" | "veiculo", recursoId: string) => {
@@ -427,12 +435,16 @@ export default function DiarioObraPage() {
 
   const startEditVeic = (v: any) => {
     setEditingVeicId(v.id);
-    setEditVeicKm(String(v.km_rodados || 0));
+    setEditVeicKmInicial(String(v.km_inicial || 0));
+    setEditVeicKmFinal(String(v.km_final || 0));
     setEditVeicCusto(String(v.custo_diaria));
   };
   const saveEditVeic = async () => {
     if (!editingVeicId) return;
-    await updateVeiculo.mutateAsync({ id: editingVeicId, km_rodados: Number(editVeicKm), custo_diaria: Number(editVeicCusto) });
+    const kmInicial = Number(editVeicKmInicial);
+    const kmFinal = Number(editVeicKmFinal);
+    const kmRodados = Math.max(0, kmFinal - kmInicial);
+    await updateVeiculo.mutateAsync({ id: editingVeicId, km_inicial: kmInicial, km_final: kmFinal, km_rodados: kmRodados, custo_diaria: Number(editVeicCusto) });
     setEditingVeicId(null);
   };
 
@@ -1100,8 +1112,20 @@ export default function DiarioObraPage() {
                   <Input value={veicPlaca} onChange={e => setVeicPlaca(e.target.value)} placeholder="ABC-1234" required />
                 </div>
                 <div className="w-[100px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">KM rodados</label>
-                  <Input type="number" value={veicKm} onChange={e => setVeicKm(e.target.value)} placeholder="0" />
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Inicial</label>
+                  <Input type="number" value={veicKmInicial} onChange={e => setVeicKmInicial(e.target.value)} placeholder="0" />
+                </div>
+                <div className="w-[100px]">
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Final</label>
+                  <Input type="number" value={veicKmFinal} onChange={e => setVeicKmFinal(e.target.value)} placeholder="0" />
+                </div>
+                <div className="w-[100px]">
+                  <label className="text-xs text-muted-foreground mb-1 block">KM Rodados</label>
+                  <Input 
+                    readOnly 
+                    value={veicKmInicial && veicKmFinal ? Math.max(0, Number(veicKmFinal) - Number(veicKmInicial)) : "—"} 
+                    className="bg-muted" 
+                  />
                 </div>
                 <div className="w-[120px]">
                   <label className="text-xs text-muted-foreground mb-1 block">Custo diária</label>
@@ -1117,7 +1141,9 @@ export default function DiarioObraPage() {
                     <TableRow>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Placa</TableHead>
-                      <TableHead className="text-right">KM</TableHead>
+                      <TableHead className="text-right">KM Inicial</TableHead>
+                      <TableHead className="text-right">KM Final</TableHead>
+                      <TableHead className="text-right">KM Rodados</TableHead>
                       <TableHead className="text-right">Custo Diária</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -1125,17 +1151,28 @@ export default function DiarioObraPage() {
                   <TableBody>
                     {veiculos.map(v => {
                       const isEditing = editingVeicId === v.id;
+                      const kmIni = isEditing ? Number(editVeicKmInicial) : Number((v as any).km_inicial || 0);
+                      const kmFim = isEditing ? Number(editVeicKmFinal) : Number((v as any).km_final || 0);
+                      const kmCalc = Math.max(0, kmFim - kmIni);
                       return (
                         <TableRow key={v.id}>
                           <TableCell className="font-medium">{v.descricao}</TableCell>
                           <TableCell>{v.placa || "—"}</TableCell>
                           <TableCell className="text-right tabular-nums">
                             {isEditing ? (
-                              <Input type="number" value={editVeicKm} onChange={ev => setEditVeicKm(ev.target.value)} className="w-[70px] ml-auto h-8 text-right" />
+                              <Input type="number" value={editVeicKmInicial} onChange={ev => setEditVeicKmInicial(ev.target.value)} className="w-[80px] ml-auto h-8 text-right" />
                             ) : (
-                              Number(v.km_rodados)
+                              kmIni
                             )}
                           </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {isEditing ? (
+                              <Input type="number" value={editVeicKmFinal} onChange={ev => setEditVeicKmFinal(ev.target.value)} className="w-[80px] ml-auto h-8 text-right" />
+                            ) : (
+                              kmFim
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-medium">{kmCalc}</TableCell>
                           <TableCell className="text-right tabular-nums font-medium">
                             {isEditing ? (
                               <Input type="number" value={editVeicCusto} onChange={ev => setEditVeicCusto(ev.target.value)} className="w-[90px] ml-auto h-8 text-right" />

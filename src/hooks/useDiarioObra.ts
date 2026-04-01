@@ -46,6 +46,8 @@ export interface DiarioVeiculo {
   diario_id: string;
   descricao: string;
   placa: string | null;
+  km_inicial: number;
+  km_final: number;
   km_rodados: number;
   custo_diaria: number;
 }
@@ -356,7 +358,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
   });
 
   const addVeiculo = useMutation({
-    mutationFn: async (item: { diario_id: string; descricao: string; placa?: string; km_rodados?: number; custo_diaria: number }) => {
+    mutationFn: async (item: { diario_id: string; descricao: string; placa?: string; km_inicial?: number; km_final?: number; km_rodados?: number; custo_diaria: number }) => {
       const { error } = await supabase.from("diario_veiculos").insert([item]);
       if (error) throw error;
     },
@@ -369,8 +371,13 @@ export function useDiarioObra(siteId?: string, data?: string) {
   });
 
   const updateVeiculo = useMutation({
-    mutationFn: async (item: { id: string; km_rodados?: number; custo_diaria: number }) => {
-      const { error } = await supabase.from("diario_veiculos").update({ km_rodados: item.km_rodados, custo_diaria: item.custo_diaria }).eq("id", item.id);
+    mutationFn: async (item: { id: string; km_inicial?: number; km_final?: number; km_rodados?: number; custo_diaria: number }) => {
+      const { error } = await supabase.from("diario_veiculos").update({ 
+        km_inicial: item.km_inicial, 
+        km_final: item.km_final, 
+        km_rodados: item.km_rodados, 
+        custo_diaria: item.custo_diaria 
+      }).eq("id", item.id);
       if (error) throw error;
     },
     onSuccess: () => {

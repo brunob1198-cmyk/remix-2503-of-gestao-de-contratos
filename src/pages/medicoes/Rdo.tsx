@@ -118,11 +118,26 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
 
       ${diario.veiculos.length > 0 ? `
         <h2>🚛 Veículos</h2>
-        <div class="summary-box">
-          <ul>
-            ${diario.veiculos.map(v => `<li>${v.descricao}${v.placa ? ` (${v.placa})` : ""}${v.km_rodados ? ` — <strong>${v.km_rodados} km</strong>` : ""}</li>`).join('')}
-          </ul>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Veículo</th>
+              <th class="text-right">KM Inicial</th>
+              <th class="text-right">KM Final</th>
+              <th class="text-right">KM Rodados</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${diario.veiculos.map(v => `
+              <tr>
+                <td>${v.descricao}${v.placa ? ` (${v.placa})` : ""}</td>
+                <td class="text-right">${Number(v.km_inicial || 0)}</td>
+                <td class="text-right">${Number(v.km_final || 0)}</td>
+                <td class="text-right"><strong>${Number(v.km_rodados || 0)} km</strong></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       ` : ''}
 
       ${diario.observacoes ? `
@@ -732,9 +747,13 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
                     {diario.veiculos.map(v => (
                       <div key={v.id} className="flex justify-between text-sm py-1">
                         <span>{v.descricao}{v.placa ? ` (${v.placa})` : ""}</span>
-                        {v.km_rodados > 0 && (
-                          <span className="text-muted-foreground tabular-nums">{v.km_rodados} km</span>
-                        )}
+                        <div className="flex items-center gap-3 text-muted-foreground tabular-nums">
+                          <span className="text-xs">KM Ini: {Number(v.km_inicial || 0)}</span>
+                          <span className="text-xs">KM Fin: {Number(v.km_final || 0)}</span>
+                          {Number(v.km_rodados) > 0 && (
+                            <span className="font-medium text-foreground">{Number(v.km_rodados)} km</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
