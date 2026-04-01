@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSites } from "@/hooks/useSites";
+import { useProjetos } from "@/hooks/useProjetos";
 import { useItensLpu } from "@/hooks/useItensLpu";
 import { useRdo, RdoDiarioResumo, RdoFoto } from "@/hooks/useRdo";
 import { useAuth } from "@/contexts/AuthContext";
