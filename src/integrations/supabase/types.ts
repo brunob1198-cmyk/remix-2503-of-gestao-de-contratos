@@ -508,6 +508,8 @@ export type Database = {
           descricao: string
           diario_id: string
           id: string
+          km_final: number | null
+          km_inicial: number | null
           km_rodados: number | null
           placa: string | null
         }
@@ -517,6 +519,8 @@ export type Database = {
           descricao: string
           diario_id: string
           id?: string
+          km_final?: number | null
+          km_inicial?: number | null
           km_rodados?: number | null
           placa?: string | null
         }
@@ -526,6 +530,8 @@ export type Database = {
           descricao?: string
           diario_id?: string
           id?: string
+          km_final?: number | null
+          km_inicial?: number | null
           km_rodados?: number | null
           placa?: string | null
         }
