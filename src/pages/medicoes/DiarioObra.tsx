@@ -117,7 +117,8 @@ export default function DiarioObraPage() {
   // Veículo form state
   const [veicRecursoId, setVeicRecursoId] = useState("");
   const [veicPlaca, setVeicPlaca] = useState("");
-  const [veicKm, setVeicKm] = useState("");
+  const [veicKmInicial, setVeicKmInicial] = useState("");
+  const [veicKmFinal, setVeicKmFinal] = useState("");
   const [veicCusto, setVeicCusto] = useState("");
 
   // Edit states
