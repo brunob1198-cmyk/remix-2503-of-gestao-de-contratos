@@ -131,7 +131,8 @@ export default function DiarioObraPage() {
   const [editEquipCustoHora, setEditEquipCustoHora] = useState("");
 
   const [editingVeicId, setEditingVeicId] = useState<string | null>(null);
-  const [editVeicKm, setEditVeicKm] = useState("");
+  const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
+  const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
 
   // Filtered resources
