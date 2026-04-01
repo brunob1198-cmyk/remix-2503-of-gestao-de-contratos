@@ -46,6 +46,8 @@ export interface DiarioVeiculo {
   diario_id: string;
   descricao: string;
   placa: string | null;
+  km_inicial: number;
+  km_final: number;
   km_rodados: number;
   custo_diaria: number;
 }
