@@ -296,7 +296,7 @@ export default function RdoPage() {
     } finally {
       setDownloading(false);
     }
-  }, [isCliente]);
+  }, [isCliente, clienteLogoUrl, selectedSite]);
 
   // Download period zip
   const handleDownloadPeriodo = useCallback(async () => {
