@@ -265,7 +265,7 @@ export default function RdoPage() {
       const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
 
       // Add report PDF
-      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl);
+      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, selectedSite ? `${selectedSite.codigo} — ${selectedSite.nome}` : undefined);
       const container = document.createElement("div");
       container.innerHTML = html;
       const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
