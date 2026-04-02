@@ -172,7 +172,7 @@ export default function QuadroGeral() {
 
     // Build projeto rows
     const projetoRows: ProjetoRow[] = projetos.map(p => {
-      const valor_contrato = contratoByProjeto.get(p.id) || 0;
+      const valor_contrato = p.valor_total || 0;
       const valor_executado = executadoByProjeto.get(p.id) || 0;
       const valor_faturado = faturadoByProjeto.get(p.id) || 0;
       const valor_nao_faturado = valor_executado - valor_faturado;
