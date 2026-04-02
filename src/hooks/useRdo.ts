@@ -98,6 +98,8 @@ export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, i
           data: d.data,
           observacoes: d.observacoes,
           site_id: d.site_id,
+          municipio: d.municipio || null,
+          uf: d.uf || null,
           totalProducao,
           totalItens: prods.length,
           totalFotos: fotos.length,
