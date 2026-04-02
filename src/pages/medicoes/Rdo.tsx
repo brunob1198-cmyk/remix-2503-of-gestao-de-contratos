@@ -52,8 +52,9 @@ const classificacaoColors: Record<string, string> = {
 };
 
 // Generate HTML report for a single day
-function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null): string {
+function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
   const dataFormatada = format(parseISO(diario.data), "dd/MM/yyyy (EEEE)", { locale: ptBR });
+  const localidade = [diario.municipio, diario.uf].filter(Boolean).join("/");
   
   return `
     ${pdfGlobalStyles}
@@ -67,6 +68,12 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           </div>
         </div>
         ${clienteLogoUrl ? `<div class="header-right" style="display:flex; align-items:flex-end;">${getClientLogoHtml(clienteLogoUrl)}</div>` : ''}
+      </div>
+
+      <div class="site-info-bar">
+        ${siteName ? `<div class="site-info-item"><strong>Site:</strong> ${siteName}</div>` : ''}
+        ${localidade ? `<div class="site-info-item"><strong>Localidade:</strong> ${localidade}</div>` : ''}
+        <div class="site-info-item"><strong>Data:</strong> ${dataFormatada}</div>
       </div>
 
       ${diario.producoes.length > 0 ? `
@@ -91,8 +98,8 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           ${!isCliente ? `
           <tfoot>
             <tr>
-              <td colspan="2" class="text-right font-bold bg-muted" style="padding:10px;">Total Produção:</td>
-              <td class="text-right font-bold bg-muted" style="padding:10px;">${formatCurrency(diario.totalProducao)}</td>
+              <td colspan="2" class="text-right">Total Produção:</td>
+              <td class="text-right">${formatCurrency(diario.totalProducao)}</td>
             </tr>
           </tfoot>
           ` : ''}
@@ -101,20 +108,44 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
 
       ${diario.equipe.length > 0 ? `
         <h2>👷 Equipe</h2>
-        <div class="summary-box">
-          <ul>
-            ${diario.equipe.map(e => `<li>${e.nome}${e.funcao ? ` (${e.funcao})` : ""} — <strong>${e.horas}h</strong></li>`).join('')}
-          </ul>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Função</th>
+              <th class="text-right">Horas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${diario.equipe.map(e => `
+              <tr>
+                <td>${e.nome}</td>
+                <td>${e.funcao || "—"}</td>
+                <td class="text-right">${e.horas}h</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       ` : ''}
 
       ${diario.equipamentos.length > 0 ? `
         <h2>🔧 Equipamentos</h2>
-        <div class="summary-box">
-          <ul>
-            ${diario.equipamentos.map(e => `<li>${e.descricao} — <strong>${e.horas}h</strong></li>`).join('')}
-          </ul>
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th class="text-right">Horas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${diario.equipamentos.map(e => `
+              <tr>
+                <td>${e.descricao}</td>
+                <td class="text-right">${e.horas}h</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       ` : ''}
 
       ${diario.veiculos.length > 0 ? `
@@ -123,6 +154,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           <thead>
             <tr>
               <th>Veículo</th>
+              <th class="text-right">Placa</th>
               <th class="text-right">KM Inicial</th>
               <th class="text-right">KM Final</th>
               <th class="text-right">KM Rodados</th>
@@ -131,10 +163,11 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           <tbody>
             ${diario.veiculos.map(v => `
               <tr>
-                <td>${v.descricao}${v.placa ? ` (${v.placa})` : ""}</td>
-                <td class="text-right">${Number(v.km_inicial || 0)}</td>
-                <td class="text-right">${Number(v.km_final || 0)}</td>
-                <td class="text-right"><strong>${Number(v.km_rodados || 0)} km</strong></td>
+                <td>${v.descricao}</td>
+                <td class="text-right">${v.placa || "—"}</td>
+                <td class="text-right">${Number(v.km_inicial || 0).toLocaleString('pt-BR')}</td>
+                <td class="text-right">${Number(v.km_final || 0).toLocaleString('pt-BR')}</td>
+                <td class="text-right"><strong>${Number(v.km_rodados || 0).toLocaleString('pt-BR')} km</strong></td>
               </tr>
             `).join('')}
           </tbody>
@@ -143,7 +176,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
 
       ${diario.observacoes ? `
         <h2>💬 Observações</h2>
-        <p style="color:#475569; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">${diario.observacoes}</p>
+        <p style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6;">${diario.observacoes}</p>
       ` : ''}
 
       ${diario.fotos.length > 0 ? `
@@ -154,11 +187,11 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
             <div class="foto-card">
               <img src="${f.url}" alt="foto" />
               <div class="foto-info">
-                ${f.item_evidencia ? `<div class="foto-title">${f.item_evidencia.codigo}</div>` : ''}
+                ${f.item_evidencia ? `<div class="foto-title">${f.item_evidencia.codigo} — ${f.item_evidencia.descricao}</div>` : ''}
                 <div class="foto-meta">
                   <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
                 </div>
-                ${f.legenda ? `<div class="foto-legenda">"${f.legenda}"</div>` : ''}
+                ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
               </div>
             </div>
           `).join('')}
@@ -167,7 +200,6 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
     </div>
   `;
 }
-
 async function fetchImageAsBlob(url: string): Promise<Blob | null> {
   try {
     const res = await fetch(url);
@@ -233,7 +265,7 @@ export default function RdoPage() {
       const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
 
       // Add report PDF
-      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl);
+      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, selectedSite ? `${selectedSite.codigo} — ${selectedSite.nome}` : undefined);
       const container = document.createElement("div");
       container.innerHTML = html;
       const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
@@ -264,7 +296,7 @@ export default function RdoPage() {
     } finally {
       setDownloading(false);
     }
-  }, [isCliente]);
+  }, [isCliente, clienteLogoUrl, selectedSite]);
 
   // Download period zip
   const handleDownloadPeriodo = useCallback(async () => {
@@ -279,7 +311,7 @@ export default function RdoPage() {
         const dayFolder = zip.folder(dataLabel);
         if (!dayFolder) continue;
 
-        const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl);
+        const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, selectedSite ? `${selectedSite.codigo} — ${selectedSite.nome}` : undefined);
         const container = document.createElement("div");
         container.innerHTML = html;
         const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
@@ -310,7 +342,7 @@ export default function RdoPage() {
     } finally {
       setDownloading(false);
     }
-  }, [diarios, dataInicio, dataFim, isCliente]);
+  }, [diarios, dataInicio, dataFim, isCliente, clienteLogoUrl, selectedSite]);
 
   return (
     <div className="space-y-6">

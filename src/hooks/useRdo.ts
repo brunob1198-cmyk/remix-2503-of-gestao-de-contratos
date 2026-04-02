@@ -15,6 +15,8 @@ export interface RdoDiarioResumo {
   data: string;
   observacoes: string | null;
   site_id: string;
+  municipio: string | null;
+  uf: string | null;
   totalProducao: number;
   totalItens: number;
   totalFotos: number;
@@ -96,6 +98,8 @@ export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, i
           data: d.data,
           observacoes: d.observacoes,
           site_id: d.site_id,
+          municipio: d.municipio || null,
+          uf: d.uf || null,
           totalProducao,
           totalItens: prods.length,
           totalFotos: fotos.length,
