@@ -342,7 +342,7 @@ export default function RdoPage() {
     } finally {
       setDownloading(false);
     }
-  }, [diarios, dataInicio, dataFim, isCliente]);
+  }, [diarios, dataInicio, dataFim, isCliente, clienteLogoUrl, selectedSite]);
 
   return (
     <div className="space-y-6">
