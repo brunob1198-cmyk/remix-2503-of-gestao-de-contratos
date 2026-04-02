@@ -15,6 +15,8 @@ export interface RdoDiarioResumo {
   data: string;
   observacoes: string | null;
   site_id: string;
+  municipio: string | null;
+  uf: string | null;
   totalProducao: number;
   totalItens: number;
   totalFotos: number;
