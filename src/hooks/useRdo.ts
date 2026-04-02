@@ -15,6 +15,8 @@ export interface RdoDiarioResumo {
   data: string;
   observacoes: string | null;
   site_id: string;
+  site_codigo?: string;
+  site_nome?: string;
   municipio: string | null;
   uf: string | null;
   totalProducao: number;
@@ -35,16 +37,16 @@ export interface RdoDiarioResumo {
   custoTotal: number;
 }
 
-export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, itemLpuId?: string, busca?: string) {
+export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string, itemLpuId?: string, busca?: string, sitesMap?: Map<string, { codigo: string; nome: string }>) {
   return useQuery({
-    queryKey: ["rdo", siteId, dataInicio, dataFim, itemLpuId, busca],
+    queryKey: ["rdo", siteIds, dataInicio, dataFim, itemLpuId, busca],
     queryFn: async (): Promise<RdoDiarioResumo[]> => {
-      if (!siteId) return [];
+      if (!siteIds || siteIds.length === 0) return [];
 
       let q = supabase
         .from("diarios_obra")
         .select("*")
-        .eq("site_id", siteId)
+        .in("site_id", siteIds)
         .order("data", { ascending: false });
 
       if (dataInicio) q = q.gte("data", dataInicio);
@@ -70,7 +72,6 @@ export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, i
       const allVeic = veicRes.data || [];
       const allFotos = fotosRes.data || [];
 
-      // Build a map from diario_producao id -> item_lpu info
       const producaoItemMap = new Map<string, { codigo: string; descricao: string }>();
       allProd.forEach((p: any) => {
         if (p.item_lpu) {
@@ -93,11 +94,15 @@ export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, i
         const custoEquipamentos = equips.reduce((s: number, e: any) => s + Number(e.custo_total), 0);
         const custoVeiculos = veics.reduce((s: number, v: any) => s + Number(v.custo_diaria), 0);
 
+        const siteInfo = sitesMap?.get(d.site_id);
+
         return {
           id: d.id,
           data: d.data,
           observacoes: d.observacoes,
           site_id: d.site_id,
+          site_codigo: siteInfo?.codigo || "",
+          site_nome: siteInfo?.nome || "",
           municipio: d.municipio || null,
           uf: d.uf || null,
           totalProducao,
@@ -128,6 +133,6 @@ export function useRdo(siteId?: string, dataInicio?: string, dataFim?: string, i
 
       return result;
     },
-    enabled: !!siteId,
+    enabled: !!siteIds && siteIds.length > 0,
   });
 }

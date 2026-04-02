@@ -55,7 +55,8 @@ const classificacaoColors: Record<string, string> = {
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
   const dataFormatada = format(parseISO(diario.data), "dd/MM/yyyy (EEEE)", { locale: ptBR });
   const localidade = [diario.municipio, diario.uf].filter(Boolean).join("/");
-  
+  const siteLabel = siteName || (diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined);
+
   return `
     ${pdfGlobalStyles}
     <div class="pdf-container">
@@ -71,7 +72,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
       </div>
 
       <div class="site-info-bar">
-        ${siteName ? `<div class="site-info-item"><strong>Site:</strong> ${siteName}</div>` : ''}
+        ${siteLabel ? `<div class="site-info-item"><strong>Site:</strong> ${siteLabel}</div>` : ''}
         ${localidade ? `<div class="site-info-item"><strong>Localidade:</strong> ${localidade}</div>` : ''}
         <div class="site-info-item"><strong>Data:</strong> ${dataFormatada}</div>
       </div>
@@ -200,6 +201,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
     </div>
   `;
 }
+
 async function fetchImageAsBlob(url: string): Promise<Blob | null> {
   try {
     const res = await fetch(url);
@@ -208,6 +210,14 @@ async function fetchImageAsBlob(url: string): Promise<Blob | null> {
   } catch {
     return null;
   }
+}
+
+interface DayGroup {
+  data: string;
+  diarios: RdoDiarioResumo[];
+  totalProducao: number;
+  totalItens: number;
+  totalFotos: number;
 }
 
 export default function RdoPage() {
@@ -220,10 +230,28 @@ export default function RdoPage() {
     ? sites.filter(s => s.projeto_id === selectedProjetoId)
     : sites;
 
-  const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("rdo_site_id", "");
-  const selectedSite = sites.find(s => s.id === selectedSiteId);
+  const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("rdo_site_id", "all");
+
+  // Build sites map for the hook
+  const sitesMap = useMemo(() => {
+    const m = new Map<string, { codigo: string; nome: string }>();
+    sites.forEach(s => m.set(s.id, { codigo: s.codigo, nome: s.nome }));
+    return m;
+  }, [sites]);
+
+  // Determine which site IDs to query
+  const querySiteIds = useMemo(() => {
+    if (selectedSiteId && selectedSiteId !== "all") {
+      return [selectedSiteId];
+    }
+    return filteredSites.map(s => s.id);
+  }, [selectedSiteId, filteredSites]);
+
+  const selectedSite = selectedSiteId !== "all" ? sites.find(s => s.id === selectedSiteId) : null;
   const clienteLogoUrl = selectedSite?.clienteObj?.logo_url || selectedSite?.projeto?.clienteObj?.logo_url;
-  const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
+  const selectedProjeto = projetos.find(p => p.id === selectedProjetoId);
+  const firstProjetoId = selectedSite?.projeto_id || selectedProjeto?.id || filteredSites[0]?.projeto_id;
+  const { itensLpu } = useItensLpu(firstProjetoId);
 
   const [dataInicio, setDataInicio] = useState(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
@@ -231,19 +259,40 @@ export default function RdoPage() {
   const [busca, setBusca] = useState("");
 
   const { data: diarios = [], isLoading } = useRdo(
-    selectedSiteId,
+    querySiteIds.length > 0 ? querySiteIds : undefined,
     dataInicio,
     dataFim,
     itemFilter !== "all" ? itemFilter : undefined,
-    busca
+    busca,
+    sitesMap
   );
 
   const [selectedDiarioId, setSelectedDiarioId] = useState<string | null>(null);
   const selectedDiario = diarios.find(d => d.id === selectedDiarioId);
 
   const [lightboxPhoto, setLightboxPhoto] = useState<RdoFoto & { data: string } | null>(null);
-
   const [downloading, setDownloading] = useState(false);
+
+  // Group diarios by date
+  const dayGroups = useMemo<DayGroup[]>(() => {
+    const map = new Map<string, RdoDiarioResumo[]>();
+    diarios.forEach(d => {
+      const existing = map.get(d.data) || [];
+      existing.push(d);
+      map.set(d.data, existing);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([data, diariosForDay]) => ({
+        data,
+        diarios: diariosForDay,
+        totalProducao: diariosForDay.reduce((s, d) => s + d.totalProducao, 0),
+        totalItens: diariosForDay.reduce((s, d) => s + d.totalItens, 0),
+        totalFotos: diariosForDay.reduce((s, d) => s + d.totalFotos, 0),
+      }));
+  }, [diarios]);
+
+  const isMultiSite = selectedSiteId === "all";
 
   const uniqueItems = useMemo(() => {
     const map = new Map<string, { id: string; codigo: string; descricao: string }>();
@@ -253,7 +302,7 @@ export default function RdoPage() {
     return Array.from(map.values());
   }, [diarios]);
 
-  const totalDias = diarios.length;
+  const totalDias = dayGroups.length;
   const totalFotos = diarios.reduce((s, d) => s + d.totalFotos, 0);
   const totalProd = diarios.reduce((s, d) => s + d.totalProducao, 0);
 
@@ -263,16 +312,15 @@ export default function RdoPage() {
     try {
       const zip = new JSZip();
       const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
+      const siteLabel = diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined;
 
-      // Add report PDF
-      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, selectedSite ? `${selectedSite.codigo} — ${selectedSite.nome}` : undefined);
+      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel);
       const container = document.createElement("div");
       container.innerHTML = html;
       const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
       const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
-      zip.file(`RDO_${dataLabel}.pdf`, pdfBlob);
+      zip.file(`RDO_${dataLabel}_${diario.site_codigo || 'site'}.pdf`, pdfBlob);
 
-      // Add photos
       if (diario.fotos.length > 0) {
         const fotosFolder = zip.folder("fotos");
         for (let i = 0; i < diario.fotos.length; i++) {
@@ -288,7 +336,7 @@ export default function RdoPage() {
       }
 
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, `RDO_${dataLabel}.zip`);
+      saveAs(content, `RDO_${dataLabel}_${diario.site_codigo || 'site'}.zip`);
       toast.success("Download concluído!");
     } catch (err) {
       console.error(err);
@@ -296,7 +344,7 @@ export default function RdoPage() {
     } finally {
       setDownloading(false);
     }
-  }, [isCliente, clienteLogoUrl, selectedSite]);
+  }, [isCliente, clienteLogoUrl]);
 
   // Download period zip
   const handleDownloadPeriodo = useCallback(async () => {
@@ -308,10 +356,12 @@ export default function RdoPage() {
 
       for (const diario of diarios) {
         const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
-        const dayFolder = zip.folder(dataLabel);
+        const folderName = `${dataLabel}_${diario.site_codigo || diario.site_id}`;
+        const dayFolder = zip.folder(folderName);
         if (!dayFolder) continue;
 
-        const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, selectedSite ? `${selectedSite.codigo} — ${selectedSite.nome}` : undefined);
+        const siteLabel = diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined;
+        const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel);
         const container = document.createElement("div");
         container.innerHTML = html;
         const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
@@ -335,14 +385,16 @@ export default function RdoPage() {
 
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `RDO_${periodoLabel}.zip`);
-      toast.success(`Download de ${diarios.length} dias concluído!`);
+      toast.success(`Download de ${diarios.length} registros concluído!`);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao gerar download do período.");
     } finally {
       setDownloading(false);
     }
-  }, [diarios, dataInicio, dataFim, isCliente, clienteLogoUrl, selectedSite]);
+  }, [diarios, dataInicio, dataFim, isCliente, clienteLogoUrl]);
+
+  const hasProject = selectedProjetoId && selectedProjetoId !== "all";
 
   return (
     <div className="space-y-6">
@@ -360,6 +412,11 @@ export default function RdoPage() {
               {selectedSite.uf && `/${selectedSite.uf}`}
             </p>
           )}
+          {!selectedSite && selectedProjeto && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {selectedProjeto.codigo} — {selectedProjeto.nome} · Todos os sites
+            </p>
+          )}
         </div>
       </div>
 
@@ -367,7 +424,7 @@ export default function RdoPage() {
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-[220px]">
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Select value={selectedProjetoId} onValueChange={(v) => { setSelectedProjetoId(v); setSelectedSiteId(""); setSelectedDiarioId(null); }}>
+          <Select value={selectedProjetoId} onValueChange={(v) => { setSelectedProjetoId(v); setSelectedSiteId("all"); setSelectedDiarioId(null); }}>
             <SelectTrigger>
               <SelectValue placeholder="Todos os projetos" />
             </SelectTrigger>
@@ -383,9 +440,10 @@ export default function RdoPage() {
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione o site" />
+              <SelectValue placeholder="Todos os sites" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">Todos os sites</SelectItem>
               {filteredSites.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
               ))}
@@ -394,16 +452,16 @@ export default function RdoPage() {
         </div>
       </div>
 
-      {!selectedSiteId && (
+      {filteredSites.length === 0 && (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p className="text-lg">Selecione um site para visualizar o RDO.</p>
+            <p className="text-lg">Selecione um projeto com sites para visualizar o RDO.</p>
           </CardContent>
         </Card>
       )}
 
-      {selectedSiteId && (
+      {filteredSites.length > 0 && (
         <>
           {/* Filters */}
           <Card>
@@ -480,7 +538,6 @@ export default function RdoPage() {
               </Card>
             </div>
 
-            {/* Download period button */}
             {diarios.length > 0 && (
               <Button
                 variant="outline"
@@ -516,15 +573,38 @@ export default function RdoPage() {
               <div className="lg:col-span-1 space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
                 <ScrollArea className="h-[calc(100vh-420px)]">
-                  <div className="space-y-2 pr-2">
-                    {diarios.map(d => (
-                      <DayCard
-                        key={d.id}
-                        diario={d}
-                        isSelected={d.id === selectedDiarioId}
-                        isCliente={isCliente}
-                        onClick={() => setSelectedDiarioId(d.id)}
-                      />
+                  <div className="space-y-3 pr-2">
+                    {dayGroups.map(group => (
+                      <div key={group.data} className="space-y-0">
+                        {/* Day header */}
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
+                          <span className="text-sm font-bold tabular-nums">
+                            {format(parseISO(group.data), "dd/MM", { locale: ptBR })}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(parseISO(group.data), "EEEE", { locale: ptBR })}
+                          </span>
+                          {group.diarios.length > 1 && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                              {group.diarios.length} sites
+                            </Badge>
+                          )}
+                        </div>
+                        {/* Site cards within the day */}
+                        <div className={`space-y-1.5 ${group.diarios.length > 1 ? "ml-5 border-l-2 border-primary/20 pl-3" : ""}`}>
+                          {group.diarios.map(d => (
+                            <DayCard
+                              key={d.id}
+                              diario={d}
+                              isSelected={d.id === selectedDiarioId}
+                              isCliente={isCliente}
+                              showSite={isMultiSite}
+                              onClick={() => setSelectedDiarioId(d.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
@@ -543,6 +623,7 @@ export default function RdoPage() {
                   <DayDetail
                     diario={selectedDiario}
                     isCliente={isCliente}
+                    showSite={isMultiSite}
                     onPhotoClick={(photo) => setLightboxPhoto({ ...photo, data: selectedDiario.data })}
                     onDownloadDia={handleDownloadDia}
                     downloading={downloading}
@@ -599,10 +680,11 @@ export default function RdoPage() {
 }
 
 // ===== Day Card Component =====
-function DayCard({ diario, isSelected, isCliente, onClick }: {
+function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
   diario: RdoDiarioResumo;
   isSelected: boolean;
   isCliente: boolean;
+  showSite: boolean;
   onClick: () => void;
 }) {
   const hasProblema = diario.fotos.some(f => f.classificacao === "problema");
@@ -619,18 +701,28 @@ function DayCard({ diario, isSelected, isCliente, onClick }: {
         active:scale-[0.98]`}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold tabular-nums">
-              {format(parseISO(diario.data), "dd/MM", { locale: ptBR })}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
-            </span>
-            {hasProblema && (
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-            )}
-          </div>
+        <div className="space-y-1 flex-1 min-w-0">
+          {showSite && diario.site_codigo && (
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <MapPin className="h-3 w-3 text-primary shrink-0" />
+              <span className="text-xs font-semibold text-primary truncate">
+                {diario.site_codigo} — {diario.site_nome}
+              </span>
+            </div>
+          )}
+          {!showSite && (
+            <div className="flex items-center gap-2">
+              <span className="font-semibold tabular-nums">
+                {format(parseISO(diario.data), "dd/MM", { locale: ptBR })}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
+              </span>
+              {hasProblema && (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <ClipboardList className="h-3 w-3" /> {diario.totalItens} {diario.totalItens === 1 ? "item" : "itens"}
@@ -643,9 +735,12 @@ function DayCard({ diario, isSelected, isCliente, onClick }: {
                 <DollarSign className="h-3 w-3" /> {formatCurrency(diario.totalProducao)}
               </span>
             )}
+            {hasProblema && showSite && (
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            )}
           </div>
           {diario.observacoes && (
-            <p className="text-xs text-muted-foreground truncate mt-1 italic">
+            <p className="text-xs text-muted-foreground truncate mt-0.5 italic">
               <MessageSquare className="h-3 w-3 inline mr-1" />
               {diario.observacoes}
             </p>
@@ -666,9 +761,10 @@ function DayCard({ diario, isSelected, isCliente, onClick }: {
 }
 
 // ===== Day Detail Component =====
-function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading }: {
+function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading }: {
   diario: RdoDiarioResumo;
   isCliente: boolean;
+  showSite: boolean;
   onPhotoClick: (photo: RdoFoto) => void;
   onDownloadDia: (diario: RdoDiarioResumo) => void;
   downloading: boolean;
@@ -682,8 +778,6 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
     return groups;
   }, [diario.fotos]);
 
-
-
   return (
     <ScrollArea className="h-[calc(100vh-420px)]">
       <div className="space-y-5 pr-2">
@@ -696,6 +790,19 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
             <p className="text-sm text-muted-foreground capitalize">
               {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
             </p>
+            {showSite && diario.site_codigo && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <MapPin className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm font-semibold text-primary">
+                  {diario.site_codigo} — {diario.site_nome}
+                </span>
+                {diario.municipio && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    · {diario.municipio}{diario.uf ? `/${diario.uf}` : ""}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <Button
             variant="outline"
@@ -850,7 +957,6 @@ function DayDetail({ diario, isCliente, onPhotoClick, onDownloadDia, downloading
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                           <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        {/* Item evidence + legenda overlay */}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 space-y-0.5">
                           {f.item_evidencia && (
                             <p className="text-[10px] text-emerald-300 font-medium truncate flex items-center gap-0.5">
