@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface MapeamentoErp {
   id: string;
@@ -37,7 +38,81 @@ export interface OrcamentoProjeto {
   financeiros: number;
 }
 
+export function useContaAzulConnection() {
+  const { empresaId } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: connectionStatus, isLoading: loadingStatus } = useQuery({
+    queryKey: ["contaazul_status", empresaId],
+    queryFn: async () => {
+      if (!empresaId) return { connected: false, expired: false };
+      const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
+        body: { action: "check_status", empresa_id: empresaId },
+      });
+      if (error) throw error;
+      return data as { connected: boolean; expired: boolean };
+    },
+    enabled: !!empresaId,
+  });
+
+  const getAuthUrl = useMutation({
+    mutationFn: async () => {
+      const redirectUri = `${window.location.origin}/medicoes/integracao-erp`;
+      const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
+        body: { action: "get_auth_url", redirect_uri: redirectUri, empresa_id: empresaId },
+      });
+      if (error) throw error;
+      return data.auth_url as string;
+    },
+    onSuccess: (authUrl) => {
+      window.location.href = authUrl;
+    },
+    onError: (e: Error) => toast.error("Erro ao gerar URL de autenticação: " + e.message),
+  });
+
+  const exchangeCode = useMutation({
+    mutationFn: async (code: string) => {
+      const redirectUri = `${window.location.origin}/medicoes/integracao-erp`;
+      const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
+        body: { action: "exchange_code", code, redirect_uri: redirectUri, empresa_id: empresaId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contaazul_status"] });
+      toast.success("Conta Azul conectada com sucesso!");
+    },
+    onError: (e: Error) => toast.error("Erro ao conectar Conta Azul: " + e.message),
+  });
+
+  const disconnect = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
+        body: { action: "disconnect", empresa_id: empresaId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contaazul_status"] });
+      toast.success("Conta Azul desconectada.");
+    },
+    onError: (e: Error) => toast.error("Erro ao desconectar: " + e.message),
+  });
+
+  return {
+    isConnected: connectionStatus?.connected ?? false,
+    isExpired: connectionStatus?.expired ?? false,
+    loadingStatus,
+    getAuthUrl,
+    exchangeCode,
+    disconnect,
+  };
+}
+
 export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Date) {
+  const { empresaId } = useAuth();
   const queryClient = useQueryClient();
 
   const startDate = month ? format(startOfMonth(month), "yyyy-MM-dd") : null;
@@ -92,7 +167,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
     enabled: !!projetoId
   });
 
-  // 3. Produzido Físico e Equipes Locais do Diário (Apropriado)
+  // 3. Produzido Físico
   const { data: fisico = { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 }, isLoading: loadFisico } = useQuery({
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
     queryFn: async () => {
@@ -117,7 +192,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
         maoDeObra: (eq.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
         equipamentos: (equip.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
         transporte: (veic.data || []).reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
-        materiais: 0, // Materiais são controlados no estoque e faturados diretamente,
+        materiais: 0,
         total_produzido: (prods.data || []).reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0)
       };
     },
@@ -137,25 +212,32 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
     }
   });
 
-  const syncErpMock = useMutation({
+  // Sincronizar com API real do Conta Azul
+  const syncErp = useMutation({
     mutationFn: async () => {
-      // Calls edge function mock
       const { data, error } = await supabase.functions.invoke("sync-contaazul", {
-         body: { action: "sync_contaazul" }
+        body: {
+          action: "sync_contaazul",
+          empresa_id: empresaId,
+          start_date: startDate,
+          end_date: endDate,
+        },
       });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
-      toast.success("ERP Sincronizado!");
+      toast.success(data?.message || "ERP Sincronizado!");
     },
-    onError: (e: any) => toast.error("Falha ao syncar ERP: " + e.message)
+    onError: (e: any) => toast.error("Falha ao sincronizar ERP: " + e.message),
   });
 
   return { 
     orcamentos, loadOrc, saveOrcamento,
-    custosErp, loadCustos, updateCategoria, syncErpMock,
+    custosErp, loadCustos, updateCategoria, 
+    syncErpMock: syncErp, // mantém compatibilidade com nome antigo
+    syncErp,
     fisico, loadFisico
   };
 }
