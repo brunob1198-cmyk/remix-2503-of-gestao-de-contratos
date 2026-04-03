@@ -109,7 +109,7 @@ export function AnaliseCustos({ projetoId, siteId }: AnaliseCustosProps) {
         <Card className="flex flex-col justify-center gap-3 p-4">
           <Button variant="outline" className="w-full gap-2 text-xs" onClick={() => syncErpMock.mutate()} disabled={syncErpMock.isPending}>
              <RefreshCw className={`h-3 w-3 ${syncErpMock.isPending ? "animate-spin" : ""}`} />
-             Sincronizar ERP Hoje
+             Sincronizar Conta Azul
           </Button>
           <Input 
              type="month" 
