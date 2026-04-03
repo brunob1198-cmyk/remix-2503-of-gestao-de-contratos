@@ -6,7 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CONTAAZUL_AUTH_URL = "https://api.contaazul.com/auth/authorize";
+// ✅ URLs corrigidas
+const CONTAAZUL_AUTH_URL = "https://api.contaazul.com/oauth2/authorize";
 const CONTAAZUL_TOKEN_URL = "https://api.contaazul.com/oauth2/token";
 
 serve(async (req) => {
@@ -20,158 +21,173 @@ serve(async (req) => {
   const clientSecret = Deno.env.get("CONTAAZUL_CLIENT_SECRET");
 
   if (!clientId || !clientSecret) {
-    return new Response(
-      JSON.stringify({ error: "Credenciais do Conta Azul não configuradas." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Credenciais do Conta Azul não configuradas." }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { action, code, redirect_uri, empresa_id } = await req.json();
+    const url = new URL(req.url);
 
-    // 1. Gerar URL de autorização
+    // 🔥 IMPORTANTE: suporta GET (callback OAuth) e POST (ações internas)
+    let body: any = {};
+    if (req.method === "POST") {
+      body = await req.json();
+    }
+
+    const action = body.action;
+
+    // =====================================================
+    // 🔹 1. GERAR URL DE AUTORIZAÇÃO
+    // =====================================================
     if (action === "get_auth_url") {
-      if (!redirect_uri) {
-        return new Response(
-          JSON.stringify({ error: "redirect_uri é obrigatório" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const { redirect_uri, empresa_id } = body;
+
+      if (!redirect_uri || !empresa_id) {
+        return new Response(JSON.stringify({ error: "redirect_uri e empresa_id são obrigatórios" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const params = new URLSearchParams({
+        response_type: "code",
         client_id: clientId,
-        redirect_uri: redirect_uri,
+        redirect_uri,
         scope: "sales",
-        state: empresa_id || "default",
+        state: empresa_id, // 🔥 ESSENCIAL
       });
 
       const authUrl = `${CONTAAZUL_AUTH_URL}?${params.toString()}`;
 
-      return new Response(
-        JSON.stringify({ auth_url: authUrl }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ auth_url: authUrl }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 2. Trocar code por tokens
-    if (action === "exchange_code") {
-      if (!code || !redirect_uri) {
-        return new Response(
-          JSON.stringify({ error: "code e redirect_uri são obrigatórios" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    // =====================================================
+    // 🔹 2. CALLBACK DIRETO (QUANDO CONTA AZUL REDIRECIONA)
+    // =====================================================
+    if (req.method === "GET" && url.searchParams.get("code")) {
+      const code = url.searchParams.get("code");
+      const empresa_id = url.searchParams.get("state"); // 🔥 vem daqui
+
+      if (!code || !empresa_id) {
+        return new Response(JSON.stringify({ error: "code ou state ausente" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
+      // 🔥 troca code por token (CORRETO)
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
         },
-        body: JSON.stringify({
+        body: new URLSearchParams({
           grant_type: "authorization_code",
-          code: code,
-          redirect_uri: redirect_uri,
+          code,
+          redirect_uri: `${url.origin}${url.pathname}`, // mesma URL configurada
         }),
       });
 
+      const tokens = await tokenResponse.json();
+
       if (!tokenResponse.ok) {
-        const errorBody = await tokenResponse.text();
-        console.error("Erro ao trocar code:", tokenResponse.status, errorBody);
-        return new Response(
-          JSON.stringify({ error: `Falha na autenticação: ${tokenResponse.status}`, details: errorBody }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.error("Erro token:", tokens);
+        return new Response(JSON.stringify({ error: "Erro ao autenticar", details: tokens }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const tokens = await tokenResponse.json();
-      const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
+      const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-      // Salvar tokens no banco
-      const { error: upsertError } = await supabase
-        .from("contaazul_tokens")
-        .upsert({
-          empresa_id: empresa_id,
+      // 🔥 salva corretamente
+      const { error } = await supabase.from("contaazul_tokens").upsert(
+        {
+          empresa_id,
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token,
           expires_at: expiresAt,
-        }, { onConflict: "empresa_id" });
+        },
+        { onConflict: "empresa_id" },
+      );
 
-      if (upsertError) {
-        console.error("Erro ao salvar tokens:", upsertError);
-        return new Response(
-          JSON.stringify({ error: "Erro ao salvar tokens", details: upsertError.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (error) {
+        console.error("Erro ao salvar:", error);
+        return new Response(JSON.stringify({ error: "Erro ao salvar tokens" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      return new Response(
-        JSON.stringify({ success: true, message: "Conta Azul conectada com sucesso!" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: true, message: "Conta Azul conectada com sucesso!" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 3. Verificar status da conexão
+    // =====================================================
+    // 🔹 3. VERIFICAR STATUS
+    // =====================================================
     if (action === "check_status") {
+      const { empresa_id } = body;
+
       if (!empresa_id) {
-        return new Response(
-          JSON.stringify({ connected: false }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ connected: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const { data: tokenData } = await supabase
-        .from("contaazul_tokens")
-        .select("expires_at")
-        .eq("empresa_id", empresa_id)
-        .single();
+      const { data } = await supabase.from("contaazul_tokens").select("*").eq("empresa_id", empresa_id).single();
 
-      if (!tokenData) {
-        return new Response(
-          JSON.stringify({ connected: false }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (!data) {
+        return new Response(JSON.stringify({ connected: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      const isExpired = new Date(tokenData.expires_at) < new Date();
+      const expired = new Date(data.expires_at) < new Date();
 
-      return new Response(
-        JSON.stringify({ connected: true, expired: isExpired }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ connected: true, expired }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 4. Desconectar
+    // =====================================================
+    // 🔹 4. DISCONNECT
+    // =====================================================
     if (action === "disconnect") {
+      const { empresa_id } = body;
+
       if (!empresa_id) {
-        return new Response(
-          JSON.stringify({ error: "empresa_id obrigatório" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "empresa_id obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
-      await supabase
-        .from("contaazul_tokens")
-        .delete()
-        .eq("empresa_id", empresa_id);
+      await supabase.from("contaazul_tokens").delete().eq("empresa_id", empresa_id);
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    return new Response(
-      JSON.stringify({ error: "Ação não reconhecida" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Ação não reconhecida" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: any) {
-    console.error("Erro na edge function contaazul-oauth:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("Erro:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
