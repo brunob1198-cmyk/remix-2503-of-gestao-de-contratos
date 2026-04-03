@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useErpConfig, useErpLogs, useErpSend } from "@/hooks/useErpIntegration";
+import { useContaAzulConnection } from "@/hooks/useAnaliseCustos";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,20 +11,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock, Link2, Unlink, CloudOff } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
+import { useSearchParams } from "react-router-dom";
 
 export default function IntegracaoErpPage() {
   const { role } = useAuth();
   const { configs, isLoading: loadingConfig, createConfig, updateConfig, deleteConfig } = useErpConfig();
   const { data: logs = [], isLoading: loadingLogs } = useErpLogs();
   const { retry } = useErpSend();
+  const { isConnected, isExpired, loadingStatus, getAuthUrl, exchangeCode, disconnect } = useContaAzulConnection();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ nome: "ERP Principal", webhook_url: "", auth_token: "", auth_type: "bearer" });
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isAdmin = role === "admin";
+
+  // Processar callback OAuth do Conta Azul
+  useEffect(() => {
+    const code = searchParams.get("code");
+    if (code) {
+      exchangeCode.mutate(code);
+      // Limpar params da URL
+      setSearchParams({});
+    }
+  }, []);
 
   const handleCreate = () => {
     createConfig.mutate(formData, {
@@ -64,7 +78,7 @@ export default function IntegracaoErpPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Integração ERP</h2>
-          <p className="text-muted-foreground">Configure webhooks para enviar dados ao ERP financeiro</p>
+          <p className="text-muted-foreground">Configure a integração com o Conta Azul e webhooks para ERP financeiro</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportLogs} disabled={logs.length === 0}>
@@ -114,7 +128,93 @@ export default function IntegracaoErpPage() {
         </div>
       </div>
 
-      {/* Configs */}
+      {/* Conta Azul Connection Card */}
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="text-lg font-bold text-primary">CA</span>
+              </div>
+              <div>
+                <CardTitle className="text-lg">Conta Azul</CardTitle>
+                <CardDescription>Integração direta via API OAuth2</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {loadingStatus ? (
+                <Badge variant="secondary" className="gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" /> Verificando...
+                </Badge>
+              ) : isConnected ? (
+                <Badge variant="secondary" className={`gap-1 ${isExpired ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+                  {isExpired ? (
+                    <><CloudOff className="h-3 w-3" /> Token expirado</>
+                  ) : (
+                    <><CheckCircle2 className="h-3 w-3" /> Conectado</>
+                  )}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                  <Unlink className="h-3 w-3" /> Desconectado
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {isConnected && !isExpired
+                ? "A integração está ativa. As despesas serão sincronizadas diretamente da API."
+                : isConnected && isExpired
+                ? "O token expirou. Reconecte para continuar sincronizando."
+                : "Conecte sua conta do Conta Azul para importar despesas automaticamente."}
+            </p>
+            <div className="flex gap-2">
+              {isConnected ? (
+                <>
+                  {isExpired && (
+                    <Button
+                      variant="outline"
+                      onClick={() => getAuthUrl.mutate()}
+                      disabled={getAuthUrl.isPending}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${getAuthUrl.isPending ? "animate-spin" : ""}`} />
+                      Reconectar
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    onClick={() => disconnect.mutate()}
+                    disabled={disconnect.isPending}
+                    className="gap-2 text-destructive hover:text-destructive"
+                  >
+                    <Unlink className="h-4 w-4" />
+                    Desconectar
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => getAuthUrl.mutate()}
+                  disabled={getAuthUrl.isPending || exchangeCode.isPending}
+                  className="gap-2"
+                >
+                  {getAuthUrl.isPending || exchangeCode.isPending ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                  Conectar Conta Azul
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Webhook Configs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {configs.map((config) => (
           <Card key={config.id}>
@@ -149,8 +249,8 @@ export default function IntegracaoErpPage() {
           <Card className="col-span-full">
             <CardContent className="flex flex-col items-center justify-center py-8 text-center">
               <Settings className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Nenhuma integração configurada</p>
-              {isAdmin && <p className="text-sm text-muted-foreground">Clique em "Nova Integração" para começar</p>}
+              <p className="text-muted-foreground">Nenhuma integração webhook configurada</p>
+              {isAdmin && <p className="text-sm text-muted-foreground">Clique em "Nova Integração" para configurar webhooks</p>}
             </CardContent>
           </Card>
         )}
