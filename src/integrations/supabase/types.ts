@@ -215,6 +215,44 @@ export type Database = {
           },
         ]
       }
+      contaazul_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          empresa_id: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          empresa_id: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          empresa_id?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contaazul_tokens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           arquivo_url: string | null
