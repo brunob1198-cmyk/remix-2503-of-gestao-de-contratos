@@ -27,6 +27,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   const { toast } = useToast();
 
   const [id, setId] = useState<string>("");
+  const [numeroContrato, setNumeroContrato] = useState("");
   const [contratoPaiId, setContratoPaiId] = useState<string>("none");
   const [clienteIds, setClienteIds] = useState<string[]>([]);
   const [valorTotal, setValorTotal] = useState<string>("");
@@ -47,6 +48,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   useEffect(() => {
     if (contratoToEdit) {
       setId(contratoToEdit.id);
+      setNumeroContrato(contratoToEdit.numero_contrato || "");
       setContratoPaiId(contratoToEdit.contrato_pai_id || "none");
       setClienteIds(contratoToEdit.cliente_ids || []);
       setValorTotal(contratoToEdit.valor_total?.toString() || "");
@@ -69,6 +71,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
 
   const resetForm = () => {
     setId("");
+    setNumeroContrato("");
     setContratoPaiId("none");
     setClienteIds([]);
     setValorTotal("");
@@ -148,6 +151,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     e.preventDefault();
     
     const payload: Partial<Contrato> = {
+      numero_contrato: contratoPaiId === "none" ? (numeroContrato || undefined) : undefined,
       contrato_pai_id: contratoPaiId === "none" ? undefined : contratoPaiId,
       cliente_ids: clienteIds.length > 0 ? clienteIds : undefined,
       valor_total: valorTotal ? parseFloat(valorTotal.replace(",", ".")) : undefined,
@@ -289,7 +293,17 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
         {/* Right Col - Formulário */}
         <form id="contrato-form" onSubmit={handleSubmit} className="w-2/3 flex flex-col gap-5 overflow-y-auto pb-6 pr-2">
           
-          <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+          <div className="grid grid-cols-3 gap-4 bg-muted/30 p-4 rounded-lg border">
+             {contratoPaiId === "none" && (
+               <div className="space-y-2">
+                 <Label className="text-sm font-bold">Nº do Contrato</Label>
+                 <Input 
+                   placeholder="Ex: IDCT13860" 
+                   value={numeroContrato} 
+                   onChange={(e) => setNumeroContrato(e.target.value)} 
+                 />
+               </div>
+             )}
              <div className="space-y-2">
                 <Label className="text-sm font-bold">É um Aditivo de Contrato?</Label>
                 <Select value={contratoPaiId} onValueChange={setContratoPaiId}>
@@ -297,7 +311,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                   <SelectContent>
                     <SelectItem value="none">Não, é um contrato principal</SelectItem>
                     {contratos.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0,40) || c.id.slice(0,8)}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0,40) || c.id.slice(0,8)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -94,6 +94,7 @@ export default function ContratosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Nº Contrato</TableHead>
                   <TableHead>Contrato / Objeto</TableHead>
                   <TableHead>Clientes</TableHead>
                   <TableHead>Valor Integrado</TableHead>
@@ -111,6 +112,9 @@ export default function ContratosPage() {
 
                   return (
                     <TableRow key={c.id}>
+                      <TableCell className="font-mono text-sm font-semibold whitespace-nowrap">
+                        {c.numero_contrato || "-"}
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium text-sm truncate max-w-[250px]" title={c.escopo || "Sem escopo"}>
                           {c.escopo || "Contrato s/ Objeto Definido"}

@@ -267,6 +267,7 @@ export type Database = {
           liberacao_garantias: string | null
           medicoes: string | null
           multas: string | null
+          numero_contrato: string | null
           observacoes: string | null
           prazo_fim: string | null
           prazo_inicio: string | null
@@ -288,6 +289,7 @@ export type Database = {
           liberacao_garantias?: string | null
           medicoes?: string | null
           multas?: string | null
+          numero_contrato?: string | null
           observacoes?: string | null
           prazo_fim?: string | null
           prazo_inicio?: string | null
@@ -309,6 +311,7 @@ export type Database = {
           liberacao_garantias?: string | null
           medicoes?: string | null
           multas?: string | null
+          numero_contrato?: string | null
           observacoes?: string | null
           prazo_fim?: string | null
           prazo_inicio?: string | null

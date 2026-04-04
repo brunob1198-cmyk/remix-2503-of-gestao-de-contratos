@@ -56,6 +56,7 @@ export interface Contrato {
   multas?: string;
   reajuste?: string;
   observacoes?: string;
+  numero_contrato?: string;
   contrato_pai_id?: string;
   created_at: string;
   updated_at: string;
