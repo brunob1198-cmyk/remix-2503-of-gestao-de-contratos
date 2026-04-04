@@ -24,8 +24,6 @@ export default function IntegracaoErpPage() {
   const { retry } = useErpSend();
   const { isConnected, isExpired, loadingStatus, getAuthUrl, exchangeCode, refreshToken, disconnect } = useContaAzulConnection();
   const [showForm, setShowForm] = useState(false);
-  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
-  const [manualRefreshToken, setManualRefreshToken] = useState("");
   const [formData, setFormData] = useState({ nome: "ERP Principal", webhook_url: "", auth_token: "", auth_type: "bearer" });
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -57,14 +55,6 @@ export default function IntegracaoErpPage() {
     });
   };
 
-  const handleConnectWithRefreshToken = () => {
-    refreshToken.mutate(manualRefreshToken, {
-      onSuccess: () => {
-        setShowRefreshDialog(false);
-        setManualRefreshToken("");
-      },
-    });
-  };
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -187,54 +177,21 @@ export default function IntegracaoErpPage() {
                 ? "A integração está ativa. As despesas serão sincronizadas diretamente da API."
                 : isConnected && isExpired
                 ? "O token expirou. Reconecte para continuar sincronizando."
-                : "Para app de desenvolvimento, você pode conectar direto com o refresh token sem passar pela etapa de autorização."}
+                : "Conecte sua conta do Conta Azul para sincronizar dados financeiros automaticamente."}
             </p>
             <div className="flex flex-wrap gap-2 justify-end">
               {isConnected ? (
                 <>
                   {isExpired && (
-                    <>
-                      <Button
-                        variant="outline"
-                        onClick={() => refreshToken.mutate(undefined)}
-                        disabled={refreshToken.isPending}
-                        className="gap-2"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${refreshToken.isPending ? "animate-spin" : ""}`} />
-                        {refreshToken.isPending ? "Renovando..." : "Renovar token"}
-                      </Button>
-                      <Dialog open={showRefreshDialog} onOpenChange={setShowRefreshDialog}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="gap-2">
-                            <Link2 className="h-4 w-4" /> Informar novo refresh token
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Atualizar refresh token do Conta Azul</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 pt-2">
-                            <div className="space-y-2">
-                              <Label htmlFor="contaazul-refresh-token-expired">Refresh Token</Label>
-                              <Input
-                                id="contaazul-refresh-token-expired"
-                                type="password"
-                                value={manualRefreshToken}
-                                onChange={(e) => setManualRefreshToken(e.target.value)}
-                                placeholder="Cole aqui o refresh token"
-                              />
-                            </div>
-                            <Button
-                              className="w-full"
-                              onClick={handleConnectWithRefreshToken}
-                              disabled={!manualRefreshToken.trim() || refreshToken.isPending}
-                            >
-                              {refreshToken.isPending ? "Salvando..." : "Salvar e renovar token"}
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </>
+                    <Button
+                      variant="outline"
+                      onClick={() => refreshToken.mutate(undefined)}
+                      disabled={refreshToken.isPending}
+                      className="gap-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${refreshToken.isPending ? "animate-spin" : ""}`} />
+                      {refreshToken.isPending ? "Renovando..." : "Renovar token"}
+                    </Button>
                   )}
                   <Button
                     variant="ghost"
@@ -247,57 +204,23 @@ export default function IntegracaoErpPage() {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Dialog open={showRefreshDialog} onOpenChange={setShowRefreshDialog}>
-                    <DialogTrigger asChild>
-                      <Button className="gap-2">
-                        <Link2 className="h-4 w-4" /> Conectar com Refresh Token
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Conectar Conta Azul com refresh token</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 pt-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="contaazul-refresh-token">Refresh Token</Label>
-                          <Input
-                            id="contaazul-refresh-token"
-                            type="password"
-                            value={manualRefreshToken}
-                            onChange={(e) => setManualRefreshToken(e.target.value)}
-                            placeholder="Cole aqui o refresh token gerado"
-                          />
-                        </div>
-                        <Button
-                          className="w-full"
-                          onClick={handleConnectWithRefreshToken}
-                          disabled={!manualRefreshToken.trim() || refreshToken.isPending}
-                        >
-                          {refreshToken.isPending ? "Conectando..." : "Conectar agora"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="outline"
-                    onClick={() => getAuthUrl.mutate()}
-                    disabled={getAuthUrl.isPending || exchangeCode.isPending || processingCallback}
-                    className="gap-2"
-                  >
-                    {getAuthUrl.isPending || exchangeCode.isPending || processingCallback ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        {processingCallback ? "Conectando..." : "Redirecionando..."}
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className="h-4 w-4" />
-                        Usar OAuth
-                      </>
-                    )}
-                  </Button>
-                </>
+                <Button
+                  onClick={() => getAuthUrl.mutate()}
+                  disabled={getAuthUrl.isPending || exchangeCode.isPending || processingCallback}
+                  className="gap-2"
+                >
+                  {getAuthUrl.isPending || exchangeCode.isPending || processingCallback ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      {processingCallback ? "Conectando..." : "Redirecionando..."}
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="h-4 w-4" />
+                      Conectar Conta Azul
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </div>
