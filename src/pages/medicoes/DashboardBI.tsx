@@ -539,11 +539,11 @@ export default function DashboardBIPage() {
         </TabsList>
 
         <TabsContent value="financeiro">
-          <FinanceiroTab data={financeiro} />
+          <FinanceiroTab data={financeiro} projetoFilter={projetoFilter} setProjetoFilter={setProjetoFilter} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
         </TabsContent>
 
         <TabsContent value="producao">
-          <ProducaoTab data={producao} />
+          <ProducaoTab data={producao} projetoFilter={projetoFilter} setProjetoFilter={setProjetoFilter} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
         </TabsContent>
 
         <TabsContent value="contratos">
