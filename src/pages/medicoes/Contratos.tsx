@@ -94,6 +94,7 @@ export default function ContratosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Nº Contrato</TableHead>
                   <TableHead>Contrato / Objeto</TableHead>
                   <TableHead>Clientes</TableHead>
                   <TableHead>Valor Integrado</TableHead>
