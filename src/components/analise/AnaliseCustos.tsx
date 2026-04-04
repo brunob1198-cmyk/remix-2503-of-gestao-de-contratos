@@ -59,7 +59,7 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
     await saveOrcamento.mutateAsync({
       projeto_id: projetoId,
       site_id: siteId,
-      mes_referencia: new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).toISOString(),
+      mes_referencia: new Date(periodoInicio.getFullYear(), periodoInicio.getMonth(), 1).toISOString(),
       ...editOrc
     });
     setEditMode(false);
