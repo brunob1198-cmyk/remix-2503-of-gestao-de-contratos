@@ -24,8 +24,6 @@ export default function IntegracaoErpPage() {
   const { retry } = useErpSend();
   const { isConnected, isExpired, loadingStatus, getAuthUrl, exchangeCode, refreshToken, disconnect } = useContaAzulConnection();
   const [showForm, setShowForm] = useState(false);
-  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
-  const [manualRefreshToken, setManualRefreshToken] = useState("");
   const [formData, setFormData] = useState({ nome: "ERP Principal", webhook_url: "", auth_token: "", auth_type: "bearer" });
   const [searchParams, setSearchParams] = useSearchParams();
 
