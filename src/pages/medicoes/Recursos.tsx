@@ -536,12 +536,12 @@ export default function RecursosPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="flex overflow-hidden">
-                {/* Fixed data columns */}
-                <div className="flex-shrink-0 overflow-hidden border-r z-10 bg-background">
+              <div className="flex">
+                {/* Fixed data columns + actions */}
+                <div className="flex-shrink-0 border-r z-10 bg-background">
                   <Table className="w-auto table-fixed">
                     <TableHeader>
-                      <TableRow style={{ height: 60 }}>
+                      <TableRow className="h-[60px]">
                         {cols.map(col => (
                           <TableHead key={col} className="whitespace-nowrap">
                             <ColumnHeader
@@ -568,7 +568,7 @@ export default function RecursosPage() {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id} style={{ height: 48 }}>
+                          <TableRow key={r.id} className="h-[48px]">
                             <TableCell className="font-medium whitespace-nowrap">{r.nome}</TableCell>
                             {tipo === "pessoa" && <TableCell className="whitespace-nowrap">{r.cargo || "—"}</TableCell>}
                             {tipo === "veiculo" && <TableCell className="whitespace-nowrap">{r.placa || "—"}</TableCell>}
@@ -641,7 +641,7 @@ export default function RecursosPage() {
                 <div className="flex-1 overflow-x-auto min-w-0">
                   <Table className="w-auto table-fixed">
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="h-[60px]">
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
@@ -670,7 +670,7 @@ export default function RecursosPage() {
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
-                          <TableRow key={r.id}>
+                          <TableRow key={r.id} className="h-[48px]">
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
