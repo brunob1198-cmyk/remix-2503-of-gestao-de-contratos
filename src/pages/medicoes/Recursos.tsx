@@ -201,9 +201,8 @@ export default function RecursosPage() {
   function getAlocacaoLabel(recursoId: string): string {
     const aloc = getAlocacaoAtiva(recursoId);
     if (!aloc) return "—";
-    const site = sites.find(s => s.id === aloc.site_id);
     const projeto = projetos.find(p => p.id === aloc.projeto_id);
-    return `${projeto?.codigo || "?"} / ${site?.codigo || "?"}`;
+    return `${projeto?.codigo || "?"} — ${projeto?.nome || "?"}`;
   }
 
   function getPeriodoLabel(recursoId: string): string {
