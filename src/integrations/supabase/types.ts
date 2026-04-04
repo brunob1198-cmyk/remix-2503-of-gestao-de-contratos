@@ -329,6 +329,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "view_contratos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contratos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -1522,6 +1529,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "view_contratos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projetos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -1871,7 +1885,159 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      view_contratos: {
+        Row: {
+          created_at: string | null
+          empresa_id: string | null
+          escopo: string | null
+          id: string | null
+          numero_contrato: string | null
+          percentual_prazo: number | null
+          prazo_fim: string | null
+          prazo_inicio: string | null
+          status: string | null
+          total_projetos: number | null
+          valor_projetos: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          empresa_id?: string | null
+          escopo?: string | null
+          id?: string | null
+          numero_contrato?: string | null
+          percentual_prazo?: never
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          status?: string | null
+          total_projetos?: never
+          valor_projetos?: never
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          empresa_id?: string | null
+          escopo?: string | null
+          id?: string | null
+          numero_contrato?: string | null
+          percentual_prazo?: never
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          status?: string | null
+          total_projetos?: never
+          valor_projetos?: never
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_financeiro: {
+        Row: {
+          ano: number | null
+          categoria: string | null
+          categoria_erp: string | null
+          centro_custo: string | null
+          data_competencia: string | null
+          data_pagamento: string | null
+          descricao: string | null
+          empresa_id: string | null
+          id: string | null
+          mes: number | null
+          projeto_codigo: string | null
+          projeto_id: string | null
+          projeto_nome: string | null
+          site_codigo: string | null
+          site_id: string | null
+          site_nome: string | null
+          status: string | null
+          valor: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_producao: {
+        Row: {
+          ano: number | null
+          data_producao: string | null
+          empresa_executora: string | null
+          empresa_id: string | null
+          id: string | null
+          item_codigo: string | null
+          item_descricao: string | null
+          item_lpu_id: string | null
+          item_unidade: string | null
+          mes: number | null
+          municipio: string | null
+          preco_unitario: number | null
+          projeto_codigo: string | null
+          projeto_id: string | null
+          projeto_nome: string | null
+          quantidade: number | null
+          site_codigo: string | null
+          site_id: string | null
+          site_nome: string | null
+          uf: string | null
+          valor_produzido: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_producao_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
