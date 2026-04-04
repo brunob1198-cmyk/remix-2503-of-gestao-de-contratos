@@ -44,7 +44,7 @@ serve(async (req) => {
         response_type: "code",
         client_id: clientId,
         redirect_uri: redirect_uri,
-        scope: "sales",
+        scope: "openid profile aws.cognito.signin.user.admin",
         state: empresa_id || "default",
       });
 
