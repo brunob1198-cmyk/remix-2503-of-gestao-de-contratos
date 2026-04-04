@@ -678,7 +678,7 @@ export default function RecursosPage() {
                               const monthWidth = daysInMonth * DAY_WIDTH;
 
                               return (
-                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 40 }}>
+                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 48 }}>
                                   {/* Grid Lines */}
                                   <div className="absolute inset-0 flex z-0 pointer-events-none">
                                     {Array.from({ length: daysInMonth }).map((_, d) => (
