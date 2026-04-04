@@ -112,7 +112,9 @@ export default function ContratosPage() {
 
                   return (
                     <TableRow key={c.id}>
-                      <TableCell>
+                      <TableCell className="font-mono text-sm font-semibold whitespace-nowrap">
+                        {c.numero_contrato || "-"}
+                      </TableCell>
                         <div className="font-medium text-sm truncate max-w-[250px]" title={c.escopo || "Sem escopo"}>
                           {c.escopo || "Contrato s/ Objeto Definido"}
                         </div>
