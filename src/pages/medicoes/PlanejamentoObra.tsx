@@ -13,7 +13,7 @@ import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailS
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { TimelineObra } from "@/components/planejamento/TimelineObra";
-import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
+// SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
 import { ProducaoTab } from "@/components/analise/ProducaoTab";
@@ -164,9 +164,6 @@ export default function PlanejamentoObra() {
             </TabsTrigger>
             <TabsTrigger value="timeline" className="gap-1.5">
               <Map className="h-4 w-4" /> Timeline
-            </TabsTrigger>
-            <TabsTrigger value="simulacao" className="gap-1.5">
-              <Users className="h-4 w-4" /> Simulação
             </TabsTrigger>
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
@@ -332,9 +329,6 @@ export default function PlanejamentoObra() {
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="simulacao" className="mt-4">
-            <SimulacaoEquipes atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
-          </TabsContent>
 
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
