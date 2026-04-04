@@ -141,7 +141,7 @@ export function AtividadeDetailSheet({
               {duracao > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Duração: <strong>{duracao} dias</strong>
-                  {dataFim && <> — Fim: <strong>{format(new Date(dataFim), "dd/MM/yyyy")}</strong></>}
+                  {dataFim && <> — Fim: <strong>{format(parseISO(dataFim), "dd/MM/yyyy")}</strong></>}
                 </p>
               )}
 
