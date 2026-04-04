@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { FrenteObra, AtividadePlanejamento } from "@/hooks/usePlanejamento";
-import { addDays, format } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { useEscopos } from "@/hooks/useEscopos";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
