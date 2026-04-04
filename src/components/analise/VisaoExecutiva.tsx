@@ -28,7 +28,7 @@ function statusBadge(pct: number) {
   return <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">Crítico</Badge>;
 }
 
-export function VisaoExecutiva({ projetoId, projetoName, selectedMonth }: { projetoId: string; projetoName: string; selectedMonth?: Date }) {
+export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoFim }: { projetoId: string; projetoName: string; periodoInicio?: Date; periodoFim?: Date }) {
   const { data, isLoading } = useAnaliseObra(projetoId);
 
   if (isLoading) {

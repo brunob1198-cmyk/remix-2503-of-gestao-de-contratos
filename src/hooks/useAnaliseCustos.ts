@@ -129,12 +129,12 @@ export function useContaAzulConnection() {
   };
 }
 
-export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Date) {
+export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInicio?: Date, periodoFim?: Date) {
   const { empresaId } = useAuth();
   const queryClient = useQueryClient();
 
-  const startDate = month ? format(startOfMonth(month), "yyyy-MM-dd") : null;
-  const endDate = month ? format(endOfMonth(month), "yyyy-MM-dd") : null;
+  const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
+  const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
 
   // 1. Orçamento
   const { data: orcamentos = [], isLoading: loadOrc } = useQuery({

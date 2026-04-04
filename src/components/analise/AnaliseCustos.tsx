@@ -10,11 +10,12 @@ import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 interface AnaliseCustosProps {
   projetoId: string;
   siteId: string;
-  selectedMonth: Date;
+  periodoInicio: Date;
+  periodoFim: Date;
 }
 
-export function AnaliseCustos({ projetoId, siteId, selectedMonth }: AnaliseCustosProps) {
-  const { orcamentos, custosErp, fisico, saveOrcamento, syncErpMock } = useAnaliseCustos(projetoId, siteId, selectedMonth);
+export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: AnaliseCustosProps) {
+  const { orcamentos, custosErp, fisico, saveOrcamento, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
