@@ -136,36 +136,32 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
   const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
 
-  // 1. Orçamento
-  const { data: orcamentos = [], isLoading: loadOrc } = useQuery({
-    queryKey: ["orcamento_projetos", projetoId, siteId, startDate],
+  // 1. Custo Orçado (baseado em escopo × custo_unitario derivado do BDI)
+  const { data: custoOrcado = 0, isLoading: loadOrc } = useQuery({
+    queryKey: ["custo_orcado_escopo", projetoId, siteId],
     queryFn: async () => {
-      let q = (supabase as any).from("orcamento_projetos").select("*").eq("projeto_id", projetoId);
-      if (siteId) q = q.eq("site_id", siteId);
-      if (startDate) q = q.gte("mes_referencia", startDate).lte("mes_referencia", endDate);
-      
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as OrcamentoProjeto[];
+      // Get sites for this project
+      let qSites = supabase.from("sites").select("id").eq("projeto_id", projetoId);
+      const { data: sitesData } = await qSites;
+      if (!sitesData || sitesData.length === 0) return 0;
+
+      const siteIds = siteId ? [siteId] : sitesData.map(s => s.id);
+
+      // Get escopo items with their LPU items (for BDI)
+      const { data: escopoItens } = await supabase
+        .from("escopo_itens")
+        .select("quantidade, custo_unitario, valor_unitario, item_lpu_id")
+        .in("site_id", siteIds);
+
+      if (!escopoItens || escopoItens.length === 0) return 0;
+
+      // Custo orçado = quantidade × custo_unitario (que já é preço/BDI)
+      return escopoItens.reduce((acc, item) => {
+        const custo = Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
+        return acc + custo;
+      }, 0);
     },
     enabled: !!projetoId
-  });
-
-  const saveOrcamento = useMutation({
-    mutationFn: async (orcamento: Partial<OrcamentoProjeto>) => {
-      const { data, error } = await (supabase as any)
-        .from("orcamento_projetos")
-        .upsert(orcamento, { onConflict: "projeto_id, site_id, mes_referencia" })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["orcamento_projetos"] });
-      toast.success("Orçamento salvo com sucesso.");
-    },
-    onError: (e: any) => toast.error(`Erro ao salvar orçamento: ${e.message}`)
   });
 
   // 2. Custos Pagos (ERP)
@@ -253,9 +249,9 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   });
 
   return { 
-    orcamentos, loadOrc, saveOrcamento,
+    custoOrcado, loadOrc,
     custosErp, loadCustos, updateCategoria, 
-    syncErpMock: syncErp, // mantém compatibilidade com nome antigo
+    syncErpMock: syncErp,
     syncErp,
     fisico, loadFisico
   };
