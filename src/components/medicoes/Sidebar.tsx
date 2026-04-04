@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, MapPin, FileSpreadsheet,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
-  CalendarRange,
+  CalendarRange, PieChart,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
