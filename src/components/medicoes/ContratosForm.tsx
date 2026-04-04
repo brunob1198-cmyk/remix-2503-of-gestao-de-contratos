@@ -27,6 +27,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   const { toast } = useToast();
 
   const [id, setId] = useState<string>("");
+  const [numeroContrato, setNumeroContrato] = useState("");
   const [contratoPaiId, setContratoPaiId] = useState<string>("none");
   const [clienteIds, setClienteIds] = useState<string[]>([]);
   const [valorTotal, setValorTotal] = useState<string>("");
