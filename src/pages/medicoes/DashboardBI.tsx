@@ -1,15 +1,60 @@
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardBI } from "@/hooks/useDashboardBI";
-import { BarChart3, TrendingUp, FileText, DollarSign, Activity, AlertTriangle } from "lucide-react";
+import { BarChart3, TrendingUp, FileText, DollarSign, Activity, AlertTriangle, CalendarIcon, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area,
 } from "recharts";
+
+function DateRangeFilter({ dateFrom, dateTo, onDateFromChange, onDateToChange }: {
+  dateFrom: Date | undefined;
+  dateTo: Date | undefined;
+  onDateFromChange: (d: Date | undefined) => void;
+  onDateToChange: (d: Date | undefined) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={dateFrom} onSelect={onDateFromChange} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+        </PopoverContent>
+      </Popover>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={dateTo} onSelect={onDateToChange} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+        </PopoverContent>
+      </Popover>
+      {(dateFrom || dateTo) && (
+        <Button variant="ghost" size="icon" onClick={() => { onDateFromChange(undefined); onDateToChange(undefined); }} title="Limpar filtro">
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -52,6 +97,8 @@ function KpiCard({ title, value, subtitle, icon: Icon, color }: { title: string;
 // ── Financeiro Tab ──
 function FinanceiroTab({ data }: { data: any[] }) {
   const [projetoFilter, setProjetoFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
@@ -62,9 +109,12 @@ function FinanceiroTab({ data }: { data: any[] }) {
   }, [data]);
 
   const filtered = useMemo(() => {
-    if (projetoFilter === "all") return data;
-    return data.filter(d => d.projeto_id === projetoFilter);
-  }, [data, projetoFilter]);
+    let result = data;
+    if (projetoFilter !== "all") result = result.filter(d => d.projeto_id === projetoFilter);
+    if (dateFrom) result = result.filter(d => d.data_competencia && new Date(d.data_competencia) >= dateFrom);
+    if (dateTo) result = result.filter(d => d.data_competencia && new Date(d.data_competencia) <= dateTo);
+    return result;
+  }, [data, projetoFilter, dateFrom, dateTo]);
 
   const totalCusto = filtered.reduce((acc, d) => acc + Number(d.valor || 0), 0);
   const totalPago = filtered.filter(d => d.status === "pago").reduce((acc, d) => acc + Number(d.valor || 0), 0);
@@ -103,7 +153,7 @@ function FinanceiroTab({ data }: { data: any[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Select value={projetoFilter} onValueChange={setProjetoFilter}>
           <SelectTrigger className="w-[300px]">
             <SelectValue placeholder="Todos os projetos" />
@@ -115,6 +165,7 @@ function FinanceiroTab({ data }: { data: any[] }) {
             ))}
           </SelectContent>
         </Select>
+        <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -206,6 +257,8 @@ function FinanceiroTab({ data }: { data: any[] }) {
 // ── Produção Tab ──
 function ProducaoTab({ data }: { data: any[] }) {
   const [projetoFilter, setProjetoFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
@@ -216,9 +269,12 @@ function ProducaoTab({ data }: { data: any[] }) {
   }, [data]);
 
   const filtered = useMemo(() => {
-    if (projetoFilter === "all") return data;
-    return data.filter(d => d.projeto_id === projetoFilter);
-  }, [data, projetoFilter]);
+    let result = data;
+    if (projetoFilter !== "all") result = result.filter(d => d.projeto_id === projetoFilter);
+    if (dateFrom) result = result.filter(d => d.data_producao && new Date(d.data_producao) >= dateFrom);
+    if (dateTo) result = result.filter(d => d.data_producao && new Date(d.data_producao) <= dateTo);
+    return result;
+  }, [data, projetoFilter, dateFrom, dateTo]);
 
   const totalQtd = filtered.reduce((acc, d) => acc + Number(d.quantidade || 0), 0);
   const totalValor = filtered.reduce((acc, d) => acc + Number(d.valor_produzido || 0), 0);
@@ -260,17 +316,20 @@ function ProducaoTab({ data }: { data: any[] }) {
 
   return (
     <div className="space-y-6">
-      <Select value={projetoFilter} onValueChange={setProjetoFilter}>
-        <SelectTrigger className="w-[300px]">
-          <SelectValue placeholder="Todos os projetos" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos os projetos</SelectItem>
-          {projetos.map(([id, label]) => (
-            <SelectItem key={id} value={id}>{label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={projetoFilter} onValueChange={setProjetoFilter}>
+          <SelectTrigger className="w-[300px]">
+            <SelectValue placeholder="Todos os projetos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os projetos</SelectItem>
+            {projetos.map(([id, label]) => (
+              <SelectItem key={id} value={id}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCard title="Total Produzido (R$)" value={formatCurrencyFull(totalValor)} icon={DollarSign} color="bg-blue-500" />
