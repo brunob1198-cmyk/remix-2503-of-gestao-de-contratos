@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CONTAAZUL_AUTH_URL = "https://api.contaazul.com/auth/authorize";
-const CONTAAZUL_TOKEN_URL = "https://api.contaazul.com/oauth2/token";
+const CONTAAZUL_AUTH_URL = "https://auth.contaazul.com/login";
+const CONTAAZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -44,7 +44,7 @@ serve(async (req) => {
         response_type: "code",
         client_id: clientId,
         redirect_uri: redirect_uri,
-        scope: "sales",
+        scope: "openid profile aws.cognito.signin.user.admin",
         state: empresa_id || "default",
       });
 
@@ -64,17 +64,21 @@ serve(async (req) => {
         });
       }
 
+      const tokenBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: redirect_uri,
+      });
+
+      console.log("Trocando code por tokens...", { code, redirect_uri });
+
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
           Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
         },
-        body: JSON.stringify({
-          grant_type: "authorization_code",
-          code: code,
-          redirect_uri: redirect_uri,
-        }),
+        body: tokenBody.toString(),
       });
 
       if (!tokenResponse.ok) {
