@@ -71,6 +71,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
 
   const resetForm = () => {
     setId("");
+    setNumeroContrato("");
     setContratoPaiId("none");
     setClienteIds([]);
     setValorTotal("");
