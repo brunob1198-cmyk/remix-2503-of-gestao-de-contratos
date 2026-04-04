@@ -559,34 +559,34 @@ export default function DiarioObraPage() {
         </div>
       </div>
 
-      {!selectedSiteId && (
-        <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
-            <HardHat className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg">
-              {!selectedProjetoId
-                ? "Selecione um projeto e um site para iniciar o diário de obra."
-                : "Selecione um site para iniciar o diário de obra."}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {selectedSiteId && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="calendario" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Calendário
-            </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="calendario" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Calendário
+          </TabsTrigger>
+          {selectedSiteId && (
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
               Lançamento — {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
             </TabsTrigger>
-          </TabsList>
+          )}
+        </TabsList>
 
-          {/* ===== CALENDAR VIEW ===== */}
-          <TabsContent value="calendario">
+        {/* ===== CALENDAR VIEW ===== */}
+        <TabsContent value="calendario">
+          {!selectedSiteId ? (
+            <Card>
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <HardHat className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="text-lg">
+                  {!selectedProjetoId
+                    ? "Selecione um projeto e um site para visualizar os lançamentos."
+                    : "Selecione um site para visualizar os lançamentos."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
             <DiarioCalendario
               entries={calendarEntries}
               onDayClick={handleCalendarDayClick}
@@ -597,9 +597,10 @@ export default function DiarioObraPage() {
                 setPeriodoFim(fim);
               }}
             />
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          {/* ===== LANCAMENTO VIEW ===== */}
+      {selectedSiteId && (
           <TabsContent value="lancamento">
             {/* Sticky Summary Header */}
             <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b pb-4 mb-4">
@@ -1320,8 +1321,8 @@ export default function DiarioObraPage() {
           </Card>
             </div>
           </TabsContent>
-        </Tabs>
       )}
+      </Tabs>
     </div>
   );
 }
