@@ -110,11 +110,8 @@ export function AnaliseCustos({ projetoId, siteId, selectedMonth }: AnaliseCusto
              <RefreshCw className={`h-3 w-3 ${syncErpMock.isPending ? "animate-spin" : ""}`} />
              Sincronizar Conta Azul
           </Button>
-          <Input 
-             type="month" 
-             value={format(selectedMonth, "yyyy-MM")}
-             onChange={(e) => setSelectedMonth(new Date(e.target.value + "-02"))}
-          />
+
+
         </Card>
       </div>
 
