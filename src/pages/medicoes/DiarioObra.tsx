@@ -1321,8 +1321,8 @@ export default function DiarioObraPage() {
           </Card>
             </div>
           </TabsContent>
-        </Tabs>
       )}
+      </Tabs>
     </div>
   );
 }
