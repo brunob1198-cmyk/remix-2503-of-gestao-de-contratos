@@ -64,17 +64,21 @@ serve(async (req) => {
         });
       }
 
+      const tokenBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: redirect_uri,
+      });
+
+      console.log("Trocando code por tokens...", { code, redirect_uri });
+
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
           Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
         },
-        body: JSON.stringify({
-          grant_type: "authorization_code",
-          code: code,
-          redirect_uri: redirect_uri,
-        }),
+        body: tokenBody.toString(),
       });
 
       if (!tokenResponse.ok) {
