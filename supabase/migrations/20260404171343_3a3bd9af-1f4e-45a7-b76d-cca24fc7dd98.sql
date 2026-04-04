@@ -1,0 +1,1 @@
+ALTER VIEW public.view_producao_diario SET (security_invoker = on);
