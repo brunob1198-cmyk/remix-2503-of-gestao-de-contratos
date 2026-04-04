@@ -499,6 +499,9 @@ function ContratosTab({ data }: { data: any[] }) {
 // ── Main Page ──
 export default function DashboardBIPage() {
   const { financeiro, producao, contratos, isLoading } = useDashboardBI();
+  const [projetoFilter, setProjetoFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   if (isLoading) {
     return (
