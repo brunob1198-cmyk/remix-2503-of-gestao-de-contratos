@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProjetos } from "@/hooks/useProjetos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,9 @@ const formatCurrency = (v: number) =>
 export default function DiarioObraPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { sites } = useSites();
+  const { projetos } = useProjetos();
+  const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_obra_projeto_id", "");
+  const { sites } = useSites(selectedProjetoId || undefined);
   const { recursos, getCustoAtual, getAlocacoesBySite } = useRecursos();
   const [activeTab, setActiveTab] = useState<string>("calendario");
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("diario_obra_site_id", "");
@@ -43,6 +46,12 @@ export default function DiarioObraPage() {
   const [periodoFim, setPeriodoFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
+
+  // Reset site when projeto changes
+  const handleProjetoChange = (projetoId: string) => {
+    setSelectedProjetoId(projetoId);
+    setSelectedSiteId("");
+  };
 
   const selectedSite = sites.find(s => s.id === selectedSiteId);
   const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
@@ -520,21 +529,39 @@ export default function DiarioObraPage() {
           <h1 className="text-2xl font-bold tracking-tight">Diário de Obra</h1>
         </div>
 
-        {/* Site selector */}
-        <div className="flex items-center gap-2 max-w-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione o site" />
-            </SelectTrigger>
-            <SelectContent>
-              {sites.map(s => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.codigo} — {s.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Projeto + Site selectors */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 min-w-[250px]">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedProjetoId} onValueChange={handleProjetoChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o projeto" />
+              </SelectTrigger>
+              <SelectContent>
+                {projetos.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.codigo} — {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-[250px]">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedSiteId} onValueChange={setSelectedSiteId} disabled={!selectedProjetoId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={selectedProjetoId ? "Selecione o site" : "Selecione um projeto primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                {sites.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.codigo} — {s.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -542,7 +569,11 @@ export default function DiarioObraPage() {
         <Card>
           <CardContent className="p-12 text-center text-muted-foreground">
             <HardHat className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg">Selecione um site para iniciar o diário de obra.</p>
+            <p className="text-lg">
+              {!selectedProjetoId
+                ? "Selecione um projeto e um site para iniciar o diário de obra."
+                : "Selecione um site para iniciar o diário de obra."}
+            </p>
           </CardContent>
         </Card>
       )}
