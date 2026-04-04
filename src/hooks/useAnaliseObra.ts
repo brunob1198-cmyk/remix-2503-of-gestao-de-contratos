@@ -66,19 +66,31 @@ export interface ProducaoItem {
   fotos?: string[];
 }
 
-export function useAnaliseObra(projetoId?: string) {
+export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
   const { data, isLoading } = useQuery({
-    queryKey: ["analise_obra", projetoId],
+    queryKey: ["analise_obra", projetoId, filterSiteId],
     queryFn: async () => {
       if (!projetoId) return null;
+
+      // If filterSiteId is provided, it means projetoId is actually a siteId — resolve the project
+      let resolvedProjetoId = projetoId;
+      if (filterSiteId) {
+        const { data: siteData } = await supabase.from("sites").select("projeto_id").eq("id", filterSiteId).maybeSingle();
+        if (siteData) resolvedProjetoId = siteData.projeto_id;
+      }
 
       // Fetch all sites for this project
       const { data: projectSites } = await supabase
         .from("sites")
         .select("id")
-        .eq("projeto_id", projetoId);
+        .eq("projeto_id", resolvedProjetoId);
 
-      const siteIds = projectSites?.map(s => s.id) || [];
+      let siteIds = projectSites?.map(s => s.id) || [];
+      
+      // If filtering by specific site, narrow down
+      if (filterSiteId && siteIds.includes(filterSiteId)) {
+        siteIds = [filterSiteId];
+      }
 
       // Fetch escopo (budget) with item_lpu for BDI
       let escopo: any[] = [];
