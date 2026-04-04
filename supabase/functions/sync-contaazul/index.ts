@@ -188,17 +188,17 @@ serve(async (req) => {
 
       let processadas = 0;
       for (const bill of bills) {
-        // Mapear campos da API v1 do Conta Azul
-        const evento = bill.evento || {};
-        const erpId = bill.id || evento.id || `CA-${processadas}`;
-        const descricao = bill.descricao || evento.descricao || bill.nota || "Sem descrição";
-        const valorComposicao = bill.valor_composicao || {};
-        const valor = Number(valorComposicao.valor_bruto || valorComposicao.valor_liquido || bill.valor_total_liquido || 0);
-        const categoriaErp = evento.categoria?.nome || bill.categoria?.nome || "Outros";
-        const centroCusto = evento.centro_custo?.nome || bill.centro_custo?.nome || null;
-        const dataPagamento = bill.data_pagamento_previsto || bill.data_vencimento || null;
-        const dataCompetencia = evento.data_competencia || bill.data_vencimento || startDateStr;
-        const statusErp = (bill.status || "PENDENTE").toUpperCase();
+        // Mapear campos da API v1 do Conta Azul (formato real da resposta)
+        const erpId = bill.id || `CA-${processadas}`;
+        const descricao = bill.descricao || "Sem descrição";
+        const valor = Number(bill.total || bill.nao_pago || 0);
+        const categorias = bill.categorias || [];
+        const categoriaErp = categorias.length > 0 ? categorias[0].nome : "Outros";
+        const centrosCusto = bill.centros_de_custo || [];
+        const centroCusto = centrosCusto.length > 0 ? centrosCusto[0].nome : null;
+        const dataPagamento = bill.data_vencimento || null;
+        const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
+        const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
 
         // Categorizar
         let categoriaInterna = mapCategorias.get(categoriaErp);
