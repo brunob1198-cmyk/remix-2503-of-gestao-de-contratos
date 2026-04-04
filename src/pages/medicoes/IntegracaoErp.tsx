@@ -55,14 +55,6 @@ export default function IntegracaoErpPage() {
     });
   };
 
-  const handleConnectWithRefreshToken = () => {
-    refreshToken.mutate(manualRefreshToken, {
-      onSuccess: () => {
-        setShowRefreshDialog(false);
-        setManualRefreshToken("");
-      },
-    });
-  };
 
   const statusBadge = (status: string) => {
     switch (status) {
