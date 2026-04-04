@@ -71,7 +71,7 @@ serve(async (req) => {
       });
 
       const basicAuth = btoa(`${clientId}:${clientSecret}`);
-      console.log("Trocando code por tokens...", { code, redirect_uri, tokenUrl: CONTAAZUL_TOKEN_URL, clientIdLength: clientId.length, clientSecretLength: clientSecret.length });
+      console.log("Trocando code por tokens...", { code, redirect_uri, tokenUrl: CONTAAZUL_TOKEN_URL });
 
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
