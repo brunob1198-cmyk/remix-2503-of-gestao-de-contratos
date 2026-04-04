@@ -55,7 +55,7 @@ export function useContaAzulConnection() {
     enabled: !!empresaId,
   });
 
-  const getRedirectUri = () => window.location.origin;
+  const getRedirectUri = () => "https://gcinteligente.lovable.app";
 
   const getAuthUrl = useMutation({
     mutationFn: async () => {
