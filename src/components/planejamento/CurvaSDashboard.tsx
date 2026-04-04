@@ -54,7 +54,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
     const fins = atividadesComInicio.map((a) => {
       if (a.data_fim_prevista) return parseISO(a.data_fim_prevista);
       const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
-      return addDays(parseISO(a.data_inicio!), dur);
+      return addDays(parseISO(a.data_inicio!), dur - 1);
     });
     const projetoFim = max(fins);
 
@@ -77,7 +77,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
       atividadesComInicio.forEach((a) => {
         const aInicio = parseISO(a.data_inicio!);
         const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
-        const aFim = addDays(aInicio, dur);
+        const aFim = addDays(aInicio, dur - 1);
         const diasPassados = differenceInCalendarDays(currentDate, aInicio);
 
         if (diasPassados <= 0) return;

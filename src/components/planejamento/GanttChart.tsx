@@ -59,7 +59,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
         if (d < minDate) minDate = d;
       }
       if (a.data_inicio && a.duracao_dias) {
-        const end = addDays(parseISO(a.data_inicio), a.duracao_dias);
+        const end = addDays(parseISO(a.data_inicio), a.duracao_dias - 1);
         if (end > maxDate) maxDate = end;
       }
       if (a.data_fim_prevista) {

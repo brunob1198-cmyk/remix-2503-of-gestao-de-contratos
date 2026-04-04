@@ -91,7 +91,7 @@ export function useFrentes(projetoId?: string) {
             const duracao = Math.ceil((Number(a.quantidade_total) || 1) / (Number(a.producao_diaria_prevista) || 1));
             const startStr = frenteData.data_inicio;
             const endD = new Date(startStr);
-            endD.setDate(endD.getDate() + duracao);
+            endD.setDate(endD.getDate() + duracao - 1);
             expectedEnd = endD.toISOString().split("T")[0];
           }
 
