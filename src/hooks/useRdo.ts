@@ -115,7 +115,11 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           fotos,
           custoTotal: custoEquipe + custoEquipamentos + custoVeiculos,
         };
-      });
+      }).filter(d =>
+        d.totalItens > 0 || d.totalFotos > 0 || d.equipe.length > 0 ||
+        d.equipamentos.length > 0 || d.veiculos.length > 0 ||
+        (d.observacoes && d.observacoes.trim().length > 0)
+      );
 
       if (itemLpuId) {
         result = result.filter(d => d.producoes.some(p => p.item_lpu?.codigo === itemLpuId || (p as any).item_lpu_id === itemLpuId));
