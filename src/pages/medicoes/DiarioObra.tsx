@@ -149,9 +149,9 @@ export default function DiarioObraPage() {
   const recursosEquipamento = recursos.filter(r => r.tipo === "equipamento" && r.ativo);
   const recursosVeiculo = recursos.filter(r => r.tipo === "veiculo" && r.ativo);
 
-  // Auto-populate allocated resources for this site
+  // Auto-populate allocated resources for this site — only once when diary is brand new (no entries yet)
   const alocacoesDoSite = selectedSiteId ? getAlocacoesBySite(selectedSiteId) : [];
-  const processedAlocacoesRef = useRef<Set<string>>(new Set());
+  const autoPopulatedDiarios = useRef<Set<string>>(new Set());
 
   // Observações
   const [obs, setObs] = useState("");
@@ -169,21 +169,24 @@ export default function DiarioObraPage() {
   useEffect(() => {
     if (!selectedSiteId || alocacoesDoSite.length === 0) return;
     if (loadingDiario || isLoadingEquipe || isLoadingEquipamentos || isLoadingVeiculos) return;
+    if (!diario?.id) return;
+
+    // Only auto-populate if this diary has never been populated AND has zero entries
+    const diarioKey = diario.id;
+    if (autoPopulatedDiarios.current.has(diarioKey)) return;
+    
+    // If the diary already has ANY entries, it means the user has already interacted — skip auto-populate
+    if (equipe.length > 0 || equipamentos.length > 0 || veiculos.length > 0) {
+      autoPopulatedDiarios.current.add(diarioKey);
+      return;
+    }
+
+    autoPopulatedDiarios.current.add(diarioKey);
 
     const autoPopulate = async () => {
-      let currentDiarioId = diario?.id;
-      
-      if (!currentDiarioId) {
-        currentDiarioId = await ensureDiario() || undefined;
-      }
-
-      if (!currentDiarioId) return;
+      const currentDiarioId = diario.id;
 
       for (const aloc of alocacoesDoSite) {
-        const alocKey = `${currentDiarioId}-${aloc.recurso_id}`;
-        if (processedAlocacoesRef.current.has(alocKey)) continue;
-        processedAlocacoesRef.current.add(alocKey);
-
         const recurso = recursos.find(r => r.id === aloc.recurso_id);
         if (!recurso || !recurso.ativo) continue;
         
@@ -191,9 +194,6 @@ export default function DiarioObraPage() {
         const custoVal = custo ? custo.custo_unitario : 0;
 
         if (recurso.tipo === "pessoa") {
-          const { data: ex } = await supabase.from("diario_equipe").select("id").eq("diario_id", currentDiarioId).eq("nome", recurso.nome).maybeSingle();
-          if (ex) continue;
-          
           const isDia = recurso.unidade === "dia";
           await addEquipe.mutateAsync({
             diario_id: currentDiarioId,
@@ -204,9 +204,6 @@ export default function DiarioObraPage() {
             custo_total: isDia ? custoVal : 8 * custoVal,
           });
         } else if (recurso.tipo === "equipamento") {
-          const { data: ex } = await supabase.from("diario_equipamentos").select("id").eq("diario_id", currentDiarioId).eq("descricao", recurso.nome).maybeSingle();
-          if (ex) continue;
-
           const isDia = recurso.unidade === "dia";
           await addEquipamento.mutateAsync({
             diario_id: currentDiarioId,
@@ -216,9 +213,6 @@ export default function DiarioObraPage() {
             custo_total: isDia ? custoVal : 8 * custoVal,
           });
         } else if (recurso.tipo === "veiculo") {
-          const { data: ex } = await supabase.from("diario_veiculos").select("id").eq("diario_id", currentDiarioId).eq("descricao", recurso.nome).maybeSingle();
-          if (ex) continue;
-
           await addVeiculo.mutateAsync({
             diario_id: currentDiarioId,
             descricao: recurso.nome,
