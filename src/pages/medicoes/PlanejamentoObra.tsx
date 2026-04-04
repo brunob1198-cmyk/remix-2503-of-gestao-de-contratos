@@ -90,7 +90,7 @@ export default function PlanejamentoObra() {
     if (!at) return;
     const dur = at.duracao_dias || 1;
     const { addDays, format } = await import("date-fns");
-    const newEnd = format(addDays(new Date(newStartDate), dur), "yyyy-MM-dd");
+    const newEnd = format(addDays(new Date(newStartDate), dur - 1), "yyyy-MM-dd");
     updateAtividade.mutate({ id, data_inicio: newStartDate, data_fim_prevista: newEnd });
   }, [atividades, updateAtividade]);
 

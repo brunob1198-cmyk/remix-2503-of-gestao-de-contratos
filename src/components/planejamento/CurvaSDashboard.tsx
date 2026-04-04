@@ -77,7 +77,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
       atividadesComInicio.forEach((a) => {
         const aInicio = parseISO(a.data_inicio!);
         const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
-        const aFim = addDays(aInicio, dur);
+        const aFim = addDays(aInicio, dur - 1);
         const diasPassados = differenceInCalendarDays(currentDate, aInicio);
 
         if (diasPassados <= 0) return;
