@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface CustosErpProps {
   projetoId: string;
@@ -28,20 +34,206 @@ const CATEGORIAS_ENG = [
   "Pedágio - Campo",
 ];
 
+type ColKey = "competencia" | "descricao" | "mapeamento" | "centro_custo" | "valor" | "status" | "categoria";
+
+const COL_LABELS: Record<ColKey, string> = {
+  competencia: "Competência",
+  descricao: "Descrição ERP",
+  mapeamento: "Mapeamento Original ERP",
+  centro_custo: "Centro Custo ERP",
+  valor: "Valor R$",
+  status: "Status",
+  categoria: "Categoria IA/Engenharia",
+};
+
+type SortDir = "asc" | "desc" | null;
+
+function getColValue(item: any, col: ColKey): string {
+  if (col === "competencia") return item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-";
+  if (col === "descricao") return item.descricao || "";
+  if (col === "mapeamento") return item.categoria_erp || "";
+  if (col === "centro_custo") return item.centro_custo || "";
+  if (col === "valor") return item.valor?.toString() || "0";
+  if (col === "status") return item.status_erp?.toUpperCase() || "";
+  if (col === "categoria") return item.categoria_interna || "";
+  return "";
+}
+
+interface ColumnHeaderFilterProps {
+  label: string;
+  sortDir: SortDir;
+  onSort: () => void;
+  searchText: string;
+  onSearchChange: (v: string) => void;
+  uniqueValues: string[];
+  selectedValues: Set<string>;
+  onToggleValue: (v: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}
+
+function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange, uniqueValues, selectedValues, onToggleValue, onSelectAll, onClearAll }: ColumnHeaderFilterProps) {
+  const isFiltered = searchText !== "" || selectedValues.size > 0;
+  const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowUpDown;
+
+  return (
+    <div className="flex items-center gap-1">
+      <button onClick={onSort} className="flex items-center gap-1 hover:text-foreground transition-colors font-medium text-xs">
+        {label}
+        <SortIcon className="h-3 w-3" />
+      </button>
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className={`p-0.5 rounded hover:bg-accent transition-colors ${isFiltered ? "text-primary" : "text-muted-foreground"}`}>
+            <Filter className="h-3 w-3" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-3 space-y-3" align="start">
+          <Input placeholder={`Pesquisar ${label.toLowerCase()}...`} value={searchText} onChange={(e) => onSearchChange(e.target.value)} className="h-8 text-sm" />
+          <div className="flex gap-2 text-xs">
+            <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
+            <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
+          </div>
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
+              <label key={v} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                <Checkbox checked={selectedValues.has(v)} onCheckedChange={() => onToggleValue(v)} className="h-3.5 w-3.5" />
+                <span className="truncate">{v || "(vazio)"}</span>
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export function CustosErp({ projetoId, siteId }: CustosErpProps) {
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  
+  const [selectedMonth] = useState<Date>(new Date());
   const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, selectedMonth);
+
+  const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
+
+  const [sortCol, setSortCol] = useState<ColKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
+    const init: any = {};
+    allCols.forEach(c => init[c] = "");
+    return init;
+  });
+  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>(() => {
+    const init: any = {};
+    allCols.forEach(c => init[c] = new Set());
+    return init;
+  });
+
+  function handleSort(col: ColKey) {
+    if (sortCol === col) {
+      setSortDir(prev => prev === "asc" ? "desc" : prev === "desc" ? null : "asc");
+      if (sortDir === "desc") setSortCol(null);
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
+
+  function setSearchText(col: ColKey, v: string) {
+    setSearchTexts(prev => ({ ...prev, [col]: v }));
+  }
+  function toggleValue(col: ColKey, v: string) {
+    setSelectedFilters(prev => {
+      const next = new Set(prev[col]);
+      next.has(v) ? next.delete(v) : next.add(v);
+      return { ...prev, [col]: next };
+    });
+  }
+  function selectAll(col: ColKey, values: string[]) {
+    setSelectedFilters(prev => ({ ...prev, [col]: new Set(values) }));
+  }
+  function clearAll(col: ColKey) {
+    setSelectedFilters(prev => ({ ...prev, [col]: new Set() }));
+  }
+
+  const uniqueValues = useMemo(() => {
+    const result: Record<ColKey, string[]> = {} as any;
+    allCols.forEach(col => {
+      result[col] = Array.from(new Set(custosErp.map(item => getColValue(item, col)))).sort();
+    });
+    return result;
+  }, [custosErp]);
+
+  const filteredItems = useMemo(() => {
+    let items = [...custosErp];
+    for (const col of allCols) {
+      const search = searchTexts[col].toLowerCase();
+      const selected = selectedFilters[col];
+      if (search) items = items.filter(item => getColValue(item, col).toLowerCase().includes(search));
+      if (selected.size > 0) items = items.filter(item => selected.has(getColValue(item, col)));
+    }
+    if (sortCol && sortDir) {
+      items.sort((a, b) => {
+        let va = getColValue(a, sortCol);
+        let vb = getColValue(b, sortCol);
+        if (sortCol === "valor") {
+          return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
+        }
+        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      });
+    }
+    return items;
+  }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
+
+  const hasActiveFilters = allCols.some(c => searchTexts[c] !== "" || selectedFilters[c].size > 0);
+
+  function clearAllFilters() {
+    const emptySearch: any = {};
+    const emptyFilter: any = {};
+    allCols.forEach(c => { emptySearch[c] = ""; emptyFilter[c] = new Set(); });
+    setSearchTexts(emptySearch);
+    setSelectedFilters(emptyFilter);
+    setSortCol(null);
+    setSortDir(null);
+  }
+
+  function handleExportExcel() {
+    const rows = filteredItems.map(item => ({
+      [COL_LABELS.competencia]: item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-",
+      [COL_LABELS.descricao]: item.descricao,
+      [COL_LABELS.mapeamento]: item.categoria_erp,
+      [COL_LABELS.centro_custo]: item.centro_custo || "",
+      [COL_LABELS.valor]: item.valor,
+      [COL_LABELS.status]: item.status_erp?.toUpperCase() || "",
+      [COL_LABELS.categoria]: item.categoria_interna,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Auditoria ERP");
+    XLSX.writeFile(wb, `auditoria_erp_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+  }
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle>Auditoria de Despesas - Conta Azul</CardTitle>
-        <CardDescription>
-          Visualize e re-categorize as despesas vinculadas a esta Obra e Site (Centro de Custo). A Inteligência Artificial já tentou categorizar os itens iniciais.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Auditoria de Despesas - Conta Azul</CardTitle>
+            <CardDescription>
+              Visualize e re-categorize as despesas vinculadas a esta Obra e Site (Centro de Custo). A Inteligência Artificial já tentou categorizar os itens iniciais.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                <X className="h-4 w-4 mr-1" /> Limpar filtros
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={filteredItems.length === 0}>
+              <Download className="h-4 w-4 mr-1" /> Exportar Excel
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {loadCustos ? (
@@ -59,17 +251,28 @@ export function CustosErp({ projetoId, siteId }: CustosErpProps) {
             <table className="w-full text-sm">
               <thead className="bg-muted text-muted-foreground">
                 <tr>
-                  <th className="py-2 px-3 text-left w-32">Competência</th>
-                  <th className="py-2 px-3 text-left">Descrição ERP</th>
-                  <th className="py-2 px-3 text-left">Mapeamento Original ERP</th>
-                  <th className="py-2 px-3 text-left">Centro Custo ERP</th>
-                  <th className="py-2 px-3 text-right">Valor R$</th>
-                  <th className="py-2 px-3 text-center">Status</th>
-                  <th className="py-2 px-3 text-center w-48">Categoria IA/Engenharia</th>
+                  {allCols.map(col => (
+                    <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : col === "status" || col === "categoria" ? "text-center" : "text-left"} whitespace-nowrap`}>
+                      <ColumnHeaderFilter
+                        label={COL_LABELS[col]}
+                        sortDir={sortCol === col ? sortDir : null}
+                        onSort={() => handleSort(col)}
+                        searchText={searchTexts[col]}
+                        onSearchChange={(v) => setSearchText(col, v)}
+                        uniqueValues={uniqueValues[col]}
+                        selectedValues={selectedFilters[col]}
+                        onToggleValue={(v) => toggleValue(col, v)}
+                        onSelectAll={() => selectAll(col, uniqueValues[col])}
+                        onClearAll={() => clearAll(col)}
+                      />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {custosErp.map((item) => (
+                {filteredItems.length === 0 ? (
+                  <tr><td colSpan={allCols.length} className="text-center py-6 text-muted-foreground">Nenhum resultado com os filtros aplicados</td></tr>
+                ) : filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/10">
                     <td className="py-2 px-3 text-muted-foreground">
                        {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
