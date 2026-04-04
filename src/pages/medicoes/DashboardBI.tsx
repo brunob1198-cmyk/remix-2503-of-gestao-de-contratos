@@ -1,15 +1,60 @@
 import { useMemo, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDashboardBI } from "@/hooks/useDashboardBI";
-import { BarChart3, TrendingUp, FileText, DollarSign, Activity, AlertTriangle } from "lucide-react";
+import { BarChart3, TrendingUp, FileText, DollarSign, Activity, AlertTriangle, CalendarIcon, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area,
 } from "recharts";
+
+function DateRangeFilter({ dateFrom, dateTo, onDateFromChange, onDateToChange }: {
+  dateFrom: Date | undefined;
+  dateTo: Date | undefined;
+  onDateFromChange: (d: Date | undefined) => void;
+  onDateToChange: (d: Date | undefined) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={dateFrom} onSelect={onDateFromChange} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+        </PopoverContent>
+      </Popover>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={dateTo} onSelect={onDateToChange} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+        </PopoverContent>
+      </Popover>
+      {(dateFrom || dateTo) && (
+        <Button variant="ghost" size="icon" onClick={() => { onDateFromChange(undefined); onDateToChange(undefined); }} title="Limpar filtro">
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 const COLORS = [
   "hsl(var(--primary))",
