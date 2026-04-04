@@ -13,7 +13,7 @@ import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailS
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 import { TimelineObra } from "@/components/planejamento/TimelineObra";
-import { SimulacaoEquipes } from "@/components/planejamento/SimulacaoEquipes";
+// SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
 import { ProducaoTab } from "@/components/analise/ProducaoTab";
