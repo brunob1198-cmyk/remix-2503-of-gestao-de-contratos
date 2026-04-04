@@ -55,9 +55,11 @@ export function useContaAzulConnection() {
     enabled: !!empresaId,
   });
 
+  const getRedirectUri = () => window.location.origin;
+
   const getAuthUrl = useMutation({
     mutationFn: async () => {
-      const redirectUri = `${window.location.origin}/medicoes/integracao-erp`;
+      const redirectUri = getRedirectUri();
       const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
         body: { action: "get_auth_url", redirect_uri: redirectUri, empresa_id: empresaId },
       });
@@ -72,7 +74,7 @@ export function useContaAzulConnection() {
 
   const exchangeCode = useMutation({
     mutationFn: async (code: string) => {
-      const redirectUri = `${window.location.origin}/medicoes/integracao-erp`;
+      const redirectUri = getRedirectUri();
       const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
         body: { action: "exchange_code", code, redirect_uri: redirectUri, empresa_id: empresaId },
       });
