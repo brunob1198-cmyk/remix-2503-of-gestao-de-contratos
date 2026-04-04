@@ -184,8 +184,8 @@ export function SitesImporter({ projetos }: SitesImporterProps) {
                     {rows.map((r, i) => (
                       <TableRow key={i}>
                         <TableCell>
-                          {r.status === "success" && <CheckCircle2 className="h-4 w-4 text-green-600" />}
-                          {r.status === "error" && <XCircle className="h-4 w-4 text-destructive" title={r.error} />}
+                          {r.status === "success" && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                          {r.status === "error" && <XCircle className="h-4 w-4 text-destructive" />}
                           {r.status === "pending" && <span className="text-xs text-muted-foreground">Pendente</span>}
                         </TableCell>
                         <TableCell className="font-mono">{r.codigo}</TableCell>

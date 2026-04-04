@@ -99,6 +99,7 @@ export default function SitesPage() {
               {projetos.map((p) => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}
             </SelectContent>
           </Select>
+          <SitesImporter projetos={projetos} />
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Novo Site</Button>
