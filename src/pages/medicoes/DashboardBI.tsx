@@ -316,17 +316,20 @@ function ProducaoTab({ data }: { data: any[] }) {
 
   return (
     <div className="space-y-6">
-      <Select value={projetoFilter} onValueChange={setProjetoFilter}>
-        <SelectTrigger className="w-[300px]">
-          <SelectValue placeholder="Todos os projetos" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos os projetos</SelectItem>
-          {projetos.map(([id, label]) => (
-            <SelectItem key={id} value={id}>{label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={projetoFilter} onValueChange={setProjetoFilter}>
+          <SelectTrigger className="w-[300px]">
+            <SelectValue placeholder="Todos os projetos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os projetos</SelectItem>
+            {projetos.map(([id, label]) => (
+              <SelectItem key={id} value={id}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCard title="Total Produzido (R$)" value={formatCurrencyFull(totalValor)} icon={DollarSign} color="bg-blue-500" />
