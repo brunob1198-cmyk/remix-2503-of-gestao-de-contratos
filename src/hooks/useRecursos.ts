@@ -237,10 +237,12 @@ export function useRecursos() {
 
   const liberarRecurso = useMutation({
     mutationFn: async (input: { alocacao_id: string; recurso_id: string }) => {
-      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
       await supabase
         .from("recurso_alocacoes")
-        .update({ data_fim: today } as any)
+        .update({ data_fim: yesterdayStr } as any)
         .eq("id", input.alocacao_id);
 
       await supabase
