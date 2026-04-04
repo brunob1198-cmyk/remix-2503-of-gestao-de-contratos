@@ -97,6 +97,8 @@ function KpiCard({ title, value, subtitle, icon: Icon, color }: { title: string;
 // ── Financeiro Tab ──
 function FinanceiroTab({ data }: { data: any[] }) {
   const [projetoFilter, setProjetoFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
@@ -107,9 +109,12 @@ function FinanceiroTab({ data }: { data: any[] }) {
   }, [data]);
 
   const filtered = useMemo(() => {
-    if (projetoFilter === "all") return data;
-    return data.filter(d => d.projeto_id === projetoFilter);
-  }, [data, projetoFilter]);
+    let result = data;
+    if (projetoFilter !== "all") result = result.filter(d => d.projeto_id === projetoFilter);
+    if (dateFrom) result = result.filter(d => d.data_competencia && new Date(d.data_competencia) >= dateFrom);
+    if (dateTo) result = result.filter(d => d.data_competencia && new Date(d.data_competencia) <= dateTo);
+    return result;
+  }, [data, projetoFilter, dateFrom, dateTo]);
 
   const totalCusto = filtered.reduce((acc, d) => acc + Number(d.valor || 0), 0);
   const totalPago = filtered.filter(d => d.status === "pago").reduce((acc, d) => acc + Number(d.valor || 0), 0);
