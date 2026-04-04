@@ -210,7 +210,7 @@ export function AtividadeDetailSheet({
                 <div>
                   <span className="text-muted-foreground">Início</span>
                   <p className="font-medium">
-                    {atividade.data_inicio ? format(new Date(atividade.data_inicio), "dd/MM/yyyy") : "—"}
+                    {atividade.data_inicio ? format(parseISO(atividade.data_inicio), "dd/MM/yyyy") : "—"}
                   </p>
                 </div>
                 <div>
