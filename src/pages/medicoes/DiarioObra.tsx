@@ -529,21 +529,39 @@ export default function DiarioObraPage() {
           <h1 className="text-2xl font-bold tracking-tight">Diário de Obra</h1>
         </div>
 
-        {/* Site selector */}
-        <div className="flex items-center gap-2 max-w-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione o site" />
-            </SelectTrigger>
-            <SelectContent>
-              {sites.map(s => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.codigo} — {s.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Projeto + Site selectors */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 min-w-[250px]">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedProjetoId} onValueChange={handleProjetoChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o projeto" />
+              </SelectTrigger>
+              <SelectContent>
+                {projetos.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.codigo} — {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 min-w-[250px]">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedSiteId} onValueChange={setSelectedSiteId} disabled={!selectedProjetoId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={selectedProjetoId ? "Selecione o site" : "Selecione um projeto primeiro"} />
+              </SelectTrigger>
+              <SelectContent>
+                {sites.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.codigo} — {s.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -551,7 +569,11 @@ export default function DiarioObraPage() {
         <Card>
           <CardContent className="p-12 text-center text-muted-foreground">
             <HardHat className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg">Selecione um site para iniciar o diário de obra.</p>
+            <p className="text-lg">
+              {!selectedProjetoId
+                ? "Selecione um projeto e um site para iniciar o diário de obra."
+                : "Selecione um site para iniciar o diário de obra."}
+            </p>
           </CardContent>
         </Card>
       )}
