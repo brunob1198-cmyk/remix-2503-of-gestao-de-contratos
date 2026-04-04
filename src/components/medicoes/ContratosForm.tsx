@@ -151,6 +151,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     e.preventDefault();
     
     const payload: Partial<Contrato> = {
+      numero_contrato: contratoPaiId === "none" ? (numeroContrato || undefined) : undefined,
       contrato_pai_id: contratoPaiId === "none" ? undefined : contratoPaiId,
       cliente_ids: clienteIds.length > 0 ? clienteIds : undefined,
       valor_total: valorTotal ? parseFloat(valorTotal.replace(",", ".")) : undefined,
