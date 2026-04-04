@@ -639,7 +639,7 @@ export default function RecursosPage() {
 
                 {/* Scrollable Gantt area */}
                 <div className="flex-1 overflow-x-auto min-w-0">
-                  <Table className="w-auto">
+                  <Table className="w-auto table-fixed">
                     <TableHeader>
                       <TableRow>
                         {ganttMonths.map((m, i) => {
