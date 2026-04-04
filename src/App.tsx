@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -34,6 +34,18 @@ import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
 
 const queryClient = new QueryClient();
 
+const RootRedirect = () => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const hasContaAzulCallback = searchParams.has("code") || searchParams.has("error");
+
+  if (hasContaAzulCallback) {
+    return <Navigate to={`/medicoes/integracao-erp${location.search}`} replace />;
+  }
+
+  return <Navigate to="/medicoes/dashboard" replace />;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -42,7 +54,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Navigate to="/medicoes/dashboard" replace />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
