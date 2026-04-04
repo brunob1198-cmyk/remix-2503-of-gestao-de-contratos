@@ -149,9 +149,10 @@ export default function DiarioObraPage() {
   const recursosEquipamento = recursos.filter(r => r.tipo === "equipamento" && r.ativo);
   const recursosVeiculo = recursos.filter(r => r.tipo === "veiculo" && r.ativo);
 
-  // Auto-populate allocated resources for this site — only once when diary is brand new (no entries yet)
+  // Auto-populate allocated resources only for diaries created in the current session
   const alocacoesDoSite = selectedSiteId ? getAlocacoesBySite(selectedSiteId) : [];
   const autoPopulatedDiarios = useRef<Set<string>>(new Set());
+  const autoPopulateEligibleDiarios = useRef<Set<string>>(new Set());
 
   // Observações
   const [obs, setObs] = useState("");
@@ -160,6 +161,7 @@ export default function DiarioObraPage() {
     if (diario) return diario.id;
     try {
       const result = await criarDiario.mutateAsync({ site_id: selectedSiteId, data: selectedDate, uf: diarioUf || undefined, municipio: diarioMunicipio || undefined });
+      autoPopulateEligibleDiarios.current.add(result.id);
       return result.id;
     } catch {
       return null;
@@ -171,16 +173,17 @@ export default function DiarioObraPage() {
     if (loadingDiario || isLoadingEquipe || isLoadingEquipamentos || isLoadingVeiculos) return;
     if (!diario?.id) return;
 
-    // Only auto-populate if this diary has never been populated AND has zero entries
     const diarioKey = diario.id;
+    if (!autoPopulateEligibleDiarios.current.has(diarioKey)) return;
     if (autoPopulatedDiarios.current.has(diarioKey)) return;
-    
-    // If the diary already has ANY entries, it means the user has already interacted — skip auto-populate
+
     if (equipe.length > 0 || equipamentos.length > 0 || veiculos.length > 0) {
+      autoPopulateEligibleDiarios.current.delete(diarioKey);
       autoPopulatedDiarios.current.add(diarioKey);
       return;
     }
 
+    autoPopulateEligibleDiarios.current.delete(diarioKey);
     autoPopulatedDiarios.current.add(diarioKey);
 
     const autoPopulate = async () => {
@@ -223,7 +226,7 @@ export default function DiarioObraPage() {
       }
     };
 
-    autoPopulate();
+    void autoPopulate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diario?.id, selectedSiteId, alocacoesDoSite.length, loadingDiario, isLoadingEquipe, isLoadingEquipamentos, isLoadingVeiculos]);
 
