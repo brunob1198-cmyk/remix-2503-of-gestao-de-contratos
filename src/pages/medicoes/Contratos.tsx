@@ -115,7 +115,7 @@ export default function ContratosPage() {
                       <TableCell className="font-mono text-sm font-semibold whitespace-nowrap">
                         {c.numero_contrato || "-"}
                       </TableCell>
-                        <div className="font-medium text-sm truncate max-w-[250px]" title={c.escopo || "Sem escopo"}>
+                      <TableCell>
                           {c.escopo || "Contrato s/ Objeto Definido"}
                         </div>
                         {c.aditivos && c.aditivos.length > 0 && (
