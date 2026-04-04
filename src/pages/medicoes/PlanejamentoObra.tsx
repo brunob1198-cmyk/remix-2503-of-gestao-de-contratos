@@ -165,9 +165,6 @@ export default function PlanejamentoObra() {
             <TabsTrigger value="timeline" className="gap-1.5">
               <Map className="h-4 w-4" /> Timeline
             </TabsTrigger>
-            <TabsTrigger value="simulacao" className="gap-1.5">
-              <Users className="h-4 w-4" /> Simulação
-            </TabsTrigger>
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
