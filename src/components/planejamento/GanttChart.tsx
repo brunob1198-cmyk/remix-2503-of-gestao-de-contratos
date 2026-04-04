@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { AtividadePlanejamento } from "@/hooks/usePlanejamento";
-import { format, addDays, differenceInDays, startOfDay, isSameDay } from "date-fns";
+import { format, addDays, differenceInDays, startOfDay, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
