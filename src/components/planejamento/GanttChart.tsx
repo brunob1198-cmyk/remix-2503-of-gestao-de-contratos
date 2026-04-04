@@ -63,7 +63,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
         if (end > maxDate) maxDate = end;
       }
       if (a.data_fim_prevista) {
-        const d = startOfDay(new Date(a.data_fim_prevista));
+        const d = startOfDay(parseISO(a.data_fim_prevista));
         if (d > maxDate) maxDate = d;
       }
     });
