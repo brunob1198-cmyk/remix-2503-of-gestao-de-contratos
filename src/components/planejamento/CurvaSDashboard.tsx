@@ -48,13 +48,13 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
     if (!atividadesComInicio.length) return null;
 
     // Find project date range
-    const inicios = atividadesComInicio.map((a) => new Date(a.data_inicio!));
+    const inicios = atividadesComInicio.map((a) => parseISO(a.data_inicio!));
     const projetoInicio = min(inicios);
 
     const fins = atividadesComInicio.map((a) => {
-      if (a.data_fim_prevista) return new Date(a.data_fim_prevista);
+      if (a.data_fim_prevista) return parseISO(a.data_fim_prevista);
       const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
-      return addDays(new Date(a.data_inicio!), dur);
+      return addDays(parseISO(a.data_inicio!), dur);
     });
     const projetoFim = max(fins);
 
@@ -75,7 +75,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
       // Planned cumulative %
       let planejadoQtd = 0;
       atividadesComInicio.forEach((a) => {
-        const aInicio = new Date(a.data_inicio!);
+        const aInicio = parseISO(a.data_inicio!);
         const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
         const aFim = addDays(aInicio, dur);
         const diasPassados = differenceInCalendarDays(currentDate, aInicio);
@@ -93,7 +93,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
       let realizadoQtd = 0;
       if (currentDate <= today) {
         atividadesComInicio.forEach((a) => {
-          const aInicio = new Date(a.data_inicio!);
+          const aInicio = parseISO(a.data_inicio!);
           const diasPassados = differenceInCalendarDays(currentDate, aInicio);
           const diasTotal = differenceInCalendarDays(today, aInicio);
 
@@ -123,7 +123,7 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
     // Planned % for today
     let planejadoHoje = 0;
     atividadesComInicio.forEach((a) => {
-      const aInicio = new Date(a.data_inicio!);
+      const aInicio = parseISO(a.data_inicio!);
       const dur = a.duracao_dias || 1;
       const diasPassados = differenceInCalendarDays(today, aInicio);
       if (diasPassados <= 0) return;
