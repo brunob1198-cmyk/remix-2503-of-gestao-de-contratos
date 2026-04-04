@@ -17,7 +17,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Pencil, History, HardHat, Wrench, Truck, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, Upload, Trash2, MapPin, Link2, Download } from "lucide-react";
 import { RecursosImporter } from "@/components/medicoes/RecursosImporter";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO, getDaysInMonth } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, getDaysInMonth } from "date-fns";
+import { parseLocalDate } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 
