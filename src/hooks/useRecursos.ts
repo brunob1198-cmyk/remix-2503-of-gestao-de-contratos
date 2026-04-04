@@ -267,14 +267,16 @@ export function useRecursos() {
   }
 
   function getAlocacaoAtiva(recursoId: string): RecursoAlocacao | undefined {
+    const today = new Date().toISOString().split("T")[0];
     return alocacoesQuery.data?.find(
-      (a) => a.recurso_id === recursoId && a.data_fim === null
+      (a) => a.recurso_id === recursoId && (a.data_fim === null || a.data_fim >= today)
     );
   }
 
   function getAlocacoesBySite(siteId: string): RecursoAlocacao[] {
+    const today = new Date().toISOString().split("T")[0];
     return (alocacoesQuery.data || []).filter(
-      (a) => a.site_id === siteId && a.data_fim === null
+      (a) => a.site_id === siteId && (a.data_fim === null || a.data_fim >= today)
     );
   }
 
