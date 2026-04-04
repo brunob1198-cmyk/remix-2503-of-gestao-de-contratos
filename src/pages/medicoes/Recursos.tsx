@@ -17,7 +17,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Plus, Pencil, History, HardHat, Wrench, Truck, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, Upload, Trash2, MapPin, Link2, Download } from "lucide-react";
 import { RecursosImporter } from "@/components/medicoes/RecursosImporter";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isWithinInterval, isBefore, isAfter, parseISO, getDaysInMonth } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, differenceInDays, isBefore, isAfter, getDaysInMonth } from "date-fns";
+import { parseLocalDate } from "@/lib/utils";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 
@@ -123,8 +124,8 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
   let minDate = new Date();
   let maxDate = new Date();
   alocacoes.forEach(a => {
-    const start = parseISO(a.data_inicio);
-    const end = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 3);
+    const start = parseLocalDate(a.data_inicio);
+    const end = a.data_fim ? parseLocalDate(a.data_fim) : addMonths(new Date(), 3);
     if (isBefore(start, minDate)) minDate = start;
     if (isAfter(end, maxDate)) maxDate = end;
   });
@@ -208,8 +209,8 @@ export default function RecursosPage() {
   function getPeriodoLabel(recursoId: string): string {
     const aloc = getAlocacaoAtiva(recursoId);
     if (!aloc) return "—";
-    const inicio = new Date(aloc.data_inicio).toLocaleDateString("pt-BR");
-    const fim = aloc.data_fim ? new Date(aloc.data_fim).toLocaleDateString("pt-BR") : "Atual";
+    const inicio = parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR");
+    const fim = aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Atual";
     return `${inicio} — ${fim}`;
   }
 
@@ -329,8 +330,8 @@ export default function RecursosPage() {
   const ganttTotalWidth = ganttMonths.length * MONTH_WIDTH;
 
   function getBarStyle(aloc: RecursoAlocacao) {
-    const start = parseISO(aloc.data_inicio);
-    const end = aloc.data_fim ? parseISO(aloc.data_fim) : addMonths(new Date(), 1);
+    const start = parseLocalDate(aloc.data_inicio);
+    const end = aloc.data_fim ? parseLocalDate(aloc.data_fim) : addMonths(new Date(), 1);
     const startOffset = Math.max(0, differenceInDays(start, ganttStartDate));
     const duration = Math.max(1, differenceInDays(end, start) + 1);
     const left = (startOffset / ganttTotalDays) * ganttTotalWidth;
@@ -611,9 +612,9 @@ export default function RecursosPage() {
                             <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                               {aloc ? (
                                 <span>
-                                  {new Date(aloc.data_inicio).toLocaleDateString("pt-BR")}
+                                  {parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")}
                                   {" — "}
-                                  {aloc.data_fim ? new Date(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}
+                                  {aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}
                                 </span>
                               ) : "—"}
                             </TableCell>
@@ -688,8 +689,8 @@ export default function RecursosPage() {
                                   
                                   {/* Bars */}
                                   {recursoAlocacoes.map(a => {
-                                    const aStart = parseISO(a.data_inicio);
-                                    const aEnd = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 1);
+                                    const aStart = parseLocalDate(a.data_inicio);
+                                    const aEnd = a.data_fim ? parseLocalDate(a.data_fim) : addMonths(new Date(), 1);
                                     if (isAfter(aStart, monthEnd) || isBefore(aEnd, monthStart)) return null;
                                     const barStart = isBefore(aStart, monthStart) ? monthStart : aStart;
                                     const barEnd = isAfter(aEnd, monthEnd) ? monthEnd : aEnd;
@@ -709,7 +710,7 @@ export default function RecursosPage() {
                                           backgroundColor: ganttColors[tipo],
                                           border: a.data_fim === null ? "1px dashed hsl(var(--foreground) / 0.5)" : "none",
                                         }}
-                                        title={`${sites.find(s => s.id === a.site_id)?.codigo || "?"}: ${new Date(a.data_inicio).toLocaleDateString("pt-BR")} — ${a.data_fim ? new Date(a.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}`}
+                                        title={`${sites.find(s => s.id === a.site_id)?.codigo || "?"}: ${parseLocalDate(a.data_inicio).toLocaleDateString("pt-BR")} — ${a.data_fim ? parseLocalDate(a.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}`}
                                       />
                                     );
                                   })}
@@ -862,8 +863,8 @@ export default function RecursosPage() {
               <TableBody>
                 {histData.map((h) => (
                   <TableRow key={h.id}>
-                    <TableCell>{new Date(h.data_inicio).toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell>{h.data_fim ? new Date(h.data_fim).toLocaleDateString("pt-BR") : "Atual"}</TableCell>
+                    <TableCell>{parseLocalDate(h.data_inicio).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>{h.data_fim ? parseLocalDate(h.data_fim).toLocaleDateString("pt-BR") : "Atual"}</TableCell>
                     <TableCell className="tabular-nums">R$ {h.custo_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{h.motivo || "—"}</TableCell>
                   </TableRow>
