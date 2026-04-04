@@ -55,7 +55,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
     let maxDate = addDays(today, 30);
     atividades.forEach((a) => {
       if (a.data_inicio) {
-        const d = startOfDay(new Date(a.data_inicio));
+        const d = startOfDay(parseISO(a.data_inicio));
         if (d < minDate) minDate = d;
       }
       if (a.data_inicio && a.duracao_dias) {
