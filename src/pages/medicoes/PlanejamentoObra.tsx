@@ -329,9 +329,6 @@ export default function PlanejamentoObra() {
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="simulacao" className="mt-4">
-            <SimulacaoEquipes atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
-          </TabsContent>
 
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
