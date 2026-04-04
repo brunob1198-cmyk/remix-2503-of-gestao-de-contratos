@@ -29,15 +29,22 @@ export default function IntegracaoErpPage() {
 
   const isAdmin = role === "admin";
 
+  const [processingCallback, setProcessingCallback] = useState(false);
+
   // Processar callback OAuth do Conta Azul
   useEffect(() => {
     const code = searchParams.get("code");
-    if (code) {
-      exchangeCode.mutate(code);
-      // Limpar params da URL
-      setSearchParams({});
+    const state = searchParams.get("state");
+    if (code && !processingCallback) {
+      setProcessingCallback(true);
+      console.log("OAuth callback recebido - code:", code.substring(0, 8) + "...", "state:", state);
+      // Limpar params da URL imediatamente para evitar reuso
+      setSearchParams({}, { replace: true });
+      exchangeCode.mutate(code, {
+        onSettled: () => setProcessingCallback(false),
+      });
     }
-  }, []);
+  }, [searchParams]);
 
   const handleCreate = () => {
     createConfig.mutate(formData, {
