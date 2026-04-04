@@ -6,14 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CONTAAZUL_API = "https://api.contaazul.com/v2";
+const CONTAAZUL_API = "https://api-v2.contaazul.com";
 const CONTAAZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Refresh token se expirado
 async function getValidAccessToken(empresaId: string): Promise<string> {
   const { data: tokenData, error } = await supabase
     .from("contaazul_tokens")
@@ -30,12 +29,17 @@ async function getValidAccessToken(empresaId: string): Promise<string> {
   const now = new Date();
   const expiresAt = new Date(tokenData.expires_at);
 
-  // Se ainda válido, retorna direto
-  if (expiresAt > new Date(now.getTime() + 60000)) {
+  // Se ainda válido (com margem de 2 min), retorna direto
+  if (expiresAt > new Date(now.getTime() + 120000)) {
     return tokenData.access_token;
   }
 
   // Refresh token
+  console.log("Token expirado ou próximo de expirar, renovando...");
+  return await refreshAccessToken(empresaId, tokenData);
+}
+
+async function refreshAccessToken(empresaId: string, tokenData: any): Promise<string> {
   const clientId = Deno.env.get("CONTAAZUL_CLIENT_ID")!;
   const clientSecret = Deno.env.get("CONTAAZUL_CLIENT_SECRET")!;
 
@@ -75,11 +79,11 @@ async function getValidAccessToken(empresaId: string): Promise<string> {
     })
     .eq("empresa_id", empresaId);
 
+  console.log("Token renovado com sucesso, expira em:", newExpiresAt);
   return newTokens.access_token;
 }
 
-// Categorizar despesa por IA ou regras
-async function categorizarDespesa(categoriaErp: string, descricao: string): Promise<string> {
+function categorizarDespesa(categoriaErp: string, descricao: string): string {
   const map = (categoriaErp || "").toLowerCase();
   const desc = (descricao || "").toLowerCase();
 
@@ -91,40 +95,52 @@ async function categorizarDespesa(categoriaErp: string, descricao: string): Prom
   return "Indiretos";
 }
 
-// Buscar despesas/contas a pagar da API Conta Azul
+// Buscar despesas (contas a pagar) usando a API v1 correta
 async function fetchDespesasContaAzul(accessToken: string, startDate: string, endDate: string) {
   const allBills: any[] = [];
   let page = 1;
   const pageSize = 200;
 
   while (true) {
-    // Endpoint de contas a pagar (bills)
-    const url = `${CONTAAZUL_API}/bills?start_date=${startDate}&end_date=${endDate}&page=${page}&size=${pageSize}`;
-    
+    // Endpoint correto: /v1/financeiro/eventos-financeiros/contas-a-pagar/buscar
+    const params = new URLSearchParams({
+      data_vencimento_de: startDate,
+      data_vencimento_ate: endDate,
+      pagina: String(page),
+      tamanho_pagina: String(pageSize),
+    });
+
+    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?${params.toString()}`;
+    console.log(`Buscando contas a pagar (page ${page}):`, url);
+
     const response = await fetch(url, {
       headers: {
         "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+        "Accept": "application/json",
       },
     });
 
     if (!response.ok) {
       const errBody = await response.text();
       console.error(`Erro ao buscar contas a pagar (page ${page}):`, response.status, errBody);
-      
+
       if (response.status === 401) {
-        throw new Error("Token expirado ou inválido");
+        throw new Error("Token expirado ou inválido. Tente reconectar o Conta Azul.");
       }
       break;
     }
 
     const data = await response.json();
-    
-    if (!Array.isArray(data) || data.length === 0) break;
-    
-    allBills.push(...data);
-    
-    if (data.length < pageSize) break;
+    console.log(`Resposta page ${page}:`, JSON.stringify(data).substring(0, 500));
+
+    // A resposta pode ser um array direto ou um objeto com items
+    const items = Array.isArray(data) ? data : (data.items || data.content || []);
+
+    if (!Array.isArray(items) || items.length === 0) break;
+
+    allBills.push(...items);
+
+    if (items.length < pageSize) break;
     page++;
   }
 
@@ -149,7 +165,7 @@ serve(async (req) => {
 
       console.log(`Iniciando sincronização Conta Azul para empresa ${empresa_id}...`);
 
-      // Obter token válido
+      // Obter token válido (com auto-refresh)
       const accessToken = await getValidAccessToken(empresa_id);
 
       // Definir período (default: mês atual)
@@ -157,6 +173,8 @@ serve(async (req) => {
       const startDateStr = start_date || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       const endDateStr = end_date || `${endMonth.getFullYear()}-${String(endMonth.getMonth() + 1).padStart(2, "0")}-${String(endMonth.getDate()).padStart(2, "0")}`;
+
+      console.log(`Período: ${startDateStr} a ${endDateStr}`);
 
       // Buscar despesas da API
       const bills = await fetchDespesasContaAzul(accessToken, startDateStr, endDateStr);
@@ -170,19 +188,22 @@ serve(async (req) => {
 
       let processadas = 0;
       for (const bill of bills) {
-        const erpId = bill.id || `CA-${bill.document || processadas}`;
-        const descricao = bill.note || bill.description || bill.document || "Sem descrição";
-        const valor = Number(bill.value || bill.amount || 0);
-        const categoriaErp = bill.category?.name || bill.category_name || "Outros";
-        const centroCusto = bill.cost_center?.name || bill.cost_center_name || null;
-        const dataPagamento = bill.payment_date || bill.due_date || null;
-        const dataCompetencia = bill.competence_date || bill.due_date || bill.emission_date || startDateStr;
-        const statusErp = bill.status?.toLowerCase() || "pendente";
+        // Mapear campos da API v1 do Conta Azul
+        const evento = bill.evento || {};
+        const erpId = bill.id || evento.id || `CA-${processadas}`;
+        const descricao = bill.descricao || evento.descricao || bill.nota || "Sem descrição";
+        const valorComposicao = bill.valor_composicao || {};
+        const valor = Number(valorComposicao.valor_bruto || valorComposicao.valor_liquido || bill.valor_total_liquido || 0);
+        const categoriaErp = evento.categoria?.nome || bill.categoria?.nome || "Outros";
+        const centroCusto = evento.centro_custo?.nome || bill.centro_custo?.nome || null;
+        const dataPagamento = bill.data_pagamento_previsto || bill.data_vencimento || null;
+        const dataCompetencia = evento.data_competencia || bill.data_vencimento || startDateStr;
+        const statusErp = (bill.status || "PENDENTE").toUpperCase();
 
         // Categorizar
         let categoriaInterna = mapCategorias.get(categoriaErp);
         if (!categoriaInterna) {
-          categoriaInterna = await categorizarDespesa(categoriaErp, descricao);
+          categoriaInterna = categorizarDespesa(categoriaErp, descricao);
           await supabase.from("mapeamento_categorias_erp").insert({
             categoria_erp: categoriaErp,
             categoria_interna: categoriaInterna,
@@ -205,13 +226,16 @@ serve(async (req) => {
           }
         }
 
+        // Mapear status
+        const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
+
         await supabase.from("custo_real_erp").upsert({
           erp_id: erpId,
           descricao,
           valor,
           data_pagamento: dataPagamento,
           data_competencia: dataCompetencia,
-          status_erp: statusErp === "paid" || statusErp === "pago" ? "pago" : "pendente",
+          status_erp: statusNormalizado,
           categoria_erp: categoriaErp,
           categoria_interna: categoriaInterna || "Indiretos",
           centro_custo: centroCusto,
