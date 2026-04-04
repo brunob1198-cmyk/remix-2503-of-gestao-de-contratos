@@ -11,7 +11,22 @@ interface CustosErpProps {
   siteId: string;
 }
 
-const CATEGORIAS_ENG = ["Mão de Obra", "Materiais", "Equipamentos", "Transporte", "Indiretos", "Financeiros"];
+const CATEGORIAS_ENG = [
+  "Mão de Obra",
+  "Materiais",
+  "Equipamentos",
+  "Transporte",
+  "Indiretos",
+  "Financeiros",
+  "Diaria - Refeicao - Campo",
+  "Exames Médicos",
+  "Materiais Aplicados na Prestação de Serviços",
+  "Diaria - Hospedagem - Campo",
+  "Locacao Veiculos",
+  "Prestador de Servico",
+  "Combustivel - Campo",
+  "Pedágio - Campo",
+];
 
 export function CustosErp({ projetoId, siteId }: CustosErpProps) {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
