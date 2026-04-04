@@ -638,7 +638,7 @@ export default function RecursosPage() {
                 </div>
 
                 {/* Scrollable Gantt area */}
-                <div className="flex-1 overflow-x-auto min-w-0" style={{ scrollbarWidth: 'thin' }}>
+                <div className="flex-1 overflow-x-auto min-w-0 gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
                   <Table className="w-auto table-fixed">
                     <TableHeader>
                       <TableRow className="h-[60px]">
