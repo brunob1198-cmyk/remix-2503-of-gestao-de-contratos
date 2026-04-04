@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useContratos } from "@/hooks/useContratos";
 import { useClientes } from "@/hooks/useClientes";
+import { useProjetos } from "@/hooks/useProjetos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen } from "lucide-react";
 import ContratosForm from "@/components/medicoes/ContratosForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
@@ -14,6 +15,7 @@ import { differenceInDays, parseISO, isBefore, startOfDay } from "date-fns";
 export default function ContratosPage() {
   const { contratos, isLoading, deleteContrato } = useContratos();
   const { clientes } = useClientes();
+  const { projetos } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
   const [editingContrato, setEditingContrato] = useState<Contrato | null>(null);
 
@@ -97,6 +99,7 @@ export default function ContratosPage() {
                   <TableHead>Nº Contrato</TableHead>
                   <TableHead>Contrato / Objeto</TableHead>
                   <TableHead>Clientes</TableHead>
+                  <TableHead>Projetos</TableHead>
                   <TableHead>Valor Integrado</TableHead>
                   <TableHead>Vigência</TableHead>
                   <TableHead>Status</TableHead>
@@ -152,6 +155,22 @@ export default function ContratosPage() {
                       </TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate" title={getClientesNomes(c.cliente_ids)}>
                         {getClientesNomes(c.cliente_ids)}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[200px]">
+                        {(() => {
+                          const vinculados = projetos.filter(p => p.contrato_id === c.id);
+                          if (vinculados.length === 0) return <span className="text-muted-foreground">-</span>;
+                          return (
+                            <div className="space-y-0.5">
+                              {vinculados.map(p => (
+                                <div key={p.id} className="flex items-center gap-1" title={p.nome}>
+                                  <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{p.codigo} - {p.nome}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {formatCurrency(valorTotalIntegrado)}
