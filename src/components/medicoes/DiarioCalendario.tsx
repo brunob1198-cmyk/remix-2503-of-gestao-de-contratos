@@ -288,7 +288,16 @@ export function DiarioCalendario({
                     {!hasEntry && isWorkday && day <= today && isCurrentMonth && (
                       <div className="mt-1">
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-red-300 text-red-500">
-                          —
+                          Sem Produção
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Entry exists but no production items */}
+                    {hasEntry && entry.totalItens === 0 && isCurrentMonth && (
+                      <div className="mt-1">
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-amber-300 text-amber-600">
+                          Sem Produção
                         </Badge>
                       </div>
                     )}
