@@ -36,6 +36,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
   const today = startOfDay(new Date());
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement | null>(null);
 
   const { chartStart, chartEnd, totalDays, columns, monthColumns } = useMemo(() => {
     if (!atividades.length) {
@@ -123,10 +124,15 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
         <span className="ml-auto text-muted-foreground italic">Arraste para visualizar produção diária</span>
       </div>
 
-      <div className="overflow-auto max-h-[calc(100vh-320px)] relative">
-        <div className="flex w-max min-w-full">
-          {/* Left Panel: Table Grid */}
-          <div className="flex-shrink-0 sticky left-0 z-30 bg-card border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style={{ width: LABEL_W }}>
+      <div className="flex max-h-[calc(100vh-320px)]">
+        {/* Left Panel: Fixed Table Grid */}
+        <div className="flex-shrink-0 z-30 bg-card border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] overflow-y-auto" style={{ width: LABEL_W }}
+          onScroll={(e) => {
+            const target = e.currentTarget;
+            if (chartRef.current) chartRef.current.scrollTop = target.scrollTop;
+          }}
+          ref={(el) => { leftPanelRef.current = el; }}
+        >
             <div className="h-[60px] border-b bg-muted/90 flex flex-col justify-end px-3 pb-1 text-[11px] font-bold text-muted-foreground sticky top-0 z-40 backdrop-blur-sm">
               <div className="flex w-full">
                 <div className="flex-1">ITEM / FRENTE</div>
@@ -141,11 +147,9 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
               const isCollapsed = !!collapsedFrentes[frente.id];
               const totalFrente = frente.atividades.reduce((acc, a) => acc + (a.quantidade_total || 0), 0);
               const totalExecFrente = frente.atividades.reduce((acc, a) => acc + (a.qtd_produzida || 0), 0);
-              const pctFrente = totalFrente > 0 ? (totalExecFrente / totalFrente) * 100 : 0;
               
               return (
                 <div key={frente.id}>
-                  {/* Frente Group Header */}
                   <div 
                     className="border-b flex items-center px-2 bg-muted/40 cursor-pointer hover:bg-muted/60 transition-colors"
                     style={{ height: ROW_H }}
@@ -163,7 +167,6 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                     </div>
                   </div>
 
-                  {/* Frente Items */}
                   {!isCollapsed && frente.atividades.map((a) => (
                     <div
                       key={a.id}
@@ -197,10 +200,17 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                 </div>
               );
             })}
-          </div>
+        </div>
 
-          {/* Right Panel: Calendar Matrix */}
-          <div className="flex-1 relative bg-white/50" style={{ width: chartW }} ref={chartRef}>
+        {/* Right Panel: Scrollable Calendar Matrix */}
+        <div className="flex-1 overflow-auto relative bg-white/50"
+          ref={chartRef}
+          onScroll={(e) => {
+            const target = e.currentTarget;
+            if (leftPanelRef.current) leftPanelRef.current.scrollTop = target.scrollTop;
+          }}
+        >
+          <div style={{ width: chartW, minWidth: '100%' }}>
             {/* Header Timeline */}
             <div className="sticky top-0 z-20 bg-card">
               <div className="h-6 border-b bg-muted/80 flex">
@@ -245,10 +255,8 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                 const isCollapsed = !!collapsedFrentes[frente.id];
                 return (
                   <div key={frente.id}>
-                    {/* Frente Group Header Ghost Row */}
-                     <div className="border-b bg-muted/5 z-0" style={{ height: ROW_H }} />
+                    <div className="border-b bg-muted/5 z-0" style={{ height: ROW_H }} />
                     
-                    {/* Items Timeline Rows */}
                     {!isCollapsed && frente.atividades.map((a) => {
                        const hasStart = !!a.data_inicio;
                        const start = hasStart ? startOfDay(new Date(a.data_inicio!)) : null;
@@ -259,7 +267,6 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                        return (
                          <div key={a.id} className={cn("border-b relative z-10 flex items-center", a.is_principal ? "bg-purple-50/20" : "")} style={{ height: ROW_H }}>
                            
-                           {/* Gantt Ghost Bar (Planned) */}
                            {hasStart && width > 0 && (
                              <div 
                                className={cn(
