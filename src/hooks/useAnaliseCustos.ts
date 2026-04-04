@@ -249,9 +249,9 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   });
 
   return { 
-    orcamentos, loadOrc, saveOrcamento,
+    custoOrcado, loadOrc,
     custosErp, loadCustos, updateCategoria, 
-    syncErpMock: syncErp, // mantém compatibilidade com nome antigo
+    syncErpMock: syncErp,
     syncErp,
     fisico, loadFisico
   };
