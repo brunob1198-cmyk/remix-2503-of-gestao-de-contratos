@@ -901,26 +901,13 @@ export default function RecursosPage() {
           <div className="space-y-4">
             <div>
               <Label>Projeto</Label>
-              <Select value={alocProjetoId} onValueChange={(v) => { setAlocProjetoId(v); setAlocSiteId(""); }}>
+              <Select value={alocProjetoId} onValueChange={(v) => { setAlocProjetoId(v); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o projeto" />
                 </SelectTrigger>
                 <SelectContent>
                   {projetos.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Site</Label>
-              <Select value={alocSiteId} onValueChange={setAlocSiteId} disabled={!alocProjetoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={alocProjetoId ? "Selecione o site" : "Selecione um projeto primeiro"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sitesForProjeto.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -935,7 +922,7 @@ export default function RecursosPage() {
                 <Input type="date" value={alocDataFim} onChange={(e) => setAlocDataFim(e.target.value)} />
               </div>
             </div>
-            <Button className="w-full" onClick={handleAlocar} disabled={!alocSiteId || alocarRecurso.isPending}>
+            <Button className="w-full" onClick={handleAlocar} disabled={!alocProjetoId || alocarRecurso.isPending}>
               {alocarRecurso.isPending ? "Alocando..." : "Confirmar Alocação"}
             </Button>
           </div>
