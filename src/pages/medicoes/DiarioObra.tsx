@@ -35,7 +35,9 @@ const formatCurrency = (v: number) =>
 export default function DiarioObraPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { sites } = useSites();
+  const { projetos } = useProjetos();
+  const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_obra_projeto_id", "");
+  const { sites } = useSites(selectedProjetoId || undefined);
   const { recursos, getCustoAtual, getAlocacoesBySite } = useRecursos();
   const [activeTab, setActiveTab] = useState<string>("calendario");
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("diario_obra_site_id", "");
@@ -44,6 +46,12 @@ export default function DiarioObraPage() {
   const [periodoFim, setPeriodoFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
+
+  // Reset site when projeto changes
+  const handleProjetoChange = (projetoId: string) => {
+    setSelectedProjetoId(projetoId);
+    setSelectedSiteId("");
+  };
 
   const selectedSite = sites.find(s => s.id === selectedSiteId);
   const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
