@@ -577,7 +577,7 @@ export default function RdoPage() {
                     {dayGroups.map(group => (
                       <div key={group.data} className="space-y-0">
                         {/* Day header */}
-                        <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1">
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
                             {format(parseISO(group.data), "dd/MM", { locale: ptBR })}
@@ -589,6 +589,20 @@ export default function RdoPage() {
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
                               {group.diarios.length} sites
                             </Badge>
+                          )}
+                        </div>
+                        {/* Day totals */}
+                        <div className="flex items-center gap-3 ml-5 mb-1.5 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <ClipboardList className="h-3 w-3" /> {group.totalItens} itens
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Camera className="h-3 w-3" /> {group.totalFotos}
+                          </span>
+                          {!isCliente && (
+                            <span className="flex items-center gap-1 font-medium">
+                              <DollarSign className="h-3 w-3" /> {formatCurrency(group.totalProducao)}
+                            </span>
                           )}
                         </div>
                         {/* Site cards within the day */}
