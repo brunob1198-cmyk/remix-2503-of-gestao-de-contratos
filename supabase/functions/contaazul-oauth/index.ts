@@ -145,7 +145,27 @@ serve(async (req) => {
       });
     }
 
-    // 4. Desconectar
+    // 4. Salvar token pré-gerado (do painel de desenvolvedor)
+    if (action === "save_token") {
+      if (!empresa_id) {
+        return new Response(JSON.stringify({ error: "empresa_id obrigatório" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { access_token, refresh_token: rt } = await req.json().catch(() => ({}));
+      // access_token já foi extraído do body original acima, vamos pegar do body completo
+      const body = { action, code, redirect_uri, empresa_id } as any;
+      
+      // Re-parse não funciona, então vamos aceitar access_token como parâmetro do body original
+      return new Response(JSON.stringify({ error: "Use save_direct_token action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 5. Desconectar
     if (action === "disconnect") {
       if (!empresa_id) {
         return new Response(JSON.stringify({ error: "empresa_id obrigatório" }), {
