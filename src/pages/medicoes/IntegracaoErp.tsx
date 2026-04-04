@@ -196,7 +196,7 @@ export default function IntegracaoErpPage() {
                     <>
                       <Button
                         variant="outline"
-                        onClick={() => refreshToken.mutate()}
+                        onClick={() => refreshToken.mutate(undefined)}
                         disabled={refreshToken.isPending}
                         className="gap-2"
                       >
