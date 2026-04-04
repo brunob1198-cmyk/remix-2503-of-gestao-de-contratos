@@ -95,6 +95,132 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
   return "Indiretos";
 }
 
+type ProjetoLookup = {
+  id: string;
+  codigo: string | null;
+  nome: string;
+  normalizedCode: string;
+  normalizedName: string;
+};
+
+type SiteLookup = {
+  id: string;
+  codigo: string | null;
+  nome: string;
+  projeto_id: string;
+  normalizedCode: string;
+  normalizedName: string;
+};
+
+function normalizeText(value: string | null | undefined): string {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreMatch(target: string, candidate: string): number {
+  if (!target || !candidate) return 0;
+  if (target === candidate) return 1000 + candidate.length;
+  if (target.startsWith(candidate)) return 500 + candidate.length;
+  if (target.includes(candidate)) return 100 + candidate.length;
+  return 0;
+}
+
+function extractProjectCode(value: string | null | undefined): string | null {
+  const match = (value || "").toUpperCase().match(/[A-Z]\d{3}\.\d{2}/);
+  return match?.[0] || null;
+}
+
+function resolveProjetoESite(
+  centroCusto: string | null,
+  projetos: ProjetoLookup[],
+  sites: SiteLookup[],
+  sitesByProjeto: Map<string, SiteLookup[]>,
+  projetosByCode: Map<string, ProjetoLookup>,
+) {
+  if (!centroCusto) {
+    return { projetoId: null, siteId: null, strategy: "none" };
+  }
+
+  const normalizedCentro = normalizeText(centroCusto);
+  if (!normalizedCentro) {
+    return { projetoId: null, siteId: null, strategy: "none" };
+  }
+
+  const directSiteMatch = sites
+    .map((site) => ({
+      site,
+      score: Math.max(
+        scoreMatch(normalizedCentro, site.normalizedCode),
+        scoreMatch(normalizedCentro, site.normalizedName),
+      ),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+
+  if (directSiteMatch) {
+    return {
+      projetoId: directSiteMatch.site.projeto_id,
+      siteId: directSiteMatch.site.id,
+      strategy: "site-direct",
+    };
+  }
+
+  const extractedCode = extractProjectCode(centroCusto);
+  let matchedProject = extractedCode ? projetosByCode.get(normalizeText(extractedCode)) || null : null;
+
+  if (!matchedProject) {
+    matchedProject = projetos
+      .map((projeto) => ({
+        projeto,
+        score: Math.max(
+          scoreMatch(normalizedCentro, projeto.normalizedCode),
+          scoreMatch(normalizedCentro, projeto.normalizedName),
+        ),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.projeto || null;
+  }
+
+  if (!matchedProject) {
+    return { projetoId: null, siteId: null, strategy: "unmatched" };
+  }
+
+  const candidateSites = sitesByProjeto.get(matchedProject.id) || [];
+  const scopedSiteMatch = candidateSites
+    .map((site) => ({
+      site,
+      score: Math.max(
+        scoreMatch(normalizedCentro, site.normalizedCode),
+        scoreMatch(normalizedCentro, site.normalizedName),
+      ),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)[0];
+
+  if (scopedSiteMatch) {
+    return {
+      projetoId: matchedProject.id,
+      siteId: scopedSiteMatch.site.id,
+      strategy: "project-site",
+    };
+  }
+
+  if (candidateSites.length === 1) {
+    return {
+      projetoId: matchedProject.id,
+      siteId: candidateSites[0].id,
+      strategy: "project-single-site",
+    };
+  }
+
+  return { projetoId: matchedProject.id, siteId: null, strategy: "project-only" };
+}
+
 // Buscar despesas (contas a pagar) usando a API v1 correta
 async function fetchDespesasContaAzul(accessToken: string, startDate: string, endDate: string) {
   const allBills: any[] = [];
@@ -180,11 +306,49 @@ serve(async (req) => {
       const bills = await fetchDespesasContaAzul(accessToken, startDateStr, endDateStr);
       console.log(`Encontradas ${bills.length} contas a pagar no período.`);
 
-      // Buscar mapeamento existente e sites
-      const { data: mapeamentos } = await supabase.from("mapeamento_categorias_erp").select("*");
+      // Buscar mapeamento existente, projetos e sites para vincular os lançamentos importados
+      const [{ data: mapeamentos }, { data: projetos }, { data: sites }] = await Promise.all([
+        supabase.from("mapeamento_categorias_erp").select("*"),
+        supabase.from("projetos").select("id, codigo, nome"),
+        supabase.from("sites").select("id, codigo, nome, projeto_id"),
+      ]);
+
       const mapCategorias = new Map(mapeamentos?.map((m: any) => [m.categoria_erp, m.categoria_interna]));
 
-      const { data: sites } = await supabase.from("sites").select("id, nome, projeto_id");
+      const projetosLookup: ProjetoLookup[] = (projetos || []).map((projeto: any) => ({
+        ...projeto,
+        normalizedCode: normalizeText(projeto.codigo),
+        normalizedName: normalizeText(projeto.nome),
+      }));
+
+      const sitesLookup: SiteLookup[] = (sites || []).map((site: any) => ({
+        ...site,
+        normalizedCode: normalizeText(site.codigo),
+        normalizedName: normalizeText(site.nome),
+      }));
+
+      const sitesByProjeto = new Map<string, SiteLookup[]>();
+      for (const site of sitesLookup) {
+        const current = sitesByProjeto.get(site.projeto_id) || [];
+        current.push(site);
+        sitesByProjeto.set(site.projeto_id, current);
+      }
+
+      const projetosByCode = new Map<string, ProjetoLookup>();
+      for (const projeto of projetosLookup) {
+        if (projeto.normalizedCode) {
+          projetosByCode.set(projeto.normalizedCode, projeto);
+        }
+      }
+
+      const matchStats: Record<string, number> = {
+        "site-direct": 0,
+        "project-site": 0,
+        "project-single-site": 0,
+        "project-only": 0,
+        unmatched: 0,
+        none: 0,
+      };
 
       let processadas = 0;
       for (const bill of bills) {
@@ -212,19 +376,15 @@ serve(async (req) => {
           mapCategorias.set(categoriaErp, categoriaInterna);
         }
 
-        // Cruzar centro de custo com sites
-        let siteId = null;
-        let projetoId = null;
-        if (centroCusto && sites) {
-          const siteEnc = sites.find((s: any) =>
-            s.nome.toLowerCase() === centroCusto.toLowerCase() ||
-            centroCusto.toLowerCase().includes(s.nome.toLowerCase())
-          );
-          if (siteEnc) {
-            siteId = siteEnc.id;
-            projetoId = siteEnc.projeto_id;
-          }
-        }
+        // Cruzar centro de custo com projeto/site cadastrado
+        const { projetoId, siteId, strategy } = resolveProjetoESite(
+          centroCusto,
+          projetosLookup,
+          sitesLookup,
+          sitesByProjeto,
+          projetosByCode,
+        );
+        matchStats[strategy] = (matchStats[strategy] || 0) + 1;
 
         // Mapear status
         const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
@@ -245,6 +405,8 @@ serve(async (req) => {
 
         processadas++;
       }
+
+      console.log("Resumo de vínculo projeto/site:", matchStats);
 
       return new Response(
         JSON.stringify({
