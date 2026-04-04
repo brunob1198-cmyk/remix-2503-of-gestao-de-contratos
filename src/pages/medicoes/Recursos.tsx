@@ -539,9 +539,9 @@ export default function RecursosPage() {
               <div className="flex overflow-hidden">
                 {/* Fixed data columns */}
                 <div className="flex-shrink-0 overflow-hidden border-r z-10 bg-background">
-                  <Table className="w-auto">
+                  <Table className="w-auto table-fixed">
                     <TableHeader>
-                      <TableRow>
+                      <TableRow style={{ height: 60 }}>
                         {cols.map(col => (
                           <TableHead key={col} className="whitespace-nowrap">
                             <ColumnHeader
@@ -568,7 +568,7 @@ export default function RecursosPage() {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id}>
+                          <TableRow key={r.id} style={{ height: 48 }}>
                             <TableCell className="font-medium whitespace-nowrap">{r.nome}</TableCell>
                             {tipo === "pessoa" && <TableCell className="whitespace-nowrap">{r.cargo || "—"}</TableCell>}
                             {tipo === "veiculo" && <TableCell className="whitespace-nowrap">{r.placa || "—"}</TableCell>}
@@ -639,7 +639,7 @@ export default function RecursosPage() {
 
                 {/* Scrollable Gantt area */}
                 <div className="flex-1 overflow-x-auto min-w-0">
-                  <Table className="w-auto">
+                  <Table className="w-auto table-fixed">
                     <TableHeader>
                       <TableRow>
                         {ganttMonths.map((m, i) => {
@@ -678,7 +678,7 @@ export default function RecursosPage() {
                               const monthWidth = daysInMonth * DAY_WIDTH;
 
                               return (
-                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 40 }}>
+                                <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 48 }}>
                                   {/* Grid Lines */}
                                   <div className="absolute inset-0 flex z-0 pointer-events-none">
                                     {Array.from({ length: daysInMonth }).map((_, d) => (
