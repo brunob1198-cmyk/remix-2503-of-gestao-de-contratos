@@ -252,10 +252,7 @@ function FinanceiroTab({ data, projetoFilter, setProjetoFilter, dateFrom, dateTo
 }
 
 // ── Produção Tab ──
-function ProducaoTab({ data }: { data: any[] }) {
-  const [projetoFilter, setProjetoFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+function ProducaoTab({ data, projetoFilter, setProjetoFilter, dateFrom, dateTo, setDateFrom, setDateTo }: { data: any[]; projetoFilter: string; setProjetoFilter: (v: string) => void; dateFrom: Date | undefined; dateTo: Date | undefined; setDateFrom: (d: Date | undefined) => void; setDateTo: (d: Date | undefined) => void }) {
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
