@@ -539,7 +539,7 @@ export default function RecursosPage() {
               <div className="flex overflow-hidden">
                 {/* Fixed data columns */}
                 <div className="flex-shrink-0 overflow-hidden border-r z-10 bg-background">
-                  <Table className="w-auto">
+                  <Table className="w-auto table-fixed">
                     <TableHeader>
                       <TableRow>
                         {cols.map(col => (
