@@ -641,7 +641,7 @@ export default function RecursosPage() {
                 <div className="flex-1 overflow-x-auto min-w-0">
                   <Table className="w-auto table-fixed">
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="h-[60px]">
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
