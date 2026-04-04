@@ -133,8 +133,8 @@ async function fetchDespesasContaAzul(accessToken: string, startDate: string, en
     const data = await response.json();
     console.log(`Resposta page ${page}:`, JSON.stringify(data).substring(0, 500));
 
-    // A resposta pode ser um array direto ou um objeto com items
-    const items = Array.isArray(data) ? data : (data.items || data.content || []);
+    // A resposta pode ser um array direto ou um objeto com itens/items
+    const items = Array.isArray(data) ? data : (data.itens || data.items || data.content || []);
 
     if (!Array.isArray(items) || items.length === 0) break;
 
