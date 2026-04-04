@@ -375,8 +375,8 @@ export default function ProjetosPage() {
                       <TableCell>{p.coordenador || "-"}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {p.contratoObj ? (
-                          <span className="text-xs text-muted-foreground" title={p.contratoObj.escopo}>
-                            {p.contratoObj.escopo?.slice(0, 30)}...
+                          <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
+                            {p.contratoObj.numero_contrato || "-"}
                           </span>
                         ) : "-"}
                       </TableCell>
