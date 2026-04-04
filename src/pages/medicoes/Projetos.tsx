@@ -344,7 +344,7 @@ export default function ProjetosPage() {
                       onDropdownChange={(v) => setDropdownFilter(col.field, v)}
                       options={
                         col.field === "contrato_id" 
-                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.escopo || "-"))].sort()
+                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
                           : col.field === "area_id"
                           ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
                           : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
