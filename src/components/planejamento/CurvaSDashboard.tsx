@@ -25,7 +25,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
-import { differenceInCalendarDays, addDays, format, max, min, eachDayOfInterval, isWeekend } from "date-fns";
+import { differenceInCalendarDays, addDays, format, max, min, eachDayOfInterval, isWeekend, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Props {
