@@ -45,7 +45,7 @@ export const pdfGlobalStyles = `
     .foto-card { width: calc(50% - 7px); border: 1px solid #c0c8d4; border-radius: 8px; overflow: hidden; page-break-inside: avoid; background: #fff; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
     .foto-card img { width: 100%; height: auto; max-height: 280px; object-fit: contain; display: block; border-bottom: 1px solid #e2e8f0; background: #f8f9fa; }
     .foto-info { padding: 10px 14px; background: #f8fafc; min-height: 40px; }
-    .foto-title { font-size: 11px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
+    .foto-title { font-size: 11px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
     .foto-meta { font-size: 9px; color: #64748b; margin: 0 0 4px 0; display: flex; gap: 8px; flex-wrap: wrap; }
     .foto-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 8px; font-weight: 700; color: #fff; margin-bottom: 2px; }
     .foto-legenda { font-size: 10px; color: #334155; margin: 4px 0 0 0; font-style: italic; word-wrap: break-word; overflow-wrap: break-word; }

@@ -335,7 +335,7 @@ export function DetailMedicaoContent({
                         <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
                           <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
                           <div className="p-3 bg-muted/30 space-y-1.5">
-                            <p className="font-semibold text-xs text-foreground truncate">{f.item_codigo} — {f.item_descricao}</p>
+                            <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                               {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
                               {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
