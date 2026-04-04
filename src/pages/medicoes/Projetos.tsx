@@ -178,7 +178,7 @@ export default function ProjetosPage() {
       if (value) {
         result = result.filter((p: any) => {
           if (field === "contrato_id") {
-            const cellVal = p.contratoObj?.escopo || "-";
+            const cellVal = p.contratoObj?.numero_contrato || "-";
             return cellVal === value;
           }
           if (field === "area_id") {
@@ -283,7 +283,7 @@ export default function ProjetosPage() {
                     <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
+                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -344,7 +344,7 @@ export default function ProjetosPage() {
                       onDropdownChange={(v) => setDropdownFilter(col.field, v)}
                       options={
                         col.field === "contrato_id" 
-                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.escopo || "-"))].sort()
+                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
                           : col.field === "area_id"
                           ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
                           : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
@@ -375,8 +375,8 @@ export default function ProjetosPage() {
                       <TableCell>{p.coordenador || "-"}</TableCell>
                       <TableCell className="max-w-[200px] truncate">
                         {p.contratoObj ? (
-                          <span className="text-xs text-muted-foreground" title={p.contratoObj.escopo}>
-                            {p.contratoObj.escopo?.slice(0, 30)}...
+                          <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
+                            {p.contratoObj.numero_contrato || "-"}
                           </span>
                         ) : "-"}
                       </TableCell>
