@@ -178,7 +178,7 @@ export default function ProjetosPage() {
       if (value) {
         result = result.filter((p: any) => {
           if (field === "contrato_id") {
-            const cellVal = p.contratoObj?.escopo || "-";
+            const cellVal = p.contratoObj?.numero_contrato || "-";
             return cellVal === value;
           }
           if (field === "area_id") {
