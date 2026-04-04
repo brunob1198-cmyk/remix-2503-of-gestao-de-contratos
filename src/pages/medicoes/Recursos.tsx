@@ -535,8 +535,8 @@ export default function RecursosPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="flex">
+            <CardContent className="p-0 overflow-hidden">
+              <div className="flex relative">
                 {/* Fixed data columns + actions */}
                 <div className="flex-shrink-0 border-r z-10 bg-background">
                   <Table className="w-auto table-fixed">
@@ -638,7 +638,7 @@ export default function RecursosPage() {
                 </div>
 
                 {/* Scrollable Gantt area */}
-                <div className="flex-1 overflow-x-auto min-w-0">
+                <div className="flex-1 overflow-x-auto min-w-0 gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
                   <Table className="w-auto table-fixed">
                     <TableHeader>
                       <TableRow className="h-[60px]">
