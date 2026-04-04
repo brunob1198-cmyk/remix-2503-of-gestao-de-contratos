@@ -43,6 +43,7 @@ const menuItems: MenuItem[] = [
   { title: "Lançar Medição", url: "/medicoes/medicao", icon: Receipt, telaId: "medicao" },
   { title: "Portal de Faturamento", url: "/medicoes/faturamento", icon: DollarSign, telaId: "faturamento" },
   { title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios" },
+  { title: "Dashboard BI", url: "/medicoes/bi", icon: PieChart, telaId: "bi" },
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
 ];
 
