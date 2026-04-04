@@ -293,7 +293,17 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
         {/* Right Col - Formulário */}
         <form id="contrato-form" onSubmit={handleSubmit} className="w-2/3 flex flex-col gap-5 overflow-y-auto pb-6 pr-2">
           
-          <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+          <div className="grid grid-cols-3 gap-4 bg-muted/30 p-4 rounded-lg border">
+             {contratoPaiId === "none" && (
+               <div className="space-y-2">
+                 <Label className="text-sm font-bold">Nº do Contrato</Label>
+                 <Input 
+                   placeholder="Ex: IDCT13860" 
+                   value={numeroContrato} 
+                   onChange={(e) => setNumeroContrato(e.target.value)} 
+                 />
+               </div>
+             )}
              <div className="space-y-2">
                 <Label className="text-sm font-bold">É um Aditivo de Contrato?</Label>
                 <Select value={contratoPaiId} onValueChange={setContratoPaiId}>
@@ -301,7 +311,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                   <SelectContent>
                     <SelectItem value="none">Não, é um contrato principal</SelectItem>
                     {contratos.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0,40) || c.id.slice(0,8)}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0,40) || c.id.slice(0,8)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
