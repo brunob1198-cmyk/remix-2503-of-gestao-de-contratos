@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Save, X, Link2, Users } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import { Recurso, RecursoAlocacao } from "@/hooks/useRecursos";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
