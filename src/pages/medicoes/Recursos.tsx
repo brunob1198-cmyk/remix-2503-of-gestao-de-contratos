@@ -670,7 +670,7 @@ export default function RecursosPage() {
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
-                          <TableRow key={r.id}>
+                          <TableRow key={r.id} className="h-[48px]">
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
