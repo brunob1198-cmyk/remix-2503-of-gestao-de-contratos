@@ -541,7 +541,7 @@ export default function RecursosPage() {
                 <div className="flex-shrink-0 border-r z-10 bg-background">
                   <Table className="w-auto table-fixed">
                     <TableHeader>
-                      <TableRow style={{ height: 60 }}>
+                      <TableRow className="h-[60px]">
                         {cols.map(col => (
                           <TableHead key={col} className="whitespace-nowrap">
                             <ColumnHeader
