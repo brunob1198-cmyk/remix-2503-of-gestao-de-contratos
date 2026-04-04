@@ -41,6 +41,7 @@ serve(async (req) => {
       }
 
       const params = new URLSearchParams({
+        response_type: "code",
         client_id: clientId,
         redirect_uri: redirect_uri,
         scope: "sales",

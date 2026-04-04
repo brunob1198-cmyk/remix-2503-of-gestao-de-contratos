@@ -334,6 +334,72 @@ export type Database = {
           },
         ]
       }
+      custo_real_erp: {
+        Row: {
+          categoria_erp: string
+          categoria_interna: string
+          centro_custo: string | null
+          created_at: string | null
+          data_competencia: string | null
+          data_pagamento: string | null
+          descricao: string
+          erp_id: string
+          id: string
+          projeto_id: string | null
+          site_id: string | null
+          status_erp: string
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          categoria_erp?: string
+          categoria_interna?: string
+          centro_custo?: string | null
+          created_at?: string | null
+          data_competencia?: string | null
+          data_pagamento?: string | null
+          descricao?: string
+          erp_id: string
+          id?: string
+          projeto_id?: string | null
+          site_id?: string | null
+          status_erp?: string
+          updated_at?: string | null
+          valor?: number
+        }
+        Update: {
+          categoria_erp?: string
+          categoria_interna?: string
+          centro_custo?: string | null
+          created_at?: string | null
+          data_competencia?: string | null
+          data_pagamento?: string | null
+          descricao?: string
+          erp_id?: string
+          id?: string
+          projeto_id?: string | null
+          site_id?: string | null
+          status_erp?: string
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dependencias_atividade: {
         Row: {
           atividade_id: string
@@ -1241,6 +1307,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mapeamento_categorias_erp: {
+        Row: {
+          categoria_erp: string
+          categoria_interna: string
+          created_at: string | null
+          criado_por_ia: boolean | null
+          id: string
+        }
+        Insert: {
+          categoria_erp: string
+          categoria_interna?: string
+          created_at?: string | null
+          criado_por_ia?: boolean | null
+          id?: string
+        }
+        Update: {
+          categoria_erp?: string
+          categoria_interna?: string
+          created_at?: string | null
+          criado_por_ia?: boolean | null
+          id?: string
+        }
+        Relationships: []
       }
       medicao_status_historico: {
         Row: {

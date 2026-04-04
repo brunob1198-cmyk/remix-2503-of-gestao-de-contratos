@@ -19,7 +19,9 @@ async function getValidAccessToken(empresaId: string): Promise<string> {
     .from("contaazul_tokens")
     .select("*")
     .eq("empresa_id", empresaId)
-    .single();
+    .maybeSingle();
+
+  console.log("Token lookup result:", { hasData: !!tokenData, error: error?.message });
 
   if (error || !tokenData) {
     throw new Error("Conta Azul não conectada. Configure a integração primeiro.");
