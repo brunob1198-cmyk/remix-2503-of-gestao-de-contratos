@@ -10,11 +10,10 @@ import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 interface AnaliseCustosProps {
   projetoId: string;
   siteId: string;
+  selectedMonth: Date;
 }
 
-export function AnaliseCustos({ projetoId, siteId }: AnaliseCustosProps) {
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  
+export function AnaliseCustos({ projetoId, siteId, selectedMonth }: AnaliseCustosProps) {
   const { orcamentos, custosErp, fisico, saveOrcamento, syncErpMock } = useAnaliseCustos(projetoId, siteId, selectedMonth);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
@@ -111,11 +110,8 @@ export function AnaliseCustos({ projetoId, siteId }: AnaliseCustosProps) {
              <RefreshCw className={`h-3 w-3 ${syncErpMock.isPending ? "animate-spin" : ""}`} />
              Sincronizar Conta Azul
           </Button>
-          <Input 
-             type="month" 
-             value={format(selectedMonth, "yyyy-MM")}
-             onChange={(e) => setSelectedMonth(new Date(e.target.value + "-02"))}
-          />
+
+
         </Card>
       </div>
 

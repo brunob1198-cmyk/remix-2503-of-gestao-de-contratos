@@ -14,11 +14,13 @@ import { AnaliseIA } from "@/components/analise/AnaliseIA";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 export default function AnaliseObraPage() {
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("executiva");
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
@@ -50,7 +52,6 @@ export default function AnaliseObraPage() {
     return projetos.filter(p => p.codigo.toLowerCase().includes(s) || p.nome.toLowerCase().includes(s));
   }, [projetos, search]);
 
-  // For rendering, use the first selected project (components are single-project)
   const currentProjetoId = selectedIds.length === 1 ? selectedIds[0] : selectedIds.length > 0 ? selectedIds[0] : "";
   const selectedProjeto = projetos.find(p => p.id === currentProjetoId);
 
@@ -110,6 +111,13 @@ export default function AnaliseObraPage() {
           </PopoverContent>
         </Popover>
 
+        <Input
+          type="month"
+          value={format(selectedMonth, "yyyy-MM")}
+          onChange={(e) => setSelectedMonth(new Date(e.target.value + "-02"))}
+          className="w-[180px]"
+        />
+
         {selectedIds.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
             <X className="h-4 w-4 mr-1" /> Limpar
@@ -161,13 +169,13 @@ export default function AnaliseObraPage() {
                   <h3 className="text-lg font-semibold">{proj.codigo} - {proj.nome}</h3>
                 )}
                 <TabsContent value="executiva" className="mt-0">
-                  <VisaoExecutiva projetoId={pid} projetoName={proj.nome} />
+                  <VisaoExecutiva projetoId={pid} projetoName={proj.nome} selectedMonth={selectedMonth} />
                 </TabsContent>
                 <TabsContent value="custos-erp" className="mt-0">
-                  <AnaliseCustos projetoId={pid} siteId="" />
+                  <AnaliseCustos projetoId={pid} siteId="" selectedMonth={selectedMonth} />
                 </TabsContent>
                 <TabsContent value="auditoria-erp" className="mt-0">
-                  <CustosErp projetoId={pid} siteId="" />
+                  <CustosErp projetoId={pid} siteId="" selectedMonth={selectedMonth} />
                 </TabsContent>
                 <TabsContent value="ia" className="mt-0">
                   <AnaliseIA projetoId={pid} projetoName={proj.nome} />
