@@ -44,7 +44,7 @@ serve(async (req) => {
         response_type: "code",
         client_id: clientId,
         redirect_uri: redirect_uri,
-        scope: "openid profile aws.cognito.signin.user.admin",
+        scope: "readonly",
         state: empresa_id || "default",
       });
 
@@ -70,13 +70,14 @@ serve(async (req) => {
         redirect_uri: redirect_uri,
       });
 
-      console.log("Trocando code por tokens...", { code, redirect_uri });
+      const basicAuth = btoa(`${clientId}:${clientSecret}`);
+      console.log("Trocando code por tokens...", { code, redirect_uri, tokenUrl: CONTAAZUL_TOKEN_URL, clientIdLength: clientId.length, clientSecretLength: clientSecret.length });
 
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          "Authorization": `Basic ${basicAuth}`,
         },
         body: tokenBody.toString(),
       });
