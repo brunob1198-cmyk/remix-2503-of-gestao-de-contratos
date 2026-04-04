@@ -310,6 +310,13 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
                     </td>
                   </tr>
                 ))}
+                {filteredItems.length > 0 && (
+                  <tr className="bg-muted/50 font-semibold border-t-2">
+                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal</td>
+                    <td className="py-2 px-3 text-right font-mono">{formatCurrency(filteredItems.reduce((acc, item) => acc + Number(item.valor), 0))}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
