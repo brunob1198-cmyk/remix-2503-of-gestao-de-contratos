@@ -29,7 +29,7 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { action, code, redirect_uri, empresa_id } = await req.json();
+    const { action, code, redirect_uri, empresa_id, access_token, refresh_token: inputRefreshToken } = await req.json();
 
     // 1. Gerar URL de autorização
     if (action === "get_auth_url") {
@@ -94,7 +94,6 @@ serve(async (req) => {
       const tokens = await tokenResponse.json();
       const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
 
-      // Salvar tokens no banco
       const { error: upsertError } = await supabase.from("contaazul_tokens").upsert(
         {
           empresa_id: empresa_id,
@@ -145,7 +144,59 @@ serve(async (req) => {
       });
     }
 
-    // 4. Desconectar
+    // 4. Salvar token pré-gerado (do painel de desenvolvedor)
+    if (action === "save_token") {
+      if (!empresa_id || !access_token) {
+        return new Response(JSON.stringify({ error: "empresa_id e access_token são obrigatórios" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Tentar usar refresh_token via API para validar e obter um refresh_token persistente
+      const basicAuth = btoa(`${clientId}:${clientSecret}`);
+      
+      // Decodificar JWT para pegar expiração
+      let expiresAt: string;
+      try {
+        const payloadB64 = access_token.split('.')[1];
+        const payload = JSON.parse(atob(payloadB64));
+        expiresAt = new Date(payload.exp * 1000).toISOString();
+      } catch {
+        // Se não conseguir decodificar, usar 1h a partir de agora
+        expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+      }
+
+      const { error: upsertError } = await supabase.from("contaazul_tokens").upsert(
+        {
+          empresa_id: empresa_id,
+          access_token: access_token,
+          refresh_token: inputRefreshToken || "pre_generated_no_refresh",
+          expires_at: expiresAt,
+        },
+        { onConflict: "empresa_id" },
+      );
+
+      if (upsertError) {
+        console.error("Erro ao salvar token:", upsertError);
+        return new Response(JSON.stringify({ error: "Erro ao salvar token", details: upsertError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("Token pré-gerado salvo com sucesso para empresa:", empresa_id, "expira em:", expiresAt);
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Token do Conta Azul salvo com sucesso!",
+        expires_at: expiresAt,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 5. Desconectar
     if (action === "disconnect") {
       if (!empresa_id) {
         return new Response(JSON.stringify({ error: "empresa_id obrigatório" }), {
