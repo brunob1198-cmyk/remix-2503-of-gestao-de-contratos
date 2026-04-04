@@ -1,0 +1,1 @@
+ALTER TABLE public.atividades_planejamento ADD COLUMN IF NOT EXISTS is_principal boolean NOT NULL DEFAULT false;

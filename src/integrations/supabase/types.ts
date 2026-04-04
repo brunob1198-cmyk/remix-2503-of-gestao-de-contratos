@@ -121,6 +121,7 @@ export type Database = {
           data_inicio: string | null
           frente_id: string
           id: string
+          is_principal: boolean
           item_lpu_id: string | null
           nome: string
           ordem: number
@@ -134,6 +135,7 @@ export type Database = {
           data_inicio?: string | null
           frente_id: string
           id?: string
+          is_principal?: boolean
           item_lpu_id?: string | null
           nome: string
           ordem?: number
@@ -147,6 +149,7 @@ export type Database = {
           data_inicio?: string | null
           frente_id?: string
           id?: string
+          is_principal?: boolean
           item_lpu_id?: string | null
           nome?: string
           ordem?: number
