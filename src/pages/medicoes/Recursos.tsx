@@ -379,9 +379,9 @@ export default function RecursosPage() {
   }
 
   function handleAlocar() {
-    if (!alocarRecursoId || !alocSiteId || !alocProjetoId) return;
+    if (!alocarRecursoId || !alocProjetoId) return;
     alocarRecurso.mutate(
-      { recurso_id: alocarRecursoId, site_id: alocSiteId, projeto_id: alocProjetoId, data_inicio: alocDataInicio, data_fim: alocDataFim || undefined },
+      { recurso_id: alocarRecursoId, projeto_id: alocProjetoId, data_inicio: alocDataInicio, data_fim: alocDataFim || undefined },
       { onSuccess: () => { setAlocarRecursoId(null); setAlocProjetoId(""); setAlocSiteId(""); setAlocDataFim(""); } }
     );
   }
