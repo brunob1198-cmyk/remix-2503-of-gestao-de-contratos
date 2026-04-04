@@ -10,11 +10,12 @@ import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 interface AnaliseCustosProps {
   projetoId: string;
   siteId: string;
-  selectedMonth: Date;
+  periodoInicio: Date;
+  periodoFim: Date;
 }
 
-export function AnaliseCustos({ projetoId, siteId, selectedMonth }: AnaliseCustosProps) {
-  const { orcamentos, custosErp, fisico, saveOrcamento, syncErpMock } = useAnaliseCustos(projetoId, siteId, selectedMonth);
+export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: AnaliseCustosProps) {
+  const { orcamentos, custosErp, fisico, saveOrcamento, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
@@ -58,7 +59,7 @@ export function AnaliseCustos({ projetoId, siteId, selectedMonth }: AnaliseCusto
     await saveOrcamento.mutateAsync({
       projeto_id: projetoId,
       site_id: siteId,
-      mes_referencia: new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).toISOString(),
+      mes_referencia: new Date(periodoInicio.getFullYear(), periodoInicio.getMonth(), 1).toISOString(),
       ...editOrc
     });
     setEditMode(false);

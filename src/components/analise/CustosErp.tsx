@@ -15,7 +15,8 @@ import * as XLSX from "xlsx";
 interface CustosErpProps {
   projetoId: string;
   siteId: string;
-  selectedMonth: Date;
+  periodoInicio: Date;
+  periodoFim: Date;
 }
 
 const CATEGORIAS_ENG = [
@@ -109,8 +110,8 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
   );
 }
 
-export function CustosErp({ projetoId, siteId, selectedMonth }: CustosErpProps) {
-  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, selectedMonth);
+export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: CustosErpProps) {
+  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 

@@ -11,16 +11,18 @@ import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
 import { AnaliseIA } from "@/components/analise/AnaliseIA";
+import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 export default function AnaliseObraPage() {
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("executiva");
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfMonth(new Date()));
+  const [periodoFim, setPeriodoFim] = useState<Date>(endOfMonth(new Date()));
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
@@ -111,11 +113,11 @@ export default function AnaliseObraPage() {
           </PopoverContent>
         </Popover>
 
-        <Input
-          type="month"
-          value={format(selectedMonth, "yyyy-MM")}
-          onChange={(e) => setSelectedMonth(new Date(e.target.value + "-02"))}
-          className="w-[180px]"
+        <MonthRangePicker
+          startDate={periodoInicio}
+          endDate={periodoFim}
+          onChangeStart={setPeriodoInicio}
+          onChangeEnd={(d) => setPeriodoFim(endOfMonth(d))}
         />
 
         {selectedIds.length > 0 && (
@@ -169,13 +171,13 @@ export default function AnaliseObraPage() {
                   <h3 className="text-lg font-semibold">{proj.codigo} - {proj.nome}</h3>
                 )}
                 <TabsContent value="executiva" className="mt-0">
-                  <VisaoExecutiva projetoId={pid} projetoName={proj.nome} selectedMonth={selectedMonth} />
+                  <VisaoExecutiva projetoId={pid} projetoName={proj.nome} periodoInicio={periodoInicio} periodoFim={periodoFim} />
                 </TabsContent>
                 <TabsContent value="custos-erp" className="mt-0">
-                  <AnaliseCustos projetoId={pid} siteId="" selectedMonth={selectedMonth} />
+                  <AnaliseCustos projetoId={pid} siteId="" periodoInicio={periodoInicio} periodoFim={periodoFim} />
                 </TabsContent>
                 <TabsContent value="auditoria-erp" className="mt-0">
-                  <CustosErp projetoId={pid} siteId="" selectedMonth={selectedMonth} />
+                  <CustosErp projetoId={pid} siteId="" periodoInicio={periodoInicio} periodoFim={periodoFim} />
                 </TabsContent>
                 <TabsContent value="ia" className="mt-0">
                   <AnaliseIA projetoId={pid} projetoName={proj.nome} />
