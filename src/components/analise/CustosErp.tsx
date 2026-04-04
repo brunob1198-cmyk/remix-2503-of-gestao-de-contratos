@@ -15,6 +15,7 @@ import * as XLSX from "xlsx";
 interface CustosErpProps {
   projetoId: string;
   siteId: string;
+  selectedMonth: Date;
 }
 
 const CATEGORIAS_ENG = [
