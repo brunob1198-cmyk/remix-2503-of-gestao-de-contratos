@@ -536,10 +536,10 @@ export default function RecursosPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <div className="flex min-w-max">
-                  {/* Fixed table columns */}
-                  <Table className="w-auto flex-shrink-0">
+              <div className="flex overflow-hidden">
+                {/* Fixed data columns */}
+                <div className="flex-shrink-0 overflow-hidden border-r z-10 bg-background">
+                  <Table className="w-auto">
                     <TableHeader>
                       <TableRow>
                         {cols.map(col => (
@@ -559,37 +559,14 @@ export default function RecursosPage() {
                           </TableHead>
                         ))}
                         <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
-                        {/* Gantt month headers */}
-                        {ganttMonths.map((m, i) => {
-                          const daysInMonth = getDaysInMonth(m);
-                          const monthWidth = daysInMonth * DAY_WIDTH;
-                          return (
-                            <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: monthWidth, width: monthWidth }}>
-                              <div className="flex flex-col h-full w-full">
-                                <div className="py-2 bg-muted/20 font-semibold text-muted-foreground uppercase flex-none">
-                                  {format(m, "MMMM/yyyy", { locale: ptBR })}
-                                </div>
-                                <div className="flex items-center flex-1 w-full border-t bg-muted/5">
-                                  {Array.from({ length: daysInMonth }).map((_, d) => (
-                                    <div key={d} className="flex-1 text-center border-r last:border-0 border-muted-foreground/20 text-[10px] text-muted-foreground" style={{ minWidth: DAY_WIDTH }}>
-                                      {d + 1}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </TableHead>
-                          );
-                        })}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={cols.length + 1 + ganttMonths.length} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
-                        const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
-
                         return (
                           <TableRow key={r.id}>
                             <TableCell className="font-medium whitespace-nowrap">{r.nome}</TableCell>
@@ -653,7 +630,47 @@ export default function RecursosPage() {
                                 </Button>
                               </div>
                             </TableCell>
-                            {/* Gantt cells */}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Scrollable Gantt area */}
+                <div className="flex-1 overflow-x-auto min-w-0">
+                  <Table className="w-auto">
+                    <TableHeader>
+                      <TableRow>
+                        {ganttMonths.map((m, i) => {
+                          const daysInMonth = getDaysInMonth(m);
+                          const monthWidth = daysInMonth * DAY_WIDTH;
+                          return (
+                            <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: monthWidth, width: monthWidth }}>
+                              <div className="flex flex-col h-full w-full">
+                                <div className="py-2 bg-muted/20 font-semibold text-muted-foreground uppercase flex-none">
+                                  {format(m, "MMMM/yyyy", { locale: ptBR })}
+                                </div>
+                                <div className="flex items-center flex-1 w-full border-t bg-muted/5">
+                                  {Array.from({ length: daysInMonth }).map((_, d) => (
+                                    <div key={d} className="flex-1 text-center border-r last:border-0 border-muted-foreground/20 text-[10px] text-muted-foreground" style={{ minWidth: DAY_WIDTH }}>
+                                      {d + 1}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableHead>
+                          );
+                        })}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedItems.length === 0 ? (
+                        <TableRow><TableCell colSpan={ganttMonths.length} className="py-6">&nbsp;</TableCell></TableRow>
+                      ) : paginatedItems.map((r) => {
+                        const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
+                        return (
+                          <TableRow key={r.id}>
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
@@ -673,7 +690,6 @@ export default function RecursosPage() {
                                   {recursoAlocacoes.map(a => {
                                     const aStart = parseISO(a.data_inicio);
                                     const aEnd = a.data_fim ? parseISO(a.data_fim) : addMonths(new Date(), 1);
-                                    // Check if this allocation overlaps this month
                                     if (isAfter(aStart, monthEnd) || isBefore(aEnd, monthStart)) return null;
                                     const barStart = isBefore(aStart, monthStart) ? monthStart : aStart;
                                     const barEnd = isAfter(aEnd, monthEnd) ? monthEnd : aEnd;
