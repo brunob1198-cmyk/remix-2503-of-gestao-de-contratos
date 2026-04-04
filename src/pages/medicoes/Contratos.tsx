@@ -15,6 +15,7 @@ import { differenceInDays, parseISO, isBefore, startOfDay } from "date-fns";
 export default function ContratosPage() {
   const { contratos, isLoading, deleteContrato } = useContratos();
   const { clientes } = useClientes();
+  const { projetos } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
   const [editingContrato, setEditingContrato] = useState<Contrato | null>(null);
 
