@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useContratos } from "@/hooks/useContratos";
 import { useClientes } from "@/hooks/useClientes";
+import { useProjetos } from "@/hooks/useProjetos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen } from "lucide-react";
 import ContratosForm from "@/components/medicoes/ContratosForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
