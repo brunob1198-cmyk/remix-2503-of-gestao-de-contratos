@@ -36,6 +36,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
   const today = startOfDay(new Date());
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement | null>(null);
 
   const { chartStart, chartEnd, totalDays, columns, monthColumns } = useMemo(() => {
     if (!atividades.length) {
