@@ -109,8 +109,7 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
   );
 }
 
-export function CustosErp({ projetoId, siteId }: CustosErpProps) {
-  const [selectedMonth] = useState<Date>(new Date());
+export function CustosErp({ projetoId, siteId, selectedMonth }: CustosErpProps) {
   const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, selectedMonth);
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
