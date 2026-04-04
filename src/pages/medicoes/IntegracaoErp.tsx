@@ -22,7 +22,7 @@ export default function IntegracaoErpPage() {
   const { configs, isLoading: loadingConfig, createConfig, updateConfig, deleteConfig } = useErpConfig();
   const { data: logs = [], isLoading: loadingLogs } = useErpLogs();
   const { retry } = useErpSend();
-  const { isConnected, isExpired, loadingStatus, getAuthUrl, exchangeCode, disconnect } = useContaAzulConnection();
+  const { isConnected, isExpired, loadingStatus, getAuthUrl, exchangeCode, refreshToken, disconnect } = useContaAzulConnection();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ nome: "ERP Principal", webhook_url: "", auth_token: "", auth_type: "bearer" });
   const [searchParams, setSearchParams] = useSearchParams();
@@ -184,12 +184,12 @@ export default function IntegracaoErpPage() {
                   {isExpired && (
                     <Button
                       variant="outline"
-                      onClick={() => getAuthUrl.mutate()}
-                      disabled={getAuthUrl.isPending}
+                      onClick={() => refreshToken.mutate()}
+                      disabled={refreshToken.isPending}
                       className="gap-2"
                     >
-                      <RefreshCw className={`h-4 w-4 ${getAuthUrl.isPending ? "animate-spin" : ""}`} />
-                      Reconectar
+                      <RefreshCw className={`h-4 w-4 ${refreshToken.isPending ? "animate-spin" : ""}`} />
+                      {refreshToken.isPending ? "Renovando..." : "Renovar token"}
                     </Button>
                   )}
                   <Button

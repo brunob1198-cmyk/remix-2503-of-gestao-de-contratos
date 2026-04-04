@@ -86,6 +86,21 @@ export function useContaAzulConnection() {
     onError: (e: Error) => toast.error("Erro ao conectar Conta Azul: " + e.message),
   });
 
+  const refreshToken = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
+        body: { action: "refresh_token", empresa_id: empresaId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["contaazul_status"] });
+      toast.success(data?.message || "Token Conta Azul renovado com sucesso!");
+    },
+    onError: (e: Error) => toast.error("Erro ao renovar token Conta Azul: " + e.message),
+  });
+
   const disconnect = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
@@ -107,6 +122,7 @@ export function useContaAzulConnection() {
     loadingStatus,
     getAuthUrl,
     exchangeCode,
+    refreshToken,
     disconnect,
   };
 }
