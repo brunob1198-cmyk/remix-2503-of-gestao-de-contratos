@@ -537,7 +537,7 @@ export default function RecursosPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-hidden">
-              <div className="flex relative">
+              <div className="flex relative w-full overflow-hidden">
                 {/* Fixed data columns + actions */}
                 <div className="flex-shrink-0 border-r z-10 bg-background">
                   <Table className="w-auto table-fixed">
