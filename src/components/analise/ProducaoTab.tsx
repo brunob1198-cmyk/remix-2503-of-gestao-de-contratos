@@ -16,8 +16,8 @@ function fmtAvg(v: number) {
   return v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 }
 
-export function ProducaoTab({ siteId }: { siteId: string }) {
-  const { data, isLoading } = useAnaliseObra(siteId);
+export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?: string }) {
+  const { data, isLoading } = useAnaliseObra(projetoId || siteId, !projetoId && !!siteId ? siteId : undefined);
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (!data || data.producaoItems.length === 0) {
