@@ -68,16 +68,16 @@ serve(async (req) => {
         grant_type: "authorization_code",
         code: code,
         redirect_uri: redirect_uri,
+        client_id: clientId,
+        client_secret: clientSecret,
       });
 
-      const basicAuth = btoa(`${clientId}:${clientSecret}`);
-      console.log("Trocando code por tokens...", { code, redirect_uri, tokenUrl: CONTAAZUL_TOKEN_URL, clientIdLength: clientId.length, clientSecretLength: clientSecret.length });
+      console.log("Trocando code por tokens...", { code, redirect_uri, tokenUrl: CONTAAZUL_TOKEN_URL });
 
       const tokenResponse = await fetch(CONTAAZUL_TOKEN_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${basicAuth}`,
         },
         body: tokenBody.toString(),
       });
