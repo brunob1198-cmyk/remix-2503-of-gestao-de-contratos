@@ -1,17 +1,24 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Calculator, ClipboardList, Brain } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
-import { CalculoCustos } from "@/components/analise/CalculoCustos";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
 import { AnaliseIA } from "@/components/analise/AnaliseIA";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function AnaliseObraPage() {
-  const [projetoId, setProjetoId] = usePersistedState<string>("analise_projeto_id", "");
+  const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("executiva");
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
@@ -21,7 +28,39 @@ export default function AnaliseObraPage() {
     },
   });
 
-  const selectedProjeto = projetos.find(p => p.id === projetoId);
+  const allSelected = selectedIds.length === projetos.length && projetos.length > 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(projetos.map(p => p.id));
+    }
+  };
+
+  const toggleProject = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const filteredProjetos = useMemo(() => {
+    if (!search.trim()) return projetos;
+    const s = search.toLowerCase();
+    return projetos.filter(p => p.codigo.toLowerCase().includes(s) || p.nome.toLowerCase().includes(s));
+  }, [projetos, search]);
+
+  // For rendering, use the first selected project (components are single-project)
+  const currentProjetoId = selectedIds.length === 1 ? selectedIds[0] : selectedIds.length > 0 ? selectedIds[0] : "";
+  const selectedProjeto = projetos.find(p => p.id === currentProjetoId);
+
+  const label = selectedIds.length === 0
+    ? "Selecione projetos"
+    : allSelected
+      ? "Todos os projetos"
+      : selectedIds.length === 1
+        ? `${selectedProjeto?.codigo} - ${selectedProjeto?.nome}`
+        : `${selectedIds.length} projetos selecionados`;
 
   return (
     <div className="space-y-6">
@@ -30,25 +69,70 @@ export default function AnaliseObraPage() {
         <p className="text-muted-foreground text-sm mt-1">Visão completa de desempenho financeiro e físico</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Select value={projetoId} onValueChange={setProjetoId}>
-          <SelectTrigger className="w-[260px]">
-            <SelectValue placeholder="Selecione o projeto" />
-          </SelectTrigger>
-          <SelectContent>
-            {projetos.map(p => (
-              <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap gap-3 items-center">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[320px] justify-between font-normal">
+              <span className="truncate">{label}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-2" align="start">
+            <Input
+              placeholder="Buscar projeto..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="mb-2 h-8 text-sm"
+            />
+            <div className="flex items-center gap-2 px-2 py-1.5 border-b mb-1">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={toggleAll}
+                id="all-projects"
+              />
+              <label htmlFor="all-projects" className="text-sm font-medium cursor-pointer">
+                Todos os projetos
+              </label>
+            </div>
+            <ScrollArea className="max-h-[250px]">
+              <div className="space-y-0.5">
+                {filteredProjetos.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleProject(p.id)}>
+                    <Checkbox
+                      checked={selectedIds.includes(p.id)}
+                      onCheckedChange={() => toggleProject(p.id)}
+                    />
+                    <span className="text-sm truncate">{p.codigo} - {p.nome}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {selectedIds.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+            <X className="h-4 w-4 mr-1" /> Limpar
+          </Button>
+        )}
+
+        {selectedIds.length > 1 && (
+          <div className="flex gap-1 flex-wrap">
+            {selectedIds.slice(0, 3).map(id => {
+              const p = projetos.find(x => x.id === id);
+              return p ? <Badge key={id} variant="secondary" className="text-xs">{p.codigo}</Badge> : null;
+            })}
+            {selectedIds.length > 3 && <Badge variant="secondary" className="text-xs">+{selectedIds.length - 3}</Badge>}
+          </div>
+        )}
       </div>
 
-      {!projetoId ? (
+      {selectedIds.length === 0 ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">
-          Selecione um projeto para ver a análise
+          Selecione um ou mais projetos para ver a análise
         </div>
       ) : (
-        <Tabs defaultValue="executiva" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="executiva" className="gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -68,21 +152,29 @@ export default function AnaliseObraPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="executiva">
-            <VisaoExecutiva projetoId={projetoId} projetoName={selectedProjeto?.nome || ""} />
-          </TabsContent>
-
-          <TabsContent value="custos-erp">
-            <AnaliseCustos projetoId={projetoId} siteId="" />
-          </TabsContent>
-
-          <TabsContent value="auditoria-erp">
-            <CustosErp projetoId={projetoId} siteId="" />
-          </TabsContent>
-
-          <TabsContent value="ia">
-            <AnaliseIA projetoId={projetoId} projetoName={selectedProjeto?.nome || ""} />
-          </TabsContent>
+          {selectedIds.map(pid => {
+            const proj = projetos.find(x => x.id === pid);
+            if (!proj) return null;
+            return (
+              <div key={pid} className={selectedIds.length > 1 ? "border rounded-lg p-4 space-y-4" : ""}>
+                {selectedIds.length > 1 && (
+                  <h3 className="text-lg font-semibold">{proj.codigo} - {proj.nome}</h3>
+                )}
+                <TabsContent value="executiva" className="mt-0">
+                  <VisaoExecutiva projetoId={pid} projetoName={proj.nome} />
+                </TabsContent>
+                <TabsContent value="custos-erp" className="mt-0">
+                  <AnaliseCustos projetoId={pid} siteId="" />
+                </TabsContent>
+                <TabsContent value="auditoria-erp" className="mt-0">
+                  <CustosErp projetoId={pid} siteId="" />
+                </TabsContent>
+                <TabsContent value="ia" className="mt-0">
+                  <AnaliseIA projetoId={pid} projetoName={proj.nome} />
+                </TabsContent>
+              </div>
+            );
+          })}
         </Tabs>
       )}
     </div>
