@@ -259,7 +259,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                     
                     {!isCollapsed && frente.atividades.map((a) => {
                        const hasStart = !!a.data_inicio;
-                       const start = hasStart ? startOfDay(new Date(a.data_inicio!)) : null;
+                       const start = hasStart ? startOfDay(parseISO(a.data_inicio!)) : null;
                        const dur = a.duracao_dias || 1;
                        const left = start ? differenceInDays(start, chartStart) * DAY_W : 0;
                        const width = dur * DAY_W;
