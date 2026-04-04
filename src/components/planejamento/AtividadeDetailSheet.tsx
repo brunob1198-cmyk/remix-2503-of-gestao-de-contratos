@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Save, X, Link2, Users } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import { Recurso, RecursoAlocacao } from "@/hooks/useRecursos";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -66,7 +66,7 @@ export function AtividadeDetailSheet({
   });
 
   const duracao = qtdTotal && prodDiaria ? Math.ceil(Number(qtdTotal) / Number(prodDiaria)) : atividade.duracao_dias || 0;
-  const dataFim = dataInicio && duracao ? format(addDays(new Date(dataInicio), duracao), "yyyy-MM-dd") : "";
+  const dataFim = dataInicio && duracao ? format(addDays(parseISO(dataInicio), duracao), "yyyy-MM-dd") : "";
 
   const handleSave = () => {
     if (!onUpdate) return;
@@ -141,7 +141,7 @@ export function AtividadeDetailSheet({
               {duracao > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Duração: <strong>{duracao} dias</strong>
-                  {dataFim && <> — Fim: <strong>{format(new Date(dataFim), "dd/MM/yyyy")}</strong></>}
+                  {dataFim && <> — Fim: <strong>{format(parseISO(dataFim), "dd/MM/yyyy")}</strong></>}
                 </p>
               )}
 
@@ -210,13 +210,13 @@ export function AtividadeDetailSheet({
                 <div>
                   <span className="text-muted-foreground">Início</span>
                   <p className="font-medium">
-                    {atividade.data_inicio ? format(new Date(atividade.data_inicio), "dd/MM/yyyy") : "—"}
+                    {atividade.data_inicio ? format(parseISO(atividade.data_inicio), "dd/MM/yyyy") : "—"}
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Fim Previsto</span>
                   <p className="font-medium">
-                    {atividade.data_fim_prevista ? format(new Date(atividade.data_fim_prevista), "dd/MM/yyyy") : "—"}
+                    {atividade.data_fim_prevista ? format(parseISO(atividade.data_fim_prevista), "dd/MM/yyyy") : "—"}
                   </p>
                 </div>
               </div>

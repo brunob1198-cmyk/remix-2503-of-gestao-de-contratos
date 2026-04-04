@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { FrenteObra, AtividadePlanejamento } from "@/hooks/usePlanejamento";
-import { addDays, format } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { useEscopos } from "@/hooks/useEscopos";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -65,7 +65,7 @@ export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Prop
       } else if (dataInicio) {
         const prodDiaria = Number(selectedLpus[lpuId].producao_diaria_prevista) || 1;
         const dur = Math.ceil(escopoItem ? escopoItem.quantidade / prodDiaria : 1);
-        endDStr = format(addDays(new Date(dataInicio), dur), "yyyy-MM-dd");
+        endDStr = format(addDays(parseISO(dataInicio), dur), "yyyy-MM-dd");
       }
 
       return {

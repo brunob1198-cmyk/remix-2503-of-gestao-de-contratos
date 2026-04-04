@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from "react";
 import { AtividadePlanejamento } from "@/hooks/usePlanejamento";
-import { format, addDays, differenceInDays, startOfDay, isSameDay } from "date-fns";
+import { format, addDays, differenceInDays, startOfDay, isSameDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,15 +55,15 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
     let maxDate = addDays(today, 30);
     atividades.forEach((a) => {
       if (a.data_inicio) {
-        const d = startOfDay(new Date(a.data_inicio));
+        const d = startOfDay(parseISO(a.data_inicio));
         if (d < minDate) minDate = d;
       }
       if (a.data_inicio && a.duracao_dias) {
-        const end = addDays(new Date(a.data_inicio), a.duracao_dias);
+        const end = addDays(parseISO(a.data_inicio), a.duracao_dias);
         if (end > maxDate) maxDate = end;
       }
       if (a.data_fim_prevista) {
-        const d = startOfDay(new Date(a.data_fim_prevista));
+        const d = startOfDay(parseISO(a.data_fim_prevista));
         if (d > maxDate) maxDate = d;
       }
     });
@@ -259,7 +259,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                     
                     {!isCollapsed && frente.atividades.map((a) => {
                        const hasStart = !!a.data_inicio;
-                       const start = hasStart ? startOfDay(new Date(a.data_inicio!)) : null;
+                       const start = hasStart ? startOfDay(parseISO(a.data_inicio!)) : null;
                        const dur = a.duracao_dias || 1;
                        const left = start ? differenceInDays(start, chartStart) * DAY_W : 0;
                        const width = dur * DAY_W;
@@ -281,9 +281,9 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                              const dataStr = format(col.date, "yyyy-MM-dd");
                              const qtyReal = a.matriz_producao?.[dataStr] || 0;
                              
-                             const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
-                               (col.date >= startOfDay(new Date(a.data_inicio!))) && 
-                               (col.date <= startOfDay(new Date(a.data_fim_prevista)));
+                              const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
+                                (col.date >= startOfDay(parseISO(a.data_inicio!))) && 
+                                (col.date <= startOfDay(parseISO(a.data_fim_prevista)));
                              
                              const qtyPrev = isDentroPlanejamento ? (a.producao_diaria_prevista || 0) : 0;
                              
