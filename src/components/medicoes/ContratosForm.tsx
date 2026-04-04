@@ -48,6 +48,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   useEffect(() => {
     if (contratoToEdit) {
       setId(contratoToEdit.id);
+      setNumeroContrato(contratoToEdit.numero_contrato || "");
       setContratoPaiId(contratoToEdit.contrato_pai_id || "none");
       setClienteIds(contratoToEdit.cliente_ids || []);
       setValorTotal(contratoToEdit.valor_total?.toString() || "");
