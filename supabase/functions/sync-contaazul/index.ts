@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const CONTAAZUL_API = "https://api.contaazul.com/v2";
-const CONTAAZUL_TOKEN_URL = "https://api.contaazul.com/oauth2/token";
+const CONTAAZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -39,16 +39,22 @@ async function getValidAccessToken(empresaId: string): Promise<string> {
   const clientId = Deno.env.get("CONTAAZUL_CLIENT_ID")!;
   const clientSecret = Deno.env.get("CONTAAZUL_CLIENT_SECRET")!;
 
+  if (!tokenData.refresh_token || tokenData.refresh_token === "pre_generated_no_refresh") {
+    throw new Error("Refresh token do Conta Azul não está configurado. Reconecte a integração.");
+  }
+
+  const tokenBody = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: tokenData.refresh_token,
+  });
+
   const refreshResponse = await fetch(CONTAAZUL_TOKEN_URL, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
       "Authorization": `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
     },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: tokenData.refresh_token,
-    }),
+    body: tokenBody.toString(),
   });
 
   if (!refreshResponse.ok) {
