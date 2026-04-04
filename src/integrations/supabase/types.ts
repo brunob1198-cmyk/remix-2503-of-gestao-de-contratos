@@ -1555,7 +1555,7 @@ export type Database = {
           id: string
           projeto_id: string
           recurso_id: string
-          site_id: string
+          site_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1565,7 +1565,7 @@ export type Database = {
           id?: string
           projeto_id: string
           recurso_id: string
-          site_id: string
+          site_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1575,7 +1575,7 @@ export type Database = {
           id?: string
           projeto_id?: string
           recurso_id?: string
-          site_id?: string
+          site_id?: string | null
           updated_at?: string
         }
         Relationships: [

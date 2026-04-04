@@ -1,0 +1,1 @@
+ALTER TABLE public.recurso_alocacoes ALTER COLUMN site_id DROP NOT NULL;
