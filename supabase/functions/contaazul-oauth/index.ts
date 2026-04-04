@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CONTAAZUL_AUTH_URL = "https://api.contaazul.com/auth/authorize";
+const CONTAAZUL_AUTH_URL = "https://auth.contaazul.com/login";
 const CONTAAZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
 
 serve(async (req) => {
