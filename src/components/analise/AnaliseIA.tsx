@@ -267,27 +267,30 @@ function AnaliseContent({ analise }: { analise: AnaliseIAData }) {
   );
 }
 
-export function AnaliseIA({ siteId, siteName }: { siteId: string; siteName: string }) {
-  const { data: obraData, isLoading: isLoadingObra } = useAnaliseObra(siteId);
+export function AnaliseIA({ projetoId, projetoName }: { projetoId: string; projetoName: string }) {
+  const { data: obraData, isLoading: isLoadingObra } = useAnaliseObra(projetoId);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load saved analyses for this site
+  // Load saved analyses for this project (uses first site)
+  const firstSiteId = obraData?.siteIds?.[0] || null;
+
   const { data: savedAnalises = [], isLoading: isLoadingSaved } = useQuery({
-    queryKey: ["analises_ia", siteId],
+    queryKey: ["analises_ia_projeto", projetoId],
     queryFn: async () => {
+      if (!obraData?.siteIds?.length) return [];
       const { data, error } = await supabase
         .from("analises_ia")
         .select("id, site_id, resultado, created_at")
-        .eq("site_id", siteId)
+        .in("site_id", obraData.siteIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as AnaliseRecord[];
     },
-    enabled: !!siteId,
+    enabled: !!projetoId && !!obraData?.siteIds?.length,
   });
 
   const latestAnalise = savedAnalises[0] || null;
@@ -295,11 +298,11 @@ export function AnaliseIA({ siteId, siteName }: { siteId: string; siteName: stri
     ? savedAnalises.find(a => a.id === selectedHistoryId)
     : latestAnalise;
 
-  // Reset selection when site changes
+  // Reset selection when project changes
   useEffect(() => {
     setSelectedHistoryId(null);
     setShowHistory(false);
-  }, [siteId]);
+  }, [projetoId]);
 
   const handleAnalise = async () => {
     if (!obraData) {
@@ -310,7 +313,7 @@ export function AnaliseIA({ siteId, siteName }: { siteId: string; siteName: stri
     setIsAnalyzing(true);
     try {
       const payload = {
-        siteName,
+        siteName: projetoName,
         financeiro: obraData.financeiro,
         progresso: obraData.progresso,
         servicos: obraData.servicos.slice(0, 15),
@@ -343,17 +346,19 @@ export function AnaliseIA({ siteId, siteName }: { siteId: string; siteName: stri
       if (!data?.analise) throw new Error("Resposta inválida");
 
       // Save to database
-      const { error: insertError } = await supabase.from("analises_ia").insert({
-        site_id: siteId,
-        resultado: data.analise,
-      });
+      if (firstSiteId) {
+        const { error: insertError } = await supabase.from("analises_ia").insert({
+          site_id: firstSiteId,
+          resultado: data.analise,
+        });
 
-      if (insertError) {
-        console.error("Erro ao salvar análise:", insertError);
+        if (insertError) {
+          console.error("Erro ao salvar análise:", insertError);
+        }
       }
 
       // Refresh the list
-      await queryClient.invalidateQueries({ queryKey: ["analises_ia", siteId] });
+      await queryClient.invalidateQueries({ queryKey: ["analises_ia_projeto", projetoId] });
       setSelectedHistoryId(null);
 
       toast({ title: "Análise concluída", description: "A inteligência artificial processou os dados da obra e o resultado foi salvo." });

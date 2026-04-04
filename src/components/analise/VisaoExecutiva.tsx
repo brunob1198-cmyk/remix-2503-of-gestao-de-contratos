@@ -28,8 +28,8 @@ function statusBadge(pct: number) {
   return <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">Crítico</Badge>;
 }
 
-export function VisaoExecutiva({ siteId, siteName }: { siteId: string; siteName: string }) {
-  const { data, isLoading } = useAnaliseObra(siteId);
+export function VisaoExecutiva({ projetoId, projetoName }: { projetoId: string; projetoName: string }) {
+  const { data, isLoading } = useAnaliseObra(projetoId);
 
   if (isLoading) {
     return (
@@ -39,7 +39,7 @@ export function VisaoExecutiva({ siteId, siteName }: { siteId: string; siteName:
     );
   }
 
-  if (!data) return <div className="text-muted-foreground text-center py-12">Sem dados para este site</div>;
+  if (!data) return <div className="text-muted-foreground text-center py-12">Sem dados para este projeto</div>;
 
   const { financeiro, progresso, servicos, alertas, custosCategorias, evolucao } = data;
 

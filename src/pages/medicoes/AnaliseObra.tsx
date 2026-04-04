@@ -12,7 +12,6 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 
 export default function AnaliseObraPage() {
   const [projetoId, setProjetoId] = usePersistedState<string>("analise_projeto_id", "");
-  const [siteId, setSiteId] = usePersistedState<string>("analise_site_id", "");
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
@@ -22,17 +21,7 @@ export default function AnaliseObraPage() {
     },
   });
 
-  const { data: sites = [] } = useQuery({
-    queryKey: ["sites_analise", projetoId],
-    queryFn: async () => {
-      if (!projetoId) return [];
-      const { data } = await supabase.from("sites").select("id, codigo, nome").eq("projeto_id", projetoId).order("nome");
-      return data || [];
-    },
-    enabled: !!projetoId,
-  });
-
-  const selectedSite = sites.find(s => s.id === siteId);
+  const selectedProjeto = projetos.find(p => p.id === projetoId);
 
   return (
     <div className="space-y-6">
@@ -42,7 +31,7 @@ export default function AnaliseObraPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setSiteId(""); }}>
+        <Select value={projetoId} onValueChange={setProjetoId}>
           <SelectTrigger className="w-[260px]">
             <SelectValue placeholder="Selecione o projeto" />
           </SelectTrigger>
@@ -52,22 +41,11 @@ export default function AnaliseObraPage() {
             ))}
           </SelectContent>
         </Select>
-
-        <Select value={siteId} onValueChange={setSiteId} disabled={!projetoId}>
-          <SelectTrigger className="w-[260px]">
-            <SelectValue placeholder="Selecione o site/obra" />
-          </SelectTrigger>
-          <SelectContent>
-            {sites.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {!siteId ? (
+      {!projetoId ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">
-          Selecione um projeto e um site para ver a análise
+          Selecione um projeto para ver a análise
         </div>
       ) : (
         <Tabs defaultValue="executiva" className="space-y-4">
@@ -91,19 +69,19 @@ export default function AnaliseObraPage() {
           </TabsList>
 
           <TabsContent value="executiva">
-            <VisaoExecutiva siteId={siteId} siteName={selectedSite?.nome || ""} />
+            <VisaoExecutiva projetoId={projetoId} projetoName={selectedProjeto?.nome || ""} />
           </TabsContent>
 
           <TabsContent value="custos-erp">
-            <AnaliseCustos projetoId={projetoId} siteId={siteId} />
+            <AnaliseCustos projetoId={projetoId} siteId="" />
           </TabsContent>
 
           <TabsContent value="auditoria-erp">
-            <CustosErp projetoId={projetoId} siteId={siteId} />
+            <CustosErp projetoId={projetoId} siteId="" />
           </TabsContent>
 
           <TabsContent value="ia">
-            <AnaliseIA siteId={siteId} siteName={selectedSite?.nome || ""} />
+            <AnaliseIA projetoId={projetoId} projetoName={selectedProjeto?.nome || ""} />
           </TabsContent>
         </Tabs>
       )}

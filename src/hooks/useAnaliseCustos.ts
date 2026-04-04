@@ -172,7 +172,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, month?: Dat
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp", projetoId, siteId, startDate],
     queryFn: async () => {
-      let q = (supabase as any).from("custo_real_erp").select("*").eq("projeto_id", projetoId);
+      let q = (supabase as any).from("custo_real_erp").select("*");
+      if (projetoId) q = q.eq("projeto_id", projetoId);
       if (siteId) q = q.eq("site_id", siteId);
       if (startDate) {
         q = q.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
