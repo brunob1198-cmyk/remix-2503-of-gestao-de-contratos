@@ -205,15 +205,20 @@ export default function IntegracaoErpPage() {
               ) : (
                 <Button
                   onClick={() => getAuthUrl.mutate()}
-                  disabled={getAuthUrl.isPending || exchangeCode.isPending}
+                  disabled={getAuthUrl.isPending || exchangeCode.isPending || processingCallback}
                   className="gap-2"
                 >
-                  {getAuthUrl.isPending || exchangeCode.isPending ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  {getAuthUrl.isPending || exchangeCode.isPending || processingCallback ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      {processingCallback ? "Conectando..." : "Redirecionando..."}
+                    </>
                   ) : (
-                    <Link2 className="h-4 w-4" />
+                    <>
+                      <Link2 className="h-4 w-4" />
+                      Conectar Conta Azul
+                    </>
                   )}
-                  Conectar Conta Azul
                 </Button>
               )}
             </div>
