@@ -283,7 +283,7 @@ export default function ProjetosPage() {
                     <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhum</SelectItem>
-                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
+                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
