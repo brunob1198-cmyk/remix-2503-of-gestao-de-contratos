@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 interface CustosErpProps {
@@ -15,7 +16,7 @@ const CATEGORIAS_ENG = ["Mão de Obra", "Materiais", "Equipamentos", "Transporte
 export function CustosErp({ projetoId, siteId }: CustosErpProps) {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   
-  const { custosErp, updateCategoria } = useAnaliseCustos(projetoId, siteId, selectedMonth);
+  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, selectedMonth);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
@@ -28,7 +29,13 @@ export function CustosErp({ projetoId, siteId }: CustosErpProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {custosErp.length === 0 ? (
+        {loadCustos ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : custosErp.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border rounded-md">
             Nenhuma despesa ou pagamento ERP encontrado para este mês ou site.
           </div>
