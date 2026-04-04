@@ -66,40 +66,43 @@ export interface ProducaoItem {
   fotos?: string[];
 }
 
-export function useAnaliseObra(siteId?: string) {
+export function useAnaliseObra(projetoId?: string) {
   const { data, isLoading } = useQuery({
-    queryKey: ["analise_obra", siteId],
+    queryKey: ["analise_obra", projetoId],
     queryFn: async () => {
-      if (!siteId) return null;
+      if (!projetoId) return null;
+
+      // Fetch all sites for this project
+      const { data: projectSites } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("projeto_id", projetoId);
+
+      const siteIds = projectSites?.map(s => s.id) || [];
 
       // Fetch escopo (budget) with item_lpu for BDI
-      const { data: escopo } = await supabase
-        .from("escopo_itens")
-        .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)")
-        .eq("site_id", siteId);
+      let escopo: any[] = [];
+      let medicao: any[] = [];
+      let faturamento: any[] = [];
+      let diarios: any[] = [];
 
-      // Fetch measurements
-      const { data: medicao } = await supabase
-        .from("lancamentos_medicao")
-        .select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
-        .eq("site_id", siteId)
-        .limit(100000);
+      if (siteIds.length > 0) {
+        for (let i = 0; i < siteIds.length; i += 50) {
+          const chunk = siteIds.slice(i, i + 50);
+          const [escopoRes, medicaoRes, faturamentoRes, diariosRes] = await Promise.all([
+            supabase.from("escopo_itens").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("site_id", chunk),
+            supabase.from("lancamentos_medicao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
+            supabase.from("lancamentos_faturamento").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
+            supabase.from("diarios_obra").select("id, data").in("site_id", chunk).order("data", { ascending: true }),
+          ]);
+          escopo = [...escopo, ...(escopoRes.data || [])];
+          medicao = [...medicao, ...(medicaoRes.data || [])];
+          faturamento = [...faturamento, ...(faturamentoRes.data || [])];
+          diarios = [...diarios, ...(diariosRes.data || [])];
+        }
+      }
 
-      // Fetch billing
-      const { data: faturamento } = await supabase
-        .from("lancamentos_faturamento")
-        .select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
-        .eq("site_id", siteId)
-        .limit(100000);
-
-      // Fetch diários
-      const { data: diarios } = await supabase
-        .from("diarios_obra")
-        .select("id, data")
-        .eq("site_id", siteId)
-        .order("data", { ascending: true });
-
-      const diarioIds = diarios?.map(d => d.id) || [];
+      const diarioIds = diarios.map(d => d.id);
 
       let equipeData: any[] = [];
       let equipamentosData: any[] = [];
@@ -129,7 +132,7 @@ export function useAnaliseObra(siteId?: string) {
 
       // ── Build escopo map (item_lpu_id -> escopo data) ──
       const escopoMap = new Map<string, { quantidade: number; valorUnitario: number; custoUnitario: number; codigo: string; descricao: string; unidade: string; bdi: number }>();
-      (escopo || []).forEach(e => {
+      escopo.forEach(e => {
         const item = e.item_lpu as any;
         const itemLpuId = e.item_lpu_id || item?.id;
         if (!itemLpuId) return;
@@ -194,20 +197,20 @@ export function useAnaliseObra(siteId?: string) {
       const margem = receitaTotal - custoReal;
       const margemPercent = receitaTotal > 0 ? (margem / receitaTotal) * 100 : 0;
 
-      const totalMedido = (medicao || []).reduce((s, l) => {
+      const totalMedido = medicao.reduce((s, l) => {
         const preco = (l.item_lpu as any)?.preco_unitario || 0;
         return s + Number(l.quantidade) * Number(preco);
       }, 0);
 
-      const totalFaturado = (faturamento || []).reduce((s, l) => {
+      const totalFaturado = faturamento.reduce((s, l) => {
         return s + (Number(l.valor_faturado) || Number(l.quantidade) * Number((l.item_lpu as any)?.preco_unitario || 0));
       }, 0);
 
       const aFaturar = totalMedido - totalFaturado;
 
       // Escopo total
-      const escopoTotal = (escopo || []).reduce((s, e) => s + Number(e.quantidade) * Number(e.valor_unitario), 0);
-      const escopoCustoTotal = (escopo || []).reduce((s, e) => s + Number(e.quantidade) * Number(e.custo_unitario), 0);
+      const escopoTotal = escopo.reduce((s, e) => s + Number(e.quantidade) * Number(e.valor_unitario), 0);
+      const escopoCustoTotal = escopo.reduce((s, e) => s + Number(e.quantidade) * Number(e.custo_unitario), 0);
 
       const financeiro: AnaliseFinanceira = {
         receitaTotal,
@@ -354,7 +357,7 @@ export function useAnaliseObra(siteId?: string) {
 
       // ── PRODUÇÃO TAB DATA ──
       // Calculate number of calendar days in the production period
-      const allDates = Array.from(new Set(diarios?.map(d => d.data) || [])).sort();
+      const allDates = Array.from(new Set(diarios.map(d => d.data))).sort();
       const totalDiasObra = allDates.length;
 
       const producaoItems: ProducaoItem[] = [];
@@ -444,6 +447,7 @@ export function useAnaliseObra(siteId?: string) {
       producaoItems.sort((a, b) => a.codigo.localeCompare(b.codigo));
 
       return {
+        siteIds,
         financeiro,
         progresso,
         servicos,
@@ -462,7 +466,7 @@ export function useAnaliseObra(siteId?: string) {
         fotos: fotosData,
       };
     },
-    enabled: !!siteId,
+    enabled: !!projetoId,
   });
 
   return { data, isLoading };
