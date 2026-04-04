@@ -17,6 +17,7 @@ import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
+import { SitesImporter } from "@/components/medicoes/SitesImporter";
 
 const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf"] as const;
 type ColKey = typeof columns[number];
@@ -99,6 +100,7 @@ export default function SitesPage() {
               {projetos.map((p) => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}
             </SelectContent>
           </Select>
+          <SitesImporter projetos={projetos} />
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />Novo Site</Button>
