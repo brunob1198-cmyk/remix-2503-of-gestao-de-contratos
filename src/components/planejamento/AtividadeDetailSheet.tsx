@@ -216,7 +216,7 @@ export function AtividadeDetailSheet({
                 <div>
                   <span className="text-muted-foreground">Fim Previsto</span>
                   <p className="font-medium">
-                    {atividade.data_fim_prevista ? format(new Date(atividade.data_fim_prevista), "dd/MM/yyyy") : "—"}
+                    {atividade.data_fim_prevista ? format(parseISO(atividade.data_fim_prevista), "dd/MM/yyyy") : "—"}
                   </p>
                 </div>
               </div>
