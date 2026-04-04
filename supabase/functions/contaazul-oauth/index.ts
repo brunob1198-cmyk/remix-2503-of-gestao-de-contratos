@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const CONTAAZUL_AUTH_URL = "https://auth.contaazul.com/login";
-const CONTAAZUL_TOKEN_URL = "https://auth.contaazul.com/oauth2/token";
+const CONTAAZUL_TOKEN_URL = "https://api.contaazul.com/oauth/token";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
