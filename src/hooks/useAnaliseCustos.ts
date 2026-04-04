@@ -87,9 +87,9 @@ export function useContaAzulConnection() {
   });
 
   const refreshToken = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (refreshTokenValue?: string) => {
       const { data, error } = await supabase.functions.invoke("contaazul-oauth", {
-        body: { action: "refresh_token", empresa_id: empresaId },
+        body: { action: "refresh_token", empresa_id: empresaId, refresh_token: refreshTokenValue },
       });
       if (error) throw error;
       return data;
