@@ -95,10 +95,7 @@ function KpiCard({ title, value, subtitle, icon: Icon, color }: { title: string;
 }
 
 // ── Financeiro Tab ──
-function FinanceiroTab({ data }: { data: any[] }) {
-  const [projetoFilter, setProjetoFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+function FinanceiroTab({ data, projetoFilter, setProjetoFilter, dateFrom, dateTo, setDateFrom, setDateTo }: { data: any[]; projetoFilter: string; setProjetoFilter: (v: string) => void; dateFrom: Date | undefined; dateTo: Date | undefined; setDateFrom: (d: Date | undefined) => void; setDateTo: (d: Date | undefined) => void }) {
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
@@ -255,10 +252,7 @@ function FinanceiroTab({ data }: { data: any[] }) {
 }
 
 // ── Produção Tab ──
-function ProducaoTab({ data }: { data: any[] }) {
-  const [projetoFilter, setProjetoFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+function ProducaoTab({ data, projetoFilter, setProjetoFilter, dateFrom, dateTo, setDateFrom, setDateTo }: { data: any[]; projetoFilter: string; setProjetoFilter: (v: string) => void; dateFrom: Date | undefined; dateTo: Date | undefined; setDateFrom: (d: Date | undefined) => void; setDateTo: (d: Date | undefined) => void }) {
 
   const projetos = useMemo(() => {
     const unique = new Map<string, string>();
@@ -505,6 +499,9 @@ function ContratosTab({ data }: { data: any[] }) {
 // ── Main Page ──
 export default function DashboardBIPage() {
   const { financeiro, producao, contratos, isLoading } = useDashboardBI();
+  const [projetoFilter, setProjetoFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   if (isLoading) {
     return (
@@ -542,11 +539,11 @@ export default function DashboardBIPage() {
         </TabsList>
 
         <TabsContent value="financeiro">
-          <FinanceiroTab data={financeiro} />
+          <FinanceiroTab data={financeiro} projetoFilter={projetoFilter} setProjetoFilter={setProjetoFilter} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
         </TabsContent>
 
         <TabsContent value="producao">
-          <ProducaoTab data={producao} />
+          <ProducaoTab data={producao} projetoFilter={projetoFilter} setProjetoFilter={setProjetoFilter} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
         </TabsContent>
 
         <TabsContent value="contratos">

@@ -57,10 +57,10 @@ export function useDashboardBI() {
   });
 
   const producao = useQuery({
-    queryKey: ["bi_producao"],
+    queryKey: ["bi_producao_diario"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("view_producao")
+        .from("view_producao_diario")
         .select("*");
       if (error) throw error;
       return (data || []) as ProducaoRow[];
