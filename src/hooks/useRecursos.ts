@@ -210,7 +210,7 @@ export function useRecursos() {
   });
 
   const alocarRecurso = useMutation({
-    mutationFn: async (input: { recurso_id: string; site_id: string; projeto_id: string; data_inicio: string; data_fim?: string }) => {
+    mutationFn: async (input: { recurso_id: string; site_id?: string; projeto_id: string; data_inicio: string; data_fim?: string }) => {
       // Set status to alocado
       await supabase
         .from("recursos")
@@ -219,10 +219,10 @@ export function useRecursos() {
 
       const insertData: any = {
         recurso_id: input.recurso_id,
-        site_id: input.site_id,
         projeto_id: input.projeto_id,
         data_inicio: input.data_inicio,
       };
+      if (input.site_id) insertData.site_id = input.site_id;
       if (input.data_fim) insertData.data_fim = input.data_fim;
       const { error } = await supabase.from("recurso_alocacoes").insert(insertData);
       if (error) throw error;
