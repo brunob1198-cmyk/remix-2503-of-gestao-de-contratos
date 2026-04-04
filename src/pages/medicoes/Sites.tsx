@@ -17,6 +17,7 @@ import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
+import { SitesImporter } from "@/components/medicoes/SitesImporter";
 
 const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf"] as const;
 type ColKey = typeof columns[number];
