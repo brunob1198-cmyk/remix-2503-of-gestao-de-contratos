@@ -156,6 +156,22 @@ export default function ContratosPage() {
                       <TableCell className="text-xs max-w-[200px] truncate" title={getClientesNomes(c.cliente_ids)}>
                         {getClientesNomes(c.cliente_ids)}
                       </TableCell>
+                      <TableCell className="text-xs max-w-[200px]">
+                        {(() => {
+                          const vinculados = projetos.filter(p => p.contrato_id === c.id);
+                          if (vinculados.length === 0) return <span className="text-muted-foreground">-</span>;
+                          return (
+                            <div className="space-y-0.5">
+                              {vinculados.map(p => (
+                                <div key={p.id} className="flex items-center gap-1" title={p.nome}>
+                                  <FolderOpen className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{p.codigo} - {p.nome}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         {formatCurrency(valorTotalIntegrado)}
                         {aditivosVal > 0 && (
