@@ -281,9 +281,9 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                              const dataStr = format(col.date, "yyyy-MM-dd");
                              const qtyReal = a.matriz_producao?.[dataStr] || 0;
                              
-                             const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
-                               (col.date >= startOfDay(new Date(a.data_inicio!))) && 
-                               (col.date <= startOfDay(new Date(a.data_fim_prevista)));
+                              const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
+                                (col.date >= startOfDay(parseISO(a.data_inicio!))) && 
+                                (col.date <= startOfDay(parseISO(a.data_fim_prevista)));
                              
                              const qtyPrev = isDentroPlanejamento ? (a.producao_diaria_prevista || 0) : 0;
                              
