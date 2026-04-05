@@ -310,6 +310,7 @@ export function useRecursos() {
     updateStatus,
     alocarRecurso,
     liberarRecurso,
+    updateAlocacao,
     getCustoAtual,
     getHistorico,
     getAlocacaoAtiva,
