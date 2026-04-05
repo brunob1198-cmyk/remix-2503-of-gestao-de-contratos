@@ -106,6 +106,16 @@ function ColumnHeader({ label, sortDir, onSort, searchText, onSearchChange, uniq
 
 type ColKey = "nome" | "cargo" | "placa" | "custo" | "status" | "alocacao" | "periodo";
 const columnLabels: Record<ColKey, string> = { nome: "Nome", cargo: "Cargo", placa: "Placa", custo: "Custo Atual", status: "Status", alocacao: "Alocação", periodo: "Período" };
+const fixedColumnWidths: Record<ColKey, number> = {
+  nome: 220,
+  cargo: 120,
+  placa: 120,
+  custo: 150,
+  status: 150,
+  alocacao: 180,
+  periodo: 180,
+};
+const actionsColumnWidth = 104;
 
 // Gantt bar colors by type
 const ganttColors: Record<TipoRecurso, string> = {
