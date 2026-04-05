@@ -25,6 +25,9 @@ export default function AnaliseObraPage() {
   const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfMonth(new Date()));
   const [periodoFim, setPeriodoFim] = useState<Date>(endOfMonth(new Date()));
 
+  // Single sync hook — uses first selected project but syncs all ERP data
+  const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
+
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
     queryFn: async () => {
