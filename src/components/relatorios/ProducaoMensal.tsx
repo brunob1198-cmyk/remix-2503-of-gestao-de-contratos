@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { FileDown } from "lucide-react";
+import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
+import { format, subMonths } from "date-fns";
 import * as XLSX from "xlsx";
 
 interface DiarioProducaoRow {
@@ -43,11 +45,16 @@ interface MonthlyRow {
 
 export default function ProducaoMensal() {
   const [filtroProjetoId, setFiltroProjetoId] = useState<string>("");
+  const [periodoInicio, setPeriodoInicio] = useState<Date>(() => subMonths(new Date(), 2));
+  const [periodoFim, setPeriodoFim] = useState<Date>(() => new Date());
 
   const { projetos } = useProjetos();
   const { contratos } = useContratos();
   const { clientes } = useClientes();
   const { areas } = useAreas();
+
+  const periodoInicioKey = format(periodoInicio, "yyyy-MM");
+  const periodoFimKey = format(periodoFim, "yyyy-MM");
 
   // Fetch all diario_producao with diarios_obra → sites join
   const { data: producaoData = [], isLoading } = useQuery({
@@ -101,6 +108,13 @@ export default function ProducaoMensal() {
         const key = `${projeto.id}|${month}`;
         const producaoMes = projetoMonthMap.get(key) || 0;
 
+        // Accumulate everything, but only include rows within the period filter
+        if (month < periodoInicioKey) {
+          acumulado += producaoMes;
+          return;
+        }
+        if (month > periodoFimKey) return;
+
         const [year, m] = month.split("-");
         const mesLabel = `${monthNames[parseInt(m, 10) - 1]}-${year.substring(2)}`;
 
@@ -123,7 +137,7 @@ export default function ProducaoMensal() {
     });
 
     return result;
-  }, [producaoData, projetos, contratos, clientes, areas, filtroProjetoId]);
+  }, [producaoData, projetos, contratos, clientes, areas, filtroProjetoId, periodoInicioKey, periodoFimKey]);
 
   const totals = useMemo(
     () => ({
@@ -163,7 +177,13 @@ export default function ProducaoMensal() {
         <CardHeader>
           <div className="flex justify-between items-center flex-wrap gap-4">
             <CardTitle>Produção Mensal por Projeto</CardTitle>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <MonthRangePicker
+                startDate={periodoInicio}
+                endDate={periodoFim}
+                onChangeStart={setPeriodoInicio}
+                onChangeEnd={setPeriodoFim}
+              />
               <div className="flex items-center gap-2">
                 <Label className="whitespace-nowrap">Projeto</Label>
                 <Select
@@ -197,7 +217,7 @@ export default function ProducaoMensal() {
             <p className="text-center text-muted-foreground py-8">Carregando...</p>
           ) : rows.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Nenhuma produção registrada no diário de obra
+              Nenhuma produção registrada no período selecionado
             </p>
           ) : (
             <div className="overflow-x-auto">
