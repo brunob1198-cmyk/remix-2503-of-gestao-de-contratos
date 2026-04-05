@@ -330,22 +330,10 @@ export default function PlanejamentoObra() {
           </TabsContent>
 
           <TabsContent value="producao" className="mt-4">
-            <div className="space-y-4">
-              {/* Selector remvido porque já está no topo  */}
-              
-              {siteFilter !== "all" ? (
-                <ProducaoTab siteId={siteFilter} />
-              ) : (
-                <Card>
-                  <CardContent className="flex items-center justify-center h-48 text-muted-foreground text-center">
-                    <div>
-                      <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                      <p>Selecione um site para visualizar o acompanhamento de produção</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <ProducaoTab 
+              projetoId={projetoId} 
+              siteId={siteFilter !== "all" ? siteFilter : undefined} 
+            />
           </TabsContent>
         </Tabs>
       ) : (
