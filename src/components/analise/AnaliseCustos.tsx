@@ -79,11 +79,8 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
             )}
           </CardContent>
         </Card>
-        <Card className="flex flex-col justify-center gap-3 p-4">
-          <Button variant="outline" className="w-full gap-2 text-xs" onClick={() => syncErpMock.mutate()} disabled={syncErpMock.isPending}>
-             <RefreshCw className={`h-3 w-3 ${syncErpMock.isPending ? "animate-spin" : ""}`} />
-             Sincronizar Conta Azul
-          </Button>
+        <Card className="flex flex-col justify-center items-center p-4">
+          <p className="text-xs text-muted-foreground text-center">Sincronize pelo botão no cabeçalho da página</p>
         </Card>
       </div>
 
