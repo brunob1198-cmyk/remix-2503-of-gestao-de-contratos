@@ -121,7 +121,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
       let veiculosData: any[] = [];
       let diarioProducaoData: any[] = [];
       let fotosData: any[] = [];
-      let erpCustos: any[] = [];
+      
 
       // Fetch ERP costs for the project
       const { data: erpData } = await (supabase as any)
