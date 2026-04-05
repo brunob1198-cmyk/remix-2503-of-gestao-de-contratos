@@ -77,7 +77,7 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatCurrency(fisico.total_produzido)}</div>
+            <div className="text-2xl font-bold text-primary">{formatCurrency(valorProduzido)}</div>
             {totalErp > fisico.total_produzido && (
               <p className="text-xs font-semibold text-destructive mt-1">Custo superou Produção</p>
             )}
