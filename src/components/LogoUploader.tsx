@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { Upload, X } from "lucide-react";
 import { useCustomLogo } from "@/hooks/useCustomLogo";
 import { useToast } from "@/hooks/use-toast";
-import defaultLogo from "@/assets/logo.png";
 
 export function LogoWithUpload({ className = "h-10" }: { className?: string }) {
   const { customLogo, uploadLogo, removeLogo } = useCustomLogo();
@@ -25,11 +24,18 @@ export function LogoWithUpload({ className = "h-10" }: { className?: string }) {
     e.target.value = "";
   };
 
-  const logoSrc = customLogo || defaultLogo;
-
   return (
     <div className="relative group flex items-center">
-      <img src={logoSrc} alt="Logo" className={`${className} object-contain cursor-pointer rounded`} onClick={() => inputRef.current?.click()} />
+      {customLogo ? (
+        <img src={customLogo} alt="Logo" className={`${className} object-contain cursor-pointer rounded`} onClick={() => inputRef.current?.click()} />
+      ) : (
+        <div
+          className={`${className} aspect-square rounded bg-muted flex items-center justify-center cursor-pointer border border-dashed border-muted-foreground/30`}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
       <div
         className="absolute inset-0 flex items-center justify-center bg-black/40 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         onClick={() => inputRef.current?.click()}
