@@ -131,7 +131,7 @@ export default function PlanejamentoObra() {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="w-64">
           <label className="text-sm font-medium mb-1 block">Projeto</label>
-          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSiteFilter("all"); }}>
+          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSelectedSiteIds([]); }}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o projeto" />
             </SelectTrigger>
