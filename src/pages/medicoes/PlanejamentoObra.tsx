@@ -70,12 +70,13 @@ export default function PlanejamentoObra() {
     if (frenteFilter !== "all") {
       result = result.filter((a) => a.frente_id === frenteFilter);
     }
-    if (siteFilter !== "all") {
-      const frenteIdsForSite = new Set(frentes.filter((f) => (f as any).site_id === siteFilter).map((f) => f.id));
+    if (selectedSiteIds.length > 0) {
+      const siteSet = new Set(selectedSiteIds);
+      const frenteIdsForSite = new Set(frentes.filter((f) => siteSet.has((f as any).site_id)).map((f) => f.id));
       result = result.filter((a) => frenteIdsForSite.has(a.frente_id));
     }
     return result;
-  }, [atividades, frenteFilter, siteFilter, frentes]);
+  }, [atividades, frenteFilter, selectedSiteIds, frentes]);
 
   const stats = useMemo(() => {
     const total = atividades.length;
