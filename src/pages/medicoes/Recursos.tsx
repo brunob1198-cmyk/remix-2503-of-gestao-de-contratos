@@ -161,7 +161,6 @@ export default function RecursosPage() {
   // Global filters: project and client
   const [filterClienteId, setFilterClienteId] = useState<string>("");
   const [filterProjetoId, setFilterProjetoId] = useState<string>("");
-  const { projetos } = useProjetos();
   const [showNew, setShowNew] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [editRecurso, setEditRecurso] = useState<string | null>(null);
