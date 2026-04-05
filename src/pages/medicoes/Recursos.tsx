@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useRecursos, TipoRecurso, UnidadeRecurso, RecursoCusto, RecursoAlocacao } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
+import { useClientes } from "@/hooks/useClientes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
