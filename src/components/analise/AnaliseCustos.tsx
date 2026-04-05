@@ -305,8 +305,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r" />
                 <NumericHeader label="Custo Orçado (R$)" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r" />
                 {CATEGORIAS.map(cat => (
-                  <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r last:border-r-0" />
+                  <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r" />
                 ))}
+                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r" />
                 <NumericHeader label="MB Orçada (R$)" col="mbOrcada" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
                 <NumericHeader label="MB Realizado (R$)" col="mbRealizado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
                 <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
