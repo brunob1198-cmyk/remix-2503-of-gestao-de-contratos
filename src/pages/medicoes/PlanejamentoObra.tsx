@@ -1,7 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { ErrorBoundary } from "@/components/planejamento/ErrorBoundary";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useFrentes, useAtividades, AtividadePlanejamento } from "@/hooks/usePlanejamento";
@@ -28,7 +30,7 @@ export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
   const [projetoId, setProjetoId] = usePersistedState<string>("planejamento_projeto_id", "");
   const [frenteFilter, setFrenteFilter] = usePersistedState<string>("planejamento_frente_filter", "all");
-  const [siteFilter, setSiteFilter] = usePersistedState<string>("planejamento_site_filter", "all");
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("planejamento_site_filter_v2", []);
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
   const queryClient = useQueryClient();
 
@@ -68,12 +70,13 @@ export default function PlanejamentoObra() {
     if (frenteFilter !== "all") {
       result = result.filter((a) => a.frente_id === frenteFilter);
     }
-    if (siteFilter !== "all") {
-      const frenteIdsForSite = new Set(frentes.filter((f) => (f as any).site_id === siteFilter).map((f) => f.id));
+    if (selectedSiteIds.length > 0) {
+      const siteSet = new Set(selectedSiteIds);
+      const frenteIdsForSite = new Set(frentes.filter((f) => siteSet.has((f as any).site_id)).map((f) => f.id));
       result = result.filter((a) => frenteIdsForSite.has(a.frente_id));
     }
     return result;
-  }, [atividades, frenteFilter, siteFilter, frentes]);
+  }, [atividades, frenteFilter, selectedSiteIds, frentes]);
 
   const stats = useMemo(() => {
     const total = atividades.length;
@@ -128,7 +131,7 @@ export default function PlanejamentoObra() {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="w-64">
           <label className="text-sm font-medium mb-1 block">Projeto</label>
-          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSiteFilter("all"); }}>
+          <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSelectedSiteIds([]); }}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o projeto" />
             </SelectTrigger>
@@ -141,17 +144,44 @@ export default function PlanejamentoObra() {
         </div>
         
         {projetoId && sites.length > 0 && (
-          <div className="w-52">
+          <div className="w-64">
             <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os sites</SelectItem>
-                {sites.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  {selectedSiteIds.length === 0
+                    ? "Todos os sites"
+                    : selectedSiteIds.length === 1
+                      ? sites.find(s => s.id === selectedSiteIds[0])?.nome || "1 site"
+                      : `${selectedSiteIds.length} sites`}
+                  <MapPin className="h-4 w-4 ml-2 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm font-medium text-primary">
+                    <Checkbox
+                      checked={selectedSiteIds.length === 0}
+                      onCheckedChange={() => setSelectedSiteIds([])}
+                    />
+                    Todos os sites
+                  </label>
+                  {sites.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                      <Checkbox
+                        checked={selectedSiteIds.includes(s.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedSiteIds(prev =>
+                            checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                          );
+                        }}
+                      />
+                      {(s as any).codigo} - {s.nome}
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )}
       </div>
@@ -319,7 +349,7 @@ export default function PlanejamentoObra() {
             <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
               <TimelineObra
                 projetoId={projetoId}
-                siteFilter={siteFilter !== "all" ? [siteFilter] : undefined}
+                siteFilter={selectedSiteIds.length > 0 ? selectedSiteIds : undefined}
                 sites={sites as any}
               />
             </ErrorBoundary>
@@ -327,16 +357,16 @@ export default function PlanejamentoObra() {
 
 
           <TabsContent value="produtividade" className="mt-4">
-            <ProdutividadeMapa projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
+            <ProdutividadeMapa projetoId={projetoId} siteFilter={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} />
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
-            <CurvaSDashboard atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
+            <CurvaSDashboard atividades={filteredAtividades} frentes={selectedSiteIds.length > 0 ? frentes.filter(f => selectedSiteIds.includes((f as any).site_id)) : frentes} />
           </TabsContent>
 
           <TabsContent value="producao" className="mt-4">
             <ProducaoTab 
               projetoId={projetoId} 
-              siteId={siteFilter !== "all" ? siteFilter : undefined} 
+              siteId={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} 
             />
           </TabsContent>
         </Tabs>
