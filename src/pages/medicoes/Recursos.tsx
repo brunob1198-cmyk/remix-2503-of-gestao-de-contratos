@@ -586,7 +586,7 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
+                        <TableRow style={{ height: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
