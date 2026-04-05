@@ -192,49 +192,6 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
         </Card>
       )}
 
-      {/* ── BLOCO 4: DETALHAMENTO POR SERVIÇO ── */}
-      {servicos.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
-              Detalhamento por Serviço
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {servicos.slice(0, 10).map(s => (
-                <div key={s.codigo} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-sm">{s.codigo} — {s.descricao}</p>
-                    {statusBadge(s.margemPercent)}
-                  </div>
-                  <div className="grid grid-cols-4 gap-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Receita</p>
-                      <p className="font-semibold tabular-nums">{fmt(s.receita)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Custo Real</p>
-                      <p className="font-semibold tabular-nums">{fmt(s.custoReal)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Custo Esperado</p>
-                      <p className="font-semibold tabular-nums text-muted-foreground">{fmt(s.custoEsperado)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Margem</p>
-                      <p className={`font-semibold tabular-nums ${statusColor(s.margemPercent)}`}>
-                        {fmt(s.margem)} ({fmtPct(s.margemPercent)})
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* ── BLOCO 5: CUSTO ESPERADO VS REAL ── */}
       <Card>
