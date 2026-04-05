@@ -134,58 +134,6 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
       )}
 
 
-      {/* ── BLOCO 5: CUSTO ESPERADO VS REAL ── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            📉 Custo Esperado vs Real
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground mb-4">
-            Custo esperado calculado pelo BDI/custo unitário do escopo, proporcional à produção apontada no diário.
-          </p>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Esperado</p>
-              <p className="text-lg font-bold tabular-nums">{fmt(financeiro.custoEsperado)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Real</p>
-              <p className="text-lg font-bold tabular-nums">{fmt(financeiro.custoReal)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Desvio</p>
-              <p className={`text-lg font-bold tabular-nums flex items-center gap-1 ${
-                financeiro.custoReal > financeiro.custoEsperado ? "text-red-600" : "text-emerald-600"
-              }`}>
-                {financeiro.custoReal > financeiro.custoEsperado ? (
-                  <ArrowUpRight className="h-4 w-4" />
-                ) : (
-                  <ArrowDownRight className="h-4 w-4" />
-                )}
-                {fmt(Math.abs(financeiro.custoReal - financeiro.custoEsperado))}
-              </p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {custosCategorias.map(c => (
-              <div key={c.categoria} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                <span>{c.categoria}</span>
-                <div className="flex items-center gap-4">
-                  <span className="tabular-nums text-muted-foreground">Esp: {fmt(c.esperado)}</span>
-                  <span className="tabular-nums">Real: {fmt(c.real)}</span>
-                  <span className={`tabular-nums font-medium ${
-                    c.desvioPercent > 10 ? "text-red-600" : c.desvioPercent > 0 ? "text-amber-600" : "text-emerald-600"
-                  }`}>
-                    {c.desvioPercent > 0 ? "+" : ""}{fmtPct(c.desvioPercent)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
