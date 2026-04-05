@@ -144,17 +144,44 @@ export default function PlanejamentoObra() {
         </div>
         
         {projetoId && sites.length > 0 && (
-          <div className="w-52">
+          <div className="w-64">
             <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os sites</SelectItem>
-                {sites.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{(s as any).codigo} - {s.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between font-normal">
+                  {selectedSiteIds.length === 0
+                    ? "Todos os sites"
+                    : selectedSiteIds.length === 1
+                      ? sites.find(s => s.id === selectedSiteIds[0])?.nome || "1 site"
+                      : `${selectedSiteIds.length} sites`}
+                  <MapPin className="h-4 w-4 ml-2 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2" align="start">
+                <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                  <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm font-medium text-primary">
+                    <Checkbox
+                      checked={selectedSiteIds.length === 0}
+                      onCheckedChange={() => setSelectedSiteIds([])}
+                    />
+                    Todos os sites
+                  </label>
+                  {sites.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                      <Checkbox
+                        checked={selectedSiteIds.includes(s.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedSiteIds(prev =>
+                            checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                          );
+                        }}
+                      />
+                      {(s as any).codigo} - {s.nome}
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         )}
       </div>
