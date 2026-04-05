@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X } from "lucide-react";
 import * as XLSX from "xlsx";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface CustosErpProps {
   projetoId: string;
