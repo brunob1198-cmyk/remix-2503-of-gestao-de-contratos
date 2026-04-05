@@ -356,12 +356,13 @@ export default function RecursosPage() {
 
   const summary = useMemo(() => {
     const result: Record<TipoRecurso, number> = { pessoa: 0, equipamento: 0, veiculo: 0 };
-    recursos.forEach((r) => {
+    const allFiltered = [...grouped.pessoa, ...grouped.equipamento, ...grouped.veiculo];
+    allFiltered.forEach((r) => {
       const c = getCustoAtual(r.id);
       if (c) result[r.tipo] += c.custo_unitario;
     });
     return result;
-  }, [recursos, getCustoAtual]);
+  }, [grouped, getCustoAtual]);
 
   // Gantt months based on all alocacoes
   const ganttMonths = useMemo(() => getGanttMonths(alocacoes), [alocacoes]);
