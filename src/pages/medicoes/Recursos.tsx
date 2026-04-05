@@ -301,11 +301,33 @@ export default function RecursosPage() {
     setSortDirs(prev => ({ ...prev, [tipo]: null }));
   }
 
+  // Filtered projects based on client filter
+  const filteredProjetos = useMemo(() => {
+    if (!filterClienteId) return projetos;
+    return projetos.filter(p => (p as any).cliente_id === filterClienteId);
+  }, [projetos, filterClienteId]);
+
+  // Set of resource IDs that match the project/client filter
+  const filteredRecursoIds = useMemo(() => {
+    if (!filterProjetoId && !filterClienteId) return null; // null = no filter
+    const validProjetoIds = new Set(
+      filterProjetoId ? [filterProjetoId] : filteredProjetos.map(p => p.id)
+    );
+    const ids = new Set<string>();
+    alocacoes.forEach(a => {
+      if (validProjetoIds.has(a.projeto_id)) ids.add(a.recurso_id);
+    });
+    return ids;
+  }, [filterProjetoId, filterClienteId, filteredProjetos, alocacoes]);
+
   const grouped = useMemo(() => {
     const groups: Record<TipoRecurso, typeof recursos> = { pessoa: [], equipamento: [], veiculo: [] };
-    recursos.forEach(r => groups[r.tipo]?.push(r));
+    recursos.forEach(r => {
+      if (filteredRecursoIds && !filteredRecursoIds.has(r.id)) return;
+      groups[r.tipo]?.push(r);
+    });
     return groups;
-  }, [recursos]);
+  }, [recursos, filteredRecursoIds]);
 
   function getFilteredItems(tipo: TipoRecurso) {
     const cols = getColsForTipo(tipo);
