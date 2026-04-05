@@ -591,7 +591,7 @@ export default function RecursosPage() {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id} className="h-[48px]">
+                          <TableRow key={r.id} style={{ height: 48, maxHeight: 48 }}>
                             <TableCell
                               className="font-medium whitespace-nowrap truncate"
                               style={{ width: fixedColumnWidths.nome, minWidth: fixedColumnWidths.nome, maxWidth: fixedColumnWidths.nome }}
