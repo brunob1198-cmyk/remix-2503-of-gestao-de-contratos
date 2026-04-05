@@ -1019,11 +1019,13 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(fotosByClass).map(([cls, photos]) => (
-                <div key={cls}>
-                  <Badge className={`mb-2 ${classificacaoBadgeClass[cls] || ""}`}>
-                    {classificacaoLabel[cls] || cls}
-                  </Badge>
+              {fotosByItem.map(({ key, label, photos }) => (
+                <div key={key}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold truncate">{label}</span>
+                    <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{photos.length}</Badge>
+                  </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {photos.map(f => (
                       <button
@@ -1041,12 +1043,9 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 space-y-0.5">
-                          {f.item_evidencia && (
-                            <p className="text-[10px] text-emerald-300 font-medium truncate flex items-center gap-0.5">
-                              <Tag className="h-2.5 w-2.5 shrink-0" />
-                              {f.item_evidencia.codigo}
-                            </p>
-                          )}
+                          <Badge className={`text-[9px] px-1 py-0 ${classificacaoBadgeClass[f.classificacao] || ""}`}>
+                            {classificacaoLabel[f.classificacao] || f.classificacao}
+                          </Badge>
                           {f.legenda && (
                             <p className="text-[10px] text-white truncate">{f.legenda}</p>
                           )}
