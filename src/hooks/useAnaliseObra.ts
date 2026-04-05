@@ -201,11 +201,14 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
 
       const receitaTotal = diarioProducaoData.reduce((s: number, dp: any) => s + Number(dp.valor_total), 0);
 
-      // ── COSTS from diário ──
+      // ── COSTS: ERP costs take priority, fallback to diário costs ──
+      const custoErpTotal = uniqueErpCustos.reduce((s, c) => s + Number(c.valor || 0), 0);
       const custoEquipe = equipeData.reduce((s, e) => s + Number(e.custo_total), 0);
       const custoEquipamentos = equipamentosData.reduce((s, e) => s + Number(e.custo_total), 0);
       const custoVeiculos = veiculosData.reduce((s, v) => s + Number(v.custo_diaria), 0);
-      const custoReal = custoEquipe + custoEquipamentos + custoVeiculos;
+      const custoDiario = custoEquipe + custoEquipamentos + custoVeiculos;
+      // Use ERP cost if available, otherwise use diário cost
+      const custoReal = custoErpTotal > 0 ? custoErpTotal : custoDiario;
 
       // ── EXPECTED COST based on BDI ──
       // For each item produced in diário, expected cost = receita / BDI
