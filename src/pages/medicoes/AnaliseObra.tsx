@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X } from "lucide-react";
+import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X, RefreshCw } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
@@ -16,6 +16,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 export default function AnaliseObraPage() {
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);

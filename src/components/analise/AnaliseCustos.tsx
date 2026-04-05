@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Calculator, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 interface AnaliseCustosProps {
