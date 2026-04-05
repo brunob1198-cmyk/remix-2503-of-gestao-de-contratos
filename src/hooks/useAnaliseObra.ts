@@ -121,6 +121,23 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
       let veiculosData: any[] = [];
       let diarioProducaoData: any[] = [];
       let fotosData: any[] = [];
+      let erpCustos: any[] = [];
+
+      // Fetch ERP costs for the project
+      if (siteIds.length > 0) {
+        for (let i = 0; i < siteIds.length; i += 50) {
+          const chunk = siteIds.slice(i, i + 50);
+          const { data: erpData } = await (supabase as any).from("custo_real_erp").select("valor, projeto_id, site_id").or(`projeto_id.eq.${resolvedProjetoId},site_id.in.(${chunk.join(",")})`);
+          erpCustos = [...erpCustos, ...(erpData || [])];
+        }
+      }
+      // Deduplicate ERP costs by ensuring we don't double-count
+      const erpCostSet = new Set<string>();
+      const uniqueErpCustos: any[] = [];
+      erpCustos.forEach(c => {
+        const key = JSON.stringify(c);
+        if (!erpCostSet.has(key)) { erpCostSet.add(key); uniqueErpCustos.push(c); }
+      });
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
