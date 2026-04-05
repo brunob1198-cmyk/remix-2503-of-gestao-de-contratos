@@ -368,6 +368,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-3 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
                     {formatCurrency(totals.totalErp)}
                   </td>
+                  {(() => {
+                    const mbOrc = totals.valorProduzido - totals.custoOrcado;
+                    const mbReal = totals.valorProduzido - totals.totalErp;
+                    const mbPctOrc = totals.valorProduzido ? (mbOrc / totals.valorProduzido) * 100 : 0;
+                    const mbPctReal = totals.valorProduzido ? (mbReal / totals.valorProduzido) * 100 : 0;
+                    return (
+                      <>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10">{formatPercent(mbPctReal)}</td>
+                      </>
+                    );
+                  })()}
                 </tr>
               )}
             </tbody>
