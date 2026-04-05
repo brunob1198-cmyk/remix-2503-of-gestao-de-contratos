@@ -192,71 +192,16 @@ export function TimelineObra({ projetoId, siteFilter }: TimelineObraProps) {
       )}
 
       {/* Main layout: Map + events */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" style={{ minHeight: 480 }}>
-        {/* Map */}
-        <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardContent className="p-0 h-full" style={{ minHeight: 400 }}>
-              <TimelineMap
-                eventos={mapEvents}
-                activeEvento={activePlayEvent}
-                onSelectEvento={setSelectedEvento}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Events list */}
-        <div>
-          <Card className="h-full">
-            <CardContent className="p-0 h-full flex flex-col" style={{ minHeight: 400 }}>
-              <div className="px-3 py-2 border-b flex items-center gap-2 text-sm font-semibold">
-                <List className="h-4 w-4" />
-                Eventos ({dayEvents.length})
-              </div>
-              <ScrollArea className="flex-1">
-                {Object.entries(groupedEvents).length === 0 && (
-                  <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                    Nenhum evento encontrado
-                  </div>
-                )}
-                {Object.entries(groupedEvents).map(([day, evts]) => (
-                  <div key={day}>
-                    <div className="px-3 py-1.5 bg-muted/50 text-xs font-semibold text-muted-foreground sticky top-0 z-10 flex items-center gap-1.5">
-                      <Calendar className="h-3 w-3" />
-                      {format(parseISO(day), "dd/MM/yyyy - EEEE", { locale: ptBR })}
-                      <Badge variant="outline" className="ml-auto text-[10px]">{evts.length}</Badge>
-                    </div>
-                    {evts.map((evt) => (
-                      <div
-                        key={evt.id}
-                        className={cn(
-                          "px-3 py-2 border-b cursor-pointer hover:bg-muted/30 transition-colors text-xs",
-                          selectedEvento?.id === evt.id && "bg-primary/5"
-                        )}
-                        onClick={() => setSelectedEvento(evt)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className={cn("w-2 h-2 rounded-full flex-shrink-0", TIPO_COLORS[evt.tipo] || "bg-muted")} />
-                          <span className="font-medium truncate">{evt.item || TIPO_LABELS[evt.tipo] || evt.tipo}</span>
-                          {evt.status === "rejeitado" || evt.status === "problema" ? (
-                            <Badge variant="destructive" className="text-[10px] ml-auto">!</Badge>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-muted-foreground">
-                          {evt.quantidade > 0 && <span>Qtd: {evt.quantidade}</span>}
-                          {evt.equipe_nome && <span>{evt.equipe_nome}</span>}
-                          {evt.latitude && <MapPin className="h-3 w-3" />}
-                          {evt.imagem_url && <ImageIcon className="h-3 w-3" />}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+      <div style={{ minHeight: 480 }}>
+        <Card className="h-full">
+          <CardContent className="p-0 h-full" style={{ minHeight: 480 }}>
+            <TimelineMap
+              eventos={mapEvents}
+              activeEvento={activePlayEvent}
+              onSelectEvento={setSelectedEvento}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Horizontal timeline + playback controls */}
