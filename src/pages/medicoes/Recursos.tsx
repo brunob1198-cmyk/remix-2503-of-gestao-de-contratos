@@ -563,8 +563,8 @@ export default function RecursosPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(["pessoa", "equipamento", "veiculo"] as TipoRecurso[]).map((tipo) => {
           const cfg = tipoConfig[tipo];
-          const count = recursos.filter((r) => r.tipo === tipo).length;
-          const alocados = recursos.filter(r => r.tipo === tipo && r.status === "alocado").length;
+          const count = grouped[tipo].length;
+          const alocados = grouped[tipo].filter(r => r.status === "alocado").length;
           return (
             <Card key={tipo}>
               <CardContent className="pt-4 pb-4 flex items-center justify-between">
