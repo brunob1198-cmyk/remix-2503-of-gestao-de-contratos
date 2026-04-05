@@ -108,8 +108,8 @@ export function RecursosGantt({ recursos, alocacoes, projetoId, sites }: Props) 
         </span>
       </div>
 
-      <div className="overflow-auto max-h-[calc(100vh-320px)]">
-        <div className="flex" style={{ minWidth: LABEL_W + chartW }}>
+      <div className="overflow-auto max-h-[calc(100vh-320px)]" style={{ maxWidth: '100%' }}>
+        <div className="flex" style={{ width: LABEL_W + chartW }}>
           {/* Labels */}
           <div className="flex-shrink-0 sticky left-0 z-20 bg-card" style={{ width: LABEL_W }}>
             <div className="h-10 border-b border-r bg-muted/50 flex items-center px-3 text-xs font-semibold text-muted-foreground sticky top-0 z-30">
