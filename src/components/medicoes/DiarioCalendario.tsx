@@ -54,7 +54,7 @@ function getClimaIcon(clima: string | null) {
 
 interface DiarioCalendarioProps {
   entries: DiarioCalendarioEntry[];
-  onDayClick: (date: string) => void;
+  onDayClick?: (date: string) => void;
   periodoInicio: string;
   periodoFim: string;
   onPeriodoChange: (inicio: string, fim: string) => void;
