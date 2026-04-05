@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X } from "lucide-react";
 import * as XLSX from "xlsx";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface CustosErpProps {
   projetoId: string;
@@ -117,6 +118,8 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
 
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
     const init: any = {};
     allCols.forEach(c => init[c] = "");
@@ -184,6 +187,17 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
     return items;
   }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedItems = useMemo(() => {
+    const start = (safeCurrentPage - 1) * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
+  }, [filteredItems, safeCurrentPage, itemsPerPage]);
+
+  // Reset page when filters change
+  const filterKey = JSON.stringify({ searchTexts, selectedFilters: Object.fromEntries(allCols.map(c => [c, Array.from(selectedFilters[c])])) });
+  useMemo(() => { setCurrentPage(1); }, [filterKey]);
+
   const hasActiveFilters = allCols.some(c => searchTexts[c] !== "" || selectedFilters[c].size > 0);
 
   function clearAllFilters() {
@@ -194,6 +208,7 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
     setSelectedFilters(emptyFilter);
     setSortCol(null);
     setSortDir(null);
+    setCurrentPage(1);
   }
 
   function handleExportExcel() {
@@ -273,7 +288,7 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
               <tbody className="divide-y">
                 {filteredItems.length === 0 ? (
                   <tr><td colSpan={allCols.length} className="text-center py-6 text-muted-foreground">Nenhum resultado com os filtros aplicados</td></tr>
-                ) : filteredItems.map((item) => (
+                ) : paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/10">
                     <td className="py-2 px-3 text-muted-foreground">
                        {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
@@ -312,13 +327,21 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
                 ))}
                 {filteredItems.length > 0 && (
                   <tr className="bg-muted/50 font-semibold border-t-2">
-                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal</td>
+                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal (todos os {filteredItems.length} registros)</td>
                     <td className="py-2 px-3 text-right font-mono">{formatCurrency(filteredItems.reduce((acc, item) => acc + Number(item.valor), 0))}</td>
                     <td colSpan={2}></td>
                   </tr>
                 )}
               </tbody>
             </table>
+            <TablePagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+              totalItems={filteredItems.length}
+            />
           </div>
         )}
       </CardContent>
