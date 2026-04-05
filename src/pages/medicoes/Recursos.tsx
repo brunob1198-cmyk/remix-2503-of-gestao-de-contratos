@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useRecursos, TipoRecurso, UnidadeRecurso, RecursoCusto, RecursoAlocacao } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
+import { useClientes } from "@/hooks/useClientes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,9 +154,13 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
 const DAY_WIDTH = 24;
 
 export default function RecursosPage() {
+  const { clientes } = useClientes();
   const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, updateAlocacao, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
   const { sites } = useSites();
   const { projetos } = useProjetos();
+  // Global filters: project and client
+  const [filterClienteId, setFilterClienteId] = useState<string>("");
+  const [filterProjetoId, setFilterProjetoId] = useState<string>("");
   const [showNew, setShowNew] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
   const [editRecurso, setEditRecurso] = useState<string | null>(null);
@@ -296,11 +301,33 @@ export default function RecursosPage() {
     setSortDirs(prev => ({ ...prev, [tipo]: null }));
   }
 
+  // Filtered projects based on client filter
+  const filteredProjetos = useMemo(() => {
+    if (!filterClienteId) return projetos;
+    return projetos.filter(p => (p as any).cliente_id === filterClienteId);
+  }, [projetos, filterClienteId]);
+
+  // Set of resource IDs that match the project/client filter
+  const filteredRecursoIds = useMemo(() => {
+    if (!filterProjetoId && !filterClienteId) return null; // null = no filter
+    const validProjetoIds = new Set(
+      filterProjetoId ? [filterProjetoId] : filteredProjetos.map(p => p.id)
+    );
+    const ids = new Set<string>();
+    alocacoes.forEach(a => {
+      if (validProjetoIds.has(a.projeto_id)) ids.add(a.recurso_id);
+    });
+    return ids;
+  }, [filterProjetoId, filterClienteId, filteredProjetos, alocacoes]);
+
   const grouped = useMemo(() => {
     const groups: Record<TipoRecurso, typeof recursos> = { pessoa: [], equipamento: [], veiculo: [] };
-    recursos.forEach(r => groups[r.tipo]?.push(r));
+    recursos.forEach(r => {
+      if (filteredRecursoIds && !filteredRecursoIds.has(r.id)) return;
+      groups[r.tipo]?.push(r);
+    });
     return groups;
-  }, [recursos]);
+  }, [recursos, filteredRecursoIds]);
 
   function getFilteredItems(tipo: TipoRecurso) {
     const cols = getColsForTipo(tipo);
@@ -329,12 +356,13 @@ export default function RecursosPage() {
 
   const summary = useMemo(() => {
     const result: Record<TipoRecurso, number> = { pessoa: 0, equipamento: 0, veiculo: 0 };
-    recursos.forEach((r) => {
+    const allFiltered = [...grouped.pessoa, ...grouped.equipamento, ...grouped.veiculo];
+    allFiltered.forEach((r) => {
       const c = getCustoAtual(r.id);
       if (c) result[r.tipo] += c.custo_unitario;
     });
     return result;
-  }, [recursos, getCustoAtual]);
+  }, [grouped, getCustoAtual]);
 
   // Gantt months based on all alocacoes
   const ganttMonths = useMemo(() => getGanttMonths(alocacoes), [alocacoes]);
@@ -495,12 +523,48 @@ export default function RecursosPage() {
         </div>
       </div>
 
+      {/* Global filters: Client and Project */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-1 min-w-[200px]">
+          <Label className="text-sm">Cliente</Label>
+          <Select value={filterClienteId} onValueChange={(v) => { setFilterClienteId(v === "__all__" ? "" : v); setFilterProjetoId(""); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todos os clientes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os clientes</SelectItem>
+              {clientes.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.razao_social}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1 min-w-[250px]">
+          <Label className="text-sm">Projeto / Obra</Label>
+          <Select value={filterProjetoId} onValueChange={(v) => setFilterProjetoId(v === "__all__" ? "" : v)}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todos os projetos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os projetos</SelectItem>
+              {filteredProjetos.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {(filterClienteId || filterProjetoId) && (
+          <Button variant="ghost" size="sm" onClick={() => { setFilterClienteId(""); setFilterProjetoId(""); }}>
+            <X className="h-4 w-4 mr-1" /> Limpar filtros
+          </Button>
+        )}
+      </div>
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(["pessoa", "equipamento", "veiculo"] as TipoRecurso[]).map((tipo) => {
           const cfg = tipoConfig[tipo];
-          const count = recursos.filter((r) => r.tipo === tipo).length;
-          const alocados = recursos.filter(r => r.tipo === tipo && r.status === "alocado").length;
+          const count = grouped[tipo].length;
+          const alocados = grouped[tipo].filter(r => r.status === "alocado").length;
           return (
             <Card key={tipo}>
               <CardContent className="pt-4 pb-4 flex items-center justify-between">
