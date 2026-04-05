@@ -409,7 +409,17 @@ export default function RdoPage() {
     }
   }, [diarios, dataInicio, dataFim, isCliente, clienteLogoUrl]);
 
-  const hasProject = selectedProjetoId && selectedProjetoId !== "all";
+  const projetoLabel = selectedProjetoIds.length === 0
+    ? "Todos os projetos"
+    : selectedProjetoIds.length === 1
+      ? (() => { const p = projetos.find(x => x.id === selectedProjetoIds[0]); return p ? `${p.codigo} — ${p.nome}` : "1 projeto"; })()
+      : `${selectedProjetoIds.length} projetos`;
+
+  const siteLabel = selectedSiteIds.length === 0
+    ? "Todos os sites"
+    : selectedSiteIds.length === 1
+      ? (() => { const s = sites.find(x => x.id === selectedSiteIds[0]); return s ? `${s.codigo} — ${s.nome}` : "1 site"; })()
+      : `${selectedSiteIds.length} sites`;
 
   return (
     <div className="space-y-6">
@@ -435,35 +445,65 @@ export default function RdoPage() {
         </div>
       </div>
 
-      {/* Site selector */}
+      {/* Multi-select filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-[220px]">
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Select value={selectedProjetoId} onValueChange={(v) => { setSelectedProjetoId(v); setSelectedSiteId("all"); setSelectedDiarioId(null); }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos os projetos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os projetos</SelectItem>
-              {projetos.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal">
+                {projetoLabel}
+                {selectedProjetoIds.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedProjetoIds.length}</Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+              <div className="flex gap-2 text-xs mb-1">
+                <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline">Todos</button>
+                <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline">Limpar</button>
+              </div>
+              <ScrollArea className="max-h-48">
+                <div className="space-y-1">
+                  {projetos.map(p => (
+                    <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                      <Checkbox checked={selectedProjetoIds.includes(p.id)} onCheckedChange={() => toggleProjeto(p.id)} className="h-3.5 w-3.5" />
+                      <span className="truncate">{p.codigo} — {p.nome}</span>
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex items-center gap-2 min-w-[220px]">
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Select value={selectedSiteId} onValueChange={(v) => { setSelectedSiteId(v); setSelectedDiarioId(null); }}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todos os sites" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os sites</SelectItem>
-              {filteredSites.map(s => (
-                <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal">
+                {siteLabel}
+                {selectedSiteIds.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedSiteIds.length}</Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+              <div className="flex gap-2 text-xs mb-1">
+                <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline">Todos</button>
+                <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline">Limpar</button>
+              </div>
+              <ScrollArea className="max-h-48">
+                <div className="space-y-1">
+                  {filteredSites.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                      <Checkbox checked={selectedSiteIds.includes(s.id)} onCheckedChange={() => toggleSite(s.id)} className="h-3.5 w-3.5" />
+                      <span className="truncate">{s.codigo} — {s.nome}</span>
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
