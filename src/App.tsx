@@ -83,7 +83,7 @@ const App = () => (
               <Route path="rdo" element={<RdoPage />} />
               <Route path="usuarios" element={<GerenciarUsuariosPage />} />
               <Route path="planejamento" element={<PlanejamentoObraPage />} />
-              <Route path="bi" element={<DashboardBIPage />} />
+              
               <Route path="perfil" element={<MeuPerfilPage />} />
             </Route>
 
