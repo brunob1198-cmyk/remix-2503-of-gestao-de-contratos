@@ -89,18 +89,32 @@ export function CurvaSDashboard({ atividades, frentes }: Props) {
         }
       });
 
-      // Actual cumulative % (proportional to current execution)
+      // Actual cumulative % based on real production timing
       let realizadoQtd = 0;
       if (currentDate <= today) {
         atividadesComInicio.forEach((a) => {
           const aInicio = parseISO(a.data_inicio!);
-          const diasPassados = differenceInCalendarDays(currentDate, aInicio);
-          const diasTotal = differenceInCalendarDays(today, aInicio);
+          const qtdProd = a.qtd_produzida || 0;
+          if (qtdProd <= 0) return;
+          if (currentDate < aInicio) return;
 
-          if (diasPassados <= 0 || diasTotal <= 0) return;
-          // Linear interpolation of actual progress up to current date
-          const frac = Math.min(1, diasPassados / diasTotal);
-          realizadoQtd += (a.qtd_produzida || 0) * frac;
+          // For completed activities, use actual duration (start to end date or last production)
+          const isComplete = qtdProd >= (a.quantidade_total || 0);
+          const dur = a.duracao_dias || Math.ceil((a.quantidade_total || 1) / (a.producao_diaria_prevista || 1));
+          const aFimReal = isComplete 
+            ? (a.data_fim_prevista ? parseISO(a.data_fim_prevista) : addDays(aInicio, dur - 1))
+            : today;
+
+          if (currentDate >= aFimReal) {
+            // Past the end — count full produced quantity
+            realizadoQtd += qtdProd;
+          } else {
+            // In progress — linear interpolation over activity's actual span
+            const diasTotal = Math.max(1, differenceInCalendarDays(aFimReal, aInicio));
+            const diasPassados = differenceInCalendarDays(currentDate, aInicio);
+            const frac = Math.min(1, diasPassados / diasTotal);
+            realizadoQtd += qtdProd * frac;
+          }
         });
       }
 
