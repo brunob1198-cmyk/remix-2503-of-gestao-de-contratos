@@ -163,7 +163,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   </th>
                 ))}
                 <th className="py-3 px-4 font-semibold text-right bg-red-50 dark:bg-red-950/30 border-l-2 border-primary/20">
-                  Total Despesas (R$)
+                  Custo Real (R$)
                 </th>
               </tr>
             </thead>
