@@ -578,21 +578,9 @@ export default function DiarioObraPage() {
 
         {/* ===== CALENDAR VIEW ===== */}
         <TabsContent value="calendario">
-          {!selectedSiteId ? (
-            <Card>
-              <CardContent className="p-12 text-center text-muted-foreground">
-                <HardHat className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p className="text-lg">
-                  {!selectedProjetoId
-                    ? "Selecione um projeto e um site para visualizar os lançamentos."
-                    : "Selecione um site para visualizar os lançamentos."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
             <DiarioCalendario
               entries={calendarEntries}
-              onDayClick={handleCalendarDayClick}
+              onDayClick={selectedSiteId ? handleCalendarDayClick : undefined}
               periodoInicio={periodoInicio}
               periodoFim={periodoFim}
               onPeriodoChange={(ini, fim) => {
@@ -600,7 +588,6 @@ export default function DiarioObraPage() {
                 setPeriodoFim(fim);
               }}
             />
-          )}
         </TabsContent>
 
       {selectedSiteId && (
