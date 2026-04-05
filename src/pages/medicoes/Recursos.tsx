@@ -1016,6 +1016,34 @@ export default function RecursosPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Period Edit Dialog */}
+      <Dialog open={!!editPeriodoAlocId} onOpenChange={() => setEditPeriodoAlocId(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>📅 Editar Período de Alocação</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Data início</Label>
+                <Input type="date" value={editPeriodoInicio} onChange={(e) => setEditPeriodoInicio(e.target.value)} />
+              </div>
+              <div>
+                <Label>Data fim</Label>
+                <Input type="date" value={editPeriodoFim} onChange={(e) => setEditPeriodoFim(e.target.value)} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => {
+              if (!editPeriodoAlocId) return;
+              updateAlocacao.mutate(
+                { alocacao_id: editPeriodoAlocId, data_inicio: editPeriodoInicio, data_fim: editPeriodoFim || null },
+                { onSuccess: () => setEditPeriodoAlocId(null) }
+              );
+            }} disabled={updateAlocacao.isPending}>
+              {updateAlocacao.isPending ? "Salvando..." : "Salvar período"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Import Dialog */}
       <RecursosImporter open={showImporter} onOpenChange={setShowImporter} />
     </div>
