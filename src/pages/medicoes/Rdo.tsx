@@ -182,24 +182,38 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         <p style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6;">${diario.observacoes}</p>
       ` : ''}
 
-      ${diario.fotos.length > 0 ? `
+      ${diario.fotos.length > 0 ? (() => {
+        const itemGroups = new Map<string, typeof diario.fotos>();
+        const itemOrder: string[] = [];
+        diario.fotos.forEach(f => {
+          const key = f.item_evidencia ? f.item_evidencia.codigo : '__sem_item__';
+          if (!itemGroups.has(key)) { itemGroups.set(key, []); itemOrder.push(key); }
+          itemGroups.get(key)!.push(f);
+        });
+        return `
         <div class="html2pdf__page-break"></div>
         <h2>📷 Relatório Fotográfico</h2>
-        <div class="foto-grid">
-          ${diario.fotos.map(f => `
-            <div class="foto-card">
-              <img src="${f.url}" alt="foto" />
-              <div class="foto-info">
-                ${f.item_evidencia ? `<div class="foto-title">${f.item_evidencia.codigo} — ${f.item_evidencia.descricao}</div>` : ''}
-                <div class="foto-meta">
-                  <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
+        ${itemOrder.map(key => {
+          const photos = itemGroups.get(key)!;
+          const first = photos[0];
+          const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Sem item vinculado';
+          return `
+          <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+          <div class="foto-grid">
+            ${photos.map(f => `
+              <div class="foto-card">
+                <img src="${f.url}" alt="foto" />
+                <div class="foto-info">
+                  <div class="foto-meta">
+                    <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
+                  </div>
+                  ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
                 </div>
-                ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
               </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
+            `).join('')}
+          </div>`;
+        }).join('')}`;
+      })() : ''}
     </div>
   `;
 }
