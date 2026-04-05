@@ -34,10 +34,12 @@ const TIPO_LABELS: Record<string, string> = {
 
 interface TimelineObraProps {
   projetoId: string;
-  siteFilter?: string;
+  siteFilter?: string[];
+  sites?: Array<{ id: string; nome: string; codigo?: string }>;
 }
 
-export function TimelineObra({ projetoId, siteFilter }: TimelineObraProps) {
+export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObraProps) {
+  const [selectedSites, setSelectedSites] = useState<string[]>(siteFilter ?? []);
   const [filters, setFilters] = useState<{
     dateStart?: string;
     dateEnd?: string;
@@ -46,8 +48,15 @@ export function TimelineObra({ projetoId, siteFilter }: TimelineObraProps) {
   }>({});
 
   const combinedFilters = useMemo(() => {
-    return { ...filters, siteFilter };
-  }, [filters, siteFilter]);
+    return { ...filters, siteFilter: selectedSites.length > 0 ? selectedSites : undefined };
+  }, [filters, selectedSites]);
+
+  // Sync external siteFilter prop
+  useEffect(() => {
+    if (siteFilter && siteFilter.length > 0) {
+      setSelectedSites(siteFilter);
+    }
+  }, [siteFilter]);
 
   const { data: eventos = [], isLoading, refetch } = useTimelineEventos(projetoId, combinedFilters);
 
@@ -118,6 +127,37 @@ export function TimelineObra({ projetoId, siteFilter }: TimelineObraProps) {
     <div className="space-y-4">
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2">
+
+        {/* Multi-site selector */}
+        {sites.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <Button
+              variant={selectedSites.length === 0 ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={() => setSelectedSites([])}
+            >
+              Todos os sites
+            </Button>
+            {sites.map((s) => (
+              <Button
+                key={s.id}
+                variant={selectedSites.includes(s.id) ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-[11px]"
+                onClick={() => {
+                  setSelectedSites((prev) =>
+                    prev.includes(s.id)
+                      ? prev.filter((x) => x !== s.id)
+                      : [...prev, s.id]
+                  );
+                }}
+              >
+                {s.codigo || s.nome}
+              </Button>
+            ))}
+          </div>
+        )}
 
         <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
           <Filter className="h-4 w-4 mr-1" /> Filtros

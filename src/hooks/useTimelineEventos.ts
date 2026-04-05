@@ -26,7 +26,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
   dateEnd?: string;
   tipo?: string;
   item?: string;
-  siteFilter?: string;
+  siteFilter?: string | string[];
 }) {
   const queryClient = useQueryClient();
 
@@ -59,12 +59,42 @@ export function useTimelineEventos(projetoId?: string, filters?: {
         
       let siteIds = sitesProj ? sitesProj.map((s) => s.id) : [];
       if (filters?.siteFilter) {
-        siteIds = siteIds.filter(id => id === filters.siteFilter);
+        const filterArr = Array.isArray(filters.siteFilter) ? filters.siteFilter : [filters.siteFilter];
+        if (filterArr.length > 0) {
+          siteIds = siteIds.filter(id => filterArr.includes(id));
+        }
       }
 
       // 2. Get photos from diario_fotos (linked via diarios_obra -> site_id)
       let diarioData: any[] = [];
+      let diarioMunMap: Record<string, { municipio: string | null; uf: string | null }> = {};
       if (siteIds.length > 0) {
+        // Fetch diários with municipality info
+        const { data: diarios } = await supabase
+          .from("diarios_obra")
+          .select("id, municipio, uf, site_id")
+          .in("site_id", siteIds);
+        
+        // Build map of diario_id -> municipality info (fallback to site)
+        const siteMap = Object.fromEntries(
+          (sitesProj ?? []).map((s: any) => [s.id, s])
+        );
+        // Need site details
+        const { data: siteDetails } = await supabase
+          .from("sites")
+          .select("id, municipio, uf")
+          .in("id", siteIds);
+        const siteDetailMap = Object.fromEntries(
+          (siteDetails ?? []).map((s) => [s.id, s])
+        );
+        
+        (diarios ?? []).forEach((d: any) => {
+          diarioMunMap[d.id] = {
+            municipio: d.municipio || siteDetailMap[d.site_id]?.municipio || null,
+            uf: d.uf || siteDetailMap[d.site_id]?.uf || null,
+          };
+        });
+
         const { data: photos, error: diarioError } = await supabase
           .from("diario_fotos")
           .select(`
@@ -81,24 +111,52 @@ export function useTimelineEventos(projetoId?: string, filters?: {
         diarioData = photos || [];
       }
 
-      // Map daily report photos to TimelineEvento format
-      const diarioEvents: TimelineEvento[] = (diarioData ?? []).map((f: any) => ({
-        id: f.id,
-        projeto_id: projetoId,
-        data: f.diario.data,
-        tipo: "foto",
-        item: f.legenda || f.classificacao || "Foto Diário",
-        quantidade: 0,
-        equipe_id: null,
-        latitude: null, // Photos might have GPS but not easily joined here
-        longitude: null,
-        imagem_url: f.url,
-        status: "ok",
-        observacao: `Foto anexada no diário de obra em ${f.diario.data}`,
-        created_at: f.created_at,
-        updated_at: f.created_at,
-        equipe_nome: null,
-      }));
+      // Resolve municipality coordinates for diário photos
+      const munNames = new Set<string>();
+      (diarioData ?? []).forEach((f: any) => {
+        const info = diarioMunMap[f.diario_id];
+        if (info?.municipio) munNames.add(info.municipio);
+      });
+
+      let munCoords: Record<string, { lat: number; lng: number }> = {};
+      if (munNames.size > 0) {
+        const { data: ibge } = await supabase
+          .from("municipios_ibge")
+          .select("nome, latitude, longitude")
+          .in("nome", Array.from(munNames));
+
+        (ibge ?? []).forEach((m) => {
+          if (m.latitude && m.longitude) {
+            munCoords[m.nome] = { lat: Number(m.latitude), lng: Number(m.longitude) };
+          }
+        });
+      }
+
+      // Map daily report photos to TimelineEvento format with municipality coordinates
+      const diarioEvents: TimelineEvento[] = (diarioData ?? []).map((f: any) => {
+        const info = diarioMunMap[f.diario_id];
+        const coords = info?.municipio ? munCoords[info.municipio] : null;
+
+        return {
+          id: f.id,
+          projeto_id: projetoId,
+          data: f.diario.data,
+          tipo: "foto",
+          item: f.legenda || f.classificacao || "Foto Diário",
+          quantidade: 0,
+          equipe_id: null,
+          latitude: coords?.lat ?? null,
+          longitude: coords?.lng ?? null,
+          imagem_url: f.url,
+          status: "ok",
+          observacao: info?.municipio
+            ? `Foto do diário em ${f.diario.data} — ${info.municipio}/${info.uf || ""}`
+            : `Foto anexada no diário de obra em ${f.diario.data}`,
+          created_at: f.created_at,
+          updated_at: f.created_at,
+          equipe_nome: null,
+        };
+      });
 
       // Merge and filter
       const allEvents = [
