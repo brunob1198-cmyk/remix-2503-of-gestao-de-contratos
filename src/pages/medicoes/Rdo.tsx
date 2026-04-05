@@ -226,13 +226,13 @@ export default function RdoPage() {
   const { role } = useAuth();
   const isCliente = role === "cliente";
   const { projetos } = useProjetos();
-  const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("rdo_projeto_id", "all");
+  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("rdo_projeto_ids_v2", []);
   const { sites } = useSites();
-  const filteredSites = selectedProjetoId && selectedProjetoId !== "all"
-    ? sites.filter(s => s.projeto_id === selectedProjetoId)
+  const filteredSites = selectedProjetoIds.length > 0
+    ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
     : sites;
 
-  const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("rdo_site_id", "all");
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v2", []);
 
   // Build sites map for the hook
   const sitesMap = useMemo(() => {
@@ -243,16 +243,29 @@ export default function RdoPage() {
 
   // Determine which site IDs to query
   const querySiteIds = useMemo(() => {
-    if (selectedSiteId && selectedSiteId !== "all") {
-      return [selectedSiteId];
+    if (selectedSiteIds.length > 0) {
+      return selectedSiteIds;
     }
     return filteredSites.map(s => s.id);
-  }, [selectedSiteId, filteredSites]);
+  }, [selectedSiteIds, filteredSites]);
 
-  const selectedSite = selectedSiteId !== "all" ? sites.find(s => s.id === selectedSiteId) : null;
+  const selectedSite = selectedSiteIds.length === 1 ? sites.find(s => s.id === selectedSiteIds[0]) : null;
   const clienteLogoUrl = selectedSite?.clienteObj?.logo_url || selectedSite?.projeto?.clienteObj?.logo_url;
-  const selectedProjeto = projetos.find(p => p.id === selectedProjetoId);
+  const selectedProjeto = selectedProjetoIds.length === 1 ? projetos.find(p => p.id === selectedProjetoIds[0]) : null;
   const firstProjetoId = selectedSite?.projeto_id || selectedProjeto?.id || filteredSites[0]?.projeto_id;
+
+  const toggleProjeto = useCallback((id: string) => {
+    setSelectedProjetoIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      // Clear site selection when projects change
+      setSelectedSiteIds([]);
+      return next;
+    });
+  }, [setSelectedProjetoIds, setSelectedSiteIds]);
+
+  const toggleSite = useCallback((id: string) => {
+    setSelectedSiteIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }, [setSelectedSiteIds]);
   const { itensLpu } = useItensLpu(firstProjetoId);
 
   const [dataInicio, setDataInicio] = useState(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
