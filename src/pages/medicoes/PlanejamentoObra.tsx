@@ -366,7 +366,7 @@ export default function PlanejamentoObra() {
           <TabsContent value="producao" className="mt-4">
             <ProducaoTab 
               projetoId={projetoId} 
-              siteId={siteFilter !== "all" ? siteFilter : undefined} 
+              siteId={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} 
             />
           </TabsContent>
         </Tabs>
