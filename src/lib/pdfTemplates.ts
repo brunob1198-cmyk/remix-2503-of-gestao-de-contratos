@@ -70,5 +70,5 @@ export const getPdfOptions = (filename: string) => ({
   image:        { type: 'jpeg' as const, quality: 0.98 },
   html2canvas:  { scale: 2, useCORS: true, letterRendering: true, windowWidth: 800 },
   jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
-  pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+  pagebreak:    { mode: ['css', 'legacy'], avoid: ['.foto-card', '.foto-row'] }
 } as any);
