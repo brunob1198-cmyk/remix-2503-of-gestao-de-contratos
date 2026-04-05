@@ -153,7 +153,7 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
 const DAY_WIDTH = 24;
 
 export default function RecursosPage() {
-  const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
+  const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, updateAlocacao, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
   const { sites } = useSites();
   const { projetos } = useProjetos();
   const [showNew, setShowNew] = useState(false);
@@ -165,6 +165,10 @@ export default function RecursosPage() {
   // Status date dialog (férias/folga)
   const [statusDateDialog, setStatusDateDialog] = useState<{ recursoId: string; status: string } | null>(null);
   const [statusDataInicio, setStatusDataInicio] = useState(new Date().toISOString().split("T")[0]);
+  // Period edit state
+  const [editPeriodoAlocId, setEditPeriodoAlocId] = useState<string | null>(null);
+  const [editPeriodoInicio, setEditPeriodoInicio] = useState("");
+  const [editPeriodoFim, setEditPeriodoFim] = useState("");
   const [statusDataFim, setStatusDataFim] = useState("");
 
   // New resource form
@@ -551,7 +555,7 @@ export default function RecursosPage() {
                 <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
                   <Table className="table-fixed" style={{ width: fixedTableWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]">
+                      <TableRow style={{ height: 60 }}>
                         {cols.map(col => (
                           <TableHead
                             key={col}
@@ -582,12 +586,12 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground py-6">Nenhum resultado</TableCell></TableRow>
+                        <TableRow style={{ height: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id} className="h-[48px]">
+                          <TableRow key={r.id} style={{ height: 48, maxHeight: 48 }}>
                             <TableCell
                               className="font-medium whitespace-nowrap truncate"
                               style={{ width: fixedColumnWidths.nome, minWidth: fixedColumnWidths.nome, maxWidth: fixedColumnWidths.nome }}
@@ -656,15 +660,23 @@ export default function RecursosPage() {
                               )}
                             </TableCell>
                             <TableCell
-                              className="whitespace-nowrap text-xs text-muted-foreground truncate"
+                              className="whitespace-nowrap text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground transition-colors"
                               style={{ width: fixedColumnWidths.periodo, minWidth: fixedColumnWidths.periodo, maxWidth: fixedColumnWidths.periodo }}
-                              title={aloc ? `${parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")} — ${aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}` : "—"}
+                              title={aloc ? `Clique para editar período` : "—"}
+                              onClick={() => {
+                                if (aloc) {
+                                  setEditPeriodoAlocId(aloc.id);
+                                  setEditPeriodoInicio(aloc.data_inicio);
+                                  setEditPeriodoFim(aloc.data_fim || "");
+                                }
+                              }}
                             >
                               {aloc ? (
-                                <span>
+                                <span className="flex items-center gap-1">
                                   {parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")}
                                   {" — "}
                                   {aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}
+                                  <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
                                 </span>
                               ) : "—"}
                             </TableCell>
@@ -691,7 +703,7 @@ export default function RecursosPage() {
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
                   <Table className="table-fixed" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]">
+                      <TableRow style={{ height: 60 }}>
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
@@ -716,11 +728,11 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={ganttMonths.length} className="py-6">&nbsp;</TableCell></TableRow>
+                        <TableRow style={{ height: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
-                          <TableRow key={r.id} className="h-[48px]">
+                          <TableRow key={r.id} style={{ height: 48, maxHeight: 48 }}>
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
@@ -999,6 +1011,34 @@ export default function RecursosPage() {
             </div>
             <Button className="w-full" onClick={handleStatusDateConfirm}>
               Confirmar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Period Edit Dialog */}
+      <Dialog open={!!editPeriodoAlocId} onOpenChange={() => setEditPeriodoAlocId(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>📅 Editar Período de Alocação</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Data início</Label>
+                <Input type="date" value={editPeriodoInicio} onChange={(e) => setEditPeriodoInicio(e.target.value)} />
+              </div>
+              <div>
+                <Label>Data fim</Label>
+                <Input type="date" value={editPeriodoFim} onChange={(e) => setEditPeriodoFim(e.target.value)} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => {
+              if (!editPeriodoAlocId) return;
+              updateAlocacao.mutate(
+                { alocacao_id: editPeriodoAlocId, data_inicio: editPeriodoInicio, data_fim: editPeriodoFim || null },
+                { onSuccess: () => setEditPeriodoAlocId(null) }
+              );
+            }} disabled={updateAlocacao.isPending}>
+              {updateAlocacao.isPending ? "Salvando..." : "Salvar período"}
             </Button>
           </div>
         </DialogContent>
