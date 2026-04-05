@@ -213,7 +213,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return 0;
   }, []);
 
-  const textCols = ["area", "projeto", "cliente", "referencia"] as const;
+  const textCols = ["referencia", "area", "projeto", "cliente"] as const;
 
   const uniqueValues = useMemo(() => {
     const result: Record<string, string[]> = {};
@@ -351,12 +351,12 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
                 return (
                   <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
+                    <td className="py-2.5 px-4 border-r font-medium text-center">{row.referencia}</td>
                     <td className="py-2.5 px-4 border-r truncate max-w-[120px]">{row.area}</td>
                     <td className="py-2.5 px-4 border-r font-medium truncate max-w-[200px]">
                       {row.codigo} - {row.nome}
                     </td>
                     <td className="py-2.5 px-4 border-r truncate max-w-[160px]">{row.cliente}</td>
-                    <td className="py-2.5 px-4 border-r font-medium text-center">{row.referencia}</td>
                     <td className="py-2.5 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                       {formatCurrency(row.valorProduzido)}
                     </td>
