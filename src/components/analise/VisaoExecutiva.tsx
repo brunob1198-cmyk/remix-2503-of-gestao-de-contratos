@@ -39,7 +39,7 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
 
   if (!data) return <div className="text-muted-foreground text-center py-12">Sem dados para este projeto</div>;
 
-  const { financeiro, progresso, servicos, alertas, custosCategorias, evolucao } = data;
+  const { financeiro, alertas } = data;
 
   return (
     <div className="space-y-6">
