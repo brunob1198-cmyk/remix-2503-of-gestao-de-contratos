@@ -838,11 +838,25 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
   onDownloadDia: (diario: RdoDiarioResumo) => void;
   downloading: boolean;
 }) {
-  const fotosByClass = useMemo(() => {
-    const groups: Record<string, RdoFoto[]> = {};
+  const fotosByItem = useMemo(() => {
+    const groups: { key: string; label: string; photos: RdoFoto[] }[] = [];
+    const map = new Map<string, RdoFoto[]>();
+    const order: string[] = [];
     diario.fotos.forEach(f => {
-      if (!groups[f.classificacao]) groups[f.classificacao] = [];
-      groups[f.classificacao].push(f);
+      const key = f.item_evidencia ? f.item_evidencia.codigo : "__sem_item__";
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key)!.push(f);
+    });
+    order.forEach(key => {
+      const photos = map.get(key)!;
+      const first = photos[0];
+      const label = first.item_evidencia
+        ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}`
+        : "Sem item vinculado";
+      groups.push({ key, label, photos });
     });
     return groups;
   }, [diario.fotos]);
