@@ -197,10 +197,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           const photos = itemGroups.get(key)!;
           const first = photos[0];
           const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Sem item vinculado';
-          return `
-          <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
-          <div class="foto-grid">
-            ${photos.map(f => `
+          const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
                 <img src="${f.url}" alt="foto" />
                 <div class="foto-info">
@@ -209,8 +206,20 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
                   </div>
                   ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
                 </div>
-              </div>
-            `).join('')}
+              </div>`;
+          // Render in pairs so each row avoids page breaks
+          const rows: string[] = [];
+          for (let i = 0; i < photos.length; i += 2) {
+            if (i + 1 < photos.length) {
+              rows.push(`<div class="foto-row" style="page-break-inside:avoid; break-inside:avoid;">${renderCard(photos[i])}${renderCard(photos[i+1])}</div>`);
+            } else {
+              rows.push(`<div class="foto-row" style="page-break-inside:avoid; break-inside:avoid;">${renderCard(photos[i])}</div>`);
+            }
+          }
+          return `
+          <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+          <div class="foto-grid">
+            ${rows.join('')}
           </div>`;
         }).join('')}`;
       })() : ''}
