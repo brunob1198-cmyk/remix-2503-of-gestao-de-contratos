@@ -349,7 +349,7 @@ export default function PlanejamentoObra() {
             <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
               <TimelineObra
                 projetoId={projetoId}
-                siteFilter={siteFilter !== "all" ? [siteFilter] : undefined}
+                siteFilter={selectedSiteIds.length > 0 ? selectedSiteIds : undefined}
                 sites={sites as any}
               />
             </ErrorBoundary>
