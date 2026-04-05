@@ -728,7 +728,7 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={ganttMonths.length} className="py-6">&nbsp;</TableCell></TableRow>
+                        <TableRow style={{ height: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
