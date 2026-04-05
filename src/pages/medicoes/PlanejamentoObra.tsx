@@ -30,7 +30,7 @@ export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
   const [projetoId, setProjetoId] = usePersistedState<string>("planejamento_projeto_id", "");
   const [frenteFilter, setFrenteFilter] = usePersistedState<string>("planejamento_frente_filter", "all");
-  const [siteFilter, setSiteFilter] = usePersistedState<string>("planejamento_site_filter", "all");
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("planejamento_site_filter_v2", []);
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
   const queryClient = useQueryClient();
 
