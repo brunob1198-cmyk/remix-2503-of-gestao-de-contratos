@@ -40,12 +40,30 @@ function createColoredIcon(tipo: string, isActive: boolean = false) {
   });
 }
 
+function InvalidateMapSize({ trigger }: { trigger: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 50);
+
+    return () => window.clearTimeout(timeout);
+  }, [map, trigger]);
+
+  return null;
+}
+
 function FitBounds({ eventos }: { eventos: TimelineEvento[] }) {
   const map = useMap();
   useEffect(() => {
-    if (eventos.length === 0) return;
+    const positionedEvents = eventos.filter(
+      (evento) => evento.latitude !== null && evento.longitude !== null
+    );
+
+    if (positionedEvents.length === 0) return;
+
     const bounds = L.latLngBounds(
-      eventos.map((e) => [e.latitude!, e.longitude!] as [number, number])
+      positionedEvents.map((e) => [e.latitude!, e.longitude!] as [number, number])
     );
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
   }, [eventos, map]);
@@ -55,7 +73,7 @@ function FitBounds({ eventos }: { eventos: TimelineEvento[] }) {
 function FlyToActive({ evento }: { evento: TimelineEvento | null }) {
   const map = useMap();
   useEffect(() => {
-    if (evento?.latitude && evento?.longitude) {
+    if (evento?.latitude !== null && evento?.latitude !== undefined && evento?.longitude !== null && evento?.longitude !== undefined) {
       map.flyTo([evento.latitude, evento.longitude], 15, { duration: 0.8 });
     }
   }, [evento, map]);

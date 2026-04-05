@@ -84,7 +84,7 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
 
   // Events with coordinates for map
   const mapEvents = useMemo(() => {
-    return dayEvents.filter((e) => e.latitude && e.longitude);
+    return dayEvents.filter((e) => e.latitude !== null && e.longitude !== null);
   }, [dayEvents]);
 
   // Grouped by day
