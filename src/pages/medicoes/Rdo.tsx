@@ -182,24 +182,38 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         <p style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6;">${diario.observacoes}</p>
       ` : ''}
 
-      ${diario.fotos.length > 0 ? `
+      ${diario.fotos.length > 0 ? (() => {
+        const itemGroups = new Map<string, typeof diario.fotos>();
+        const itemOrder: string[] = [];
+        diario.fotos.forEach(f => {
+          const key = f.item_evidencia ? f.item_evidencia.codigo : '__sem_item__';
+          if (!itemGroups.has(key)) { itemGroups.set(key, []); itemOrder.push(key); }
+          itemGroups.get(key)!.push(f);
+        });
+        return `
         <div class="html2pdf__page-break"></div>
         <h2>📷 Relatório Fotográfico</h2>
-        <div class="foto-grid">
-          ${diario.fotos.map(f => `
-            <div class="foto-card">
-              <img src="${f.url}" alt="foto" />
-              <div class="foto-info">
-                ${f.item_evidencia ? `<div class="foto-title">${f.item_evidencia.codigo} — ${f.item_evidencia.descricao}</div>` : ''}
-                <div class="foto-meta">
-                  <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
+        ${itemOrder.map(key => {
+          const photos = itemGroups.get(key)!;
+          const first = photos[0];
+          const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Sem item vinculado';
+          return `
+          <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+          <div class="foto-grid">
+            ${photos.map(f => `
+              <div class="foto-card">
+                <img src="${f.url}" alt="foto" />
+                <div class="foto-info">
+                  <div class="foto-meta">
+                    <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
+                  </div>
+                  ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
                 </div>
-                ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
               </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
+            `).join('')}
+          </div>`;
+        }).join('')}`;
+      })() : ''}
     </div>
   `;
 }
@@ -838,11 +852,25 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
   onDownloadDia: (diario: RdoDiarioResumo) => void;
   downloading: boolean;
 }) {
-  const fotosByClass = useMemo(() => {
-    const groups: Record<string, RdoFoto[]> = {};
+  const fotosByItem = useMemo(() => {
+    const groups: { key: string; label: string; photos: RdoFoto[] }[] = [];
+    const map = new Map<string, RdoFoto[]>();
+    const order: string[] = [];
     diario.fotos.forEach(f => {
-      if (!groups[f.classificacao]) groups[f.classificacao] = [];
-      groups[f.classificacao].push(f);
+      const key = f.item_evidencia ? f.item_evidencia.codigo : "__sem_item__";
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key)!.push(f);
+    });
+    order.forEach(key => {
+      const photos = map.get(key)!;
+      const first = photos[0];
+      const label = first.item_evidencia
+        ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}`
+        : "Sem item vinculado";
+      groups.push({ key, label, photos });
     });
     return groups;
   }, [diario.fotos]);
@@ -1005,11 +1033,13 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {Object.entries(fotosByClass).map(([cls, photos]) => (
-                <div key={cls}>
-                  <Badge className={`mb-2 ${classificacaoBadgeClass[cls] || ""}`}>
-                    {classificacaoLabel[cls] || cls}
-                  </Badge>
+              {fotosByItem.map(({ key, label, photos }) => (
+                <div key={key}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-xs font-semibold truncate">{label}</span>
+                    <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{photos.length}</Badge>
+                  </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {photos.map(f => (
                       <button
@@ -1027,12 +1057,9 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 space-y-0.5">
-                          {f.item_evidencia && (
-                            <p className="text-[10px] text-emerald-300 font-medium truncate flex items-center gap-0.5">
-                              <Tag className="h-2.5 w-2.5 shrink-0" />
-                              {f.item_evidencia.codigo}
-                            </p>
-                          )}
+                          <Badge className={`text-[9px] px-1 py-0 ${classificacaoBadgeClass[f.classificacao] || ""}`}>
+                            {classificacaoLabel[f.classificacao] || f.classificacao}
+                          </Badge>
                           {f.legenda && (
                             <p className="text-[10px] text-white truncate">{f.legenda}</p>
                           )}
