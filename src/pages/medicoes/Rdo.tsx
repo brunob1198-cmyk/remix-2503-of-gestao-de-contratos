@@ -846,17 +846,17 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
             <CardContent>
               <div className="space-y-2">
                 {diario.producoes.map(p => (
-                  <div key={p.id} className="flex items-center justify-between py-1.5 border-b border-dashed last:border-0">
-                    <div className="min-w-0">
+                  <div key={p.id} className="flex items-center py-1.5 border-b border-dashed last:border-0 gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
                         {p.item_lpu?.codigo} — {p.item_lpu?.descricao}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {Number(p.quantidade)} {p.item_lpu?.unidade}
-                      </p>
                     </div>
+                    <span className="text-sm tabular-nums text-muted-foreground shrink-0 text-right min-w-[80px]">
+                      {Number(p.quantidade)} {p.item_lpu?.unidade}
+                    </span>
                     {!isCliente && (
-                      <span className="text-sm font-semibold tabular-nums shrink-0 ml-3">
+                      <span className="text-sm font-semibold tabular-nums shrink-0 text-right min-w-[100px]">
                         {formatCurrency(Number(p.valor_total))}
                       </span>
                     )}
