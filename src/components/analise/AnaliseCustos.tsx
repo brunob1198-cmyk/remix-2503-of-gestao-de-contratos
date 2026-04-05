@@ -24,6 +24,9 @@ const CATEGORIAS = [
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
+const formatPercent = (val: number) =>
+  isFinite(val) ? `${val.toFixed(1)}%` : "—";
+
 interface ProjetoRow {
   id: string;
   codigo: string;
@@ -168,6 +171,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     if (col === "valorProduzido") return row.valorProduzido;
     if (col === "custoOrcado") return row.custoOrcado;
     if (col === "totalErp") return row.totalErp;
+    if (col === "mbOrcada") return row.valorProduzido - row.custoOrcado;
+    if (col === "mbRealizado") return row.valorProduzido - row.totalErp;
+    if (col === "mbPctOrcado") return row.valorProduzido ? ((row.valorProduzido - row.custoOrcado) / row.valorProduzido) * 100 : 0;
+    if (col === "mbPctRealizado") return row.valorProduzido ? ((row.valorProduzido - row.totalErp) / row.valorProduzido) * 100 : 0;
     if (CATEGORIAS.includes(col)) return row.categorias[col] || 0;
     return 0;
   }, []);
@@ -300,7 +307,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 {CATEGORIAS.map(cat => (
                   <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r last:border-r-0" />
                 ))}
-                <NumericHeader label="Custo Real (R$)" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-l-2 border-primary/20" />
+                <NumericHeader label="MB Orçada (R$)" col="mbOrcada" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
+                <NumericHeader label="MB Realizado (R$)" col="mbRealizado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
+                <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
+                <NumericHeader label="MB (%) Realizado" col="mbPctRealizado" className="bg-amber-50 dark:bg-amber-950/30" />
               </tr>
             </thead>
             <tbody>
@@ -325,6 +335,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-2.5 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
                     {formatCurrency(row.totalErp)}
                   </td>
+                  {(() => {
+                    const mbOrc = row.valorProduzido - row.custoOrcado;
+                    const mbReal = row.valorProduzido - row.totalErp;
+                    const mbPctOrc = row.valorProduzido ? (mbOrc / row.valorProduzido) * 100 : 0;
+                    const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
+                    return (
+                      <>
+                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
+                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10">{formatPercent(mbPctReal)}</td>
+                      </>
+                    );
+                  })()}
                 </tr>
               ))}
               {processedRows.length > 1 && (
@@ -344,6 +368,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-3 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
                     {formatCurrency(totals.totalErp)}
                   </td>
+                  {(() => {
+                    const mbOrc = totals.valorProduzido - totals.custoOrcado;
+                    const mbReal = totals.valorProduzido - totals.totalErp;
+                    const mbPctOrc = totals.valorProduzido ? (mbOrc / totals.valorProduzido) * 100 : 0;
+                    const mbPctReal = totals.valorProduzido ? (mbReal / totals.valorProduzido) * 100 : 0;
+                    return (
+                      <>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold bg-amber-50/50 dark:bg-amber-950/10">{formatPercent(mbPctReal)}</td>
+                      </>
+                    );
+                  })()}
                 </tr>
               )}
             </tbody>
