@@ -213,7 +213,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return 0;
   }, []);
 
-  const textCols = ["area", "projeto", "cliente", "referencia"] as const;
+  const textCols = ["referencia", "area", "projeto", "cliente"] as const;
 
   const uniqueValues = useMemo(() => {
     const result: Record<string, string[]> = {};
