@@ -703,7 +703,7 @@ export default function RecursosPage() {
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
                   <Table className="table-fixed" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]">
+                      <TableRow style={{ height: 60 }}>
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
