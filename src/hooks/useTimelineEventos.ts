@@ -99,6 +99,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
           .from("diario_fotos")
           .select(`
             id,
+            diario_id,
             url,
             legenda,
             classificacao,
