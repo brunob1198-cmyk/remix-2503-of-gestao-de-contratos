@@ -10,6 +10,7 @@ import "leaflet/dist/leaflet.css";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
 import { MapPin, BarChart3, TrendingUp } from "lucide-react";
 import { useEffect } from "react";
+import { extractExifGeoDataFromArrayBuffer } from "@/lib/exifExtractor";
 
 interface ProdutividadeMapaProps {
   projetoId: string;
@@ -19,12 +20,37 @@ interface ProdutividadeMapaProps {
 interface ProdRegiao {
   municipio: string;
   uf: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   totalQuantidade: number;
   totalItens: number;
   avgQuantidade: number;
   photos: string[];
+}
+
+function isImageUrl(url: string): boolean {
+  const cleanUrl = url.split("?")[0].toLowerCase();
+  return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic"].some((ext) => cleanUrl.endsWith(ext));
+}
+
+async function getCoordinatesFromPhotos(photoUrls: string[]): Promise<{ lat: number; lng: number } | null> {
+  for (const url of photoUrls.filter(isImageUrl).slice(0, 3)) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      const arrayBuffer = await response.arrayBuffer();
+      const exifData = extractExifGeoDataFromArrayBuffer(arrayBuffer);
+
+      if (exifData.hasGps && exifData.latitude !== null && exifData.longitude !== null) {
+        return { lat: exifData.latitude, lng: exifData.longitude };
+      }
+    } catch (error) {
+      console.warn("Falha ao ler GPS da foto do diário:", error);
+    }
+  }
+
+  return null;
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
@@ -93,41 +119,55 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       if (!prods?.length) return [];
 
+      const { data: photosData } = await supabase
+        .from("diario_fotos")
+        .select("diario_id, url")
+        .in("diario_id", diarioIds);
+
       // Get municipality coordinates
       const municipios = new Set<string>();
       prods.forEach((p: any) => {
         const dInfo = diarioMap[p.diario_id];
         const mun = dInfo?.municipio || sites.find((s) => s.id === dInfo?.site_id)?.municipio;
-        if (mun) municipios.add(mun);
+        const uf = dInfo?.uf || sites.find((s) => s.id === dInfo?.site_id)?.uf;
+        if (mun && uf) municipios.add(`${mun}__${uf}`);
       });
 
-      const munList = Array.from(municipios);
+      const munEntries = Array.from(municipios).map((entry) => {
+        const [nome, uf] = entry.split("__");
+        return { nome, uf };
+      });
       let munCoords: Record<string, { lat: number; lng: number; uf: string }> = {};
 
-      if (munList.length > 0) {
+      if (munEntries.length > 0) {
         const { data: ibge } = await supabase
           .from("municipios_ibge")
           .select("nome, uf, latitude, longitude")
-          .in("nome", munList);
+          .in("nome", munEntries.map((entry) => entry.nome))
+          .in("uf", munEntries.map((entry) => entry.uf));
 
         (ibge ?? []).forEach((m) => {
           if (m.latitude && m.longitude) {
-            munCoords[m.nome] = { lat: Number(m.latitude), lng: Number(m.longitude), uf: m.uf };
+            munCoords[`${m.nome}__${m.uf}`] = { lat: Number(m.latitude), lng: Number(m.longitude), uf: m.uf };
           }
         });
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number; lng: number; total: number; count: number; photos: string[] }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; count: number; photos: string[] }> = {};
 
-      // Get photos for these sites
-      const { data: photosData } = await supabase
-        .from("diario_fotos")
-        .select(`
-          url,
-          diario:diarios_obra!inner(municipio, uf, site_id)
-        `)
-        .in("diario.site_id", siteIds);
+      const photosByMunicipio: Record<string, string[]> = {};
+      (photosData ?? []).forEach((photo) => {
+        const dInfo = diarioMap[photo.diario_id];
+        if (!dInfo) return;
+
+        const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
+        const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
+        if (!mun || !uf) return;
+
+        const key = `${mun}__${uf}`;
+        photosByMunicipio[key] = [...(photosByMunicipio[key] || []), photo.url];
+      });
 
       prods.forEach((p: any) => {
         const dInfo = diarioMap[p.diario_id];
@@ -137,21 +177,39 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun) return;
 
-        const coords = munCoords[mun];
-        if (!coords) return;
+        const key = `${mun}__${uf}`;
+        const coords = munCoords[key];
 
-        if (!aggMap[mun]) {
-          const munPhotos = (photosData ?? [])
-            .filter((f: any) => f.diario?.municipio === mun)
-            .map((f: any) => f.url);
-            
-          aggMap[mun] = { mun, uf: coords.uf || uf, lat: coords.lat, lng: coords.lng, total: 0, count: 0, photos: munPhotos };
+        if (!aggMap[key]) {
+          aggMap[key] = {
+            mun,
+            uf,
+            lat: coords?.lat ?? null,
+            lng: coords?.lng ?? null,
+            total: 0,
+            count: 0,
+            photos: Array.from(new Set(photosByMunicipio[key] || [])),
+          };
         }
-        aggMap[mun].total += Number(p.quantidade);
-        aggMap[mun].count += 1;
+        aggMap[key].total += Number(p.quantidade);
+        aggMap[key].count += 1;
       });
 
-      return Object.values(aggMap).map((a) => ({
+      const regioesBase = Object.values(aggMap);
+
+      await Promise.all(
+        regioesBase
+          .filter((regiao) => (regiao.lat === null || regiao.lng === null) && regiao.photos.length > 0)
+          .map(async (regiao) => {
+            const coordsFromPhoto = await getCoordinatesFromPhotos(regiao.photos);
+            if (coordsFromPhoto) {
+              regiao.lat = coordsFromPhoto.lat;
+              regiao.lng = coordsFromPhoto.lng;
+            }
+          })
+      );
+
+      return regioesBase.map((a) => ({
         municipio: a.mun,
         uf: a.uf,
         latitude: a.lat,
@@ -164,6 +222,11 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
     },
     enabled: !!projetoId,
   });
+
+  const mapRegioes = useMemo(
+    () => regioes.filter((regiao) => regiao.latitude !== null && regiao.longitude !== null) as Array<ProdRegiao & { latitude: number; longitude: number }>,
+    [regioes]
+  );
 
   const maxValue = useMemo(() => {
     return Math.max(...regioes.map((r) => r[metrica]), 1);
@@ -230,6 +293,14 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                     <p className="text-xs mt-1">Registre produções com município para visualizar no mapa</p>
                   </div>
                 </div>
+                ) : mapRegioes.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    <div className="text-center max-w-xs">
+                      <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Os dados do Diário foram encontrados, mas ainda sem coordenadas válidas para o mapa.</p>
+                      <p className="text-xs mt-1">O ranking e as fotos já estão sendo exibidos ao lado.</p>
+                    </div>
+                  </div>
               ) : (
                 <MapContainer
                   center={[-14.235, -51.9253]}
@@ -241,11 +312,11 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <FitBoundsRegiao regioes={regioes} />
+                    <FitBoundsRegiao regioes={mapRegioes} />
 
-                  {regioes.map((r) => (
+                    {mapRegioes.map((r) => (
                     <CircleMarker
-                      key={r.municipio}
+                        key={`${r.municipio}-${r.uf}`}
                       center={[r.latitude, r.longitude]}
                       radius={getRadius(r[metrica], maxValue)}
                       pathOptions={{
@@ -269,7 +340,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
                               <div className="grid grid-cols-2 gap-1 max-w-[140px]">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt="" />
+                                    <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (

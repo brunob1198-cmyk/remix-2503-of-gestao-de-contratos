@@ -20,9 +20,8 @@ function convertDMSToDecimal(
   return decimal;
 }
 
-export async function extractExifGeoData(file: File): Promise<ExifGeoData> {
+export function extractExifGeoDataFromArrayBuffer(arrayBuffer: ArrayBuffer): ExifGeoData {
   try {
-    const arrayBuffer = await file.arrayBuffer();
     const tags = ExifReader.load(arrayBuffer, { expanded: true });
 
     let latitude: number | null = null;
@@ -74,6 +73,16 @@ export async function extractExifGeoData(file: File): Promise<ExifGeoData> {
       dateTime,
       hasGps: latitude !== null && longitude !== null,
     };
+  } catch (err) {
+    console.warn("EXIF extraction failed:", err);
+    return { latitude: null, longitude: null, dateTime: null, hasGps: false };
+  }
+}
+
+export async function extractExifGeoData(file: File): Promise<ExifGeoData> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    return extractExifGeoDataFromArrayBuffer(arrayBuffer);
   } catch (err) {
     console.warn("EXIF extraction failed:", err);
     return { latitude: null, longitude: null, dateTime: null, hasGps: false };
