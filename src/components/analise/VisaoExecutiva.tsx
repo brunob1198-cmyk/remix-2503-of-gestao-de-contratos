@@ -2,7 +2,7 @@ import { useAnaliseObra } from "@/hooks/useAnaliseObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, DollarSign } from "lucide-react";
+import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 function fmt(v: number) {
   if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
