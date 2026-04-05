@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
 
 interface AnaliseCustosProps {
@@ -27,19 +28,22 @@ const formatCurrency = (val: number) =>
 const formatPercent = (val: number) =>
   isFinite(val) ? `${val.toFixed(1)}%` : "—";
 
-interface ProjetoRow {
-  id: string;
+interface MonthRow {
+  key: string; // projetoId + mesRef
+  projetoId: string;
   codigo: string;
   nome: string;
   area: string;
   cliente: string;
+  referencia: string; // "Mar/2026"
+  refSort: string; // "2026-03" for sorting
   valorProduzido: number;
   custoOrcado: number;
   categorias: Record<string, number>;
   totalErp: number;
 }
 
-type ColumnKey = "area" | "projeto" | "cliente" | "valorProduzido" | "custoOrcado" | "totalErp" | string;
+type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
 
 interface FilterState {
   search: string;
@@ -52,11 +56,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const startDate = format(startOfMonth(periodoInicio), "yyyy-MM-dd");
   const endDate = format(endOfMonth(periodoFim), "yyyy-MM-dd");
 
-  // Sort state
   const [sortCol, setSortCol] = useState<ColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
-
-  // Filter state per column
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
 
   const getFilter = useCallback((key: string): FilterState => filters[key] || emptyFilter(), [filters]);
@@ -76,10 +77,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   }, [sortCol, sortDir]);
 
   const { data: rows = [] } = useQuery({
-    queryKey: ["analise_custos_matrix", projetoIds, startDate, endDate],
-    queryFn: async () => {
+    queryKey: ["analise_custos_matrix_mensal", projetoIds, startDate, endDate],
+    queryFn: async (): Promise<MonthRow[]> => {
       if (projetoIds.length === 0) return [];
 
+      // Fetch projetos info
       const { data: projetos } = await supabase
         .from("projetos")
         .select("id, codigo, nome, area_id, cliente_id, areas(nome), clientes(razao_social)")
@@ -88,86 +90,118 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
       if (!projetos || projetos.length === 0) return [];
 
-      const { data: allSites } = await supabase
-        .from("sites")
-        .select("id, projeto_id")
-        .in("projeto_id", projetoIds);
+      // Fetch production from view_producao_diario
+      const { data: producaoData } = await supabase
+        .from("view_producao_diario")
+        .select("projeto_id, item_lpu_id, quantidade, preco_unitario, valor_produzido, data_producao, mes, ano")
+        .in("projeto_id", projetoIds)
+        .gte("data_producao", startDate)
+        .lte("data_producao", endDate);
 
-      const sitesByProjeto: Record<string, string[]> = {};
-      (allSites || []).forEach(s => {
-        if (!sitesByProjeto[s.projeto_id]) sitesByProjeto[s.projeto_id] = [];
-        sitesByProjeto[s.projeto_id].push(s.id);
-      });
-
-      const allSiteIds = (allSites || []).map(s => s.id);
-
-      const { data: escopoItens } = allSiteIds.length > 0
-        ? await supabase.from("escopo_itens").select("site_id, quantidade, custo_unitario, valor_unitario").in("site_id", allSiteIds)
-        : { data: [] };
-
-      let erpQuery = (supabase as any).from("custo_real_erp").select("projeto_id, categoria_interna, valor")
-        .in("projeto_id", projetoIds);
-      if (startDate) {
-        erpQuery = erpQuery.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
+      // Fetch itens_lpu for BDI
+      const itemIds = [...new Set((producaoData || []).map((p: any) => p.item_lpu_id).filter(Boolean))];
+      let bdiMap: Record<string, number> = {};
+      if (itemIds.length > 0) {
+        const { data: itensLpu } = await supabase
+          .from("itens_lpu")
+          .select("id, bdi")
+          .in("id", itemIds);
+        (itensLpu || []).forEach((il: any) => { bdiMap[il.id] = Number(il.bdi) || 1; });
       }
-      const { data: erpData } = await erpQuery;
 
-      const result: ProjetoRow[] = projetos.map((p: any) => {
-        const mySiteIds = sitesByProjeto[p.id] || [];
-        const myEscopo = (escopoItens || []).filter((e: any) => mySiteIds.includes(e.site_id));
+      // Fetch ERP costs by data_competencia
+      const { data: erpData } = await (supabase as any)
+        .from("custo_real_erp")
+        .select("projeto_id, categoria_interna, valor, data_competencia")
+        .in("projeto_id", projetoIds)
+        .gte("data_competencia", startDate)
+        .lte("data_competencia", endDate);
 
-        let custoOrcado = 0;
-        let valorProduzido = 0;
-        for (const item of myEscopo) {
-          custoOrcado += Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
-          valorProduzido += Number(item.valor_unitario || 0) * Number(item.quantidade || 0);
-        }
+      // Generate all months in range
+      const months = eachMonthOfInterval({ start: periodoInicio, end: periodoFim });
 
-        const myErp = (erpData || []).filter((e: any) => e.projeto_id === p.id);
-        const categorias: Record<string, number> = {};
-        CATEGORIAS.forEach(cat => { categorias[cat] = 0; });
-        myErp.forEach((e: any) => {
-          const cat = e.categoria_interna || "Indiretos";
-          if (categorias[cat] !== undefined) {
-            categorias[cat] += Number(e.valor || 0);
-          } else {
-            categorias["Indiretos"] += Number(e.valor || 0);
+      const result: MonthRow[] = [];
+
+      for (const proj of projetos as any[]) {
+        for (const month of months) {
+          const mesNum = month.getMonth() + 1;
+          const anoNum = month.getFullYear();
+          const mesKey = format(month, "yyyy-MM");
+          const mesLabel = format(month, "MMM/yyyy", { locale: ptBR });
+          const monthStart = format(startOfMonth(month), "yyyy-MM-dd");
+          const monthEnd = format(endOfMonth(month), "yyyy-MM-dd");
+
+          // Production for this project+month
+          const myProd = (producaoData || []).filter((p: any) =>
+            p.projeto_id === proj.id &&
+            Number(p.mes) === mesNum &&
+            Number(p.ano) === anoNum
+          );
+
+          let valorProduzido = 0;
+          let custoOrcado = 0;
+          for (const p of myProd) {
+            const qty = Number(p.quantidade || 0);
+            const preco = Number(p.preco_unitario || 0);
+            valorProduzido += Number(p.valor_produzido || 0);
+            const bdi = bdiMap[p.item_lpu_id] || 1;
+            custoOrcado += (preco / bdi) * qty;
           }
-        });
 
-        const totalErp = Object.values(categorias).reduce((a, b) => a + b, 0);
+          // ERP costs for this project+month
+          const myErp = (erpData || []).filter((e: any) => {
+            if (e.projeto_id !== proj.id || !e.data_competencia) return false;
+            return e.data_competencia >= monthStart && e.data_competencia <= monthEnd;
+          });
 
-        return {
-          id: p.id,
-          codigo: p.codigo,
-          nome: p.nome,
-          area: p.areas?.nome || "-",
-          cliente: p.clientes?.razao_social || "-",
-          valorProduzido,
-          custoOrcado,
-          categorias,
-          totalErp,
-        };
-      });
+          const categorias: Record<string, number> = {};
+          CATEGORIAS.forEach(cat => { categorias[cat] = 0; });
+          myErp.forEach((e: any) => {
+            const cat = e.categoria_interna || "Indiretos";
+            if (categorias[cat] !== undefined) {
+              categorias[cat] += Number(e.valor || 0);
+            } else {
+              categorias["Indiretos"] += Number(e.valor || 0);
+            }
+          });
+
+          const totalErp = Object.values(categorias).reduce((a, b) => a + b, 0);
+
+          // Only include rows that have some data
+          if (valorProduzido > 0 || totalErp > 0) {
+            result.push({
+              key: `${proj.id}_${mesKey}`,
+              projetoId: proj.id,
+              codigo: proj.codigo,
+              nome: proj.nome,
+              area: proj.areas?.nome || "-",
+              cliente: proj.clientes?.razao_social || "-",
+              referencia: mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1),
+              refSort: mesKey,
+              valorProduzido,
+              custoOrcado,
+              categorias,
+              totalErp,
+            });
+          }
+        }
+      }
 
       return result;
     },
     enabled: projetoIds.length > 0,
   });
 
-  // Helper to get string value for a column
-  const getStringVal = useCallback((row: ProjetoRow, col: ColumnKey): string => {
+  const getStringVal = useCallback((row: MonthRow, col: ColumnKey): string => {
     if (col === "area") return row.area;
     if (col === "projeto") return `${row.codigo} - ${row.nome}`;
     if (col === "cliente") return row.cliente;
-    if (col === "valorProduzido") return formatCurrency(row.valorProduzido);
-    if (col === "custoOrcado") return formatCurrency(row.custoOrcado);
-    if (col === "totalErp") return formatCurrency(row.totalErp);
-    // categoria
-    return formatCurrency(row.categorias[col] || 0);
+    if (col === "referencia") return row.referencia;
+    return "";
   }, []);
 
-  const getNumVal = useCallback((row: ProjetoRow, col: ColumnKey): number => {
+  const getNumVal = useCallback((row: MonthRow, col: ColumnKey): number => {
+    if (col === "referencia") return 0; // sorted as string
     if (col === "valorProduzido") return row.valorProduzido;
     if (col === "custoOrcado") return row.custoOrcado;
     if (col === "totalErp") return row.totalErp;
@@ -179,23 +213,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return 0;
   }, []);
 
-  // Unique values per column
+  const textCols = ["area", "projeto", "cliente", "referencia"] as const;
+
   const uniqueValues = useMemo(() => {
     const result: Record<string, string[]> = {};
-    const allCols: ColumnKey[] = ["area", "projeto", "cliente"];
-    allCols.forEach(col => {
-      const vals = [...new Set(rows.map(r => getStringVal(r, col)))].sort();
-      result[col] = vals;
+    textCols.forEach(col => {
+      result[col] = [...new Set(rows.map(r => getStringVal(r, col)))].sort();
     });
     return result;
   }, [rows, getStringVal]);
 
-  // Filtered + sorted rows
   const processedRows = useMemo(() => {
     let filtered = [...rows];
 
-    // Apply text filters for text columns
-    (["area", "projeto", "cliente"] as ColumnKey[]).forEach(col => {
+    textCols.forEach(col => {
       const f = getFilter(col);
       if (f.search) {
         filtered = filtered.filter(r => getStringVal(r, col).toLowerCase().includes(f.search.toLowerCase()));
@@ -205,15 +236,18 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       }
     });
 
-    // Sort
     if (sortCol && sortDir) {
-      const isNumeric = sortCol !== "area" && sortCol !== "projeto" && sortCol !== "cliente";
+      const isText = (textCols as readonly string[]).includes(sortCol);
       filtered.sort((a, b) => {
         let cmp: number;
-        if (isNumeric) {
-          cmp = getNumVal(a, sortCol) - getNumVal(b, sortCol);
+        if (isText) {
+          if (sortCol === "referencia") {
+            cmp = a.refSort.localeCompare(b.refSort);
+          } else {
+            cmp = getStringVal(a, sortCol).localeCompare(getStringVal(b, sortCol), "pt-BR");
+          }
         } else {
-          cmp = getStringVal(a, sortCol).localeCompare(getStringVal(b, sortCol), "pt-BR");
+          cmp = getNumVal(a, sortCol) - getNumVal(b, sortCol);
         }
         return sortDir === "desc" ? -cmp : cmp;
       });
@@ -222,7 +256,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return filtered;
   }, [rows, filters, sortCol, sortDir, getFilter, getStringVal, getNumVal]);
 
-  // Totals from filtered rows
   const totals = useMemo(() => ({
     valorProduzido: processedRows.reduce((a, r) => a + r.valorProduzido, 0),
     custoOrcado: processedRows.reduce((a, r) => a + r.custoOrcado, 0),
@@ -255,7 +288,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     setFilterField(col, prev => ({ ...prev, search: v }));
   };
 
-  // For numeric columns we use sort-only header (no multi-select filter)
   const NumericHeader = ({ label, col, className }: { label: string; col: ColumnKey; className?: string }) => {
     const dir = makeSortDir(col);
     return (
@@ -270,38 +302,35 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     );
   };
 
+  const textColLabels: Record<string, string> = { area: "Área", projeto: "Projeto", cliente: "Cliente", referencia: "Referência" };
+
   return (
     <Card>
       <CardHeader className="pb-3 border-b">
         <CardTitle>Matriz de Custos</CardTitle>
-        <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP)</CardDescription>
+        <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
-                {/* Text columns with full filter */}
-                {(["area", "projeto", "cliente"] as const).map(col => {
-                  const labels: Record<string, string> = { area: "Área", projeto: "Projeto", cliente: "Cliente" };
-                  return (
-                    <th key={col} className="py-3 px-4 font-semibold border-r">
-                      <ColumnHeader
-                        label={labels[col]}
-                        sortDir={makeSortDir(col)}
-                        onSort={() => handleSort(col)}
-                        searchText={getFilter(col).search}
-                        onSearchChange={makeSearchChange(col)}
-                        uniqueValues={uniqueValues[col] || []}
-                        selectedValues={getFilter(col).selected}
-                        onToggleValue={makeToggle(col)}
-                        onSelectAll={makeSelectAll(col)}
-                        onClearAll={makeClearAll(col)}
-                      />
-                    </th>
-                  );
-                })}
-                {/* Numeric columns with sort */}
+                {textCols.map(col => (
+                  <th key={col} className="py-3 px-4 font-semibold border-r">
+                    <ColumnHeader
+                      label={textColLabels[col]}
+                      sortDir={makeSortDir(col)}
+                      onSort={() => handleSort(col)}
+                      searchText={getFilter(col).search}
+                      onSearchChange={makeSearchChange(col)}
+                      uniqueValues={uniqueValues[col] || []}
+                      selectedValues={getFilter(col).selected}
+                      onToggleValue={makeToggle(col)}
+                      onSelectAll={makeSelectAll(col)}
+                      onClearAll={makeClearAll(col)}
+                    />
+                  </th>
+                ))}
                 <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r" />
                 <NumericHeader label="Custo Orçado (R$)" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r" />
                 {CATEGORIAS.map(cat => (
@@ -315,46 +344,43 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               </tr>
             </thead>
             <tbody>
-              {processedRows.map((row) => (
-                <tr key={row.id} className="hover:bg-muted/30 transition-colors border-b">
-                  <td className="py-2.5 px-4 border-r truncate max-w-[120px]">{row.area}</td>
-                  <td className="py-2.5 px-4 border-r font-medium truncate max-w-[200px]">
-                    {row.codigo} - {row.nome}
-                  </td>
-                  <td className="py-2.5 px-4 border-r truncate max-w-[160px]">{row.cliente}</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
-                    {formatCurrency(row.valorProduzido)}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
-                    {formatCurrency(row.custoOrcado)}
-                  </td>
-                  {CATEGORIAS.map((cat) => (
-                    <td key={cat} className="py-2.5 px-4 text-right font-mono border-r last:border-r-0">
-                      {formatCurrency(row.categorias[cat] || 0)}
+              {processedRows.map((row) => {
+                const mbOrc = row.valorProduzido - row.custoOrcado;
+                const mbReal = row.valorProduzido - row.totalErp;
+                const mbPctOrc = row.valorProduzido ? (mbOrc / row.valorProduzido) * 100 : 0;
+                const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
+                return (
+                  <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
+                    <td className="py-2.5 px-4 border-r truncate max-w-[120px]">{row.area}</td>
+                    <td className="py-2.5 px-4 border-r font-medium truncate max-w-[200px]">
+                      {row.codigo} - {row.nome}
                     </td>
-                  ))}
-                  <td className="py-2.5 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
-                    {formatCurrency(row.totalErp)}
-                  </td>
-                  {(() => {
-                    const mbOrc = row.valorProduzido - row.custoOrcado;
-                    const mbReal = row.valorProduzido - row.totalErp;
-                    const mbPctOrc = row.valorProduzido ? (mbOrc / row.valorProduzido) * 100 : 0;
-                    const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
-                    return (
-                      <>
-                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
-                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
-                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
-                        <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10">{formatPercent(mbPctReal)}</td>
-                      </>
-                    );
-                  })()}
-                </tr>
-              ))}
+                    <td className="py-2.5 px-4 border-r truncate max-w-[160px]">{row.cliente}</td>
+                    <td className="py-2.5 px-4 border-r font-medium text-center">{row.referencia}</td>
+                    <td className="py-2.5 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
+                      {formatCurrency(row.valorProduzido)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
+                      {formatCurrency(row.custoOrcado)}
+                    </td>
+                    {CATEGORIAS.map((cat) => (
+                      <td key={cat} className="py-2.5 px-4 text-right font-mono border-r">
+                        {formatCurrency(row.categorias[cat] || 0)}
+                      </td>
+                    ))}
+                    <td className="py-2.5 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
+                      {formatCurrency(row.totalErp)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10">{formatPercent(mbPctReal)}</td>
+                  </tr>
+                );
+              })}
               {processedRows.length > 1 && (
                 <tr className="bg-muted/50 font-bold border-t-2">
-                  <td className="py-3 px-4 border-r" colSpan={3}>Total</td>
+                  <td className="py-3 px-4 border-r" colSpan={4}>Total</td>
                   <td className="py-3 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                     {formatCurrency(totals.valorProduzido)}
                   </td>
@@ -362,7 +388,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     {formatCurrency(totals.custoOrcado)}
                   </td>
                   {CATEGORIAS.map((cat) => (
-                    <td key={cat} className="py-3 px-4 text-right font-mono border-r last:border-r-0">
+                    <td key={cat} className="py-3 px-4 text-right font-mono border-r">
                       {formatCurrency(totals.categorias[cat] || 0)}
                     </td>
                   ))}
