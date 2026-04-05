@@ -165,6 +165,10 @@ export default function RecursosPage() {
   // Status date dialog (férias/folga)
   const [statusDateDialog, setStatusDateDialog] = useState<{ recursoId: string; status: string } | null>(null);
   const [statusDataInicio, setStatusDataInicio] = useState(new Date().toISOString().split("T")[0]);
+  // Period edit state
+  const [editPeriodoAlocId, setEditPeriodoAlocId] = useState<string | null>(null);
+  const [editPeriodoInicio, setEditPeriodoInicio] = useState("");
+  const [editPeriodoFim, setEditPeriodoFim] = useState("");
   const [statusDataFim, setStatusDataFim] = useState("");
 
   // New resource form
