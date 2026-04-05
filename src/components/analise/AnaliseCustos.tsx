@@ -20,7 +20,7 @@ const CATEGORIAS = [
 ];
 
 export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: AnaliseCustosProps) {
-  const { custoOrcado, custosErp, fisico, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
+  const { custoOrcado, valorProduzido, custosErp, fisico, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
