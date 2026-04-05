@@ -357,7 +357,7 @@ export default function PlanejamentoObra() {
 
 
           <TabsContent value="produtividade" className="mt-4">
-            <ProdutividadeMapa projetoId={projetoId} siteFilter={siteFilter !== "all" ? siteFilter : undefined} />
+            <ProdutividadeMapa projetoId={projetoId} siteFilter={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} />
           </TabsContent>
           <TabsContent value="curvas" className="mt-4">
             <CurvaSDashboard atividades={filteredAtividades} frentes={siteFilter !== "all" ? frentes.filter(f => (f as any).site_id === siteFilter) : frentes} />
