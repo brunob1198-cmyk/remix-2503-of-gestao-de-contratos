@@ -59,11 +59,6 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
-              <LogoWithUpload className="h-12" />
-            </div>
-          </div>
           <CardTitle className="text-2xl">{isLogin ? "Entrar" : "Criar Conta"}</CardTitle>
           <CardDescription>
             {isLogin ? "Acesse sua conta para continuar" : "Preencha os dados para criar sua conta"}
