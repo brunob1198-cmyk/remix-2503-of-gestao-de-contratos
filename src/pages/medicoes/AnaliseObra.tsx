@@ -125,9 +125,15 @@ export default function AnaliseObraPage() {
         />
 
         {selectedIds.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-            <X className="h-4 w-4 mr-1" /> Limpar
-          </Button>
+          <>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate()} disabled={syncErp.isPending}>
+              <RefreshCw className={`h-3.5 w-3.5 ${syncErp.isPending ? "animate-spin" : ""}`} />
+              Sincronizar Conta Azul
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              <X className="h-4 w-4 mr-1" /> Limpar
+            </Button>
+          </>
         )}
 
         {selectedIds.length > 1 && (
