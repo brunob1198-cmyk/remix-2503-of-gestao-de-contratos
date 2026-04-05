@@ -31,7 +31,7 @@ import RdoPage from "./pages/medicoes/Rdo";
 import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
 import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
-import DashboardBIPage from "./pages/medicoes/DashboardBI";
+
 
 const queryClient = new QueryClient();
 
