@@ -22,8 +22,14 @@ export default function AnaliseObraPage() {
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("executiva");
-  const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfMonth(new Date()));
-  const [periodoFim, setPeriodoFim] = useState<Date>(endOfMonth(new Date()));
+  const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>("analise_periodo_inicio", startOfMonth(new Date()).toISOString());
+  const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>("analise_periodo_fim", endOfMonth(new Date()).toISOString());
+
+  const periodoInicio = useMemo(() => new Date(periodoInicioStr), [periodoInicioStr]);
+  const periodoFim = useMemo(() => new Date(periodoFimStr), [periodoFimStr]);
+
+  const setPeriodoInicio = (d: Date) => setPeriodoInicioStr(d.toISOString());
+  const setPeriodoFim = (d: Date) => setPeriodoFimStr(d.toISOString());
 
   // Single sync hook — uses first selected project but syncs all ERP data
   const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
