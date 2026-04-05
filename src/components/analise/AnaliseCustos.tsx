@@ -20,7 +20,7 @@ const CATEGORIAS = [
 ];
 
 export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: AnaliseCustosProps) {
-  const { custoOrcado, custosErp, fisico, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
+  const { custoOrcado, valorProduzido, custosErp, fisico, syncErpMock } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
@@ -77,7 +77,7 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatCurrency(fisico.total_produzido)}</div>
+            <div className="text-2xl font-bold text-primary">{formatCurrency(valorProduzido)}</div>
             {totalErp > fisico.total_produzido && (
               <p className="text-xs font-semibold text-destructive mt-1">Custo superou Produção</p>
             )}
@@ -118,7 +118,7 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
               <tbody>
                 <tr className="hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
-                    {formatCurrency(fisico.total_produzido)}
+                    {formatCurrency(valorProduzido)}
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
                     {formatCurrency(totalOrca)}

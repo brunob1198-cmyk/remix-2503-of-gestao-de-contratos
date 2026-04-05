@@ -136,33 +136,36 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
   const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
 
-  // 1. Custo Orçado (baseado em escopo × custo_unitario derivado do BDI)
-  const { data: custoOrcado = 0, isLoading: loadOrc } = useQuery({
+  // 1. Custo Orçado e Valor Produzido (baseado em escopo)
+  const { data: escopoData = { custoOrcado: 0, valorProduzido: 0 }, isLoading: loadOrc } = useQuery({
     queryKey: ["custo_orcado_escopo", projetoId, siteId],
     queryFn: async () => {
-      // Get sites for this project
       let qSites = supabase.from("sites").select("id").eq("projeto_id", projetoId);
       const { data: sitesData } = await qSites;
-      if (!sitesData || sitesData.length === 0) return 0;
+      if (!sitesData || sitesData.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
 
       const siteIds = siteId ? [siteId] : sitesData.map(s => s.id);
 
-      // Get escopo items with their LPU items (for BDI)
       const { data: escopoItens } = await supabase
         .from("escopo_itens")
         .select("quantidade, custo_unitario, valor_unitario, item_lpu_id")
         .in("site_id", siteIds);
 
-      if (!escopoItens || escopoItens.length === 0) return 0;
+      if (!escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
 
-      // Custo orçado = quantidade × custo_unitario (que já é preço/BDI)
-      return escopoItens.reduce((acc, item) => {
-        const custo = Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
-        return acc + custo;
-      }, 0);
+      let custoOrcado = 0;
+      let valorProduzido = 0;
+      for (const item of escopoItens) {
+        custoOrcado += Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
+        valorProduzido += Number(item.valor_unitario || 0) * Number(item.quantidade || 0);
+      }
+      return { custoOrcado, valorProduzido };
     },
     enabled: !!projetoId
   });
+
+  const custoOrcado = escopoData.custoOrcado;
+  const valorProduzido = escopoData.valorProduzido;
 
   // 2. Custos Pagos (ERP)
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
@@ -249,7 +252,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   });
 
   return { 
-    custoOrcado, loadOrc,
+    custoOrcado, valorProduzido, loadOrc,
     custosErp, loadCustos, updateCategoria, 
     syncErpMock: syncErp,
     syncErp,
