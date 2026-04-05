@@ -118,6 +118,8 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
 
   const [sortCol, setSortCol] = useState<ColKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
     const init: any = {};
     allCols.forEach(c => init[c] = "");
