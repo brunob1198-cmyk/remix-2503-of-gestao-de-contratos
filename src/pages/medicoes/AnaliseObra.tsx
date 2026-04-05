@@ -182,7 +182,7 @@ export default function AnaliseObraPage() {
             <AnaliseCustos projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
           </TabsContent>
 
-          {selectedIds.map(pid => {
+          {activeTab !== "custos-erp" && selectedIds.map(pid => {
             const proj = projetos.find(x => x.id === pid);
             if (!proj) return null;
             return (
