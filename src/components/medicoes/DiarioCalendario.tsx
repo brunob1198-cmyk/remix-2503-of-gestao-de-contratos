@@ -241,7 +241,7 @@ export function DiarioCalendario({
                 return (
                   <button
                     key={di}
-                    onClick={() => onDayClick(dateStr)}
+                    onClick={() => onDayClick?.(dateStr)}
                     className={`relative border-r last:border-r-0 p-1.5 transition-colors hover:bg-accent/50 active:scale-[0.97]
                       ${viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]"}
                       ${bgClass}
