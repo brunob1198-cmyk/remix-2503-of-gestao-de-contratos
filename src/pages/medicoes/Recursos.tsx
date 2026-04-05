@@ -154,8 +154,14 @@ function getGanttMonths(alocacoes: RecursoAlocacao[]): Date[] {
 const DAY_WIDTH = 24;
 
 export default function RecursosPage() {
+  const { clientes } = useClientes();
   const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, updateAlocacao, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
   const { sites } = useSites();
+  const { projetos } = useProjetos();
+
+  // Global filters: project and client
+  const [filterClienteId, setFilterClienteId] = useState<string>("");
+  const [filterProjetoId, setFilterProjetoId] = useState<string>("");
   const { projetos } = useProjetos();
   const [showNew, setShowNew] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
