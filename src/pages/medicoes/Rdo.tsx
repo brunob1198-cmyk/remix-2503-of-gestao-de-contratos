@@ -273,7 +273,19 @@ export default function RdoPage() {
   }, [selectedSiteIds, filteredSites]);
 
   const selectedSite = selectedSiteIds.length === 1 ? sites.find(s => s.id === selectedSiteIds[0]) : null;
-  const clienteLogoUrl = selectedSite?.clienteObj?.logo_url || selectedSite?.projeto?.clienteObj?.logo_url;
+  
+  // Resolve client logo: from selected site, or from selected project's client, or from first available site
+  const clienteLogoUrl = useMemo(() => {
+    if (selectedSite) {
+      const logo = (selectedSite as any)?.projeto?.clienteObj?.logo_url;
+      if (logo) return logo;
+    }
+    if (selectedProjetoIds.length > 0) {
+      const siteWithLogo = sites.find(s => selectedProjetoIds.includes(s.projeto_id) && (s as any)?.projeto?.clienteObj?.logo_url);
+      if (siteWithLogo) return (siteWithLogo as any).projeto.clienteObj.logo_url;
+    }
+    return null;
+  }, [selectedSite, selectedProjetoIds, sites]);
   const selectedProjeto = selectedProjetoIds.length === 1 ? projetos.find(p => p.id === selectedProjetoIds[0]) : null;
   const firstProjetoId = selectedSite?.projeto_id || selectedProjeto?.id || filteredSites[0]?.projeto_id;
 
