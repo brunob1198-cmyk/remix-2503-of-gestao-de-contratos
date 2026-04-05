@@ -187,6 +187,17 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
     return items;
   }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedItems = useMemo(() => {
+    const start = (safeCurrentPage - 1) * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
+  }, [filteredItems, safeCurrentPage, itemsPerPage]);
+
+  // Reset page when filters change
+  const filterKey = JSON.stringify({ searchTexts, selectedFilters: Object.fromEntries(allCols.map(c => [c, Array.from(selectedFilters[c])])) });
+  useMemo(() => { setCurrentPage(1); }, [filterKey]);
+
   const hasActiveFilters = allCols.some(c => searchTexts[c] !== "" || selectedFilters[c].size > 0);
 
   function clearAllFilters() {
@@ -197,6 +208,7 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
     setSelectedFilters(emptyFilter);
     setSortCol(null);
     setSortDir(null);
+    setCurrentPage(1);
   }
 
   function handleExportExcel() {
