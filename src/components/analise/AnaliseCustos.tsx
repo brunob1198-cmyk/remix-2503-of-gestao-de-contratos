@@ -24,6 +24,9 @@ const CATEGORIAS = [
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
+const formatPercent = (val: number) =>
+  isFinite(val) ? `${val.toFixed(1)}%` : "—";
+
 interface ProjetoRow {
   id: string;
   codigo: string;
