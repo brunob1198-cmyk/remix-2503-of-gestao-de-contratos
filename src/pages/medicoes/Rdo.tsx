@@ -307,7 +307,7 @@ export default function RdoPage() {
       }));
   }, [diarios]);
 
-  const isMultiSite = selectedSiteId === "all";
+  const isMultiSite = selectedSiteIds.length !== 1;
 
   const uniqueItems = useMemo(() => {
     const map = new Map<string, { id: string; codigo: string; descricao: string }>();
