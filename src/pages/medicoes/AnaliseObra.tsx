@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X } from "lucide-react";
+import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X, RefreshCw } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
@@ -16,6 +16,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 export default function AnaliseObraPage() {
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
@@ -23,6 +24,9 @@ export default function AnaliseObraPage() {
   const [activeTab, setActiveTab] = useState("executiva");
   const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfMonth(new Date()));
   const [periodoFim, setPeriodoFim] = useState<Date>(endOfMonth(new Date()));
+
+  // Single sync hook — uses first selected project but syncs all ERP data
+  const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
@@ -121,9 +125,15 @@ export default function AnaliseObraPage() {
         />
 
         {selectedIds.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-            <X className="h-4 w-4 mr-1" /> Limpar
-          </Button>
+          <>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate()} disabled={syncErp.isPending}>
+              <RefreshCw className={`h-3.5 w-3.5 ${syncErp.isPending ? "animate-spin" : ""}`} />
+              Sincronizar Conta Azul
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              <X className="h-4 w-4 mr-1" /> Limpar
+            </Button>
+          </>
         )}
 
         {selectedIds.length > 1 && (

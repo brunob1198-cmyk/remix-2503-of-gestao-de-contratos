@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Calculator, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Activity } from "lucide-react";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 interface AnaliseCustosProps {
@@ -79,11 +79,8 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
             )}
           </CardContent>
         </Card>
-        <Card className="flex flex-col justify-center gap-3 p-4">
-          <Button variant="outline" className="w-full gap-2 text-xs" onClick={() => syncErpMock.mutate()} disabled={syncErpMock.isPending}>
-             <RefreshCw className={`h-3 w-3 ${syncErpMock.isPending ? "animate-spin" : ""}`} />
-             Sincronizar Conta Azul
-          </Button>
+        <Card className="flex flex-col justify-center items-center p-4">
+          <p className="text-xs text-muted-foreground text-center">Sincronize pelo botão no cabeçalho da página</p>
         </Card>
       </div>
 
