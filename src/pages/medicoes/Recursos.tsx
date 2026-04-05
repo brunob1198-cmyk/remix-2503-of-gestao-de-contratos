@@ -158,7 +158,6 @@ export default function RecursosPage() {
   const { recursos, alocacoes, isLoading, createRecurso, updateCusto, updateRecurso, deleteRecurso, updateStatus, alocarRecurso, liberarRecurso, updateAlocacao, getCustoAtual, getHistorico, getAlocacaoAtiva } = useRecursos();
   const { sites } = useSites();
   const { projetos } = useProjetos();
-
   // Global filters: project and client
   const [filterClienteId, setFilterClienteId] = useState<string>("");
   const [filterProjetoId, setFilterProjetoId] = useState<string>("");
