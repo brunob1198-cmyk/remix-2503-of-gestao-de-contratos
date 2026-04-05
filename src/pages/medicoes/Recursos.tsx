@@ -527,6 +527,7 @@ export default function RecursosPage() {
 
         const cfg = tipoConfig[tipo];
         const cols = getColsForTipo(tipo);
+        const fixedTableWidth = cols.reduce((sum, col) => sum + fixedColumnWidths[col], 0) + actionsColumnWidth;
 
         return (
           <Card key={tipo}>
@@ -546,14 +547,17 @@ export default function RecursosPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-hidden">
-              <div className="flex relative w-full overflow-hidden">
-                {/* Fixed data columns + actions */}
-                <div className="flex-shrink-0 border-r z-10 bg-background">
-                  <Table className="w-auto table-fixed">
+              <div className="relative flex w-full max-w-full min-w-0 overflow-hidden">
+                <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
+                  <Table className="table-fixed" style={{ width: fixedTableWidth }}>
                     <TableHeader>
                       <TableRow className="h-[60px]">
                         {cols.map(col => (
-                          <TableHead key={col} className="whitespace-nowrap">
+                          <TableHead
+                            key={col}
+                            className="whitespace-nowrap"
+                            style={{ width: fixedColumnWidths[col], minWidth: fixedColumnWidths[col] }}
+                          >
                             <ColumnHeader
                               label={columnLabels[col]}
                               sortDir={sortColumns[tipo] === col ? sortDirs[tipo] : null}
@@ -568,7 +572,12 @@ export default function RecursosPage() {
                             />
                           </TableHead>
                         ))}
-                        <TableHead className="text-right whitespace-nowrap">Ações</TableHead>
+                        <TableHead
+                          className="text-right whitespace-nowrap"
+                          style={{ width: actionsColumnWidth, minWidth: actionsColumnWidth }}
+                        >
+                          Ações
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -579,17 +588,42 @@ export default function RecursosPage() {
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
                           <TableRow key={r.id} className="h-[48px]">
-                            <TableCell className="font-medium whitespace-nowrap">{r.nome}</TableCell>
-                            {tipo === "pessoa" && <TableCell className="whitespace-nowrap">{r.cargo || "—"}</TableCell>}
-                            {tipo === "veiculo" && <TableCell className="whitespace-nowrap">{r.placa || "—"}</TableCell>}
-                            <TableCell className="tabular-nums whitespace-nowrap">
+                            <TableCell
+                              className="font-medium whitespace-nowrap truncate"
+                              style={{ width: fixedColumnWidths.nome, minWidth: fixedColumnWidths.nome, maxWidth: fixedColumnWidths.nome }}
+                              title={r.nome}
+                            >
+                              {r.nome}
+                            </TableCell>
+                            {tipo === "pessoa" && (
+                              <TableCell
+                                className="whitespace-nowrap truncate"
+                                style={{ width: fixedColumnWidths.cargo, minWidth: fixedColumnWidths.cargo, maxWidth: fixedColumnWidths.cargo }}
+                                title={r.cargo || "—"}
+                              >
+                                {r.cargo || "—"}
+                              </TableCell>
+                            )}
+                            {tipo === "veiculo" && (
+                              <TableCell
+                                className="whitespace-nowrap truncate"
+                                style={{ width: fixedColumnWidths.placa, minWidth: fixedColumnWidths.placa, maxWidth: fixedColumnWidths.placa }}
+                                title={r.placa || "—"}
+                              >
+                                {r.placa || "—"}
+                              </TableCell>
+                            )}
+                            <TableCell
+                              className="tabular-nums whitespace-nowrap"
+                              style={{ width: fixedColumnWidths.custo, minWidth: fixedColumnWidths.custo }}
+                            >
                               {custo ? (
                                 <span>R$ {custo.custo_unitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{r.unidade === "hora" ? "h" : "dia"}</span>
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell style={{ width: fixedColumnWidths.status, minWidth: fixedColumnWidths.status }}>
                               <Select value={r.status} onValueChange={(v) => handleStatusChange(r.id, v)}>
                                 <SelectTrigger className="h-8 w-[130px]">
                                   <SelectValue />
@@ -601,14 +635,17 @@ export default function RecursosPage() {
                                 </SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell className="whitespace-nowrap">
+                            <TableCell
+                              className="whitespace-nowrap"
+                              style={{ width: fixedColumnWidths.alocacao, minWidth: fixedColumnWidths.alocacao, maxWidth: fixedColumnWidths.alocacao }}
+                            >
                               {aloc ? (
-                                <div className="flex items-center gap-1.5">
-                                  <Badge variant="outline" className="text-xs gap-1">
+                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                  <Badge variant="outline" className="text-xs gap-1 truncate max-w-full">
                                     <MapPin className="h-3 w-3" />
                                     {getAlocacaoLabel(r.id)}
                                   </Badge>
-                                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => handleLiberar(r.id)}>
+                                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs shrink-0" onClick={() => handleLiberar(r.id)}>
                                     Liberar
                                   </Button>
                                 </div>
@@ -618,7 +655,11 @@ export default function RecursosPage() {
                                 </Button>
                               )}
                             </TableCell>
-                            <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                            <TableCell
+                              className="whitespace-nowrap text-xs text-muted-foreground truncate"
+                              style={{ width: fixedColumnWidths.periodo, minWidth: fixedColumnWidths.periodo, maxWidth: fixedColumnWidths.periodo }}
+                              title={aloc ? `${parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")} — ${aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}` : "—"}
+                            >
                               {aloc ? (
                                 <span>
                                   {parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")}
@@ -627,7 +668,7 @@ export default function RecursosPage() {
                                 </span>
                               ) : "—"}
                             </TableCell>
-                            <TableCell className="text-right whitespace-nowrap">
+                            <TableCell className="text-right whitespace-nowrap" style={{ width: actionsColumnWidth, minWidth: actionsColumnWidth }}>
                               <div className="flex justify-end gap-1">
                                 <Button variant="ghost" size="sm" onClick={() => openEdit(r.id)}>
                                   <Pencil className="h-4 w-4" />
@@ -647,9 +688,8 @@ export default function RecursosPage() {
                   </Table>
                 </div>
 
-                {/* Scrollable Gantt area */}
-                <div className="flex-1 overflow-x-auto min-w-0 gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
-                  <Table className="w-auto table-fixed">
+                <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
+                  <Table className="table-fixed" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
                       <TableRow className="h-[60px]">
                         {ganttMonths.map((m, i) => {
@@ -689,14 +729,11 @@ export default function RecursosPage() {
 
                               return (
                                 <TableCell key={i} className="p-0 border-l relative" style={{ minWidth: monthWidth, width: monthWidth, height: 48 }}>
-                                  {/* Grid Lines */}
                                   <div className="absolute inset-0 flex z-0 pointer-events-none">
                                     {Array.from({ length: daysInMonth }).map((_, d) => (
                                       <div key={d} className="flex-1 h-full border-r border-muted/20" style={{ minWidth: DAY_WIDTH }} />
                                     ))}
                                   </div>
-                                  
-                                  {/* Bars */}
                                   {recursoAlocacoes.map(a => {
                                     const aStart = parseLocalDate(a.data_inicio);
                                     const aEnd = a.data_fim ? parseLocalDate(a.data_fim) : addMonths(new Date(), 1);
@@ -705,7 +742,6 @@ export default function RecursosPage() {
                                     const barEnd = isAfter(aEnd, monthEnd) ? monthEnd : aEnd;
                                     const barStartDay = differenceInDays(barStart, monthStart);
                                     const barDuration = differenceInDays(barEnd, barStart) + 1;
-                                    
                                     const left = (barStartDay / daysInMonth) * 100;
                                     const width = (barDuration / daysInMonth) * 100;
                                     return (
