@@ -258,6 +258,22 @@ export function useRecursos() {
     onError: (e: Error) => toast.error("Erro: " + e.message),
   });
 
+  const updateAlocacao = useMutation({
+    mutationFn: async (input: { alocacao_id: string; data_inicio?: string; data_fim?: string | null }) => {
+      const updates: any = {};
+      if (input.data_inicio !== undefined) updates.data_inicio = input.data_inicio;
+      if (input.data_fim !== undefined) updates.data_fim = input.data_fim;
+      const { error } = await supabase.from("recurso_alocacoes").update(updates).eq("id", input.alocacao_id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recurso_alocacoes"] });
+      toast.success("Período atualizado!");
+    },
+    onError: (e: Error) => toast.error("Erro: " + e.message),
+  });
+
+
   function getCustoAtual(recursoId: string): RecursoCusto | undefined {
     return custosQuery.data?.find(
       (c) => c.recurso_id === recursoId && c.data_fim === null
