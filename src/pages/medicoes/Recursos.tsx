@@ -555,7 +555,7 @@ export default function RecursosPage() {
                 <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
                   <Table className="table-fixed" style={{ width: fixedTableWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]">
+                      <TableRow style={{ height: 60 }}>
                         {cols.map(col => (
                           <TableHead
                             key={col}
