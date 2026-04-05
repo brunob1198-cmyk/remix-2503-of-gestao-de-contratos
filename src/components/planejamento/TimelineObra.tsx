@@ -232,9 +232,9 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
       )}
 
       {/* Main layout: Map + events */}
-      <div style={{ minHeight: 480 }}>
-        <Card className="h-full">
-          <CardContent className="p-0 h-full" style={{ minHeight: 480 }}>
+      <div className="h-[480px]">
+        <Card className="h-full overflow-hidden">
+          <CardContent className="h-full p-0">
             <TimelineMap
               eventos={mapEvents}
               activeEvento={activePlayEvent}

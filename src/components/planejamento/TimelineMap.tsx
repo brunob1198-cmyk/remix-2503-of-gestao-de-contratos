@@ -101,9 +101,10 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineM
     <MapContainer
       center={defaultCenter}
       zoom={5}
-      style={{ height: "100%", width: "100%", borderRadius: "inherit" }}
-      className="z-0"
+      style={{ height: "100%", width: "100%", minHeight: "480px", borderRadius: "inherit" }}
+      className="z-0 h-full w-full"
     >
+      <InvalidateMapSize trigger={eventos.length} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
