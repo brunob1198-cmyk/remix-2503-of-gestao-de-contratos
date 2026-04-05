@@ -660,15 +660,23 @@ export default function RecursosPage() {
                               )}
                             </TableCell>
                             <TableCell
-                              className="whitespace-nowrap text-xs text-muted-foreground truncate"
+                              className="whitespace-nowrap text-xs text-muted-foreground truncate cursor-pointer hover:text-foreground transition-colors"
                               style={{ width: fixedColumnWidths.periodo, minWidth: fixedColumnWidths.periodo, maxWidth: fixedColumnWidths.periodo }}
-                              title={aloc ? `${parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")} — ${aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}` : "—"}
+                              title={aloc ? `Clique para editar período` : "—"}
+                              onClick={() => {
+                                if (aloc) {
+                                  setEditPeriodoAlocId(aloc.id);
+                                  setEditPeriodoInicio(aloc.data_inicio);
+                                  setEditPeriodoFim(aloc.data_fim || "");
+                                }
+                              }}
                             >
                               {aloc ? (
-                                <span>
+                                <span className="flex items-center gap-1">
                                   {parseLocalDate(aloc.data_inicio).toLocaleDateString("pt-BR")}
                                   {" — "}
                                   {aloc.data_fim ? parseLocalDate(aloc.data_fim).toLocaleDateString("pt-BR") : "Em aberto"}
+                                  <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
                                 </span>
                               ) : "—"}
                             </TableCell>
