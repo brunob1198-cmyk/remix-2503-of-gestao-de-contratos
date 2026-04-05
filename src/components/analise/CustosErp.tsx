@@ -288,7 +288,7 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
               <tbody className="divide-y">
                 {filteredItems.length === 0 ? (
                   <tr><td colSpan={allCols.length} className="text-center py-6 text-muted-foreground">Nenhum resultado com os filtros aplicados</td></tr>
-                ) : filteredItems.map((item) => (
+                ) : paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/10">
                     <td className="py-2 px-3 text-muted-foreground">
                        {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
@@ -327,13 +327,21 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
                 ))}
                 {filteredItems.length > 0 && (
                   <tr className="bg-muted/50 font-semibold border-t-2">
-                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal</td>
+                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal (todos os {filteredItems.length} registros)</td>
                     <td className="py-2 px-3 text-right font-mono">{formatCurrency(filteredItems.reduce((acc, item) => acc + Number(item.valor), 0))}</td>
                     <td colSpan={2}></td>
                   </tr>
                 )}
               </tbody>
             </table>
+            <TablePagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+              totalItems={filteredItems.length}
+            />
           </div>
         )}
       </CardContent>
