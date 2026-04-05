@@ -252,7 +252,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   });
 
   return { 
-    custoOrcado, loadOrc,
+    custoOrcado, valorProduzido, loadOrc,
     custosErp, loadCustos, updateCategoria, 
     syncErpMock: syncErp,
     syncErp,

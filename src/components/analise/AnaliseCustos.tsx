@@ -118,7 +118,7 @@ export function AnaliseCustos({ projetoId, siteId, periodoInicio, periodoFim }: 
               <tbody>
                 <tr className="hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
-                    {formatCurrency(fisico.total_produzido)}
+                    {formatCurrency(valorProduzido)}
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
                     {formatCurrency(totalOrca)}
