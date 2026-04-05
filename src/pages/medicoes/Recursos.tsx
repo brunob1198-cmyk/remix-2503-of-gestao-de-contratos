@@ -522,6 +522,42 @@ export default function RecursosPage() {
         </div>
       </div>
 
+      {/* Global filters: Client and Project */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-1 min-w-[200px]">
+          <Label className="text-sm">Cliente</Label>
+          <Select value={filterClienteId} onValueChange={(v) => { setFilterClienteId(v === "__all__" ? "" : v); setFilterProjetoId(""); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todos os clientes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os clientes</SelectItem>
+              {clientes.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.razao_social}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1 min-w-[250px]">
+          <Label className="text-sm">Projeto / Obra</Label>
+          <Select value={filterProjetoId} onValueChange={(v) => setFilterProjetoId(v === "__all__" ? "" : v)}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todos os projetos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os projetos</SelectItem>
+              {filteredProjetos.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {(filterClienteId || filterProjetoId) && (
+          <Button variant="ghost" size="sm" onClick={() => { setFilterClienteId(""); setFilterProjetoId(""); }}>
+            <X className="h-4 w-4 mr-1" /> Limpar filtros
+          </Button>
+        )}
+      </div>
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(["pessoa", "equipamento", "veiculo"] as TipoRecurso[]).map((tipo) => {
