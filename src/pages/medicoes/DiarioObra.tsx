@@ -752,7 +752,7 @@ export default function DiarioObraPage() {
                     className="bg-muted"
                   />
                 </div>
-                <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd || pendingProdFiles.length === 0}>
+                <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd}>
                   <Plus className="h-4 w-4 mr-1" /> Adicionar
                 </Button>
               </div>
