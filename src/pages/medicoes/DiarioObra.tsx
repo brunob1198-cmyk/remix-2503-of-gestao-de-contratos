@@ -276,13 +276,13 @@ export default function DiarioObraPage() {
       toast({ title: "Foto obrigatória", description: "Adicione pelo menos uma foto/arquivo antes de salvar o item de produção.", variant: "destructive" });
       return;
     }
-    const escopoItem = itensEscopo.find(i => i.item_lpu_id === prodItemId);
-    if (!escopoItem) {
-      toast({ title: "Erro", description: "Item não encontrado no Escopo.", variant: "destructive" });
+    const selectedItem = itensDisponiveis.find(i => i.item_lpu_id === prodItemId);
+    if (!selectedItem) {
+      toast({ title: "Erro", description: "Item não encontrado.", variant: "destructive" });
       return;
     }
     const qtd = Number(prodQtd);
-    const preco = Number(escopoItem.valor_unitario);
+    const preco = Number(selectedItem.valor_unitario);
     const diarioId = await ensureDiario();
     const { data: prodData, error: prodError } = await supabase
       .from("diario_producao")
