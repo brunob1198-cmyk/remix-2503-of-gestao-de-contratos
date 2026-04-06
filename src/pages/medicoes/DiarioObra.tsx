@@ -409,7 +409,7 @@ export default function DiarioObraPage() {
       km_rodados: kmRodados,
       custo_diaria: Number(veicCusto),
     });
-    setVeicRecursoId(""); setVeicPlaca(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
+    setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
   const handleSelectRecurso = (tipo: "pessoa" | "equipamento" | "veiculo", recursoId: string) => {
