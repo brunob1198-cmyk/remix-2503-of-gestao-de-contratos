@@ -283,10 +283,6 @@ export default function DiarioObraPage() {
       toast({ title: "Localização obrigatória", description: "Selecione UF e Município antes de lançar produção.", variant: "destructive" });
       return;
     }
-    if (pendingProdFiles.length === 0) {
-      toast({ title: "Foto obrigatória", description: "Adicione pelo menos uma foto/arquivo antes de salvar o item de produção.", variant: "destructive" });
-      return;
-    }
     const selectedItem = itensDisponiveis.find(i => i.item_lpu_id === prodItemId);
     if (!selectedItem) {
       toast({ title: "Erro", description: "Item não encontrado.", variant: "destructive" });
