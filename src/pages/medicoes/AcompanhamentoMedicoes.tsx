@@ -73,6 +73,8 @@ interface GeracaoFoto {
   item_codigo?: string;
   item_descricao?: string;
   diario_data?: string;
+  site_id?: string;
+  site_nome?: string;
   selected: boolean;
 }
 
