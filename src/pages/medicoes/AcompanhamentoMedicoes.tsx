@@ -133,6 +133,7 @@ export default function AcompanhamentoMedicoesPage() {
   const [gerarPeriodoFim, setGerarPeriodoFim] = useState<string>("");
   const [gerarNumeroMedicao, setGerarNumeroMedicao] = useState<string>("");
   const [geracaoItens, setGeracaoItens] = useState<GeracaoItem[]>([]);
+  const [gerarTipoMedicao, setGerarTipoMedicao] = useState<"separada" | "agrupada" | "mista">("separada");
   const [geracaoFotos, setGeracaoFotos] = useState<GeracaoFoto[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
