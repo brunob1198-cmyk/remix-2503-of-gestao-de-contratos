@@ -386,7 +386,7 @@ export default function DiarioObraPage() {
   };
 
   const handleAddVeiculo = async () => {
-    if (!veicRecursoId || !veicPlaca || !veicCusto) return;
+    if (!veicRecursoId || !veicCusto) return;
     const recurso = recursos.find(r => r.id === veicRecursoId);
     if (!recurso) return;
 
