@@ -551,6 +551,7 @@ export default function AcompanhamentoMedicoesPage() {
           setGeracaoFotos((fotos || []).map(f => {
             const diario = diarioMap.get(f.diario_id);
             const producao = (f as any).diario_producao_id ? producaoMap.get((f as any).diario_producao_id) : null;
+            const fotoSite = diario ? sites.find(s => s.id === diario.site_id) : null;
             return {
               id: f.id,
               url: f.url,
@@ -559,6 +560,8 @@ export default function AcompanhamentoMedicoesPage() {
               item_codigo: producao?.item_lpu?.codigo,
               item_descricao: producao?.item_lpu?.descricao,
               diario_data: diario?.data,
+              site_id: diario?.site_id,
+              site_nome: fotoSite ? `${fotoSite.codigo} - ${fotoSite.nome}` : undefined,
               selected: true,
             };
           }));
