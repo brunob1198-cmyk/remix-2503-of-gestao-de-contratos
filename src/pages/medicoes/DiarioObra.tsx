@@ -1151,10 +1151,6 @@ export default function DiarioObraPage() {
                   </Select>
                 </div>
                 <div className="w-[100px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">Placa *</label>
-                  <Input value={veicPlaca} onChange={e => setVeicPlaca(e.target.value)} placeholder="ABC-1234" required />
-                </div>
-                <div className="w-[100px]">
                   <label className="text-xs text-muted-foreground mb-1 block">KM Inicial</label>
                   <Input type="number" value={veicKmInicial} onChange={e => setVeicKmInicial(e.target.value)} placeholder="0" />
                 </div>
