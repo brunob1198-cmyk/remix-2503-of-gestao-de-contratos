@@ -1356,49 +1356,83 @@ export default function AcompanhamentoMedicoesPage() {
                       </div>
 
                       {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") ? (
-                        // Group photos by site
+                        // Group photos by site - mista includes production summary per site
                         (() => {
-                          const siteGroups = new Map<string, GeracaoFoto[]>();
+                          const siteGroups = new Map<string, { fotos: GeracaoFoto[]; siteId: string }>();
                           geracaoFotos.forEach(f => {
                             const key = f.site_nome || "Sem site";
-                            if (!siteGroups.has(key)) siteGroups.set(key, []);
-                            siteGroups.get(key)!.push(f);
+                            if (!siteGroups.has(key)) siteGroups.set(key, { fotos: [], siteId: f.site_id || "" });
+                            siteGroups.get(key)!.fotos.push(f);
                           });
                           const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                           return (
-                            <div className="space-y-4 max-h-[300px] overflow-auto">
-                              {sorted.map(([siteName, fotos]) => (
-                                <div key={siteName}>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-2 border-b pb-1">{siteName}</p>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {fotos.map((foto) => {
-                                      const idx = geracaoFotos.findIndex(f => f.id === foto.id);
-                                      return (
-                                        <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
-                                          <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
-                                          <div className="absolute top-2 left-2">
-                                            <Checkbox
-                                              checked={foto.selected}
-                                              onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
-                                              className="bg-white/80"
-                                            />
-                                          </div>
-                                          {foto.selected && (
-                                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
-                                              onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          )}
-                                          <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
-                                            {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
-                                            {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                            <div className="space-y-6 max-h-[400px] overflow-auto">
+                              {sorted.map(([siteName, { fotos, siteId }]) => {
+                                // For mista, show production table per site
+                                const siteItems = gerarTipoMedicao === "mista"
+                                  ? geracaoItens.filter(i => i.site_id === siteId && i.selected)
+                                  : [];
+                                return (
+                                  <div key={siteName} className="border rounded-lg overflow-hidden">
+                                    <div className="bg-[hsl(var(--primary))] text-primary-foreground px-4 py-2 font-semibold text-sm flex items-center gap-2">
+                                      <MapPin className="h-4 w-4" />
+                                      {siteName}
+                                    </div>
+                                    {gerarTipoMedicao === "mista" && siteItems.length > 0 && (
+                                      <div className="p-3 border-b bg-muted/20">
+                                        <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="text-xs">Item</TableHead>
+                                              <TableHead className="text-xs text-right">Qtd</TableHead>
+                                              <TableHead className="text-xs text-right">Valor</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {siteItems.map(si => (
+                                              <TableRow key={si.item_lpu_id}>
+                                                <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
+                                                <TableCell className="text-xs text-right py-1">{(si.quantidade + si.quantidade_pendente).toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                                <TableCell className="text-xs text-right py-1">{formatCurrency((si.quantidade + si.quantidade_pendente) * si.preco_unitario)}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    )}
+                                    <div className="p-3">
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {fotos.map((foto) => {
+                                          const idx = geracaoFotos.findIndex(f => f.id === foto.id);
+                                          return (
+                                            <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                                              <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                                              <div className="absolute top-2 left-2">
+                                                <Checkbox
+                                                  checked={foto.selected}
+                                                  onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                                  className="bg-white/80"
+                                                />
+                                              </div>
+                                              {foto.selected && (
+                                                <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                                  onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              )}
+                                              <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                                {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                                {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           );
                         })()
