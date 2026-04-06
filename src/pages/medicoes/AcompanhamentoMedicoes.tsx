@@ -1249,6 +1249,9 @@ export default function AcompanhamentoMedicoesPage() {
                         <h3 className="text-sm font-semibold flex items-center gap-2">
                           <Camera className="h-4 w-4" />
                           Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos)
+                          {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") && (
+                            <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
+                          )}
                         </h3>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: true })))}>
@@ -1259,34 +1262,81 @@ export default function AcompanhamentoMedicoesPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[300px] overflow-auto">
-                        {geracaoFotos.map((foto, idx) => (
-                          <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
-                            <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
-                            <div className="absolute top-2 left-2">
-                              <Checkbox
-                                checked={foto.selected}
-                                onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
-                                className="bg-white/80"
-                              />
+
+                      {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") ? (
+                        // Group photos by site
+                        (() => {
+                          const siteGroups = new Map<string, GeracaoFoto[]>();
+                          geracaoFotos.forEach(f => {
+                            const key = f.site_nome || "Sem site";
+                            if (!siteGroups.has(key)) siteGroups.set(key, []);
+                            siteGroups.get(key)!.push(f);
+                          });
+                          const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                          return (
+                            <div className="space-y-4 max-h-[300px] overflow-auto">
+                              {sorted.map(([siteName, fotos]) => (
+                                <div key={siteName}>
+                                  <p className="text-xs font-semibold text-muted-foreground mb-2 border-b pb-1">{siteName}</p>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {fotos.map((foto) => {
+                                      const idx = geracaoFotos.findIndex(f => f.id === foto.id);
+                                      return (
+                                        <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                                          <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                                          <div className="absolute top-2 left-2">
+                                            <Checkbox
+                                              checked={foto.selected}
+                                              onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                              className="bg-white/80"
+                                            />
+                                          </div>
+                                          {foto.selected && (
+                                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                              onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          )}
+                                          <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                            {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                            {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            {foto.selected && (
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                className="absolute top-2 right-2 h-6 w-6"
-                                onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                            <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
-                              {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
-                              {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                          );
+                        })()
+                      ) : (
+                        // Agrupada: flat grid
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[300px] overflow-auto">
+                          {geracaoFotos.map((foto, idx) => (
+                            <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                              <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                              <div className="absolute top-2 left-2">
+                                <Checkbox
+                                  checked={foto.selected}
+                                  onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                  className="bg-white/80"
+                                />
+                              </div>
+                              {foto.selected && (
+                                <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                  onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
