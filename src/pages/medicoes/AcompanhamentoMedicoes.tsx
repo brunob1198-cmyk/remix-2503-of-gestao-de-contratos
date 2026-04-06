@@ -605,24 +605,60 @@ export default function AcompanhamentoMedicoesPage() {
 
     const today = new Date().toISOString().split("T")[0];
     const customLogo = localStorage.getItem("custom_logo_url") || "/logo.png";
-    const items = selectedItens.map(item => ({
-      site_id: item.site_id,
-      item_lpu_id: item.item_lpu_id,
-      data_medicao: today,
-      quantidade: item.quantidade + item.quantidade_pendente,
-      numero_medicao: gerarNumeroMedicao || undefined,
-      status: "enviada",
-      periodo_inicio: gerarPeriodoInicio,
-      periodo_fim: gerarPeriodoFim,
-      logo_empresa_url: customLogo,
-    }));
+
+    let items: any[];
+
+    if (gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") {
+      // For agrupada/mista: group items by item_lpu_id, summing quantities across sites
+      // Use the first site_id found (or pick an arbitrary one)
+      const grouped = new Map<string, { site_id: string; item_lpu_id: string; quantidade: number }>();
+      selectedItens.forEach(item => {
+        const key = item.item_lpu_id;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            site_id: item.site_id,
+            item_lpu_id: item.item_lpu_id,
+            quantidade: item.quantidade + item.quantidade_pendente,
+          });
+        } else {
+          const g = grouped.get(key)!;
+          g.quantidade += item.quantidade + item.quantidade_pendente;
+        }
+      });
+
+      items = Array.from(grouped.values()).map(g => ({
+        site_id: g.site_id,
+        item_lpu_id: g.item_lpu_id,
+        data_medicao: today,
+        quantidade: g.quantidade,
+        numero_medicao: gerarNumeroMedicao || undefined,
+        status: "enviada",
+        periodo_inicio: gerarPeriodoInicio,
+        periodo_fim: gerarPeriodoFim,
+        logo_empresa_url: customLogo,
+        observacao: gerarTipoMedicao === "mista" ? "tipo:mista" : "tipo:agrupada",
+      }));
+    } else {
+      // Separada: one entry per site+item
+      items = selectedItens.map(item => ({
+        site_id: item.site_id,
+        item_lpu_id: item.item_lpu_id,
+        data_medicao: today,
+        quantidade: item.quantidade + item.quantidade_pendente,
+        numero_medicao: gerarNumeroMedicao || undefined,
+        status: "enviada",
+        periodo_inicio: gerarPeriodoInicio,
+        periodo_fim: gerarPeriodoFim,
+        logo_empresa_url: customLogo,
+        observacao: "tipo:separada",
+      }));
+    }
 
     bulkCreateLancamento.mutate(items, {
       onSuccess: () => {
         // Clear pending quantities from the source lancamentos
         const pendingKeys = selectedItens.filter(i => i.quantidade_pendente > 0);
         if (pendingKeys.length > 0) {
-          // Reset pending on old rejected items
           const rejectedIds = lancamentos
             .filter(l => Number((l as any).quantidade_pendente) > 0 && pendingKeys.some(pk => pk.site_id === l.site_id && pk.item_lpu_id === l.item_lpu_id))
             .map(l => l.id);
@@ -642,6 +678,7 @@ export default function AcompanhamentoMedicoesPage() {
         setGerarPeriodoFim("");
         setGerarProjetoId("");
         setGerarSiteId("");
+        setGerarTipoMedicao("separada");
         setDuplicateWarnings([]);
       },
     });
