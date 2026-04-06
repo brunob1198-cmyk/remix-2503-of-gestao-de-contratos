@@ -716,7 +716,7 @@ export default function DiarioObraPage() {
                   <Select value={prodItemId} onValueChange={setProdItemId}>
                     <SelectTrigger><SelectValue placeholder="Selecione item" /></SelectTrigger>
                     <SelectContent>
-                      {itensEscopo.map(i => (
+                      {itensDisponiveis.map(i => (
                         <SelectItem key={i.id || i.item_lpu_id} value={i.item_lpu_id || ""}>
                           {i.nome}
                         </SelectItem>
