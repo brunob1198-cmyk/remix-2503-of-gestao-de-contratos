@@ -386,7 +386,7 @@ export default function DiarioObraPage() {
   };
 
   const handleAddVeiculo = async () => {
-    if (!veicRecursoId || !veicPlaca || !veicCusto) return;
+    if (!veicRecursoId || !veicCusto) return;
     const recurso = recursos.find(r => r.id === veicRecursoId);
     if (!recurso) return;
 
@@ -403,13 +403,13 @@ export default function DiarioObraPage() {
     await addVeiculo.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
-      placa: veicPlaca,
+      placa: recurso.placa || "",
       km_inicial: kmInicial,
       km_final: kmFinal,
       km_rodados: kmRodados,
       custo_diaria: Number(veicCusto),
     });
-    setVeicRecursoId(""); setVeicPlaca(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
+    setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
   const handleSelectRecurso = (tipo: "pessoa" | "equipamento" | "veiculo", recursoId: string) => {
@@ -1151,10 +1151,6 @@ export default function DiarioObraPage() {
                   </Select>
                 </div>
                 <div className="w-[100px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">Placa *</label>
-                  <Input value={veicPlaca} onChange={e => setVeicPlaca(e.target.value)} placeholder="ABC-1234" required />
-                </div>
-                <div className="w-[100px]">
                   <label className="text-xs text-muted-foreground mb-1 block">KM Inicial</label>
                   <Input type="number" value={veicKmInicial} onChange={e => setVeicKmInicial(e.target.value)} placeholder="0" />
                 </div>
@@ -1174,7 +1170,7 @@ export default function DiarioObraPage() {
                   <label className="text-xs text-muted-foreground mb-1 block">Custo diária</label>
                   <Input type="number" value={veicCusto} onChange={e => setVeicCusto(e.target.value)} placeholder="0" />
                 </div>
-                <Button onClick={handleAddVeiculo} size="sm" disabled={!veicRecursoId || !veicPlaca || !veicCusto}>
+                <Button onClick={handleAddVeiculo} size="sm" disabled={!veicRecursoId || !veicCusto}>
                   <Plus className="h-4 w-4 mr-1" /> Adicionar
                 </Button>
               </div>
