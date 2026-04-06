@@ -38,7 +38,7 @@ export default function DiarioObraPage() {
   const { projetos } = useProjetos();
   const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_obra_projeto_id", "");
   const { sites } = useSites(selectedProjetoId || undefined);
-  const { recursos, getCustoAtual, getAlocacoesBySite } = useRecursos();
+  const { recursos, alocacoes, getCustoAtual, getAlocacoesBySite } = useRecursos();
   const [activeTab, setActiveTab] = useState<string>("calendario");
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("diario_obra_site_id", "");
   const [selectedDate, setSelectedDate] = usePersistedState<string>("diario_obra_date", format(new Date(), "yyyy-MM-dd"));
@@ -160,10 +160,21 @@ export default function DiarioObraPage() {
   const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
 
-  // Filtered resources
-  const recursosPessoa = recursos.filter(r => r.tipo === "pessoa" && r.ativo);
-  const recursosEquipamento = recursos.filter(r => r.tipo === "equipamento" && r.ativo);
-  const recursosVeiculo = recursos.filter(r => r.tipo === "veiculo" && r.ativo);
+  // Filtered resources — only those allocated to the selected project
+  const recursosAlocadosProjeto = (() => {
+    if (!selectedProjetoId) return new Set<string>();
+    const today = new Date().toISOString().split("T")[0];
+    const ids = new Set<string>();
+    (alocacoes || []).forEach(a => {
+      if (a.projeto_id === selectedProjetoId && (a.data_fim === null || a.data_fim >= today)) {
+        ids.add(a.recurso_id);
+      }
+    });
+    return ids;
+  })();
+  const recursosPessoa = recursos.filter(r => r.tipo === "pessoa" && r.ativo && recursosAlocadosProjeto.has(r.id));
+  const recursosEquipamento = recursos.filter(r => r.tipo === "equipamento" && r.ativo && recursosAlocadosProjeto.has(r.id));
+  const recursosVeiculo = recursos.filter(r => r.tipo === "veiculo" && r.ativo && recursosAlocadosProjeto.has(r.id));
 
   // Auto-populate allocated resources only for diaries created in the current session
   const alocacoesDoSite = selectedSiteId ? getAlocacoesBySite(selectedSiteId) : [];
