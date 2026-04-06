@@ -1147,7 +1147,13 @@ export default function AcompanhamentoMedicoesPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950/30 text-sm">
                 <AlertTriangle className="h-4 w-4 text-blue-600" />
-                <span>Período: {formatDate(gerarPeriodoInicio)} a {formatDate(gerarPeriodoFim)} — {geracaoItens.filter(i => i.selected).length} itens selecionados</span>
+                <span>
+                  Período: {formatDate(gerarPeriodoInicio)} a {formatDate(gerarPeriodoFim)} — {geracaoItens.filter(i => i.selected).length} itens selecionados
+                  {" | Tipo: "}
+                  <strong>
+                    {gerarTipoMedicao === "separada" ? "Separada por Site" : gerarTipoMedicao === "agrupada" ? "Agrupada" : "Mista"}
+                  </strong>
+                </span>
               </div>
 
               {duplicateWarnings.length > 0 && (
