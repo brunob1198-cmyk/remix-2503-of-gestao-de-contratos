@@ -1309,7 +1309,7 @@ export default function DiarioObraPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
-                value={obs || diario?.observacoes || ""}
+                value={obs}
                 onChange={e => setObs(e.target.value)}
                 placeholder="Anotações sobre o dia de trabalho..."
                 rows={4}
