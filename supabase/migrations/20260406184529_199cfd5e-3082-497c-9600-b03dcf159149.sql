@@ -1,0 +1,1 @@
+UPDATE municipios_ibge SET latitude = -15.4558, longitude = -48.8855 WHERE codigo_ibge = '5222302' AND (latitude IS NULL OR longitude IS NULL);
