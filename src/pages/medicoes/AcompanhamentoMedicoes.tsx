@@ -1072,6 +1072,33 @@ export default function AcompanhamentoMedicoesPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-3 pt-2">
+                <Label className="text-base font-semibold">Tipo de Medição</Label>
+                <RadioGroup value={gerarTipoMedicao} onValueChange={(v) => setGerarTipoMedicao(v as any)} className="space-y-3">
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="separada" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Separada por Site</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição com o total de cada site de forma separada, com relatórios fotográficos individuais por site.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="agrupada" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Agrupada</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição única somando todos os sites numa LPU só, agrupando quantitativos e relatório fotográfico em um único documento.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="mista" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Mista</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição única com total do período, mas separando os relatórios fotográficos por site em sequência (ordenados do menor ao maior nome).</p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowGerarDialog(false)}>Cancelar</Button>
                 <Button onClick={handleGerarMedicao} disabled={!gerarPeriodoInicio || !gerarPeriodoFim}>
