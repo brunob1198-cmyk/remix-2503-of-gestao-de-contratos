@@ -197,6 +197,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const regioesBase = Object.values(aggMap);
 
+      // Fallback 1: Try to get coordinates from photos (EXIF)
       await Promise.all(
         regioesBase
           .filter((regiao) => (regiao.lat === null || regiao.lng === null) && regiao.photos.length > 0)
@@ -208,6 +209,28 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
             }
           })
       );
+
+      // Fallback 2: For remaining municipalities without coordinates, try Nominatim
+      const missingCoords = regioesBase.filter((r) => r.lat === null || r.lng === null);
+      if (missingCoords.length > 0) {
+        await Promise.all(
+          missingCoords.map(async (regiao) => {
+            try {
+              const q = encodeURIComponent(`${regiao.mun} ${regiao.uf} Brazil`);
+              const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+                headers: { "User-Agent": "LovableApp/1.0" },
+              });
+              const data = await resp.json();
+              if (data?.[0]?.lat && data?.[0]?.lon) {
+                regiao.lat = Number(data[0].lat);
+                regiao.lng = Number(data[0].lon);
+              }
+            } catch (e) {
+              console.warn(`Nominatim fallback failed for ${regiao.mun}/${regiao.uf}`, e);
+            }
+          })
+        );
+      }
 
       return regioesBase.map((a) => ({
         municipio: a.mun,
