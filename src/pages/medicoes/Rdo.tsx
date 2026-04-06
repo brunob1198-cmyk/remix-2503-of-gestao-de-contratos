@@ -179,7 +179,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
 
       ${diario.observacoes ? `
         <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Observações</h2>
-        <p style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6;">${diario.observacoes}</p>
+        <div style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6; white-space: pre-line;">${diario.observacoes}</div>
       ` : ''}
 
       ${diario.fotos.length > 0 ? (() => {
