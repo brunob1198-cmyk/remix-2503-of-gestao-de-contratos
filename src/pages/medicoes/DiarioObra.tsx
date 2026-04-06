@@ -403,7 +403,7 @@ export default function DiarioObraPage() {
     await addVeiculo.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
-      placa: veicPlaca,
+      placa: recurso.placa || "",
       km_inicial: kmInicial,
       km_final: kmFinal,
       km_rodados: kmRodados,
