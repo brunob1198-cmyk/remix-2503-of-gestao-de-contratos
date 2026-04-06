@@ -192,7 +192,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         });
         return `
         <div class="html2pdf__page-break"></div>
-        <h2>📷 Relatório Fotográfico</h2>
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Relatório Fotográfico</h2>
         ${itemOrder.map(key => {
           const photos = itemGroups.get(key)!;
           const first = photos[0];
