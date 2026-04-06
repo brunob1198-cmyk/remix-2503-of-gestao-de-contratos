@@ -1179,8 +1179,99 @@ export default function AcompanhamentoMedicoesPage() {
                 <p className="text-center text-muted-foreground py-8">Nenhuma produção encontrada no período selecionado.</p>
               ) : (
                 <div className="space-y-4">
+                  {/* Sites header for agrupada/mista */}
+                  {(gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") && (() => {
+                    const siteNames = [...new Set(geracaoItens.filter(i => i.selected).map(i => `${i.site_codigo} - ${i.site_nome}`))].sort();
+                    return (
+                      <div className="p-3 rounded-md bg-muted/40 border text-sm">
+                        <p className="font-semibold mb-1">Sites incluídos na medição:</p>
+                        <p className="text-muted-foreground">{siteNames.join(" | ")}</p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Items table */}
                   <div className="overflow-x-auto max-h-[300px]">
+                    {(gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") ? (() => {
+                      // Group items by item_lpu_id, summing quantities
+                      const groupedMap = new Map<string, { item_lpu_id: string; item_codigo: string; item_descricao: string; unidade: string; preco_unitario: number; quantidade: number; quantidade_pendente: number; indices: number[] }>();
+                      geracaoItens.forEach((item, idx) => {
+                        const key = item.item_lpu_id;
+                        if (!groupedMap.has(key)) {
+                          groupedMap.set(key, {
+                            item_lpu_id: item.item_lpu_id,
+                            item_codigo: item.item_codigo,
+                            item_descricao: item.item_descricao,
+                            unidade: item.unidade,
+                            preco_unitario: item.preco_unitario,
+                            quantidade: item.quantidade,
+                            quantidade_pendente: item.quantidade_pendente,
+                            indices: [idx],
+                          });
+                        } else {
+                          const g = groupedMap.get(key)!;
+                          g.quantidade += item.quantidade;
+                          g.quantidade_pendente += item.quantidade_pendente;
+                          g.indices.push(idx);
+                        }
+                      });
+                      const groupedRows = Array.from(groupedMap.values());
+                      const allSelected = geracaoItens.every(i => i.selected);
+                      const groupedTotal = groupedRows.filter(g => g.indices.some(idx => geracaoItens[idx]?.selected)).reduce((s, g) => {
+                        const anySelected = g.indices.some(idx => geracaoItens[idx]?.selected);
+                        return anySelected ? s + (g.quantidade + g.quantidade_pendente) * g.preco_unitario : s;
+                      }, 0);
+
+                      return (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10">
+                                <Checkbox checked={allSelected} onCheckedChange={(checked) => setGeracaoItens(prev => prev.map(i => ({ ...i, selected: !!checked })))} />
+                              </TableHead>
+                              <TableHead>Item LPU</TableHead>
+                              <TableHead>Unidade</TableHead>
+                              <TableHead className="text-right">Qtd Total</TableHead>
+                              <TableHead className="text-right">Saldo Anterior</TableHead>
+                              <TableHead className="text-right">Sugerido para Medir</TableHead>
+                              <TableHead className="text-right">Preço Unit.</TableHead>
+                              <TableHead className="text-right">Valor Total</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {groupedRows.map((g) => {
+                              const isSelected = g.indices.some(idx => geracaoItens[idx]?.selected);
+                              return (
+                                <TableRow key={g.item_lpu_id} className={!isSelected ? "opacity-50" : ""}>
+                                  <TableCell>
+                                    <Checkbox checked={isSelected} onCheckedChange={(checked) => {
+                                      setGeracaoItens(prev => prev.map((item, idx) => g.indices.includes(idx) ? { ...item, selected: !!checked } : item));
+                                    }} />
+                                  </TableCell>
+                                  <TableCell className="max-w-xs truncate">{g.item_codigo} - {g.item_descricao}</TableCell>
+                                  <TableCell>{g.unidade}</TableCell>
+                                  <TableCell className="text-right font-mono">{g.quantidade.toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell className="text-right font-mono">
+                                    {g.quantidade_pendente > 0 ? (
+                                      <Badge variant="outline" className="text-amber-600 border-amber-300">+{g.quantidade_pendente.toLocaleString("pt-BR")}</Badge>
+                                    ) : "-"}
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono font-semibold">{(g.quantidade + g.quantidade_pendente).toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(g.preco_unitario)}</TableCell>
+                                  <TableCell className="text-right font-semibold">{formatCurrency((g.quantidade + g.quantidade_pendente) * g.preco_unitario)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                          <TableFooter>
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-right font-bold">Total:</TableCell>
+                              <TableCell className="text-right font-bold">{formatCurrency(groupedTotal)}</TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        </Table>
+                      );
+                    })() : (
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1235,6 +1326,7 @@ export default function AcompanhamentoMedicoesPage() {
                         </TableRow>
                       </TableFooter>
                     </Table>
+                    )}
                   </div>
 
                   {/* Photo preview */}
