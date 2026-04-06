@@ -8,9 +8,19 @@ import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers } from "lucide-react";
+import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+interface SiteRow {
+  site_id: string;
+  site_codigo: string;
+  site_nome: string;
+  valor_executado: number;
+  valor_faturado: number;
+  valor_nao_faturado: number;
+  percentual_evolucao: number;
+}
 
 interface ProjetoRow {
   projeto_id: string;
@@ -24,6 +34,7 @@ interface ProjetoRow {
   valor_nao_faturado: number;
   saldo_contrato: number;
   percentual_evolucao: number;
+  siteRows: SiteRow[];
 }
 
 interface Totals {
@@ -134,7 +145,6 @@ export default function QuadroGeral() {
     },
   });
 
-  // expanded keys: "area:XXX" and "cliente:XXX|YYY"
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (key: string) => {
@@ -146,31 +156,36 @@ export default function QuadroGeral() {
     });
   };
 
-  // Build area groups
   const areaGroups: AreaGroup[] = useMemo(() => {
     const siteProjetoMap = new Map(sites.map(s => [s.id, s.projeto_id]));
     const areaMap = new Map(areas.map(a => [a.id, a.nome]));
 
-    const executadoByProjeto = new Map<string, number>();
+    // Per-site executado
+    const executadoBySite = new Map<string, number>();
     for (const p of producao) {
-      const projetoId = siteProjetoMap.get(p.site_id);
-      if (!projetoId) continue;
       const valor = Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0);
-      executadoByProjeto.set(projetoId, (executadoByProjeto.get(projetoId) || 0) + valor);
+      executadoBySite.set(p.site_id, (executadoBySite.get(p.site_id) || 0) + valor);
     }
     for (const dp of diarioProducoes) {
-      const projetoId = siteProjetoMap.get(dp.site_id);
-      if (!projetoId) continue;
       const valor = dp.quantidade * dp.preco_unitario;
-      executadoByProjeto.set(projetoId, (executadoByProjeto.get(projetoId) || 0) + valor);
+      executadoBySite.set(dp.site_id, (executadoBySite.get(dp.site_id) || 0) + valor);
     }
 
-    const faturadoByProjeto = new Map<string, number>();
+    // Per-site faturado
+    const faturadoBySite = new Map<string, number>();
     for (const f of faturamento) {
-      const projetoId = siteProjetoMap.get(f.site_id);
-      if (!projetoId) continue;
       const valor = f.valor_faturado ? Number(f.valor_faturado) : Number(f.quantidade) * Number(f.item_lpu?.preco_unitario || 0);
-      faturadoByProjeto.set(projetoId, (faturadoByProjeto.get(projetoId) || 0) + valor);
+      faturadoBySite.set(f.site_id, (faturadoBySite.get(f.site_id) || 0) + valor);
+    }
+
+    // Aggregate per projeto
+    const executadoByProjeto = new Map<string, number>();
+    const faturadoByProjeto = new Map<string, number>();
+    for (const s of sites) {
+      const exec = executadoBySite.get(s.id) || 0;
+      const fat = faturadoBySite.get(s.id) || 0;
+      executadoByProjeto.set(s.projeto_id, (executadoByProjeto.get(s.projeto_id) || 0) + exec);
+      faturadoByProjeto.set(s.projeto_id, (faturadoByProjeto.get(s.projeto_id) || 0) + fat);
     }
 
     const projetoRows: ProjetoRow[] = projetos.map(p => {
@@ -182,6 +197,21 @@ export default function QuadroGeral() {
       const percentual_evolucao = valor_contrato > 0 ? (valor_executado / valor_contrato) * 100 : 0;
       const areaName = (p as any).area_id ? (areaMap.get((p as any).area_id) || "Sem área") : "Sem área";
 
+      const projetoSites = sites.filter(s => s.projeto_id === p.id);
+      const siteRows: SiteRow[] = projetoSites.map(s => {
+        const sExec = executadoBySite.get(s.id) || 0;
+        const sFat = faturadoBySite.get(s.id) || 0;
+        return {
+          site_id: s.id,
+          site_codigo: s.codigo,
+          site_nome: s.nome,
+          valor_executado: sExec,
+          valor_faturado: sFat,
+          valor_nao_faturado: sExec - sFat,
+          percentual_evolucao: valor_contrato > 0 ? (sExec / valor_contrato) * 100 : 0,
+        };
+      });
+
       return {
         projeto_id: p.id,
         projeto_codigo: p.codigo,
@@ -189,10 +219,10 @@ export default function QuadroGeral() {
         cliente: p.cliente || "Sem cliente",
         area: areaName,
         valor_contrato, valor_executado, valor_faturado, valor_nao_faturado, saldo_contrato, percentual_evolucao,
+        siteRows,
       };
     });
 
-    // Group: area → cliente → projetos
     const areaClienteMap = new Map<string, Map<string, ProjetoRow[]>>();
     for (const row of projetoRows) {
       if (!areaClienteMap.has(row.area)) areaClienteMap.set(row.area, new Map());
@@ -221,7 +251,12 @@ export default function QuadroGeral() {
     const keys = new Set<string>();
     areaGroups.forEach(ag => {
       keys.add(`area:${ag.area}`);
-      ag.clientes.forEach(cg => keys.add(`cliente:${ag.area}|${cg.cliente}`));
+      ag.clientes.forEach(cg => {
+        keys.add(`cliente:${ag.area}|${cg.cliente}`);
+        cg.projetos.forEach(p => {
+          if (p.siteRows.length > 0) keys.add(`projeto:${p.projeto_id}`);
+        });
+      });
     });
     setExpanded(keys);
   };
@@ -232,18 +267,39 @@ export default function QuadroGeral() {
     for (const ag of areaGroups) {
       for (const cg of ag.clientes) {
         for (const p of cg.projetos) {
-          rows.push({
-            Área: p.area,
-            Cliente: p.cliente,
-            "Código Projeto": p.projeto_codigo,
-            "Nome Projeto": p.projeto_nome,
-            "Valor Contrato": p.valor_contrato,
-            "Valor Executado": p.valor_executado,
-            "Valor Faturado": p.valor_faturado,
-            "Não Faturado": p.valor_nao_faturado,
-            "Saldo Contrato": p.saldo_contrato,
-            "% Evolução": Number(p.percentual_evolucao.toFixed(1)),
-          });
+          if (p.siteRows.length > 0) {
+            for (const s of p.siteRows) {
+              rows.push({
+                Área: p.area,
+                Cliente: p.cliente,
+                "Código Projeto": p.projeto_codigo,
+                "Nome Projeto": p.projeto_nome,
+                "Código Site": s.site_codigo,
+                "Nome Site": s.site_nome,
+                "Valor Contrato": p.valor_contrato,
+                "Valor Executado": s.valor_executado,
+                "Valor Faturado": s.valor_faturado,
+                "Não Faturado": s.valor_nao_faturado,
+                "Saldo Contrato": "",
+                "% Evolução": Number(s.percentual_evolucao.toFixed(1)),
+              });
+            }
+          } else {
+            rows.push({
+              Área: p.area,
+              Cliente: p.cliente,
+              "Código Projeto": p.projeto_codigo,
+              "Nome Projeto": p.projeto_nome,
+              "Código Site": "",
+              "Nome Site": "",
+              "Valor Contrato": p.valor_contrato,
+              "Valor Executado": p.valor_executado,
+              "Valor Faturado": p.valor_faturado,
+              "Não Faturado": p.valor_nao_faturado,
+              "Saldo Contrato": p.saldo_contrato,
+              "% Evolução": Number(p.percentual_evolucao.toFixed(1)),
+            });
+          }
         }
       }
     }
@@ -280,7 +336,6 @@ export default function QuadroGeral() {
 
   return (
     <div className="space-y-4">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-4 px-4">
@@ -316,10 +371,9 @@ export default function QuadroGeral() {
         </Card>
       </div>
 
-      {/* Table */}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-lg">Quadro Geral por Área / Cliente / Projeto</CardTitle>
+          <CardTitle className="text-lg">Quadro Geral por Área / Cliente / Projeto / Site</CardTitle>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={expandAll}>Expandir Todos</Button>
             <Button variant="ghost" size="sm" onClick={collapseAll}>Recolher Todos</Button>
@@ -339,7 +393,7 @@ export default function QuadroGeral() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[320px]">Área / Cliente / Projeto</TableHead>
+                    <TableHead className="min-w-[360px]">Área / Cliente / Projeto / Site</TableHead>
                     <TableHead className="text-right">Valor Contrato</TableHead>
                     <TableHead className="text-right">Valor Executado</TableHead>
                     <TableHead className="text-right">Valor Faturado</TableHead>
@@ -356,7 +410,6 @@ export default function QuadroGeral() {
                     const totalProjetos = ag.clientes.reduce((s, c) => s + c.projetos.length, 0);
                     return (
                       <Fragment key={areaKey}>
-                        {/* Area row */}
                         <TableRow
                           className="bg-muted/60 cursor-pointer hover:bg-muted/80 transition-colors"
                           onClick={() => toggle(areaKey)}
@@ -379,7 +432,6 @@ export default function QuadroGeral() {
                           const clienteExpanded = expanded.has(clienteKey);
                           return (
                             <Fragment key={clienteKey}>
-                              {/* Cliente row */}
                               <TableRow
                                 className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
                                 onClick={() => toggle(clienteKey)}
@@ -397,26 +449,60 @@ export default function QuadroGeral() {
                                 <TotalsRow t={cg.totals} />
                               </TableRow>
 
-                              {/* Projeto rows */}
-                              {clienteExpanded && cg.projetos.map(p => (
-                                <TableRow key={p.projeto_id} className="hover:bg-muted/20">
-                                  <TableCell>
-                                    <div className="flex items-center gap-2 pl-16">
-                                      <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="font-medium text-sm">{p.projeto_codigo}</span>
-                                      <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
-                                  <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
-                                  <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
-                                  <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                                    {formatCurrency(p.valor_nao_faturado)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
-                                  <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
-                                </TableRow>
-                              ))}
+                              {clienteExpanded && cg.projetos.map(p => {
+                                const projetoKey = `projeto:${p.projeto_id}`;
+                                const projetoExpanded = expanded.has(projetoKey);
+                                const hasSites = p.siteRows.length > 0;
+                                return (
+                                  <Fragment key={p.projeto_id}>
+                                    <TableRow
+                                      className={cn("hover:bg-muted/20", hasSites && "cursor-pointer")}
+                                      onClick={() => hasSites && toggle(projetoKey)}
+                                    >
+                                      <TableCell>
+                                        <div className="flex items-center gap-2 pl-12">
+                                          {hasSites ? (
+                                            projetoExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                          ) : (
+                                            <span className="w-3.5" />
+                                          )}
+                                          <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                          <span className="font-medium text-sm">{p.projeto_codigo}</span>
+                                          <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
+                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
+                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
+                                      <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
+                                        {formatCurrency(p.valor_nao_faturado)}
+                                      </TableCell>
+                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
+                                      <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
+                                    </TableRow>
+
+                                    {projetoExpanded && p.siteRows.map(s => (
+                                      <TableRow key={s.site_id} className="hover:bg-muted/10">
+                                        <TableCell>
+                                          <div className="flex items-center gap-2 pl-20">
+                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="text-xs font-medium">{s.site_codigo}</span>
+                                            <span className="text-xs text-muted-foreground">— {s.site_nome}</span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs">{formatCurrency(s.valor_executado)}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs">{formatCurrency(s.valor_faturado)}</TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-xs", s.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
+                                          {formatCurrency(s.valor_nao_faturado)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
+                                        <TableCell><MiniProgressBar value={s.percentual_evolucao} /></TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </Fragment>
+                                );
+                              })}
                             </Fragment>
                           );
                         })}
