@@ -57,6 +57,22 @@ export default function DiarioObraPage() {
   const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
   const { itens: itensEscopo } = useEscopos(selectedSiteId);
 
+  // When no escopo is registered for the site, fall back to all project LPU items
+  const hasEscopo = itensEscopo.length > 0;
+  const itensDisponiveis = hasEscopo
+    ? itensEscopo.map(i => ({
+        id: i.item_lpu_id || i.id,
+        item_lpu_id: i.item_lpu_id || "",
+        nome: i.nome,
+        valor_unitario: i.valor_unitario,
+      }))
+    : itensLpu.map(i => ({
+        id: i.id,
+        item_lpu_id: i.id,
+        nome: `${i.codigo} - ${i.descricao}`,
+        valor_unitario: i.preco_unitario,
+      }));
+
   const {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
     producoes, addProducao, removeProducao,
