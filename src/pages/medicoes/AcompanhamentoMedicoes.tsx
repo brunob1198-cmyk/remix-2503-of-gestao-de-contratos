@@ -1179,8 +1179,99 @@ export default function AcompanhamentoMedicoesPage() {
                 <p className="text-center text-muted-foreground py-8">Nenhuma produção encontrada no período selecionado.</p>
               ) : (
                 <div className="space-y-4">
+                  {/* Sites header for agrupada/mista */}
+                  {(gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") && (() => {
+                    const siteNames = [...new Set(geracaoItens.filter(i => i.selected).map(i => `${i.site_codigo} - ${i.site_nome}`))].sort();
+                    return (
+                      <div className="p-3 rounded-md bg-muted/40 border text-sm">
+                        <p className="font-semibold mb-1">Sites incluídos na medição:</p>
+                        <p className="text-muted-foreground">{siteNames.join(" | ")}</p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Items table */}
                   <div className="overflow-x-auto max-h-[300px]">
+                    {(gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") ? (() => {
+                      // Group items by item_lpu_id, summing quantities
+                      const groupedMap = new Map<string, { item_lpu_id: string; item_codigo: string; item_descricao: string; unidade: string; preco_unitario: number; quantidade: number; quantidade_pendente: number; indices: number[] }>();
+                      geracaoItens.forEach((item, idx) => {
+                        const key = item.item_lpu_id;
+                        if (!groupedMap.has(key)) {
+                          groupedMap.set(key, {
+                            item_lpu_id: item.item_lpu_id,
+                            item_codigo: item.item_codigo,
+                            item_descricao: item.item_descricao,
+                            unidade: item.unidade,
+                            preco_unitario: item.preco_unitario,
+                            quantidade: item.quantidade,
+                            quantidade_pendente: item.quantidade_pendente,
+                            indices: [idx],
+                          });
+                        } else {
+                          const g = groupedMap.get(key)!;
+                          g.quantidade += item.quantidade;
+                          g.quantidade_pendente += item.quantidade_pendente;
+                          g.indices.push(idx);
+                        }
+                      });
+                      const groupedRows = Array.from(groupedMap.values());
+                      const allSelected = geracaoItens.every(i => i.selected);
+                      const groupedTotal = groupedRows.filter(g => g.indices.some(idx => geracaoItens[idx]?.selected)).reduce((s, g) => {
+                        const anySelected = g.indices.some(idx => geracaoItens[idx]?.selected);
+                        return anySelected ? s + (g.quantidade + g.quantidade_pendente) * g.preco_unitario : s;
+                      }, 0);
+
+                      return (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10">
+                                <Checkbox checked={allSelected} onCheckedChange={(checked) => setGeracaoItens(prev => prev.map(i => ({ ...i, selected: !!checked })))} />
+                              </TableHead>
+                              <TableHead>Item LPU</TableHead>
+                              <TableHead>Unidade</TableHead>
+                              <TableHead className="text-right">Qtd Total</TableHead>
+                              <TableHead className="text-right">Saldo Anterior</TableHead>
+                              <TableHead className="text-right">Sugerido para Medir</TableHead>
+                              <TableHead className="text-right">Preço Unit.</TableHead>
+                              <TableHead className="text-right">Valor Total</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {groupedRows.map((g) => {
+                              const isSelected = g.indices.some(idx => geracaoItens[idx]?.selected);
+                              return (
+                                <TableRow key={g.item_lpu_id} className={!isSelected ? "opacity-50" : ""}>
+                                  <TableCell>
+                                    <Checkbox checked={isSelected} onCheckedChange={(checked) => {
+                                      setGeracaoItens(prev => prev.map((item, idx) => g.indices.includes(idx) ? { ...item, selected: !!checked } : item));
+                                    }} />
+                                  </TableCell>
+                                  <TableCell className="max-w-xs truncate">{g.item_codigo} - {g.item_descricao}</TableCell>
+                                  <TableCell>{g.unidade}</TableCell>
+                                  <TableCell className="text-right font-mono">{g.quantidade.toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell className="text-right font-mono">
+                                    {g.quantidade_pendente > 0 ? (
+                                      <Badge variant="outline" className="text-amber-600 border-amber-300">+{g.quantidade_pendente.toLocaleString("pt-BR")}</Badge>
+                                    ) : "-"}
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono font-semibold">{(g.quantidade + g.quantidade_pendente).toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(g.preco_unitario)}</TableCell>
+                                  <TableCell className="text-right font-semibold">{formatCurrency((g.quantidade + g.quantidade_pendente) * g.preco_unitario)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                          <TableFooter>
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-right font-bold">Total:</TableCell>
+                              <TableCell className="text-right font-bold">{formatCurrency(groupedTotal)}</TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        </Table>
+                      );
+                    })() : (
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1235,6 +1326,7 @@ export default function AcompanhamentoMedicoesPage() {
                         </TableRow>
                       </TableFooter>
                     </Table>
+                    )}
                   </div>
 
                   {/* Photo preview */}
@@ -1264,49 +1356,83 @@ export default function AcompanhamentoMedicoesPage() {
                       </div>
 
                       {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") ? (
-                        // Group photos by site
+                        // Group photos by site - mista includes production summary per site
                         (() => {
-                          const siteGroups = new Map<string, GeracaoFoto[]>();
+                          const siteGroups = new Map<string, { fotos: GeracaoFoto[]; siteId: string }>();
                           geracaoFotos.forEach(f => {
                             const key = f.site_nome || "Sem site";
-                            if (!siteGroups.has(key)) siteGroups.set(key, []);
-                            siteGroups.get(key)!.push(f);
+                            if (!siteGroups.has(key)) siteGroups.set(key, { fotos: [], siteId: f.site_id || "" });
+                            siteGroups.get(key)!.fotos.push(f);
                           });
                           const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                           return (
-                            <div className="space-y-4 max-h-[300px] overflow-auto">
-                              {sorted.map(([siteName, fotos]) => (
-                                <div key={siteName}>
-                                  <p className="text-xs font-semibold text-muted-foreground mb-2 border-b pb-1">{siteName}</p>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {fotos.map((foto) => {
-                                      const idx = geracaoFotos.findIndex(f => f.id === foto.id);
-                                      return (
-                                        <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
-                                          <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
-                                          <div className="absolute top-2 left-2">
-                                            <Checkbox
-                                              checked={foto.selected}
-                                              onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
-                                              className="bg-white/80"
-                                            />
-                                          </div>
-                                          {foto.selected && (
-                                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
-                                              onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          )}
-                                          <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
-                                            {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
-                                            {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                            <div className="space-y-6 max-h-[400px] overflow-auto">
+                              {sorted.map(([siteName, { fotos, siteId }]) => {
+                                // For mista, show production table per site
+                                const siteItems = gerarTipoMedicao === "mista"
+                                  ? geracaoItens.filter(i => i.site_id === siteId && i.selected)
+                                  : [];
+                                return (
+                                  <div key={siteName} className="border rounded-lg overflow-hidden">
+                                    <div className="bg-[hsl(var(--primary))] text-primary-foreground px-4 py-2 font-semibold text-sm flex items-center gap-2">
+                                      <MapPin className="h-4 w-4" />
+                                      {siteName}
+                                    </div>
+                                    {gerarTipoMedicao === "mista" && siteItems.length > 0 && (
+                                      <div className="p-3 border-b bg-muted/20">
+                                        <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="text-xs">Item</TableHead>
+                                              <TableHead className="text-xs text-right">Qtd</TableHead>
+                                              <TableHead className="text-xs text-right">Valor</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {siteItems.map(si => (
+                                              <TableRow key={si.item_lpu_id}>
+                                                <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
+                                                <TableCell className="text-xs text-right py-1">{(si.quantidade + si.quantidade_pendente).toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                                <TableCell className="text-xs text-right py-1">{formatCurrency((si.quantidade + si.quantidade_pendente) * si.preco_unitario)}</TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    )}
+                                    <div className="p-3">
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {fotos.map((foto) => {
+                                          const idx = geracaoFotos.findIndex(f => f.id === foto.id);
+                                          return (
+                                            <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                                              <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                                              <div className="absolute top-2 left-2">
+                                                <Checkbox
+                                                  checked={foto.selected}
+                                                  onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                                  className="bg-white/80"
+                                                />
+                                              </div>
+                                              {foto.selected && (
+                                                <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                                  onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              )}
+                                              <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                                {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                                {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           );
                         })()
