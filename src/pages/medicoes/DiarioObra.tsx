@@ -57,6 +57,22 @@ export default function DiarioObraPage() {
   const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
   const { itens: itensEscopo } = useEscopos(selectedSiteId);
 
+  // When no escopo is registered for the site, fall back to all project LPU items
+  const hasEscopo = itensEscopo.length > 0;
+  const itensDisponiveis = hasEscopo
+    ? itensEscopo.map(i => ({
+        id: i.item_lpu_id || i.id,
+        item_lpu_id: i.item_lpu_id || "",
+        nome: i.nome,
+        valor_unitario: i.valor_unitario,
+      }))
+    : itensLpu.map(i => ({
+        id: i.id,
+        item_lpu_id: i.id,
+        nome: `${i.codigo} - ${i.descricao}`,
+        valor_unitario: i.preco_unitario,
+      }));
+
   const {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
     producoes, addProducao, removeProducao,
@@ -260,13 +276,13 @@ export default function DiarioObraPage() {
       toast({ title: "Foto obrigatória", description: "Adicione pelo menos uma foto/arquivo antes de salvar o item de produção.", variant: "destructive" });
       return;
     }
-    const escopoItem = itensEscopo.find(i => i.item_lpu_id === prodItemId);
-    if (!escopoItem) {
-      toast({ title: "Erro", description: "Item não encontrado no Escopo.", variant: "destructive" });
+    const selectedItem = itensDisponiveis.find(i => i.item_lpu_id === prodItemId);
+    if (!selectedItem) {
+      toast({ title: "Erro", description: "Item não encontrado.", variant: "destructive" });
       return;
     }
     const qtd = Number(prodQtd);
-    const preco = Number(escopoItem.valor_unitario);
+    const preco = Number(selectedItem.valor_unitario);
     const diarioId = await ensureDiario();
     const { data: prodData, error: prodError } = await supabase
       .from("diario_producao")
@@ -696,11 +712,11 @@ export default function DiarioObraPage() {
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">Item LPU (do Escopo)</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Item LPU {hasEscopo ? "(do Escopo)" : "(do Projeto)"}</label>
                   <Select value={prodItemId} onValueChange={setProdItemId}>
                     <SelectTrigger><SelectValue placeholder="Selecione item" /></SelectTrigger>
                     <SelectContent>
-                      {itensEscopo.map(i => (
+                      {itensDisponiveis.map(i => (
                         <SelectItem key={i.id || i.item_lpu_id} value={i.item_lpu_id || ""}>
                           {i.nome}
                         </SelectItem>
@@ -724,7 +740,7 @@ export default function DiarioObraPage() {
                   <Input
                     readOnly
                     value={prodItemId && prodQtd
-                      ? formatCurrency(Number(prodQtd) * Number(itensEscopo.find(i => i.item_lpu_id === prodItemId)?.valor_unitario || 0))
+                      ? formatCurrency(Number(prodQtd) * Number(itensDisponiveis.find(i => i.item_lpu_id === prodItemId)?.valor_unitario || 0))
                       : "—"}
                     className="bg-muted"
                   />
