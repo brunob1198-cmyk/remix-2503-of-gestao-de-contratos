@@ -17,7 +17,8 @@ export const pdfGlobalStyles = `
     .site-info-item { font-size: 11px; color: #475569; }
     .site-info-item strong { color: #0f172a; font-weight: 600; }
     
-    h2 { font-size: 13px; margin: 16px 0 8px; padding: 6px 10px; background: #1e3a5f; color: #ffffff; font-weight: 600; border-radius: 4px; page-break-after: avoid; }
+    h2 { font-size: 14px; margin: 20px 0 10px; padding: 10px 16px; background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%); color: #ffffff; font-weight: 700; border-radius: 6px; page-break-after: avoid; text-align: center; text-transform: uppercase; letter-spacing: 0.8px; box-shadow: 0 3px 8px rgba(30, 58, 95, 0.35), 0 1px 2px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    h2 .icon-h2 { width: 18px; height: 18px; flex-shrink: 0; }
     h3 { font-size: 12px; margin: 14px 0 6px; color: #334155; font-weight: 600; page-break-after: avoid; }
     
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; background: #f8fafc; padding: 12px 16px; border-radius: 6px; border: 1px solid #e2e8f0; }
