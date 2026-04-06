@@ -740,7 +740,7 @@ export default function DiarioObraPage() {
                   <Input
                     readOnly
                     value={prodItemId && prodQtd
-                      ? formatCurrency(Number(prodQtd) * Number(itensEscopo.find(i => i.item_lpu_id === prodItemId)?.valor_unitario || 0))
+                      ? formatCurrency(Number(prodQtd) * Number(itensDisponiveis.find(i => i.item_lpu_id === prodItemId)?.valor_unitario || 0))
                       : "—"}
                     className="bg-muted"
                   />
