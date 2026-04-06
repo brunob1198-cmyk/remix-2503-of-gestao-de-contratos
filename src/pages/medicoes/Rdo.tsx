@@ -191,7 +191,6 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           itemGroups.get(key)!.push(f);
         });
         return `
-        <div class="html2pdf__page-break"></div>
         <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Relatório Fotográfico</h2>
         ${itemOrder.map(key => {
           const photos = itemGroups.get(key)!;
@@ -200,12 +199,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
                 <img src="${f.url}" alt="foto" />
-                <div class="foto-info">
-                  <div class="foto-meta">
-                    <span class="foto-badge" style="background:${classificacaoColors[f.classificacao] || '#94a3b8'}">${classificacaoLabel[f.classificacao] || f.classificacao}</span>
-                  </div>
-                  ${f.legenda ? `<div class="foto-legenda">${f.legenda}</div>` : ''}
-                </div>
+                ${f.legenda ? `<div class="foto-info"><div class="foto-legenda">${f.legenda}</div></div>` : ''}
               </div>`;
           // Render in pairs so each row avoids page breaks
           const rows: string[] = [];
@@ -217,9 +211,11 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
             }
           }
           return `
-          <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
-          <div class="foto-grid">
-            ${rows.join('')}
+          <div class="foto-item-group" style="page-break-inside:avoid; break-inside:avoid;">
+            <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+            <div class="foto-grid">
+              ${rows.join('')}
+            </div>
           </div>`;
         }).join('')}`;
       })() : ''}
