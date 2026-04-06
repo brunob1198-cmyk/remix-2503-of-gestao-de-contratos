@@ -38,7 +38,7 @@ export default function DiarioObraPage() {
   const { projetos } = useProjetos();
   const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_obra_projeto_id", "");
   const { sites } = useSites(selectedProjetoId || undefined);
-  const { recursos, getCustoAtual, getAlocacoesBySite } = useRecursos();
+  const { recursos, alocacoes, getCustoAtual, getAlocacoesBySite } = useRecursos();
   const [activeTab, setActiveTab] = useState<string>("calendario");
   const [selectedSiteId, setSelectedSiteId] = usePersistedState<string>("diario_obra_site_id", "");
   const [selectedDate, setSelectedDate] = usePersistedState<string>("diario_obra_date", format(new Date(), "yyyy-MM-dd"));
