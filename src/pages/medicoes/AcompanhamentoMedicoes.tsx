@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLancamentosMedicao, useLancamentosProducao } from "@/hooks/useLancamentos";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -72,6 +73,8 @@ interface GeracaoFoto {
   item_codigo?: string;
   item_descricao?: string;
   diario_data?: string;
+  site_id?: string;
+  site_nome?: string;
   selected: boolean;
 }
 
@@ -132,6 +135,7 @@ export default function AcompanhamentoMedicoesPage() {
   const [gerarPeriodoFim, setGerarPeriodoFim] = useState<string>("");
   const [gerarNumeroMedicao, setGerarNumeroMedicao] = useState<string>("");
   const [geracaoItens, setGeracaoItens] = useState<GeracaoItem[]>([]);
+  const [gerarTipoMedicao, setGerarTipoMedicao] = useState<"separada" | "agrupada" | "mista">("separada");
   const [geracaoFotos, setGeracaoFotos] = useState<GeracaoFoto[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
@@ -547,6 +551,7 @@ export default function AcompanhamentoMedicoesPage() {
           setGeracaoFotos((fotos || []).map(f => {
             const diario = diarioMap.get(f.diario_id);
             const producao = (f as any).diario_producao_id ? producaoMap.get((f as any).diario_producao_id) : null;
+            const fotoSite = diario ? sites.find(s => s.id === diario.site_id) : null;
             return {
               id: f.id,
               url: f.url,
@@ -555,6 +560,8 @@ export default function AcompanhamentoMedicoesPage() {
               item_codigo: producao?.item_lpu?.codigo,
               item_descricao: producao?.item_lpu?.descricao,
               diario_data: diario?.data,
+              site_id: diario?.site_id,
+              site_nome: fotoSite ? `${fotoSite.codigo} - ${fotoSite.nome}` : undefined,
               selected: true,
             };
           }));
@@ -603,24 +610,60 @@ export default function AcompanhamentoMedicoesPage() {
 
     const today = new Date().toISOString().split("T")[0];
     const customLogo = localStorage.getItem("custom_logo_url") || "/logo.png";
-    const items = selectedItens.map(item => ({
-      site_id: item.site_id,
-      item_lpu_id: item.item_lpu_id,
-      data_medicao: today,
-      quantidade: item.quantidade + item.quantidade_pendente,
-      numero_medicao: gerarNumeroMedicao || undefined,
-      status: "enviada",
-      periodo_inicio: gerarPeriodoInicio,
-      periodo_fim: gerarPeriodoFim,
-      logo_empresa_url: customLogo,
-    }));
+
+    let items: any[];
+
+    if (gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") {
+      // For agrupada/mista: group items by item_lpu_id, summing quantities across sites
+      // Use the first site_id found (or pick an arbitrary one)
+      const grouped = new Map<string, { site_id: string; item_lpu_id: string; quantidade: number }>();
+      selectedItens.forEach(item => {
+        const key = item.item_lpu_id;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            site_id: item.site_id,
+            item_lpu_id: item.item_lpu_id,
+            quantidade: item.quantidade + item.quantidade_pendente,
+          });
+        } else {
+          const g = grouped.get(key)!;
+          g.quantidade += item.quantidade + item.quantidade_pendente;
+        }
+      });
+
+      items = Array.from(grouped.values()).map(g => ({
+        site_id: g.site_id,
+        item_lpu_id: g.item_lpu_id,
+        data_medicao: today,
+        quantidade: g.quantidade,
+        numero_medicao: gerarNumeroMedicao || undefined,
+        status: "enviada",
+        periodo_inicio: gerarPeriodoInicio,
+        periodo_fim: gerarPeriodoFim,
+        logo_empresa_url: customLogo,
+        observacao: gerarTipoMedicao === "mista" ? "tipo:mista" : "tipo:agrupada",
+      }));
+    } else {
+      // Separada: one entry per site+item
+      items = selectedItens.map(item => ({
+        site_id: item.site_id,
+        item_lpu_id: item.item_lpu_id,
+        data_medicao: today,
+        quantidade: item.quantidade + item.quantidade_pendente,
+        numero_medicao: gerarNumeroMedicao || undefined,
+        status: "enviada",
+        periodo_inicio: gerarPeriodoInicio,
+        periodo_fim: gerarPeriodoFim,
+        logo_empresa_url: customLogo,
+        observacao: "tipo:separada",
+      }));
+    }
 
     bulkCreateLancamento.mutate(items, {
       onSuccess: () => {
         // Clear pending quantities from the source lancamentos
         const pendingKeys = selectedItens.filter(i => i.quantidade_pendente > 0);
         if (pendingKeys.length > 0) {
-          // Reset pending on old rejected items
           const rejectedIds = lancamentos
             .filter(l => Number((l as any).quantidade_pendente) > 0 && pendingKeys.some(pk => pk.site_id === l.site_id && pk.item_lpu_id === l.item_lpu_id))
             .map(l => l.id);
@@ -640,6 +683,7 @@ export default function AcompanhamentoMedicoesPage() {
         setGerarPeriodoFim("");
         setGerarProjetoId("");
         setGerarSiteId("");
+        setGerarTipoMedicao("separada");
         setDuplicateWarnings([]);
       },
     });
@@ -1070,6 +1114,33 @@ export default function AcompanhamentoMedicoesPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-3 pt-2">
+                <Label className="text-base font-semibold">Tipo de Medição</Label>
+                <RadioGroup value={gerarTipoMedicao} onValueChange={(v) => setGerarTipoMedicao(v as any)} className="space-y-3">
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="separada" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Separada por Site</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição com o total de cada site de forma separada, com relatórios fotográficos individuais por site.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="agrupada" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Agrupada</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição única somando todos os sites numa LPU só, agrupando quantitativos e relatório fotográfico em um único documento.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+                    <RadioGroupItem value="mista" className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Medição Mista</p>
+                      <p className="text-xs text-muted-foreground">Emite uma medição única com total do período, mas separando os relatórios fotográficos por site em sequência (ordenados do menor ao maior nome).</p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowGerarDialog(false)}>Cancelar</Button>
                 <Button onClick={handleGerarMedicao} disabled={!gerarPeriodoInicio || !gerarPeriodoFim}>
@@ -1081,7 +1152,13 @@ export default function AcompanhamentoMedicoesPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950/30 text-sm">
                 <AlertTriangle className="h-4 w-4 text-blue-600" />
-                <span>Período: {formatDate(gerarPeriodoInicio)} a {formatDate(gerarPeriodoFim)} — {geracaoItens.filter(i => i.selected).length} itens selecionados</span>
+                <span>
+                  Período: {formatDate(gerarPeriodoInicio)} a {formatDate(gerarPeriodoFim)} — {geracaoItens.filter(i => i.selected).length} itens selecionados
+                  {" | Tipo: "}
+                  <strong>
+                    {gerarTipoMedicao === "separada" ? "Separada por Site" : gerarTipoMedicao === "agrupada" ? "Agrupada" : "Mista"}
+                  </strong>
+                </span>
               </div>
 
               {duplicateWarnings.length > 0 && (
@@ -1172,6 +1249,9 @@ export default function AcompanhamentoMedicoesPage() {
                         <h3 className="text-sm font-semibold flex items-center gap-2">
                           <Camera className="h-4 w-4" />
                           Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos)
+                          {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") && (
+                            <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
+                          )}
                         </h3>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: true })))}>
@@ -1182,34 +1262,81 @@ export default function AcompanhamentoMedicoesPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[300px] overflow-auto">
-                        {geracaoFotos.map((foto, idx) => (
-                          <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
-                            <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
-                            <div className="absolute top-2 left-2">
-                              <Checkbox
-                                checked={foto.selected}
-                                onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
-                                className="bg-white/80"
-                              />
+
+                      {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") ? (
+                        // Group photos by site
+                        (() => {
+                          const siteGroups = new Map<string, GeracaoFoto[]>();
+                          geracaoFotos.forEach(f => {
+                            const key = f.site_nome || "Sem site";
+                            if (!siteGroups.has(key)) siteGroups.set(key, []);
+                            siteGroups.get(key)!.push(f);
+                          });
+                          const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                          return (
+                            <div className="space-y-4 max-h-[300px] overflow-auto">
+                              {sorted.map(([siteName, fotos]) => (
+                                <div key={siteName}>
+                                  <p className="text-xs font-semibold text-muted-foreground mb-2 border-b pb-1">{siteName}</p>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {fotos.map((foto) => {
+                                      const idx = geracaoFotos.findIndex(f => f.id === foto.id);
+                                      return (
+                                        <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                                          <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                                          <div className="absolute top-2 left-2">
+                                            <Checkbox
+                                              checked={foto.selected}
+                                              onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                              className="bg-white/80"
+                                            />
+                                          </div>
+                                          {foto.selected && (
+                                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                              onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          )}
+                                          <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                            {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                            {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            {foto.selected && (
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                className="absolute top-2 right-2 h-6 w-6"
-                                onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                            <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
-                              {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
-                              {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                          );
+                        })()
+                      ) : (
+                        // Agrupada: flat grid
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[300px] overflow-auto">
+                          {geracaoFotos.map((foto, idx) => (
+                            <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
+                              <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
+                              <div className="absolute top-2 left-2">
+                                <Checkbox
+                                  checked={foto.selected}
+                                  onCheckedChange={() => setGeracaoFotos(prev => prev.map((f, j) => j === idx ? { ...f, selected: !f.selected } : f))}
+                                  className="bg-white/80"
+                                />
+                              </div>
+                              {foto.selected && (
+                                <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6"
+                                  onClick={() => setGeracaoFotos(prev => prev.filter((_, j) => j !== idx))}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <div className="p-1.5 bg-muted/50 text-[10px] space-y-0.5">
+                                {foto.item_codigo && <p className="font-medium truncate">{foto.item_codigo}</p>}
+                                {foto.diario_data && <p className="text-muted-foreground">{formatDate(foto.diario_data)}</p>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
