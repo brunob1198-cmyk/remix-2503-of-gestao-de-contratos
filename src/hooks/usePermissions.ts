@@ -19,6 +19,7 @@ export const TELAS = [
   { id: "rdo", label: "RDO" },
   { id: "analise", label: "Análise de Obras" },
   { id: "recursos", label: "Recursos" },
+  { id: "planejamento", label: "Planejamento de Obra" },
   { id: "producao", label: "Lançar Produção" },
   { id: "medicao", label: "Lançar Medição" },
   { id: "faturamento", label: "Portal de Faturamento" },
