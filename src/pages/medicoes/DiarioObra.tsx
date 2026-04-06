@@ -90,14 +90,17 @@ export default function DiarioObraPage() {
   // Build previsoes map (daily production targets from planejamento)
   const previsoes: Record<string, number> = {};
 
-  // Sync uf/municipio from diario when loaded
+  // Sync uf/municipio and observacoes from diario when loaded
   useEffect(() => {
     if (diario) {
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
+      setObs(diario.observacoes || "");
+    } else {
+      setObs("");
     }
-  }, [diario]);
+  }, [diario?.id]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
