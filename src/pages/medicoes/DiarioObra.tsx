@@ -775,11 +775,8 @@ export default function DiarioObraPage() {
                       }}
                     />
                     <Camera className="h-3.5 w-3.5" />
-                    Anexar Fotos/Arquivos *
+                    Anexar Fotos/Arquivos
                   </label>
-                  {pendingProdFiles.length === 0 && (
-                    <span className="text-xs text-destructive">Obrigatório: adicione pelo menos 1 foto/arquivo</span>
-                  )}
                 </div>
                 {pendingProdFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2">
