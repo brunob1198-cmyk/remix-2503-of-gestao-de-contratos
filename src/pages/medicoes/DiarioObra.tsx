@@ -283,10 +283,6 @@ export default function DiarioObraPage() {
       toast({ title: "Localização obrigatória", description: "Selecione UF e Município antes de lançar produção.", variant: "destructive" });
       return;
     }
-    if (pendingProdFiles.length === 0) {
-      toast({ title: "Foto obrigatória", description: "Adicione pelo menos uma foto/arquivo antes de salvar o item de produção.", variant: "destructive" });
-      return;
-    }
     const selectedItem = itensDisponiveis.find(i => i.item_lpu_id === prodItemId);
     if (!selectedItem) {
       toast({ title: "Erro", description: "Item não encontrado.", variant: "destructive" });
@@ -756,7 +752,7 @@ export default function DiarioObraPage() {
                     className="bg-muted"
                   />
                 </div>
-                <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd || pendingProdFiles.length === 0}>
+                <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd}>
                   <Plus className="h-4 w-4 mr-1" /> Adicionar
                 </Button>
               </div>
@@ -779,11 +775,8 @@ export default function DiarioObraPage() {
                       }}
                     />
                     <Camera className="h-3.5 w-3.5" />
-                    Anexar Fotos/Arquivos *
+                    Anexar Fotos/Arquivos
                   </label>
-                  {pendingProdFiles.length === 0 && (
-                    <span className="text-xs text-destructive">Obrigatório: adicione pelo menos 1 foto/arquivo</span>
-                  )}
                 </div>
                 {pendingProdFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -1256,28 +1249,24 @@ export default function DiarioObraPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Camera className="h-5 w-5 text-pink-600" />
-                Fotos Gerais (sem item específico)
+                Fotos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {["antes", "execucao", "problema"].map(cls => (
-                  <div key={cls}>
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept={ACCEPTED_FILE_TYPES}
-                        multiple
-                        className="hidden"
-                        onChange={e => handleUploadFoto(e, cls)}
-                      />
-                      <div className="flex items-center gap-2 border rounded-md px-3 py-2 hover:bg-accent transition-colors">
-                        <Upload className="h-4 w-4" />
-                        <span className="text-sm capitalize">{cls === "execucao" ? "Execução" : cls === "antes" ? "Antes" : "Problema"}</span>
-                      </div>
-                    </label>
+              <div>
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept={ACCEPTED_FILE_TYPES}
+                    multiple
+                    className="hidden"
+                    onChange={e => handleUploadFoto(e, "execucao")}
+                  />
+                  <div className="flex items-center gap-2 border rounded-md px-3 py-2 hover:bg-accent transition-colors w-fit">
+                    <Upload className="h-4 w-4" />
+                    <span className="text-sm">Enviar Fotos</span>
                   </div>
-                ))}
+                </label>
               </div>
 
               {(() => {
@@ -1287,18 +1276,13 @@ export default function DiarioObraPage() {
                     {fotosGerais.map(f => (
                       <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                         {isFileImage(f.url) ? (
-                          <img src={f.url} alt={f.legenda || f.classificacao} className="w-full h-32 object-cover" />
+                          <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" />
                         ) : (
                           <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                             <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
                             <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
                           </div>
                         )}
-                        <div className="absolute top-1 left-1">
-                          <Badge variant="secondary" className="text-[10px] capitalize">
-                            {f.classificacao === "execucao" ? "Execução" : f.classificacao === "antes" ? "Antes" : "Problema"}
-                          </Badge>
-                        </div>
                         <Button
                           variant="destructive"
                           size="icon"
