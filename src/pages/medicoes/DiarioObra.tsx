@@ -712,7 +712,7 @@ export default function DiarioObraPage() {
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className="text-xs text-muted-foreground mb-1 block">Item LPU (do Escopo)</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Item LPU {hasEscopo ? "(do Escopo)" : "(do Projeto)"}</label>
                   <Select value={prodItemId} onValueChange={setProdItemId}>
                     <SelectTrigger><SelectValue placeholder="Selecione item" /></SelectTrigger>
                     <SelectContent>
