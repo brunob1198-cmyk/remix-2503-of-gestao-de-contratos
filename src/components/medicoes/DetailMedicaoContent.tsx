@@ -17,6 +17,65 @@ function chunkPairs<T>(arr: T[]): T[][] {
 import html2pdf from "html2pdf.js";
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
+const PDF_EXPORT_MIN_WIDTH = 1024;
+
+const waitForPdfAssets = async (element: HTMLElement) => {
+  const images = Array.from(element.querySelectorAll("img"));
+
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) {
+        return img.decode?.().catch(() => undefined) ?? Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        const done = () => resolve();
+        img.addEventListener("load", done, { once: true });
+        img.addEventListener("error", done, { once: true });
+      });
+    }),
+  );
+
+  await document.fonts.ready.catch(() => undefined);
+
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+};
+
+const createPdfExportContainer = (source: HTMLElement) => {
+  const content = source.cloneNode(true) as HTMLDivElement;
+  const container = document.createElement("div");
+  const contentWidth = Math.max(Math.ceil(source.scrollWidth), PDF_EXPORT_MIN_WIDTH);
+
+  container.setAttribute("data-pdf-export", "medicao-detalhe");
+  Object.assign(container.style, {
+    position: "fixed",
+    left: "-10000px",
+    top: "0",
+    width: `${contentWidth}px`,
+    padding: "24px",
+    background: "#ffffff",
+    overflow: "visible",
+    pointerEvents: "none",
+    boxSizing: "border-box",
+  });
+
+  content.style.width = "100%";
+  content.style.maxWidth = "none";
+  content.style.overflow = "visible";
+
+  content.querySelectorAll("img").forEach((img) => {
+    img.loading = "eager";
+    img.decoding = "sync";
+  });
+
+  container.appendChild(content);
+  document.body.appendChild(container);
+
+  return { container, content, contentWidth };
+};
+
 interface DetailMedicaoContentProps {
   detailMedicao: {
     id: string;
@@ -267,15 +326,36 @@ export function DetailMedicaoContent({
   };
 
   const handleExportPdf = async () => {
-    if (!printRef.current) return;
+    if (!printRef.current || isExporting) return;
+
     setIsExporting(true);
+    let exportContainer: HTMLDivElement | null = null;
+
     try {
-      const opt = getPdfOptions(`Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`);
-      const element = printRef.current;
-      await html2pdf().set(opt).from(element).save();
+      const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
+      exportContainer = container;
+
+      await waitForPdfAssets(content);
+
+      const baseOptions = getPdfOptions(`Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`);
+
+      await html2pdf()
+        .set({
+          ...baseOptions,
+          html2canvas: {
+            ...baseOptions.html2canvas,
+            backgroundColor: "#ffffff",
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(content.scrollWidth, contentWidth),
+          },
+        })
+        .from(content)
+        .save();
     } catch (e) {
-      console.error(e);
+      console.error("Erro ao exportar PDF da medição:", e);
     } finally {
+      exportContainer?.remove();
       setIsExporting(false);
     }
   };
