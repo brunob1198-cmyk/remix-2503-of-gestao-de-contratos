@@ -92,6 +92,7 @@ export default function IntegracaoErpPage() {
           <p className="text-muted-foreground">Configure a integração com o Conta Azul e webhooks para ERP financeiro</p>
         </div>
         <div className="flex gap-2">
+          {isAdmin && <CategoriasErpButton />}
           <Button variant="outline" onClick={exportLogs} disabled={logs.length === 0}>
             <Download className="h-4 w-4 mr-2" /> Exportar Logs
           </Button>
