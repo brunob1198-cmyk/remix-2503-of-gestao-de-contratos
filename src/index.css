@@ -148,3 +148,29 @@ All colors MUST be HSL.
 .gantt-scroll::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.6);
 }
+
+/* Recursos Gantt - force exact row heights */
+.recursos-grid-sync tr {
+  height: 48px !important;
+  max-height: 48px !important;
+}
+.recursos-grid-sync tr td {
+  height: 48px !important;
+  max-height: 48px !important;
+  overflow: hidden;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  box-sizing: border-box;
+}
+.recursos-grid-sync thead tr {
+  height: 60px !important;
+  max-height: 60px !important;
+}
+.recursos-grid-sync thead tr th {
+  height: 60px !important;
+  max-height: 60px !important;
+  overflow: hidden;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  box-sizing: border-box;
+}
