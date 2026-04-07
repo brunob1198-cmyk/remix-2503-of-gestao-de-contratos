@@ -345,8 +345,17 @@ export default function AcompanhamentoMedicoesPage() {
     if (!medicao) return;
 
     const now = new Date().toISOString();
-    
+
+    // Delete removed lancamentos
+    if (reviewRemovedIds.size > 0) {
+      for (const removedId of reviewRemovedIds) {
+        await supabase.from("lancamentos_medicao").delete().eq("id", removedId);
+      }
+    }
+
+    // Update existing lancamentos (excluding removed)
     for (const lId of medicao.lancamentoIds) {
+       if (reviewRemovedIds.has(lId)) continue;
        const aprov = partialApprovalItems[lId] || 0;
        const l = lancamentos.find(x => x.id === lId);
        if (!l) continue;
@@ -361,6 +370,27 @@ export default function AcompanhamentoMedicoesPage() {
        }).eq("id", lId);
     }
 
+    // Insert new items
+    if (reviewNewItems.length > 0) {
+      const firstLanc = lancamentos.find(x => medicao.lancamentoIds.includes(x.id));
+      for (const ni of reviewNewItems) {
+        await supabase.from("lancamentos_medicao").insert({
+          item_lpu_id: ni.item_lpu_id,
+          quantidade: ni.quantidade,
+          quantidade_aprovada: ni.aprovado,
+          quantidade_rejeitada: ni.quantidade - ni.aprovado,
+          quantidade_pendente: ni.quantidade - ni.aprovado,
+          data_medicao: medicao.data_medicao,
+          site_id: medicao.site_id || firstLanc?.site_id || null,
+          numero_medicao: medicao.numero_medicao || null,
+          status: "enviada",
+          data_resposta: now,
+          periodo_inicio: medicao.periodo_inicio || null,
+          periodo_fim: medicao.periodo_fim || null,
+        });
+      }
+    }
+
     await supabase.from("medicao_status_historico").insert({
         site_id: medicao.site_id,
         numero_medicao: medicao.numero_medicao || null,
@@ -372,6 +402,9 @@ export default function AcompanhamentoMedicoesPage() {
     queryClient.invalidateQueries({ queryKey: ["lancamentos_medicao"] });
     queryClient.invalidateQueries({ queryKey: ["medicao_status_historico"] });
     setLocalEdits(prev => { const n = { ...prev }; delete n[partialApprovalMedicaoId]; return n; });
+    setReviewRemovedIds(new Set());
+    setReviewNewItems([]);
+    setReviewAddItemId("");
     setPartialApprovalMedicaoId(null);
   };
 
