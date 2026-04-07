@@ -31,7 +31,7 @@ import RdoPage from "./pages/medicoes/Rdo";
 import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
 import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
-
+import SupplyChainPage from "./pages/medicoes/SupplyChain";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +83,7 @@ const App = () => (
               <Route path="rdo" element={<RdoPage />} />
               <Route path="usuarios" element={<GerenciarUsuariosPage />} />
               <Route path="planejamento" element={<PlanejamentoObraPage />} />
+              <Route path="supply-chain" element={<SupplyChainPage />} />
               
               <Route path="perfil" element={<MeuPerfilPage />} />
             </Route>

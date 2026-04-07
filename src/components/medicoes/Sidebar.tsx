@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, MapPin, FileSpreadsheet,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
-  CalendarRange,
+  CalendarRange, ShoppingCart,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -44,6 +44,7 @@ const menuItems: MenuItem[] = [
   { title: "Portal de Faturamento", url: "/medicoes/faturamento", icon: DollarSign, telaId: "faturamento" },
   { title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios" },
   
+  { title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
 ];
 
