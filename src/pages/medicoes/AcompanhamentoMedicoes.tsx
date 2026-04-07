@@ -150,6 +150,9 @@ export default function AcompanhamentoMedicoesPage() {
   // Partial Approval (Revisão)
   const [partialApprovalMedicaoId, setPartialApprovalMedicaoId] = useState<string | null>(null);
   const [partialApprovalItems, setPartialApprovalItems] = useState<Record<string, number>>({});
+  const [reviewRemovedIds, setReviewRemovedIds] = useState<Set<string>>(new Set());
+  const [reviewNewItems, setReviewNewItems] = useState<Array<{ tempId: string; item_lpu_id: string; quantidade: number; aprovado: number }>>([]);
+  const [reviewAddItemId, setReviewAddItemId] = useState<string>("");
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -342,8 +345,17 @@ export default function AcompanhamentoMedicoesPage() {
     if (!medicao) return;
 
     const now = new Date().toISOString();
-    
+
+    // Delete removed lancamentos
+    if (reviewRemovedIds.size > 0) {
+      for (const removedId of reviewRemovedIds) {
+        await supabase.from("lancamentos_medicao").delete().eq("id", removedId);
+      }
+    }
+
+    // Update existing lancamentos (excluding removed)
     for (const lId of medicao.lancamentoIds) {
+       if (reviewRemovedIds.has(lId)) continue;
        const aprov = partialApprovalItems[lId] || 0;
        const l = lancamentos.find(x => x.id === lId);
        if (!l) continue;
@@ -358,6 +370,27 @@ export default function AcompanhamentoMedicoesPage() {
        }).eq("id", lId);
     }
 
+    // Insert new items
+    if (reviewNewItems.length > 0) {
+      const firstLanc = lancamentos.find(x => medicao.lancamentoIds.includes(x.id));
+      for (const ni of reviewNewItems) {
+        await supabase.from("lancamentos_medicao").insert({
+          item_lpu_id: ni.item_lpu_id,
+          quantidade: ni.quantidade,
+          quantidade_aprovada: ni.aprovado,
+          quantidade_rejeitada: ni.quantidade - ni.aprovado,
+          quantidade_pendente: ni.quantidade - ni.aprovado,
+          data_medicao: medicao.data_medicao,
+          site_id: medicao.site_id || firstLanc?.site_id || null,
+          numero_medicao: medicao.numero_medicao || null,
+          status: "enviada",
+          data_resposta: now,
+          periodo_inicio: medicao.periodo_inicio || null,
+          periodo_fim: medicao.periodo_fim || null,
+        });
+      }
+    }
+
     await supabase.from("medicao_status_historico").insert({
         site_id: medicao.site_id,
         numero_medicao: medicao.numero_medicao || null,
@@ -369,6 +402,9 @@ export default function AcompanhamentoMedicoesPage() {
     queryClient.invalidateQueries({ queryKey: ["lancamentos_medicao"] });
     queryClient.invalidateQueries({ queryKey: ["medicao_status_historico"] });
     setLocalEdits(prev => { const n = { ...prev }; delete n[partialApprovalMedicaoId]; return n; });
+    setReviewRemovedIds(new Set());
+    setReviewNewItems([]);
+    setReviewAddItemId("");
     setPartialApprovalMedicaoId(null);
   };
 
@@ -1500,95 +1536,181 @@ export default function AcompanhamentoMedicoesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Revisão Parcial (Aprovação/Rejeição por Item) */}
-      <Dialog open={!!partialApprovalMedicaoId} onOpenChange={(open) => { 
-        if (!open) {
-          if (partialApprovalMedicaoId) {
-            setLocalEdits(prev => {
-              const n = {...prev};
-              if (n[partialApprovalMedicaoId]) delete n[partialApprovalMedicaoId].status;
-              return n;
-            });
-          }
-          setPartialApprovalMedicaoId(null); 
-        }
-      }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-             <DialogTitle>Revisão de Medição</DialogTitle>
-             <p className="text-sm text-muted-foreground">
-               Ajuste as quantidades aprovadas. O saldo não aprovado ficará <b>Pendente</b> e voltará para a próxima geração de medição. Ao salvar, o status voltará para <b>Enviada</b>.
-             </p>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-md border overflow-x-auto max-h-[400px]">
-              <Table>
-                 <TableHeader className="bg-muted/50">
-                    <TableRow>
-                       <TableHead>Item</TableHead>
-                       <TableHead>Unid.</TableHead>
-                       <TableHead className="text-right">Executado</TableHead>
-                       <TableHead className="text-right w-40">Aprovado (Revisado)</TableHead>
-                       <TableHead className="text-right">Pendente (Saldo)</TableHead>
-                    </TableRow>
-                 </TableHeader>
-                  <TableBody>
-                    {(() => {
-                        const m = tableMedicoes.processedItems.find(x => x.id === partialApprovalMedicaoId);
-                        if (!m) return null;
-                        const partialLancamentos = lancamentos.filter(l => m.lancamentoIds.includes(l.id));
-                        return partialLancamentos.map(l => {
-                            const aprov = partialApprovalItems[l.id] ?? 0;
-                            const pend = Number(l.quantidade) - aprov;
-                            return (
-                              <TableRow key={l.id}>
-                                 <TableCell className="max-w-[250px] truncate" title={`${l.item_lpu?.codigo} - ${l.item_lpu?.descricao}`}>
-                                   <span className="font-mono text-xs">{l.item_lpu?.codigo}</span><br/>
-                                   {l.item_lpu?.descricao}
-                                 </TableCell>
-                                 <TableCell>{l.item_lpu?.unidade}</TableCell>
-                                 <TableCell className="text-right">{Number(l.quantidade).toLocaleString("pt-BR")}</TableCell>
-                                 <TableCell className="text-right">
-                                   <Input type="number" min={0} max={Number(l.quantidade)} step="any" value={aprov} onChange={e => {
-                                     let v = Number(e.target.value);
-                                     if (v > Number(l.quantidade)) v = Number(l.quantidade);
-                                     if (v < 0) v = 0;
-                                     setPartialApprovalItems(prev => ({...prev, [l.id]: v}));
-                                   }} className="w-28 ml-auto text-right border-primary/50 focus-visible:ring-primary" />
-                                 </TableCell>
-                                 <TableCell className="text-right text-amber-600 font-bold">{pend.toLocaleString("pt-BR")}</TableCell>
-                              </TableRow>
-                            )
-                        })
-                    })()}
-                 </TableBody>
-              </Table>
-            </div>
-          </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4 sm:justify-between items-center">
-             <Button variant="destructive" onClick={() => {
-                 const next = {...partialApprovalItems};
-                 Object.keys(next).forEach(k => next[k] = 0);
-                 setPartialApprovalItems(next);
-             }}>
-               Zerar Tudo (Rejeitar 100%)
-             </Button>
-             <div className="flex gap-2">
-               <Button variant="outline" onClick={() => {
-                  setLocalEdits(prev => {
-                    const n = {...prev};
-                    if (n[partialApprovalMedicaoId!]) delete n[partialApprovalMedicaoId!].status;
-                    return n;
-                  });
-                  setPartialApprovalMedicaoId(null);
-               }}>Cancelar</Button>
-               <Button onClick={handleSavePartialReview}>
-                 Confirmar Revisão e Salvar
+       {/* Dialog: Revisão Parcial (Aprovação/Rejeição por Item) */}
+       <Dialog open={!!partialApprovalMedicaoId} onOpenChange={(open) => { 
+         if (!open) {
+           if (partialApprovalMedicaoId) {
+             setLocalEdits(prev => {
+               const n = {...prev};
+               if (n[partialApprovalMedicaoId]) delete n[partialApprovalMedicaoId].status;
+               return n;
+             });
+           }
+           setPartialApprovalMedicaoId(null);
+           setReviewRemovedIds(new Set());
+           setReviewNewItems([]);
+           setReviewAddItemId("");
+         }
+       }}>
+         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+           <DialogHeader>
+              <DialogTitle>Revisão de Medição</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Ajuste as quantidades aprovadas. O saldo não aprovado ficará <b>Pendente</b> e voltará para a próxima geração de medição. Ao salvar, o status voltará para <b>Enviada</b>.
+              </p>
+           </DialogHeader>
+           <div className="space-y-4">
+             <div className="rounded-md border overflow-x-auto max-h-[400px]">
+               <Table>
+                  <TableHeader className="bg-muted/50">
+                     <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Unid.</TableHead>
+                        <TableHead className="text-right">Executado</TableHead>
+                        <TableHead className="text-right w-40">Aprovado (Revisado)</TableHead>
+                        <TableHead className="text-right">Pendente (Saldo)</TableHead>
+                        <TableHead className="w-10"></TableHead>
+                     </TableRow>
+                  </TableHeader>
+                   <TableBody>
+                     {(() => {
+                         const m = tableMedicoes.processedItems.find(x => x.id === partialApprovalMedicaoId);
+                         if (!m) return null;
+                         const partialLancamentos = lancamentos.filter(l => m.lancamentoIds.includes(l.id) && !reviewRemovedIds.has(l.id));
+                         const existingRows = partialLancamentos.map(l => {
+                             const aprov = partialApprovalItems[l.id] ?? 0;
+                             const pend = Number(l.quantidade) - aprov;
+                             return (
+                               <TableRow key={l.id}>
+                                  <TableCell className="max-w-[250px] truncate" title={`${l.item_lpu?.codigo} - ${l.item_lpu?.descricao}`}>
+                                    <span className="font-mono text-xs">{l.item_lpu?.codigo}</span><br/>
+                                    {l.item_lpu?.descricao}
+                                  </TableCell>
+                                  <TableCell>{l.item_lpu?.unidade}</TableCell>
+                                  <TableCell className="text-right">{Number(l.quantidade).toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Input type="number" min={0} max={Number(l.quantidade)} step="any" value={aprov} onChange={e => {
+                                      let v = Number(e.target.value);
+                                      if (v > Number(l.quantidade)) v = Number(l.quantidade);
+                                      if (v < 0) v = 0;
+                                      setPartialApprovalItems(prev => ({...prev, [l.id]: v}));
+                                    }} className="w-28 ml-auto text-right border-primary/50 focus-visible:ring-primary" />
+                                  </TableCell>
+                                  <TableCell className="text-right text-amber-600 font-bold">{pend.toLocaleString("pt-BR")}</TableCell>
+                                  <TableCell>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => {
+                                      setReviewRemovedIds(prev => new Set([...prev, l.id]));
+                                      setPartialApprovalItems(prev => { const n = {...prev}; delete n[l.id]; return n; });
+                                    }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                               </TableRow>
+                             )
+                         });
+
+                         const newRows = reviewNewItems.map(ni => {
+                           const itemLpu = allItensLpu.find(i => i.id === ni.item_lpu_id);
+                           const pend = ni.quantidade - ni.aprovado;
+                           return (
+                             <TableRow key={ni.tempId} className="bg-green-50 dark:bg-green-950/20">
+                               <TableCell className="max-w-[250px] truncate">
+                                 <Badge variant="outline" className="mr-1 text-xs">Novo</Badge>
+                                 <span className="font-mono text-xs">{itemLpu?.codigo}</span><br/>
+                                 {itemLpu?.descricao}
+                               </TableCell>
+                               <TableCell>{itemLpu?.unidade}</TableCell>
+                               <TableCell className="text-right">
+                                 <Input type="number" min={0} step="any" value={ni.quantidade} onChange={e => {
+                                   const v = Math.max(0, Number(e.target.value));
+                                   setReviewNewItems(prev => prev.map(x => x.tempId === ni.tempId ? {...x, quantidade: v, aprovado: Math.min(x.aprovado, v)} : x));
+                                 }} className="w-28 ml-auto text-right" />
+                               </TableCell>
+                               <TableCell className="text-right">
+                                 <Input type="number" min={0} max={ni.quantidade} step="any" value={ni.aprovado} onChange={e => {
+                                   let v = Number(e.target.value);
+                                   if (v > ni.quantidade) v = ni.quantidade;
+                                   if (v < 0) v = 0;
+                                   setReviewNewItems(prev => prev.map(x => x.tempId === ni.tempId ? {...x, aprovado: v} : x));
+                                 }} className="w-28 ml-auto text-right border-primary/50 focus-visible:ring-primary" />
+                               </TableCell>
+                               <TableCell className="text-right text-amber-600 font-bold">{pend.toLocaleString("pt-BR")}</TableCell>
+                               <TableCell>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => {
+                                   setReviewNewItems(prev => prev.filter(x => x.tempId !== ni.tempId));
+                                 }}>
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </TableCell>
+                             </TableRow>
+                           );
+                         });
+
+                         return [...existingRows, ...newRows];
+                     })()}
+                  </TableBody>
+               </Table>
+             </div>
+
+             {/* Add new item */}
+             <div className="flex items-end gap-2">
+               <div className="flex-1">
+                 <Label className="text-xs mb-1">Adicionar Item LPU</Label>
+                 <Select value={reviewAddItemId} onValueChange={setReviewAddItemId}>
+                   <SelectTrigger>
+                     <SelectValue placeholder="Selecione um item..." />
+                   </SelectTrigger>
+                   <SelectContent>
+                     {allItensLpu.map(item => (
+                       <SelectItem key={item.id} value={item.id}>
+                         {item.codigo} - {item.descricao}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+               <Button variant="outline" size="sm" disabled={!reviewAddItemId} onClick={() => {
+                 if (!reviewAddItemId) return;
+                 setReviewNewItems(prev => [...prev, {
+                   tempId: crypto.randomUUID(),
+                   item_lpu_id: reviewAddItemId,
+                   quantidade: 0,
+                   aprovado: 0,
+                 }]);
+                 setReviewAddItemId("");
+               }}>
+                 <Plus className="h-4 w-4 mr-1" /> Incluir
                </Button>
              </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+           </div>
+           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4 sm:justify-between items-center">
+              <Button variant="destructive" onClick={() => {
+                  const next = {...partialApprovalItems};
+                  Object.keys(next).forEach(k => next[k] = 0);
+                  setPartialApprovalItems(next);
+                  setReviewNewItems(prev => prev.map(x => ({...x, aprovado: 0})));
+              }}>
+                Zerar Tudo (Rejeitar 100%)
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => {
+                   setLocalEdits(prev => {
+                     const n = {...prev};
+                     if (n[partialApprovalMedicaoId!]) delete n[partialApprovalMedicaoId!].status;
+                     return n;
+                   });
+                   setPartialApprovalMedicaoId(null);
+                   setReviewRemovedIds(new Set());
+                   setReviewNewItems([]);
+                   setReviewAddItemId("");
+                }}>Cancelar</Button>
+                <Button onClick={handleSavePartialReview}>
+                  Confirmar Revisão e Salvar
+                </Button>
+              </div>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+     </div>
+   );
+ }
