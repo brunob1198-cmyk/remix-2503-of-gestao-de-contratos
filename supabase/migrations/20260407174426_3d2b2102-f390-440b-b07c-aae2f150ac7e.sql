@@ -1,0 +1,1 @@
+ALTER TABLE public.lancamentos_medicao ALTER COLUMN site_id DROP NOT NULL;
