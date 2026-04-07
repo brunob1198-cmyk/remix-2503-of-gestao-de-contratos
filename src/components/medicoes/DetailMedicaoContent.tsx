@@ -463,105 +463,68 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
-      const imageType = baseOptions.image?.type === "png" ? "PNG" : "JPEG";
-      const dataUrlType = imageType === "PNG" ? "image/png" : "image/jpeg";
-      const sections = collectPdfSections(content);
-      let currentY = marginTop;
+      const scale = 1.5;
+      const imageQuality = 0.82;
 
-      for (let index = 0; index < sections.length; index += 1) {
-        const section = sections[index];
-        const captureScale = section.containsImages ? 1.45 : Math.min(baseOptions.html2canvas?.scale ?? 2, 1.7);
-        const imageQuality = section.containsImages ? 0.78 : Math.min(baseOptions.image?.quality ?? 0.98, 0.9);
+      // 1. Render the entire content as one large canvas
+      const totalHeight = content.scrollHeight;
 
+      // Create a viewport for slicing
+      const viewport = document.createElement("div");
+      viewport.setAttribute("data-pdf-export-viewport", "medicao-detalhe");
+      Object.assign(viewport.style, {
+        position: "relative",
+        width: `${contentWidth}px`,
+        overflow: "hidden",
+        background: "#ffffff",
+        boxSizing: "border-box",
+      });
+      container.replaceChildren(viewport);
+      content.style.transformOrigin = "top left";
+      content.style.willChange = "transform";
+      viewport.appendChild(content);
+
+      // 2. Collect safe break points from data-pdf-section boundaries
+      const safeBreaks = collectSafeBreakPoints(content);
+
+      // 3. Build page slices
+      const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
+
+      // 4. Render each slice
+      for (let i = 0; i < slices.length; i++) {
+        const slice = slices[i];
+
+        viewport.style.height = `${slice.height}px`;
+        content.style.transform = `translate3d(0, -${slice.start}px, 0)`;
         await waitForNextPaint();
 
-        const canvas = await capturePdfElement(section.element, contentWidth, captureScale);
+        const canvas = await html2canvas(viewport, {
+          scale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: contentWidth,
+          height: slice.height,
+          windowWidth: contentWidth,
+          windowHeight: slice.height,
+          scrollX: 0,
+          scrollY: 0,
+        });
 
         const renderedHeight = (canvas.height * usableWidth) / canvas.width;
 
-        if (renderedHeight <= usableHeight) {
-          const availableHeight = pageHeight - marginBottom - currentY;
+        if (i > 0) pdf.addPage();
 
-          if (currentY > marginTop && renderedHeight > availableHeight) {
-            pdf.addPage();
-            currentY = marginTop;
-          }
-
-          pdf.addImage(
-            canvas.toDataURL(dataUrlType, imageQuality),
-            imageType,
-            marginLeft,
-            currentY,
-            usableWidth,
-            renderedHeight,
-            undefined,
-            "MEDIUM",
-          );
-
-          currentY += renderedHeight + (index < sections.length - 1 ? PDF_SECTION_GAP_MM : 0);
-          continue;
-        }
-
-        const { container: fallbackContainer, content: fallbackContent, contentWidth: fallbackWidth } = createPdfExportContainer(printRef.current);
-
-        try {
-          await waitForPdfAssets(fallbackContent);
-
-          const fallbackViewport = createPdfCaptureViewport(fallbackContainer, fallbackContent, fallbackWidth);
-          const fallbackPageHeightPx = Math.floor(fallbackWidth * (usableHeight / usableWidth));
-          const fallbackBlocks = buildPdfBlocksInRange(
-            getAvoidBreakAreas(fallbackContent),
-            section.start,
-            section.end,
-            fallbackPageHeightPx,
-            section.containsImages,
-          );
-
-          for (let blockIndex = 0; blockIndex < fallbackBlocks.length; blockIndex += 1) {
-            const block = fallbackBlocks[blockIndex];
-
-            fallbackViewport.style.height = `${block.height}px`;
-            fallbackContent.style.transform = `translate3d(0, -${block.start}px, 0)`;
-            await waitForNextPaint();
-
-            const blockCanvas = await html2canvas(fallbackViewport, {
-              scale: captureScale,
-              useCORS: true,
-              backgroundColor: "#ffffff",
-              logging: false,
-              width: fallbackWidth,
-              height: block.height,
-              windowWidth: fallbackWidth,
-              windowHeight: block.height,
-              scrollX: 0,
-              scrollY: 0,
-            });
-
-            const blockRenderedHeight = (blockCanvas.height * usableWidth) / blockCanvas.width;
-            const availableHeight = pageHeight - marginBottom - currentY;
-
-            if (currentY > marginTop && blockRenderedHeight > availableHeight) {
-              pdf.addPage();
-              currentY = marginTop;
-            }
-
-            pdf.addImage(
-              blockCanvas.toDataURL(dataUrlType, imageQuality),
-              imageType,
-              marginLeft,
-              currentY,
-              usableWidth,
-              blockRenderedHeight,
-              undefined,
-              "MEDIUM",
-            );
-
-            const isLastRenderedBlock = index === sections.length - 1 && blockIndex === fallbackBlocks.length - 1;
-            currentY += blockRenderedHeight + (isLastRenderedBlock ? 0 : PDF_SECTION_GAP_MM);
-          }
-        } finally {
-          fallbackContainer.remove();
-        }
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", imageQuality),
+          "JPEG",
+          marginLeft,
+          marginTop,
+          usableWidth,
+          renderedHeight,
+          undefined,
+          "MEDIUM",
+        );
       }
 
       pdf.save(filename);
