@@ -1,0 +1,1 @@
+ALTER TABLE public.mapeamento_categorias_erp ADD COLUMN IF NOT EXISTS ativo boolean NOT NULL DEFAULT true;
