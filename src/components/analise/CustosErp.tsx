@@ -20,21 +20,14 @@ interface CustosErpProps {
   periodoFim: Date;
 }
 
-const CATEGORIAS_ENG = [
+// Categorias padrão usadas na Análise de Custos
+const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
   "Equipamentos",
   "Transporte",
   "Indiretos",
   "Financeiros",
-  "Diaria - Refeicao - Campo",
-  "Exames Médicos",
-  "Materiais Aplicados na Prestação de Serviços",
-  "Diaria - Hospedagem - Campo",
-  "Locacao Veiculos",
-  "Prestador de Servico",
-  "Combustivel - Campo",
-  "Pedágio - Campo",
 ];
 
 type ColKey = "competencia" | "descricao" | "mapeamento" | "centro_custo" | "valor" | "status" | "categoria";
@@ -317,9 +310,9 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
                            <SelectValue />
                          </SelectTrigger>
                          <SelectContent>
-                           {CATEGORIAS_ENG.map(cat => (
-                             <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
-                           ))}
+                            {CATEGORIAS_PADRAO.map(cat => (
+                              <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                            ))}
                          </SelectContent>
                        </Select>
                     </td>

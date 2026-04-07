@@ -1590,6 +1590,7 @@ export type Database = {
       }
       mapeamento_categorias_erp: {
         Row: {
+          ativo: boolean
           categoria_erp: string
           categoria_interna: string
           created_at: string | null
@@ -1597,6 +1598,7 @@ export type Database = {
           id: string
         }
         Insert: {
+          ativo?: boolean
           categoria_erp: string
           categoria_interna?: string
           created_at?: string | null
@@ -1604,6 +1606,7 @@ export type Database = {
           id?: string
         }
         Update: {
+          ativo?: boolean
           categoria_erp?: string
           categoria_interna?: string
           created_at?: string | null

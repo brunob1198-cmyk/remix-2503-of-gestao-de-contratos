@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useErpConfig, useErpLogs, useErpSend } from "@/hooks/useErpIntegration";
 import { useContaAzulConnection } from "@/hooks/useAnaliseCustos";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock, Link2, Unlink, CloudOff } from "lucide-react";
+import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock, Link2, Unlink, CloudOff, EyeOff, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { useSearchParams } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export default function IntegracaoErpPage() {
   const { role } = useAuth();
@@ -269,6 +272,9 @@ export default function IntegracaoErpPage() {
         )}
       </div>
 
+      {/* Gestão de Categorias ERP */}
+      {isAdmin && <CategoriasErpCard />}
+
       {/* Logs */}
       <Card>
         <CardHeader>
@@ -325,5 +331,110 @@ export default function IntegracaoErpPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CategoriasErpCard() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: categorias = [], isLoading } = useQuery({
+    queryKey: ["mapeamento_categorias_erp_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mapeamento_categorias_erp")
+        .select("*")
+        .order("categoria_erp");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const toggleAtivo = useMutation({
+    mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
+      const { error } = await supabase
+        .from("mapeamento_categorias_erp")
+        .update({ ativo })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mapeamento_categorias_erp_all"] });
+      queryClient.invalidateQueries({ queryKey: ["categorias_erp_desativadas"] });
+      queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
+      queryClient.invalidateQueries({ queryKey: ["analise_custos_matrix_mensal"] });
+      toast({ title: "Categoria atualizada!" });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  const ativas = categorias.filter((c: any) => c.ativo !== false);
+  const desativadas = categorias.filter((c: any) => c.ativo === false);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Settings className="h-5 w-5" /> Gestão de Categorias ERP
+        </CardTitle>
+        <CardDescription>
+          Desabilite categorias importadas do Conta Azul para que não sejam contabilizadas na Análise de Custos nem visíveis na operação.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-muted-foreground text-center py-4">Carregando...</p>
+        ) : categorias.length === 0 ? (
+          <p className="text-muted-foreground text-center py-8">Nenhuma categoria importada do ERP ainda. Sincronize despesas primeiro.</p>
+        ) : (
+          <div className="space-y-4">
+            {desativadas.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                <Badge variant="secondary" className="mr-2">{desativadas.length}</Badge>
+                categoria{desativadas.length > 1 ? "s" : ""} desativada{desativadas.length > 1 ? "s" : ""}
+              </div>
+            )}
+            <div className="overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Categoria ERP (Original)</TableHead>
+                    <TableHead>Categoria Interna</TableHead>
+                    <TableHead className="text-center">IA</TableHead>
+                    <TableHead className="text-center w-32">Visível / Ativa</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categorias.map((cat: any) => (
+                    <TableRow key={cat.id} className={cat.ativo === false ? "opacity-50" : ""}>
+                      <TableCell className="font-medium">{cat.categoria_erp}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{cat.categoria_interna}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {cat.criado_por_ia && <Badge variant="secondary" className="text-xs">IA</Badge>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {cat.ativo === false ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-primary" />
+                          )}
+                          <Switch
+                            checked={cat.ativo !== false}
+                            onCheckedChange={(checked) => toggleAtivo.mutate({ id: cat.id, ativo: checked })}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
