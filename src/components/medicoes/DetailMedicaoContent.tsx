@@ -157,6 +157,35 @@ export function DetailMedicaoContent({
     [],
   );
 
+  // Fetch diary observations per site (for mista)
+  const { data: observacoesBySite = new Map<string, string[]>() } = useQuery({
+    queryKey: ["medicao_site_obs", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!isMultiSite || !detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return new Map<string, string[]>();
+
+      const { data: diarios } = await supabase
+        .from("diarios_obra")
+        .select("site_id, observacoes")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio!)
+        .lte("data", detailMedicao.periodo_fim!)
+        .not("observacoes", "is", null);
+
+      const map = new Map<string, string[]>();
+      (diarios || []).forEach(d => {
+        if (d.observacoes?.trim()) {
+          if (!map.has(d.site_id)) map.set(d.site_id, []);
+          const list = map.get(d.site_id)!;
+          if (!list.includes(d.observacoes.trim())) {
+            list.push(d.observacoes.trim());
+          }
+        }
+      });
+      return map;
+    },
+    enabled: isMultiSite && !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
   // Fetch diary photos
   const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
     queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
