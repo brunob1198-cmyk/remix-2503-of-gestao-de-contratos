@@ -1,15 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
 import { MapPin, BarChart3, TrendingUp } from "lucide-react";
-import { useEffect } from "react";
 import { extractExifGeoDataFromArrayBuffer } from "@/lib/exifExtractor";
 
 interface ProdutividadeMapaProps {
@@ -23,6 +24,7 @@ interface ProdRegiao {
   latitude: number | null;
   longitude: number | null;
   totalQuantidade: number;
+  totalValor: number;
   totalItens: number;
   avgQuantidade: number;
   photos: string[];
@@ -38,10 +40,8 @@ async function getCoordinatesFromPhotos(photoUrls: string[]): Promise<{ lat: num
     try {
       const response = await fetch(url);
       if (!response.ok) continue;
-
       const arrayBuffer = await response.arrayBuffer();
       const exifData = extractExifGeoDataFromArrayBuffer(arrayBuffer);
-
       if (exifData.hasGps && exifData.latitude !== null && exifData.longitude !== null) {
         return { lat: exifData.latitude, lng: exifData.longitude };
       }
@@ -49,7 +49,6 @@ async function getCoordinatesFromPhotos(photoUrls: string[]): Promise<{ lat: num
       console.warn("Falha ao ler GPS da foto do diário:", error);
     }
   }
-
   return null;
 }
 
@@ -78,45 +77,48 @@ function getRadius(value: number, max: number): number {
   return Math.max(8, Math.min(30, 8 + ratio * 22));
 }
 
-export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaProps) {
-  const [metrica, setMetrica] = useState<"totalQuantidade" | "totalItens" | "avgQuantidade">("totalQuantidade");
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-  // Fetch production data with municipality info
+export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaProps) {
+  const [metrica, setMetrica] = useState<"totalValor" | "totalQuantidade" | "totalItens" | "avgQuantidade">("totalValor");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+
   const { data: regioes = [], isLoading } = useQuery({
-    queryKey: ["produtividade-mapa", projetoId, siteFilter],
+    queryKey: ["produtividade-mapa", projetoId, siteFilter, dataInicio, dataFim],
     queryFn: async () => {
-      // Get project sites
       let querySites = supabase
         .from("sites")
         .select("id, municipio, uf")
         .eq("projeto_id", projetoId);
-        
       if (siteFilter) {
         querySites = querySites.eq("id", siteFilter);
       }
-      
       const { data: sites } = await querySites;
       if (!sites?.length) return [];
 
       const siteIds = sites.map((s) => s.id);
 
-      // Get diaries for these sites
-      const { data: diariosGeral } = await supabase
+      // Get diaries with optional date filter
+      let queryDiarios = supabase
         .from("diarios_obra")
-        .select("id, site_id, municipio, uf")
+        .select("id, site_id, municipio, uf, data")
         .in("site_id", siteIds);
+      if (dataInicio) queryDiarios = queryDiarios.gte("data", dataInicio);
+      if (dataFim) queryDiarios = queryDiarios.lte("data", dataFim);
 
+      const { data: diariosGeral } = await queryDiarios;
       if (!diariosGeral?.length) return [];
-      
+
       const diarioIds = diariosGeral.map(d => d.id);
       const diarioMap = Object.fromEntries(diariosGeral.map(d => [d.id, d]));
 
-      // Get production per site using Diario de Obra
+      // Get production with valor_total
       const { data: prods } = await supabase
         .from("diario_producao")
-        .select("diario_id, quantidade")
+        .select("diario_id, quantidade, valor_total")
         .in("diario_id", diarioIds);
-
       if (!prods?.length) return [];
 
       const { data: photosData } = await supabase
@@ -154,17 +156,15 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; count: number; photos: string[] }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; totalValor: number; count: number; photos: string[] }> = {};
 
       const photosByMunicipio: Record<string, string[]> = {};
       (photosData ?? []).forEach((photo) => {
         const dInfo = diarioMap[photo.diario_id];
         if (!dInfo) return;
-
         const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun || !uf) return;
-
         const key = `${mun}__${uf}`;
         photosByMunicipio[key] = [...(photosByMunicipio[key] || []), photo.url];
       });
@@ -172,7 +172,6 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       prods.forEach((p: any) => {
         const dInfo = diarioMap[p.diario_id];
         if (!dInfo) return;
-        
         const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun) return;
@@ -187,30 +186,32 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
             lat: coords?.lat ?? null,
             lng: coords?.lng ?? null,
             total: 0,
+            totalValor: 0,
             count: 0,
             photos: Array.from(new Set(photosByMunicipio[key] || [])),
           };
         }
         aggMap[key].total += Number(p.quantidade);
+        aggMap[key].totalValor += Number(p.valor_total) || 0;
         aggMap[key].count += 1;
       });
 
       const regioesBase = Object.values(aggMap);
 
-      // Fallback 1: Try to get coordinates from photos (EXIF)
+      // Fallback: EXIF coords from photos
       await Promise.all(
         regioesBase
-          .filter((regiao) => (regiao.lat === null || regiao.lng === null) && regiao.photos.length > 0)
-          .map(async (regiao) => {
-            const coordsFromPhoto = await getCoordinatesFromPhotos(regiao.photos);
+          .filter((r) => (r.lat === null || r.lng === null) && r.photos.length > 0)
+          .map(async (r) => {
+            const coordsFromPhoto = await getCoordinatesFromPhotos(r.photos);
             if (coordsFromPhoto) {
-              regiao.lat = coordsFromPhoto.lat;
-              regiao.lng = coordsFromPhoto.lng;
+              r.lat = coordsFromPhoto.lat;
+              r.lng = coordsFromPhoto.lng;
             }
           })
       );
 
-      // Fallback 2: For remaining municipalities without coordinates, try Nominatim
+      // Fallback: Nominatim
       const missingCoords = regioesBase.filter((r) => r.lat === null || r.lng === null);
       if (missingCoords.length > 0) {
         await Promise.all(
@@ -238,16 +239,17 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         latitude: a.lat,
         longitude: a.lng,
         totalQuantidade: a.total,
+        totalValor: a.totalValor,
         totalItens: a.count,
         avgQuantidade: a.count > 0 ? a.total / a.count : 0,
-        photos: Array.from(new Set(a.photos)).slice(0, 10), // Unique photos, limit 10
+        photos: Array.from(new Set(a.photos)).slice(0, 10),
       })) as ProdRegiao[];
     },
     enabled: !!projetoId,
   });
 
   const mapRegioes = useMemo(
-    () => regioes.filter((regiao) => regiao.latitude !== null && regiao.longitude !== null) as Array<ProdRegiao & { latitude: number; longitude: number }>,
+    () => regioes.filter((r) => r.latitude !== null && r.longitude !== null) as Array<ProdRegiao & { latitude: number; longitude: number }>,
     [regioes]
   );
 
@@ -267,27 +269,57 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
   }, [regioes, metrica, maxValue]);
 
   const METRICA_LABELS: Record<string, string> = {
+    totalValor: "Valor Total (R$)",
     totalQuantidade: "Quantidade Total",
     totalItens: "Nº Lançamentos",
     avgQuantidade: "Média por Lançamento",
   };
 
+  const isValorMetrica = metrica === "totalValor";
+
   return (
     <div className="space-y-4">
       {/* Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <div className="w-52">
-          <label className="text-xs font-medium mb-1 block">Métrica</label>
+          <Label className="text-xs font-medium mb-1 block">Métrica</Label>
           <Select value={metrica} onValueChange={(v) => setMetrica(v as any)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="totalValor">Valor Total (R$)</SelectItem>
               <SelectItem value="totalQuantidade">Quantidade Total</SelectItem>
               <SelectItem value="totalItens">Nº de Lançamentos</SelectItem>
               <SelectItem value="avgQuantidade">Média por Lançamento</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-3 ml-auto text-xs">
+        <div>
+          <Label className="text-xs font-medium mb-1 block">Data Início</Label>
+          <Input
+            type="date"
+            value={dataInicio}
+            onChange={(e) => setDataInicio(e.target.value)}
+            className="w-[140px] h-9"
+          />
+        </div>
+        <div>
+          <Label className="text-xs font-medium mb-1 block">Data Fim</Label>
+          <Input
+            type="date"
+            value={dataFim}
+            onChange={(e) => setDataFim(e.target.value)}
+            className="w-[140px] h-9"
+          />
+        </div>
+        {(dataInicio || dataFim) && (
+          <button
+            onClick={() => { setDataInicio(""); setDataFim(""); }}
+            className="text-xs text-primary hover:underline pb-2"
+          >
+            Limpar
+          </button>
+        )}
+        <div className="flex items-center gap-3 ml-auto text-xs pb-2">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-emerald-500" /> Alta
           </div>
@@ -316,14 +348,14 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                     <p className="text-xs mt-1">Registre produções com município para visualizar no mapa</p>
                   </div>
                 </div>
-                ) : mapRegioes.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    <div className="text-center max-w-xs">
-                      <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Os dados do Diário foram encontrados, mas ainda sem coordenadas válidas para o mapa.</p>
-                      <p className="text-xs mt-1">O ranking e as fotos já estão sendo exibidos ao lado.</p>
-                    </div>
+              ) : mapRegioes.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  <div className="text-center max-w-xs">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Os dados do Diário foram encontrados, mas ainda sem coordenadas válidas para o mapa.</p>
+                    <p className="text-xs mt-1">O ranking e as fotos já estão sendo exibidos ao lado.</p>
                   </div>
+                </div>
               ) : (
                 <MapContainer
                   center={[-14.235, -51.9253]}
@@ -335,11 +367,10 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                    <FitBoundsRegiao regioes={mapRegioes} />
-
-                    {mapRegioes.map((r) => (
+                  <FitBoundsRegiao regioes={mapRegioes} />
+                  {mapRegioes.map((r) => (
                     <CircleMarker
-                        key={`${r.municipio}-${r.uf}`}
+                      key={`${r.municipio}-${r.uf}`}
                       center={[r.latitude, r.longitude]}
                       radius={getRadius(r[metrica], maxValue)}
                       pathOptions={{
@@ -353,17 +384,17 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                         <div className="text-xs space-y-2">
                           <p className="font-bold border-b pb-1">{r.municipio}/{r.uf}</p>
                           <div className="space-y-0.5">
+                            <p>Valor Total: <strong>{formatCurrency(r.totalValor)}</strong></p>
                             <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
                             <p>Lançamentos: <strong>{r.totalItens}</strong></p>
                             <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
                           </div>
-                          
                           {r.photos.length > 0 && (
                             <div className="space-y-1 pt-1">
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
                               <div className="grid grid-cols-2 gap-1 max-w-[140px]">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                    <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
+                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (
@@ -399,7 +430,11 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
               ) : (
                 <ResponsiveContainer width="100%" height={380}>
                   <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 10, top: 0, bottom: 0 }}>
-                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={isValorMetrica ? (v) => `R$ ${(v / 1000).toFixed(0)}k` : undefined}
+                    />
                     <YAxis
                       dataKey="name"
                       type="category"
@@ -408,7 +443,10 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                     />
                     <ReTooltip
                       contentStyle={{ fontSize: 12 }}
-                      formatter={(value: number) => [value.toLocaleString("pt-BR"), METRICA_LABELS[metrica]]}
+                      formatter={(value: number) => [
+                        isValorMetrica ? formatCurrency(value) : value.toLocaleString("pt-BR"),
+                        METRICA_LABELS[metrica],
+                      ]}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       {chartData.map((d, i) => (
@@ -439,9 +477,9 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <BarChart3 className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-xs text-muted-foreground">Total Produzido</p>
+                <p className="text-xs text-muted-foreground">Valor Total Produzido</p>
                 <p className="text-lg font-bold">
-                  {regioes.reduce((s, r) => s + r.totalQuantidade, 0).toLocaleString("pt-BR")}
+                  {formatCurrency(regioes.reduce((s, r) => s + r.totalValor, 0))}
                 </p>
               </div>
             </CardContent>
@@ -453,7 +491,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                 <p className="text-xs text-muted-foreground">Região Mais Produtiva</p>
                 <p className="text-sm font-bold truncate">
                   {regioes.length > 0
-                    ? [...regioes].sort((a, b) => b.totalQuantidade - a.totalQuantidade)[0].municipio
+                    ? [...regioes].sort((a, b) => b.totalValor - a.totalValor)[0].municipio
                     : "—"
                   }
                 </p>
