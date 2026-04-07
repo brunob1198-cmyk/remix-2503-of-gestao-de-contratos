@@ -310,9 +310,9 @@ export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: Cust
                            <SelectValue />
                          </SelectTrigger>
                          <SelectContent>
-                           {CATEGORIAS_ENG.map(cat => (
-                             <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
-                           ))}
+                            {CATEGORIAS_PADRAO.map(cat => (
+                              <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                            ))}
                          </SelectContent>
                        </Select>
                     </td>
