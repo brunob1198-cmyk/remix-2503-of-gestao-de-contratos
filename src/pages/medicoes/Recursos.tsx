@@ -617,7 +617,7 @@ export default function RecursosPage() {
             <CardContent className="p-0 overflow-hidden">
               <div className="relative flex w-full max-w-full min-w-0 overflow-hidden">
                 <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
-                  <Table className="table-fixed border-collapse" style={{ width: fixedTableWidth }}>
+                  <Table className="table-fixed border-collapse recursos-grid-sync" style={{ width: fixedTableWidth }}>
                     <TableHeader>
                       <TableRow className="h-[60px] overflow-hidden" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {cols.map(col => (
@@ -765,7 +765,7 @@ export default function RecursosPage() {
                 </div>
 
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
-                  <Table className="table-fixed border-collapse" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
+                  <Table className="table-fixed border-collapse recursos-grid-sync" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
                       <TableRow className="h-[60px] overflow-hidden" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {ganttMonths.map((m, i) => {
