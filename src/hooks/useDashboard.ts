@@ -124,12 +124,18 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         filteredSiteIds = allSites?.filter(s => s.projeto_id === projetoId).map(s => s.id) || [];
       }
 
-      // Get all production data (increase limit from default 1000)
-      let prodQuery = supabase.from("lancamentos_producao").select("site_id, item_lpu_id, quantidade").limit(100000);
-      if (filteredSiteIds.length > 0) {
-        prodQuery = prodQuery.in("site_id", filteredSiteIds);
-      }
-      const { data: producao } = await prodQuery;
+      // Get all production data from diário de obra
+      let prodQuery = supabase.from("diario_producao")
+        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
+        .limit(100000);
+      const { data: producaoRaw } = await prodQuery;
+      // Map to include site_id at top level for easier processing
+      const producao = (producaoRaw || []).map(p => ({
+        site_id: (p.diario as any)?.site_id as string,
+        item_lpu_id: p.item_lpu_id,
+        quantidade: p.quantidade,
+        valor_total: p.valor_total,
+      })).filter(p => p.site_id && (!filteredSiteIds.length || filteredSiteIds.includes(p.site_id)));
 
       // Get all measurement data
       let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade").limit(100000);
