@@ -38,7 +38,7 @@ export default function FaturamentoPage() {
   const { sites } = useSites();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { municipios } = useMunicipios();
+  const { municipios: municipiosList, UF_LIST } = useMunicipios(editUf || undefined);
   const [projetoId, setProjetoId] = usePersistedState<string>("faturamento_projeto_id", "");
   const { data: itensDisponiveis = [], isLoading: loadingItens } = useItensDisponiveis(projetoId || undefined);
   const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(projetoId || undefined);
