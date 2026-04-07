@@ -273,7 +273,7 @@ export default function IntegracaoErpPage() {
       </div>
 
       {/* Gestão de Categorias ERP */}
-      {isAdmin && <CategoriasErpCard />}
+      {isAdmin && <CategoriasErpButton />}
 
       {/* Logs */}
       <Card>
@@ -334,9 +334,10 @@ export default function IntegracaoErpPage() {
   );
 }
 
-function CategoriasErpCard() {
+function CategoriasErpButton() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
 
   const { data: categorias = [], isLoading } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
@@ -368,73 +369,59 @@ function CategoriasErpCard() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  const ativas = categorias.filter((c: any) => c.ativo !== false);
   const desativadas = categorias.filter((c: any) => c.ativo === false);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Settings className="h-5 w-5" /> Gestão de Categorias ERP
-        </CardTitle>
-        <CardDescription>
-          Desabilite categorias importadas do Conta Azul para que não sejam contabilizadas na Análise de Custos nem visíveis na operação.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2">
+          <Settings className="h-4 w-4" />
+          Gestão de Categorias
+          {desativadas.length > 0 && (
+            <Badge variant="secondary" className="ml-1 text-xs">{desativadas.length} off</Badge>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" /> Gestão de Categorias ERP
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Desabilite categorias do ERP para que não sejam contabilizadas na Análise de Custos.
+        </p>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-4">Carregando...</p>
         ) : categorias.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">Nenhuma categoria importada do ERP ainda. Sincronize despesas primeiro.</p>
+          <p className="text-muted-foreground text-center py-6">Nenhuma categoria importada. Sincronize despesas primeiro.</p>
         ) : (
-          <div className="space-y-4">
-            {desativadas.length > 0 && (
-              <div className="text-sm text-muted-foreground">
-                <Badge variant="secondary" className="mr-2">{desativadas.length}</Badge>
-                categoria{desativadas.length > 1 ? "s" : ""} desativada{desativadas.length > 1 ? "s" : ""}
+          <div className="max-h-[400px] overflow-y-auto border rounded-md divide-y">
+            {categorias.map((cat: any) => (
+              <div key={cat.id} className={`flex items-center justify-between px-4 py-2.5 ${cat.ativo === false ? "opacity-50" : ""}`}>
+                <div className="flex-1 min-w-0 mr-3">
+                  <div className="text-sm font-medium truncate">{cat.categoria_erp}</div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Badge variant="outline" className="text-[10px] h-5">{cat.categoria_interna}</Badge>
+                    {cat.criado_por_ia && <Badge variant="secondary" className="text-[10px] h-5">IA</Badge>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {cat.ativo === false ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-primary" />
+                  )}
+                  <Switch
+                    checked={cat.ativo !== false}
+                    onCheckedChange={(checked) => toggleAtivo.mutate({ id: cat.id, ativo: checked })}
+                  />
+                </div>
               </div>
-            )}
-            <div className="overflow-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Categoria ERP (Original)</TableHead>
-                    <TableHead>Categoria Interna</TableHead>
-                    <TableHead className="text-center">IA</TableHead>
-                    <TableHead className="text-center w-32">Visível / Ativa</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {categorias.map((cat: any) => (
-                    <TableRow key={cat.id} className={cat.ativo === false ? "opacity-50" : ""}>
-                      <TableCell className="font-medium">{cat.categoria_erp}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{cat.categoria_interna}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {cat.criado_por_ia && <Badge variant="secondary" className="text-xs">IA</Badge>}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {cat.ativo === false ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-primary" />
-                          )}
-                          <Switch
-                            checked={cat.ativo !== false}
-                            onCheckedChange={(checked) => toggleAtivo.mutate({ id: cat.id, ativo: checked })}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
