@@ -42,6 +42,7 @@ type PdfRenderBlock = {
 };
 
 type PdfSection = PdfRenderBlock & {
+  element: HTMLElement;
   end: number;
 };
 
@@ -126,6 +127,21 @@ const createPdfCaptureViewport = (container: HTMLDivElement, content: HTMLDivEle
   return viewport;
 };
 
+const capturePdfElement = async (element: HTMLElement, contentWidth: number, scale: number) => {
+  const rect = element.getBoundingClientRect();
+
+  return html2canvas(element, {
+    scale,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    logging: false,
+    windowWidth: contentWidth,
+    windowHeight: Math.max(1, Math.ceil(rect.height)),
+    scrollX: 0,
+    scrollY: 0,
+  });
+};
+
 const getAvoidBreakAreas = (content: HTMLElement) => {
   const contentRect = content.getBoundingClientRect();
 
@@ -164,12 +180,13 @@ const collectPdfSections = (content: HTMLElement): PdfSection[] => {
 
   if (!sectionElements.length) {
     const totalHeight = Math.max(1, Math.ceil(content.scrollHeight));
-    return [{ start: 0, end: totalHeight, height: totalHeight, containsImages: content.querySelector("img") !== null }];
+    return [{ element: content, start: 0, end: totalHeight, height: totalHeight, containsImages: content.querySelector("img") !== null }];
   }
 
   return sectionElements.map((element) => {
     const bounds = getRelativeBounds(content, element);
     return {
+      element,
       ...bounds,
       containsImages: element.querySelector("img") !== null,
     };
@@ -562,55 +579,105 @@ export function DetailMedicaoContent({
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
       const imageType = baseOptions.image?.type === "png" ? "PNG" : "JPEG";
       const dataUrlType = imageType === "PNG" ? "image/png" : "image/jpeg";
-      const blocks = buildPdfBlocks(content, pageHeightPx);
-      const viewport = createPdfCaptureViewport(container, content, contentWidth);
+      const sections = collectPdfSections(content);
       let currentY = marginTop;
 
-      for (let index = 0; index < blocks.length; index += 1) {
-        const block = blocks[index];
-        const captureScale = block.containsImages ? 1.45 : Math.min(baseOptions.html2canvas?.scale ?? 2, 1.7);
-        const imageQuality = block.containsImages ? 0.78 : Math.min(baseOptions.image?.quality ?? 0.98, 0.9);
+      for (let index = 0; index < sections.length; index += 1) {
+        const section = sections[index];
+        const captureScale = section.containsImages ? 1.45 : Math.min(baseOptions.html2canvas?.scale ?? 2, 1.7);
+        const imageQuality = section.containsImages ? 0.78 : Math.min(baseOptions.image?.quality ?? 0.98, 0.9);
 
-        viewport.style.height = `${block.height}px`;
-        content.style.transform = `translate3d(0, -${block.start}px, 0)`;
         await waitForNextPaint();
 
-        const canvas = await html2canvas(viewport, {
-          scale: captureScale,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-          width: contentWidth,
-          height: block.height,
-          windowWidth: contentWidth,
-          windowHeight: block.height,
-          scrollX: 0,
-          scrollY: 0,
-        });
+        const canvas = await capturePdfElement(section.element, contentWidth, captureScale);
 
         const renderedHeight = (canvas.height * usableWidth) / canvas.width;
-        const availableHeight = pageHeight - marginBottom - currentY;
 
-        if (currentY > marginTop && renderedHeight > availableHeight) {
-          pdf.addPage();
-          currentY = marginTop;
+        if (renderedHeight <= usableHeight) {
+          const availableHeight = pageHeight - marginBottom - currentY;
+
+          if (currentY > marginTop && renderedHeight > availableHeight) {
+            pdf.addPage();
+            currentY = marginTop;
+          }
+
+          pdf.addImage(
+            canvas.toDataURL(dataUrlType, imageQuality),
+            imageType,
+            marginLeft,
+            currentY,
+            usableWidth,
+            renderedHeight,
+            undefined,
+            "MEDIUM",
+          );
+
+          currentY += renderedHeight + (index < sections.length - 1 ? PDF_SECTION_GAP_MM : 0);
+          continue;
         }
 
-        pdf.addImage(
-          canvas.toDataURL(dataUrlType, imageQuality),
-          imageType,
-          marginLeft,
-          currentY,
-          usableWidth,
-          renderedHeight,
-          undefined,
-          "MEDIUM",
-        );
+        const { container: fallbackContainer, content: fallbackContent, contentWidth: fallbackWidth } = createPdfExportContainer(printRef.current);
 
-        currentY += renderedHeight + (index < blocks.length - 1 ? PDF_SECTION_GAP_MM : 0);
+        try {
+          await waitForPdfAssets(fallbackContent);
+
+          const fallbackViewport = createPdfCaptureViewport(fallbackContainer, fallbackContent, fallbackWidth);
+          const fallbackPageHeightPx = Math.floor(fallbackWidth * (usableHeight / usableWidth));
+          const fallbackBlocks = buildPdfBlocksInRange(
+            getAvoidBreakAreas(fallbackContent),
+            section.start,
+            section.end,
+            fallbackPageHeightPx,
+            section.containsImages,
+          );
+
+          for (let blockIndex = 0; blockIndex < fallbackBlocks.length; blockIndex += 1) {
+            const block = fallbackBlocks[blockIndex];
+
+            fallbackViewport.style.height = `${block.height}px`;
+            fallbackContent.style.transform = `translate3d(0, -${block.start}px, 0)`;
+            await waitForNextPaint();
+
+            const blockCanvas = await html2canvas(fallbackViewport, {
+              scale: captureScale,
+              useCORS: true,
+              backgroundColor: "#ffffff",
+              logging: false,
+              width: fallbackWidth,
+              height: block.height,
+              windowWidth: fallbackWidth,
+              windowHeight: block.height,
+              scrollX: 0,
+              scrollY: 0,
+            });
+
+            const blockRenderedHeight = (blockCanvas.height * usableWidth) / blockCanvas.width;
+            const availableHeight = pageHeight - marginBottom - currentY;
+
+            if (currentY > marginTop && blockRenderedHeight > availableHeight) {
+              pdf.addPage();
+              currentY = marginTop;
+            }
+
+            pdf.addImage(
+              blockCanvas.toDataURL(dataUrlType, imageQuality),
+              imageType,
+              marginLeft,
+              currentY,
+              usableWidth,
+              blockRenderedHeight,
+              undefined,
+              "MEDIUM",
+            );
+
+            const isLastRenderedBlock = index === sections.length - 1 && blockIndex === fallbackBlocks.length - 1;
+            currentY += blockRenderedHeight + (isLastRenderedBlock ? 0 : PDF_SECTION_GAP_MM);
+          }
+        } finally {
+          fallbackContainer.remove();
+        }
       }
 
-      content.style.transform = "";
       pdf.save(filename);
     } catch (e) {
       console.error("Erro ao exportar PDF da medição:", e);
