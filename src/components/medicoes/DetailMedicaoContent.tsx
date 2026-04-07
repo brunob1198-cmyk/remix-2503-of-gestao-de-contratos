@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import html2pdf from "html2pdf.js";
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
@@ -44,6 +44,7 @@ interface DiarioFotoWithItem {
   item_codigo?: string;
   item_descricao?: string;
   diario_data?: string;
+  site_id?: string;
   site_nome?: string;
   municipio?: string;
 }
@@ -61,16 +62,99 @@ export function DetailMedicaoContent({
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
-  // Fetch diary photos for this site in the measurement period
+  // Detect measurement type from lancamentos' observacao field
+  const tipoMedicao = useMemo(() => {
+    const obs = detailLancamentos.find(l => l.observacao)?.observacao || "";
+    if (obs.includes("tipo:mista")) return "mista";
+    if (obs.includes("tipo:agrupada")) return "agrupada";
+    return "separada";
+  }, [detailLancamentos]);
+
+  const isMultiSite = tipoMedicao === "mista" || tipoMedicao === "agrupada";
+
+  // For mista/agrupada, find all sites that had production in the period
+  const allSiteIds = useMemo(() => {
+    if (!isMultiSite || !detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) {
+      return [detailMedicao.site_id];
+    }
+    // Get all sites from the same project
+    const projeto = site?.projeto_id;
+    if (projeto) {
+      return sites.filter(s => s.projeto_id === projeto).map(s => s.id);
+    }
+    return [detailMedicao.site_id];
+  }, [isMultiSite, detailMedicao, sites, site]);
+
+  // Fetch diary production per site in the period (for mista per-site tables)
+  const { data: siteProduction = [] } = useQuery({
+    queryKey: ["medicao_site_production", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!isMultiSite || !detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+      
+      const { data: diarios } = await supabase
+        .from("diarios_obra")
+        .select("id, data, site_id")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio!)
+        .lte("data", detailMedicao.periodo_fim!);
+      if (!diarios?.length) return [];
+
+      const diarioIds = diarios.map(d => d.id);
+      const diarioMap = new Map(diarios.map(d => [d.id, d]));
+
+      const { data: prods } = await supabase
+        .from("diario_producao")
+        .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .in("diario_id", diarioIds);
+      if (!prods) return [];
+
+      return prods.map(p => {
+        const diario = diarioMap.get(p.diario_id);
+        return {
+          site_id: diario?.site_id || "",
+          item_lpu_id: p.item_lpu_id,
+          quantidade: Number(p.quantidade),
+          item_lpu: (p as any).item_lpu,
+        };
+      });
+    },
+    enabled: isMultiSite && !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
+  // Group site production by site
+  const productionBySite = useMemo(() => {
+    const map = new Map<string, { item_codigo: string; item_descricao: string; quantidade: number; unidade: string; preco_unitario: number }[]>();
+    siteProduction.forEach(p => {
+      if (!map.has(p.site_id)) map.set(p.site_id, []);
+      const items = map.get(p.site_id)!;
+      const existing = items.find(i => i.item_codigo === p.item_lpu?.codigo);
+      if (existing) {
+        existing.quantidade += p.quantidade;
+      } else if (p.item_lpu) {
+        items.push({
+          item_codigo: p.item_lpu.codigo,
+          item_descricao: p.item_lpu.descricao,
+          quantidade: p.quantidade,
+          unidade: p.item_lpu.unidade,
+          preco_unitario: Number(p.item_lpu.preco_unitario),
+        });
+      }
+    });
+    return map;
+  }, [siteProduction]);
+
+  // Fetch diary photos
   const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
-    queryKey: ["medicao_fotos", detailMedicao.site_id, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+
+      const siteIdsToQuery = isMultiSite ? allSiteIds : [detailMedicao.site_id];
 
       const { data: diarios, error: dErr } = await supabase
         .from("diarios_obra")
         .select("id, data, site_id")
-        .eq("site_id", detailMedicao.site_id)
+        .in("site_id", siteIdsToQuery)
         .gte("data", detailMedicao.periodo_inicio)
         .lte("data", detailMedicao.periodo_fim);
       if (dErr || !diarios?.length) return [];
@@ -102,6 +186,7 @@ export function DetailMedicaoContent({
       return (fotos || []).map(f => {
         const diario = diarioMap.get(f.diario_id);
         const producao = (f as any).diario_producao_id ? producaoMap.get((f as any).diario_producao_id) : null;
+        const fotoSite = diario ? sites.find(s => s.id === diario.site_id) : null;
         return {
           id: f.id,
           url: f.url,
@@ -111,20 +196,13 @@ export function DetailMedicaoContent({
           item_codigo: producao?.item_lpu?.codigo,
           item_descricao: producao?.item_lpu?.descricao,
           diario_data: diario?.data,
-          site_nome: site?.nome,
-          municipio: site?.municipio,
+          site_id: diario?.site_id,
+          site_nome: fotoSite ? `${fotoSite.codigo} - ${fotoSite.nome}` : undefined,
+          municipio: fotoSite?.municipio || site?.municipio,
         } as DiarioFotoWithItem;
       });
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
-  });
-
-  // Generate activity summary
-  const activitySummary = detailLancamentos.map(l => {
-    const itemDesc = l.item_lpu?.descricao || "Item";
-    const qtd = Number(l.quantidade);
-    const und = l.item_lpu?.unidade || "";
-    return `${itemDesc}: ${qtd.toLocaleString("pt-BR")} ${und}`;
   });
 
   const classLabel = (cls: string) => {
@@ -150,7 +228,6 @@ export function DetailMedicaoContent({
     setIsExporting(true);
     try {
       const opt = getPdfOptions(`Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`);
-      // Clonar e ajustar estilos especificamente para o print se necessário
       const element = printRef.current;
       await html2pdf().set(opt).from(element).save();
     } catch (e) {
@@ -162,38 +239,43 @@ export function DetailMedicaoContent({
 
   const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
 
-  // Group photos by item
-  const fotosByItem = new Map<string, DiarioFotoWithItem[]>();
-  const fotosGerais: DiarioFotoWithItem[] = [];
-  diarioFotos.forEach(f => {
-    if (f.diario_producao_id && f.item_codigo) {
-      const key = `${f.item_codigo} - ${f.item_descricao}`;
-      if (!fotosByItem.has(key)) fotosByItem.set(key, []);
-      fotosByItem.get(key)!.push(f);
-    } else {
-      fotosGerais.push(f);
-    }
-  });
+  // Get included sites list for agrupada/mista header
+  const includedSites = useMemo(() => {
+    if (!isMultiSite) return [];
+    const siteIdsWithProduction = [...new Set(siteProduction.map(p => p.site_id))];
+    return siteIdsWithProduction
+      .map(sid => sites.find(s => s.id === sid))
+      .filter(Boolean)
+      .map(s => `${s.codigo} - ${s.nome}`)
+      .sort();
+  }, [isMultiSite, siteProduction, sites]);
 
-  const renderFotoCard = (f: DiarioFotoWithItem, forPrint = false) => {
-    if (forPrint) {
-      return `
-        <div class="foto-card">
-          <img src="${f.url}" alt="${f.item_descricao || 'foto'}" />
-          <div class="foto-info">
-            ${f.item_codigo ? `<div class="foto-title">${f.item_codigo} — ${f.item_descricao}</div>` : ''}
-            <div class="foto-meta">
-              ${f.municipio ? `📍 ${f.municipio}` : ''}
-              ${f.diario_data ? `📅 ${formatDate(f.diario_data)}` : ''}
-            </div>
-            <span class="foto-badge" style="background:${classColor(f.classificacao)}">${classLabel(f.classificacao)}</span>
-            ${f.legenda ? `<div class="foto-legenda">"${f.legenda}"</div>` : ''}
-          </div>
-        </div>
-      `;
-    }
-    return null;
-  };
+  // Group photos by site for mista/separada display
+  const fotosBySite = useMemo(() => {
+    const map = new Map<string, { fotos: DiarioFotoWithItem[]; siteId: string }>();
+    diarioFotos.forEach(f => {
+      const key = f.site_nome || "Sem site";
+      if (!map.has(key)) map.set(key, { fotos: [], siteId: f.site_id || "" });
+      map.get(key)!.fotos.push(f);
+    });
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [diarioFotos]);
+
+  // Group photos by item (for separada single-site)
+  const fotosByItem = useMemo(() => {
+    const map = new Map<string, DiarioFotoWithItem[]>();
+    const gerais: DiarioFotoWithItem[] = [];
+    diarioFotos.forEach(f => {
+      if (f.diario_producao_id && f.item_codigo) {
+        const key = `${f.item_codigo} - ${f.item_descricao}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(f);
+      } else {
+        gerais.push(f);
+      }
+    });
+    return { byItem: map, gerais };
+  }, [diarioFotos]);
 
   return (
     <div className="space-y-4">
@@ -236,16 +318,28 @@ export function DetailMedicaoContent({
           </div>
         </div>
 
+        {/* Sites header for agrupada/mista */}
+        {isMultiSite && includedSites.length > 0 && (
+          <div className="p-3 rounded-md bg-muted/40 border text-sm mb-4">
+            <p className="font-semibold mb-1">Sites incluídos na medição:</p>
+            <p className="text-muted-foreground">{includedSites.join(" | ")}</p>
+          </div>
+        )}
+
         {/* Info grid */}
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-          <div className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
-          </div>
+          {!isMultiSite && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
+              </div>
+            </>
+          )}
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-muted-foreground">Período:</span>{" "}
@@ -262,16 +356,6 @@ export function DetailMedicaoContent({
           )}
         </div>
 
-        {/* Brief Summary */}
-        <div className="bg-muted/50 rounded-lg p-3 mb-4">
-          <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Breve Resumo das Atividades Executadas</h2>
-          <ul className="list-disc pl-5 text-sm space-y-0.5">
-            {activitySummary.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
-
         {/* Observations */}
         {detailMedicao.observacao_acompanhamento && (
           <div className="mb-4">
@@ -282,22 +366,24 @@ export function DetailMedicaoContent({
 
         <Separator className="my-3" />
 
-        {/* Items table */}
+        {/* Consolidated Items table */}
         <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Itens da Medição</h2>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead className="text-right">Qtd</TableHead>
+              <TableHead>Item LPU</TableHead>
+              <TableHead>Unidade</TableHead>
+              <TableHead className="text-right">Qtd Total</TableHead>
               <TableHead className="text-right">Preço Unit.</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-right">Valor Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {detailLancamentos.map(l => (
               <TableRow key={l.id}>
-                <TableCell>{l.item_lpu?.codigo} — {l.item_lpu?.descricao}</TableCell>
-                <TableCell className="text-right tabular-nums">{Number(l.quantidade).toLocaleString("pt-BR")} {l.item_lpu?.unidade}</TableCell>
+                <TableCell>{l.item_lpu?.codigo} - {l.item_lpu?.descricao}</TableCell>
+                <TableCell>{l.item_lpu?.unidade}</TableCell>
+                <TableCell className="text-right tabular-nums">{Number(l.quantidade).toLocaleString("pt-BR")}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatCurrency(Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{formatCurrency(Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
               </TableRow>
@@ -305,7 +391,7 @@ export function DetailMedicaoContent({
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={3} className="text-right font-bold">TOTAL:</TableCell>
+              <TableCell colSpan={4} className="text-right font-bold">Total:</TableCell>
               <TableCell className="text-right font-bold">{formatCurrency(totalValor)}</TableCell>
             </TableRow>
           </TableFooter>
@@ -317,20 +403,85 @@ export function DetailMedicaoContent({
             <Separator className="my-4" />
             <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="flex items-center gap-2">
               <Camera className="h-4 w-4" />
-              Relatório Fotográfico
+              Relatório Fotográfico ({diarioFotos.length} fotos)
+              {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
+                <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
+              )}
             </h2>
 
             {loadingFotos ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : (
+            ) : tipoMedicao === "mista" ? (
+              /* MISTA: Photos grouped by site with per-site production table */
               <div className="space-y-6">
-                {/* Photos grouped by item */}
-                {Array.from(fotosByItem.entries()).map(([itemLabel, itemFotos]) => (
+                {fotosBySite.map(([siteName, { fotos, siteId }]) => {
+                  const siteItems = productionBySite.get(siteId) || [];
+                  return (
+                    <div key={siteName} className="border rounded-lg overflow-hidden" style={{ pageBreakInside: "avoid" }}>
+                      <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
+                        <MapPin className="h-4 w-4" />
+                        {siteName}
+                      </div>
+                      {siteItems.length > 0 && (
+                        <div className="p-3 border-b bg-muted/20">
+                          <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Item</TableHead>
+                                <TableHead className="text-xs text-right">Qtd</TableHead>
+                                <TableHead className="text-xs text-right">Valor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {siteItems.map(si => (
+                                <TableRow key={si.item_codigo}>
+                                  <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
+                                  <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                  <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          {fotos.map(f => (
+                            <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
+                              <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
+                              <div className="p-3 bg-muted/30 space-y-1.5">
+                                {f.item_codigo && (
+                                  <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
+                                )}
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                  {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
+                                  {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
+                                </div>
+                                <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
+                                  {classLabel(f.classificacao)}
+                                </Badge>
+                                {f.legenda && (
+                                  <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* SEPARADA / AGRUPADA: Photos grouped by item */
+              <div className="space-y-6">
+                {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => (
                   <div key={itemLabel}>
                     <h3 className="text-sm font-semibold mb-3 text-primary">{itemLabel}</h3>
-                    <div className="foto-grid grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       {itemFotos.map(f => (
                         <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
                           <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
@@ -340,10 +491,7 @@ export function DetailMedicaoContent({
                               {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
                               {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
                             </div>
-                            <Badge
-                              className="text-[9px] text-white"
-                              style={{ backgroundColor: classColor(f.classificacao) }}
-                            >
+                            <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
                               {classLabel(f.classificacao)}
                             </Badge>
                             {f.legenda && (
@@ -356,12 +504,11 @@ export function DetailMedicaoContent({
                   </div>
                 ))}
 
-                {/* General photos */}
-                {fotosGerais.length > 0 && (
+                {fotosByItem.gerais.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Fotos Gerais</h3>
-                    <div className="foto-grid grid grid-cols-2 gap-4">
-                      {fotosGerais.map(f => (
+                    <div className="grid grid-cols-2 gap-4">
+                      {fotosByItem.gerais.map(f => (
                         <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
                           <img src={f.url} alt="foto" className="w-full h-56 object-cover" />
                           <div className="p-3 bg-muted/30 space-y-1.5">
@@ -370,10 +517,7 @@ export function DetailMedicaoContent({
                               {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
                               {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
                             </div>
-                            <Badge
-                              className="text-[9px] text-white"
-                              style={{ backgroundColor: classColor(f.classificacao) }}
-                            >
+                            <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
                               {classLabel(f.classificacao)}
                             </Badge>
                             {f.legenda && (
