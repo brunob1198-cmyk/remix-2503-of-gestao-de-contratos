@@ -617,9 +617,9 @@ export default function RecursosPage() {
             <CardContent className="p-0 overflow-hidden">
               <div className="relative flex w-full max-w-full min-w-0 overflow-hidden">
                 <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
-                  <Table className="table-fixed" style={{ width: fixedTableWidth }}>
+                  <Table className="table-fixed border-collapse" style={{ width: fixedTableWidth }}>
                     <TableHeader>
-                      <TableRow style={{ height: 60 }}>
+                      <TableRow className="h-[60px]" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {cols.map(col => (
                           <TableHead
                             key={col}
@@ -650,12 +650,12 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow style={{ height: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
+                        <TableRow className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id} style={{ height: 48, maxHeight: 48 }}>
+                          <TableRow key={r.id} className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
                             <TableCell
                               className="font-medium whitespace-nowrap truncate"
                               style={{ width: fixedColumnWidths.nome, minWidth: fixedColumnWidths.nome, maxWidth: fixedColumnWidths.nome }}
@@ -765,19 +765,19 @@ export default function RecursosPage() {
                 </div>
 
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
-                  <Table className="table-fixed" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
+                  <Table className="table-fixed border-collapse" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
-                      <TableRow style={{ height: 60 }}>
+                      <TableRow className="h-[60px]" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
                           return (
-                            <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 h-[60px]" style={{ minWidth: monthWidth, width: monthWidth }}>
-                              <div className="flex flex-col h-full w-full">
-                                <div className="py-2 bg-muted/20 font-semibold text-muted-foreground uppercase flex-none">
+                            <TableHead key={i} className="text-center text-xs whitespace-nowrap border-l p-0 overflow-hidden" style={{ minWidth: monthWidth, width: monthWidth, height: 60, maxHeight: 60 }}>
+                              <div className="flex flex-col h-[60px] w-full overflow-hidden">
+                                <div className="h-[30px] flex items-center justify-center bg-muted/20 font-semibold text-muted-foreground uppercase flex-none">
                                   {format(m, "MMMM/yyyy", { locale: ptBR })}
                                 </div>
-                                <div className="flex items-center flex-1 w-full border-t bg-muted/5">
+                                <div className="flex items-center h-[30px] w-full border-t bg-muted/5 overflow-hidden">
                                   {Array.from({ length: daysInMonth }).map((_, d) => (
                                     <div key={d} className="flex-1 text-center border-r last:border-0 border-muted-foreground/20 text-[10px] text-muted-foreground" style={{ minWidth: DAY_WIDTH }}>
                                       {d + 1}
@@ -792,11 +792,11 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow style={{ height: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
+                        <TableRow className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
-                          <TableRow key={r.id} style={{ height: 48, maxHeight: 48 }}>
+                          <TableRow key={r.id} className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
