@@ -32,7 +32,7 @@ const PDF_PAGE_BREAK_SELECTORS = [
   "tr",
   ".border.rounded-lg",
 ].join(", ");
-const PDF_BLOCK_MIN_HEIGHT = 180;
+const PDF_BLOCK_MIN_HEIGHT = 96;
 const PDF_SECTION_GAP_MM = 4;
 
 type PdfRenderBlock = {
@@ -195,13 +195,15 @@ const buildPdfBlocksInRange = (
     }
 
     let end = Math.min(start + pageHeightPx, rangeEnd);
-    const overlappingArea = avoidAreas.find(
-      (area) =>
-        area.top > start + 12 &&
-        area.top < end &&
-        area.bottom > end &&
-        area.height < pageHeightPx * 0.95,
-    );
+    const overlappingArea = avoidAreas
+      .filter(
+        (area) =>
+          area.top > start + 8 &&
+          area.top < end &&
+          area.bottom > end &&
+          area.height < pageHeightPx * 0.98,
+      )
+      .at(-1);
 
     if (overlappingArea) {
       const adjustedEnd = Math.max(start + PDF_BLOCK_MIN_HEIGHT, overlappingArea.top);
@@ -818,73 +820,89 @@ export function DetailMedicaoContent({
                 {fotosBySite.map(([siteName, { fotos, siteId }]) => {
                   const siteItems = productionBySite.get(siteId) || [];
                   const siteTotal = getSiteItemsTotal(siteItems);
+                  const photoPairs = chunkPairs(fotos);
+
+                  const siteSummary = (
+                    <div
+                      className="pdf-keep-together"
+                      style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                    >
+                      <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
+                        <MapPin className="h-4 w-4" />
+                        {siteName}
+                      </div>
+                      {siteItems.length > 0 && (
+                        <div className="p-3 border-b bg-muted/20">
+                          <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                          <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Item</TableHead>
+                                <TableHead className="text-xs text-right">Qtd</TableHead>
+                                <TableHead className="text-xs text-right">Valor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {siteItems.map(si => (
+                                <TableRow key={si.item_codigo}>
+                                  <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
+                                  <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                  <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+
+                          <div className="mt-3 flex justify-end">
+                            <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
+                              Total do site: {formatCurrency(siteTotal)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
+                        <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+                          <p className="text-xs font-semibold mb-1 flex items-center gap-1">📋 Observações</p>
+                          {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
+                            <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1">{obs}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+
                   return (
                     <div
                       key={siteName}
                       className="border rounded-lg overflow-hidden"
-                      data-pdf-section="site-medicao"
                     >
-                      <div
-                        className="pdf-keep-together"
-                        style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
-                      >
-                        <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
-                          <MapPin className="h-4 w-4" />
-                          {siteName}
-                        </div>
-                        {siteItems.length > 0 && (
-                          <div className="p-3 border-b bg-muted/20">
-                            <p className="text-xs font-semibold mb-2">Produção do Site:</p>
-                            <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="text-xs">Item</TableHead>
-                                  <TableHead className="text-xs text-right">Qtd</TableHead>
-                                  <TableHead className="text-xs text-right">Valor</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {siteItems.map(si => (
-                                  <TableRow key={si.item_codigo}>
-                                    <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
-                                    <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
-                                    <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-
-                            <div className="mt-3 flex justify-end">
-                              <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
-                                Total do site: {formatCurrency(siteTotal)}
+                      {photoPairs.length > 0 ? (
+                        photoPairs.map((pair, pi) => (
+                          <div
+                            key={`${siteName}-${pi}`}
+                            data-pdf-section={pi === 0 ? "site-medicao-intro" : "site-medicao-foto-row"}
+                            style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                          >
+                            {pi === 0 && siteSummary}
+                            <div className="p-3">
+                              <div
+                                className="foto-card pdf-keep-together grid grid-cols-2 gap-4 items-start"
+                                style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                              >
+                                {pair.map((foto) => renderPhotoCard(foto))}
                               </div>
                             </div>
                           </div>
-                        )}
-
-                        {/* Site observations */}
-                        {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
-                          <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
-                            <p className="text-xs font-semibold mb-1 flex items-center gap-1">📋 Observações</p>
-                            {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
-                              <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1">{obs}</p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <div className="space-y-4">
-                          {chunkPairs(fotos).map((pair, pi) => (
-                            <div
-                              key={pi}
-                              className="foto-card pdf-keep-together grid grid-cols-2 gap-4 items-start"
-                              style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
-                            >
-                              {pair.map((foto) => renderPhotoCard(foto))}
-                            </div>
-                          ))}
+                        ))
+                      ) : (
+                        <div
+                          data-pdf-section="site-medicao-intro"
+                          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                        >
+                          {siteSummary}
                         </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -892,29 +910,43 @@ export function DetailMedicaoContent({
             ) : (
               /* SEPARADA / AGRUPADA: Photos grouped by item */
               <div className="space-y-6">
-                {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => (
-                  <div key={itemLabel} data-pdf-section="grupo-fotos-item">
-                    <h3 className="pdf-section-heading text-sm font-semibold mb-3 text-primary">{itemLabel}</h3>
-                    <div className="space-y-4">
-                      {chunkPairs(itemFotos).map((pair, pi) => (
-                        <div key={pi} className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          {pair.map((foto) => renderPhotoCard(foto))}
+                {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
+                  const itemPairs = chunkPairs(itemFotos);
+
+                  return (
+                    <div key={itemLabel}>
+                      {itemPairs.map((pair, pi) => (
+                        <div
+                          key={`${itemLabel}-${pi}`}
+                          data-pdf-section={pi === 0 ? "grupo-fotos-item" : "grupo-fotos-item-row"}
+                          className="space-y-3"
+                          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                        >
+                          {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
+                          <div className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                            {pair.map((foto) => renderPhotoCard(foto))}
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {fotosByItem.gerais.length > 0 && (
-                  <div data-pdf-section="grupo-fotos-gerais">
-                    <h3 className="pdf-section-heading text-sm font-semibold mb-3 text-muted-foreground">Fotos Gerais</h3>
-                    <div className="space-y-4">
-                      {chunkPairs(fotosByItem.gerais).map((pair, pi) => (
-                        <div key={pi} className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                  <div>
+                    {chunkPairs(fotosByItem.gerais).map((pair, pi) => (
+                      <div
+                        key={`gerais-${pi}`}
+                        data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
+                        className="space-y-3"
+                        style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                      >
+                        {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-muted-foreground">Fotos Gerais</h3>}
+                        <div className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                           {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
