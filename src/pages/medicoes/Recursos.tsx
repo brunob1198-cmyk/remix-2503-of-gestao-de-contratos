@@ -619,7 +619,7 @@ export default function RecursosPage() {
                 <div className="flex-shrink-0 border-r z-10 bg-background overflow-hidden" style={{ width: fixedTableWidth }}>
                   <Table className="table-fixed border-collapse" style={{ width: fixedTableWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
+                      <TableRow className="h-[60px] overflow-hidden" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {cols.map(col => (
                           <TableHead
                             key={col}
@@ -650,12 +650,12 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
+                        <TableRow className="h-[48px] overflow-hidden" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={cols.length + 1} className="text-center text-muted-foreground">Nenhum resultado</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const custo = getCustoAtual(r.id);
                         const aloc = getAlocacaoAtiva(r.id);
                         return (
-                          <TableRow key={r.id} className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
+                          <TableRow key={r.id} className="h-[48px] overflow-hidden" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
                             <TableCell
                               className="font-medium whitespace-nowrap truncate"
                               style={{ width: fixedColumnWidths.nome, minWidth: fixedColumnWidths.nome, maxWidth: fixedColumnWidths.nome }}
@@ -767,7 +767,7 @@ export default function RecursosPage() {
                 <div className="w-0 flex-1 min-w-0 overflow-x-auto overflow-y-hidden gantt-scroll" style={{ scrollbarWidth: 'thin' }}>
                   <Table className="table-fixed border-collapse" style={{ width: ganttTotalWidth, minWidth: ganttTotalWidth }}>
                     <TableHeader>
-                      <TableRow className="h-[60px]" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
+                      <TableRow className="h-[60px] overflow-hidden" style={{ height: 60, minHeight: 60, maxHeight: 60 }}>
                         {ganttMonths.map((m, i) => {
                           const daysInMonth = getDaysInMonth(m);
                           const monthWidth = daysInMonth * DAY_WIDTH;
@@ -792,11 +792,11 @@ export default function RecursosPage() {
                     </TableHeader>
                     <TableBody>
                       {paginatedItems.length === 0 ? (
-                        <TableRow className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
+                        <TableRow className="h-[48px] overflow-hidden" style={{ height: 48, minHeight: 48, maxHeight: 48 }}><TableCell colSpan={ganttMonths.length}>&nbsp;</TableCell></TableRow>
                       ) : paginatedItems.map((r) => {
                         const recursoAlocacoes = alocacoes.filter(a => a.recurso_id === r.id);
                         return (
-                          <TableRow key={r.id} className="h-[48px]" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
+                          <TableRow key={r.id} className="h-[48px] overflow-hidden" style={{ height: 48, minHeight: 48, maxHeight: 48 }}>
                             {ganttMonths.map((m, i) => {
                               const monthStart = m;
                               const monthEnd = endOfMonth(m);
