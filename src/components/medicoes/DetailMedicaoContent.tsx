@@ -508,6 +508,16 @@ export function DetailMedicaoContent({
                             </div>
                           </div>
                         )}
+
+                        {/* Site observations */}
+                        {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
+                          <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+                            <p className="text-xs font-semibold mb-1 flex items-center gap-1">📋 Observações</p>
+                            {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
+                              <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1">{obs}</p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="p-3">
                         <div className="space-y-4">
