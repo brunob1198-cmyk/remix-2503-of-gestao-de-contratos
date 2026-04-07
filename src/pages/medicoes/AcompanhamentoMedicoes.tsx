@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLancamentosMedicao, useLancamentosProducao } from "@/hooks/useLancamentos";
-import { usePersistedState } from "@/hooks/usePersistedState";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
