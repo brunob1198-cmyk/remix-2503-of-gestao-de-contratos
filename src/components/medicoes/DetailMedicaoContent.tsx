@@ -462,61 +462,53 @@ export function DetailMedicaoContent({
       const pageHeight = pdf.internal.pageSize.getHeight();
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
-      const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
-      const scale = 1.5;
-      const imageQuality = 0.82;
-
-      // 1. Render the entire content as one large canvas
+      const scale = 1.3;
+      const imageQuality = 0.78;
       const totalHeight = content.scrollHeight;
+      const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // Create a viewport for slicing
-      const viewport = document.createElement("div");
-      viewport.setAttribute("data-pdf-export-viewport", "medicao-detalhe");
-      Object.assign(viewport.style, {
-        position: "relative",
-        width: `${contentWidth}px`,
-        overflow: "hidden",
-        background: "#ffffff",
-        boxSizing: "border-box",
+      // 1. Render the ENTIRE content as a single large canvas (one html2canvas call)
+      const fullCanvas = await html2canvas(content, {
+        scale,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: contentWidth,
+        height: totalHeight,
+        windowWidth: contentWidth,
+        windowHeight: totalHeight,
+        scrollX: 0,
+        scrollY: 0,
       });
-      container.replaceChildren(viewport);
-      content.style.transformOrigin = "top left";
-      content.style.willChange = "transform";
-      viewport.appendChild(content);
 
-      // 2. Collect safe break points from data-pdf-section boundaries
+      // 2. Collect safe break points and build page slices
       const safeBreaks = collectSafeBreakPoints(content);
-
-      // 3. Build page slices
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 4. Render each slice
+      // 3. Slice the single canvas into pages using drawImage (very fast, no re-render)
+      const scaledWidth = fullCanvas.width;
+      const pxPerUnit = scaledWidth / contentWidth; // scale factor applied by html2canvas
+
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
+        const srcY = Math.round(slice.start * pxPerUnit);
+        const srcH = Math.round(slice.height * pxPerUnit);
 
-        viewport.style.height = `${slice.height}px`;
-        content.style.transform = `translate3d(0, -${slice.start}px, 0)`;
-        await waitForNextPaint();
+        // Create a small canvas for this page slice
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = scaledWidth;
+        pageCanvas.height = srcH;
+        const ctx = pageCanvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, scaledWidth, srcH);
+        ctx.drawImage(fullCanvas, 0, srcY, scaledWidth, srcH, 0, 0, scaledWidth, srcH);
 
-        const canvas = await html2canvas(viewport, {
-          scale,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-          width: contentWidth,
-          height: slice.height,
-          windowWidth: contentWidth,
-          windowHeight: slice.height,
-          scrollX: 0,
-          scrollY: 0,
-        });
-
-        const renderedHeight = (canvas.height * usableWidth) / canvas.width;
+        const renderedHeight = (srcH * usableWidth) / scaledWidth;
 
         if (i > 0) pdf.addPage();
 
         pdf.addImage(
-          canvas.toDataURL("image/jpeg", imageQuality),
+          pageCanvas.toDataURL("image/jpeg", imageQuality),
           "JPEG",
           marginLeft,
           marginTop,
