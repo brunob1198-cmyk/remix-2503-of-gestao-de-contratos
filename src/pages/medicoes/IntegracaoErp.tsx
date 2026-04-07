@@ -273,8 +273,6 @@ export default function IntegracaoErpPage() {
         )}
       </div>
 
-      {/* Gestão de Categorias ERP */}
-      {isAdmin && <CategoriasErpButton />}
 
       {/* Logs */}
       <Card>
