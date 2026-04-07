@@ -22,17 +22,27 @@ const PDF_EXPORT_MIN_WIDTH = 1024;
 const PDF_PAGE_BREAK_SELECTORS = [
   "[data-pdf-section]",
   ".pdf-keep-together",
+  ".pdf-section-heading",
   ".foto-card",
+  "h2",
+  "h3",
   "table",
   "thead",
   "tfoot",
   "tr",
   ".border.rounded-lg",
 ].join(", ");
+const PDF_BLOCK_MIN_HEIGHT = 180;
+const PDF_SECTION_GAP_MM = 4;
 
-type PdfSlice = {
+type PdfRenderBlock = {
   start: number;
   height: number;
+  containsImages: boolean;
+};
+
+type PdfSection = PdfRenderBlock & {
+  end: number;
 };
 
 const waitForNextPaint = async () => {
@@ -135,45 +145,99 @@ const getAvoidBreakAreas = (content: HTMLElement) => {
     .sort((a, b) => a.top - b.top);
 };
 
-const buildPdfSlices = (content: HTMLElement, pageHeightPx: number): PdfSlice[] => {
-  const totalHeight = Math.ceil(content.scrollHeight);
-  const avoidAreas = getAvoidBreakAreas(content);
-  const slices: PdfSlice[] = [];
-  let start = 0;
+const getRelativeBounds = (root: HTMLElement, element: HTMLElement) => {
+  const rootRect = root.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  const start = Math.max(0, Math.floor(rect.top - rootRect.top));
+  const height = Math.max(1, Math.ceil(rect.height));
 
-  while (start < totalHeight) {
-    const remainingHeight = totalHeight - start;
+  return {
+    start,
+    end: start + height,
+    height,
+  };
+};
+
+const collectPdfSections = (content: HTMLElement): PdfSection[] => {
+  const sectionElements = Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]"))
+    .filter((element) => !element.parentElement?.closest("[data-pdf-section]"));
+
+  if (!sectionElements.length) {
+    const totalHeight = Math.max(1, Math.ceil(content.scrollHeight));
+    return [{ start: 0, end: totalHeight, height: totalHeight, containsImages: content.querySelector("img") !== null }];
+  }
+
+  return sectionElements.map((element) => {
+    const bounds = getRelativeBounds(content, element);
+    return {
+      ...bounds,
+      containsImages: element.querySelector("img") !== null,
+    };
+  });
+};
+
+const buildPdfBlocksInRange = (
+  avoidAreas: ReturnType<typeof getAvoidBreakAreas>,
+  rangeStart: number,
+  rangeEnd: number,
+  pageHeightPx: number,
+  containsImages: boolean,
+): PdfRenderBlock[] => {
+  const slices: PdfRenderBlock[] = [];
+  let start = rangeStart;
+
+  while (start < rangeEnd) {
+    const remainingHeight = rangeEnd - start;
 
     if (remainingHeight <= pageHeightPx) {
-      slices.push({ start, height: remainingHeight });
+      slices.push({ start, height: remainingHeight, containsImages });
       break;
     }
 
-    let end = Math.min(start + pageHeightPx, totalHeight);
+    let end = Math.min(start + pageHeightPx, rangeEnd);
     const overlappingArea = avoidAreas.find(
       (area) =>
-        area.top > start + 8 &&
+        area.top > start + 12 &&
         area.top < end &&
         area.bottom > end &&
         area.height < pageHeightPx * 0.95,
     );
 
     if (overlappingArea) {
-      const adjustedEnd = Math.max(start + 120, overlappingArea.top);
-      if (adjustedEnd < end) {
+      const adjustedEnd = Math.max(start + PDF_BLOCK_MIN_HEIGHT, overlappingArea.top);
+      if (adjustedEnd < end && adjustedEnd - start >= PDF_BLOCK_MIN_HEIGHT) {
         end = adjustedEnd;
       }
     }
 
     if (end <= start) {
-      end = Math.min(start + pageHeightPx, totalHeight);
+      end = Math.min(start + pageHeightPx, rangeEnd);
     }
 
-    slices.push({ start, height: end - start });
+    slices.push({ start, height: end - start, containsImages });
     start = end;
   }
 
   return slices;
+};
+
+const buildPdfBlocks = (content: HTMLElement, pageHeightPx: number) => {
+  const avoidAreas = getAvoidBreakAreas(content);
+  const sections = collectPdfSections(content);
+
+  return sections.flatMap((section) => {
+    if (section.height <= pageHeightPx) {
+      return [{ start: section.start, height: section.height, containsImages: section.containsImages }];
+    }
+
+    return buildPdfBlocksInRange(
+      avoidAreas,
+      section.start,
+      section.end,
+      pageHeightPx,
+      section.containsImages,
+    );
+  });
 };
 
 interface DetailMedicaoContentProps {
@@ -425,6 +489,54 @@ export function DetailMedicaoContent({
     }
   };
 
+  const renderPhotoCard = useCallback(
+    (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
+        <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center">
+          <img
+            src={foto.url}
+            alt={foto.item_descricao || foto.site_nome || "foto"}
+            className="h-full w-full object-contain"
+            loading="eager"
+            decoding="sync"
+          />
+        </div>
+        <div className="p-3 bg-muted/20 space-y-1.5">
+          {options?.showItem !== false && foto.item_codigo && (
+            <p className="font-semibold text-xs text-foreground break-words">
+              {foto.item_codigo} — {foto.item_descricao}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+            {options?.showSiteName && foto.site_nome && <span>{foto.site_nome}</span>}
+            {foto.municipio && (
+              <span className="flex items-center gap-0.5">
+                <MapPin className="h-2.5 w-2.5" />
+                {foto.municipio}
+              </span>
+            )}
+            {foto.diario_data && (
+              <span className="flex items-center gap-0.5">
+                <Calendar className="h-2.5 w-2.5" />
+                {formatDate(foto.diario_data)}
+              </span>
+            )}
+          </div>
+
+          <Badge className="text-[9px] text-white w-fit" style={{ backgroundColor: classColor(foto.classificacao) }}>
+            {classLabel(foto.classificacao)}
+          </Badge>
+
+          {foto.legenda && (
+            <p className="text-[10px] text-muted-foreground italic leading-relaxed break-words">“{foto.legenda}”</p>
+          )}
+        </div>
+      </div>
+    ),
+    [formatDate],
+  );
+
   const handleExportPdf = async () => {
     if (!printRef.current || isExporting) return;
 
@@ -446,49 +558,54 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
-      const renderScale = Math.min(baseOptions.html2canvas?.scale ?? 2, 2);
       const imageType = baseOptions.image?.type === "png" ? "PNG" : "JPEG";
       const dataUrlType = imageType === "PNG" ? "image/png" : "image/jpeg";
-      const imageQuality = baseOptions.image?.quality ?? 0.98;
-      const slices = buildPdfSlices(content, pageHeightPx);
+      const blocks = buildPdfBlocks(content, pageHeightPx);
       const viewport = createPdfCaptureViewport(container, content, contentWidth);
+      let currentY = marginTop;
 
-      for (let index = 0; index < slices.length; index += 1) {
-        const slice = slices[index];
+      for (let index = 0; index < blocks.length; index += 1) {
+        const block = blocks[index];
+        const captureScale = block.containsImages ? 1.45 : Math.min(baseOptions.html2canvas?.scale ?? 2, 1.7);
+        const imageQuality = block.containsImages ? 0.78 : Math.min(baseOptions.image?.quality ?? 0.98, 0.9);
 
-        viewport.style.height = `${slice.height}px`;
-        content.style.transform = `translate3d(0, -${slice.start}px, 0)`;
+        viewport.style.height = `${block.height}px`;
+        content.style.transform = `translate3d(0, -${block.start}px, 0)`;
         await waitForNextPaint();
 
         const canvas = await html2canvas(viewport, {
-          scale: renderScale,
+          scale: captureScale,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
           width: contentWidth,
-          height: slice.height,
+          height: block.height,
           windowWidth: contentWidth,
-          windowHeight: slice.height,
+          windowHeight: block.height,
           scrollX: 0,
           scrollY: 0,
         });
 
         const renderedHeight = (canvas.height * usableWidth) / canvas.width;
+        const availableHeight = pageHeight - marginBottom - currentY;
 
-        if (index > 0) {
+        if (currentY > marginTop && renderedHeight > availableHeight) {
           pdf.addPage();
+          currentY = marginTop;
         }
 
         pdf.addImage(
           canvas.toDataURL(dataUrlType, imageQuality),
           imageType,
           marginLeft,
-          marginTop,
+          currentY,
           usableWidth,
           renderedHeight,
           undefined,
-          "FAST",
+          "MEDIUM",
         );
+
+        currentY += renderedHeight + (index < blocks.length - 1 ? PDF_SECTION_GAP_MM : 0);
       }
 
       content.style.transform = "";
@@ -553,80 +670,86 @@ export function DetailMedicaoContent({
 
       {/* Printable content */}
       <div ref={printRef}>
-        {/* Header */}
-        <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-            <img 
-              src={detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"} 
-              alt="Logo Empresa" 
-              style={{ maxHeight: 48, objectFit: "contain" }} 
-              onError={(e) => { e.currentTarget.outerHTML = '<div style="width:120px;height:48px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;">LOGO DA EMPRESA</div>'; }} 
-            />
-            <div>
-              <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
-              <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-                {detailMedicao.projeto_codigo} — {detailMedicao.projeto_nome}
-              </p>
+        <div
+          className="pdf-keep-together"
+          data-pdf-section="medicao-resumo"
+          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+        >
+          {/* Header */}
+          <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
+              <img 
+                src={detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"} 
+                alt="Logo Empresa" 
+                style={{ maxHeight: 48, objectFit: "contain" }} 
+                onError={(e) => { e.currentTarget.outerHTML = '<div style="width:120px;height:48px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;">LOGO DA EMPRESA</div>'; }} 
+              />
+              <div>
+                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
+                <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                  {detailMedicao.projeto_codigo} — {detailMedicao.projeto_nome}
+                </p>
+              </div>
+            </div>
+            <div style={{ textAlign: "right", display: "flex", gap: "15px", alignItems: "flex-end" }}>
+              <div>
+                {detailMedicao.numero_medicao && (
+                  <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Medição Nº {detailMedicao.numero_medicao}</p>
+                )}
+                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
+              </div>
+              {clienteLogoUrl && (
+                <img src={clienteLogoUrl} alt="Logo Cliente" style={{ maxHeight: 48, objectFit: "contain", marginLeft: "15px" }} />
+              )}
             </div>
           </div>
-          <div style={{ textAlign: "right", display: "flex", gap: "15px", alignItems: "flex-end" }}>
-            <div>
-              {detailMedicao.numero_medicao && (
-                <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Medição Nº {detailMedicao.numero_medicao}</p>
-              )}
-              <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
+
+          {/* Sites header for agrupada/mista */}
+          {isMultiSite && includedSites.length > 0 && (
+            <div className="p-3 rounded-md bg-muted/40 border text-sm mb-4">
+              <p className="font-semibold mb-1">Sites incluídos na medição:</p>
+              <p className="text-muted-foreground">{includedSites.join(" | ")}</p>
             </div>
-            {clienteLogoUrl && (
-              <img src={clienteLogoUrl} alt="Logo Cliente" style={{ maxHeight: 48, objectFit: "contain", marginLeft: "15px" }} />
+          )}
+
+          {/* Info grid */}
+          <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+            {!isMultiSite && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
+                </div>
+              </>
+            )}
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Período:</span>{" "}
+              {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
+                ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
+                : formatDate(detailMedicao.data_medicao)}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Valor Total:</span>{" "}
+              <span className="font-semibold">{formatCurrency(totalValor)}</span>
+            </div>
+            {detailMedicao.numero_po && (
+              <div><span className="text-muted-foreground">Nº PO:</span> {detailMedicao.numero_po}</div>
             )}
           </div>
-        </div>
 
-        {/* Sites header for agrupada/mista */}
-        {isMultiSite && includedSites.length > 0 && (
-          <div className="p-3 rounded-md bg-muted/40 border text-sm mb-4">
-            <p className="font-semibold mb-1">Sites incluídos na medição:</p>
-            <p className="text-muted-foreground">{includedSites.join(" | ")}</p>
-          </div>
-        )}
-
-        {/* Info grid */}
-        <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-          {!isMultiSite && (
-            <>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
-              </div>
-            </>
-          )}
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-muted-foreground">Período:</span>{" "}
-            {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
-              ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
-              : formatDate(detailMedicao.data_medicao)}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Valor Total:</span>{" "}
-            <span className="font-semibold">{formatCurrency(totalValor)}</span>
-          </div>
-          {detailMedicao.numero_po && (
-            <div><span className="text-muted-foreground">Nº PO:</span> {detailMedicao.numero_po}</div>
+          {/* Observations */}
+          {detailMedicao.observacao_acompanhamento && (
+            <div className="mb-4">
+              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Observações</h2>
+              <p className="text-sm text-muted-foreground whitespace-pre-line">{detailMedicao.observacao_acompanhamento}</p>
+            </div>
           )}
         </div>
-
-        {/* Observations */}
-        {detailMedicao.observacao_acompanhamento && (
-          <div className="mb-4">
-            <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Observações</h2>
-            <p className="text-sm text-muted-foreground">{detailMedicao.observacao_acompanhamento}</p>
-          </div>
-        )}
 
         <div
           className="pdf-keep-together"
@@ -670,14 +793,20 @@ export function DetailMedicaoContent({
         {/* Photo Report */}
         {(diarioFotos.length > 0 || loadingFotos) && (
           <>
-            <Separator className="my-4" />
-            <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="flex items-center gap-2">
-              <Camera className="h-4 w-4" />
-              Relatório Fotográfico ({diarioFotos.length} fotos)
-              {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
-                <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
-              )}
-            </h2>
+            <div
+              className="pdf-keep-together"
+              data-pdf-section="relatorio-fotografico-cabecalho"
+              style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+            >
+              <Separator className="my-4" />
+              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="pdf-section-heading flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                Relatório Fotográfico ({diarioFotos.length} fotos)
+                {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
+                  <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
+                )}
+              </h2>
+            </div>
 
             {loadingFotos ? (
               <div className="flex items-center justify-center py-8">
@@ -690,10 +819,13 @@ export function DetailMedicaoContent({
                   const siteItems = productionBySite.get(siteId) || [];
                   const siteTotal = getSiteItemsTotal(siteItems);
                   return (
-                    <div key={siteName} className="border rounded-lg overflow-hidden">
+                    <div
+                      key={siteName}
+                      className="border rounded-lg overflow-hidden"
+                      data-pdf-section="site-medicao"
+                    >
                       <div
                         className="pdf-keep-together"
-                        data-pdf-section="site-producao"
                         style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                       >
                         <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
@@ -745,30 +877,10 @@ export function DetailMedicaoContent({
                           {chunkPairs(fotos).map((pair, pi) => (
                             <div
                               key={pi}
-                              className="foto-card pdf-keep-together grid grid-cols-2 gap-4"
-                              data-pdf-section="site-fotos"
+                              className="foto-card pdf-keep-together grid grid-cols-2 gap-4 items-start"
                               style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
                             >
-                              {pair.map(f => (
-                                <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
-                                  <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
-                                  <div className="p-3 bg-muted/30 space-y-1.5">
-                                    {f.item_codigo && (
-                                      <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
-                                    )}
-                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                      {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
-                                      {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
-                                    </div>
-                                    <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
-                                      {classLabel(f.classificacao)}
-                                    </Badge>
-                                    {f.legenda && (
-                                      <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                              {pair.map((foto) => renderPhotoCard(foto))}
                             </div>
                           ))}
                         </div>
@@ -781,29 +893,12 @@ export function DetailMedicaoContent({
               /* SEPARADA / AGRUPADA: Photos grouped by item */
               <div className="space-y-6">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => (
-                  <div key={itemLabel}>
-                    <h3 className="text-sm font-semibold mb-3 text-primary">{itemLabel}</h3>
+                  <div key={itemLabel} data-pdf-section="grupo-fotos-item">
+                    <h3 className="pdf-section-heading text-sm font-semibold mb-3 text-primary">{itemLabel}</h3>
                     <div className="space-y-4">
                       {chunkPairs(itemFotos).map((pair, pi) => (
-                        <div key={pi} className="foto-card grid grid-cols-2 gap-4" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          {pair.map(f => (
-                            <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
-                              <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
-                              <div className="p-3 bg-muted/30 space-y-1.5">
-                                <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                  {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
-                                  {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
-                                </div>
-                                <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
-                                  {classLabel(f.classificacao)}
-                                </Badge>
-                                {f.legenda && (
-                                  <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                        <div key={pi} className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          {pair.map((foto) => renderPhotoCard(foto))}
                         </div>
                       ))}
                     </div>
@@ -811,29 +906,12 @@ export function DetailMedicaoContent({
                 ))}
 
                 {fotosByItem.gerais.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Fotos Gerais</h3>
+                  <div data-pdf-section="grupo-fotos-gerais">
+                    <h3 className="pdf-section-heading text-sm font-semibold mb-3 text-muted-foreground">Fotos Gerais</h3>
                     <div className="space-y-4">
                       {chunkPairs(fotosByItem.gerais).map((pair, pi) => (
-                        <div key={pi} className="foto-card grid grid-cols-2 gap-4" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          {pair.map(f => (
-                            <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
-                              <img src={f.url} alt="foto" className="w-full h-56 object-cover" />
-                              <div className="p-3 bg-muted/30 space-y-1.5">
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                  {f.site_nome && <span>{f.site_nome}</span>}
-                                  {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
-                                  {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
-                                </div>
-                                <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
-                                  {classLabel(f.classificacao)}
-                                </Badge>
-                                {f.legenda && (
-                                  <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                        <div key={pi} className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
                       ))}
                     </div>
