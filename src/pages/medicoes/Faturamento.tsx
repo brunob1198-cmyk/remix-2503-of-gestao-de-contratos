@@ -65,6 +65,39 @@ export default function FaturamentoPage() {
   const [observacao, setObservacao] = useState("");
   const [numeroFatura, setNumeroFatura] = useState("");
 
+  // Municipality save handler
+  const handleSaveMunicipio = async () => {
+    if (!editMunicipioSiteId || !editUf || !editMunicipio) return;
+    setSavingMunicipio(true);
+    try {
+      const { error } = await supabase
+        .from("sites")
+        .update({ uf: editUf, municipio: editMunicipio })
+        .eq("id", editMunicipioSiteId);
+      if (error) throw error;
+      toast({ title: "Município atualizado com sucesso!" });
+      setEditMunicipioSiteId(null);
+      queryClient.invalidateQueries({ queryKey: ["itens_disponiveis_faturamento"] });
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar município", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingMunicipio(false);
+    }
+  };
+
+  // UFs list from municipios
+  const ufs = useMemo(() => {
+    const set = new Set<string>();
+    municipios.forEach(m => set.add(m.uf));
+    return Array.from(set).sort();
+  }, [municipios]);
+
+  const municipiosFiltrados = useMemo(() => {
+    if (!editUf) return [];
+    return municipios.filter(m => m.uf === editUf).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [municipios, editUf]);
+
   // Group items by project for display
   const projetoSelecionado = projetos.find(p => p.id === projetoId);
   const projetoSites = sites.filter(s => s.projeto_id === projetoId);
@@ -76,6 +109,26 @@ export default function FaturamentoPage() {
       return true;
     });
   }, [itensDisponiveis, selectedSites]);
+
+  // Group filtered items by municipality
+  const groupedByMunicipio = useMemo(() => {
+    const groups = new Map<string, { uf: string; municipio: string; items: ItemDisponivel[] }>();
+    filteredItens.forEach(item => {
+      const mKey = item.site_municipio && item.site_uf
+        ? `${item.site_municipio} - ${item.site_uf}`
+        : "Sem município definido";
+      if (!groups.has(mKey)) {
+        groups.set(mKey, { uf: item.site_uf || "", municipio: item.site_municipio || "", items: [] });
+      }
+      groups.get(mKey)!.items.push(item);
+    });
+    // Sort: defined municipalities first, then alphabetically
+    return Array.from(groups.entries()).sort((a, b) => {
+      if (a[0] === "Sem município definido") return 1;
+      if (b[0] === "Sem município definido") return -1;
+      return a[0].localeCompare(b[0]);
+    });
+  }, [filteredItens]);
 
   const filteredFaturamentos = useMemo(() => {
     return faturamentos.filter(fat => {
