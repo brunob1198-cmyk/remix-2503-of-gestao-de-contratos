@@ -167,9 +167,22 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const custoOrcado = escopoData.custoOrcado;
   const valorProduzido = escopoData.valorProduzido;
 
-  // 2. Custos Pagos (ERP)
+  // Fetch disabled ERP categories
+  const { data: categoriasDesativadas = [] } = useQuery({
+    queryKey: ["categorias_erp_desativadas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mapeamento_categorias_erp")
+        .select("categoria_erp")
+        .eq("ativo", false);
+      if (error) throw error;
+      return (data || []).map(d => d.categoria_erp);
+    },
+  });
+
+  // 2. Custos Pagos (ERP) - filtra categorias desativadas
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
-    queryKey: ["custos_erp", projetoId, siteId, startDate],
+    queryKey: ["custos_erp", projetoId, siteId, startDate, categoriasDesativadas],
     queryFn: async () => {
       let q = (supabase as any).from("custo_real_erp").select("*");
       if (projetoId) q = q.eq("projeto_id", projetoId);
@@ -180,7 +193,11 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       
       const { data, error } = await q;
       if (error) throw error;
-      return data as CustoErp[];
+      // Filter out disabled categories
+      const filtered = (data as CustoErp[]).filter(
+        item => !categoriasDesativadas.includes(item.categoria_erp)
+      );
+      return filtered;
     },
     enabled: !!projetoId
   });
