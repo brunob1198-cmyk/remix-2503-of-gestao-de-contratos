@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useErpConfig, useErpLogs, useErpSend } from "@/hooks/useErpIntegration";
 import { useContaAzulConnection } from "@/hooks/useAnaliseCustos";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock, Link2, Unlink, CloudOff } from "lucide-react";
+import { Settings, Plus, RefreshCw, Trash2, Download, Webhook, CheckCircle2, XCircle, Clock, Link2, Unlink, CloudOff, EyeOff, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { useSearchParams } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export default function IntegracaoErpPage() {
   const { role } = useAuth();
