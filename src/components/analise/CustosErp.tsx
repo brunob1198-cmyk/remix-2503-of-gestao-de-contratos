@@ -20,21 +20,14 @@ interface CustosErpProps {
   periodoFim: Date;
 }
 
-const CATEGORIAS_ENG = [
+// Categorias padrão usadas na Análise de Custos
+const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
   "Equipamentos",
   "Transporte",
   "Indiretos",
   "Financeiros",
-  "Diaria - Refeicao - Campo",
-  "Exames Médicos",
-  "Materiais Aplicados na Prestação de Serviços",
-  "Diaria - Hospedagem - Campo",
-  "Locacao Veiculos",
-  "Prestador de Servico",
-  "Combustivel - Campo",
-  "Pedágio - Campo",
 ];
 
 type ColKey = "competencia" | "descricao" | "mapeamento" | "centro_custo" | "valor" | "status" | "categoria";
