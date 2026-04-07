@@ -189,7 +189,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   };
 
   return (
-    <div className="flex flex-col h-full gap-4 pb-12">
+    <div className="flex flex-col h-full gap-4 pb-20">
       <DialogHeader>
         <DialogTitle>{id ? "Editar Contrato" : "Novo Contrato ou Aditivo"}</DialogTitle>
       </DialogHeader>
