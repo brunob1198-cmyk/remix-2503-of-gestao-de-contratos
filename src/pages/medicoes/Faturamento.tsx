@@ -38,7 +38,6 @@ export default function FaturamentoPage() {
   const { sites } = useSites();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { municipios: municipiosList, UF_LIST } = useMunicipios(editUf || undefined);
   const [projetoId, setProjetoId] = usePersistedState<string>("faturamento_projeto_id", "");
   const { data: itensDisponiveis = [], isLoading: loadingItens } = useItensDisponiveis(projetoId || undefined);
   const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(projetoId || undefined);
@@ -56,6 +55,9 @@ export default function FaturamentoPage() {
   const [editUf, setEditUf] = useState("");
   const [editMunicipio, setEditMunicipio] = useState("");
   const [savingMunicipio, setSavingMunicipio] = useState(false);
+
+  // Load municipios for selected UF
+  const { municipios: municipiosFiltrados, UF_LIST: ufs } = useMunicipios(editUf || undefined);
 
   // State for invoice creation
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
@@ -85,18 +87,6 @@ export default function FaturamentoPage() {
       setSavingMunicipio(false);
     }
   };
-
-  // UFs list from municipios
-  const ufs = useMemo(() => {
-    const set = new Set<string>();
-    municipios.forEach(m => set.add(m.uf));
-    return Array.from(set).sort();
-  }, [municipios]);
-
-  const municipiosFiltrados = useMemo(() => {
-    if (!editUf) return [];
-    return municipios.filter(m => m.uf === editUf).sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [municipios, editUf]);
 
   // Group items by project for display
   const projetoSelecionado = projetos.find(p => p.id === projetoId);
