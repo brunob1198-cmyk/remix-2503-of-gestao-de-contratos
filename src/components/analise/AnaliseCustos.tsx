@@ -109,13 +109,22 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         (itensLpu || []).forEach((il: any) => { bdiMap[il.id] = Number(il.bdi) || 1; });
       }
 
-      // Fetch ERP costs by data_competencia
-      const { data: erpData } = await (supabase as any)
+      // Fetch disabled ERP categories
+      const { data: disabledCats } = await supabase
+        .from("mapeamento_categorias_erp")
+        .select("categoria_erp")
+        .eq("ativo", false);
+      const disabledSet = new Set((disabledCats || []).map((d: any) => d.categoria_erp));
+
+      // Fetch ERP costs by data_competencia (filter disabled categories)
+      const { data: erpDataRaw } = await (supabase as any)
         .from("custo_real_erp")
-        .select("projeto_id, categoria_interna, valor, data_competencia")
+        .select("projeto_id, categoria_interna, categoria_erp, valor, data_competencia")
         .in("projeto_id", projetoIds)
         .gte("data_competencia", startDate)
         .lte("data_competencia", endDate);
+
+      const erpData = (erpDataRaw || []).filter((e: any) => !disabledSet.has(e.categoria_erp));
 
       // Generate all months in range
       const months = eachMonthOfInterval({ start: periodoInicio, end: periodoFim });
