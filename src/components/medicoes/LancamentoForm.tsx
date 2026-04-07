@@ -164,7 +164,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
         const row = jsonData[i];
         if (row && row.some((cell: any) => 
           typeof cell === 'string' && 
-          (cell.toLowerCase().includes('site') || cell.toLowerCase().includes('quantidade') || cell.toLowerCase().includes('qtd'))
+          (cell.toLowerCase().includes('site') || cell.toLowerCase().includes('projeto') || cell.toLowerCase().includes('quantidade') || cell.toLowerCase().includes('qtd'))
         )) {
           headerRowIndex = i;
           break;
