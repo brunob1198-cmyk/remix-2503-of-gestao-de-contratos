@@ -59,11 +59,11 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         }
         
         const totalProduzido = producao
-          ?.filter(l => projetoSites.includes(l.site_id))
-          .reduce((sum, l) => {
-            const preco = (l.item_lpu as any)?.preco_unitario || 0;
-            return sum + (Number(l.quantidade) * Number(preco));
-          }, 0) || 0;
+          ?.filter(l => {
+            const siteId = (l.diario as any)?.site_id;
+            return siteId && projetoSites.includes(siteId);
+          })
+          .reduce((sum, l) => sum + (Number(l.valor_total) || 0), 0) || 0;
 
         const totalMedido = medicao
           ?.filter(l => projetoSites.includes(l.site_id))
