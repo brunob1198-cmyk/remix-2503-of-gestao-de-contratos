@@ -19,32 +19,6 @@ function chunkPairs<T>(arr: T[]): T[][] {
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1024;
-const PDF_PAGE_BREAK_SELECTORS = [
-  "[data-pdf-section]",
-  ".pdf-keep-together",
-  ".pdf-section-heading",
-  ".foto-card",
-  "h2",
-  "h3",
-  "table",
-  "thead",
-  "tfoot",
-  "tr",
-  ".border.rounded-lg",
-].join(", ");
-const PDF_BLOCK_MIN_HEIGHT = 96;
-const PDF_SECTION_GAP_MM = 4;
-
-type PdfRenderBlock = {
-  start: number;
-  height: number;
-  containsImages: boolean;
-};
-
-type PdfSection = PdfRenderBlock & {
-  element: HTMLElement;
-  end: number;
-};
 
 const waitForNextPaint = async () => {
   await new Promise<void>((resolve) => {
@@ -70,7 +44,6 @@ const waitForPdfAssets = async (element: HTMLElement) => {
   );
 
   await document.fonts.ready.catch(() => undefined);
-
   await waitForNextPaint();
 };
 
@@ -107,156 +80,69 @@ const createPdfExportContainer = (source: HTMLElement) => {
   return { container, content, contentWidth };
 };
 
-const createPdfCaptureViewport = (container: HTMLDivElement, content: HTMLDivElement, contentWidth: number) => {
-  const viewport = document.createElement("div");
-
-  viewport.setAttribute("data-pdf-export-viewport", "medicao-detalhe");
-  Object.assign(viewport.style, {
-    position: "relative",
-    width: `${contentWidth}px`,
-    overflow: "hidden",
-    background: "#ffffff",
-    boxSizing: "border-box",
-  });
-
-  container.replaceChildren(viewport);
-  content.style.transformOrigin = "top left";
-  content.style.willChange = "transform";
-  viewport.appendChild(content);
-
-  return viewport;
-};
-
-const capturePdfElement = async (element: HTMLElement, contentWidth: number, scale: number) => {
-  const rect = element.getBoundingClientRect();
-
-  return html2canvas(element, {
-    scale,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    logging: false,
-    windowWidth: contentWidth,
-    windowHeight: Math.max(1, Math.ceil(rect.height)),
-    scrollX: 0,
-    scrollY: 0,
-  });
-};
-
-const getAvoidBreakAreas = (content: HTMLElement) => {
+/**
+ * Collect safe break-point positions (top edges of data-pdf-section elements).
+ * These are Y positions in the content where it's safe to start a new page.
+ */
+const collectSafeBreakPoints = (content: HTMLElement): number[] => {
   const contentRect = content.getBoundingClientRect();
+  const sections = Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]"))
+    .filter((el) => !el.parentElement?.closest("[data-pdf-section]"));
 
-  return Array.from(content.querySelectorAll(PDF_PAGE_BREAK_SELECTORS))
-    .map((element) => {
-      const rect = (element as HTMLElement).getBoundingClientRect();
-      const top = rect.top - contentRect.top;
-      const height = rect.height;
-
-      return {
-        top: Math.max(0, Math.floor(top)),
-        bottom: Math.max(0, Math.ceil(top + height)),
-        height: Math.ceil(height),
-      };
-    })
-    .filter((area) => area.height > 0)
-    .sort((a, b) => a.top - b.top);
-};
-
-const getRelativeBounds = (root: HTMLElement, element: HTMLElement) => {
-  const rootRect = root.getBoundingClientRect();
-  const rect = element.getBoundingClientRect();
-  const start = Math.max(0, Math.floor(rect.top - rootRect.top));
-  const height = Math.max(1, Math.ceil(rect.height));
-
-  return {
-    start,
-    end: start + height,
-    height,
-  };
-};
-
-const collectPdfSections = (content: HTMLElement): PdfSection[] => {
-  const sectionElements = Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]"))
-    .filter((element) => !element.parentElement?.closest("[data-pdf-section]"));
-
-  if (!sectionElements.length) {
-    const totalHeight = Math.max(1, Math.ceil(content.scrollHeight));
-    return [{ element: content, start: 0, end: totalHeight, height: totalHeight, containsImages: content.querySelector("img") !== null }];
+  const breakPoints: number[] = [];
+  for (const el of sections) {
+    const rect = el.getBoundingClientRect();
+    const top = Math.max(0, Math.floor(rect.top - contentRect.top));
+    if (top > 0) breakPoints.push(top);
   }
 
-  return sectionElements.map((element) => {
-    const bounds = getRelativeBounds(content, element);
-    return {
-      element,
-      ...bounds,
-      containsImages: element.querySelector("img") !== null,
-    };
-  });
+  return [...new Set(breakPoints)].sort((a, b) => a - b);
 };
 
-const buildPdfBlocksInRange = (
-  avoidAreas: ReturnType<typeof getAvoidBreakAreas>,
-  rangeStart: number,
-  rangeEnd: number,
+/**
+ * Build page slices from the full content height using safe break points.
+ * Each slice = { start, height } representing a vertical strip of the content.
+ */
+const buildPageSlices = (
+  totalHeight: number,
   pageHeightPx: number,
-  containsImages: boolean,
-): PdfRenderBlock[] => {
-  const slices: PdfRenderBlock[] = [];
-  let start = rangeStart;
+  safeBreaks: number[],
+): { start: number; height: number }[] => {
+  const slices: { start: number; height: number }[] = [];
+  let cursor = 0;
 
-  while (start < rangeEnd) {
-    const remainingHeight = rangeEnd - start;
+  while (cursor < totalHeight) {
+    const remaining = totalHeight - cursor;
 
-    if (remainingHeight <= pageHeightPx) {
-      slices.push({ start, height: remainingHeight, containsImages });
+    // If remaining content fits in one page, take it all
+    if (remaining <= pageHeightPx) {
+      slices.push({ start: cursor, height: remaining });
       break;
     }
 
-    let end = Math.min(start + pageHeightPx, rangeEnd);
-    const overlappingArea = avoidAreas
-      .filter(
-        (area) =>
-          area.top > start + 8 &&
-          area.top < end &&
-          area.bottom > end &&
-          area.height < pageHeightPx * 0.98,
-      )
-      .at(-1);
+    // Find the last safe break point that fits within this page
+    const pageEnd = cursor + pageHeightPx;
+    let bestBreak = -1;
 
-    if (overlappingArea) {
-      const adjustedEnd = Math.max(start + PDF_BLOCK_MIN_HEIGHT, overlappingArea.top);
-      if (adjustedEnd < end && adjustedEnd - start >= PDF_BLOCK_MIN_HEIGHT) {
-        end = adjustedEnd;
-      }
+    for (const bp of safeBreaks) {
+      if (bp <= cursor) continue; // already past
+      if (bp > pageEnd) break; // beyond this page
+      bestBreak = bp;
     }
 
-    if (end <= start) {
-      end = Math.min(start + pageHeightPx, rangeEnd);
+    // Use the best break point, or fall back to full page height
+    // Require at least 80px of content to avoid tiny slivers
+    if (bestBreak > cursor + 80) {
+      slices.push({ start: cursor, height: bestBreak - cursor });
+      cursor = bestBreak;
+    } else {
+      // No safe break found - take full page height
+      slices.push({ start: cursor, height: pageHeightPx });
+      cursor += pageHeightPx;
     }
-
-    slices.push({ start, height: end - start, containsImages });
-    start = end;
   }
 
   return slices;
-};
-
-const buildPdfBlocks = (content: HTMLElement, pageHeightPx: number) => {
-  const avoidAreas = getAvoidBreakAreas(content);
-  const sections = collectPdfSections(content);
-
-  return sections.flatMap((section) => {
-    if (section.height <= pageHeightPx) {
-      return [{ start: section.start, height: section.height, containsImages: section.containsImages }];
-    }
-
-    return buildPdfBlocksInRange(
-      avoidAreas,
-      section.start,
-      section.end,
-      pageHeightPx,
-      section.containsImages,
-    );
-  });
 };
 
 interface DetailMedicaoContentProps {
@@ -577,105 +463,68 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
-      const imageType = baseOptions.image?.type === "png" ? "PNG" : "JPEG";
-      const dataUrlType = imageType === "PNG" ? "image/png" : "image/jpeg";
-      const sections = collectPdfSections(content);
-      let currentY = marginTop;
+      const scale = 1.5;
+      const imageQuality = 0.82;
 
-      for (let index = 0; index < sections.length; index += 1) {
-        const section = sections[index];
-        const captureScale = section.containsImages ? 1.45 : Math.min(baseOptions.html2canvas?.scale ?? 2, 1.7);
-        const imageQuality = section.containsImages ? 0.78 : Math.min(baseOptions.image?.quality ?? 0.98, 0.9);
+      // 1. Render the entire content as one large canvas
+      const totalHeight = content.scrollHeight;
 
+      // Create a viewport for slicing
+      const viewport = document.createElement("div");
+      viewport.setAttribute("data-pdf-export-viewport", "medicao-detalhe");
+      Object.assign(viewport.style, {
+        position: "relative",
+        width: `${contentWidth}px`,
+        overflow: "hidden",
+        background: "#ffffff",
+        boxSizing: "border-box",
+      });
+      container.replaceChildren(viewport);
+      content.style.transformOrigin = "top left";
+      content.style.willChange = "transform";
+      viewport.appendChild(content);
+
+      // 2. Collect safe break points from data-pdf-section boundaries
+      const safeBreaks = collectSafeBreakPoints(content);
+
+      // 3. Build page slices
+      const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
+
+      // 4. Render each slice
+      for (let i = 0; i < slices.length; i++) {
+        const slice = slices[i];
+
+        viewport.style.height = `${slice.height}px`;
+        content.style.transform = `translate3d(0, -${slice.start}px, 0)`;
         await waitForNextPaint();
 
-        const canvas = await capturePdfElement(section.element, contentWidth, captureScale);
+        const canvas = await html2canvas(viewport, {
+          scale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: contentWidth,
+          height: slice.height,
+          windowWidth: contentWidth,
+          windowHeight: slice.height,
+          scrollX: 0,
+          scrollY: 0,
+        });
 
         const renderedHeight = (canvas.height * usableWidth) / canvas.width;
 
-        if (renderedHeight <= usableHeight) {
-          const availableHeight = pageHeight - marginBottom - currentY;
+        if (i > 0) pdf.addPage();
 
-          if (currentY > marginTop && renderedHeight > availableHeight) {
-            pdf.addPage();
-            currentY = marginTop;
-          }
-
-          pdf.addImage(
-            canvas.toDataURL(dataUrlType, imageQuality),
-            imageType,
-            marginLeft,
-            currentY,
-            usableWidth,
-            renderedHeight,
-            undefined,
-            "MEDIUM",
-          );
-
-          currentY += renderedHeight + (index < sections.length - 1 ? PDF_SECTION_GAP_MM : 0);
-          continue;
-        }
-
-        const { container: fallbackContainer, content: fallbackContent, contentWidth: fallbackWidth } = createPdfExportContainer(printRef.current);
-
-        try {
-          await waitForPdfAssets(fallbackContent);
-
-          const fallbackViewport = createPdfCaptureViewport(fallbackContainer, fallbackContent, fallbackWidth);
-          const fallbackPageHeightPx = Math.floor(fallbackWidth * (usableHeight / usableWidth));
-          const fallbackBlocks = buildPdfBlocksInRange(
-            getAvoidBreakAreas(fallbackContent),
-            section.start,
-            section.end,
-            fallbackPageHeightPx,
-            section.containsImages,
-          );
-
-          for (let blockIndex = 0; blockIndex < fallbackBlocks.length; blockIndex += 1) {
-            const block = fallbackBlocks[blockIndex];
-
-            fallbackViewport.style.height = `${block.height}px`;
-            fallbackContent.style.transform = `translate3d(0, -${block.start}px, 0)`;
-            await waitForNextPaint();
-
-            const blockCanvas = await html2canvas(fallbackViewport, {
-              scale: captureScale,
-              useCORS: true,
-              backgroundColor: "#ffffff",
-              logging: false,
-              width: fallbackWidth,
-              height: block.height,
-              windowWidth: fallbackWidth,
-              windowHeight: block.height,
-              scrollX: 0,
-              scrollY: 0,
-            });
-
-            const blockRenderedHeight = (blockCanvas.height * usableWidth) / blockCanvas.width;
-            const availableHeight = pageHeight - marginBottom - currentY;
-
-            if (currentY > marginTop && blockRenderedHeight > availableHeight) {
-              pdf.addPage();
-              currentY = marginTop;
-            }
-
-            pdf.addImage(
-              blockCanvas.toDataURL(dataUrlType, imageQuality),
-              imageType,
-              marginLeft,
-              currentY,
-              usableWidth,
-              blockRenderedHeight,
-              undefined,
-              "MEDIUM",
-            );
-
-            const isLastRenderedBlock = index === sections.length - 1 && blockIndex === fallbackBlocks.length - 1;
-            currentY += blockRenderedHeight + (isLastRenderedBlock ? 0 : PDF_SECTION_GAP_MM);
-          }
-        } finally {
-          fallbackContainer.remove();
-        }
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", imageQuality),
+          "JPEG",
+          marginLeft,
+          marginTop,
+          usableWidth,
+          renderedHeight,
+          undefined,
+          "MEDIUM",
+        );
       }
 
       pdf.save(filename);
