@@ -7,6 +7,8 @@ export interface ItemDisponivel {
   site_id: string;
   site_codigo: string;
   site_nome: string;
+  site_municipio: string;
+  site_uf: string;
   projeto_id: string;
   projeto_codigo: string;
   projeto_nome: string;
@@ -59,7 +61,7 @@ export function useItensDisponiveis(projetoId?: string) {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
         .from("lancamentos_medicao")
-        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, site:sites(codigo, nome, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
+        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
         .in("status", ["aprovado", "finalizado"])
         .limit(100000);
 
@@ -89,6 +91,7 @@ export function useItensDisponiveis(projetoId?: string) {
       // 3. Agregar aprovados por site+item
       const mapAprovado = new Map<string, {
         site_id: string; site_codigo: string; site_nome: string;
+        site_municipio: string; site_uf: string;
         projeto_id: string; projeto_codigo: string; projeto_nome: string;
         item_lpu_id: string; item_codigo: string; item_descricao: string;
         unidade: string; preco_unitario: number;
@@ -111,6 +114,8 @@ export function useItensDisponiveis(projetoId?: string) {
             site_id: m.site_id,
             site_codigo: site.codigo,
             site_nome: site.nome,
+            site_municipio: site.municipio || "",
+            site_uf: site.uf || "",
             projeto_id: proj?.id || "",
             projeto_codigo: proj?.codigo || "",
             projeto_nome: proj?.nome || "",
