@@ -7,6 +7,8 @@ export interface ItemDisponivel {
   site_id: string;
   site_codigo: string;
   site_nome: string;
+  site_municipio: string;
+  site_uf: string;
   projeto_id: string;
   projeto_codigo: string;
   projeto_nome: string;
