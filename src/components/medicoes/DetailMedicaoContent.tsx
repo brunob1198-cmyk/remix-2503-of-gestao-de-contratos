@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2 } from "lucide-react";
 import { useRef, useState, useMemo, useCallback } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 function chunkPairs<T>(arr: T[]): T[][] {
   const result: T[][] = [];
@@ -14,10 +16,30 @@ function chunkPairs<T>(arr: T[]): T[][] {
   }
   return result;
 }
-import html2pdf from "html2pdf.js";
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1024;
+const PDF_PAGE_BREAK_SELECTORS = [
+  "[data-pdf-section]",
+  ".pdf-keep-together",
+  ".foto-card",
+  "table",
+  "thead",
+  "tfoot",
+  "tr",
+  ".border.rounded-lg",
+].join(", ");
+
+type PdfSlice = {
+  start: number;
+  height: number;
+};
+
+const waitForNextPaint = async () => {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+};
 
 const waitForPdfAssets = async (element: HTMLElement) => {
   const images = Array.from(element.querySelectorAll("img"));
@@ -38,9 +60,7 @@ const waitForPdfAssets = async (element: HTMLElement) => {
 
   await document.fonts.ready.catch(() => undefined);
 
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
+  await waitForNextPaint();
 };
 
 const createPdfExportContainer = (source: HTMLElement) => {
@@ -74,6 +94,86 @@ const createPdfExportContainer = (source: HTMLElement) => {
   document.body.appendChild(container);
 
   return { container, content, contentWidth };
+};
+
+const createPdfCaptureViewport = (container: HTMLDivElement, content: HTMLDivElement, contentWidth: number) => {
+  const viewport = document.createElement("div");
+
+  viewport.setAttribute("data-pdf-export-viewport", "medicao-detalhe");
+  Object.assign(viewport.style, {
+    position: "relative",
+    width: `${contentWidth}px`,
+    overflow: "hidden",
+    background: "#ffffff",
+    boxSizing: "border-box",
+  });
+
+  container.replaceChildren(viewport);
+  content.style.transformOrigin = "top left";
+  content.style.willChange = "transform";
+  viewport.appendChild(content);
+
+  return viewport;
+};
+
+const getAvoidBreakAreas = (content: HTMLElement) => {
+  const contentRect = content.getBoundingClientRect();
+
+  return Array.from(content.querySelectorAll(PDF_PAGE_BREAK_SELECTORS))
+    .map((element) => {
+      const rect = (element as HTMLElement).getBoundingClientRect();
+      const top = rect.top - contentRect.top;
+      const height = rect.height;
+
+      return {
+        top: Math.max(0, Math.floor(top)),
+        bottom: Math.max(0, Math.ceil(top + height)),
+        height: Math.ceil(height),
+      };
+    })
+    .filter((area) => area.height > 0)
+    .sort((a, b) => a.top - b.top);
+};
+
+const buildPdfSlices = (content: HTMLElement, pageHeightPx: number): PdfSlice[] => {
+  const totalHeight = Math.ceil(content.scrollHeight);
+  const avoidAreas = getAvoidBreakAreas(content);
+  const slices: PdfSlice[] = [];
+  let start = 0;
+
+  while (start < totalHeight) {
+    const remainingHeight = totalHeight - start;
+
+    if (remainingHeight <= pageHeightPx) {
+      slices.push({ start, height: remainingHeight });
+      break;
+    }
+
+    let end = Math.min(start + pageHeightPx, totalHeight);
+    const overlappingArea = avoidAreas.find(
+      (area) =>
+        area.top > start + 8 &&
+        area.top < end &&
+        area.bottom > end &&
+        area.height < pageHeightPx * 0.95,
+    );
+
+    if (overlappingArea) {
+      const adjustedEnd = Math.max(start + 120, overlappingArea.top);
+      if (adjustedEnd < end) {
+        end = adjustedEnd;
+      }
+    }
+
+    if (end <= start) {
+      end = Math.min(start + pageHeightPx, totalHeight);
+    }
+
+    slices.push({ start, height: end - start });
+    start = end;
+  }
+
+  return slices;
 };
 
 interface DetailMedicaoContentProps {
@@ -337,21 +437,62 @@ export function DetailMedicaoContent({
 
       await waitForPdfAssets(content);
 
-      const baseOptions = getPdfOptions(`Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`);
+      const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
+      const baseOptions = getPdfOptions(filename);
+      const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
+      const pdf = new jsPDF(baseOptions.jsPDF?.orientation ?? "portrait", "mm", baseOptions.jsPDF?.format ?? "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const usableWidth = pageWidth - marginLeft - marginRight;
+      const usableHeight = pageHeight - marginTop - marginBottom;
+      const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
+      const renderScale = Math.min(baseOptions.html2canvas?.scale ?? 2, 2);
+      const imageType = baseOptions.image?.type === "png" ? "PNG" : "JPEG";
+      const dataUrlType = imageType === "PNG" ? "image/png" : "image/jpeg";
+      const imageQuality = baseOptions.image?.quality ?? 0.98;
+      const slices = buildPdfSlices(content, pageHeightPx);
+      const viewport = createPdfCaptureViewport(container, content, contentWidth);
 
-      await html2pdf()
-        .set({
-          ...baseOptions,
-          html2canvas: {
-            ...baseOptions.html2canvas,
-            backgroundColor: "#ffffff",
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: Math.max(content.scrollWidth, contentWidth),
-          },
-        })
-        .from(content)
-        .save();
+      for (let index = 0; index < slices.length; index += 1) {
+        const slice = slices[index];
+
+        viewport.style.height = `${slice.height}px`;
+        content.style.transform = `translate3d(0, -${slice.start}px, 0)`;
+        await waitForNextPaint();
+
+        const canvas = await html2canvas(viewport, {
+          scale: renderScale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: contentWidth,
+          height: slice.height,
+          windowWidth: contentWidth,
+          windowHeight: slice.height,
+          scrollX: 0,
+          scrollY: 0,
+        });
+
+        const renderedHeight = (canvas.height * usableWidth) / canvas.width;
+
+        if (index > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(
+          canvas.toDataURL(dataUrlType, imageQuality),
+          imageType,
+          marginLeft,
+          marginTop,
+          usableWidth,
+          renderedHeight,
+          undefined,
+          "FAST",
+        );
+      }
+
+      content.style.transform = "";
+      pdf.save(filename);
     } catch (e) {
       console.error("Erro ao exportar PDF da medição:", e);
     } finally {
