@@ -151,6 +151,12 @@ export function DetailMedicaoContent({
     return map;
   }, [siteProduction]);
 
+  const getSiteItemsTotal = useCallback(
+    (items: { quantidade: number; preco_unitario: number }[]) =>
+      items.reduce((sum, item) => sum + item.quantidade * item.preco_unitario, 0),
+    [],
+  );
+
   // Fetch diary photos
   const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
     queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
@@ -372,38 +378,44 @@ export function DetailMedicaoContent({
           </div>
         )}
 
-        <Separator className="my-3" />
+        <div
+          className="pdf-keep-together"
+          data-pdf-section="itens-medicao"
+          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+        >
+          <Separator className="my-3" />
 
-        {/* Consolidated Items table */}
-        <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Itens da Medição</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item LPU</TableHead>
-              <TableHead>Unidade</TableHead>
-              <TableHead className="text-right">Qtd Total</TableHead>
-              <TableHead className="text-right">Preço Unit.</TableHead>
-              <TableHead className="text-right">Valor Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detailLancamentos.map(l => (
-              <TableRow key={l.id}>
-                <TableCell>{l.item_lpu?.codigo} - {l.item_lpu?.descricao}</TableCell>
-                <TableCell>{l.item_lpu?.unidade}</TableCell>
-                <TableCell className="text-right tabular-nums">{Number(l.quantidade).toLocaleString("pt-BR")}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatCurrency(Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
-                <TableCell className="text-right tabular-nums font-semibold">{formatCurrency(Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
+          {/* Consolidated Items table */}
+          <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Itens da Medição</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item LPU</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead className="text-right">Qtd Total</TableHead>
+                <TableHead className="text-right">Preço Unit.</TableHead>
+                <TableHead className="text-right">Valor Total</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TableCell colSpan={4} className="text-right font-bold">Total:</TableCell>
-              <TableCell className="text-right font-bold">{formatCurrency(totalValor)}</TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {detailLancamentos.map(l => (
+                <TableRow key={l.id}>
+                  <TableCell>{l.item_lpu?.codigo} - {l.item_lpu?.descricao}</TableCell>
+                  <TableCell>{l.item_lpu?.unidade}</TableCell>
+                  <TableCell className="text-right tabular-nums">{Number(l.quantidade).toLocaleString("pt-BR")}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatCurrency(Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold">{formatCurrency(Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0))}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={4} className="text-right font-bold">Total:</TableCell>
+                <TableCell className="text-right font-bold">{formatCurrency(totalValor)}</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </div>
 
         {/* Photo Report */}
         {(diarioFotos.length > 0 || loadingFotos) && (
@@ -426,39 +438,57 @@ export function DetailMedicaoContent({
               <div className="space-y-6">
                 {fotosBySite.map(([siteName, { fotos, siteId }]) => {
                   const siteItems = productionBySite.get(siteId) || [];
+                  const siteTotal = getSiteItemsTotal(siteItems);
                   return (
-                    <div key={siteName} className="border rounded-lg overflow-hidden" style={{ pageBreakInside: "avoid" }}>
-                      <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
-                        <MapPin className="h-4 w-4" />
-                        {siteName}
-                      </div>
-                      {siteItems.length > 0 && (
-                        <div className="p-3 border-b bg-muted/20">
-                          <p className="text-xs font-semibold mb-2">Produção do Site:</p>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="text-xs">Item</TableHead>
-                                <TableHead className="text-xs text-right">Qtd</TableHead>
-                                <TableHead className="text-xs text-right">Valor</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {siteItems.map(si => (
-                                <TableRow key={si.item_codigo}>
-                                  <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                    <div key={siteName} className="border rounded-lg overflow-hidden">
+                      <div
+                        className="pdf-keep-together"
+                        data-pdf-section="site-producao"
+                        style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                      >
+                        <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
+                          <MapPin className="h-4 w-4" />
+                          {siteName}
                         </div>
-                      )}
+                        {siteItems.length > 0 && (
+                          <div className="p-3 border-b bg-muted/20">
+                            <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-xs">Item</TableHead>
+                                  <TableHead className="text-xs text-right">Qtd</TableHead>
+                                  <TableHead className="text-xs text-right">Valor</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {siteItems.map(si => (
+                                  <TableRow key={si.item_codigo}>
+                                    <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
+                                    <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                    <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+
+                            <div className="mt-3 flex justify-end">
+                              <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
+                                Total do site: {formatCurrency(siteTotal)}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       <div className="p-3">
                         <div className="space-y-4">
                           {chunkPairs(fotos).map((pair, pi) => (
-                            <div key={pi} className="foto-card grid grid-cols-2 gap-4" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                            <div
+                              key={pi}
+                              className="foto-card pdf-keep-together grid grid-cols-2 gap-4"
+                              data-pdf-section="site-fotos"
+                              style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
+                            >
                               {pair.map(f => (
                                 <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
                                   <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
