@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLancamentosMedicao, useLancamentosProducao } from "@/hooks/useLancamentos";
-import { usePersistedState } from "@/hooks/usePersistedState";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -120,11 +120,13 @@ export default function AcompanhamentoMedicoesPage() {
     },
   });
 
-  const [projetoId, setProjetoId] = usePersistedState<string>("acompanhamento_projeto_id", "");
-  const [siteId, setSiteId] = usePersistedState<string>("acompanhamento_site_id", "");
-  const [statusFilter, setStatusFilter] = usePersistedState<string>("acompanhamento_status", "");
+  const [selectedProjetos, setSelectedProjetos] = useState<Set<string>>(new Set());
+  const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
+  const [selectedStatus, setSelectedStatus] = useState<Set<string>>(new Set());
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
+  const [filterSearchProjeto, setFilterSearchProjeto] = useState("");
+  const [filterSearchSite, setFilterSearchSite] = useState("");
   const [localEdits, setLocalEdits] = useState<Record<string, { status?: string; numero_po?: string; observacao_acompanhamento?: string; quantidade_aprovada?: number; quantidade_rejeitada?: number }>>({});
 
   // Geração de medição
@@ -174,8 +176,16 @@ export default function AcompanhamentoMedicoesPage() {
     );
   };
 
-  const filteredSites = projetoId ? sites.filter(s => s.projeto_id === projetoId) : sites;
+  const filteredSites = selectedProjetos.size > 0 ? sites.filter(s => selectedProjetos.has(s.projeto_id)) : sites;
   const gerarFilteredSites = gerarProjetoId ? sites.filter(s => s.projeto_id === gerarProjetoId) : sites;
+
+  const toggleSetValue = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+  };
 
   // Group lancamentos by site_id + numero_medicao
   const medicoesAgrupadas = useMemo(() => {
@@ -205,12 +215,12 @@ export default function AcompanhamentoMedicoesPage() {
 
     let filtered = [...lancamentos];
 
-    if (projetoId) {
-      const projectSiteIds = sites.filter(s => s.projeto_id === projetoId).map(s => s.id);
+    if (selectedProjetos.size > 0) {
+      const projectSiteIds = sites.filter(s => selectedProjetos.has(s.projeto_id)).map(s => s.id);
       filtered = filtered.filter(l => projectSiteIds.includes(l.site_id));
     }
-    if (siteId) filtered = filtered.filter(l => l.site_id === siteId);
-    if (statusFilter) filtered = filtered.filter(l => l.status === statusFilter);
+    if (selectedSites.size > 0) filtered = filtered.filter(l => selectedSites.has(l.site_id));
+    if (selectedStatus.size > 0) filtered = filtered.filter(l => selectedStatus.has(l.status || "aprovado"));
     if (dataInicio) filtered = filtered.filter(l => l.data_medicao >= dataInicio);
     if (dataFim) filtered = filtered.filter(l => l.data_medicao <= dataFim);
 
@@ -256,7 +266,7 @@ export default function AcompanhamentoMedicoesPage() {
     });
 
     return Array.from(grouped.entries()).map(([key, value]) => ({ id: key, ...value }));
-  }, [lancamentos, projetoId, siteId, statusFilter, dataInicio, dataFim, sites]);
+  }, [lancamentos, selectedProjetos, selectedSites, selectedStatus, dataInicio, dataFim, sites]);
 
   const columnsMedicoes = ["projeto", "site", "uf", "data", "periodo", "numero", "valor", "status", "po", "obs"] as const;
   const getColValueMedicao = (m: any, col: typeof columnsMedicoes[number]): string => {
@@ -767,35 +777,82 @@ export default function AcompanhamentoMedicoesPage() {
         <CardHeader><CardTitle>Filtros</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Projeto Multi-select */}
             <div className="space-y-2">
               <Label>Projeto</Label>
-              <Select value={projetoId || "all"} onValueChange={(v) => { setProjetoId(v === "all" ? "" : v); setSiteId(""); }}>
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os projetos</SelectItem>
-                  {projetos.map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal text-sm h-10 truncate">
+                    {selectedProjetos.size === 0 ? "Todos os projetos" : `${selectedProjetos.size} selecionado(s)`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3 space-y-2" align="start">
+                  <Input placeholder="Pesquisar projeto..." value={filterSearchProjeto} onChange={e => setFilterSearchProjeto(e.target.value)} className="h-8 text-sm" />
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => setSelectedProjetos(new Set(projetos.map(p => p.id)))} className="text-primary hover:underline">Todos</button>
+                    <button onClick={() => { setSelectedProjetos(new Set()); setSelectedSites(new Set()); }} className="text-primary hover:underline">Limpar</button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {projetos.filter(p => `${p.codigo} ${p.nome}`.toLowerCase().includes(filterSearchProjeto.toLowerCase())).map(p => (
+                      <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                        <Checkbox checked={selectedProjetos.has(p.id)} onCheckedChange={() => toggleSetValue(setSelectedProjetos, p.id)} className="h-3.5 w-3.5" />
+                        <span className="truncate">{p.codigo} - {p.nome}</span>
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
+            {/* Site Multi-select */}
             <div className="space-y-2">
               <Label>Site</Label>
-              <Select value={siteId || "all"} onValueChange={(v) => setSiteId(v === "all" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os sites</SelectItem>
-                  {filteredSites.map(s => <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal text-sm h-10 truncate">
+                    {selectedSites.size === 0 ? "Todos os sites" : `${selectedSites.size} selecionado(s)`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-3 space-y-2" align="start">
+                  <Input placeholder="Pesquisar site..." value={filterSearchSite} onChange={e => setFilterSearchSite(e.target.value)} className="h-8 text-sm" />
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => setSelectedSites(new Set(filteredSites.map(s => s.id)))} className="text-primary hover:underline">Todos</button>
+                    <button onClick={() => setSelectedSites(new Set())} className="text-primary hover:underline">Limpar</button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {filteredSites.filter(s => `${s.codigo} ${s.nome}`.toLowerCase().includes(filterSearchSite.toLowerCase())).map(s => (
+                      <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                        <Checkbox checked={selectedSites.has(s.id)} onCheckedChange={() => toggleSetValue(setSelectedSites, s.id)} className="h-3.5 w-3.5" />
+                        <span className="truncate">{s.codigo} - {s.nome}</span>
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
+            {/* Status Multi-select */}
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  {STATUS_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal text-sm h-10 truncate">
+                    {selectedStatus.size === 0 ? "Todos os status" : `${selectedStatus.size} selecionado(s)`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3 space-y-2" align="start">
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => setSelectedStatus(new Set(STATUS_OPTIONS.map(s => s.value)))} className="text-primary hover:underline">Todos</button>
+                    <button onClick={() => setSelectedStatus(new Set())} className="text-primary hover:underline">Limpar</button>
+                  </div>
+                  <div className="space-y-1">
+                    {STATUS_OPTIONS.map(s => (
+                      <label key={s.value} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+                        <Checkbox checked={selectedStatus.has(s.value)} onCheckedChange={() => toggleSetValue(setSelectedStatus, s.value)} className="h-3.5 w-3.5" />
+                        <span>{s.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Data Início</Label>
