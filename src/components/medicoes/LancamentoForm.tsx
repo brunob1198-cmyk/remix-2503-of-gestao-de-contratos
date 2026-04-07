@@ -25,7 +25,7 @@ interface LancamentoFormProps {
 
 interface ParsedLancamento {
   projeto_codigo?: string;
-  site_codigo: string;
+  site_codigo?: string;
   item_lpu_codigo: string;
   quantidade: number;
   data: string;
@@ -164,7 +164,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
         const row = jsonData[i];
         if (row && row.some((cell: any) => 
           typeof cell === 'string' && 
-          (cell.toLowerCase().includes('site') || cell.toLowerCase().includes('quantidade') || cell.toLowerCase().includes('qtd'))
+          (cell.toLowerCase().includes('site') || cell.toLowerCase().includes('projeto') || cell.toLowerCase().includes('quantidade') || cell.toLowerCase().includes('qtd'))
         )) {
           headerRowIndex = i;
           break;
@@ -181,6 +181,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
 
       const projetoIdx = findColumnIndex(['projeto', 'cod_projeto', 'codigo_projeto']);
       const siteIdx = findColumnIndex(['site', 'codigo_site', 'cod_site']);
+      // For medicao, if no site column but projeto column exists, that's fine
       const itemIdx = findColumnIndex(['item', 'codigo_lpu', 'cod_lpu', 'item_lpu', 'lpu']);
       const qtdIdx = findColumnIndex(['quantidade', 'qtd', 'qty']);
       const dataIdx = findColumnIndex(['data', 'date']);
@@ -198,11 +199,18 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
         const row = jsonData[i];
         if (!row || row.length === 0) continue;
 
-        const siteCodigo = String(row[siteIdx] || '').trim();
+        const siteCodigo = siteIdx >= 0 ? String(row[siteIdx] || '').trim() : '';
         const itemCodigo = String(row[itemIdx] || '').trim();
         const qtd = parseFloat(String(row[qtdIdx] || '0').replace(',', '.')) || 0;
+        const projetoCodigo = projetoIdx >= 0 ? String(row[projetoIdx] || '').trim() : undefined;
 
-        if (!siteCodigo || !itemCodigo || qtd === 0) continue;
+        // For medicao, allow rows without site if projeto is present
+        if (tipo === "medicao") {
+          if (!projetoCodigo && !siteCodigo) continue;
+        } else {
+          if (!siteCodigo) continue;
+        }
+        if (!itemCodigo || qtd === 0) continue;
 
         let dataStr = '';
         if (dataIdx >= 0 && row[dataIdx]) {
@@ -264,11 +272,9 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           dataStr = `${year}-${month}-${day}`;
         }
 
-        const projetoCodigo = projetoIdx >= 0 ? String(row[projetoIdx] || '').trim() : undefined;
-
         items.push({
           projeto_codigo: projetoCodigo,
-          site_codigo: siteCodigo,
+          site_codigo: siteCodigo || undefined,
           item_lpu_codigo: itemCodigo,
           quantidade: qtd,
           data: dataStr,
@@ -305,7 +311,9 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
     if (parsedItems.length > 0 && onBulkSubmit) {
       // Map site codes and item codes to IDs
       const mappedItems = parsedItems.map(item => {
-        const site = sites.find(s => s.codigo.toLowerCase() === item.site_codigo.toLowerCase());
+        const site = item.site_codigo 
+          ? sites.find(s => s.codigo.toLowerCase() === item.site_codigo!.toLowerCase())
+          : undefined;
         
         // Determine project ID: prioritize project from spreadsheet, then fall back to site's project
         let projectId = site?.projeto_id;
@@ -316,14 +324,12 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           }
         }
         
-        // Get project-specific LPU first (prioritize the project from spreadsheet)
-        // Try exact code match first
+        // Get project-specific LPU first
         let itemLpu = allItensLpu.find(i => 
           i.codigo.toLowerCase() === item.item_lpu_codigo.toLowerCase() && 
           i.projeto_id === projectId
         );
         
-        // If not found, try matching code at the start of description (e.g., "1.1.2-BAP...")
         if (!itemLpu && projectId) {
           const searchCode = item.item_lpu_codigo.toLowerCase();
           itemLpu = allItensLpu.find(i => 
@@ -332,7 +338,6 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        // Fallback to general LPU with exact code match
         if (!itemLpu) {
           itemLpu = allItensLpu.find(i => 
             i.codigo.toLowerCase() === item.item_lpu_codigo.toLowerCase() && 
@@ -340,7 +345,6 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        // Fallback to general LPU matching description
         if (!itemLpu) {
           const searchCode = item.item_lpu_codigo.toLowerCase();
           itemLpu = allItensLpu.find(i => 
@@ -349,10 +353,15 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        if (!site || !itemLpu) return null;
+        // For medicao, site is optional; for others, site is required
+        if (tipo === "medicao") {
+          if (!itemLpu || !projectId) return null;
+        } else {
+          if (!site || !itemLpu) return null;
+        }
 
         const baseData = {
-          site_id: site.id,
+          site_id: site?.id || undefined,
           item_lpu_id: itemLpu.id,
           quantidade: item.quantidade,
           observacao: item.observacao || undefined,
@@ -622,7 +631,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
             {parsedItems.length === 0 ? (
               <div className="space-y-4">
                 <CardDescription>
-                  Arraste um arquivo Excel (.xlsx, .xls) ou CSV contendo os lançamentos com colunas: Site, Item LPU, Quantidade, Data
+                  Arraste um arquivo Excel (.xlsx, .xls) ou CSV contendo os lançamentos com colunas: {tipo === "medicao" ? "Projeto" : "Site"}, Item LPU, Quantidade, Data
                   {tipo === "producao" && ", Empresa (opcional)"}
                   {tipo === "medicao" && ", Número Medição (opcional), Status (opcional)"}
                   {tipo === "faturamento" && ", Número NF (opcional), Número PO (opcional)"}
@@ -669,7 +678,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Site</TableHead>
+                        <TableHead>{tipo === "medicao" ? "Projeto" : "Site"}</TableHead>
                         <TableHead>Item LPU</TableHead>
                         <TableHead className="text-right">Quantidade</TableHead>
                         <TableHead>Data</TableHead>
@@ -683,7 +692,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
                     <TableBody>
                       {parsedItems.slice(0, 20).map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell>{item.site_codigo}</TableCell>
+                          <TableCell>{tipo === "medicao" ? (item.projeto_codigo || item.site_codigo || "-") : (item.site_codigo || "-")}</TableCell>
                           <TableCell>{item.item_lpu_codigo}</TableCell>
                           <TableCell className="text-right">{item.quantidade}</TableCell>
                           <TableCell>{item.data}</TableCell>

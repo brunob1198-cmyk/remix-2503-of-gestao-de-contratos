@@ -1454,7 +1454,7 @@ export type Database = {
           quantidade_aprovada: number | null
           quantidade_pendente: number | null
           quantidade_rejeitada: number | null
-          site_id: string
+          site_id: string | null
           status: string | null
           updated_at: string
         }
@@ -1475,7 +1475,7 @@ export type Database = {
           quantidade_aprovada?: number | null
           quantidade_pendente?: number | null
           quantidade_rejeitada?: number | null
-          site_id: string
+          site_id?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -1496,7 +1496,7 @@ export type Database = {
           quantidade_aprovada?: number | null
           quantidade_pendente?: number | null
           quantidade_rejeitada?: number | null
-          site_id?: string
+          site_id?: string | null
           status?: string | null
           updated_at?: string
         }
