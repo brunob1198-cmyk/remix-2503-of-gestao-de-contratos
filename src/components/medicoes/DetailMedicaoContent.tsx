@@ -509,7 +509,7 @@ export function DetailMedicaoContent({
                     <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Fotos Gerais</h3>
                     <div className="grid grid-cols-2 gap-4">
                       {fotosByItem.gerais.map(f => (
-                        <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
+                        <div key={f.id} className="foto-card border rounded-lg overflow-hidden shadow-sm bg-card" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                           <img src={f.url} alt="foto" className="w-full h-56 object-cover" />
                           <div className="p-3 bg-muted/30 space-y-1.5">
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
