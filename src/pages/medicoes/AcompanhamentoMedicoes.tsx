@@ -150,6 +150,9 @@ export default function AcompanhamentoMedicoesPage() {
   // Partial Approval (Revisão)
   const [partialApprovalMedicaoId, setPartialApprovalMedicaoId] = useState<string | null>(null);
   const [partialApprovalItems, setPartialApprovalItems] = useState<Record<string, number>>({});
+  const [reviewRemovedIds, setReviewRemovedIds] = useState<Set<string>>(new Set());
+  const [reviewNewItems, setReviewNewItems] = useState<Array<{ tempId: string; item_lpu_id: string; quantidade: number; aprovado: number }>>([]);
+  const [reviewAddItemId, setReviewAddItemId] = useState<string>("");
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
