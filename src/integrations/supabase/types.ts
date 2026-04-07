@@ -354,6 +354,130 @@ export type Database = {
           },
         ]
       }
+      cotacao_itens: {
+        Row: {
+          cotacao_id: string
+          created_at: string
+          id: string
+          observacao: string | null
+          prazo_entrega_dias: number | null
+          preco_unitario: number
+          quantidade: number
+          requisicao_item_id: string
+        }
+        Insert: {
+          cotacao_id: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          prazo_entrega_dias?: number | null
+          preco_unitario?: number
+          quantidade?: number
+          requisicao_item_id: string
+        }
+        Update: {
+          cotacao_id?: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          prazo_entrega_dias?: number | null
+          preco_unitario?: number
+          quantidade?: number
+          requisicao_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotacao_itens_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacao_itens_requisicao_item_id_fkey"
+            columns: ["requisicao_item_id"]
+            isOneToOne: false
+            referencedRelation: "requisicao_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cotacoes: {
+        Row: {
+          condicao_pagamento: string | null
+          created_at: string
+          desconto_percentual: number | null
+          empresa_id: string
+          fornecedor_id: string
+          frete: number | null
+          id: string
+          numero: string
+          observacoes: string | null
+          prazo_entrega_dias: number | null
+          requisicao_id: string
+          status: string
+          updated_at: string
+          validade: string | null
+          valor_total: number | null
+        }
+        Insert: {
+          condicao_pagamento?: string | null
+          created_at?: string
+          desconto_percentual?: number | null
+          empresa_id: string
+          fornecedor_id: string
+          frete?: number | null
+          id?: string
+          numero: string
+          observacoes?: string | null
+          prazo_entrega_dias?: number | null
+          requisicao_id: string
+          status?: string
+          updated_at?: string
+          validade?: string | null
+          valor_total?: number | null
+        }
+        Update: {
+          condicao_pagamento?: string | null
+          created_at?: string
+          desconto_percentual?: number | null
+          empresa_id?: string
+          fornecedor_id?: string
+          frete?: number | null
+          id?: string
+          numero?: string
+          observacoes?: string | null
+          prazo_entrega_dias?: number | null
+          requisicao_id?: string
+          status?: string
+          updated_at?: string
+          validade?: string | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacoes_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotacoes_requisicao_id_fkey"
+            columns: ["requisicao_id"]
+            isOneToOne: false
+            referencedRelation: "requisicoes_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custo_real_erp: {
         Row: {
           categoria_erp: string
@@ -973,6 +1097,65 @@ export type Database = {
           },
         ]
       }
+      fornecedores: {
+        Row: {
+          ativo: boolean | null
+          avaliacao: number | null
+          categoria: string | null
+          cnpj: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          empresa_id: string
+          endereco: string | null
+          id: string
+          observacoes: string | null
+          razao_social: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          avaliacao?: number | null
+          categoria?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          observacoes?: string | null
+          razao_social: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          avaliacao?: number | null
+          categoria?: string | null
+          cnpj?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          observacoes?: string | null
+          razao_social?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fornecedores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       frentes_obra: {
         Row: {
           created_at: string
@@ -1494,6 +1677,152 @@ export type Database = {
         }
         Relationships: []
       }
+      pedido_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          pedido_id: string
+          preco_unitario: number
+          quantidade: number
+          quantidade_entregue: number | null
+          sc_item_id: string | null
+          status: string | null
+          unidade: string
+          valor_total: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          pedido_id: string
+          preco_unitario?: number
+          quantidade?: number
+          quantidade_entregue?: number | null
+          sc_item_id?: string | null
+          status?: string | null
+          unidade?: string
+          valor_total?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          pedido_id?: string
+          preco_unitario?: number
+          quantidade?: number
+          quantidade_entregue?: number | null
+          sc_item_id?: string | null
+          status?: string | null
+          unidade?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_itens_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_itens_sc_item_id_fkey"
+            columns: ["sc_item_id"]
+            isOneToOne: false
+            referencedRelation: "sc_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos_compra: {
+        Row: {
+          aprovado_por: string | null
+          condicao_pagamento: string | null
+          cotacao_id: string | null
+          created_at: string
+          data_aprovacao: string | null
+          data_emissao: string
+          data_entrega_prevista: string | null
+          empresa_id: string
+          fornecedor_id: string
+          frete: number | null
+          id: string
+          numero: string
+          observacoes: string | null
+          requisicao_id: string | null
+          status: string
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          aprovado_por?: string | null
+          condicao_pagamento?: string | null
+          cotacao_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_emissao?: string
+          data_entrega_prevista?: string | null
+          empresa_id: string
+          fornecedor_id: string
+          frete?: number | null
+          id?: string
+          numero: string
+          observacoes?: string | null
+          requisicao_id?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          aprovado_por?: string | null
+          condicao_pagamento?: string | null
+          cotacao_id?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_emissao?: string
+          data_entrega_prevista?: string | null
+          empresa_id?: string
+          fornecedor_id?: string
+          frete?: number | null
+          id?: string
+          numero?: string
+          observacoes?: string | null
+          requisicao_id?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_compra_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_compra_requisicao_id_fkey"
+            columns: ["requisicao_id"]
+            isOneToOne: false
+            referencedRelation: "requisicoes_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           aprovado: boolean
@@ -1777,6 +2106,252 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisicao_itens: {
+        Row: {
+          created_at: string
+          descricao_livre: string | null
+          especificacao: string | null
+          id: string
+          quantidade: number
+          requisicao_id: string
+          sc_item_id: string | null
+          unidade: string
+        }
+        Insert: {
+          created_at?: string
+          descricao_livre?: string | null
+          especificacao?: string | null
+          id?: string
+          quantidade?: number
+          requisicao_id: string
+          sc_item_id?: string | null
+          unidade?: string
+        }
+        Update: {
+          created_at?: string
+          descricao_livre?: string | null
+          especificacao?: string | null
+          id?: string
+          quantidade?: number
+          requisicao_id?: string
+          sc_item_id?: string | null
+          unidade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicao_itens_requisicao_id_fkey"
+            columns: ["requisicao_id"]
+            isOneToOne: false
+            referencedRelation: "requisicoes_compra"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicao_itens_sc_item_id_fkey"
+            columns: ["sc_item_id"]
+            isOneToOne: false
+            referencedRelation: "sc_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requisicoes_compra: {
+        Row: {
+          aprovado_por: string | null
+          created_at: string
+          data_aprovacao: string | null
+          data_necessidade: string | null
+          empresa_id: string
+          id: string
+          justificativa: string | null
+          local_entrega_id: string | null
+          numero: string
+          observacoes: string | null
+          prioridade: string
+          projeto_id: string | null
+          solicitante_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_por?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_necessidade?: string | null
+          empresa_id: string
+          id?: string
+          justificativa?: string | null
+          local_entrega_id?: string | null
+          numero: string
+          observacoes?: string | null
+          prioridade?: string
+          projeto_id?: string | null
+          solicitante_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_por?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_necessidade?: string | null
+          empresa_id?: string
+          id?: string
+          justificativa?: string | null
+          local_entrega_id?: string | null
+          numero?: string
+          observacoes?: string | null
+          prioridade?: string
+          projeto_id?: string | null
+          solicitante_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicoes_compra_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_local_entrega_id_fkey"
+            columns: ["local_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "sc_locais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
+      sc_itens: {
+        Row: {
+          ativo: boolean | null
+          categoria: string | null
+          codigo: string
+          created_at: string
+          descricao: string
+          empresa_id: string
+          especificacao: string | null
+          id: string
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          categoria?: string | null
+          codigo: string
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          especificacao?: string | null
+          id?: string
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          categoria?: string | null
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          especificacao?: string | null
+          id?: string
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sc_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sc_locais: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          projeto_id: string | null
+          site_id: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          projeto_id?: string | null
+          site_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          projeto_id?: string | null
+          site_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sc_locais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sc_locais_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sc_locais_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sc_locais_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
