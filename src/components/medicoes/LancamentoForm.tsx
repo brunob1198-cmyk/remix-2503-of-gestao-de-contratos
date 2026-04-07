@@ -311,7 +311,9 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
     if (parsedItems.length > 0 && onBulkSubmit) {
       // Map site codes and item codes to IDs
       const mappedItems = parsedItems.map(item => {
-        const site = sites.find(s => s.codigo.toLowerCase() === item.site_codigo.toLowerCase());
+        const site = item.site_codigo 
+          ? sites.find(s => s.codigo.toLowerCase() === item.site_codigo!.toLowerCase())
+          : undefined;
         
         // Determine project ID: prioritize project from spreadsheet, then fall back to site's project
         let projectId = site?.projeto_id;
@@ -322,14 +324,12 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           }
         }
         
-        // Get project-specific LPU first (prioritize the project from spreadsheet)
-        // Try exact code match first
+        // Get project-specific LPU first
         let itemLpu = allItensLpu.find(i => 
           i.codigo.toLowerCase() === item.item_lpu_codigo.toLowerCase() && 
           i.projeto_id === projectId
         );
         
-        // If not found, try matching code at the start of description (e.g., "1.1.2-BAP...")
         if (!itemLpu && projectId) {
           const searchCode = item.item_lpu_codigo.toLowerCase();
           itemLpu = allItensLpu.find(i => 
@@ -338,7 +338,6 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        // Fallback to general LPU with exact code match
         if (!itemLpu) {
           itemLpu = allItensLpu.find(i => 
             i.codigo.toLowerCase() === item.item_lpu_codigo.toLowerCase() && 
@@ -346,7 +345,6 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        // Fallback to general LPU matching description
         if (!itemLpu) {
           const searchCode = item.item_lpu_codigo.toLowerCase();
           itemLpu = allItensLpu.find(i => 
@@ -355,10 +353,15 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           );
         }
         
-        if (!site || !itemLpu) return null;
+        // For medicao, site is optional; for others, site is required
+        if (tipo === "medicao") {
+          if (!itemLpu || !projectId) return null;
+        } else {
+          if (!site || !itemLpu) return null;
+        }
 
         const baseData = {
-          site_id: site.id,
+          site_id: site?.id || undefined,
           item_lpu_id: itemLpu.id,
           quantidade: item.quantidade,
           observacao: item.observacao || undefined,
