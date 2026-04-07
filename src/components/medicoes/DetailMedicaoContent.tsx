@@ -456,25 +456,29 @@ export function DetailMedicaoContent({
                         </div>
                       )}
                       <div className="p-3">
-                        <div className="grid grid-cols-2 gap-4">
-                          {fotos.map(f => (
-                            <div key={f.id} className="foto-card border rounded-lg overflow-hidden shadow-sm bg-card" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                              <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
-                              <div className="p-3 bg-muted/30 space-y-1.5">
-                                {f.item_codigo && (
-                                  <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
-                                )}
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                  {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
-                                  {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
+                        <div className="space-y-4">
+                          {chunkPairs(fotos).map((pair, pi) => (
+                            <div key={pi} className="foto-card grid grid-cols-2 gap-4" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                              {pair.map(f => (
+                                <div key={f.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
+                                  <img src={f.url} alt={f.item_descricao || "foto"} className="w-full h-56 object-cover" />
+                                  <div className="p-3 bg-muted/30 space-y-1.5">
+                                    {f.item_codigo && (
+                                      <p className="font-semibold text-xs text-foreground break-words">{f.item_codigo} — {f.item_descricao}</p>
+                                    )}
+                                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                      {f.municipio && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{f.municipio}</span>}
+                                      {f.diario_data && <span className="flex items-center gap-0.5"><Calendar className="h-2.5 w-2.5" />{formatDate(f.diario_data)}</span>}
+                                    </div>
+                                    <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
+                                      {classLabel(f.classificacao)}
+                                    </Badge>
+                                    {f.legenda && (
+                                      <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
+                                    )}
+                                  </div>
                                 </div>
-                                <Badge className="text-[9px] text-white" style={{ backgroundColor: classColor(f.classificacao) }}>
-                                  {classLabel(f.classificacao)}
-                                </Badge>
-                                {f.legenda && (
-                                  <p className="text-[10px] text-muted-foreground italic mt-1">"{f.legenda}"</p>
-                                )}
-                              </div>
+                              ))}
                             </div>
                           ))}
                         </div>
