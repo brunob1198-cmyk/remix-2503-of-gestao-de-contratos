@@ -36,6 +36,9 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: React.Rea
 export default function FaturamentoPage() {
   const { projetos } = useProjetos();
   const { sites } = useSites();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { municipios } = useMunicipios();
   const [projetoId, setProjetoId] = usePersistedState<string>("faturamento_projeto_id", "");
   const { data: itensDisponiveis = [], isLoading: loadingItens } = useItensDisponiveis(projetoId || undefined);
   const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(projetoId || undefined);
@@ -47,6 +50,12 @@ export default function FaturamentoPage() {
   const [siteSearch, setSiteSearch] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
+
+  // Municipality edit state
+  const [editMunicipioSiteId, setEditMunicipioSiteId] = useState<string | null>(null);
+  const [editUf, setEditUf] = useState("");
+  const [editMunicipio, setEditMunicipio] = useState("");
+  const [savingMunicipio, setSavingMunicipio] = useState(false);
 
   // State for invoice creation
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
