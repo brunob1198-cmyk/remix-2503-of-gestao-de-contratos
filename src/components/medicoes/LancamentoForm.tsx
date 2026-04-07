@@ -25,7 +25,7 @@ interface LancamentoFormProps {
 
 interface ParsedLancamento {
   projeto_codigo?: string;
-  site_codigo: string;
+  site_codigo?: string;
   item_lpu_codigo: string;
   quantidade: number;
   data: string;
@@ -181,6 +181,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
 
       const projetoIdx = findColumnIndex(['projeto', 'cod_projeto', 'codigo_projeto']);
       const siteIdx = findColumnIndex(['site', 'codigo_site', 'cod_site']);
+      // For medicao, if no site column but projeto column exists, that's fine
       const itemIdx = findColumnIndex(['item', 'codigo_lpu', 'cod_lpu', 'item_lpu', 'lpu']);
       const qtdIdx = findColumnIndex(['quantidade', 'qtd', 'qty']);
       const dataIdx = findColumnIndex(['data', 'date']);
@@ -198,11 +199,18 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
         const row = jsonData[i];
         if (!row || row.length === 0) continue;
 
-        const siteCodigo = String(row[siteIdx] || '').trim();
+        const siteCodigo = siteIdx >= 0 ? String(row[siteIdx] || '').trim() : '';
         const itemCodigo = String(row[itemIdx] || '').trim();
         const qtd = parseFloat(String(row[qtdIdx] || '0').replace(',', '.')) || 0;
+        const projetoCodigo = projetoIdx >= 0 ? String(row[projetoIdx] || '').trim() : undefined;
 
-        if (!siteCodigo || !itemCodigo || qtd === 0) continue;
+        // For medicao, allow rows without site if projeto is present
+        if (tipo === "medicao") {
+          if (!projetoCodigo && !siteCodigo) continue;
+        } else {
+          if (!siteCodigo) continue;
+        }
+        if (!itemCodigo || qtd === 0) continue;
 
         let dataStr = '';
         if (dataIdx >= 0 && row[dataIdx]) {
@@ -264,11 +272,9 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
           dataStr = `${year}-${month}-${day}`;
         }
 
-        const projetoCodigo = projetoIdx >= 0 ? String(row[projetoIdx] || '').trim() : undefined;
-
         items.push({
           projeto_codigo: projetoCodigo,
-          site_codigo: siteCodigo,
+          site_codigo: siteCodigo || undefined,
           item_lpu_codigo: itemCodigo,
           quantidade: qtd,
           data: dataStr,
