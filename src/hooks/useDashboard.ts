@@ -12,10 +12,10 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         .select("id, codigo, nome");
       if (projError) throw projError;
 
-      // Get all production data (increase limit from default 1000)
+      // Get all production data from diário de obra
       const { data: producao, error: prodError } = await supabase
-        .from("lancamentos_producao")
-        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)")
+        .from("diario_producao")
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
         .limit(100000);
       if (prodError) throw prodError;
 
@@ -59,11 +59,11 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         }
         
         const totalProduzido = producao
-          ?.filter(l => projetoSites.includes(l.site_id))
-          .reduce((sum, l) => {
-            const preco = (l.item_lpu as any)?.preco_unitario || 0;
-            return sum + (Number(l.quantidade) * Number(preco));
-          }, 0) || 0;
+          ?.filter(l => {
+            const siteId = (l.diario as any)?.site_id;
+            return siteId && projetoSites.includes(siteId);
+          })
+          .reduce((sum, l) => sum + (Number(l.valor_total) || 0), 0) || 0;
 
         const totalMedido = medicao
           ?.filter(l => projetoSites.includes(l.site_id))
@@ -124,12 +124,18 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         filteredSiteIds = allSites?.filter(s => s.projeto_id === projetoId).map(s => s.id) || [];
       }
 
-      // Get all production data (increase limit from default 1000)
-      let prodQuery = supabase.from("lancamentos_producao").select("site_id, item_lpu_id, quantidade").limit(100000);
-      if (filteredSiteIds.length > 0) {
-        prodQuery = prodQuery.in("site_id", filteredSiteIds);
-      }
-      const { data: producao } = await prodQuery;
+      // Get all production data from diário de obra
+      let prodQuery = supabase.from("diario_producao")
+        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
+        .limit(100000);
+      const { data: producaoRaw } = await prodQuery;
+      // Map to include site_id at top level for easier processing
+      const producao = (producaoRaw || []).map(p => ({
+        site_id: (p.diario as any)?.site_id as string,
+        item_lpu_id: p.item_lpu_id,
+        quantidade: p.quantidade,
+        valor_total: p.valor_total,
+      })).filter(p => p.site_id && (!filteredSiteIds.length || filteredSiteIds.includes(p.site_id)));
 
       // Get all measurement data
       let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade").limit(100000);
