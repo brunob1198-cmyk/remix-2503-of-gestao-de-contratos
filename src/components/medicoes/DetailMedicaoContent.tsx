@@ -387,7 +387,7 @@ export function DetailMedicaoContent({
 
           {/* Consolidated Items table */}
           <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Itens da Medição</h2>
-          <Table>
+          <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
             <TableHeader>
               <TableRow>
                 <TableHead>Item LPU</TableHead>
@@ -453,7 +453,7 @@ export function DetailMedicaoContent({
                         {siteItems.length > 0 && (
                           <div className="p-3 border-b bg-muted/20">
                             <p className="text-xs font-semibold mb-2">Produção do Site:</p>
-                            <Table>
+                            <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
                               <TableHeader>
                                 <TableRow>
                                   <TableHead className="text-xs">Item</TableHead>
