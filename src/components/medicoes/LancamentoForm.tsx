@@ -631,7 +631,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
             {parsedItems.length === 0 ? (
               <div className="space-y-4">
                 <CardDescription>
-                  Arraste um arquivo Excel (.xlsx, .xls) ou CSV contendo os lançamentos com colunas: Site, Item LPU, Quantidade, Data
+                  Arraste um arquivo Excel (.xlsx, .xls) ou CSV contendo os lançamentos com colunas: {tipo === "medicao" ? "Projeto" : "Site"}, Item LPU, Quantidade, Data
                   {tipo === "producao" && ", Empresa (opcional)"}
                   {tipo === "medicao" && ", Número Medição (opcional), Status (opcional)"}
                   {tipo === "faturamento" && ", Número NF (opcional), Número PO (opcional)"}
@@ -678,7 +678,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Site</TableHead>
+                        <TableHead>{tipo === "medicao" ? "Projeto" : "Site"}</TableHead>
                         <TableHead>Item LPU</TableHead>
                         <TableHead className="text-right">Quantidade</TableHead>
                         <TableHead>Data</TableHead>
@@ -692,7 +692,7 @@ export function LancamentoForm({ tipo, onSubmit, onBulkSubmit, isLoading }: Lanc
                     <TableBody>
                       {parsedItems.slice(0, 20).map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell>{item.site_codigo}</TableCell>
+                          <TableCell>{tipo === "medicao" ? (item.projeto_codigo || item.site_codigo || "-") : (item.site_codigo || "-")}</TableCell>
                           <TableCell>{item.item_lpu_codigo}</TableCell>
                           <TableCell className="text-right">{item.quantidade}</TableCell>
                           <TableCell>{item.data}</TableCell>
