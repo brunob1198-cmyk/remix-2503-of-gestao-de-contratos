@@ -12,10 +12,10 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         .select("id, codigo, nome");
       if (projError) throw projError;
 
-      // Get all production data (increase limit from default 1000)
+      // Get all production data from diário de obra
       const { data: producao, error: prodError } = await supabase
-        .from("lancamentos_producao")
-        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)")
+        .from("diario_producao")
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
         .limit(100000);
       if (prodError) throw prodError;
 
