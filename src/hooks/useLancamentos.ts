@@ -142,7 +142,7 @@ export function useLancamentosMedicao(siteId?: string) {
   });
 
   const bulkCreateLancamento = useMutation({
-    mutationFn: async (lancamentos: { site_id?: string; item_lpu_id: string; data_medicao: string; quantidade: number; numero_medicao?: string; status?: string; observacao?: string }[]) => {
+    mutationFn: async (lancamentos: { site_id?: string; item_lpu_id: string; data_medicao: string; quantidade: number; numero_medicao?: string; status?: string; observacao?: string; capa_url?: string | null }[]) => {
       const { data, error } = await supabase
         .from("lancamentos_medicao")
         .insert(lancamentos)

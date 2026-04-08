@@ -1438,6 +1438,7 @@ export type Database = {
       }
       lancamentos_medicao: {
         Row: {
+          capa_url: string | null
           created_at: string
           data_medicao: string
           data_resposta: string | null
@@ -1459,6 +1460,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          capa_url?: string | null
           created_at?: string
           data_medicao: string
           data_resposta?: string | null
@@ -1480,6 +1482,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          capa_url?: string | null
           created_at?: string
           data_medicao?: string
           data_resposta?: string | null
