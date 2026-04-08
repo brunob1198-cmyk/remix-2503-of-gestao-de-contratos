@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
+import { useDiarioCampo } from "@/hooks/useDiarioCampo";
 import { useRecursos } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -23,7 +25,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit, AlertTriangle,
+  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -84,6 +86,13 @@ export default function DiarioObraPage() {
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior,
   } = useDiarioObra(selectedSiteId, selectedDate);
+
+  // Diário de Campo data for the same site/date
+  const {
+    diario: diarioCampo,
+    fotos: fotosCampo,
+  } = useDiarioCampo(selectedProjetoId, selectedSiteId, selectedDate);
+  const [campoOpen, setCampoOpen] = useState(true);
 
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
 
@@ -711,6 +720,77 @@ export default function DiarioObraPage() {
             </div>
 
             <div className="space-y-6">
+          {/* ===== DIÁRIO DE CAMPO ===== */}
+          {diarioCampo && (
+            <Collapsible open={campoOpen} onOpenChange={setCampoOpen}>
+              <Card className="border-l-4 border-l-orange-400">
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="pb-3 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="h-5 w-5 text-orange-500" />
+                      Anotações de Campo
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        {format(new Date(diarioCampo.data + "T12:00:00"), "dd/MM/yyyy")}
+                      </Badge>
+                      <span className="ml-auto">
+                        {campoOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0 space-y-4">
+                    {diarioCampo.descricao_servico && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Descrição do Serviço</p>
+                        <p className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">{diarioCampo.descricao_servico}</p>
+                      </div>
+                    )}
+                    {diarioCampo.equipe_campo && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Equipe em Campo</p>
+                        <p className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">{diarioCampo.equipe_campo}</p>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-3">
+                      {diarioCampo.clima && (
+                        <Badge variant="secondary" className="text-xs">
+                          Clima: {diarioCampo.clima}
+                        </Badge>
+                      )}
+                      {diarioCampo.uf && (
+                        <Badge variant="secondary" className="text-xs">
+                          {diarioCampo.uf}{diarioCampo.municipio ? ` / ${diarioCampo.municipio}` : ""}
+                        </Badge>
+                      )}
+                    </div>
+                    {diarioCampo.observacoes && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Observações</p>
+                        <p className="text-sm bg-muted/50 rounded-md p-3 whitespace-pre-wrap">{diarioCampo.observacoes}</p>
+                      </div>
+                    )}
+                    {fotosCampo.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Fotos ({fotosCampo.length})</p>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {fotosCampo.map(f => (
+                            <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="rounded-md overflow-hidden border hover:ring-2 hover:ring-primary transition-all">
+                              <img src={f.url} alt={f.legenda || "Foto de campo"} className="w-full h-20 object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!diarioCampo.descricao_servico && !diarioCampo.equipe_campo && !diarioCampo.observacoes && fotosCampo.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">Registro de campo criado, mas sem anotações preenchidas.</p>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
+
           {/* ===== PRODUÇÃO ===== */}
           <Card>
             <CardHeader className="pb-3">
