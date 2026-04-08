@@ -181,6 +181,45 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          campos_alterados: string[] | null
+          created_at: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          id: string
+          operacao: string
+          registro_id: string
+          tabela: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          operacao: string
+          registro_id: string
+          tabela: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          operacao?: string
+          registro_id?: string
+          tabela?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           cep: string | null
