@@ -142,6 +142,9 @@ export default function AcompanhamentoMedicoesPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
+  const [capaFile, setCapaFile] = useState<File | null>(null);
+  const [uploadingCapa, setUploadingCapa] = useState(false);
+  const capaInputRef = useRef<HTMLInputElement>(null);
 
   // Detalhes
   const [detailMedicaoId, setDetailMedicaoId] = useState<string | null>(null);
