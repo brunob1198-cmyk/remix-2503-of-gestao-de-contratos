@@ -276,3 +276,55 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     fisico, loadFisico
   };
 }
+
+export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date, periodoFim?: Date) {
+  const queryClient = useQueryClient();
+
+  const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
+  const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
+
+  const { data: categoriasDesativadas = [] } = useQuery({
+    queryKey: ["categorias_erp_desativadas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("mapeamento_categorias_erp")
+        .select("categoria_erp")
+        .eq("ativo", false);
+      if (error) throw error;
+      return (data || []).map(d => d.categoria_erp);
+    },
+  });
+
+  const { data: custosErp = [], isLoading: loadCustos } = useQuery({
+    queryKey: ["custos_erp_multi", projetoIds, startDate, categoriasDesativadas],
+    queryFn: async () => {
+      if (projetoIds.length === 0) return [];
+      let q = (supabase as any).from("custo_real_erp").select("*");
+      q = q.in("projeto_id", projetoIds);
+      if (startDate) {
+        q = q.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data as CustoErp[]).filter(
+        item => !categoriasDesativadas.includes(item.categoria_erp)
+      );
+    },
+    enabled: projetoIds.length > 0
+  });
+
+  const updateCategoria = useMutation({
+    mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
+      const { error } = await supabase.from("custo_real_erp" as any)
+        .update({ categoria_interna: newCategoria })
+        .eq("erp_id", erpId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      toast.success("Categoria atualizada.");
+    }
+  });
+
+  return { custosErp, loadCustos, updateCategoria };
+}
