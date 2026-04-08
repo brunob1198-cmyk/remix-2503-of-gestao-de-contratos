@@ -104,11 +104,7 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
 }
 
 export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpProps) {
-  // Fetch data for all selected projects and merge into a single flat list
-  const hooks = projetoIds.map(pid => useAnaliseCustos(pid, "", periodoInicio, periodoFim));
-  const loadCustos = hooks.some(h => h.loadCustos);
-  const custosErp = useMemo(() => hooks.flatMap(h => h.custosErp), [hooks.map(h => h.custosErp)]);
-  const updateCategoria = hooks[0]?.updateCategoria;
+  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 
