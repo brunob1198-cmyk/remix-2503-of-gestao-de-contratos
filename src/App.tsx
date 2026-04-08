@@ -33,7 +33,7 @@ import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
-
+import AuditLogPage from "./pages/medicoes/AuditLog";
 const queryClient = new QueryClient();
 
 const RootRedirect = () => {
@@ -87,6 +87,7 @@ const App = () => (
               <Route path="planejamento" element={<PlanejamentoObraPage />} />
               <Route path="supply-chain" element={<SupplyChainPage />} />
               
+              <Route path="audit-log" element={<AuditLogPage />} />
               <Route path="perfil" element={<MeuPerfilPage />} />
             </Route>
 
