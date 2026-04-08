@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { FileDown, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Save, Plus, Eye, AlertTriangle, FileText, Camera, MapPin, Calendar, Trash2, Search, History } from "lucide-react";
+import { FileDown, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Save, Plus, Eye, AlertTriangle, FileText, Camera, MapPin, Calendar, Trash2, Search, History, Upload, X } from "lucide-react";
 import { exportLancamentosToExcel } from "@/lib/medicoesExport";
 import { DetailMedicaoContent } from "@/components/medicoes/DetailMedicaoContent";
 import { useTableFilters } from "@/hooks/useTableFilters";
