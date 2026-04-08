@@ -157,9 +157,38 @@ export default function DiarioCampoPage() {
   };
 
   const handleUploadFotos = async (files: FileList) => {
-    if (!files.length || !currentAtividade) return;
+    if (!files.length) return;
     setUploading(true);
-    const diarioId = currentAtividade.id;
+
+    // If activity not yet saved, auto-create it first
+    let diarioId = currentAtividade?.id;
+    if (!diarioId) {
+      try {
+        const result = await criarAtividade.mutateAsync({
+          projeto_id: selectedProjetoId || undefined,
+          site_id: formSiteId || undefined,
+          data: selectedDate,
+          descricao_servico: descricao || undefined,
+          equipe_campo: equipeCampo || undefined,
+          observacoes: obs || undefined,
+          clima: clima || undefined,
+          uf: diarioUf || undefined,
+          municipio: diarioMunicipio || undefined,
+        });
+        diarioId = result?.id;
+        if (!diarioId) {
+          toast({ title: "Erro ao criar atividade", variant: "destructive" });
+          setUploading(false);
+          return;
+        }
+        setSaved(true);
+        setDirty(false);
+      } catch {
+        toast({ title: "Erro ao criar atividade", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+    }
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -368,9 +397,6 @@ export default function DiarioCampoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {activeAtividadeIdx === "new" ? (
-                    <p className="text-sm text-muted-foreground">Salve a atividade primeiro para adicionar fotos.</p>
-                  ) : (
                     <>
                       <div className="flex gap-2">
                         <Button
@@ -429,7 +455,6 @@ export default function DiarioCampoPage() {
                         <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
                       )}
                     </>
-                  )}
                 </CardContent>
               </Card>
 
