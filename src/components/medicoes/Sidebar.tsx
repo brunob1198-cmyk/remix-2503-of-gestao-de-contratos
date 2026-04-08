@@ -35,6 +35,7 @@ const menuItems: MenuItem[] = [
   { title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento" },
   { title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
   { title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
+  { title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario" },
   { title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },
   { title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise" },
   { title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento" },
