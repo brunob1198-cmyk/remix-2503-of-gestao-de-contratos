@@ -660,6 +660,26 @@ export default function AcompanhamentoMedicoesPage() {
     const today = new Date().toISOString().split("T")[0];
     const customLogo = localStorage.getItem("custom_logo_url") || "/logo.png";
 
+    // Upload cover page if provided
+    let capaUrl: string | null = null;
+    if (capaFile) {
+      setUploadingCapa(true);
+      try {
+        const ext = capaFile.name.split(".").pop() || "pdf";
+        const path = `capas/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("medicao-capas")
+          .upload(path, capaFile);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("medicao-capas").getPublicUrl(uploadData.path);
+        capaUrl = urlData.publicUrl;
+      } catch (err) {
+        console.error("Erro ao fazer upload da capa:", err);
+      } finally {
+        setUploadingCapa(false);
+      }
+    }
+
     let items: any[];
 
     if (gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") {
