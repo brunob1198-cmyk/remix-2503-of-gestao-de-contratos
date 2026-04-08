@@ -521,7 +521,49 @@ export function DetailMedicaoContent({
         );
       }
 
-      pdf.save(filename);
+      // Get the measurement PDF bytes
+      const measurementPdfBytes = pdf.output("arraybuffer");
+
+      // If there's a cover page, merge it
+      const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
+      if (capaUrl) {
+        try {
+          const capaResponse = await fetch(capaUrl);
+          const capaBytes = await capaResponse.arrayBuffer();
+
+          // Load cover PDF
+          const capaPdf = await PDFDocument.load(capaBytes, { ignoreEncryption: true });
+          
+          // Load measurement PDF
+          const measurementPdf = await PDFDocument.load(measurementPdfBytes);
+
+          // Create final merged document
+          const mergedPdf = await PDFDocument.create();
+
+          // Copy cover pages first
+          const capaPages = await mergedPdf.copyPages(capaPdf, capaPdf.getPageIndices());
+          capaPages.forEach(page => mergedPdf.addPage(page));
+
+          // Copy measurement pages
+          const measurementPages = await mergedPdf.copyPages(measurementPdf, measurementPdf.getPageIndices());
+          measurementPages.forEach(page => mergedPdf.addPage(page));
+
+          // Save merged PDF
+          const mergedBytes = await mergedPdf.save();
+          const blob = new Blob([mergedBytes], { type: "application/pdf" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (mergeErr) {
+          console.error("Erro ao mesclar capa, exportando sem capa:", mergeErr);
+          pdf.save(filename);
+        }
+      } else {
+        pdf.save(filename);
+      }
     } catch (e) {
       console.error("Erro ao exportar PDF da medição:", e);
     } finally {
