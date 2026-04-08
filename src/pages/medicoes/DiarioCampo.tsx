@@ -397,9 +397,9 @@ export default function DiarioCampoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {activeAtividadeIdx === "new" ? (
-                    <p className="text-sm text-muted-foreground">Salve a atividade primeiro para adicionar fotos.</p>
-                  ) : (
+                  {(() => {
+                    const showPhotos = activeAtividadeIdx !== "new" || true; // always show
+                    return showPhotos ? (
                     <>
                       <div className="flex gap-2">
                         <Button
