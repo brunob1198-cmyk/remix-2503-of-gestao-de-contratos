@@ -48,10 +48,10 @@ export default function DiarioCampoPage() {
 
   const {
     diario, loadingDiario, fotos, criarDiario, atualizarDiario, addFoto, removeFoto,
-  } = useDiarioCampo(selectedSiteId, selectedDate);
+  } = useDiarioCampo(selectedProjetoId, selectedSiteId, selectedDate);
 
   const { data: calendarRaw = [] } = useDiarioCampoCalendario(
-    selectedSiteId || undefined, periodoInicio, periodoFim
+    selectedProjetoId || undefined, selectedSiteId || undefined, periodoInicio, periodoFim
   );
 
   // Map calendar data to DiarioCalendarioEntry format
@@ -89,7 +89,8 @@ export default function DiarioCampoPage() {
     if (diario) return diario.id;
     try {
       const result = await criarDiario.mutateAsync({
-        site_id: selectedSiteId,
+        site_id: selectedSiteId || undefined,
+        projeto_id: selectedProjetoId || undefined,
         data: selectedDate,
         uf: diarioUf || undefined,
         municipio: diarioMunicipio || undefined,
@@ -98,7 +99,7 @@ export default function DiarioCampoPage() {
     } catch {
       return null;
     }
-  }, [diario, criarDiario, selectedSiteId, selectedDate, diarioUf, diarioMunicipio]);
+  }, [diario, criarDiario, selectedProjetoId, selectedSiteId, selectedDate, diarioUf, diarioMunicipio]);
 
   const handleClimaChange = async (clima: string) => {
     const diarioId = diario?.id || (await ensureDiario());
@@ -186,12 +187,13 @@ export default function DiarioCampoPage() {
               </Select>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-1 block">Site</label>
-              <Select value={selectedSiteId} onValueChange={setSelectedSiteId} disabled={!selectedProjetoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione o site" /></SelectTrigger>
+              <label className="text-sm font-medium mb-1 block">Site <span className="text-muted-foreground text-xs">(opcional)</span></label>
+              <Select value={selectedSiteId || "__all__"} onValueChange={v => setSelectedSiteId(v === "__all__" ? "" : v)} disabled={!selectedProjetoId}>
+                <SelectTrigger><SelectValue placeholder="Todos os sites" /></SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
+                    <SelectItem value="__all__">Todos os sites</SelectItem>
                     {sites.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
                     ))}
                 </SelectContent>
               </Select>
@@ -200,7 +202,7 @@ export default function DiarioCampoPage() {
         </CardContent>
       </Card>
 
-      {selectedSiteId && (
+      {selectedProjetoId && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="calendario" className="flex items-center gap-2">
@@ -266,7 +268,7 @@ export default function DiarioCampoPage() {
                 </CardContent>
               </Card>
 
-              {/* Service description - Main field */}
+              {/* Service description */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -397,7 +399,7 @@ export default function DiarioCampoPage() {
                 <Button
                   size="lg"
                   onClick={handleSaveDescricao}
-                  disabled={!selectedSiteId || (!descricao && !equipeCampo && !obs)}
+                  disabled={!selectedProjetoId || (!descricao && !equipeCampo && !obs)}
                 >
                   Salvar Registro de Campo
                 </Button>
@@ -407,13 +409,6 @@ export default function DiarioCampoPage() {
         </Tabs>
       )}
 
-      {!selectedSiteId && selectedProjetoId && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Selecione um site para visualizar o diário de campo.
-          </CardContent>
-        </Card>
-      )}
       {!selectedProjetoId && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
