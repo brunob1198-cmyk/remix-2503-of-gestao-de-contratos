@@ -397,9 +397,6 @@ export default function DiarioCampoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(() => {
-                    const showPhotos = activeAtividadeIdx !== "new" || true; // always show
-                    return showPhotos ? (
                     <>
                       <div className="flex gap-2">
                         <Button
@@ -458,7 +455,6 @@ export default function DiarioCampoPage() {
                         <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
                       )}
                     </>
-                  )}
                 </CardContent>
               </Card>
 
