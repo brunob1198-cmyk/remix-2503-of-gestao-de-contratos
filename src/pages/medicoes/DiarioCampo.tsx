@@ -80,6 +80,8 @@ export default function DiarioCampoPage() {
       setEquipeCampo("");
       setObs("");
     }
+    setSaved(false);
+    setDirty(false);
   }, [diario?.id]);
 
   const handleCalendarDayClick = (dateStr: string) => {
