@@ -1628,8 +1628,8 @@ export default function AcompanhamentoMedicoesPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowPreview(false)}>Voltar</Button>
-                <Button onClick={handleEnviarMedicao} disabled={geracaoItens.filter(i => i.selected).length === 0 || bulkCreateLancamento.isPending}>
-                  {bulkCreateLancamento.isPending ? "Enviando..." : "Enviar Medição"}
+                <Button onClick={handleEnviarMedicao} disabled={geracaoItens.filter(i => i.selected).length === 0 || bulkCreateLancamento.isPending || uploadingCapa}>
+                  {(bulkCreateLancamento.isPending || uploadingCapa) ? "Enviando..." : "Enviar Medição"}
                 </Button>
               </DialogFooter>
             </div>
