@@ -1211,6 +1211,45 @@ export default function AcompanhamentoMedicoesPage() {
                 </div>
               </div>
 
+              {/* Capa upload */}
+              <div className="space-y-2 md:col-span-2">
+                <Label>Capa da Medição (opcional)</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={capaInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setCapaFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => capaInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar Capa
+                  </Button>
+                  {capaFile && (
+                    <div className="flex items-center gap-2 text-sm border rounded-md px-3 py-1.5 bg-muted/20">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate max-w-[200px]">{capaFile.name}</span>
+                      <button onClick={() => setCapaFile(null)} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  {!capaFile && (
+                    <span className="text-xs text-muted-foreground">PDF ou Word — será adicionada como primeiras páginas</span>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-3 pt-2">
                 <Label className="text-base font-semibold">Tipo de Medição</Label>
                 <RadioGroup value={gerarTipoMedicao} onValueChange={(v) => setGerarTipoMedicao(v as any)} className="space-y-3">
