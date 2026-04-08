@@ -32,6 +32,7 @@ import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
 import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
+import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="sites/:siteId/escopo" element={<EscopoPage />} />
               <Route path="lpu" element={<Navigate to="/medicoes/cadastros" replace />} />
               <Route path="diario" element={<DiarioObraPage />} />
+              <Route path="diario-campo" element={<DiarioCampoPage />} />
               <Route path="analise" element={<AnaliseObraPage />} />
               <Route path="producao" element={<ProducaoPage />} />
               <Route path="medicao" element={<MedicaoPage />} />

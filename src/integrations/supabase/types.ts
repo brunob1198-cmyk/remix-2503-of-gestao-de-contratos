@@ -587,6 +587,38 @@ export type Database = {
           },
         ]
       }
+      diario_campo_fotos: {
+        Row: {
+          created_at: string | null
+          diario_campo_id: string
+          id: string
+          legenda: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          diario_campo_id: string
+          id?: string
+          legenda?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          diario_campo_id?: string
+          id?: string
+          legenda?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diario_campo_fotos_diario_campo_id_fkey"
+            columns: ["diario_campo_id"]
+            isOneToOne: false
+            referencedRelation: "diarios_campo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diario_equipamentos: {
         Row: {
           created_at: string | null
@@ -810,6 +842,56 @@ export type Database = {
             columns: ["diario_id"]
             isOneToOne: false
             referencedRelation: "diarios_obra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diarios_campo: {
+        Row: {
+          clima: string | null
+          created_at: string | null
+          data: string
+          descricao_servico: string | null
+          equipe_campo: string | null
+          id: string
+          municipio: string | null
+          observacoes: string | null
+          site_id: string
+          uf: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          clima?: string | null
+          created_at?: string | null
+          data: string
+          descricao_servico?: string | null
+          equipe_campo?: string | null
+          id?: string
+          municipio?: string | null
+          observacoes?: string | null
+          site_id: string
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          clima?: string | null
+          created_at?: string | null
+          data?: string
+          descricao_servico?: string | null
+          equipe_campo?: string | null
+          id?: string
+          municipio?: string | null
+          observacoes?: string | null
+          site_id?: string
+          uf?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diarios_campo_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
         ]
