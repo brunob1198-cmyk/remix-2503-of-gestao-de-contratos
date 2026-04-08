@@ -314,6 +314,14 @@ export default function RdoPage() {
   );
 
   const [selectedDiarioId, setSelectedDiarioId] = useState<string | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+  const toggleDayCollapse = useCallback((data: string) => {
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(data)) next.delete(data); else next.add(data);
+      return next;
+    });
+  }, []);
   const selectedDiario = diarios.find(d => d.id === selectedDiarioId);
 
   const [lightboxPhoto, setLightboxPhoto] = useState<RdoFoto & { data: string } | null>(null);
