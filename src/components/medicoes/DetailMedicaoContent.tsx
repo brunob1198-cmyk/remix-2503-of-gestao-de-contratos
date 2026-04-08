@@ -550,7 +550,7 @@ export function DetailMedicaoContent({
 
           // Save merged PDF
           const mergedBytes = await mergedPdf.save();
-          const blob = new Blob([mergedBytes], { type: "application/pdf" });
+          const blob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
