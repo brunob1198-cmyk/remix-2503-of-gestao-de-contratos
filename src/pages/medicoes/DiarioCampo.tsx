@@ -403,7 +403,7 @@ export default function DiarioCampoPage() {
               {/* Save button */}
               <div className="flex justify-end">
                 {saved && !dirty ? (
-                  <Button size="lg" variant="outline" disabled className="text-green-600 border-green-600">
+                  <Button size="lg" variant="outline" disabled className="text-emerald-600 border-emerald-500 opacity-100">
                     <Check className="h-4 w-4 mr-2" />
                     Alterações Salvas
                   </Button>
