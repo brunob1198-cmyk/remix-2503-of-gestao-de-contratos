@@ -40,6 +40,8 @@ export default function DiarioCampoPage() {
   const [equipeCampo, setEquipeCampo] = useState("");
   const [obs, setObs] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   const handleProjetoChange = (projetoId: string) => {
     setSelectedProjetoId(projetoId);
