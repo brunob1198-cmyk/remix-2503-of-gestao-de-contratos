@@ -314,6 +314,14 @@ export default function RdoPage() {
   );
 
   const [selectedDiarioId, setSelectedDiarioId] = useState<string | null>(null);
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+  const toggleDayCollapse = useCallback((data: string) => {
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(data)) next.delete(data); else next.add(data);
+      return next;
+    });
+  }, []);
   const selectedDiario = diarios.find(d => d.id === selectedDiarioId);
 
   const [lightboxPhoto, setLightboxPhoto] = useState<RdoFoto & { data: string } | null>(null);
@@ -660,10 +668,15 @@ export default function RdoPage() {
                 <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
                 <ScrollArea className="h-[calc(100vh-420px)]">
                   <div className="space-y-3 pr-2">
-                    {dayGroups.map(group => (
+                    {dayGroups.map(group => {
+                      const isDayCollapsed = collapsedDays.has(group.data);
+                      return (
                       <div key={group.data} className="space-y-0">
-                        {/* Day header */}
-                        <div className="flex items-center gap-2 mb-1">
+                        {/* Day header - clickable to collapse/expand */}
+                        <button
+                          onClick={() => toggleDayCollapse(group.data)}
+                          className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors"
+                        >
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
                             {format(parseISO(group.data), "dd/MM", { locale: ptBR })}
@@ -676,7 +689,8 @@ export default function RdoPage() {
                               {group.diarios.length} sites
                             </Badge>
                           )}
-                        </div>
+                          <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${isDayCollapsed ? "" : "rotate-90"}`} />
+                        </button>
                         {/* Day totals */}
                         <div className="flex items-center gap-3 ml-5 mb-1.5 text-[11px] text-muted-foreground">
                           <span className="flex items-center gap-1">
@@ -691,21 +705,23 @@ export default function RdoPage() {
                             </span>
                           )}
                         </div>
-                        {/* Site cards within the day */}
-                        <div className={`space-y-1.5 ${group.diarios.length > 1 ? "ml-5 border-l-2 border-primary/20 pl-3" : ""}`}>
-                          {group.diarios.map(d => (
-                            <DayCard
-                              key={d.id}
-                              diario={d}
-                              isSelected={d.id === selectedDiarioId}
-                              isCliente={isCliente}
-                              showSite={isMultiSite}
-                              onClick={() => setSelectedDiarioId(d.id)}
-                            />
-                          ))}
-                        </div>
+                        {/* Site cards within the day - collapsible */}
+                        {!isDayCollapsed && (
+                          <div className={`space-y-1.5 ${group.diarios.length > 1 ? "ml-5 border-l-2 border-primary/20 pl-3" : ""}`}>
+                            {group.diarios.map(d => (
+                              <DayCard
+                                key={d.id}
+                                diario={d}
+                                isSelected={d.id === selectedDiarioId}
+                                isCliente={isCliente}
+                                showSite={isMultiSite}
+                                onClick={() => setSelectedDiarioId(d.id)}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </ScrollArea>
               </div>
