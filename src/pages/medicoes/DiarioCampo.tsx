@@ -178,8 +178,7 @@ export default function DiarioCampoPage() {
               <label className="text-sm font-medium mb-1 block">Projeto</label>
               <Select value={selectedProjetoId} onValueChange={handleProjetoChange}>
                 <SelectTrigger><SelectValue placeholder="Selecione o projeto" /></SelectTrigger>
-                <SelectContent>
-                  <ScrollArea className="max-h-[300px]">
+                <SelectContent className="max-h-[300px] overflow-y-auto">
                     {projetos.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
                     ))}
