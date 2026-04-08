@@ -653,7 +653,7 @@ export default function AcompanhamentoMedicoesPage() {
     setShowPreview(true);
   };
 
-  const handleEnviarMedicao = () => {
+  const handleEnviarMedicao = async () => {
     const selectedItens = geracaoItens.filter(i => i.selected);
     if (selectedItens.length === 0) return;
 
