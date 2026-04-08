@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  CalendarDays, ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Cloud,
+  CalendarDays, ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Cloud, Check,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -286,7 +286,7 @@ export default function DiarioCampoPage() {
                   <Textarea
                     placeholder="Descreva as atividades realizadas em campo hoje... (ex: Instalação de cabos no trecho A, lançamento de fibra entre postes 15-30)"
                     value={descricao}
-                    onChange={e => setDescricao(e.target.value)}
+                    onChange={e => { setDescricao(e.target.value); setDirty(true); setSaved(false); }}
                     className="min-h-[120px]"
                   />
                 </CardContent>
@@ -304,7 +304,7 @@ export default function DiarioCampoPage() {
                   <Textarea
                     placeholder="Informe os nomes dos membros da equipe (ex: João, Maria, Pedro - Encarregado)"
                     value={equipeCampo}
-                    onChange={e => setEquipeCampo(e.target.value)}
+                    onChange={e => { setEquipeCampo(e.target.value); setDirty(true); setSaved(false); }}
                     className="min-h-[80px]"
                   />
                 </CardContent>
@@ -394,7 +394,7 @@ export default function DiarioCampoPage() {
                   <Textarea
                     placeholder="Observações adicionais, ocorrências, impedimentos..."
                     value={obs}
-                    onChange={e => setObs(e.target.value)}
+                    onChange={e => { setObs(e.target.value); setDirty(true); setSaved(false); }}
                     className="min-h-[80px]"
                   />
                 </CardContent>
@@ -402,12 +402,20 @@ export default function DiarioCampoPage() {
 
               {/* Save button */}
               <div className="flex justify-end">
-                <Button
-                  size="lg"
-                  onClick={handleSaveDescricao}
-                  disabled={!selectedProjetoId || (!descricao && !equipeCampo && !obs)}
-                >
-                  Salvar Registro de Campo
+                {saved && !dirty ? (
+                  <Button size="lg" variant="outline" disabled className="text-green-600 border-green-600">
+                    <Check className="h-4 w-4 mr-2" />
+                    Alterações Salvas
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={handleSaveDescricao}
+                    disabled={!selectedProjetoId || (!descricao && !equipeCampo && !obs)}
+                  >
+                    Salvar Registro de Campo
+                  </Button>
+                )}
                 </Button>
               </div>
             </div>
