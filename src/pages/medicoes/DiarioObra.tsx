@@ -87,6 +87,13 @@ export default function DiarioObraPage() {
     duplicarDiarioAnterior,
   } = useDiarioObra(selectedSiteId, selectedDate);
 
+  // Diário de Campo data for the same site/date
+  const {
+    diario: diarioCampo,
+    fotos: fotosCampo,
+  } = useDiarioCampo(selectedProjetoId, selectedSiteId, selectedDate);
+  const [campoOpen, setCampoOpen] = useState(true);
+
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
 
   // Build previsoes map (daily production targets from planejamento)
