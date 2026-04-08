@@ -8,6 +8,7 @@ import { FileText, Camera, MapPin, Calendar, Loader2 } from "lucide-react";
 import { useRef, useState, useMemo, useCallback } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import { PDFDocument } from "pdf-lib";
 
 function chunkPairs<T>(arr: T[]): T[][] {
   const result: T[][] = [];
