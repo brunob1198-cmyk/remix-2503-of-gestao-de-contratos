@@ -416,7 +416,6 @@ export default function DiarioCampoPage() {
                     Salvar Registro de Campo
                   </Button>
                 )}
-                </Button>
               </div>
             </div>
           </TabsContent>
