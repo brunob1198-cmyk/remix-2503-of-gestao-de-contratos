@@ -188,7 +188,7 @@ export default function DiarioCampoPage() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-1 block">Site <span className="text-muted-foreground text-xs">(opcional)</span></label>
-              <Select value={selectedSiteId} onValueChange={setSelectedSiteId} disabled={!selectedProjetoId}>
+              <Select value={selectedSiteId || "__all__"} onValueChange={v => setSelectedSiteId(v === "__all__" ? "" : v)} disabled={!selectedProjetoId}>
                 <SelectTrigger><SelectValue placeholder="Todos os sites" /></SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
                     <SelectItem value="__all__">Todos os sites</SelectItem>
