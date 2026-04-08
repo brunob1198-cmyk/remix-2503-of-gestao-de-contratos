@@ -165,6 +165,7 @@ interface DetailMedicaoContentProps {
     periodo_fim?: string;
     lancamentoIds: string[];
     logo_empresa_url?: string;
+    capa_url?: string | null;
   };
   detailLancamentos: any[];
   sites: any[];
