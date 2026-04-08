@@ -14,8 +14,7 @@ import * as XLSX from "xlsx";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface CustosErpProps {
-  projetoId: string;
-  siteId: string;
+  projetoIds: string[];
   periodoInicio: Date;
   periodoFim: Date;
 }
@@ -104,8 +103,12 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
   );
 }
 
-export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: CustosErpProps) {
-  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
+export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpProps) {
+  // Fetch data for all selected projects and merge into a single flat list
+  const hooks = projetoIds.map(pid => useAnaliseCustos(pid, "", periodoInicio, periodoFim));
+  const loadCustos = hooks.some(h => h.loadCustos);
+  const custosErp = useMemo(() => hooks.flatMap(h => h.custosErp), [hooks.map(h => h.custosErp)]);
+  const updateCategoria = hooks[0]?.updateCategoria;
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 
