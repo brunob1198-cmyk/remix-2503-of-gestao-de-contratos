@@ -350,10 +350,11 @@ serve(async (req) => {
         none: 0,
       };
 
-      let processadas = 0;
-      for (const bill of bills) {
-        // Mapear campos da API v1 do Conta Azul (formato real da resposta)
-        const erpId = bill.id || `CA-${processadas}`;
+      // Collect new category mappings to insert in batch
+      const newCategorias: { categoria_erp: string; categoria_interna: string; criado_por_ia: boolean }[] = [];
+
+      const records = bills.map((bill: any, idx: number) => {
+        const erpId = bill.id || `CA-${idx}`;
         const descricao = bill.descricao || "Sem descrição";
         const valor = Number(bill.total || bill.nao_pago || 0);
         const categorias = bill.categorias || [];
@@ -364,32 +365,21 @@ serve(async (req) => {
         const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
         const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
 
-        // Categorizar
         let categoriaInterna = mapCategorias.get(categoriaErp);
         if (!categoriaInterna) {
           categoriaInterna = categorizarDespesa(categoriaErp, descricao);
-          await supabase.from("mapeamento_categorias_erp").insert({
-            categoria_erp: categoriaErp,
-            categoria_interna: categoriaInterna,
-            criado_por_ia: true,
-          }).then(() => {});
+          newCategorias.push({ categoria_erp: categoriaErp, categoria_interna: categoriaInterna, criado_por_ia: true });
           mapCategorias.set(categoriaErp, categoriaInterna);
         }
 
-        // Cruzar centro de custo com projeto/site cadastrado
         const { projetoId, siteId, strategy } = resolveProjetoESite(
-          centroCusto,
-          projetosLookup,
-          sitesLookup,
-          sitesByProjeto,
-          projetosByCode,
+          centroCusto, projetosLookup, sitesLookup, sitesByProjeto, projetosByCode,
         );
         matchStats[strategy] = (matchStats[strategy] || 0) + 1;
 
-        // Mapear status
         const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
 
-        await supabase.from("custo_real_erp").upsert({
+        return {
           erp_id: erpId,
           descricao,
           valor,
@@ -401,9 +391,24 @@ serve(async (req) => {
           centro_custo: centroCusto,
           projeto_id: projetoId,
           site_id: siteId,
-        }, { onConflict: "erp_id" });
+        };
+      });
 
-        processadas++;
+      // Batch insert new category mappings
+      if (newCategorias.length > 0) {
+        await supabase.from("mapeamento_categorias_erp").upsert(newCategorias, { onConflict: "categoria_erp" }).then(() => {});
+      }
+
+      // Batch upsert records in chunks of 500
+      const CHUNK_SIZE = 500;
+      let processadas = 0;
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        const chunk = records.slice(i, i + CHUNK_SIZE);
+        const { error: upsertError } = await supabase.from("custo_real_erp").upsert(chunk, { onConflict: "erp_id" });
+        if (upsertError) {
+          console.error(`Erro upsert chunk ${i}:`, upsertError.message);
+        }
+        processadas += chunk.length;
       }
 
       console.log("Resumo de vínculo projeto/site:", matchStats);
