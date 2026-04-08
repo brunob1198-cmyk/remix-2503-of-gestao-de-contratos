@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
-import { useDiarioCampo, useDiarioCampoCalendario } from "@/hooks/useDiarioCampo";
+import { useDiarioCampoAtividades, useDiarioCampoFotos, useDiarioCampoCalendario } from "@/hooks/useDiarioCampo";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCalendario";
@@ -14,12 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  CalendarDays, ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Cloud, Check,
+  CalendarDays, ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 
 export default function DiarioCampoPage() {
@@ -32,13 +30,18 @@ export default function DiarioCampoPage() {
   const [activeTab, setActiveTab] = useState<string>("calendario");
   const [periodoInicio, setPeriodoInicio] = useState(() => format(subMonths(new Date(), 2), "yyyy-MM-dd"));
   const [periodoFim, setPeriodoFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_campo_uf", "");
-  const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_campo_municipio", "");
+
+  // Which activity is selected: index into atividades[], or "new" for blank form
+  const [activeAtividadeIdx, setActiveAtividadeIdx] = useState<number | "new">("new");
 
   // Form state
   const [descricao, setDescricao] = useState("");
   const [equipeCampo, setEquipeCampo] = useState("");
   const [obs, setObs] = useState("");
+  const [clima, setClima] = useState("");
+  const [diarioUf, setDiarioUf] = useState("");
+  const [diarioMunicipio, setDiarioMunicipio] = useState("");
+  const [formSiteId, setFormSiteId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -48,15 +51,17 @@ export default function DiarioCampoPage() {
     setSelectedSiteId("");
   };
 
-  const {
-    diario, loadingDiario, fotos, criarDiario, atualizarDiario, addFoto, removeFoto,
-  } = useDiarioCampo(selectedProjetoId, selectedSiteId, selectedDate);
+  const { atividades, loadingAtividades, criarAtividade, atualizarAtividade } =
+    useDiarioCampoAtividades(selectedProjetoId, selectedSiteId, selectedDate);
+
+  const currentAtividade = typeof activeAtividadeIdx === "number" ? atividades[activeAtividadeIdx] : null;
+
+  const { fotos, addFoto, removeFoto } = useDiarioCampoFotos(currentAtividade?.id);
 
   const { data: calendarRaw = [] } = useDiarioCampoCalendario(
     selectedProjetoId || undefined, selectedSiteId || undefined, periodoInicio, periodoFim
   );
 
-  // Map calendar data to DiarioCalendarioEntry format
   const calendarEntries: DiarioCalendarioEntry[] = calendarRaw.map(e => ({
     id: e.id,
     data: e.data,
@@ -67,85 +72,94 @@ export default function DiarioCampoPage() {
     totalEquipe: e.totalFotos,
   }));
 
-  // Sync form from diario
+  // When atividades load or activeAtividadeIdx changes, sync form
   useEffect(() => {
-    if (diario) {
-      setDescricao(diario.descricao_servico || "");
-      setEquipeCampo(diario.equipe_campo || "");
-      setObs(diario.observacoes || "");
-      if (diario.uf) setDiarioUf(diario.uf);
-      if (diario.municipio) setDiarioMunicipio(diario.municipio);
-    } else {
+    if (typeof activeAtividadeIdx === "number" && atividades[activeAtividadeIdx]) {
+      const a = atividades[activeAtividadeIdx];
+      setDescricao(a.descricao_servico || "");
+      setEquipeCampo(a.equipe_campo || "");
+      setObs(a.observacoes || "");
+      setClima(a.clima || "");
+      setDiarioUf(a.uf || "");
+      setDiarioMunicipio(a.municipio || "");
+      setFormSiteId(a.site_id || "");
+      setSaved(true);
+      setDirty(false);
+    } else if (activeAtividadeIdx === "new") {
       setDescricao("");
       setEquipeCampo("");
       setObs("");
+      setClima("");
+      setDiarioUf("");
+      setDiarioMunicipio("");
+      setFormSiteId(selectedSiteId || "");
+      setSaved(false);
+      setDirty(false);
     }
-    setSaved(false);
-    setDirty(false);
-  }, [diario?.id]);
+  }, [activeAtividadeIdx, atividades.length]);
+
+  // When date changes, reset to "new" or first activity
+  useEffect(() => {
+    if (atividades.length > 0) {
+      setActiveAtividadeIdx(0);
+    } else {
+      setActiveAtividadeIdx("new");
+    }
+  }, [selectedDate, atividades.length === 0]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
     setActiveTab("lancamento");
   };
 
-  const ensureDiario = useCallback(async () => {
-    if (diario) return diario.id;
-    try {
-      const result = await criarDiario.mutateAsync({
-        site_id: selectedSiteId || undefined,
+  const handleSave = async () => {
+    if (activeAtividadeIdx === "new") {
+      // Create new activity
+      const result = await criarAtividade.mutateAsync({
         projeto_id: selectedProjetoId || undefined,
+        site_id: formSiteId || undefined,
         data: selectedDate,
+        descricao_servico: descricao,
+        equipe_campo: equipeCampo,
+        observacoes: obs,
+        clima: clima || undefined,
         uf: diarioUf || undefined,
         municipio: diarioMunicipio || undefined,
       });
-      return result.id;
-    } catch {
-      return null;
-    }
-  }, [diario, criarDiario, selectedProjetoId, selectedSiteId, selectedDate, diarioUf, diarioMunicipio]);
-
-  const handleClimaChange = async (clima: string) => {
-    const diarioId = diario?.id || (await ensureDiario());
-    if (!diarioId) return;
-    await atualizarDiario.mutateAsync({ id: diarioId, clima });
-    toast({ title: "Clima atualizado!" });
-  };
-
-  const handleUfChange = async (uf: string) => {
-    setDiarioUf(uf);
-    setDiarioMunicipio("");
-    if (diario?.id) {
-      await atualizarDiario.mutateAsync({ id: diario.id, uf, municipio: "" });
-    }
-  };
-
-  const handleMunicipioChange = async (municipio: string) => {
-    setDiarioMunicipio(municipio);
-    if (diario?.id) {
-      await atualizarDiario.mutateAsync({ id: diario.id, uf: diarioUf, municipio });
+      if (result) {
+        toast({ title: "Atividade salva!" });
+        // After saving, the atividades list will update; set to new idx
+        // We'll rely on the effect to set the right index after refetch
+        // For now mark as saved
+        setSaved(true);
+        setDirty(false);
+      }
+    } else if (currentAtividade) {
+      // Update existing
+      await atualizarAtividade.mutateAsync({
+        id: currentAtividade.id,
+        descricao_servico: descricao,
+        equipe_campo: equipeCampo,
+        observacoes: obs,
+        clima: clima || undefined,
+        uf: diarioUf || undefined,
+        municipio: diarioMunicipio || undefined,
+        site_id: formSiteId || null,
+      });
+      toast({ title: "Atividade atualizada!" });
+      setSaved(true);
+      setDirty(false);
     }
   };
 
-  const handleSaveDescricao = async () => {
-    const diarioId = diario?.id || (await ensureDiario());
-    if (!diarioId) return;
-    await atualizarDiario.mutateAsync({
-      id: diarioId,
-      descricao_servico: descricao,
-      equipe_campo: equipeCampo,
-      observacoes: obs,
-    });
-    setSaved(true);
-    setDirty(false);
-    toast({ title: "Registro salvo!" });
+  const handleNewAtividade = () => {
+    setActiveAtividadeIdx("new");
   };
 
   const handleUploadFotos = async (files: FileList) => {
-    if (!files.length) return;
+    if (!files.length || !currentAtividade) return;
     setUploading(true);
-    const diarioId = diario?.id || (await ensureDiario());
-    if (!diarioId) { setUploading(false); return; }
+    const diarioId = currentAtividade.id;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -167,8 +181,7 @@ export default function DiarioCampoPage() {
     toast({ title: "Foto removida" });
   };
 
-  const selectedProjeto = projetos.find(p => p.id === selectedProjetoId);
-  const selectedSite = sites.find(s => s.id === selectedSiteId);
+  const markDirty = () => { setDirty(true); setSaved(false); };
 
   return (
     <div className="space-y-6">
@@ -186,9 +199,9 @@ export default function DiarioCampoPage() {
               <Select value={selectedProjetoId} onValueChange={handleProjetoChange}>
                 <SelectTrigger><SelectValue placeholder="Selecione o projeto" /></SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
-                    {projetos.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
-                    ))}
+                  {projetos.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -197,10 +210,10 @@ export default function DiarioCampoPage() {
               <Select value={selectedSiteId || "__all__"} onValueChange={v => setSelectedSiteId(v === "__all__" ? "" : v)} disabled={!selectedProjetoId}>
                 <SelectTrigger><SelectValue placeholder="Todos os sites" /></SelectTrigger>
                 <SelectContent className="max-h-[300px] overflow-y-auto">
-                    <SelectItem value="__all__">Todos os sites</SelectItem>
-                    {sites.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
-                    ))}
+                  <SelectItem value="__all__">Todos os sites</SelectItem>
+                  {sites.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -209,19 +222,45 @@ export default function DiarioCampoPage() {
       </Card>
 
       {selectedProjetoId && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="calendario" className="flex items-center gap-2">
+        <div className="space-y-4">
+          {/* Tabs: Calendário + numbered activities + New */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={activeTab === "calendario" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("calendario")}
+              className="flex items-center gap-2"
+            >
               <CalendarDays className="h-4 w-4" />
               Calendário
-            </TabsTrigger>
-            <TabsTrigger value="lancamento" className="flex items-center gap-2">
-              <ClipboardEdit className="h-4 w-4" />
-              Lançamento
-            </TabsTrigger>
-          </TabsList>
+            </Button>
 
-          <TabsContent value="calendario">
+            {atividades.map((_, idx) => (
+              <Button
+                key={idx}
+                variant={activeTab === "lancamento" && activeAtividadeIdx === idx ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setActiveTab("lancamento"); setActiveAtividadeIdx(idx); }}
+                className="flex items-center gap-1"
+              >
+                <ClipboardEdit className="h-4 w-4" />
+                Atividade {idx + 1}
+              </Button>
+            ))}
+
+            <Button
+              variant={activeTab === "lancamento" && activeAtividadeIdx === "new" ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setActiveTab("lancamento"); handleNewAtividade(); }}
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Atividade
+            </Button>
+          </div>
+
+          {/* Calendar view */}
+          {activeTab === "calendario" && (
             <DiarioCalendario
               entries={calendarEntries}
               onDayClick={handleCalendarDayClick}
@@ -229,11 +268,11 @@ export default function DiarioCampoPage() {
               periodoFim={periodoFim}
               onPeriodoChange={(inicio, fim) => { setPeriodoInicio(inicio); setPeriodoFim(fim); }}
             />
-          </TabsContent>
+          )}
 
-          <TabsContent value="lancamento">
+          {/* Activity form */}
+          {activeTab === "lancamento" && (
             <div className="space-y-4">
-              {/* Date and location header */}
               <Card>
                 <CardContent className="pt-4 pb-4">
                   <div className="flex flex-wrap gap-4 items-end">
@@ -247,10 +286,7 @@ export default function DiarioCampoPage() {
                     </div>
                     <div className="min-w-[160px]">
                       <label className="text-sm font-medium mb-1 block">Clima</label>
-                      <Select
-                        value={(diario as any)?.clima || ""}
-                        onValueChange={handleClimaChange}
-                      >
+                      <Select value={clima} onValueChange={v => { setClima(v); markDirty(); }}>
                         <SelectTrigger><SelectValue placeholder="Clima" /></SelectTrigger>
                         <SelectContent>
                           {CLIMA_OPTIONS.map(o => (
@@ -267,9 +303,22 @@ export default function DiarioCampoPage() {
                     <UfMunicipioSelector
                       uf={diarioUf}
                       municipio={diarioMunicipio}
-                      onUfChange={handleUfChange}
-                      onMunicipioChange={handleMunicipioChange}
+                      onUfChange={v => { setDiarioUf(v); setDiarioMunicipio(""); markDirty(); }}
+                      onMunicipioChange={v => { setDiarioMunicipio(v); markDirty(); }}
                     />
+                    {/* Site per activity */}
+                    <div className="min-w-[200px]">
+                      <label className="text-sm font-medium mb-1 block">Site da Atividade</label>
+                      <Select value={formSiteId || "__none__"} onValueChange={v => { setFormSiteId(v === "__none__" ? "" : v); markDirty(); }}>
+                        <SelectTrigger><SelectValue placeholder="Sem site" /></SelectTrigger>
+                        <SelectContent className="max-h-[300px] overflow-y-auto">
+                          <SelectItem value="__none__">Sem site</SelectItem>
+                          {sites.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -282,11 +331,11 @@ export default function DiarioCampoPage() {
                     Descrição do Serviço Realizado
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent>
                   <Textarea
-                    placeholder="Descreva as atividades realizadas em campo hoje... (ex: Instalação de cabos no trecho A, lançamento de fibra entre postes 15-30)"
+                    placeholder="Descreva as atividades realizadas em campo hoje..."
                     value={descricao}
-                    onChange={e => { setDescricao(e.target.value); setDirty(true); setSaved(false); }}
+                    onChange={e => { setDescricao(e.target.value); markDirty(); }}
                     className="min-h-[120px]"
                   />
                 </CardContent>
@@ -304,13 +353,13 @@ export default function DiarioCampoPage() {
                   <Textarea
                     placeholder="Informe os nomes dos membros da equipe (ex: João, Maria, Pedro - Encarregado)"
                     value={equipeCampo}
-                    onChange={e => { setEquipeCampo(e.target.value); setDirty(true); setSaved(false); }}
+                    onChange={e => { setEquipeCampo(e.target.value); markDirty(); }}
                     className="min-h-[80px]"
                   />
                 </CardContent>
               </Card>
 
-              {/* Photos */}
+              {/* Photos - only for saved activities */}
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -319,65 +368,67 @@ export default function DiarioCampoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById("campo-foto-input")?.click()}
-                      disabled={uploading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {uploading ? "Enviando..." : "Enviar Fotos"}
-                    </Button>
-                    <input
-                      id="campo-foto-input"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => e.target.files && handleUploadFotos(e.target.files)}
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const input = document.getElementById("campo-foto-input-camera") as HTMLInputElement;
-                        input?.click();
-                      }}
-                      disabled={uploading}
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Câmera
-                    </Button>
-                    <input
-                      id="campo-foto-input-camera"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={e => e.target.files && handleUploadFotos(e.target.files)}
-                    />
-                  </div>
+                  {activeAtividadeIdx === "new" ? (
+                    <p className="text-sm text-muted-foreground">Salve a atividade primeiro para adicionar fotos.</p>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => document.getElementById("campo-foto-input")?.click()}
+                          disabled={uploading}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {uploading ? "Enviando..." : "Enviar Fotos"}
+                        </Button>
+                        <input
+                          id="campo-foto-input"
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => e.target.files && handleUploadFotos(e.target.files)}
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
+                          disabled={uploading}
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Câmera
+                        </Button>
+                        <input
+                          id="campo-foto-input-camera"
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={e => e.target.files && handleUploadFotos(e.target.files)}
+                        />
+                      </div>
 
-                  {fotos.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {fotos.map(foto => (
-                        <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                          <img
-                            src={foto.url}
-                            alt={foto.legenda || "Foto de campo"}
-                            className="w-full h-32 object-cover"
-                          />
-                          <button
-                            onClick={() => handleRemoveFoto(foto.id)}
-                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                      {fotos.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {fotos.map(foto => (
+                            <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
+                              <img
+                                src={foto.url}
+                                alt={foto.legenda || "Foto de campo"}
+                                className="w-full h-32 object-cover"
+                              />
+                              <button
+                                onClick={() => handleRemoveFoto(foto.id)}
+                                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {fotos.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhuma foto enviada para este dia.</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -394,7 +445,7 @@ export default function DiarioCampoPage() {
                   <Textarea
                     placeholder="Observações adicionais, ocorrências, impedimentos..."
                     value={obs}
-                    onChange={e => { setObs(e.target.value); setDirty(true); setSaved(false); }}
+                    onChange={e => { setObs(e.target.value); markDirty(); }}
                     className="min-h-[80px]"
                   />
                 </CardContent>
@@ -410,24 +461,16 @@ export default function DiarioCampoPage() {
                 ) : (
                   <Button
                     size="lg"
-                    onClick={handleSaveDescricao}
+                    onClick={handleSave}
                     disabled={!selectedProjetoId || (!descricao && !equipeCampo && !obs)}
                   >
-                    Salvar Registro de Campo
+                    {activeAtividadeIdx === "new" ? "Salvar Atividade" : "Atualizar Atividade"}
                   </Button>
                 )}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {!selectedProjetoId && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Selecione um projeto para começar.
-          </CardContent>
-        </Card>
+          )}
+        </div>
       )}
     </div>
   );
