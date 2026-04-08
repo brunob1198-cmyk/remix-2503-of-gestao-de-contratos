@@ -4,7 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface DiarioCampo {
   id: string;
-  site_id: string;
+  site_id: string | null;
+  projeto_id: string | null;
   data: string;
   descricao_servico: string | null;
   equipe_campo: string | null;
@@ -24,24 +25,30 @@ export interface DiarioCampoFoto {
   created_at: string | null;
 }
 
-export function useDiarioCampo(siteId: string, selectedDate: string) {
+export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: diario, isLoading: loadingDiario } = useQuery({
-    queryKey: ["diario_campo", siteId, selectedDate],
+    queryKey: ["diario_campo", projetoId, siteId, selectedDate],
     queryFn: async () => {
-      if (!siteId || !selectedDate) return null;
-      const { data, error } = await supabase
+      if (!projetoId || !selectedDate) return null;
+      let query = supabase
         .from("diarios_campo")
         .select("*")
-        .eq("site_id", siteId)
-        .eq("data", selectedDate)
-        .maybeSingle();
+        .eq("data", selectedDate);
+
+      if (siteId) {
+        query = query.eq("site_id", siteId);
+      } else {
+        query = query.eq("projeto_id", projetoId).is("site_id", null);
+      }
+
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as DiarioCampo | null;
     },
-    enabled: !!siteId && !!selectedDate,
+    enabled: !!projetoId && !!selectedDate,
   });
 
   const { data: fotos = [] } = useQuery({
@@ -60,10 +67,16 @@ export function useDiarioCampo(siteId: string, selectedDate: string) {
   });
 
   const criarDiario = useMutation({
-    mutationFn: async (params: { site_id: string; data: string; uf?: string; municipio?: string }) => {
+    mutationFn: async (params: { site_id?: string; projeto_id?: string; data: string; uf?: string; municipio?: string }) => {
+      const insertData: any = { data: params.data };
+      if (params.site_id) insertData.site_id = params.site_id;
+      if (params.projeto_id) insertData.projeto_id = params.projeto_id;
+      if (params.uf) insertData.uf = params.uf;
+      if (params.municipio) insertData.municipio = params.municipio;
+
       const { data, error } = await supabase
         .from("diarios_campo")
-        .insert([params])
+        .insert([insertData])
         .select()
         .single();
       if (error) throw error;
@@ -127,18 +140,25 @@ export function useDiarioCampo(siteId: string, selectedDate: string) {
 }
 
 // Calendar hook for diário de campo
-export function useDiarioCampoCalendario(siteId: string | undefined, dataInicio: string, dataFim: string) {
+export function useDiarioCampoCalendario(projetoId: string | undefined, siteId: string | undefined, dataInicio: string, dataFim: string) {
   return useQuery({
-    queryKey: ["diario_campo_calendario", siteId, dataInicio, dataFim],
+    queryKey: ["diario_campo_calendario", projetoId, siteId, dataInicio, dataFim],
     queryFn: async () => {
-      if (!siteId) return [];
-      const { data: diarios, error } = await supabase
+      if (!projetoId) return [];
+      let query = supabase
         .from("diarios_campo")
         .select("id, data, clima, descricao_servico, equipe_campo")
-        .eq("site_id", siteId)
         .gte("data", dataInicio)
         .lte("data", dataFim)
         .order("data", { ascending: true });
+
+      if (siteId) {
+        query = query.eq("site_id", siteId);
+      } else {
+        query = query.eq("projeto_id", projetoId);
+      }
+
+      const { data: diarios, error } = await query;
       if (error) throw error;
       if (!diarios || diarios.length === 0) return [];
 
@@ -163,6 +183,6 @@ export function useDiarioCampoCalendario(siteId: string | undefined, dataInicio:
         hasContent: !!(d.descricao_servico || d.equipe_campo),
       }));
     },
-    enabled: !!siteId,
+    enabled: !!projetoId,
   });
 }
