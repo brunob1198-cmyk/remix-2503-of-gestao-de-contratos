@@ -214,6 +214,7 @@ export default function AcompanhamentoMedicoesPage() {
       total_rejeitada: number;
       total_pendente: number;
       logo_empresa_url?: string;
+      capa_url?: string | null;
     }>();
 
     let filtered = [...lancamentos];
