@@ -856,7 +856,8 @@ export type Database = {
           id: string
           municipio: string | null
           observacoes: string | null
-          site_id: string
+          projeto_id: string | null
+          site_id: string | null
           uf: string | null
           updated_at: string | null
         }
@@ -869,7 +870,8 @@ export type Database = {
           id?: string
           municipio?: string | null
           observacoes?: string | null
-          site_id: string
+          projeto_id?: string | null
+          site_id?: string | null
           uf?: string | null
           updated_at?: string | null
         }
@@ -882,11 +884,26 @@ export type Database = {
           id?: string
           municipio?: string | null
           observacoes?: string | null
-          site_id?: string
+          projeto_id?: string | null
+          site_id?: string | null
           uf?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "diarios_campo_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarios_campo_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
           {
             foreignKeyName: "diarios_campo_site_id_fkey"
             columns: ["site_id"]
