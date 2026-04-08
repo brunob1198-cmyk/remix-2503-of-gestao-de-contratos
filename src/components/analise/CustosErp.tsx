@@ -8,14 +8,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, parseISO } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
+import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface CustosErpProps {
-  projetoId: string;
-  siteId: string;
+  projetoIds: string[];
   periodoInicio: Date;
   periodoFim: Date;
 }
@@ -104,8 +103,8 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
   );
 }
 
-export function CustosErp({ projetoId, siteId, periodoInicio, periodoFim }: CustosErpProps) {
-  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustos(projetoId, siteId, periodoInicio, periodoFim);
+export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpProps) {
+  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 

@@ -182,7 +182,11 @@ export default function AnaliseObraPage() {
             <AnaliseCustos projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
           </TabsContent>
 
-          {activeTab !== "custos-erp" && selectedIds.map(pid => {
+          <TabsContent value="auditoria-erp" className="mt-0">
+            <CustosErp projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
+          </TabsContent>
+
+          {(activeTab === "executiva" || activeTab === "ia") && selectedIds.map(pid => {
             const proj = projetos.find(x => x.id === pid);
             if (!proj) return null;
             return (
@@ -192,9 +196,6 @@ export default function AnaliseObraPage() {
                 )}
                 <TabsContent value="executiva" className="mt-0">
                   <VisaoExecutiva projetoId={pid} projetoName={proj.nome} periodoInicio={periodoInicio} periodoFim={periodoFim} />
-                </TabsContent>
-                <TabsContent value="auditoria-erp" className="mt-0">
-                  <CustosErp projetoId={pid} siteId="" periodoInicio={periodoInicio} periodoFim={periodoFim} />
                 </TabsContent>
                 <TabsContent value="ia" className="mt-0">
                   <AnaliseIA projetoId={pid} projetoName={proj.nome} />
