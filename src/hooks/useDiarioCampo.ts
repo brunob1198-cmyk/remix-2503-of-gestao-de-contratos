@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export interface DiarioCampo {
   id: string;
@@ -25,52 +24,51 @@ export interface DiarioCampoFoto {
   created_at: string | null;
 }
 
-export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: string) {
+/** Fetches ALL activities for a given date + projeto (optionally filtered by site) */
+export function useDiarioCampoAtividades(projetoId: string, siteId: string, selectedDate: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
-  const { data: diario, isLoading: loadingDiario } = useQuery({
-    queryKey: ["diario_campo", projetoId, siteId, selectedDate],
+  const { data: atividades = [], isLoading: loadingAtividades } = useQuery({
+    queryKey: ["diario_campo_atividades", projetoId, siteId, selectedDate],
     queryFn: async () => {
-      if (!projetoId || !selectedDate) return null;
+      if (!projetoId || !selectedDate) return [];
       let query = supabase
         .from("diarios_campo")
         .select("*")
-        .eq("data", selectedDate);
+        .eq("data", selectedDate)
+        .eq("projeto_id", projetoId)
+        .order("created_at", { ascending: true });
 
       if (siteId) {
         query = query.eq("site_id", siteId);
-      } else {
-        query = query.eq("projeto_id", projetoId).is("site_id", null);
       }
 
-      const { data, error } = await query.maybeSingle();
+      const { data, error } = await query;
       if (error) throw error;
-      return data as DiarioCampo | null;
+      return (data || []) as DiarioCampo[];
     },
     enabled: !!projetoId && !!selectedDate,
   });
 
-  const { data: fotos = [] } = useQuery({
-    queryKey: ["diario_campo_fotos", diario?.id],
-    queryFn: async () => {
-      if (!diario?.id) return [];
-      const { data, error } = await supabase
-        .from("diario_campo_fotos")
-        .select("*")
-        .eq("diario_campo_id", diario.id)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data as DiarioCampoFoto[];
-    },
-    enabled: !!diario?.id,
-  });
-
-  const criarDiario = useMutation({
-    mutationFn: async (params: { site_id?: string; projeto_id?: string; data: string; uf?: string; municipio?: string }) => {
+  const criarAtividade = useMutation({
+    mutationFn: async (params: {
+      site_id?: string;
+      projeto_id?: string;
+      data: string;
+      descricao_servico?: string;
+      equipe_campo?: string;
+      observacoes?: string;
+      clima?: string;
+      uf?: string;
+      municipio?: string;
+    }) => {
       const insertData: any = { data: params.data };
       if (params.site_id) insertData.site_id = params.site_id;
       if (params.projeto_id) insertData.projeto_id = params.projeto_id;
+      if (params.descricao_servico) insertData.descricao_servico = params.descricao_servico;
+      if (params.equipe_campo) insertData.equipe_campo = params.equipe_campo;
+      if (params.observacoes) insertData.observacoes = params.observacoes;
+      if (params.clima) insertData.clima = params.clima;
       if (params.uf) insertData.uf = params.uf;
       if (params.municipio) insertData.municipio = params.municipio;
 
@@ -83,13 +81,22 @@ export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["diario_campo"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
       queryClient.invalidateQueries({ queryKey: ["diario_campo_calendario"] });
     },
   });
 
-  const atualizarDiario = useMutation({
-    mutationFn: async (params: { id: string; descricao_servico?: string; equipe_campo?: string; clima?: string; uf?: string; municipio?: string; observacoes?: string }) => {
+  const atualizarAtividade = useMutation({
+    mutationFn: async (params: {
+      id: string;
+      descricao_servico?: string;
+      equipe_campo?: string;
+      clima?: string;
+      uf?: string;
+      municipio?: string;
+      observacoes?: string;
+      site_id?: string | null;
+    }) => {
       const { id, ...updates } = params;
       const { error } = await supabase
         .from("diarios_campo")
@@ -98,9 +105,31 @@ export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["diario_campo"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
       queryClient.invalidateQueries({ queryKey: ["diario_campo_calendario"] });
     },
+  });
+
+  return { atividades, loadingAtividades, criarAtividade, atualizarAtividade };
+}
+
+/** Fetches fotos for a specific diario_campo record */
+export function useDiarioCampoFotos(diarioCampoId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  const { data: fotos = [] } = useQuery({
+    queryKey: ["diario_campo_fotos", diarioCampoId],
+    queryFn: async () => {
+      if (!diarioCampoId) return [];
+      const { data, error } = await supabase
+        .from("diario_campo_fotos")
+        .select("*")
+        .eq("diario_campo_id", diarioCampoId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as DiarioCampoFoto[];
+    },
+    enabled: !!diarioCampoId,
   });
 
   const addFoto = useMutation({
@@ -128,12 +157,21 @@ export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: 
     },
   });
 
+  return { fotos, addFoto, removeFoto };
+}
+
+// Keep legacy export for backward compatibility with other parts
+export function useDiarioCampo(projetoId: string, siteId: string, selectedDate: string) {
+  const { atividades, loadingAtividades, criarAtividade, atualizarAtividade } = useDiarioCampoAtividades(projetoId, siteId, selectedDate);
+  const diario = atividades.length > 0 ? atividades[0] : null;
+  const { fotos, addFoto, removeFoto } = useDiarioCampoFotos(diario?.id);
+
   return {
     diario,
-    loadingDiario,
+    loadingDiario: loadingAtividades,
     fotos,
-    criarDiario,
-    atualizarDiario,
+    criarDiario: criarAtividade,
+    atualizarDiario: atualizarAtividade,
     addFoto,
     removeFoto,
   };
