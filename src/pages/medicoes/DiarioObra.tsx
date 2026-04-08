@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
+import { useDiarioCampo } from "@/hooks/useDiarioCampo";
 import { useRecursos } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -23,7 +25,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit, AlertTriangle,
+  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
