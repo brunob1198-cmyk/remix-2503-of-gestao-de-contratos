@@ -711,6 +711,7 @@ export default function AcompanhamentoMedicoesPage() {
         periodo_fim: gerarPeriodoFim,
         logo_empresa_url: customLogo,
         observacao: gerarTipoMedicao === "mista" ? "tipo:mista" : "tipo:agrupada",
+        capa_url: capaUrl,
       }));
     } else {
       // Separada: one entry per site+item
@@ -725,6 +726,7 @@ export default function AcompanhamentoMedicoesPage() {
         periodo_fim: gerarPeriodoFim,
         logo_empresa_url: customLogo,
         observacao: "tipo:separada",
+        capa_url: capaUrl,
       }));
     }
 
@@ -754,6 +756,7 @@ export default function AcompanhamentoMedicoesPage() {
         setGerarSiteId("");
         setGerarTipoMedicao("separada");
         setDuplicateWarnings([]);
+        setCapaFile(null);
       },
     });
   };
