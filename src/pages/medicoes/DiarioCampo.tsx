@@ -136,6 +136,8 @@ export default function DiarioCampoPage() {
       equipe_campo: equipeCampo,
       observacoes: obs,
     });
+    setSaved(true);
+    setDirty(false);
     toast({ title: "Registro salvo!" });
   };
 
