@@ -376,7 +376,7 @@ export default function QuadroGeral() {
 
   const expandAll = () => {
     const keys = new Set<string>();
-    areaGroups.forEach(ag => {
+    filteredAreaGroups.forEach(ag => {
       keys.add(`area:${ag.area}`);
       ag.clientes.forEach(cg => {
         keys.add(`cliente:${ag.area}|${cg.cliente}`);
@@ -391,7 +391,7 @@ export default function QuadroGeral() {
 
   const handleExport = () => {
     const rows: any[] = [];
-    for (const ag of areaGroups) {
+    for (const ag of filteredAreaGroups) {
       for (const cg of ag.clientes) {
         for (const p of cg.projetos) {
           if (p.siteRows.length > 0) {
@@ -504,7 +504,7 @@ export default function QuadroGeral() {
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={expandAll}>Expandir Todos</Button>
             <Button variant="ghost" size="sm" onClick={collapseAll}>Recolher Todos</Button>
-            {areaGroups.length > 0 && (
+            {filteredAreaGroups.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Exportar Excel
@@ -513,7 +513,7 @@ export default function QuadroGeral() {
           </div>
         </CardHeader>
         <CardContent>
-          {areaGroups.length === 0 ? (
+          {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
           ) : (
             <div className="rounded-md border overflow-auto">
@@ -530,7 +530,7 @@ export default function QuadroGeral() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {areaGroups.map(ag => {
+                  {filteredAreaGroups.map(ag => {
                     const areaKey = `area:${ag.area}`;
                     const areaExpanded = expanded.has(areaKey);
                     const totalClientes = ag.clientes.length;
