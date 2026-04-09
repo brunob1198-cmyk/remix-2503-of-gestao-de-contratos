@@ -304,9 +304,24 @@ export default function ProjetosPage() {
                   <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Coordenador</Label>
-                <Input value={coordenador} onChange={(e) => setCoordenador(e.target.value)} placeholder="Nome do coordenador" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Coordenador</Label>
+                  <Input value={coordenador} onChange={(e) => setCoordenador(e.target.value)} placeholder="Nome do coordenador" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(s => (
+                        <SelectItem key={s} value={s}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={createProjeto.isPending || updateProjeto.isPending}>
                 {(createProjeto.isPending || updateProjeto.isPending) ? (
