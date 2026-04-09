@@ -107,7 +107,7 @@ export default function AnaliseObraPage() {
                 Todos os projetos
               </label>
             </div>
-            <ScrollArea className="max-h-[250px]">
+            <ScrollArea className="h-[250px]">
               <div className="space-y-0.5">
                 {filteredProjetos.map(p => (
                   <div key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleProject(p.id)}>
