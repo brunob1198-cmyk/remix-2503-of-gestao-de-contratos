@@ -311,7 +311,67 @@ export default function QuadroGeral() {
     return groups;
   }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
 
-  const grandTotals = useMemo(() => calcTotals(areaGroups.map(g => g.totals)), [areaGroups]);
+  // Extract unique filter options
+  const filterOptions = useMemo(() => {
+    const areasSet = new Set<string>();
+    const clientesSet = new Set<string>();
+    const projetosSet = new Set<string>();
+    const sitesSet = new Set<string>();
+    const statusSet = new Set<string>();
+    for (const ag of areaGroups) {
+      areasSet.add(ag.area);
+      for (const cg of ag.clientes) {
+        clientesSet.add(cg.cliente);
+        for (const p of cg.projetos) {
+          projetosSet.add(p.projeto_nome);
+          const proj = projetos.find(pr => pr.id === p.projeto_id);
+          statusSet.add(proj?.status || "Sem status");
+          for (const s of p.siteRows) {
+            sitesSet.add(`${s.site_codigo} - ${s.site_nome}`);
+          }
+        }
+      }
+    }
+    return {
+      areas: Array.from(areasSet).sort(),
+      clientes: Array.from(clientesSet).sort(),
+      projetos: Array.from(projetosSet).sort(),
+      sites: Array.from(sitesSet).sort(),
+      status: Array.from(statusSet).sort(),
+    };
+  }, [areaGroups, projetos]);
+
+  // Apply filters
+  const filteredAreaGroups = useMemo(() => {
+    return areaGroups
+      .filter(ag => filterArea.size === 0 || filterArea.has(ag.area))
+      .map(ag => {
+        const clientes = ag.clientes
+          .filter(cg => filterCliente.size === 0 || filterCliente.has(cg.cliente))
+          .map(cg => {
+            const filteredProjetos = cg.projetos.filter(p => {
+              if (filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
+              const proj = projetos.find(pr => pr.id === p.projeto_id);
+              const st = proj?.status || "Sem status";
+              if (filterStatus.size > 0 && !filterStatus.has(st)) return false;
+              if (filterSite.size > 0) {
+                const hasSiteMatch = p.siteRows.some(s => filterSite.has(`${s.site_codigo} - ${s.site_nome}`));
+                if (!hasSiteMatch) return false;
+              }
+              return true;
+            });
+            if (filteredProjetos.length === 0) return null;
+            return { ...cg, projetos: filteredProjetos, totals: calcTotals(filteredProjetos) };
+          })
+          .filter(Boolean) as ClienteGroup[];
+        if (clientes.length === 0) return null;
+        const allProjetos = clientes.flatMap(c => c.projetos);
+        return { ...ag, clientes, totals: calcTotals(allProjetos) };
+      })
+      .filter(Boolean) as AreaGroup[];
+  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos]);
+
+  const grandTotals = useMemo(() => calcTotals(filteredAreaGroups.map(g => g.totals)), [filteredAreaGroups]);
   const grandPercent = grandTotals.valor_contrato > 0 ? (grandTotals.valor_executado / grandTotals.valor_contrato) * 100 : 0;
 
   const expandAll = () => {
