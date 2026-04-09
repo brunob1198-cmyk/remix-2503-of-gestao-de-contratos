@@ -39,6 +39,7 @@ export default function ProjetosPage() {
   const [contratoId, setContratoId] = useState("none");
   const [areaId, setAreaId] = useState("");
   const [valorTotal, setValorTotal] = useState("");
+  const [status, setStatus] = useState("A Iniciar");
   const { clientes } = useClientes();
   const { contratos } = useContratos();
   const { areas } = useAreas();
