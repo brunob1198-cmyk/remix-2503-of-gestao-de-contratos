@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContratos } from "@/hooks/useContratos";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id" | "area_id";
 type SortDir = "asc" | "desc" | null;
@@ -172,6 +173,10 @@ export default function ProjetosPage() {
 
   const hasActiveFilters = Object.values(filters).some(v => v) || Object.values(dropdownFilters).some(v => v);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Apply filters then sort
   const filteredSorted = useMemo(() => {
     let result = [...projetos];
@@ -215,6 +220,18 @@ export default function ProjetosPage() {
 
     return result;
   }, [projetos, filters, dropdownFilters, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedData = useMemo(() => {
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredSorted.slice(start, start + itemsPerPage);
+  }, [filteredSorted, safePage, itemsPerPage]);
+
+  const handleItemsPerPageChange = useCallback((items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  }, []);
 
   if (isLoading) {
     return (
@@ -389,7 +406,7 @@ export default function ProjetosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSorted.map((p) => (
+                  paginatedData.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono font-semibold">{p.codigo}</TableCell>
                       <TableCell>{p.nome}</TableCell>
@@ -441,6 +458,14 @@ export default function ProjetosPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              totalItems={filteredSorted.length}
+            />
           )}
         </CardContent>
       </Card>
