@@ -276,51 +276,51 @@ export default function DiarioCampoPage() {
 
       {selectedProjetoId && (
         <div className="space-y-4">
-          {/* Calendar view - always visible when calendario tab */}
-          <DiarioCalendario
-            entries={calendarEntries}
-            onDayClick={handleCalendarDayClick}
-            periodoInicio={periodoInicio}
-            periodoFim={periodoFim}
-            onPeriodoChange={(inicio, fim) => { setPeriodoInicio(inicio); setPeriodoFim(fim); }}
-          />
+          {activeTab === "calendario" && (
+            <DiarioCalendario
+              entries={calendarEntries}
+              onDayClick={handleCalendarDayClick}
+              periodoInicio={periodoInicio}
+              periodoFim={periodoFim}
+              onPeriodoChange={(inicio, fim) => { setPeriodoInicio(inicio); setPeriodoFim(fim); }}
+            />
+          )}
 
-          {/* Activity tabs below calendar, tied to selectedDate */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground mr-1">
-              {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}:
-            </span>
-
-            {atividades.map((_, idx) => (
-              <Button
-                key={idx}
-                variant={activeTab === "lancamento" && activeAtividadeIdx === idx ? "default" : "outline"}
-                size="sm"
-                onClick={() => { setActiveTab("lancamento"); setActiveAtividadeIdx(idx); }}
-                className="flex items-center gap-1"
-              >
-                <ClipboardEdit className="h-4 w-4" />
-                Atividade {idx + 1}
-              </Button>
-            ))}
-
-            <Button
-              variant={activeTab === "lancamento" && activeAtividadeIdx === "new" ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setActiveTab("lancamento"); handleNewAtividade(); }}
-              className="flex items-center gap-1"
-            >
-              <Plus className="h-4 w-4" />
-              Nova Atividade
-            </Button>
-
-            {atividades.length === 0 && activeTab !== "lancamento" && (
-              <span className="text-sm text-muted-foreground italic">Nenhuma atividade neste dia</span>
-            )}
-          </div>
-
-          {/* Activity form */}
           {activeTab === "lancamento" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Button variant="outline" size="sm" onClick={() => setActiveTab("calendario")}>
+                  ← Voltar ao Calendário
+                </Button>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
+                </span>
+              </div>
+
+              {/* Activity tabs inside the day view */}
+              <div className="flex flex-wrap items-center gap-2">
+                {atividades.map((_, idx) => (
+                  <Button
+                    key={idx}
+                    variant={activeAtividadeIdx === idx ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveAtividadeIdx(idx)}
+                    className="flex items-center gap-1"
+                  >
+                    <ClipboardEdit className="h-4 w-4" />
+                    Atividade {idx + 1}
+                  </Button>
+                ))}
+                <Button
+                  variant={activeAtividadeIdx === "new" ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleNewAtividade}
+                  className="flex items-center gap-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova Atividade
+                </Button>
+              </div>
             <div className="space-y-4">
               <Card>
                 <CardContent className="pt-4 pb-4">
@@ -513,6 +513,7 @@ export default function DiarioCampoPage() {
                   </Button>
                 )}
               </div>
+            </div>
             </div>
           )}
         </div>
