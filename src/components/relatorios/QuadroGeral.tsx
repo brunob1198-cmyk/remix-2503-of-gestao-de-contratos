@@ -198,6 +198,20 @@ export default function QuadroGeral() {
     },
   });
 
+  const [filterArea, setFilterArea] = useState<Set<string>>(new Set());
+  const [filterCliente, setFilterCliente] = useState<Set<string>>(new Set());
+  const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
+  const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
+  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+
+  const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      return next;
+    });
+  };
+
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (key: string) => {
