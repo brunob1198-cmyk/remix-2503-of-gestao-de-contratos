@@ -209,8 +209,9 @@ export default function DiarioCampoPage() {
         toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
       }
     }
-    // Refresh fotos query for the new activity
-    import("@tanstack/react-query").then(({ QueryClient }) => {});
+    // Refresh fotos and atividades queries
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
     setUploading(false);
     toast({ title: `${files.length} foto(s) enviada(s)!` });
   };
