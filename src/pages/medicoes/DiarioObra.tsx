@@ -1400,7 +1400,6 @@ export default function DiarioObraPage() {
                 placeholder="Anotações sobre o dia de trabalho..."
                 rows={4}
               />
-              <Button onClick={handleSaveObs} size="sm" disabled={!diario}>
               <Button onClick={handleSaveObs} size="sm" disabled={atualizarObservacoes.isPending}>
                 Salvar observações
               </Button>
