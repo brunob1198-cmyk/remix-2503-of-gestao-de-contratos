@@ -512,7 +512,19 @@ export default function QuadroGeral() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
+            <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
+            <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
+            <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
+            <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
+            {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
+                Limpar filtros
+              </Button>
+            )}
+          </div>
           {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
           ) : (
