@@ -146,11 +146,24 @@ export default function FaturamentoPage() {
     return "";
   };
 
-  const columnsFaturas = ["numero", "data", "projeto", "bruto", "impostos", "descontos", "liquido", "status"] as const;
+  // Helper to get municipality from faturamento items via sites
+  const getFaturamentoMunicipio = (f: any): string => {
+    const itens = f.itens as FaturamentoItem[] | undefined;
+    if (!itens || itens.length === 0) return "";
+    const municipios = new Set<string>();
+    for (const item of itens) {
+      const site = sites.find(s => s.id === item.site_id);
+      if (site?.municipio) municipios.add(site.municipio);
+    }
+    return Array.from(municipios).join(", ");
+  };
+
+  const columnsFaturas = ["numero", "data", "projeto", "municipio", "bruto", "impostos", "descontos", "liquido", "status"] as const;
   const getColValueFatura = (f: any, col: typeof columnsFaturas[number]): string => {
     if (col === "numero") return f.numero_fatura || "";
     if (col === "data") return format(new Date(f.data_emissao + "T12:00:00"), "dd/MM/yyyy");
     if (col === "projeto") return (f.projeto as any)?.codigo || "";
+    if (col === "municipio") return getFaturamentoMunicipio(f);
     if (col === "bruto") return f.valor_bruto.toString();
     if (col === "impostos") return f.impostos_valor.toString();
     if (col === "descontos") return f.descontos.toString();
