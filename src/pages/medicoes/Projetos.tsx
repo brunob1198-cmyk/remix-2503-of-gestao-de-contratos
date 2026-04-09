@@ -408,9 +408,23 @@ export default function ProjetosPage() {
                         ) : "-"}
                       </TableCell>
                       <TableCell>
-                        <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
-                          {p.status}
-                        </span>
+                        <Select
+                          value={p.status || "A Iniciar"}
+                          onValueChange={(v) => updateProjeto.mutate({ id: p.id, status: v })}
+                        >
+                          <SelectTrigger className="h-7 w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusColors[p.status] || "bg-muted text-muted-foreground"}`}>
+                              {p.status || "A Iniciar"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map(s => (
+                              <SelectItem key={s} value={s}>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
