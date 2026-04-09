@@ -276,17 +276,20 @@ export default function DiarioCampoPage() {
 
       {selectedProjetoId && (
         <div className="space-y-4">
-          {/* Tabs: Calendário + numbered activities + New */}
+          {/* Calendar view - always visible when calendario tab */}
+          <DiarioCalendario
+            entries={calendarEntries}
+            onDayClick={handleCalendarDayClick}
+            periodoInicio={periodoInicio}
+            periodoFim={periodoFim}
+            onPeriodoChange={(inicio, fim) => { setPeriodoInicio(inicio); setPeriodoFim(fim); }}
+          />
+
+          {/* Activity tabs below calendar, tied to selectedDate */}
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={activeTab === "calendario" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("calendario")}
-              className="flex items-center gap-2"
-            >
-              <CalendarDays className="h-4 w-4" />
-              Calendário
-            </Button>
+            <span className="text-sm font-medium text-muted-foreground mr-1">
+              {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}:
+            </span>
 
             {atividades.map((_, idx) => (
               <Button
@@ -310,18 +313,11 @@ export default function DiarioCampoPage() {
               <Plus className="h-4 w-4" />
               Nova Atividade
             </Button>
-          </div>
 
-          {/* Calendar view */}
-          {activeTab === "calendario" && (
-            <DiarioCalendario
-              entries={calendarEntries}
-              onDayClick={handleCalendarDayClick}
-              periodoInicio={periodoInicio}
-              periodoFim={periodoFim}
-              onPeriodoChange={(inicio, fim) => { setPeriodoInicio(inicio); setPeriodoFim(fim); }}
-            />
-          )}
+            {atividades.length === 0 && activeTab !== "lancamento" && (
+              <span className="text-sm text-muted-foreground italic">Nenhuma atividade neste dia</span>
+            )}
+          </div>
 
           {/* Activity form */}
           {activeTab === "lancamento" && (
