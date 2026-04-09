@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, ItemDisponivel } from "@/hooks/useFaturamento";
+import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, ItemDisponivel, FaturamentoItem } from "@/hooks/useFaturamento";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useMunicipios } from "@/hooks/useMunicipios";
