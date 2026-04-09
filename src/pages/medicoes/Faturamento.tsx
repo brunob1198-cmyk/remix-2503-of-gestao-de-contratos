@@ -843,6 +843,20 @@ export default function FaturamentoPage() {
                               onClearAll={() => tableFaturas.clearAll("projeto")}
                             />
                           </TableHead>
+                          <TableHead>
+                            <ColumnHeader
+                              label="Município"
+                              sortDir={tableFaturas.sortColumn === "municipio" ? tableFaturas.sortDir : null}
+                              onSort={() => tableFaturas.handleSort("municipio")}
+                              searchText={tableFaturas.searchTexts["municipio"]}
+                              onSearchChange={(v) => tableFaturas.setSearchText("municipio", v)}
+                              uniqueValues={tableFaturas.uniqueValues["municipio"]}
+                              selectedValues={tableFaturas.selectedFilters["municipio"]}
+                              onToggleValue={(v) => tableFaturas.toggleValue("municipio", v)}
+                              onSelectAll={() => tableFaturas.selectAll("municipio", tableFaturas.uniqueValues["municipio"])}
+                              onClearAll={() => tableFaturas.clearAll("municipio")}
+                            />
+                          </TableHead>
                           <TableHead className="text-right">Valor Bruto</TableHead>
                           <TableHead className="text-right">Impostos</TableHead>
                           <TableHead className="text-right">Descontos</TableHead>
