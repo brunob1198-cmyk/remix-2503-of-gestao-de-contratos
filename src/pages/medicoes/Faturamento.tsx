@@ -887,6 +887,7 @@ export default function FaturamentoPage() {
                               <TableCell>{format(new Date(f.data_emissao + "T12:00:00"), "dd/MM/yyyy")}</TableCell>
                               <TableCell>{(f.projeto as any)?.codigo || ""}</TableCell>
                               <TableCell>{getFaturamentoMunicipio(f)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(f.valor_bruto)}</TableCell>
                               <TableCell className="text-right text-destructive">
                                 {f.impostos_valor > 0 ? `- ${formatCurrency(f.impostos_valor)}` : "—"}
                               </TableCell>
