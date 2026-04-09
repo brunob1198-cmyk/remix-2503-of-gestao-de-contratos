@@ -783,9 +783,9 @@ export default function DiarioObraPage() {
 
             <div className="space-y-6">
           {/* ===== DIÁRIO DE CAMPO ===== */}
-          {diarioCampo && (
+          {selectedProjetoId && (
             <AnotacoesCampoDialog
-              diarioCampo={diarioCampo as any}
+              diarioCampo={diarioCampo}
               fotosCampo={fotosCampo}
               diarioObraId={diario?.id || null}
               itensDisponiveis={itensDisponiveis}
@@ -794,6 +794,7 @@ export default function DiarioObraPage() {
                 queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
               }}
               ensureDiario={ensureDiario}
+              selectedDate={selectedDate}
             />
           )}
 
