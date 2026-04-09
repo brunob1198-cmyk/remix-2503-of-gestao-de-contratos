@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog";
+import { CriarSiteDialog } from "@/components/medicoes/CriarSiteDialog";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
 import { useDiarioCampo } from "@/hooks/useDiarioCampo";
@@ -594,6 +595,13 @@ export default function DiarioObraPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {selectedProjetoId && (
+            <CriarSiteDialog
+              projetoId={selectedProjetoId}
+              onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
+            />
+          )}
         </div>
       </div>
 
