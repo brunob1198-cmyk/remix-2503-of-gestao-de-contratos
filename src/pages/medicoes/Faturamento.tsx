@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, ItemDisponivel } from "@/hooks/useFaturamento";
+import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, ItemDisponivel, FaturamentoItem } from "@/hooks/useFaturamento";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useMunicipios } from "@/hooks/useMunicipios";
@@ -146,11 +146,24 @@ export default function FaturamentoPage() {
     return "";
   };
 
-  const columnsFaturas = ["numero", "data", "projeto", "bruto", "impostos", "descontos", "liquido", "status"] as const;
+  // Helper to get municipality from faturamento items via sites
+  const getFaturamentoMunicipio = (f: any): string => {
+    const itens = f.itens as FaturamentoItem[] | undefined;
+    if (!itens || itens.length === 0) return "";
+    const municipios = new Set<string>();
+    for (const item of itens) {
+      const site = sites.find(s => s.id === item.site_id);
+      if (site?.municipio) municipios.add(site.municipio);
+    }
+    return Array.from(municipios).join(", ");
+  };
+
+  const columnsFaturas = ["numero", "data", "projeto", "municipio", "bruto", "impostos", "descontos", "liquido", "status"] as const;
   const getColValueFatura = (f: any, col: typeof columnsFaturas[number]): string => {
     if (col === "numero") return f.numero_fatura || "";
     if (col === "data") return format(new Date(f.data_emissao + "T12:00:00"), "dd/MM/yyyy");
     if (col === "projeto") return (f.projeto as any)?.codigo || "";
+    if (col === "municipio") return getFaturamentoMunicipio(f);
     if (col === "bruto") return f.valor_bruto.toString();
     if (col === "impostos") return f.impostos_valor.toString();
     if (col === "descontos") return f.descontos.toString();
@@ -830,6 +843,20 @@ export default function FaturamentoPage() {
                               onClearAll={() => tableFaturas.clearAll("projeto")}
                             />
                           </TableHead>
+                          <TableHead>
+                            <ColumnHeader
+                              label="Município"
+                              sortDir={tableFaturas.sortColumn === "municipio" ? tableFaturas.sortDir : null}
+                              onSort={() => tableFaturas.handleSort("municipio")}
+                              searchText={tableFaturas.searchTexts["municipio"]}
+                              onSearchChange={(v) => tableFaturas.setSearchText("municipio", v)}
+                              uniqueValues={tableFaturas.uniqueValues["municipio"]}
+                              selectedValues={tableFaturas.selectedFilters["municipio"]}
+                              onToggleValue={(v) => tableFaturas.toggleValue("municipio", v)}
+                              onSelectAll={() => tableFaturas.selectAll("municipio", tableFaturas.uniqueValues["municipio"])}
+                              onClearAll={() => tableFaturas.clearAll("municipio")}
+                            />
+                          </TableHead>
                           <TableHead className="text-right">Valor Bruto</TableHead>
                           <TableHead className="text-right">Impostos</TableHead>
                           <TableHead className="text-right">Descontos</TableHead>
@@ -859,6 +886,7 @@ export default function FaturamentoPage() {
                               <TableCell className="font-medium">{f.numero_fatura || "—"}</TableCell>
                               <TableCell>{format(new Date(f.data_emissao + "T12:00:00"), "dd/MM/yyyy")}</TableCell>
                               <TableCell>{(f.projeto as any)?.codigo || ""}</TableCell>
+                              <TableCell>{getFaturamentoMunicipio(f)}</TableCell>
                               <TableCell className="text-right">{formatCurrency(f.valor_bruto)}</TableCell>
                               <TableCell className="text-right text-destructive">
                                 {f.impostos_valor > 0 ? `- ${formatCurrency(f.impostos_valor)}` : "—"}
