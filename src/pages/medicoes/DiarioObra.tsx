@@ -49,6 +49,8 @@ export default function DiarioObraPage() {
   const [periodoFim, setPeriodoFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
+  const [diarioClima, setDiarioClima] = useState("");
+  const [headerSaved, setHeaderSaved] = useState(false);
 
   // Reset site when projeto changes
   const handleProjetoChange = (projetoId: string) => {
@@ -104,10 +106,13 @@ export default function DiarioObraPage() {
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
+      setDiarioClima(d.clima || "");
       setObs(diario.observacoes || "");
     } else {
       setObs("");
+      setDiarioClima("");
     }
+    setHeaderSaved(false);
   }, [diario?.id]);
 
   const handleCalendarDayClick = (dateStr: string) => {
@@ -125,32 +130,35 @@ export default function DiarioObraPage() {
     });
   }, [selectedProjetoId, toast]);
 
-  const handleClimaChange = async (clima: string) => {
+  const handleClimaChange = (clima: string) => {
+    setDiarioClima(clima);
+    setHeaderSaved(false);
+  };
+
+  const handleUfChange = (uf: string) => {
+    setDiarioUf(uf);
+    setDiarioMunicipio("");
+    setHeaderSaved(false);
+  };
+
+  const handleMunicipioChange = (municipio: string) => {
+    setDiarioMunicipio(municipio);
+    setHeaderSaved(false);
+  };
+
+  const handleSaveHeader = async () => {
     if (!selectedSiteId) {
-      notifySiteRequired("salvar o clima do diário");
+      notifySiteRequired("salvar o cabeçalho do diário");
       return;
     }
-
     const diarioId = diario?.id || (await ensureDiario());
     if (!diarioId) return;
 
-    await atualizarClima.mutateAsync({ id: diarioId, clima });
-    toast({ title: "Clima atualizado!" });
-  };
-
-  const handleUfChange = async (uf: string) => {
-    setDiarioUf(uf);
-    setDiarioMunicipio("");
-    if (diario?.id) {
-      await atualizarLocalizacao.mutateAsync({ id: diario.id, uf, municipio: "" });
-    }
-  };
-
-  const handleMunicipioChange = async (municipio: string) => {
-    setDiarioMunicipio(municipio);
-    if (diario?.id) {
-      await atualizarLocalizacao.mutateAsync({ id: diario.id, uf: diarioUf, municipio });
-    }
+    await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
+    await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
+    setHeaderSaved(true);
+    toast({ title: "Diário salvo com sucesso!" });
+    setTimeout(() => setHeaderSaved(false), 3000);
   };
 
   // Production form state
@@ -702,7 +710,7 @@ export default function DiarioObraPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
-                      value={(diario as any)?.clima || ""}
+                      value={diarioClima}
                       onValueChange={handleClimaChange}
                     >
                       <SelectTrigger className="w-[200px]">
@@ -730,6 +738,21 @@ export default function DiarioObraPage() {
                     onMunicipioChange={handleMunicipioChange}
                     required
                   />
+                  <Button
+                    variant={headerSaved ? "outline" : "default"}
+                    size="sm"
+                    onClick={handleSaveHeader}
+                    disabled={atualizarClima.isPending || atualizarLocalizacao.isPending}
+                    className={headerSaved ? "border-green-500 text-green-600" : ""}
+                  >
+                    {headerSaved ? (
+                      <><Check className="h-4 w-4 mr-1" /> Salvo</>
+                    ) : atualizarClima.isPending || atualizarLocalizacao.isPending ? (
+                      "Salvando..."
+                    ) : (
+                      "Salvar"
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     className="ml-auto"
