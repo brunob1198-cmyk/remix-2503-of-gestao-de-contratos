@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
