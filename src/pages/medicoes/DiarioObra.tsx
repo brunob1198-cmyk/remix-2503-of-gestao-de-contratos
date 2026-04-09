@@ -621,7 +621,6 @@ export default function DiarioObraPage() {
         <TabsContent value="calendario">
             <DiarioCalendario
               entries={calendarEntries}
-              onDayClick={selectedSiteId ? handleCalendarDayClick : undefined}
               onDayClick={handleCalendarDayClick}
               periodoInicio={periodoInicio}
               periodoFim={periodoFim}
