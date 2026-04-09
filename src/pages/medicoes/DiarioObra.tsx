@@ -710,7 +710,7 @@ export default function DiarioObraPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
-                      value={(diario as any)?.clima || ""}
+                      value={diarioClima}
                       onValueChange={handleClimaChange}
                     >
                       <SelectTrigger className="w-[200px]">
@@ -738,6 +738,21 @@ export default function DiarioObraPage() {
                     onMunicipioChange={handleMunicipioChange}
                     required
                   />
+                  <Button
+                    variant={headerSaved ? "outline" : "default"}
+                    size="sm"
+                    onClick={handleSaveHeader}
+                    disabled={atualizarClima.isPending || atualizarLocalizacao.isPending}
+                    className={headerSaved ? "border-green-500 text-green-600" : ""}
+                  >
+                    {headerSaved ? (
+                      <><Check className="h-4 w-4 mr-1" /> Salvo</>
+                    ) : atualizarClima.isPending || atualizarLocalizacao.isPending ? (
+                      "Salvando..."
+                    ) : (
+                      "Salvar"
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     className="ml-auto"
