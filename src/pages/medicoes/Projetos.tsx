@@ -39,6 +39,7 @@ export default function ProjetosPage() {
   const [contratoId, setContratoId] = useState("none");
   const [areaId, setAreaId] = useState("");
   const [valorTotal, setValorTotal] = useState("");
+  const [status, setStatus] = useState("A Iniciar");
   const { clientes } = useClientes();
   const { contratos } = useContratos();
   const { areas } = useAreas();
@@ -52,6 +53,14 @@ export default function ProjetosPage() {
   // Dropdown selection filters
   const [dropdownFilters, setDropdownFilters] = useState<Record<string, string>>({});
 
+  const statusOptions = ["A Iniciar", "Execução", "Concluído", "Finalizado"] as const;
+  const statusColors: Record<string, string> = {
+    "A Iniciar": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    "Execução": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    "Concluído": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    "Finalizado": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+  };
+
   const resetForm = () => {
     setCodigo("");
     setNome("");
@@ -61,6 +70,7 @@ export default function ProjetosPage() {
     setContratoId("none");
     setAreaId("");
     setValorTotal("");
+    setStatus("A Iniciar");
     setEditingId(null);
   };
 
@@ -74,6 +84,7 @@ export default function ProjetosPage() {
     setContratoId(projeto.contrato_id || "none");
     setAreaId(projeto.area_id || "");
     setValorTotal(projeto.valor_total?.toString() || "");
+    setStatus(projeto.status || "A Iniciar");
     setIsOpen(true);
   };
 
@@ -115,7 +126,8 @@ export default function ProjetosPage() {
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
       contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
       area_id: areaId,
-      valor_total: parsedValorTotal
+      valor_total: parsedValorTotal,
+      status: status,
     };
 
     if (editingId) {
@@ -292,9 +304,24 @@ export default function ProjetosPage() {
                   <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Coordenador</Label>
-                <Input value={coordenador} onChange={(e) => setCoordenador(e.target.value)} placeholder="Nome do coordenador" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Coordenador</Label>
+                  <Input value={coordenador} onChange={(e) => setCoordenador(e.target.value)} placeholder="Nome do coordenador" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(s => (
+                        <SelectItem key={s} value={s}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button type="submit" className="w-full" disabled={createProjeto.isPending || updateProjeto.isPending}>
                 {(createProjeto.isPending || updateProjeto.isPending) ? (
@@ -381,9 +408,23 @@ export default function ProjetosPage() {
                         ) : "-"}
                       </TableCell>
                       <TableCell>
-                        <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
-                          {p.status}
-                        </span>
+                        <Select
+                          value={p.status || "A Iniciar"}
+                          onValueChange={(v) => updateProjeto.mutate({ id: p.id, status: v })}
+                        >
+                          <SelectTrigger className="h-7 w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusColors[p.status] || "bg-muted text-muted-foreground"}`}>
+                              {p.status || "A Iniciar"}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map(s => (
+                              <SelectItem key={s} value={s}>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
