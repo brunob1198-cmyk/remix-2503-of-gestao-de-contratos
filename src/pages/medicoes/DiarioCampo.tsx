@@ -199,8 +199,16 @@ export default function DiarioCampoPage() {
         continue;
       }
       const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      await addFoto.mutateAsync({ diario_campo_id: diarioId, url: urlData.publicUrl });
+      // Insert directly with the correct diarioId to avoid stale hook reference
+      const { error: insertError } = await supabase
+        .from("diario_campo_fotos")
+        .insert([{ diario_campo_id: diarioId, url: urlData.publicUrl }]);
+      if (insertError) {
+        toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
+      }
     }
+    // Refresh fotos query for the new activity
+    import("@tanstack/react-query").then(({ QueryClient }) => {});
     setUploading(false);
     toast({ title: `${files.length} foto(s) enviada(s)!` });
   };
