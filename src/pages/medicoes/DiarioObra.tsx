@@ -130,32 +130,35 @@ export default function DiarioObraPage() {
     });
   }, [selectedProjetoId, toast]);
 
-  const handleClimaChange = async (clima: string) => {
+  const handleClimaChange = (clima: string) => {
+    setDiarioClima(clima);
+    setHeaderSaved(false);
+  };
+
+  const handleUfChange = (uf: string) => {
+    setDiarioUf(uf);
+    setDiarioMunicipio("");
+    setHeaderSaved(false);
+  };
+
+  const handleMunicipioChange = (municipio: string) => {
+    setDiarioMunicipio(municipio);
+    setHeaderSaved(false);
+  };
+
+  const handleSaveHeader = async () => {
     if (!selectedSiteId) {
-      notifySiteRequired("salvar o clima do diário");
+      notifySiteRequired("salvar o cabeçalho do diário");
       return;
     }
-
     const diarioId = diario?.id || (await ensureDiario());
     if (!diarioId) return;
 
-    await atualizarClima.mutateAsync({ id: diarioId, clima });
-    toast({ title: "Clima atualizado!" });
-  };
-
-  const handleUfChange = async (uf: string) => {
-    setDiarioUf(uf);
-    setDiarioMunicipio("");
-    if (diario?.id) {
-      await atualizarLocalizacao.mutateAsync({ id: diario.id, uf, municipio: "" });
-    }
-  };
-
-  const handleMunicipioChange = async (municipio: string) => {
-    setDiarioMunicipio(municipio);
-    if (diario?.id) {
-      await atualizarLocalizacao.mutateAsync({ id: diario.id, uf: diarioUf, municipio });
-    }
+    await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
+    await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
+    setHeaderSaved(true);
+    toast({ title: "Diário salvo com sucesso!" });
+    setTimeout(() => setHeaderSaved(false), 3000);
   };
 
   // Production form state
