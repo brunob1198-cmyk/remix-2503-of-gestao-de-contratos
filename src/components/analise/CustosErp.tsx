@@ -108,20 +108,50 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 
-  const [sortCol, setSortCol] = useState<ColKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>(null);
+  // Persist filters to localStorage
+  const STORAGE_KEY = "custos_erp_filters";
+
+  function loadPersisted() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }
+
+  const persisted = useMemo(() => loadPersisted(), []);
+
+  const [sortCol, setSortCol] = useState<ColKey | null>(persisted?.sortCol ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(persisted?.sortDir ?? null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(persisted?.itemsPerPage ?? 20);
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
+    if (persisted?.searchTexts) return persisted.searchTexts;
     const init: any = {};
     allCols.forEach(c => init[c] = "");
     return init;
   });
   const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>(() => {
+    if (persisted?.selectedFilters) {
+      const restored: any = {};
+      allCols.forEach(c => restored[c] = new Set(persisted.selectedFilters[c] || []));
+      return restored;
+    }
     const init: any = {};
     allCols.forEach(c => init[c] = new Set());
     return init;
   });
+
+  // Save to localStorage on change
+  useEffect(() => {
+    try {
+      const serializable: any = {
+        sortCol, sortDir, itemsPerPage, searchTexts,
+        selectedFilters: Object.fromEntries(allCols.map(c => [c, Array.from(selectedFilters[c])])),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+    } catch {}
+  }, [sortCol, sortDir, itemsPerPage, searchTexts, selectedFilters]);
 
   function handleSort(col: ColKey) {
     if (sortCol === col) {
