@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
@@ -22,6 +23,7 @@ import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendar
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { projetos } = useProjetos();
   const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_campo_projeto_id", "");
   const { sites } = useSites(selectedProjetoId || undefined);
@@ -199,8 +201,17 @@ export default function DiarioCampoPage() {
         continue;
       }
       const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      await addFoto.mutateAsync({ diario_campo_id: diarioId, url: urlData.publicUrl });
+      // Insert directly with the correct diarioId to avoid stale hook reference
+      const { error: insertError } = await supabase
+        .from("diario_campo_fotos")
+        .insert([{ diario_campo_id: diarioId, url: urlData.publicUrl }]);
+      if (insertError) {
+        toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
+      }
     }
+    // Refresh fotos and atividades queries
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
     setUploading(false);
     toast({ title: `${files.length} foto(s) enviada(s)!` });
   };
