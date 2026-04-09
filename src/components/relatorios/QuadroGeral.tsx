@@ -8,9 +8,62 @@ import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+function MultiSelectFilter({ label, options, selected, onToggle, onSelectAll, onClearAll }: {
+  label: string;
+  options: string[];
+  selected: Set<string>;
+  onToggle: (v: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = options.filter(v => v.toLowerCase().includes(search.toLowerCase()));
+  const isActive = selected.size > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", isActive && "border-primary text-primary")}>
+          <Filter className="h-3.5 w-3.5" />
+          {label}
+          {isActive && <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px]">{selected.size}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 space-y-2" align="start">
+        <Input
+          placeholder={`Pesquisar ${label.toLowerCase()}...`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <div className="flex gap-2 text-xs">
+          <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
+          <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
+        </div>
+        <div className="max-h-48 overflow-y-auto space-y-1">
+          {filtered.map(v => (
+            <label key={v} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+              <Checkbox
+                checked={selected.has(v)}
+                onCheckedChange={() => onToggle(v)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">{v}</span>
+            </label>
+          ))}
+          {filtered.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum resultado</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface SiteRow {
   site_id: string;
@@ -145,6 +198,20 @@ export default function QuadroGeral() {
     },
   });
 
+  const [filterArea, setFilterArea] = useState<Set<string>>(new Set());
+  const [filterCliente, setFilterCliente] = useState<Set<string>>(new Set());
+  const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
+  const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
+  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+
+  const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v); else next.add(v);
+      return next;
+    });
+  };
+
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const toggle = (key: string) => {
@@ -244,12 +311,72 @@ export default function QuadroGeral() {
     return groups;
   }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
 
-  const grandTotals = useMemo(() => calcTotals(areaGroups.map(g => g.totals)), [areaGroups]);
+  // Extract unique filter options
+  const filterOptions = useMemo(() => {
+    const areasSet = new Set<string>();
+    const clientesSet = new Set<string>();
+    const projetosSet = new Set<string>();
+    const sitesSet = new Set<string>();
+    const statusSet = new Set<string>();
+    for (const ag of areaGroups) {
+      areasSet.add(ag.area);
+      for (const cg of ag.clientes) {
+        clientesSet.add(cg.cliente);
+        for (const p of cg.projetos) {
+          projetosSet.add(p.projeto_nome);
+          const proj = projetos.find(pr => pr.id === p.projeto_id);
+          statusSet.add(proj?.status || "Sem status");
+          for (const s of p.siteRows) {
+            sitesSet.add(`${s.site_codigo} - ${s.site_nome}`);
+          }
+        }
+      }
+    }
+    return {
+      areas: Array.from(areasSet).sort(),
+      clientes: Array.from(clientesSet).sort(),
+      projetos: Array.from(projetosSet).sort(),
+      sites: Array.from(sitesSet).sort(),
+      status: Array.from(statusSet).sort(),
+    };
+  }, [areaGroups, projetos]);
+
+  // Apply filters
+  const filteredAreaGroups = useMemo(() => {
+    return areaGroups
+      .filter(ag => filterArea.size === 0 || filterArea.has(ag.area))
+      .map(ag => {
+        const clientes = ag.clientes
+          .filter(cg => filterCliente.size === 0 || filterCliente.has(cg.cliente))
+          .map(cg => {
+            const filteredProjetos = cg.projetos.filter(p => {
+              if (filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
+              const proj = projetos.find(pr => pr.id === p.projeto_id);
+              const st = proj?.status || "Sem status";
+              if (filterStatus.size > 0 && !filterStatus.has(st)) return false;
+              if (filterSite.size > 0) {
+                const hasSiteMatch = p.siteRows.some(s => filterSite.has(`${s.site_codigo} - ${s.site_nome}`));
+                if (!hasSiteMatch) return false;
+              }
+              return true;
+            });
+            if (filteredProjetos.length === 0) return null;
+            return { ...cg, projetos: filteredProjetos, totals: calcTotals(filteredProjetos) };
+          })
+          .filter(Boolean) as ClienteGroup[];
+        if (clientes.length === 0) return null;
+        const allProjetos = clientes.flatMap(c => c.projetos);
+        return { ...ag, clientes, totals: calcTotals(allProjetos) };
+      })
+      .filter(Boolean) as AreaGroup[];
+  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos]);
+
+  const grandTotals = useMemo(() => calcTotals(filteredAreaGroups.map(g => g.totals)), [filteredAreaGroups]);
   const grandPercent = grandTotals.valor_contrato > 0 ? (grandTotals.valor_executado / grandTotals.valor_contrato) * 100 : 0;
 
   const expandAll = () => {
     const keys = new Set<string>();
-    areaGroups.forEach(ag => {
+    filteredAreaGroups.forEach(ag => {
       keys.add(`area:${ag.area}`);
       ag.clientes.forEach(cg => {
         keys.add(`cliente:${ag.area}|${cg.cliente}`);
@@ -264,7 +391,7 @@ export default function QuadroGeral() {
 
   const handleExport = () => {
     const rows: any[] = [];
-    for (const ag of areaGroups) {
+    for (const ag of filteredAreaGroups) {
       for (const cg of ag.clientes) {
         for (const p of cg.projetos) {
           if (p.siteRows.length > 0) {
@@ -377,7 +504,7 @@ export default function QuadroGeral() {
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={expandAll}>Expandir Todos</Button>
             <Button variant="ghost" size="sm" onClick={collapseAll}>Recolher Todos</Button>
-            {areaGroups.length > 0 && (
+            {filteredAreaGroups.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Exportar Excel
@@ -385,8 +512,20 @@ export default function QuadroGeral() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          {areaGroups.length === 0 ? (
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
+            <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
+            <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
+            <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
+            <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
+            {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
+                Limpar filtros
+              </Button>
+            )}
+          </div>
+          {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
           ) : (
             <div className="rounded-md border overflow-auto">
@@ -403,7 +542,7 @@ export default function QuadroGeral() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {areaGroups.map(ag => {
+                  {filteredAreaGroups.map(ag => {
                     const areaKey = `area:${ag.area}`;
                     const areaExpanded = expanded.has(areaKey);
                     const totalClientes = ag.clientes.length;
