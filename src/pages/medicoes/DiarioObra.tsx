@@ -1372,7 +1372,8 @@ export default function DiarioObraPage() {
             </CardContent>
           </Card>
             </div>
-          </TabsContent>
+            </>
+          )}
           </TabsContent>
       </Tabs>
     </div>
