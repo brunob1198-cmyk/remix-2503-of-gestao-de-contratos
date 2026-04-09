@@ -514,6 +514,7 @@ export default function DiarioCampoPage() {
                 )}
               </div>
             </div>
+            </div>
           )}
         </div>
       )}
