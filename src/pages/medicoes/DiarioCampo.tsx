@@ -158,7 +158,7 @@ export default function DiarioCampoPage() {
     setActiveAtividadeIdx("new");
   };
 
-  const handleUploadFotos = async (files: FileList) => {
+  const handleUploadFotos = async (files: FileList, input?: HTMLInputElement | null) => {
     if (!files.length) return;
     setUploading(true);
 
@@ -192,12 +192,14 @@ export default function DiarioCampoPage() {
       }
     }
 
+    let uploadedCount = 0;
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const path = `campo/${diarioId}/${Date.now()}_${i}_${file.name}`;
       const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
       if (uploadError) {
-        toast({ title: "Erro no upload", description: uploadError.message, variant: "destructive" });
+        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
         continue;
       }
       const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
@@ -207,13 +209,24 @@ export default function DiarioCampoPage() {
         .insert([{ diario_campo_id: diarioId, url: urlData.publicUrl }]);
       if (insertError) {
         toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
+        await supabase.storage.from("diario-fotos").remove([path]);
+        continue;
       }
+
+      uploadedCount += 1;
     }
     // Refresh fotos and atividades queries
     queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
     queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
     setUploading(false);
-    toast({ title: `${files.length} foto(s) enviada(s)!` });
+
+    if (input) {
+      input.value = "";
+    }
+
+    if (uploadedCount > 0) {
+      toast({ title: `${uploadedCount} foto(s) enviada(s)!` });
+    }
   };
 
   const handleRemoveFoto = async (fotoId: string) => {
@@ -424,7 +437,7 @@ export default function DiarioCampoPage() {
                           multiple
                           accept="image/*"
                           className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files)}
+                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
                         />
                         <Button
                           variant="outline"
@@ -440,7 +453,7 @@ export default function DiarioCampoPage() {
                           accept="image/*"
                           capture="environment"
                           className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files)}
+                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
                         />
                       </div>
 
