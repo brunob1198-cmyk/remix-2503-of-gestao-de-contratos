@@ -57,7 +57,8 @@ export default function DiarioObraPage() {
   };
 
   const selectedSite = sites.find(s => s.id === selectedSiteId);
-  const { itensLpu } = useItensLpu(selectedSite?.projeto_id);
+  const projetoIdParaLancamento = selectedSite?.projeto_id || selectedProjetoId || undefined;
+  const { itensLpu } = useItensLpu(projetoIdParaLancamento);
   const { itens: itensEscopo } = useEscopos(selectedSiteId);
 
   // When no escopo is registered for the site, fall back to all project LPU items
@@ -117,8 +118,25 @@ export default function DiarioObraPage() {
     setActiveTab("lancamento");
   };
 
+  const notifySiteRequired = useCallback((acao: string) => {
+    toast({
+      title: "Informe um site para salvar",
+      description: selectedProjetoId
+        ? `Selecione ou crie um site antes de ${acao}.`
+        : `Selecione um projeto e informe um site antes de ${acao}.`,
+      variant: "destructive",
+    });
+  }, [selectedProjetoId, toast]);
+
   const handleClimaChange = async (clima: string) => {
+    if (!selectedSiteId) {
+      notifySiteRequired("salvar o clima do diário");
+      return;
+    }
+
     const diarioId = diario?.id || (await ensureDiario());
+    if (!diarioId) return;
+
     await atualizarClima.mutateAsync({ id: diarioId, clima });
     toast({ title: "Clima atualizado!" });
   };
@@ -199,6 +217,12 @@ export default function DiarioObraPage() {
 
   const ensureDiario = useCallback(async () => {
     if (diario) return diario.id;
+
+    if (!selectedSiteId) {
+      notifySiteRequired("salvar no Diário de Obra");
+      return null;
+    }
+
     try {
       const result = await criarDiario.mutateAsync({ site_id: selectedSiteId, data: selectedDate, uf: diarioUf || undefined, municipio: diarioMunicipio || undefined });
       autoPopulateEligibleDiarios.current.add(result.id);
@@ -206,7 +230,7 @@ export default function DiarioObraPage() {
     } catch {
       return null;
     }
-  }, [diario, criarDiario, selectedSiteId, selectedDate, diarioUf, diarioMunicipio]);
+  }, [diario, criarDiario, selectedSiteId, selectedDate, diarioUf, diarioMunicipio, notifySiteRequired]);
 
   useEffect(() => {
     if (!selectedSiteId || alocacoesDoSite.length === 0) return;
@@ -304,6 +328,8 @@ export default function DiarioObraPage() {
     const qtd = Number(prodQtd);
     const preco = Number(selectedItem.valor_unitario);
     const diarioId = await ensureDiario();
+    if (!diarioId) return;
+
     const { data: prodData, error: prodError } = await supabase
       .from("diario_producao")
       .insert([{
@@ -359,6 +385,8 @@ export default function DiarioObraPage() {
     const custoUnitario = Number(eqCustoHora);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
     const diarioId = await ensureDiario();
+    if (!diarioId) return;
+
     await addEquipe.mutateAsync({
       diario_id: diarioId,
       nome: recurso.nome,
@@ -384,6 +412,8 @@ export default function DiarioObraPage() {
     const custoUnitario = Number(equipCustoHora);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
     const diarioId = await ensureDiario();
+    if (!diarioId) return;
+
     await addEquipamento.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
@@ -409,6 +439,8 @@ export default function DiarioObraPage() {
     const kmRodados = Math.max(0, kmFinal - kmInicial);
 
     const diarioId = await ensureDiario();
+    if (!diarioId) return;
+
     await addVeiculo.mutateAsync({
       diario_id: diarioId,
       descricao: recurso.nome,
@@ -495,7 +527,12 @@ export default function DiarioObraPage() {
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
     const diarioId = await ensureDiario();
+    if (!diarioId) {
+      e.target.value = "";
+      return;
+    }
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -532,13 +569,19 @@ export default function DiarioObraPage() {
   };
 
   const handleSaveObs = async () => {
-    if (!diario) return;
-    await atualizarObservacoes.mutateAsync({ id: diario.id, observacoes: obs });
+    const diarioId = diario?.id || (await ensureDiario());
+    if (!diarioId) return;
+
+    await atualizarObservacoes.mutateAsync({ id: diarioId, observacoes: obs });
     toast({ title: "Observações salvas!" });
   };
 
   const handleDuplicateAnterior = async () => {
-    if (!selectedSiteId || !selectedDate) return;
+    if (!selectedDate) return;
+    if (!selectedSiteId) {
+      notifySiteRequired("duplicar o diário anterior");
+      return;
+    }
     
     if (confirm("Deseja realmente duplicar o último diário preenchido deste site para a data de hoje? Qualquer item já cadastrado hoje será mantido.")) {
       await duplicarDiarioAnterior.mutateAsync({ site_id: selectedSiteId, data: selectedDate });
@@ -632,28 +675,20 @@ export default function DiarioObraPage() {
         </TabsContent>
 
           <TabsContent value="lancamento">
-          {!selectedSiteId ? (
-            <Card>
-              <CardContent className="py-12 text-center space-y-4">
-                <AlertTriangle className="h-10 w-10 mx-auto text-muted-foreground" />
-                <div>
-                  <p className="text-lg font-medium">Selecione ou crie um site para lançar</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Escolha um site existente no seletor acima ou crie um novo para iniciar os lançamentos do dia {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}.
-                  </p>
-                </div>
-                {selectedProjetoId && (
-                  <div className="flex justify-center">
-                    <CriarSiteDialog
-                      projetoId={selectedProjetoId}
-                      onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
-                    />
+            {!selectedSiteId && (
+              <div className="mb-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Tela do dia liberada sem site</p>
+                    <p className="text-sm text-muted-foreground">
+                      Você pode consultar as anotações de campo e preparar os lançamentos. Para salvar qualquer dado no Diário de Obra, selecione ou crie um site no topo da tela.
+                    </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <>
+                </div>
+              </div>
+            )}
+
             {/* Sticky Summary Header */}
             <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b pb-4 mb-4">
               <div className="flex flex-col gap-4">
@@ -1365,14 +1400,12 @@ export default function DiarioObraPage() {
                 placeholder="Anotações sobre o dia de trabalho..."
                 rows={4}
               />
-              <Button onClick={handleSaveObs} size="sm" disabled={!diario}>
+              <Button onClick={handleSaveObs} size="sm" disabled={atualizarObservacoes.isPending}>
                 Salvar observações
               </Button>
             </CardContent>
           </Card>
             </div>
-            </>
-          )}
           </TabsContent>
       </Tabs>
     </div>
