@@ -49,6 +49,8 @@ export default function DiarioObraPage() {
   const [periodoFim, setPeriodoFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
+  const [diarioClima, setDiarioClima] = useState("");
+  const [headerSaved, setHeaderSaved] = useState(false);
 
   // Reset site when projeto changes
   const handleProjetoChange = (projetoId: string) => {
