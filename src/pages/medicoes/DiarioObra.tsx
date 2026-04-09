@@ -611,19 +611,17 @@ export default function DiarioObraPage() {
             <CalendarDays className="h-4 w-4" />
             Calendário
           </TabsTrigger>
-          {selectedSiteId && (
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
               Lançamento — {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
             </TabsTrigger>
-          )}
         </TabsList>
 
         {/* ===== CALENDAR VIEW ===== */}
         <TabsContent value="calendario">
             <DiarioCalendario
               entries={calendarEntries}
-              onDayClick={selectedSiteId ? handleCalendarDayClick : undefined}
+              onDayClick={handleCalendarDayClick}
               periodoInicio={periodoInicio}
               periodoFim={periodoFim}
               onPeriodoChange={(ini, fim) => {
@@ -633,8 +631,29 @@ export default function DiarioObraPage() {
             />
         </TabsContent>
 
-      {selectedSiteId && (
           <TabsContent value="lancamento">
+          {!selectedSiteId ? (
+            <Card>
+              <CardContent className="py-12 text-center space-y-4">
+                <AlertTriangle className="h-10 w-10 mx-auto text-muted-foreground" />
+                <div>
+                  <p className="text-lg font-medium">Selecione ou crie um site para lançar</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Escolha um site existente no seletor acima ou crie um novo para iniciar os lançamentos do dia {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}.
+                  </p>
+                </div>
+                {selectedProjetoId && (
+                  <div className="flex justify-center">
+                    <CriarSiteDialog
+                      projetoId={selectedProjetoId}
+                      onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
             {/* Sticky Summary Header */}
             <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b pb-4 mb-4">
               <div className="flex flex-col gap-4">
@@ -1352,8 +1371,9 @@ export default function DiarioObraPage() {
             </CardContent>
           </Card>
             </div>
+            </>
+          )}
           </TabsContent>
-      )}
       </Tabs>
     </div>
   );
