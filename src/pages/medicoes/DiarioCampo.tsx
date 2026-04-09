@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  CalendarDays, ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus,
+  ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
