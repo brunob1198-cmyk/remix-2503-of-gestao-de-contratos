@@ -123,12 +123,20 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
       let fotosData: any[] = [];
       
 
+      // Fetch disabled ERP categories
+      const { data: categoriasMap } = await supabase
+        .from("mapeamento_categorias_erp")
+        .select("categoria_erp, ativo");
+      const disabledCategorias = new Set(
+        (categoriasMap || []).filter(c => !c.ativo).map(c => c.categoria_erp)
+      );
+
       // Fetch ERP costs for the project
       const { data: erpData } = await (supabase as any)
         .from("custo_real_erp")
-        .select("valor")
+        .select("valor, categoria_erp")
         .eq("projeto_id", resolvedProjetoId);
-      const uniqueErpCustos = erpData || [];
+      const uniqueErpCustos = (erpData || []).filter((c: any) => !disabledCategorias.has(c.categoria_erp));
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
