@@ -23,6 +23,7 @@ import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendar
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { projetos } = useProjetos();
   const [selectedProjetoId, setSelectedProjetoId] = usePersistedState<string>("diario_campo_projeto_id", "");
   const { sites } = useSites(selectedProjetoId || undefined);
