@@ -595,6 +595,13 @@ export default function DiarioObraPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {selectedProjetoId && (
+            <CriarSiteDialog
+              projetoId={selectedProjetoId}
+              onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
+            />
+          )}
         </div>
       </div>
 
