@@ -126,7 +126,8 @@ export default function ProjetosPage() {
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
       contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
       area_id: areaId,
-      valor_total: parsedValorTotal
+      valor_total: parsedValorTotal,
+      status: status,
     };
 
     if (editingId) {
