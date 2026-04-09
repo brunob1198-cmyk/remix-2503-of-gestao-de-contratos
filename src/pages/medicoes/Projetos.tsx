@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContratos } from "@/hooks/useContratos";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Filter, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id" | "area_id";
 type SortDir = "asc" | "desc" | null;
@@ -172,6 +173,10 @@ export default function ProjetosPage() {
 
   const hasActiveFilters = Object.values(filters).some(v => v) || Object.values(dropdownFilters).some(v => v);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Apply filters then sort
   const filteredSorted = useMemo(() => {
     let result = [...projetos];
@@ -215,6 +220,18 @@ export default function ProjetosPage() {
 
     return result;
   }, [projetos, filters, dropdownFilters, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedData = useMemo(() => {
+    const start = (safePage - 1) * itemsPerPage;
+    return filteredSorted.slice(start, start + itemsPerPage);
+  }, [filteredSorted, safePage, itemsPerPage]);
+
+  const handleItemsPerPageChange = useCallback((items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  }, []);
 
   if (isLoading) {
     return (
@@ -354,93 +371,103 @@ export default function ProjetosPage() {
           {projetos.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columns.map((col) => (
-                    <ColumnHeader
-                      key={col.field}
-                      field={col.field}
-                      label={col.label}
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      onSort={handleSort}
-                      filterText={filters[col.field] || ""}
-                      onFilterText={(v) => setFilter(col.field, v)}
-                      dropdownValue={dropdownFilters[col.field] || ""}
-                      onDropdownChange={(v) => setDropdownFilter(col.field, v)}
-                      options={
-                        col.field === "contrato_id" 
-                          ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
-                          : col.field === "area_id"
-                          ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
-                          : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
-                      }
-                    />
-                  ))}
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSorted.length === 0 ? (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      Nenhum projeto encontrado com os filtros aplicados
-                    </TableCell>
+                    {columns.map((col) => (
+                      <ColumnHeader
+                        key={col.field}
+                        field={col.field}
+                        label={col.label}
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onSort={handleSort}
+                        filterText={filters[col.field] || ""}
+                        onFilterText={(v) => setFilter(col.field, v)}
+                        dropdownValue={dropdownFilters[col.field] || ""}
+                        onDropdownChange={(v) => setDropdownFilter(col.field, v)}
+                        options={
+                          col.field === "contrato_id" 
+                            ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
+                            : col.field === "area_id"
+                            ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
+                            : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
+                        }
+                      />
+                    ))}
+                    <TableHead></TableHead>
                   </TableRow>
-                ) : (
-                  filteredSorted.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-mono font-semibold">{p.codigo}</TableCell>
-                      <TableCell>{p.nome}</TableCell>
-                      <TableCell>
-                        <span className="font-medium text-xs border bg-muted/20 px-2 py-1 rounded">
-                          {p.areaObj?.nome || "-"}
-                        </span>
-                      </TableCell>
-                      <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
-                      <TableCell>{p.coordenador || "-"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {p.contratoObj ? (
-                          <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
-                            {p.contratoObj.numero_contrato || "-"}
-                          </span>
-                        ) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={p.status || "A Iniciar"}
-                          onValueChange={(v) => updateProjeto.mutate({ id: p.id, status: v })}
-                        >
-                          <SelectTrigger className="h-7 w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusColors[p.status] || "bg-muted text-muted-foreground"}`}>
-                              {p.status || "A Iniciar"}
-                            </span>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {statusOptions.map(s => (
-                              <SelectItem key={s} value={s}>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredSorted.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Nenhum projeto encontrado com os filtros aplicados
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    paginatedData.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-mono font-semibold">{p.codigo}</TableCell>
+                        <TableCell>{p.nome}</TableCell>
+                        <TableCell>
+                          <span className="font-medium text-xs border bg-muted/20 px-2 py-1 rounded">
+                            {p.areaObj?.nome || "-"}
+                          </span>
+                        </TableCell>
+                        <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
+                        <TableCell>{p.coordenador || "-"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {p.contratoObj ? (
+                            <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
+                              {p.contratoObj.numero_contrato || "-"}
+                            </span>
+                          ) : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={p.status || "A Iniciar"}
+                            onValueChange={(v) => updateProjeto.mutate({ id: p.id, status: v })}
+                          >
+                            <SelectTrigger className="h-7 w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0">
+                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${statusColors[p.status] || "bg-muted text-muted-foreground"}`}>
+                                {p.status || "A Iniciar"}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statusOptions.map(s => (
+                                <SelectItem key={s} value={s}>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s]}`}>{s}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              <TablePagination
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                totalItems={filteredSorted.length}
+              />
+            </>
           )}
         </CardContent>
       </Card>
