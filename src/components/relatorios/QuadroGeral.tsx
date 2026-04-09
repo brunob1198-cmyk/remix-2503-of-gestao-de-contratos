@@ -8,9 +8,62 @@ import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+
+function MultiSelectFilter({ label, options, selected, onToggle, onSelectAll, onClearAll }: {
+  label: string;
+  options: string[];
+  selected: Set<string>;
+  onToggle: (v: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = options.filter(v => v.toLowerCase().includes(search.toLowerCase()));
+  const isActive = selected.size > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", isActive && "border-primary text-primary")}>
+          <Filter className="h-3.5 w-3.5" />
+          {label}
+          {isActive && <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px]">{selected.size}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 space-y-2" align="start">
+        <Input
+          placeholder={`Pesquisar ${label.toLowerCase()}...`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <div className="flex gap-2 text-xs">
+          <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
+          <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
+        </div>
+        <div className="max-h-48 overflow-y-auto space-y-1">
+          {filtered.map(v => (
+            <label key={v} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+              <Checkbox
+                checked={selected.has(v)}
+                onCheckedChange={() => onToggle(v)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">{v}</span>
+            </label>
+          ))}
+          {filtered.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum resultado</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface SiteRow {
   site_id: string;
