@@ -15,7 +15,7 @@ import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog
 import { CriarSiteDialog } from "@/components/medicoes/CriarSiteDialog";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
-import { useDiarioCampo } from "@/hooks/useDiarioCampo";
+import { useDiarioCampoAtividades } from "@/hooks/useDiarioCampo";
 import { useRecursos } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -89,11 +89,8 @@ export default function DiarioObraPage() {
     duplicarDiarioAnterior,
   } = useDiarioObra(selectedSiteId, selectedDate);
 
-  // Diário de Campo data for the same site/date
-  const {
-    diario: diarioCampo,
-    fotos: fotosCampo,
-  } = useDiarioCampo(selectedProjetoId, selectedSiteId, selectedDate);
+  // Diário de Campo data — fetch ALL activities for the project+date (ignore site filter)
+  const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
 
 
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
@@ -785,8 +782,7 @@ export default function DiarioObraPage() {
           {/* ===== DIÁRIO DE CAMPO ===== */}
           {selectedProjetoId && (
             <AnotacoesCampoDialog
-              diarioCampo={diarioCampo}
-              fotosCampo={fotosCampo}
+              atividadesCampo={atividadesCampo}
               diarioObraId={diario?.id || null}
               itensDisponiveis={itensDisponiveis}
               producoes={producoes}
