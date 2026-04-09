@@ -106,10 +106,13 @@ export default function DiarioObraPage() {
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
+      setDiarioClima(d.clima || "");
       setObs(diario.observacoes || "");
     } else {
       setObs("");
+      setDiarioClima("");
     }
+    setHeaderSaved(false);
   }, [diario?.id]);
 
   const handleCalendarDayClick = (dateStr: string) => {
