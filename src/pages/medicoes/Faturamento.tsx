@@ -780,6 +780,14 @@ export default function FaturamentoPage() {
                       </TableFooter>
                     </Table>
                   </div>
+                  <TablePagination
+                    currentPage={safeGerarPage}
+                    totalPages={totalGerarPages}
+                    pageSize={gerarPageSize}
+                    onPageChange={setGerarPage}
+                    onPageSizeChange={(size) => { setGerarPageSize(size); setGerarPage(1); }}
+                    totalItems={totalGerarItems}
+                  />
                 )}
               </CardContent>
             </Card>
