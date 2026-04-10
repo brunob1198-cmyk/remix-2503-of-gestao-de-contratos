@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -14,6 +14,9 @@ import { FileDown } from "lucide-react";
 import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { format, subMonths } from "date-fns";
 import * as XLSX from "xlsx";
+import { useTableFilters } from "@/hooks/useTableFilters";
+import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface DiarioProducaoRow {
   valor_total: number;
@@ -39,9 +42,39 @@ interface MonthlyRow {
   producao_acum_anterior: number;
   producao_mes: number;
   producao_total_atual: number;
-  mes_producao: string; // YYYY-MM
+  mes_producao: string;
   mes_label: string;
 }
+
+const COLUMNS = [
+  "area", "cliente", "projeto_codigo", "projeto_descricao",
+  "coordenador", "valor_contrato", "producao_acum_anterior",
+  "producao_mes", "producao_total_atual", "mes_label",
+] as const;
+
+type ColKey = (typeof COLUMNS)[number];
+
+const COL_LABELS: Record<ColKey, string> = {
+  area: "Área",
+  cliente: "Cliente",
+  projeto_codigo: "Projeto",
+  projeto_descricao: "Descrição do Projeto",
+  coordenador: "Coordenador",
+  valor_contrato: "Vlr Contrato",
+  producao_acum_anterior: "Prod. Acum. Anterior",
+  producao_mes: "Produção do Mês",
+  producao_total_atual: "Prod. Total Atual",
+  mes_label: "Mês de Produção",
+};
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+const getColValue = (row: MonthlyRow, col: ColKey): string => {
+  const v = row[col];
+  if (typeof v === "number") return formatCurrency(v);
+  return String(v ?? "");
+};
 
 export default function ProducaoMensal() {
   const [filtroProjetoId, setFiltroProjetoId] = useState<string>("");
@@ -56,7 +89,6 @@ export default function ProducaoMensal() {
   const periodoInicioKey = format(periodoInicio, "yyyy-MM");
   const periodoFimKey = format(periodoFim, "yyyy-MM");
 
-  // Fetch all diario_producao with diarios_obra → sites join
   const { data: producaoData = [], isLoading } = useQuery({
     queryKey: ["producao_mensal_report"],
     queryFn: async () => {
@@ -70,25 +102,21 @@ export default function ProducaoMensal() {
   });
 
   const rows = useMemo(() => {
-    // Group by projeto_id + month
     const projetoMonthMap = new Map<string, number>();
-    // Also collect all months per project
     const projetoMonths = new Map<string, Set<string>>();
 
     producaoData.forEach((p) => {
       const diario = p.diarios_obra;
       if (!diario?.sites) return;
       const projetoId = diario.sites.projeto_id;
-      const month = diario.data.substring(0, 7); // YYYY-MM
+      const month = diario.data.substring(0, 7);
       const key = `${projetoId}|${month}`;
       projetoMonthMap.set(key, (projetoMonthMap.get(key) || 0) + Number(p.valor_total));
-
       if (!projetoMonths.has(projetoId)) projetoMonths.set(projetoId, new Set());
       projetoMonths.get(projetoId)!.add(month);
     });
 
     const result: MonthlyRow[] = [];
-
     const projetosToShow = filtroProjetoId
       ? projetos.filter((p) => p.id === filtroProjetoId)
       : projetos;
@@ -108,7 +136,6 @@ export default function ProducaoMensal() {
         const key = `${projeto.id}|${month}`;
         const producaoMes = projetoMonthMap.get(key) || 0;
 
-        // Accumulate everything, but only include rows within the period filter
         if (month < periodoInicioKey) {
           acumulado += producaoMes;
           return;
@@ -139,21 +166,23 @@ export default function ProducaoMensal() {
     return result;
   }, [producaoData, projetos, contratos, clientes, areas, filtroProjetoId, periodoInicioKey, periodoFimKey]);
 
+  const {
+    sortColumn, sortDir, searchTexts, selectedFilters,
+    handleSort, setSearchText, toggleValue, selectAll, clearAll,
+    processedItems, uniqueValues,
+    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, paginatedItems,
+  } = useTableFilters<MonthlyRow, ColKey>(rows, COLUMNS, getColValue);
+
   const totals = useMemo(
     () => ({
-      valor_contrato: rows.reduce((s, r) => s + r.valor_contrato, 0),
-      producao_mes: rows.reduce((s, r) => s + r.producao_mes, 0),
-      producao_total_atual: rows.length > 0 ? rows[rows.length - 1]?.producao_total_atual || 0 : 0,
+      producao_mes: processedItems.reduce((s, r) => s + r.producao_mes, 0),
     }),
-    [rows]
+    [processedItems]
   );
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const handleExport = () => {
     const ws = XLSX.utils.json_to_sheet(
-      rows.map((r) => ({
+      processedItems.map((r) => ({
         Área: r.area,
         Cliente: r.cliente,
         Projeto: r.projeto_codigo,
@@ -170,6 +199,21 @@ export default function ProducaoMensal() {
     XLSX.utils.book_append_sheet(wb, ws, "Produção Mensal");
     XLSX.writeFile(wb, `producao_mensal_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
+
+  const renderColumnHeader = (col: ColKey) => (
+    <ColumnHeader
+      label={COL_LABELS[col]}
+      sortDir={sortColumn === col ? sortDir : null}
+      onSort={() => handleSort(col)}
+      searchText={searchTexts[col]}
+      onSearchChange={(v) => setSearchText(col, v)}
+      uniqueValues={uniqueValues[col] || []}
+      selectedValues={selectedFilters[col] || new Set()}
+      onToggleValue={(v) => toggleValue(col, v)}
+      onSelectAll={() => selectAll(col, uniqueValues[col] || [])}
+      onClearAll={() => clearAll(col)}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -220,50 +264,60 @@ export default function ProducaoMensal() {
               Nenhuma produção registrada no período selecionado
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Área</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Projeto</TableHead>
-                    <TableHead>Descrição do Projeto</TableHead>
-                    <TableHead>Coordenador</TableHead>
-                    <TableHead className="text-right">Vlr Contrato</TableHead>
-                    <TableHead className="text-right">Prod. Acum. Anterior</TableHead>
-                    <TableHead className="text-right">Produção do Mês</TableHead>
-                    <TableHead className="text-right">Prod. Total Atual</TableHead>
-                    <TableHead>Mês de Produção</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row, i) => (
-                    <TableRow key={i}>
-                      <TableCell>{row.area}</TableCell>
-                      <TableCell>{row.cliente}</TableCell>
-                      <TableCell className="font-medium">{row.projeto_codigo}</TableCell>
-                      <TableCell>{row.projeto_descricao}</TableCell>
-                      <TableCell>{row.coordenador}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(row.valor_contrato)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(row.producao_acum_anterior)}</TableCell>
-                      <TableCell className="text-right font-semibold text-primary">
-                        {formatCurrency(row.producao_mes)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {formatCurrency(row.producao_total_atual)}
-                      </TableCell>
-                      <TableCell>{row.mes_label}</TableCell>
+            <div className="space-y-2">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{renderColumnHeader("area")}</TableHead>
+                      <TableHead>{renderColumnHeader("cliente")}</TableHead>
+                      <TableHead>{renderColumnHeader("projeto_codigo")}</TableHead>
+                      <TableHead>{renderColumnHeader("projeto_descricao")}</TableHead>
+                      <TableHead>{renderColumnHeader("coordenador")}</TableHead>
+                      <TableHead className="text-right">{renderColumnHeader("valor_contrato")}</TableHead>
+                      <TableHead className="text-right">{renderColumnHeader("producao_acum_anterior")}</TableHead>
+                      <TableHead className="text-right">{renderColumnHeader("producao_mes")}</TableHead>
+                      <TableHead className="text-right">{renderColumnHeader("producao_total_atual")}</TableHead>
+                      <TableHead>{renderColumnHeader("mes_label")}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={7} className="text-right">TOTAL:</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totals.producao_mes)}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedItems.map((row, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{row.area}</TableCell>
+                        <TableCell>{row.cliente}</TableCell>
+                        <TableCell className="font-medium">{row.projeto_codigo}</TableCell>
+                        <TableCell>{row.projeto_descricao}</TableCell>
+                        <TableCell>{row.coordenador}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(row.valor_contrato)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(row.producao_acum_anterior)}</TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {formatCurrency(row.producao_mes)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(row.producao_total_atual)}
+                        </TableCell>
+                        <TableCell>{row.mes_label}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow className="bg-muted/50 font-bold">
+                      <TableCell colSpan={7} className="text-right">TOTAL:</TableCell>
+                      <TableCell className="text-right">{formatCurrency(totals.producao_mes)}</TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(size) => { setItemsPerPage(size); setCurrentPage(1); }}
+                totalItems={processedItems.length}
+              />
             </div>
           )}
         </CardContent>
