@@ -131,6 +131,36 @@ export default function FaturamentoPage() {
     });
   }, [filteredItens]);
 
+  // Paginate flat items list, then derive which groups to show
+  const totalGerarItems = filteredItens.length;
+  const totalGerarPages = Math.max(1, Math.ceil(totalGerarItems / gerarPageSize));
+  const safeGerarPage = Math.min(gerarPage, totalGerarPages);
+
+  const paginatedGroups = useMemo(() => {
+    const allItemsOrdered: { groupKey: string; item: ItemDisponivel }[] = [];
+    for (const [key, group] of groupedByMunicipio) {
+      for (const item of group.items) {
+        allItemsOrdered.push({ groupKey: key, item });
+      }
+    }
+    const start = (safeGerarPage - 1) * gerarPageSize;
+    const pageItems = allItemsOrdered.slice(start, start + gerarPageSize);
+
+    const result: [string, { uf: string; municipio: string; projeto_codigo: string; numero_medicao: string; items: ItemDisponivel[] }][] = [];
+    const groupMap = new Map<string, ItemDisponivel[]>();
+    for (const { groupKey, item } of pageItems) {
+      if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
+      groupMap.get(groupKey)!.push(item);
+    }
+    for (const [key, items] of groupMap) {
+      const orig = groupedByMunicipio.find(([k]) => k === key);
+      if (orig) {
+        result.push([key, { ...orig[1], items }]);
+      }
+    }
+    return result;
+  }, [groupedByMunicipio, safeGerarPage, gerarPageSize]);
+
   const filteredFaturamentos = useMemo(() => {
     return faturamentos.filter(fat => {
       if (dataInicio && fat.data_emissao < dataInicio) return false;
