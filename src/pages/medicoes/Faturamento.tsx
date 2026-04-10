@@ -91,8 +91,8 @@ export default function FaturamentoPage() {
   };
 
   // Group items by project for display
-  const projetoSelecionado = projetos.find(p => p.id === projetoId);
-  const projetoSites = sites.filter(s => s.projeto_id === projetoId);
+  const projetoSelecionado = selectedProjetoIds.length === 1 ? projetos.find(p => p.id === selectedProjetoIds[0]) : null;
+  const projetoSites = sites.filter(s => selectedProjetoIds.length === 0 || selectedProjetoIds.includes(s.projeto_id));
 
   // Filtered lists
   const filteredItens = useMemo(() => {
