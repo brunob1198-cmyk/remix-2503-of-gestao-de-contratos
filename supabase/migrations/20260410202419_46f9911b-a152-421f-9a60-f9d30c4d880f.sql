@@ -1,0 +1,1 @@
+UPDATE lancamentos_medicao SET quantidade_aprovada = quantidade WHERE id IN ('29a2eb48-53a8-493c-a13c-18d268df1fd6', 'b1bf809d-dcb2-49e2-a4c3-9c93217c1f10', 'c0e786b5-2ab0-4e43-a734-25812b7a54a2', 'e9c2510f-8460-494d-9195-6735b4d83d0c');
