@@ -69,7 +69,24 @@ export function useFornecedores() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  return { fornecedores, isLoading, create, update, remove };
+  const bulkCreate = useMutation({
+    mutationFn: async (items: { razao_social: string; cnpj?: string; contato_nome?: string; contato_email?: string; contato_telefone?: string; endereco?: string; categoria?: string; observacoes?: string }[]) => {
+      const empresaId = await getEmpresaId();
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = items.slice(i, i + BATCH_SIZE).map(item => ({ ...item, empresa_id: empresaId }));
+        const { error } = await supabase.from("fornecedores").insert(batch);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
+      toast({ title: `${vars.length} fornecedores importados com sucesso!` });
+    },
+    onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
+  });
+
+  return { fornecedores, isLoading, create, update, remove, bulkCreate };
 }
 
 // ─── SC Itens ───
