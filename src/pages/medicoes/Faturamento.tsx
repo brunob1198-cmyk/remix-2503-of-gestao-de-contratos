@@ -61,6 +61,10 @@ export default function FaturamentoPage() {
   // Load municipios for selected UF
   const { municipios: municipiosFiltrados, UF_LIST: ufs } = useMunicipios(editUf || undefined);
 
+  // Pagination for Gerar Fatura tab
+  const [gerarPage, setGerarPage] = useState(1);
+  const [gerarPageSize, setGerarPageSize] = useState(20);
+
   // State for invoice creation
   const [selectedItems, setSelectedItems] = useState<Map<string, number>>(new Map());
   const [dataEmissao, setDataEmissao] = useState(format(new Date(), "yyyy-MM-dd"));
