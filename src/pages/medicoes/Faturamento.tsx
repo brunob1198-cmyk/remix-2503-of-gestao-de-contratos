@@ -222,10 +222,20 @@ export default function FaturamentoPage() {
   const totalLiquidoHist = tableFaturas.processedItems.reduce((s, f) => s + f.valor_liquido, 0);
 
   const handleGerar = () => {
-    if (!projetoId) return;
-    const itens = itensDisponiveis
-      .filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}`))
-      .map(item => {
+    // Determine project from selected items
+    const selectedItemsList = itensDisponiveis.filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}`));
+    if (selectedItemsList.length === 0) return;
+    
+    // Group by projeto_id - generate one fatura per project
+    const byProjeto = new Map<string, typeof selectedItemsList>();
+    selectedItemsList.forEach(item => {
+      const pid = item.projeto_id;
+      if (!byProjeto.has(pid)) byProjeto.set(pid, []);
+      byProjeto.get(pid)!.push(item);
+    });
+
+    for (const [pid, items] of byProjeto) {
+      const itens = items.map(item => {
         const key = `${item.site_id}__${item.item_lpu_id}`;
         const valorFaturar = selectedItems.get(key) || 0;
         const qtdFaturar = item.preco_unitario > 0 ? valorFaturar / item.preco_unitario : 0;
@@ -236,13 +246,12 @@ export default function FaturamentoPage() {
           valor_unitario: item.preco_unitario,
           valor_faturado: valorFaturar,
         };
-      })
-      .filter(i => i.valor_faturado > 0);
+      }).filter(i => i.valor_faturado > 0);
 
-    if (itens.length === 0) return;
+      if (itens.length === 0) continue;
 
-    gerarFaturamento.mutate({
-      projeto_id: projetoId,
+      gerarFaturamento.mutate({
+        projeto_id: pid,
       numero_fatura: numeroFatura || undefined,
       data_emissao: dataEmissao,
       impostos_percentual: impostosPerc,
@@ -257,7 +266,8 @@ export default function FaturamentoPage() {
         setImpostosPerc(0);
         setDescontos(0);
       }
-    });
+      });
+    }
   };
 
   return (
