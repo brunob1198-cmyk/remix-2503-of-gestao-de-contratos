@@ -571,11 +571,15 @@ export default function FaturamentoPage() {
                             <>
                               {/* Municipality header row */}
                               <TableRow key={`muni-${label}`} className="bg-muted/40 hover:bg-muted/60">
-                                <TableCell colSpan={8} className="py-2">
+                                <TableCell colSpan={10} className="py-2">
                                   <div className="flex items-center gap-2">
                                     <MapPin className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm">
-                                      {label}
+                                      {group.municipio && group.uf ? `${group.municipio} - ${group.uf}` : "Sem município definido"}
+                                      {" · "}
+                                      <Badge variant="outline" className="ml-1 text-xs">{group.projeto_codigo}</Badge>
+                                      {" · "}
+                                      <span className="text-muted-foreground">Medição: {group.numero_medicao}</span>
                                     </span>
                                     {isMissing && (
                                       <Popover
@@ -681,7 +685,7 @@ export default function FaturamentoPage() {
                               </TableRow>
                               {/* Items within municipality */}
                               {group.items.map(item => {
-                                const key = `${item.site_id}__${item.item_lpu_id}`;
+                                const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
                                 const isSelected = selectedItems.has(key);
                                 const valorFaturar = selectedItems.get(key) || 0;
                                 return (
@@ -692,6 +696,8 @@ export default function FaturamentoPage() {
                                         onCheckedChange={() => toggleItem(key, item)}
                                       />
                                     </TableCell>
+                                    <TableCell className="text-xs">{item.projeto_codigo}</TableCell>
+                                    <TableCell className="text-xs">{item.numero_medicao}</TableCell>
                                     <TableCell className="font-medium">{item.site_codigo}</TableCell>
                                     <TableCell>
                                       <span className="text-xs text-muted-foreground">{item.item_codigo}</span>
@@ -731,7 +737,7 @@ export default function FaturamentoPage() {
                       </TableBody>
                       <TableFooter>
                         <TableRow>
-                          <TableCell colSpan={4} className="font-bold">Total</TableCell>
+                          <TableCell colSpan={6} className="font-bold">Total</TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(totalAprovado)}</TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(totalJaFaturado)}</TableCell>
                           <TableCell className="text-right font-bold text-green-700">{formatCurrency(totalDisponivel)}</TableCell>
