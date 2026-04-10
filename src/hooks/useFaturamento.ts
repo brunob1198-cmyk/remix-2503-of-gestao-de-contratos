@@ -54,9 +54,9 @@ export interface FaturamentoItem {
   created_at: string;
 }
 
-export function useItensDisponiveis(projetoId?: string) {
+export function useItensDisponiveis(projetoIds?: string[]) {
   return useQuery({
-    queryKey: ["itens_disponiveis_faturamento", projetoId],
+    queryKey: ["itens_disponiveis_faturamento", projetoIds],
     queryFn: async () => {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
@@ -65,12 +65,12 @@ export function useItensDisponiveis(projetoId?: string) {
         .in("status", ["aprovado", "finalizado"])
         .limit(100000);
 
-      if (projetoId) {
-        // Filter by project via sites
+      if (projetoIds && projetoIds.length > 0) {
+        // Filter by projects via sites
         const { data: projSites } = await supabase
           .from("sites")
           .select("id")
-          .eq("projeto_id", projetoId);
+          .in("projeto_id", projetoIds);
         if (projSites && projSites.length > 0) {
           qMedicoes = qMedicoes.in("site_id", projSites.map(s => s.id));
         } else {
@@ -164,9 +164,9 @@ export function useItensDisponiveis(projetoId?: string) {
   });
 }
 
-export function useFaturamentos(projetoId?: string) {
+export function useFaturamentos(projetoIds?: string[]) {
   return useQuery({
-    queryKey: ["faturamentos", projetoId],
+    queryKey: ["faturamentos", projetoIds],
     queryFn: async () => {
       let query = supabase
         .from("faturamentos")
@@ -174,8 +174,8 @@ export function useFaturamentos(projetoId?: string) {
         .order("data_emissao", { ascending: false })
         .limit(100000);
 
-      if (projetoId) {
-        query = query.eq("projeto_id", projetoId);
+      if (projetoIds && projetoIds.length > 0) {
+        query = query.in("projeto_id", projetoIds);
       }
 
       const { data, error } = await query;
