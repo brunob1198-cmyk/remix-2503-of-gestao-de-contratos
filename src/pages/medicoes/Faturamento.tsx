@@ -259,7 +259,7 @@ export default function FaturamentoPage() {
 
     for (const [pid, items] of byProjeto) {
       const itens = items.map(item => {
-        const key = `${item.site_id}__${item.item_lpu_id}`;
+        const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
         const valorFaturar = selectedItems.get(key) || 0;
         const qtdFaturar = item.preco_unitario > 0 ? valorFaturar / item.preco_unitario : 0;
         return {
@@ -485,6 +485,34 @@ export default function FaturamentoPage() {
                                 <FilterX className="h-4 w-4" />
                               </Button>
                             )}
+                          </TableHead>
+                          <TableHead>
+                            <ColumnHeader
+                              label="Projeto"
+                              sortDir={tableItens.sortColumn === "projeto" ? tableItens.sortDir : null}
+                              onSort={() => tableItens.handleSort("projeto")}
+                              searchText={tableItens.searchTexts["projeto"]}
+                              onSearchChange={(v) => tableItens.setSearchText("projeto", v)}
+                              uniqueValues={tableItens.uniqueValues["projeto"]}
+                              selectedValues={tableItens.selectedFilters["projeto"]}
+                              onToggleValue={(v) => tableItens.toggleValue("projeto", v)}
+                              onSelectAll={() => tableItens.selectAll("projeto", tableItens.uniqueValues["projeto"])}
+                              onClearAll={() => tableItens.clearAll("projeto")}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <ColumnHeader
+                              label="Medição"
+                              sortDir={tableItens.sortColumn === "medicao" ? tableItens.sortDir : null}
+                              onSort={() => tableItens.handleSort("medicao")}
+                              searchText={tableItens.searchTexts["medicao"]}
+                              onSearchChange={(v) => tableItens.setSearchText("medicao", v)}
+                              uniqueValues={tableItens.uniqueValues["medicao"]}
+                              selectedValues={tableItens.selectedFilters["medicao"]}
+                              onToggleValue={(v) => tableItens.toggleValue("medicao", v)}
+                              onSelectAll={() => tableItens.selectAll("medicao", tableItens.uniqueValues["medicao"])}
+                              onClearAll={() => tableItens.clearAll("medicao")}
+                            />
                           </TableHead>
                           <TableHead>
                             <ColumnHeader
