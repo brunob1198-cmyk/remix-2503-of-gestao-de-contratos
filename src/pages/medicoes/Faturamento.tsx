@@ -597,7 +597,7 @@ export default function FaturamentoPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {groupedByMunicipio.map(([label, group]) => {
+                        {paginatedGroups.map(([label, group]) => {
                           const isMissing = !group.municipio || !group.uf;
                           const uniqueSiteIds = Array.from(new Set(group.items.map(i => i.site_id)));
                           const groupTotal = group.items.reduce((s, i) => s + i.valor_aprovado, 0);
