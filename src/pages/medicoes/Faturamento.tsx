@@ -246,7 +246,7 @@ export default function FaturamentoPage() {
 
   const handleGerar = () => {
     // Determine project from selected items
-    const selectedItemsList = itensDisponiveis.filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}`));
+    const selectedItemsList = itensDisponiveis.filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`));
     if (selectedItemsList.length === 0) return;
     
     // Group by projeto_id - generate one fatura per project
