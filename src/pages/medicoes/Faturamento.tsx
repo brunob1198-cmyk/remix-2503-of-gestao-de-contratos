@@ -509,6 +509,7 @@ export default function FaturamentoPage() {
                     Nenhum item aprovado disponível para os filtros selecionados.
                   </p>
                 ) : (
+                  <>
                   <div className="rounded-md border overflow-auto">
                     <Table>
                       <TableHeader>
@@ -521,74 +522,19 @@ export default function FaturamentoPage() {
                             )}
                           </TableHead>
                           <TableHead>
-                            <ColumnHeader
-                              label="Projeto"
-                              sortDir={tableItens.sortColumn === "projeto" ? tableItens.sortDir : null}
-                              onSort={() => tableItens.handleSort("projeto")}
-                              searchText={tableItens.searchTexts["projeto"]}
-                              onSearchChange={(v) => tableItens.setSearchText("projeto", v)}
-                              uniqueValues={tableItens.uniqueValues["projeto"]}
-                              selectedValues={tableItens.selectedFilters["projeto"]}
-                              onToggleValue={(v) => tableItens.toggleValue("projeto", v)}
-                              onSelectAll={() => tableItens.selectAll("projeto", tableItens.uniqueValues["projeto"])}
-                              onClearAll={() => tableItens.clearAll("projeto")}
-                            />
+                            <ColumnHeader label="Projeto" sortDir={tableItens.sortColumn === "projeto" ? tableItens.sortDir : null} onSort={() => tableItens.handleSort("projeto")} searchText={tableItens.searchTexts["projeto"]} onSearchChange={(v) => tableItens.setSearchText("projeto", v)} uniqueValues={tableItens.uniqueValues["projeto"]} selectedValues={tableItens.selectedFilters["projeto"]} onToggleValue={(v) => tableItens.toggleValue("projeto", v)} onSelectAll={() => tableItens.selectAll("projeto", tableItens.uniqueValues["projeto"])} onClearAll={() => tableItens.clearAll("projeto")} />
                           </TableHead>
                           <TableHead>
-                            <ColumnHeader
-                              label="Medição"
-                              sortDir={tableItens.sortColumn === "medicao" ? tableItens.sortDir : null}
-                              onSort={() => tableItens.handleSort("medicao")}
-                              searchText={tableItens.searchTexts["medicao"]}
-                              onSearchChange={(v) => tableItens.setSearchText("medicao", v)}
-                              uniqueValues={tableItens.uniqueValues["medicao"]}
-                              selectedValues={tableItens.selectedFilters["medicao"]}
-                              onToggleValue={(v) => tableItens.toggleValue("medicao", v)}
-                              onSelectAll={() => tableItens.selectAll("medicao", tableItens.uniqueValues["medicao"])}
-                              onClearAll={() => tableItens.clearAll("medicao")}
-                            />
+                            <ColumnHeader label="Medição" sortDir={tableItens.sortColumn === "medicao" ? tableItens.sortDir : null} onSort={() => tableItens.handleSort("medicao")} searchText={tableItens.searchTexts["medicao"]} onSearchChange={(v) => tableItens.setSearchText("medicao", v)} uniqueValues={tableItens.uniqueValues["medicao"]} selectedValues={tableItens.selectedFilters["medicao"]} onToggleValue={(v) => tableItens.toggleValue("medicao", v)} onSelectAll={() => tableItens.selectAll("medicao", tableItens.uniqueValues["medicao"])} onClearAll={() => tableItens.clearAll("medicao")} />
                           </TableHead>
                           <TableHead>
-                            <ColumnHeader
-                              label="Site"
-                              sortDir={tableItens.sortColumn === "site" ? tableItens.sortDir : null}
-                              onSort={() => tableItens.handleSort("site")}
-                              searchText={tableItens.searchTexts["site"]}
-                              onSearchChange={(v) => tableItens.setSearchText("site", v)}
-                              uniqueValues={tableItens.uniqueValues["site"]}
-                              selectedValues={tableItens.selectedFilters["site"]}
-                              onToggleValue={(v) => tableItens.toggleValue("site", v)}
-                              onSelectAll={() => tableItens.selectAll("site", tableItens.uniqueValues["site"])}
-                              onClearAll={() => tableItens.clearAll("site")}
-                            />
+                            <ColumnHeader label="Site" sortDir={tableItens.sortColumn === "site" ? tableItens.sortDir : null} onSort={() => tableItens.handleSort("site")} searchText={tableItens.searchTexts["site"]} onSearchChange={(v) => tableItens.setSearchText("site", v)} uniqueValues={tableItens.uniqueValues["site"]} selectedValues={tableItens.selectedFilters["site"]} onToggleValue={(v) => tableItens.toggleValue("site", v)} onSelectAll={() => tableItens.selectAll("site", tableItens.uniqueValues["site"])} onClearAll={() => tableItens.clearAll("site")} />
                           </TableHead>
                           <TableHead>
-                            <ColumnHeader
-                              label="Item"
-                              sortDir={tableItens.sortColumn === "item" ? tableItens.sortDir : null}
-                              onSort={() => tableItens.handleSort("item")}
-                              searchText={tableItens.searchTexts["item"]}
-                              onSearchChange={(v) => tableItens.setSearchText("item", v)}
-                              uniqueValues={tableItens.uniqueValues["item"]}
-                              selectedValues={tableItens.selectedFilters["item"]}
-                              onToggleValue={(v) => tableItens.toggleValue("item", v)}
-                              onSelectAll={() => tableItens.selectAll("item", tableItens.uniqueValues["item"])}
-                              onClearAll={() => tableItens.clearAll("item")}
-                            />
+                            <ColumnHeader label="Item" sortDir={tableItens.sortColumn === "item" ? tableItens.sortDir : null} onSort={() => tableItens.handleSort("item")} searchText={tableItens.searchTexts["item"]} onSearchChange={(v) => tableItens.setSearchText("item", v)} uniqueValues={tableItens.uniqueValues["item"]} selectedValues={tableItens.selectedFilters["item"]} onToggleValue={(v) => tableItens.toggleValue("item", v)} onSelectAll={() => tableItens.selectAll("item", tableItens.uniqueValues["item"])} onClearAll={() => tableItens.clearAll("item")} />
                           </TableHead>
                           <TableHead>
-                            <ColumnHeader
-                              label="Unid."
-                              sortDir={tableItens.sortColumn === "unidade" ? tableItens.sortDir : null}
-                              onSort={() => tableItens.handleSort("unidade")}
-                              searchText={tableItens.searchTexts["unidade"]}
-                              onSearchChange={(v) => tableItens.setSearchText("unidade", v)}
-                              uniqueValues={tableItens.uniqueValues["unidade"]}
-                              selectedValues={tableItens.selectedFilters["unidade"]}
-                              onToggleValue={(v) => tableItens.toggleValue("unidade", v)}
-                              onSelectAll={() => tableItens.selectAll("unidade", tableItens.uniqueValues["unidade"])}
-                              onClearAll={() => tableItens.clearAll("unidade")}
-                            />
+                            <ColumnHeader label="Unid." sortDir={tableItens.sortColumn === "unidade" ? tableItens.sortDir : null} onSort={() => tableItens.handleSort("unidade")} searchText={tableItens.searchTexts["unidade"]} onSearchChange={(v) => tableItens.setSearchText("unidade", v)} uniqueValues={tableItens.uniqueValues["unidade"]} selectedValues={tableItens.selectedFilters["unidade"]} onToggleValue={(v) => tableItens.toggleValue("unidade", v)} onSelectAll={() => tableItens.selectAll("unidade", tableItens.uniqueValues["unidade"])} onClearAll={() => tableItens.clearAll("unidade")} />
                           </TableHead>
                           <TableHead className="text-right">Aprovado</TableHead>
                           <TableHead className="text-right">Já Faturado</TableHead>
@@ -603,7 +549,6 @@ export default function FaturamentoPage() {
                           const groupTotal = group.items.reduce((s, i) => s + i.valor_aprovado, 0);
                           return (
                             <>
-                              {/* Municipality header row */}
                               <TableRow key={`muni-${label}`} className="bg-muted/40 hover:bg-muted/60">
                                 <TableCell colSpan={10} className="py-2">
                                   <div className="flex items-center gap-2">
@@ -717,7 +662,6 @@ export default function FaturamentoPage() {
                                   </div>
                                 </TableCell>
                               </TableRow>
-                              {/* Items within municipality */}
                               {group.items.map(item => {
                                 const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
                                 const isSelected = selectedItems.has(key);
@@ -725,10 +669,7 @@ export default function FaturamentoPage() {
                                 return (
                                   <TableRow key={key} className={isSelected ? "bg-green-50/50" : ""}>
                                     <TableCell>
-                                      <Checkbox
-                                        checked={isSelected}
-                                        onCheckedChange={() => toggleItem(key, item)}
-                                      />
+                                      <Checkbox checked={isSelected} onCheckedChange={() => toggleItem(key, item)} />
                                     </TableCell>
                                     <TableCell className="text-xs">{item.projeto_codigo}</TableCell>
                                     <TableCell className="text-xs">{item.numero_medicao}</TableCell>
@@ -788,6 +729,7 @@ export default function FaturamentoPage() {
                     onItemsPerPageChange={(size) => { setGerarPageSize(size); setGerarPage(1); }}
                     totalItems={totalGerarItems}
                   />
+                  </>
                 )}
               </CardContent>
             </Card>
