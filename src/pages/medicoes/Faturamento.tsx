@@ -388,13 +388,11 @@ export default function FaturamentoPage() {
                     )}
                   </div>
                 </div>
-              </>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {projetoId && (
+      {(selectedProjetoIds.length > 0 || projetos.length > 0) && (
         <Tabs defaultValue="gerar" className="space-y-4">
           <TabsList>
             <TabsTrigger value="gerar">
