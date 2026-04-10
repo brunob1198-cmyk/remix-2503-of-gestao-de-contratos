@@ -119,7 +119,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       for (const [key, m] of latestByKey) {
         const site = m.site as any;
         const item = m.item_lpu as any;
-        const proj = site.proyecto || site.projeto as any;
+        const proj = site.projeto as any;
         const numMed = (m as any).numero_medicao || "S/N";
         const qtdAprov = m.quantidade_aprovada || m.quantidade || 0;
         mapAprovado.set(key, {
