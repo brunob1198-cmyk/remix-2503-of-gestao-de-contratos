@@ -12,6 +12,7 @@ export interface ItemDisponivel {
   projeto_id: string;
   projeto_codigo: string;
   projeto_nome: string;
+  numero_medicao: string;
   item_lpu_id: string;
   item_codigo: string;
   item_descricao: string;
@@ -61,7 +62,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
         .from("lancamentos_medicao")
-        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
+        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, numero_medicao, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
         .in("status", ["aprovado", "finalizado"])
         .limit(100000);
 
@@ -93,6 +94,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
         site_id: string; site_codigo: string; site_nome: string;
         site_municipio: string; site_uf: string;
         projeto_id: string; projeto_codigo: string; projeto_nome: string;
+        numero_medicao: string;
         item_lpu_id: string; item_codigo: string; item_descricao: string;
         unidade: string; preco_unitario: number;
         qtd_aprovada: number; valor_aprovado: number;
@@ -103,7 +105,8 @@ export function useItensDisponiveis(projetoIds?: string[]) {
         const item = m.item_lpu as any;
         if (!site || !item) continue;
         const proj = site.projeto as any;
-        const key = `${m.site_id}__${m.item_lpu_id}`;
+        const numMed = (m as any).numero_medicao || "S/N";
+        const key = `${m.site_id}__${m.item_lpu_id}__${numMed}`;
         const qtdAprov = m.quantidade_aprovada || m.quantidade || 0;
         const existing = mapAprovado.get(key);
         if (existing) {
@@ -119,6 +122,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
             projeto_id: proj?.id || "",
             projeto_codigo: proj?.codigo || "",
             projeto_nome: proj?.nome || "",
+            numero_medicao: numMed,
             item_lpu_id: m.item_lpu_id,
             item_codigo: item.codigo,
             item_descricao: item.descricao,
@@ -146,7 +150,9 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 5. Calcular saldo
       const result: ItemDisponivel[] = [];
       for (const [key, aprov] of mapAprovado) {
-        const fat = mapFaturado.get(key) || { qtd: 0, valor: 0 };
+        // faturado key is still site__item (faturamento_itens doesn't have numero_medicao)
+        const fatKey = `${aprov.site_id}__${aprov.item_lpu_id}`;
+        const fat = mapFaturado.get(fatKey) || { qtd: 0, valor: 0 };
         const qtdSaldo = aprov.qtd_aprovada - fat.qtd;
         if (qtdSaldo <= 0) continue; // sem saldo
         result.push({

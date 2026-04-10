@@ -102,22 +102,27 @@ export default function FaturamentoPage() {
     });
   }, [itensDisponiveis, selectedSites]);
 
-  // Group filtered items by municipality
+  // Group filtered items by projeto + numero_medicao + municipality
   const groupedByMunicipio = useMemo(() => {
-    const groups = new Map<string, { uf: string; municipio: string; items: ItemDisponivel[] }>();
+    const groups = new Map<string, { uf: string; municipio: string; projeto_codigo: string; numero_medicao: string; items: ItemDisponivel[] }>();
     filteredItens.forEach(item => {
-      const mKey = item.site_municipio && item.site_uf
+      const muniLabel = item.site_municipio && item.site_uf
         ? `${item.site_municipio} - ${item.site_uf}`
         : "Sem município definido";
+      const mKey = `${item.projeto_id}__${item.numero_medicao}__${muniLabel}`;
       if (!groups.has(mKey)) {
-        groups.set(mKey, { uf: item.site_uf || "", municipio: item.site_municipio || "", items: [] });
+        groups.set(mKey, { uf: item.site_uf || "", municipio: item.site_municipio || "", projeto_codigo: item.projeto_codigo, numero_medicao: item.numero_medicao, items: [] });
       }
       groups.get(mKey)!.items.push(item);
     });
-    // Sort: defined municipalities first, then alphabetically
     return Array.from(groups.entries()).sort((a, b) => {
-      if (a[0] === "Sem município definido") return 1;
-      if (b[0] === "Sem município definido") return -1;
+      // Sort by projeto, then medicao, then municipio
+      const cmp1 = a[1].projeto_codigo.localeCompare(b[1].projeto_codigo);
+      if (cmp1 !== 0) return cmp1;
+      const cmp2 = a[1].numero_medicao.localeCompare(b[1].numero_medicao);
+      if (cmp2 !== 0) return cmp2;
+      if (a[0].includes("Sem município")) return 1;
+      if (b[0].includes("Sem município")) return -1;
       return a[0].localeCompare(b[0]);
     });
   }, [filteredItens]);
@@ -137,8 +142,10 @@ export default function FaturamentoPage() {
     });
   }, [faturamentos, dataInicio, dataFim, selectedSites]);
 
-  const columnsItens = ["site", "item", "unidade", "aprovado", "faturado", "saldo"] as const;
+  const columnsItens = ["projeto", "medicao", "site", "item", "unidade", "aprovado", "faturado", "saldo"] as const;
   const getColValueItem = (item: ItemDisponivel, col: typeof columnsItens[number]): string => {
+    if (col === "projeto") return item.projeto_codigo || "";
+    if (col === "medicao") return item.numero_medicao || "";
     if (col === "site") return item.site_codigo || "";
     if (col === "item") return `${item.item_codigo} ${item.item_descricao}`;
     if (col === "unidade") return item.unidade || "";
@@ -183,7 +190,17 @@ export default function FaturamentoPage() {
       if (next.has(key)) {
         next.delete(key);
       } else {
-        next.set(key, item.valor_saldo); // default: full balance
+        // Check if trying to mix projects
+        const selectedProjIds = new Set<string>();
+        for (const [k] of next) {
+          const matchItem = filteredItens.find(i => `${i.site_id}__${i.item_lpu_id}__${i.numero_medicao}` === k);
+          if (matchItem) selectedProjIds.add(matchItem.projeto_id);
+        }
+        if (selectedProjIds.size > 0 && !selectedProjIds.has(item.projeto_id)) {
+          toast({ title: "Medições de projetos diferentes não podem ser faturadas juntas", variant: "destructive" });
+          return prev;
+        }
+        next.set(key, item.valor_saldo);
       }
       return next;
     });
@@ -199,10 +216,16 @@ export default function FaturamentoPage() {
 
   const selectAll = () => {
     const next = new Map<string, number>();
+    // Only select items from the first project found
+    const firstProjId = tableItens.processedItems[0]?.projeto_id;
     tableItens.processedItems.forEach(item => {
-      const key = `${item.site_id}__${item.item_lpu_id}`;
+      if (item.projeto_id !== firstProjId) return;
+      const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
       next.set(key, item.valor_saldo);
     });
+    if (tableItens.processedItems.some(i => i.projeto_id !== firstProjId)) {
+      toast({ title: "Apenas itens do mesmo projeto foram selecionados", description: "Medições de projetos diferentes não podem ser faturadas juntas." });
+    }
     setSelectedItems(next);
   };
 
@@ -223,7 +246,7 @@ export default function FaturamentoPage() {
 
   const handleGerar = () => {
     // Determine project from selected items
-    const selectedItemsList = itensDisponiveis.filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}`));
+    const selectedItemsList = itensDisponiveis.filter(item => selectedItems.has(`${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`));
     if (selectedItemsList.length === 0) return;
     
     // Group by projeto_id - generate one fatura per project
@@ -236,7 +259,7 @@ export default function FaturamentoPage() {
 
     for (const [pid, items] of byProjeto) {
       const itens = items.map(item => {
-        const key = `${item.site_id}__${item.item_lpu_id}`;
+        const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
         const valorFaturar = selectedItems.get(key) || 0;
         const qtdFaturar = item.preco_unitario > 0 ? valorFaturar / item.preco_unitario : 0;
         return {
@@ -465,6 +488,34 @@ export default function FaturamentoPage() {
                           </TableHead>
                           <TableHead>
                             <ColumnHeader
+                              label="Projeto"
+                              sortDir={tableItens.sortColumn === "projeto" ? tableItens.sortDir : null}
+                              onSort={() => tableItens.handleSort("projeto")}
+                              searchText={tableItens.searchTexts["projeto"]}
+                              onSearchChange={(v) => tableItens.setSearchText("projeto", v)}
+                              uniqueValues={tableItens.uniqueValues["projeto"]}
+                              selectedValues={tableItens.selectedFilters["projeto"]}
+                              onToggleValue={(v) => tableItens.toggleValue("projeto", v)}
+                              onSelectAll={() => tableItens.selectAll("projeto", tableItens.uniqueValues["projeto"])}
+                              onClearAll={() => tableItens.clearAll("projeto")}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <ColumnHeader
+                              label="Medição"
+                              sortDir={tableItens.sortColumn === "medicao" ? tableItens.sortDir : null}
+                              onSort={() => tableItens.handleSort("medicao")}
+                              searchText={tableItens.searchTexts["medicao"]}
+                              onSearchChange={(v) => tableItens.setSearchText("medicao", v)}
+                              uniqueValues={tableItens.uniqueValues["medicao"]}
+                              selectedValues={tableItens.selectedFilters["medicao"]}
+                              onToggleValue={(v) => tableItens.toggleValue("medicao", v)}
+                              onSelectAll={() => tableItens.selectAll("medicao", tableItens.uniqueValues["medicao"])}
+                              onClearAll={() => tableItens.clearAll("medicao")}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <ColumnHeader
                               label="Site"
                               sortDir={tableItens.sortColumn === "site" ? tableItens.sortDir : null}
                               onSort={() => tableItens.handleSort("site")}
@@ -520,11 +571,15 @@ export default function FaturamentoPage() {
                             <>
                               {/* Municipality header row */}
                               <TableRow key={`muni-${label}`} className="bg-muted/40 hover:bg-muted/60">
-                                <TableCell colSpan={8} className="py-2">
+                                <TableCell colSpan={10} className="py-2">
                                   <div className="flex items-center gap-2">
                                     <MapPin className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm">
-                                      {label}
+                                      {group.municipio && group.uf ? `${group.municipio} - ${group.uf}` : "Sem município definido"}
+                                      {" · "}
+                                      <Badge variant="outline" className="ml-1 text-xs">{group.projeto_codigo}</Badge>
+                                      {" · "}
+                                      <span className="text-muted-foreground">Medição: {group.numero_medicao}</span>
                                     </span>
                                     {isMissing && (
                                       <Popover
@@ -630,7 +685,7 @@ export default function FaturamentoPage() {
                               </TableRow>
                               {/* Items within municipality */}
                               {group.items.map(item => {
-                                const key = `${item.site_id}__${item.item_lpu_id}`;
+                                const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
                                 const isSelected = selectedItems.has(key);
                                 const valorFaturar = selectedItems.get(key) || 0;
                                 return (
@@ -641,6 +696,8 @@ export default function FaturamentoPage() {
                                         onCheckedChange={() => toggleItem(key, item)}
                                       />
                                     </TableCell>
+                                    <TableCell className="text-xs">{item.projeto_codigo}</TableCell>
+                                    <TableCell className="text-xs">{item.numero_medicao}</TableCell>
                                     <TableCell className="font-medium">{item.site_codigo}</TableCell>
                                     <TableCell>
                                       <span className="text-xs text-muted-foreground">{item.item_codigo}</span>
@@ -680,7 +737,7 @@ export default function FaturamentoPage() {
                       </TableBody>
                       <TableFooter>
                         <TableRow>
-                          <TableCell colSpan={4} className="font-bold">Total</TableCell>
+                          <TableCell colSpan={6} className="font-bold">Total</TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(totalAprovado)}</TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(totalJaFaturado)}</TableCell>
                           <TableCell className="text-right font-bold text-green-700">{formatCurrency(totalDisponivel)}</TableCell>
