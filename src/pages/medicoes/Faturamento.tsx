@@ -102,22 +102,27 @@ export default function FaturamentoPage() {
     });
   }, [itensDisponiveis, selectedSites]);
 
-  // Group filtered items by municipality
+  // Group filtered items by projeto + numero_medicao + municipality
   const groupedByMunicipio = useMemo(() => {
-    const groups = new Map<string, { uf: string; municipio: string; items: ItemDisponivel[] }>();
+    const groups = new Map<string, { uf: string; municipio: string; projeto_codigo: string; numero_medicao: string; items: ItemDisponivel[] }>();
     filteredItens.forEach(item => {
-      const mKey = item.site_municipio && item.site_uf
+      const muniLabel = item.site_municipio && item.site_uf
         ? `${item.site_municipio} - ${item.site_uf}`
         : "Sem município definido";
+      const mKey = `${item.projeto_id}__${item.numero_medicao}__${muniLabel}`;
       if (!groups.has(mKey)) {
-        groups.set(mKey, { uf: item.site_uf || "", municipio: item.site_municipio || "", items: [] });
+        groups.set(mKey, { uf: item.site_uf || "", municipio: item.site_municipio || "", projeto_codigo: item.projeto_codigo, numero_medicao: item.numero_medicao, items: [] });
       }
       groups.get(mKey)!.items.push(item);
     });
-    // Sort: defined municipalities first, then alphabetically
     return Array.from(groups.entries()).sort((a, b) => {
-      if (a[0] === "Sem município definido") return 1;
-      if (b[0] === "Sem município definido") return -1;
+      // Sort by projeto, then medicao, then municipio
+      const cmp1 = a[1].projeto_codigo.localeCompare(b[1].projeto_codigo);
+      if (cmp1 !== 0) return cmp1;
+      const cmp2 = a[1].numero_medicao.localeCompare(b[1].numero_medicao);
+      if (cmp2 !== 0) return cmp2;
+      if (a[0].includes("Sem município")) return 1;
+      if (b[0].includes("Sem município")) return -1;
       return a[0].localeCompare(b[0]);
     });
   }, [filteredItens]);
@@ -137,8 +142,10 @@ export default function FaturamentoPage() {
     });
   }, [faturamentos, dataInicio, dataFim, selectedSites]);
 
-  const columnsItens = ["site", "item", "unidade", "aprovado", "faturado", "saldo"] as const;
+  const columnsItens = ["projeto", "medicao", "site", "item", "unidade", "aprovado", "faturado", "saldo"] as const;
   const getColValueItem = (item: ItemDisponivel, col: typeof columnsItens[number]): string => {
+    if (col === "projeto") return item.projeto_codigo || "";
+    if (col === "medicao") return item.numero_medicao || "";
     if (col === "site") return item.site_codigo || "";
     if (col === "item") return `${item.item_codigo} ${item.item_descricao}`;
     if (col === "unidade") return item.unidade || "";
