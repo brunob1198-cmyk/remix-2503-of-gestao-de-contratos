@@ -392,12 +392,13 @@ export default function AcompanhamentoMedicoesPage() {
     if (reviewNewItems.length > 0) {
       const firstLanc = lancamentos.find(x => medicao.lancamentoIds.includes(x.id));
       for (const ni of reviewNewItems) {
+        const pendente = Math.max(0, ni.quantidade - ni.aprovado);
         await supabase.from("lancamentos_medicao").insert({
           item_lpu_id: ni.item_lpu_id,
-          quantidade: ni.quantidade,
+          quantidade: ni.aprovado,
           quantidade_aprovada: ni.aprovado,
-          quantidade_rejeitada: ni.quantidade - ni.aprovado,
-          quantidade_pendente: ni.quantidade - ni.aprovado,
+          quantidade_rejeitada: pendente,
+          quantidade_pendente: pendente,
           data_medicao: medicao.data_medicao,
           site_id: medicao.site_id || firstLanc?.site_id || null,
           numero_medicao: medicao.numero_medicao || null,
