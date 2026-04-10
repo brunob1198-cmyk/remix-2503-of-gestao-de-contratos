@@ -542,6 +542,195 @@ export default function FaturamentoPage() {
                           <TableHead className="text-right w-44">Valor a Faturar</TableHead>
                         </TableRow>
                       </TableHeader>
+                      <TableBody>
+                        {paginatedGroups.map(([label, group]) => {
+                          const isMissing = !group.municipio || !group.uf;
+                          const uniqueSiteIds = Array.from(new Set(group.items.map(i => i.site_id)));
+                          const groupTotal = group.items.reduce((s, i) => s + i.valor_aprovado, 0);
+                          return (
+                            <>
+                              <TableRow key={`muni-${label}`} className="bg-muted/40 hover:bg-muted/60">
+                                <TableCell colSpan={10} className="py-2">
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-semibold text-sm">
+                                      {group.municipio && group.uf ? `${group.municipio} - ${group.uf}` : "Sem município definido"}
+                                      {" · "}
+                                      <Badge variant="outline" className="ml-1 text-xs">{group.projeto_codigo}</Badge>
+                                      {" · "}
+                                      <span className="text-muted-foreground">Medição: {group.numero_medicao}</span>
+                                    </span>
+                                    {isMissing && (
+                                      <Popover
+                                        open={editMunicipioSiteId === uniqueSiteIds[0]}
+                                        onOpenChange={(open) => {
+                                          if (open) {
+                                            setEditMunicipioSiteId(uniqueSiteIds[0]);
+                                            setEditUf("");
+                                            setEditMunicipio("");
+                                          } else {
+                                            setEditMunicipioSiteId(null);
+                                          }
+                                        }}
+                                      >
+                                        <PopoverTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 text-primary">
+                                            <Pencil className="h-3 w-3" /> Definir município
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-72 p-3 space-y-3" align="start">
+                                          <p className="text-xs text-muted-foreground">
+                                            Defina o município para {uniqueSiteIds.length > 1 ? "os sites" : "o site"} sem município:
+                                          </p>
+                                          {uniqueSiteIds.map(sid => {
+                                            const s = sites.find(x => x.id === sid);
+                                            return s ? (
+                                              <Badge key={sid} variant="outline" className="mr-1 text-xs">{s.codigo}</Badge>
+                                            ) : null;
+                                          })}
+                                          <div>
+                                            <Label className="text-xs">UF</Label>
+                                            <Select value={editUf} onValueChange={(v) => { setEditUf(v); setEditMunicipio(""); }}>
+                                              <SelectTrigger className="h-8">
+                                                <SelectValue placeholder="Selecione UF" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                {ufs.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          {editUf && (
+                                            <div>
+                                              <Label className="text-xs">Município</Label>
+                                              <Select value={editMunicipio} onValueChange={setEditMunicipio}>
+                                                <SelectTrigger className="h-8">
+                                                  <SelectValue placeholder="Selecione o município" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {municipiosFiltrados.map(m => (
+                                                    <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                          )}
+                                          <div className="flex gap-2">
+                                            {uniqueSiteIds.length > 1 ? (
+                                              <Button
+                                                size="sm"
+                                                className="flex-1"
+                                                disabled={!editUf || !editMunicipio || savingMunicipio}
+                                                onClick={async () => {
+                                                  setSavingMunicipio(true);
+                                                  try {
+                                                    for (const sid of uniqueSiteIds) {
+                                                      const siteObj = sites.find(x => x.id === sid);
+                                                      if (siteObj && (!siteObj.municipio || !siteObj.uf)) {
+                                                        await supabase.from("sites").update({ uf: editUf, municipio: editMunicipio }).eq("id", sid);
+                                                      }
+                                                    }
+                                                    toast({ title: "Municípios atualizados!" });
+                                                    setEditMunicipioSiteId(null);
+                                                    queryClient.invalidateQueries({ queryKey: ["itens_disponiveis_faturamento"] });
+                                                    queryClient.invalidateQueries({ queryKey: ["sites"] });
+                                                  } catch (err: any) {
+                                                    toast({ title: "Erro", description: err.message, variant: "destructive" });
+                                                  } finally {
+                                                    setSavingMunicipio(false);
+                                                  }
+                                                }}
+                                              >
+                                                {savingMunicipio ? <Loader2 className="h-3 w-3 animate-spin" /> : "Aplicar a todos"}
+                                              </Button>
+                                            ) : (
+                                              <Button
+                                                size="sm"
+                                                className="flex-1"
+                                                disabled={!editUf || !editMunicipio || savingMunicipio}
+                                                onClick={handleSaveMunicipio}
+                                              >
+                                                {savingMunicipio ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    )}
+                                    <span className="ml-auto text-xs text-muted-foreground">
+                                      {group.items.length} {group.items.length === 1 ? "item" : "itens"} · {formatCurrency(groupTotal)}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              {group.items.map(item => {
+                                const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
+                                const isSelected = selectedItems.has(key);
+                                const valorFaturar = selectedItems.get(key) || 0;
+                                return (
+                                  <TableRow key={key} className={isSelected ? "bg-green-50/50" : ""}>
+                                    <TableCell>
+                                      <Checkbox checked={isSelected} onCheckedChange={() => toggleItem(key, item)} />
+                                    </TableCell>
+                                    <TableCell className="text-xs">{item.projeto_codigo}</TableCell>
+                                    <TableCell className="text-xs">{item.numero_medicao}</TableCell>
+                                    <TableCell className="font-medium">{item.site_codigo}</TableCell>
+                                    <TableCell>
+                                      <span className="text-xs text-muted-foreground">{item.item_codigo}</span>
+                                      <br />
+                                      {item.item_descricao}
+                                    </TableCell>
+                                    <TableCell>{item.unidade}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.valor_aprovado)}</TableCell>
+                                    <TableCell className="text-right text-muted-foreground">{formatCurrency(item.valor_ja_faturado)}</TableCell>
+                                    <TableCell className="text-right font-semibold text-green-700">{formatCurrency(item.valor_saldo)}</TableCell>
+                                    <TableCell className="text-right">
+                                      {isSelected ? (
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          max={item.valor_saldo}
+                                          step={0.01}
+                                          value={valorFaturar}
+                                          onChange={e => {
+                                            let v = parseFloat(e.target.value) || 0;
+                                            if (v > item.valor_saldo) v = item.valor_saldo;
+                                            if (v < 0) v = 0;
+                                            setItemValue(key, v);
+                                          }}
+                                          className="w-36 text-right ml-auto"
+                                        />
+                                      ) : (
+                                        <span className="text-muted-foreground">—</span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </>
+                          );
+                        })}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={6} className="font-bold">Total</TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrency(totalAprovado)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrency(totalJaFaturado)}</TableCell>
+                          <TableCell className="text-right font-bold text-green-700">{formatCurrency(totalDisponivel)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrency(valorBrutoFatura)}</TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+                  <TablePagination
+                    currentPage={safeGerarPage}
+                    totalPages={totalGerarPages}
+                    itemsPerPage={gerarPageSize}
+                    onPageChange={setGerarPage}
+                    onItemsPerPageChange={(size) => { setGerarPageSize(size); setGerarPage(1); }}
+                    totalItems={totalGerarItems}
+                  />
+                  </>
+                )}
               </CardContent>
             </Card>
 
