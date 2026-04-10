@@ -62,7 +62,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
         .from("lancamentos_medicao")
-        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, numero_medicao, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
+        .select("id, created_at, site_id, item_lpu_id, quantidade, quantidade_aprovada, numero_medicao, status, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
         .in("status", ["aprovado", "finalizado"])
         .limit(100000);
 
