@@ -38,9 +38,11 @@ export default function FaturamentoPage() {
   const { sites } = useSites();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [projetoId, setProjetoId] = usePersistedState<string>("faturamento_projeto_id", "");
-  const { data: itensDisponiveis = [], isLoading: loadingItens } = useItensDisponiveis(projetoId || undefined);
-  const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(projetoId || undefined);
+  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("faturamento_projeto_ids", []);
+  const [projetoSearch, setProjetoSearch] = useState("");
+  const activeProjetoIds = selectedProjetoIds.length > 0 ? selectedProjetoIds : undefined;
+  const { data: itensDisponiveis = [], isLoading: loadingItens } = useItensDisponiveis(activeProjetoIds);
+  const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(activeProjetoIds);
   const gerarFaturamento = useGerarFaturamento();
   const updateStatus = useUpdateFaturamentoStatus();
 
