@@ -213,7 +213,15 @@ export default function QuadroGeral() {
     });
   };
 
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedArr, setExpandedArr] = usePersistedState<string[]>("quadro-geral-expanded", []);
+  const expanded = useMemo(() => new Set(expandedArr), [expandedArr]);
+  const setExpanded = useCallback((v: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    if (typeof v === "function") {
+      setExpandedArr(prev => Array.from(v(new Set(prev))));
+    } else {
+      setExpandedArr(Array.from(v));
+    }
+  }, [setExpandedArr]);
 
   const toggle = (key: string) => {
     setExpanded(prev => {
