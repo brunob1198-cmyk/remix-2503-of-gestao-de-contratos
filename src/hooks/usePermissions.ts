@@ -16,6 +16,7 @@ export const TELAS = [
   { id: "sites", label: "Sites" },
   { id: "lpu", label: "Lista de Preços (LPU)" },
   { id: "diario", label: "Diário de Obra" },
+  { id: "diario-campo", label: "Diário de Campo" },
   { id: "rdo", label: "RDO" },
   { id: "analise", label: "Análise de Obras" },
   { id: "recursos", label: "Recursos" },
