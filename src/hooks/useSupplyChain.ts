@@ -123,7 +123,24 @@ export function useScItens() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  return { itens, isLoading, create, update, remove };
+  const bulkCreate = useMutation({
+    mutationFn: async (items: { codigo: string; descricao: string; unidade: string; categoria?: string; especificacao?: string }[]) => {
+      const empresaId = await getEmpresaId();
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = items.slice(i, i + BATCH_SIZE).map(item => ({ ...item, empresa_id: empresaId }));
+        const { error } = await supabase.from("sc_itens").upsert(batch, { onConflict: "empresa_id,codigo", ignoreDuplicates: false });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
+      toast({ title: `${vars.length} itens importados com sucesso!` });
+    },
+    onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
+  });
+
+  return { itens, isLoading, create, update, remove, bulkCreate };
 }
 
 // ─── Requisições de Compra ───

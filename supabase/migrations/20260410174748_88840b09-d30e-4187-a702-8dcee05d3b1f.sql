@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS sc_itens_empresa_codigo_unique ON public.sc_itens (empresa_id, codigo);
