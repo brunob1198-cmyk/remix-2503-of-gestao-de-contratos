@@ -338,11 +338,22 @@ export default function AcompanhamentoMedicoesPage() {
         return;
       }
 
-      // If approved, clear pending
+      // If approved, set each lancamento's quantidade_aprovada to its own quantidade
       if (edits.status === "aprovado") {
-        updateFields.quantidade_pendente = 0;
-        updateFields.quantidade_aprovada = medicao.total_quantidade;
-        updateFields.quantidade_rejeitada = 0;
+        const approvedLancamentos = lancamentos.filter(l => medicao.lancamentoIds.includes(l.id));
+        for (const l of approvedLancamentos) {
+          await supabase.from("lancamentos_medicao").update({
+            quantidade_aprovada: Number(l.quantidade),
+            quantidade_rejeitada: 0,
+            quantidade_pendente: 0,
+            status: "aprovado",
+            data_resposta: now,
+          }).eq("id", l.id);
+        }
+        queryClient.invalidateQueries({ queryKey: ["lancamentos_medicao"] });
+        queryClient.invalidateQueries({ queryKey: ["medicao_status_historico"] });
+        setLocalEdits(prev => { const n = { ...prev }; delete n[medicao.id]; return n; });
+        return;
       }
     }
 
