@@ -284,22 +284,55 @@ export default function FaturamentoPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
             <div className="flex-1 min-w-[250px]">
-              <Label>Selecione o Projeto</Label>
-              <Select value={projetoId} onValueChange={v => { setProjetoId(v); setSelectedItems(new Map()); setSelectedSites(new Set()); setDataInicio(""); setDataFim(""); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Escolha um projeto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projetos.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Selecione o(s) Projeto(s)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={`justify-between w-full ${selectedProjetoIds.length > 0 ? "border-primary" : ""}`}>
+                    <span className="truncate">
+                      {selectedProjetoIds.length === 0
+                        ? "Todos os projetos"
+                        : selectedProjetoIds.length === 1
+                          ? (() => { const p = projetos.find(x => x.id === selectedProjetoIds[0]); return p ? `${p.codigo} - ${p.nome}` : "1 projeto"; })()
+                          : `${selectedProjetoIds.length} projetos selecionados`}
+                    </span>
+                    <Filter className="h-4 w-4 ml-2 opacity-50 flex-shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-3" align="start">
+                  <Input
+                    placeholder="Buscar projeto..."
+                    value={projetoSearch}
+                    onChange={(e) => setProjetoSearch(e.target.value)}
+                    className="h-8 mb-2"
+                  />
+                  <div className="flex gap-2 text-xs mb-2">
+                    <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline">Todos</button>
+                    <button onClick={() => { setSelectedProjetoIds([]); setSelectedItems(new Map()); setSelectedSites(new Set()); }} className="text-primary hover:underline">Limpar</button>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {projetos
+                      .filter(p => `${p.codigo} ${p.nome}`.toLowerCase().includes(projetoSearch.toLowerCase()))
+                      .map(p => (
+                        <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1">
+                          <Checkbox
+                            checked={selectedProjetoIds.includes(p.id)}
+                            onCheckedChange={(checked) => {
+                              setSelectedProjetoIds(prev => {
+                                if (checked) return [...prev, p.id];
+                                return prev.filter(id => id !== p.id);
+                              });
+                              setSelectedItems(new Map());
+                            }}
+                          />
+                          <span className="truncate">{p.codigo} - {p.nome}</span>
+                        </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            {projetoId && (
-              <>
-                <div className="w-full md:w-auto flex flex-col gap-1">
-                  <Label>Filtrar por Sites</Label>
+            <div className="w-full md:w-auto flex flex-col gap-1">
+              <Label>Filtrar por Sites</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className={`justify-between w-full md:w-[280px] ${selectedSites.size > 0 ? "border-primary" : ""}`}>
