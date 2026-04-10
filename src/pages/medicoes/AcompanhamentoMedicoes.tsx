@@ -369,17 +369,20 @@ export default function AcompanhamentoMedicoesPage() {
     }
 
     // Update existing lancamentos (excluding removed)
+    // Recalculate: quantidade becomes the approved value (new measurement)
     for (const lId of medicao.lancamentoIds) {
        if (reviewRemovedIds.has(lId)) continue;
        const aprov = partialApprovalItems[lId] || 0;
        const l = lancamentos.find(x => x.id === lId);
        if (!l) continue;
-       const pendente = Number(l.quantidade) - aprov;
+       const originalQtd = Number(l.quantidade);
+       const pendente = originalQtd - aprov;
 
        await supabase.from("lancamentos_medicao").update({
+          quantidade: aprov,
           quantidade_aprovada: aprov,
-          quantidade_rejeitada: pendente,
-          quantidade_pendente: pendente,
+          quantidade_rejeitada: Math.max(0, pendente),
+          quantidade_pendente: Math.max(0, pendente),
           status: "enviada",
           data_resposta: now
        }).eq("id", lId);
