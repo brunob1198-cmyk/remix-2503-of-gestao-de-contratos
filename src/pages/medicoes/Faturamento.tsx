@@ -190,7 +190,17 @@ export default function FaturamentoPage() {
       if (next.has(key)) {
         next.delete(key);
       } else {
-        next.set(key, item.valor_saldo); // default: full balance
+        // Check if trying to mix projects
+        const selectedProjIds = new Set<string>();
+        for (const [k] of next) {
+          const matchItem = filteredItens.find(i => `${i.site_id}__${i.item_lpu_id}__${i.numero_medicao}` === k);
+          if (matchItem) selectedProjIds.add(matchItem.projeto_id);
+        }
+        if (selectedProjIds.size > 0 && !selectedProjIds.has(item.projeto_id)) {
+          toast({ title: "Medições de projetos diferentes não podem ser faturadas juntas", variant: "destructive" });
+          return prev;
+        }
+        next.set(key, item.valor_saldo);
       }
       return next;
     });
@@ -206,10 +216,16 @@ export default function FaturamentoPage() {
 
   const selectAll = () => {
     const next = new Map<string, number>();
+    // Only select items from the first project found
+    const firstProjId = tableItens.processedItems[0]?.projeto_id;
     tableItens.processedItems.forEach(item => {
-      const key = `${item.site_id}__${item.item_lpu_id}`;
+      if (item.projeto_id !== firstProjId) return;
+      const key = `${item.site_id}__${item.item_lpu_id}__${item.numero_medicao}`;
       next.set(key, item.valor_saldo);
     });
+    if (tableItens.processedItems.some(i => i.projeto_id !== firstProjId)) {
+      toast({ title: "Apenas itens do mesmo projeto foram selecionados", description: "Medições de projetos diferentes não podem ser faturadas juntas." });
+    }
     setSelectedItems(next);
   };
 
