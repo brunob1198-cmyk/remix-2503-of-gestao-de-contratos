@@ -62,7 +62,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
         .from("lancamentos_medicao")
-        .select("site_id, item_lpu_id, quantidade, quantidade_aprovada, numero_medicao, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
+        .select("id, created_at, site_id, item_lpu_id, quantidade, quantidade_aprovada, numero_medicao, status, site:sites(codigo, nome, municipio, uf, projeto_id, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)")
         .in("status", ["aprovado", "finalizado"])
         .limit(100000);
 
@@ -100,38 +100,46 @@ export function useItensDisponiveis(projetoIds?: string[]) {
         qtd_aprovada: number; valor_aprovado: number;
       }>();
 
+      // Track latest record per key to avoid summing duplicates
+      const latestByKey = new Map<string, any>();
+
       for (const m of (medicoes || [])) {
         const site = m.site as any;
         const item = m.item_lpu as any;
         if (!site || !item) continue;
-        const proj = site.projeto as any;
         const numMed = (m as any).numero_medicao || "S/N";
         const key = `${m.site_id}__${m.item_lpu_id}__${numMed}`;
-        const qtdAprov = m.quantidade_aprovada || m.quantidade || 0;
-        const existing = mapAprovado.get(key);
-        if (existing) {
-          existing.qtd_aprovada += qtdAprov;
-          existing.valor_aprovado += qtdAprov * item.preco_unitario;
-        } else {
-          mapAprovado.set(key, {
-            site_id: m.site_id,
-            site_codigo: site.codigo,
-            site_nome: site.nome,
-            site_municipio: site.municipio || "",
-            site_uf: site.uf || "",
-            projeto_id: proj?.id || "",
-            projeto_codigo: proj?.codigo || "",
-            projeto_nome: proj?.nome || "",
-            numero_medicao: numMed,
-            item_lpu_id: m.item_lpu_id,
-            item_codigo: item.codigo,
-            item_descricao: item.descricao,
-            unidade: item.unidade,
-            preco_unitario: item.preco_unitario,
-            qtd_aprovada: qtdAprov,
-            valor_aprovado: qtdAprov * item.preco_unitario,
-          });
+        const existing = latestByKey.get(key);
+        // Keep only the latest record (by created_at) per key
+        if (!existing || new Date(m.created_at) > new Date(existing.created_at)) {
+          latestByKey.set(key, m);
         }
+      }
+
+      for (const [key, m] of latestByKey) {
+        const site = m.site as any;
+        const item = m.item_lpu as any;
+        const proj = site.projeto as any;
+        const numMed = (m as any).numero_medicao || "S/N";
+        const qtdAprov = m.quantidade_aprovada || m.quantidade || 0;
+        mapAprovado.set(key, {
+          site_id: m.site_id,
+          site_codigo: site.codigo,
+          site_nome: site.nome,
+          site_municipio: site.municipio || "",
+          site_uf: site.uf || "",
+          projeto_id: proj?.id || "",
+          projeto_codigo: proj?.codigo || "",
+          projeto_nome: proj?.nome || "",
+          numero_medicao: numMed,
+          item_lpu_id: m.item_lpu_id,
+          item_codigo: item.codigo,
+          item_descricao: item.descricao,
+          unidade: item.unidade,
+          preco_unitario: item.preco_unitario,
+          qtd_aprovada: qtdAprov,
+          valor_aprovado: qtdAprov * item.preco_unitario,
+        });
       }
 
       // 4. Agregar já faturado
