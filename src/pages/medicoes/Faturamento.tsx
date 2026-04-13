@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, ItemDisponivel, FaturamentoItem } from "@/hooks/useFaturamento";
+import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, useUpdateFaturamento, ItemDisponivel, FaturamentoItem } from "@/hooks/useFaturamento";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useMunicipios } from "@/hooks/useMunicipios";
@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DollarSign, FileDown, Loader2, Receipt, CheckCircle2, Clock, Ban, Filter, X, FilterX, MapPin, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -45,6 +46,38 @@ export default function FaturamentoPage() {
   const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(activeProjetoIds);
   const gerarFaturamento = useGerarFaturamento();
   const updateStatus = useUpdateFaturamentoStatus();
+  const updateFaturamento = useUpdateFaturamento();
+
+  // Edit fatura state
+  const [editFatura, setEditFatura] = useState<any | null>(null);
+  const [editNumeroFatura, setEditNumeroFatura] = useState("");
+  const [editDataEmissao, setEditDataEmissao] = useState("");
+  const [editImpostosPerc, setEditImpostosPerc] = useState(0);
+  const [editDescontos, setEditDescontos] = useState(0);
+  const [editObservacao, setEditObservacao] = useState("");
+
+  const openEditFatura = (f: any) => {
+    setEditFatura(f);
+    setEditNumeroFatura(f.numero_fatura || "");
+    setEditDataEmissao(f.data_emissao);
+    setEditImpostosPerc(f.impostos_percentual || 0);
+    setEditDescontos(f.descontos || 0);
+    setEditObservacao(f.observacao || "");
+  };
+
+  const handleSaveEditFatura = () => {
+    if (!editFatura) return;
+    updateFaturamento.mutate({
+      id: editFatura.id,
+      numero_fatura: editNumeroFatura || null,
+      data_emissao: editDataEmissao,
+      impostos_percentual: editImpostosPerc,
+      descontos: editDescontos,
+      observacao: editObservacao || null,
+    }, {
+      onSuccess: () => setEditFatura(null),
+    });
+  };
 
   // Filters state
   const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
@@ -984,12 +1017,12 @@ export default function FaturamentoPage() {
                                   {st.icon} {st.label}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="flex items-center gap-1">
                                 <Select
                                   value={f.status}
                                   onValueChange={v => updateStatus.mutate({ id: f.id, status: v })}
                                 >
-                                  <SelectTrigger className="h-8 text-xs">
+                                  <SelectTrigger className="h-8 text-xs w-24">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -998,6 +1031,9 @@ export default function FaturamentoPage() {
                                     <SelectItem value="cancelado">Cancelado</SelectItem>
                                   </SelectContent>
                                 </Select>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditFatura(f)} title="Editar fatura">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
@@ -1022,6 +1058,52 @@ export default function FaturamentoPage() {
             </TabsContent>
           </Tabs>
         )}
+
+      {/* Edit Fatura Dialog */}
+      <Dialog open={!!editFatura} onOpenChange={(open) => !open && setEditFatura(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Fatura</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nº Fatura</Label>
+              <Input value={editNumeroFatura} onChange={e => setEditNumeroFatura(e.target.value)} placeholder="Ex: NF-001" />
+            </div>
+            <div>
+              <Label>Data de Emissão</Label>
+              <Input type="date" value={editDataEmissao} onChange={e => setEditDataEmissao(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Impostos (%)</Label>
+                <Input type="number" min={0} max={100} step={0.01} value={editImpostosPerc} onChange={e => setEditImpostosPerc(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Descontos (R$)</Label>
+                <Input type="number" min={0} step={0.01} value={editDescontos} onChange={e => setEditDescontos(parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+            {editFatura && (
+              <div className="text-sm text-muted-foreground">
+                <p>Valor bruto: {formatCurrency(editFatura.valor_bruto)}</p>
+                <p>Valor líquido estimado: {formatCurrency(editFatura.valor_bruto - editFatura.valor_bruto * (editImpostosPerc / 100) - editDescontos)}</p>
+              </div>
+            )}
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={editObservacao} onChange={e => setEditObservacao(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditFatura(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEditFatura} disabled={updateFaturamento.isPending}>
+              {updateFaturamento.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
