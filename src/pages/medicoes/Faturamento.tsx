@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DollarSign, FileDown, Loader2, Receipt, CheckCircle2, Clock, Ban, Filter, X, FilterX, MapPin, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { usePersistedState } from "@/hooks/usePersistedState";
