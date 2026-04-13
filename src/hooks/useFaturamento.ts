@@ -145,6 +145,10 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 4. Agregar já faturado
       const mapFaturado = new Map<string, { qtd: number; valor: number }>();
       for (const fi of (fatItens || [])) {
+        // Skip items from cancelled invoices
+        const fatStatus = (fi.faturamento as any)?.status;
+        if (fatStatus === "cancelado") continue;
+
         const key = `${fi.site_id}__${fi.item_lpu_id}`;
         const existing = mapFaturado.get(key);
         if (existing) {
