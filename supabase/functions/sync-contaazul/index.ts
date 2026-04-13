@@ -110,6 +110,28 @@ type SiteLookup = {
   normalizedName: string;
 };
 
+type NamedAllocation = {
+  key: string;
+  nome: string | null;
+  valor: number | null;
+  percentual: number | null;
+};
+
+type RawRateioAllocation = {
+  key: string;
+  centroCusto: string | null;
+  categoriaErp: string;
+  valor: number | null;
+  percentual: number | null;
+};
+
+export type SplitAllocation = {
+  key: string;
+  valor: number;
+  centroCusto: string | null;
+  categoriaErp: string;
+};
+
 function normalizeText(value: string | null | undefined): string {
   return (value || "")
     .normalize("NFD")
@@ -131,6 +153,281 @@ function scoreMatch(target: string, candidate: string): number {
 function extractProjectCode(value: string | null | undefined): string | null {
   const match = (value || "").toUpperCase().match(/[A-Z]\d{3}\.\d{2}/);
   return match?.[0] || null;
+}
+
+function ensureArray<T = any>(value: unknown): T[] {
+  return Array.isArray(value) ? value.filter((item) => item != null) as T[] : [];
+}
+
+function readPath(source: any, path: string): unknown {
+  return path.split(".").reduce((current: any, key) => current?.[key], source);
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const normalized = trimmed.includes(",")
+      ? trimmed.replace(/\./g, "").replace(",", ".")
+      : trimmed;
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function pickStringValue(source: any, paths: string[]): string | null {
+  for (const path of paths) {
+    const value = readPath(source, path);
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function pickNumberValue(source: any, paths: string[]): number | null {
+  for (const path of paths) {
+    const value = toNumber(readPath(source, path));
+    if (value !== null) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function distributeAmounts<T extends { valor: number | null; percentual: number | null }>(
+  items: T[],
+  total: number,
+): Array<T & { valorCalculado: number }> {
+  if (!items.length) return [];
+
+  const allHaveValues = items.every((item) => item.valor !== null);
+  const explicitTotal = items.reduce((acc, item) => acc + (item.valor ?? 0), 0);
+
+  if (allHaveValues && explicitTotal !== 0) {
+    return items.map((item) => ({ ...item, valorCalculado: item.valor ?? 0 }));
+  }
+
+  const allHavePercentages = items.every((item) => item.percentual !== null);
+  const percentageTotal = items.reduce((acc, item) => acc + (item.percentual ?? 0), 0);
+
+  if (allHavePercentages && percentageTotal !== 0) {
+    return items.map((item) => ({
+      ...item,
+      valorCalculado: total * ((item.percentual ?? 0) / percentageTotal),
+    }));
+  }
+
+  const evenValue = total / items.length;
+  return items.map((item) => ({ ...item, valorCalculado: evenValue }));
+}
+
+function rebalanceSplitValues<T extends { valor: number }>(items: T[], total: number): T[] {
+  if (!items.length) return items;
+
+  const balanced = items.map((item) => ({
+    ...item,
+    valor: roundCurrency(item.valor),
+  }));
+
+  const roundedTotal = roundCurrency(total);
+  const currentTotal = roundCurrency(balanced.reduce((acc, item) => acc + item.valor, 0));
+  const difference = roundCurrency(roundedTotal - currentTotal);
+
+  if (difference !== 0) {
+    balanced[balanced.length - 1].valor = roundCurrency(
+      balanced[balanced.length - 1].valor + difference,
+    );
+  }
+
+  return balanced;
+}
+
+function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
+  return ensureArray<any>(bill.rateio)
+    .map((item, index) => ({
+      key: `rateio-${index}`,
+      centroCusto: pickStringValue(item, [
+        "centro_custo.nome",
+        "centro_custo.nome_centro_custo",
+        "centro_custo.descricao",
+        "centro_de_custo.nome",
+        "centro_de_custo.nome_centro_custo",
+        "centro_de_custo.descricao",
+        "nome_centro_custo",
+        "descricao_centro_custo",
+        "centro_custo",
+        "centro_de_custo",
+      ]),
+      categoriaErp: pickStringValue(item, [
+        "categoria.nome",
+        "categoria.nome_categoria",
+        "categoria.descricao",
+        "categoria_erp.nome",
+        "categoria_erp.nome_categoria",
+        "nome_categoria",
+        "descricao_categoria",
+        "categoria_erp",
+      ]) || "Outros",
+      valor: pickNumberValue(item, [
+        "valor",
+        "valor_rateio",
+        "valor_alocado",
+        "valor_bruto",
+        "valor_liquido",
+        "total",
+      ]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+    }))
+    .filter((item) => (
+      item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
+    ));
+}
+
+function normalizeCentrosCusto(bill: any): NamedAllocation[] {
+  const rawCentros = ensureArray<any>(bill.centros_de_custo).length > 0
+    ? ensureArray<any>(bill.centros_de_custo)
+    : ensureArray<any>(bill.centros_custo);
+
+  return rawCentros
+    .map((item, index) => ({
+      key: `centro-${index}`,
+      nome: pickStringValue(item, ["nome", "nome_centro_custo", "descricao", "descricao_centro_custo"]),
+      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total"]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+    }))
+    .filter((item) => item.nome !== null || item.valor !== null || item.percentual !== null);
+}
+
+function normalizeCategorias(bill: any): NamedAllocation[] {
+  return ensureArray<any>(bill.categorias)
+    .map((item, index) => ({
+      key: `categoria-${index}`,
+      nome: pickStringValue(item, ["nome", "nome_categoria", "descricao", "descricao_categoria"]),
+      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total"]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+    }))
+    .filter((item) => item.nome !== null || item.valor !== null || item.percentual !== null);
+}
+
+export function buildSplitAllocations(bill: any, total: number): SplitAllocation[] {
+  const rateios = normalizeRateioAllocations(bill);
+
+  if (rateios.length > 0) {
+    const distributed = distributeAmounts(rateios, total);
+    const targetTotal = total !== 0
+      ? total
+      : distributed.reduce((acc, item) => acc + item.valorCalculado, 0);
+
+    return rebalanceSplitValues(
+      distributed.map((item) => ({
+        key: item.key,
+        valor: item.valorCalculado,
+        centroCusto: item.centroCusto,
+        categoriaErp: item.categoriaErp || "Outros",
+      })),
+      targetTotal,
+    );
+  }
+
+  const centros = distributeAmounts(normalizeCentrosCusto(bill), total);
+  const categorias = distributeAmounts(normalizeCategorias(bill), total);
+  const centrosDefinemValor = centros.some((item) => item.valor !== null || item.percentual !== null);
+  const categoriasDefinemValor = categorias.some((item) => item.valor !== null || item.percentual !== null);
+
+  if (!centros.length && !categorias.length) {
+    return [{ key: "default", valor: roundCurrency(total), centroCusto: null, categoriaErp: "Outros" }];
+  }
+
+  if (!centros.length) {
+    const targetTotal = total !== 0
+      ? total
+      : categorias.reduce((acc, item) => acc + item.valorCalculado, 0);
+
+    return rebalanceSplitValues(
+      categorias.map((categoria) => ({
+        key: categoria.key,
+        valor: categoria.valorCalculado,
+        centroCusto: null,
+        categoriaErp: categoria.nome || "Outros",
+      })),
+      targetTotal,
+    );
+  }
+
+  if (!categorias.length) {
+    const targetTotal = total !== 0
+      ? total
+      : centros.reduce((acc, item) => acc + item.valorCalculado, 0);
+
+    return rebalanceSplitValues(
+      centros.map((centro) => ({
+        key: centro.key,
+        valor: centro.valorCalculado,
+        centroCusto: centro.nome,
+        categoriaErp: "Outros",
+      })),
+      targetTotal,
+    );
+  }
+
+  if (centros.length === categorias.length) {
+    const useCenterAmounts = centrosDefinemValor || !categoriasDefinemValor;
+    const paired = centros.map((centro, index) => {
+      const categoria = categorias[index];
+      return {
+        key: `par-${centro.key}-${categoria.key}`,
+        valor: useCenterAmounts ? centro.valorCalculado : categoria.valorCalculado,
+        centroCusto: centro.nome,
+        categoriaErp: categoria.nome || "Outros",
+      };
+    });
+
+    const targetTotal = total !== 0
+      ? total
+      : paired.reduce((acc, item) => acc + item.valor, 0);
+
+    return rebalanceSplitValues(paired, targetTotal);
+  }
+
+  const primarySource = centros.length > categorias.length
+    ? (centrosDefinemValor || !categoriasDefinemValor ? "centro" : "categoria")
+    : (categoriasDefinemValor || !centrosDefinemValor ? "categoria" : "centro");
+  const maxLength = Math.max(centros.length, categorias.length);
+
+  const fallback = Array.from({ length: maxLength }, (_, index) => {
+    const centro = centros[index] || centros[Math.min(index, centros.length - 1)] || null;
+    const categoria = categorias[index] || categorias[Math.min(index, categorias.length - 1)] || null;
+
+    return {
+      key: `fallback-${index}`,
+      valor: primarySource === "centro"
+        ? (centro?.valorCalculado ?? total / maxLength)
+        : (categoria?.valorCalculado ?? total / maxLength),
+      centroCusto: centro?.nome || null,
+      categoriaErp: categoria?.nome || "Outros",
+    };
+  });
+
+  const targetTotal = total !== 0
+    ? total
+    : fallback.reduce((acc, item) => acc + item.valor, 0);
+
+  return rebalanceSplitValues(fallback, targetTotal);
 }
 
 function resolveProjetoESite(
@@ -342,6 +639,7 @@ async function fetchAllDespesas(
   return merged;
 }
 
+if (import.meta.main) {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -416,53 +714,79 @@ serve(async (req) => {
         none: 0,
       };
 
-      const newCategorias: { categoria_erp: string; categoria_interna: string; criado_por_ia: boolean }[] = [];
+      const newCategorias = new Map<string, { categoria_erp: string; categoria_interna: string; criado_por_ia: boolean }>();
+      const splitStats = {
+        despesasComRateio: 0,
+        despesasMultiAlocacao: 0,
+        registrosGerados: 0,
+      };
 
-      const records = bills.map((bill: any, idx: number) => {
-        const erpId = bill.id || bill.parcela_id || `CA-${idx}`;
+      const records = bills.flatMap((bill: any, idx: number) => {
+        const erpIdBase = String(bill.id || bill.parcela_id || `CA-${idx}`);
         const descricao = bill.descricao || bill.descricao_parcela || "Sem descrição";
-        // Try multiple value fields - parcelas may use different field names
-        const valor = Number(bill.total || bill.valor_bruto || bill.nao_pago || bill.valor || 0);
-        const categorias = bill.categorias || bill.rateio || [];
-        const categoriaErp = categorias.length > 0 ? (categorias[0].nome || categorias[0].nome_categoria || "Outros") : "Outros";
-        const centrosCusto = bill.centros_de_custo || bill.centros_custo || [];
-        const centroCusto = centrosCusto.length > 0 ? (centrosCusto[0].nome || centrosCusto[0].nome_centro_custo || null) : null;
+        const valorTotal = toNumber(bill.total)
+          ?? toNumber(bill.valor_bruto)
+          ?? toNumber(bill.nao_pago)
+          ?? toNumber(bill.valor)
+          ?? 0;
         const dataPagamento = bill.data_pagamento || bill.data_vencimento || null;
         const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
         const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
+        const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
+        const allocations = buildSplitAllocations(bill, valorTotal);
 
-        let categoriaInterna = mapCategorias.get(categoriaErp);
-        if (!categoriaInterna) {
-          categoriaInterna = categorizarDespesa(categoriaErp, descricao);
-          newCategorias.push({ categoria_erp: categoriaErp, categoria_interna: categoriaInterna, criado_por_ia: true });
-          mapCategorias.set(categoriaErp, categoriaInterna);
+        if (ensureArray(bill.rateio).length > 0) {
+          splitStats.despesasComRateio += 1;
         }
 
-        const { projetoId, siteId, strategy } = resolveProjetoESite(
-          centroCusto, projetosLookup, sitesLookup, sitesByProjeto, projetosByCode,
-        );
-        matchStats[strategy] = (matchStats[strategy] || 0) + 1;
+        if (allocations.length > 1) {
+          splitStats.despesasMultiAlocacao += 1;
+        }
 
-        const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
+        splitStats.registrosGerados += allocations.length;
 
-        return {
-          erp_id: erpId,
-          descricao,
-          valor,
-          data_pagamento: dataPagamento,
-          data_competencia: dataCompetencia,
-          status_erp: statusNormalizado,
-          categoria_erp: categoriaErp,
-          categoria_interna: categoriaInterna || "Indiretos",
-          centro_custo: centroCusto,
-          projeto_id: projetoId,
-          site_id: siteId,
-        };
+        return allocations.map((allocation, allocationIndex) => {
+          const categoriaErp = allocation.categoriaErp || "Outros";
+
+          let categoriaInterna = mapCategorias.get(categoriaErp);
+          if (!categoriaInterna) {
+            categoriaInterna = categorizarDespesa(categoriaErp, descricao);
+            newCategorias.set(categoriaErp, {
+              categoria_erp: categoriaErp,
+              categoria_interna: categoriaInterna,
+              criado_por_ia: true,
+            });
+            mapCategorias.set(categoriaErp, categoriaInterna);
+          }
+
+          const { projetoId, siteId, strategy } = resolveProjetoESite(
+            allocation.centroCusto,
+            projetosLookup,
+            sitesLookup,
+            sitesByProjeto,
+            projetosByCode,
+          );
+          matchStats[strategy] = (matchStats[strategy] || 0) + 1;
+
+          return {
+            erp_id: allocationIndex === 0 ? erpIdBase : `${erpIdBase}::${allocation.key}`,
+            descricao,
+            valor: allocation.valor,
+            data_pagamento: dataPagamento,
+            data_competencia: dataCompetencia,
+            status_erp: statusNormalizado,
+            categoria_erp: categoriaErp,
+            categoria_interna: categoriaInterna || "Indiretos",
+            centro_custo: allocation.centroCusto,
+            projeto_id: projetoId,
+            site_id: siteId,
+          };
+        });
       });
 
       // Batch insert new category mappings
-      if (newCategorias.length > 0) {
-        await supabase.from("mapeamento_categorias_erp").upsert(newCategorias, { onConflict: "categoria_erp" }).then(() => {});
+      if (newCategorias.size > 0) {
+        await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
       }
 
       // Batch upsert records in chunks of 500
@@ -478,11 +802,12 @@ serve(async (req) => {
       }
 
       console.log("Resumo de vínculo projeto/site:", matchStats);
+      console.log("Resumo de rateio:", splitStats);
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} despesas do Conta Azul.`,
+          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul.`,
           total: bills.length,
           processadas,
         }),
@@ -502,3 +827,4 @@ serve(async (req) => {
     );
   }
 });
+}
