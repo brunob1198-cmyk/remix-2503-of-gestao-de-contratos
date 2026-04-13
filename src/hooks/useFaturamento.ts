@@ -82,10 +82,10 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       const { data: medicoes, error: errMed } = await qMedicoes;
       if (errMed) throw errMed;
 
-      // 2. Buscar faturamentos já feitos
+      // 2. Buscar faturamentos já feitos (excluindo cancelados)
       const { data: fatItens, error: errFat } = await supabase
         .from("faturamento_itens")
-        .select("site_id, item_lpu_id, quantidade_faturada, valor_faturado")
+        .select("site_id, item_lpu_id, quantidade_faturada, valor_faturado, faturamento:faturamentos!faturamento_itens_faturamento_id_fkey(status)")
         .limit(100000);
       if (errFat) throw errFat;
 
@@ -145,6 +145,10 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       // 4. Agregar já faturado
       const mapFaturado = new Map<string, { qtd: number; valor: number }>();
       for (const fi of (fatItens || [])) {
+        // Skip items from cancelled invoices
+        const fatStatus = (fi.faturamento as any)?.status;
+        if (fatStatus === "cancelado") continue;
+
         const key = `${fi.site_id}__${fi.item_lpu_id}`;
         const existing = mapFaturado.get(key);
         if (existing) {
@@ -349,6 +353,7 @@ export function useUpdateFaturamentoStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["faturamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["itens_disponiveis_faturamento"] });
       toast({ title: "Status da fatura atualizado!" });
     },
     onError: (error: Error) => {
