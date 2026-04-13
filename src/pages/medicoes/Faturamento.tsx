@@ -46,6 +46,38 @@ export default function FaturamentoPage() {
   const { data: faturamentos = [], isLoading: loadingFaturas } = useFaturamentos(activeProjetoIds);
   const gerarFaturamento = useGerarFaturamento();
   const updateStatus = useUpdateFaturamentoStatus();
+  const updateFaturamento = useUpdateFaturamento();
+
+  // Edit fatura state
+  const [editFatura, setEditFatura] = useState<any | null>(null);
+  const [editNumeroFatura, setEditNumeroFatura] = useState("");
+  const [editDataEmissao, setEditDataEmissao] = useState("");
+  const [editImpostosPerc, setEditImpostosPerc] = useState(0);
+  const [editDescontos, setEditDescontos] = useState(0);
+  const [editObservacao, setEditObservacao] = useState("");
+
+  const openEditFatura = (f: any) => {
+    setEditFatura(f);
+    setEditNumeroFatura(f.numero_fatura || "");
+    setEditDataEmissao(f.data_emissao);
+    setEditImpostosPerc(f.impostos_percentual || 0);
+    setEditDescontos(f.descontos || 0);
+    setEditObservacao(f.observacao || "");
+  };
+
+  const handleSaveEditFatura = () => {
+    if (!editFatura) return;
+    updateFaturamento.mutate({
+      id: editFatura.id,
+      numero_fatura: editNumeroFatura || null,
+      data_emissao: editDataEmissao,
+      impostos_percentual: editImpostosPerc,
+      descontos: editDescontos,
+      observacao: editObservacao || null,
+    }, {
+      onSuccess: () => setEditFatura(null),
+    });
+  };
 
   // Filters state
   const [selectedSites, setSelectedSites] = useState<Set<string>>(new Set());
