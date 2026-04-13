@@ -1058,6 +1058,52 @@ export default function FaturamentoPage() {
             </TabsContent>
           </Tabs>
         )}
+
+      {/* Edit Fatura Dialog */}
+      <Dialog open={!!editFatura} onOpenChange={(open) => !open && setEditFatura(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Fatura</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nº Fatura</Label>
+              <Input value={editNumeroFatura} onChange={e => setEditNumeroFatura(e.target.value)} placeholder="Ex: NF-001" />
+            </div>
+            <div>
+              <Label>Data de Emissão</Label>
+              <Input type="date" value={editDataEmissao} onChange={e => setEditDataEmissao(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Impostos (%)</Label>
+                <Input type="number" min={0} max={100} step={0.01} value={editImpostosPerc} onChange={e => setEditImpostosPerc(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Descontos (R$)</Label>
+                <Input type="number" min={0} step={0.01} value={editDescontos} onChange={e => setEditDescontos(parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+            {editFatura && (
+              <div className="text-sm text-muted-foreground">
+                <p>Valor bruto: {formatCurrency(editFatura.valor_bruto)}</p>
+                <p>Valor líquido estimado: {formatCurrency(editFatura.valor_bruto - editFatura.valor_bruto * (editImpostosPerc / 100) - editDescontos)}</p>
+              </div>
+            )}
+            <div>
+              <Label>Observações</Label>
+              <Textarea value={editObservacao} onChange={e => setEditObservacao(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditFatura(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEditFatura} disabled={updateFaturamento.isPending}>
+              {updateFaturamento.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
