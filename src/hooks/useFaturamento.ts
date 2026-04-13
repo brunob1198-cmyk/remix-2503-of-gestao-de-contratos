@@ -353,6 +353,7 @@ export function useUpdateFaturamentoStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["faturamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["itens_disponiveis_faturamento"] });
       toast({ title: "Status da fatura atualizado!" });
     },
     onError: (error: Error) => {
