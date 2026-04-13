@@ -162,7 +162,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
         const fatKey = `${aprov.site_id}__${aprov.item_lpu_id}`;
         const fat = mapFaturado.get(fatKey) || { qtd: 0, valor: 0 };
         const qtdSaldo = aprov.qtd_aprovada - fat.qtd;
-        if (qtdSaldo <= 0) continue; // sem saldo
+        if (qtdSaldo === 0) continue; // sem saldo
         result.push({
           ...aprov,
           qtd_ja_faturada: fat.qtd,
