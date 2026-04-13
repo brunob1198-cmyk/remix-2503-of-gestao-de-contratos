@@ -356,3 +356,58 @@ export function useUpdateFaturamentoStatus() {
     },
   });
 }
+
+export function useUpdateFaturamento() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      numero_fatura?: string | null;
+      data_emissao?: string;
+      impostos_percentual?: number;
+      descontos?: number;
+      observacao?: string | null;
+    }) => {
+      const updates: Record<string, any> = {};
+      if (params.numero_fatura !== undefined) updates.numero_fatura = params.numero_fatura;
+      if (params.data_emissao !== undefined) updates.data_emissao = params.data_emissao;
+      if (params.observacao !== undefined) updates.observacao = params.observacao;
+
+      // Recalculate if financial fields changed
+      if (params.impostos_percentual !== undefined || params.descontos !== undefined) {
+        const { data: current, error: fetchErr } = await supabase
+          .from("faturamentos")
+          .select("valor_bruto, impostos_percentual, descontos")
+          .eq("id", params.id)
+          .single();
+        if (fetchErr) throw fetchErr;
+
+        const impPerc = params.impostos_percentual ?? current.impostos_percentual;
+        const desc = params.descontos ?? current.descontos;
+        const impVal = current.valor_bruto * (impPerc / 100);
+        const liq = current.valor_bruto - impVal - desc;
+
+        updates.impostos_percentual = impPerc;
+        updates.impostos_valor = impVal;
+        updates.descontos = desc;
+        updates.valor_liquido = liq;
+      }
+
+      const { error } = await supabase
+        .from("faturamentos")
+        .update(updates)
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["faturamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["itens_disponiveis_faturamento"] });
+      toast({ title: "Fatura atualizada com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar fatura", description: error.message, variant: "destructive" });
+    },
+  });
+}
