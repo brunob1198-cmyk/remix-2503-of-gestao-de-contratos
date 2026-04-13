@@ -29,12 +29,10 @@ async function getValidAccessToken(empresaId: string): Promise<string> {
   const now = new Date();
   const expiresAt = new Date(tokenData.expires_at);
 
-  // Se ainda válido (com margem de 2 min), retorna direto
   if (expiresAt > new Date(now.getTime() + 120000)) {
     return tokenData.access_token;
   }
 
-  // Refresh token
   console.log("Token expirado ou próximo de expirar, renovando...");
   return await refreshAccessToken(empresaId, tokenData);
 }
@@ -221,23 +219,29 @@ function resolveProjetoESite(
   return { projetoId: matchedProject.id, siteId: null, strategy: "project-only" };
 }
 
-// Buscar despesas (contas a pagar) usando a API v1 correta
-async function fetchDespesasContaAzul(accessToken: string, startDate: string, endDate: string) {
-  const allBills: any[] = [];
+/**
+ * Fetch parcelas from the Conta Azul API using a specific date filter strategy.
+ * The API requires data_vencimento_de/ate, but we can also add optional filters
+ * for data_competencia and data_pagamento.
+ */
+async function fetchParcelas(
+  accessToken: string,
+  params: Record<string, string>,
+  label: string,
+): Promise<any[]> {
+  const allItems: any[] = [];
   let page = 1;
-  const pageSize = 200;
+  const pageSize = 1000; // max allowed by API
 
   while (true) {
-    // Endpoint correto: /v1/financeiro/eventos-financeiros/contas-a-pagar/buscar
-    const params = new URLSearchParams({
-      data_vencimento_de: startDate,
-      data_vencimento_ate: endDate,
+    const queryParams = new URLSearchParams({
+      ...params,
       pagina: String(page),
       tamanho_pagina: String(pageSize),
     });
 
-    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?${params.toString()}`;
-    console.log(`Buscando contas a pagar (page ${page}):`, url);
+    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?${queryParams.toString()}`;
+    console.log(`[${label}] Buscando page ${page}:`, url);
 
     const response = await fetch(url, {
       headers: {
@@ -248,7 +252,7 @@ async function fetchDespesasContaAzul(accessToken: string, startDate: string, en
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error(`Erro ao buscar contas a pagar (page ${page}):`, response.status, errBody);
+      console.error(`[${label}] Erro page ${page}:`, response.status, errBody);
 
       if (response.status === 401) {
         throw new Error("Token expirado ou inválido. Tente reconectar o Conta Azul.");
@@ -257,20 +261,85 @@ async function fetchDespesasContaAzul(accessToken: string, startDate: string, en
     }
 
     const data = await response.json();
-    console.log(`Resposta page ${page}:`, JSON.stringify(data).substring(0, 500));
+    console.log(`[${label}] Page ${page} response: itens_totais=${data.itens_totais}, received=${(data.itens || []).length}`);
 
-    // A resposta pode ser um array direto ou um objeto com itens/items
+    // API returns { itens_totais, itens, totais }
     const items = Array.isArray(data) ? data : (data.itens || data.items || data.content || []);
 
     if (!Array.isArray(items) || items.length === 0) break;
 
-    allBills.push(...items);
+    allItems.push(...items);
 
+    // Check if we have all items
+    if (data.itens_totais && allItems.length >= data.itens_totais) break;
     if (items.length < pageSize) break;
     page++;
   }
 
-  return allBills;
+  console.log(`[${label}] Total fetched: ${allItems.length}`);
+  return allItems;
+}
+
+/**
+ * Fetch all parcelas for a period using multiple date filter strategies
+ * to ensure we catch entries regardless of which date falls in the period.
+ * This is critical for credit card transactions where:
+ * - data_competencia = transaction date (e.g. Oct 15)
+ * - data_vencimento = card bill due date (e.g. Nov 10)
+ * - data_pagamento = actual payment date (e.g. Nov 10)
+ */
+async function fetchAllDespesas(
+  accessToken: string,
+  startDate: string,
+  endDate: string,
+): Promise<any[]> {
+  // Wide date range for vencimento when filtering by other dates
+  // Go 3 months before and after to catch card bills
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const wideStart = new Date(start);
+  wideStart.setMonth(wideStart.getMonth() - 3);
+  const wideEnd = new Date(end);
+  wideEnd.setMonth(wideEnd.getMonth() + 3);
+  const wideStartStr = wideStart.toISOString().split("T")[0];
+  const wideEndStr = wideEnd.toISOString().split("T")[0];
+
+  // Strategy 1: Filter by vencimento date in the target period (original approach)
+  const byVencimento = await fetchParcelas(accessToken, {
+    data_vencimento_de: startDate,
+    data_vencimento_ate: endDate,
+  }, "vencimento");
+
+  // Strategy 2: Filter by competencia date in the target period
+  // with a wide vencimento range to satisfy the required param
+  const byCompetencia = await fetchParcelas(accessToken, {
+    data_vencimento_de: wideStartStr,
+    data_vencimento_ate: wideEndStr,
+    data_competencia_de: startDate,
+    data_competencia_ate: endDate,
+  }, "competencia");
+
+  // Strategy 3: Filter by payment date in the target period
+  const byPagamento = await fetchParcelas(accessToken, {
+    data_vencimento_de: wideStartStr,
+    data_vencimento_ate: wideEndStr,
+    data_pagamento_de: startDate,
+    data_pagamento_ate: endDate,
+  }, "pagamento");
+
+  // Deduplicate by ID
+  const seen = new Map<string, any>();
+  for (const item of [...byVencimento, ...byCompetencia, ...byPagamento]) {
+    const id = item.id || item.parcela_id;
+    if (id && !seen.has(id)) {
+      seen.set(id, item);
+    }
+  }
+
+  const merged = Array.from(seen.values());
+  console.log(`Merged results: vencimento=${byVencimento.length}, competencia=${byCompetencia.length}, pagamento=${byPagamento.length} → deduplicated=${merged.length}`);
+
+  return merged;
 }
 
 serve(async (req) => {
@@ -291,10 +360,8 @@ serve(async (req) => {
 
       console.log(`Iniciando sincronização Conta Azul para empresa ${empresa_id}...`);
 
-      // Obter token válido (com auto-refresh)
       const accessToken = await getValidAccessToken(empresa_id);
 
-      // Definir período (default: mês atual)
       const now = new Date();
       const startDateStr = start_date || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const endMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -302,11 +369,10 @@ serve(async (req) => {
 
       console.log(`Período: ${startDateStr} a ${endDateStr}`);
 
-      // Buscar despesas da API
-      const bills = await fetchDespesasContaAzul(accessToken, startDateStr, endDateStr);
-      console.log(`Encontradas ${bills.length} contas a pagar no período.`);
+      // Fetch using multiple date strategies to catch all entries
+      const bills = await fetchAllDespesas(accessToken, startDateStr, endDateStr);
+      console.log(`Total despesas encontradas (deduplicadas): ${bills.length}`);
 
-      // Buscar mapeamento existente, projetos e sites para vincular os lançamentos importados
       const [{ data: mapeamentos }, { data: projetos }, { data: sites }] = await Promise.all([
         supabase.from("mapeamento_categorias_erp").select("*"),
         supabase.from("projetos").select("id, codigo, nome"),
@@ -350,18 +416,18 @@ serve(async (req) => {
         none: 0,
       };
 
-      // Collect new category mappings to insert in batch
       const newCategorias: { categoria_erp: string; categoria_interna: string; criado_por_ia: boolean }[] = [];
 
       const records = bills.map((bill: any, idx: number) => {
-        const erpId = bill.id || `CA-${idx}`;
-        const descricao = bill.descricao || "Sem descrição";
-        const valor = Number(bill.total || bill.nao_pago || 0);
-        const categorias = bill.categorias || [];
-        const categoriaErp = categorias.length > 0 ? categorias[0].nome : "Outros";
-        const centrosCusto = bill.centros_de_custo || [];
-        const centroCusto = centrosCusto.length > 0 ? centrosCusto[0].nome : null;
-        const dataPagamento = bill.data_vencimento || null;
+        const erpId = bill.id || bill.parcela_id || `CA-${idx}`;
+        const descricao = bill.descricao || bill.descricao_parcela || "Sem descrição";
+        // Try multiple value fields - parcelas may use different field names
+        const valor = Number(bill.total || bill.valor_bruto || bill.nao_pago || bill.valor || 0);
+        const categorias = bill.categorias || bill.rateio || [];
+        const categoriaErp = categorias.length > 0 ? (categorias[0].nome || categorias[0].nome_categoria || "Outros") : "Outros";
+        const centrosCusto = bill.centros_de_custo || bill.centros_custo || [];
+        const centroCusto = centrosCusto.length > 0 ? (centrosCusto[0].nome || centrosCusto[0].nome_centro_custo || null) : null;
+        const dataPagamento = bill.data_pagamento || bill.data_vencimento || null;
         const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
         const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
 
