@@ -82,10 +82,10 @@ export function useItensDisponiveis(projetoIds?: string[]) {
       const { data: medicoes, error: errMed } = await qMedicoes;
       if (errMed) throw errMed;
 
-      // 2. Buscar faturamentos já feitos
+      // 2. Buscar faturamentos já feitos (excluindo cancelados)
       const { data: fatItens, error: errFat } = await supabase
         .from("faturamento_itens")
-        .select("site_id, item_lpu_id, quantidade_faturada, valor_faturado")
+        .select("site_id, item_lpu_id, quantidade_faturada, valor_faturado, faturamento:faturamentos!faturamento_itens_faturamento_id_fkey(status)")
         .limit(100000);
       if (errFat) throw errFat;
 
