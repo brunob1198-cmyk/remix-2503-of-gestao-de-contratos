@@ -1017,12 +1017,12 @@ export default function FaturamentoPage() {
                                   {st.icon} {st.label}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="flex items-center gap-1">
                                 <Select
                                   value={f.status}
                                   onValueChange={v => updateStatus.mutate({ id: f.id, status: v })}
                                 >
-                                  <SelectTrigger className="h-8 text-xs">
+                                  <SelectTrigger className="h-8 text-xs w-24">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -1031,6 +1031,9 @@ export default function FaturamentoPage() {
                                     <SelectItem value="cancelado">Cancelado</SelectItem>
                                   </SelectContent>
                                 </Select>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditFatura(f)} title="Editar fatura">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
                               </TableCell>
                             </TableRow>
                           );
