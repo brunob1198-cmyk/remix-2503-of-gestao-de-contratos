@@ -577,9 +577,7 @@ async function fetchWithRetry(accessToken: string, url: string): Promise<any | n
 
 /**
  * Fetch the detail of a single bill to get rateio/allocation data.
- * Strategy:
- * 1. Fetch parcela detail → get evento ID
- * 2. Fetch evento financeiro detail → get rateio/centros with amounts
+ * The parcela detail contains an embedded `evento` object that may have rateio data.
  */
 async function fetchBillDetail(
   accessToken: string,
@@ -588,7 +586,6 @@ async function fetchBillDetail(
   const billId = pickStringValue(bill, ["id", "parcela_id"]);
   if (!billId) return null;
 
-  // Step 1: Fetch parcela detail to get evento reference
   const parcelaPayload = await fetchWithRetry(
     accessToken,
     `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${billId}`,
@@ -596,29 +593,24 @@ async function fetchBillDetail(
   const detail = parcelaPayload?.parcela || parcelaPayload?.data || parcelaPayload;
   if (!detail) return null;
 
-  // Step 2: Try to fetch the parent event which may have rateio data
-  const eventoRef = detail?.evento;
-  const eventoId = typeof eventoRef === "object" ? eventoRef?.id : typeof eventoRef === "string" ? eventoRef : null;
+  // The evento object is EMBEDDED in the parcela response — use it directly
+  const evento = detail?.evento;
+  if (evento && typeof evento === "object") {
+    detail._evento_keys = Object.keys(evento);
+    detail._evento_sample = evento;
 
-  if (eventoId) {
-    const eventoPayload = await fetchWithRetry(
-      accessToken,
-      `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${eventoId}`,
-    );
-    if (eventoPayload) {
-      const evento = eventoPayload?.evento || eventoPayload?.data || eventoPayload;
-      detail._evento_keys = Object.keys(evento);
-      detail._evento_sample = evento;
-
-      // Merge rateio data from event into detail
-      if (evento.rateios?.length > 0) detail.rateios = evento.rateios;
-      if (evento.rateio?.length > 0) detail.rateio = evento.rateio;
-      if (evento.centros_de_custo?.length > 0) {
-        const hasAmounts = evento.centros_de_custo.some(
-          (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
-        );
-        if (hasAmounts) detail.centros_de_custo = evento.centros_de_custo;
-      }
+    // Extract rateio data from the embedded evento
+    if (Array.isArray(evento.rateios) && evento.rateios.length > 0) {
+      detail.rateios = evento.rateios;
+    }
+    if (Array.isArray(evento.rateio) && evento.rateio.length > 0) {
+      detail.rateio = evento.rateio;
+    }
+    if (Array.isArray(evento.centros_de_custo) && evento.centros_de_custo.length > 0) {
+      detail.centros_de_custo = evento.centros_de_custo;
+    }
+    if (Array.isArray(evento.categorias) && evento.categorias.length > 0) {
+      detail.categorias = evento.categorias;
     }
   }
 
