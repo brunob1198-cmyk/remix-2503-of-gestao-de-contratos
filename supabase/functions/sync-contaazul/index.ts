@@ -532,6 +532,29 @@ function resolveProjetoESite(
 }
 
 /**
+ * Fetch the detail of a single bill to get rateio/allocation data
+ * that the search endpoint doesn't return.
+ */
+async function fetchBillDetail(
+  accessToken: string,
+  billId: string,
+): Promise<any | null> {
+  try {
+    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch parcelas from the Conta Azul API using a specific date filter strategy.
  * The API requires data_vencimento_de/ate, but we can also add optional filters
  * for data_competencia and data_pagamento.
