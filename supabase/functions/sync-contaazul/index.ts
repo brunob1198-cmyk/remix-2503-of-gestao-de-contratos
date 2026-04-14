@@ -359,10 +359,26 @@ export function buildSplitAllocations(bill: any, total: number): SplitAllocation
     );
   }
 
-  const centros = distributeAmounts(normalizeCentrosCusto(bill), total);
-  const categorias = distributeAmounts(normalizeCategorias(bill), total);
-  const centrosDefinemValor = centros.some((item) => item.valor !== null || item.percentual !== null);
-  const categoriasDefinemValor = categorias.some((item) => item.valor !== null || item.percentual !== null);
+  const rawCentros = normalizeCentrosCusto(bill);
+  const rawCategorias = normalizeCategorias(bill);
+  const centrosHaveAmounts = rawCentros.some((item) => item.valor !== null || item.percentual !== null);
+  const categoriasHaveAmounts = rawCategorias.some((item) => item.valor !== null || item.percentual !== null);
+
+  // CRITICAL: If centros_de_custo have NO amounts (only id+nome from search API),
+  // do NOT split evenly — use only the first centro with the full amount.
+  // Even splits create phantom allocations to wrong projects.
+  const centros = centrosHaveAmounts
+    ? distributeAmounts(rawCentros, total)
+    : rawCentros.length > 0
+      ? [{ ...rawCentros[0], valorCalculado: total }]
+      : [];
+  const categorias = categoriasHaveAmounts
+    ? distributeAmounts(rawCategorias, total)
+    : rawCategorias.length > 0
+      ? [{ ...rawCategorias[0], valorCalculado: total }]
+      : [];
+  const centrosDefinemValor = centrosHaveAmounts;
+  const categoriasDefinemValor = categoriasHaveAmounts;
 
   if (!centros.length && !categorias.length) {
     return [{ key: "default", valor: roundCurrency(total), centroCusto: null, categoriaErp: "Outros" }];
@@ -539,19 +555,33 @@ async function fetchBillDetail(
   accessToken: string,
   billId: string,
 ): Promise<any | null> {
-  try {
-    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`;
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    return null;
+  // Try multiple endpoint patterns — the search returns parcela-level data
+  const urls = [
+    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`,
+    `${CONTAAZUL_API}/v1/financeiro/contas-a-pagar/${billId}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+      // Log first failure for debugging
+      if (url === urls[0]) {
+        const errBody = await response.text().catch(() => "");
+        console.log(`Detail fetch failed (${response.status}) for ${billId}: ${errBody.substring(0, 200)}`);
+      }
+    } catch (e: any) {
+      console.log(`Detail fetch error for ${billId}: ${e.message}`);
+    }
   }
+  return null;
 }
 
 /**
