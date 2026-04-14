@@ -187,6 +187,10 @@ function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function pickStringValue(source: any, paths: string[]): string | null {
   for (const path of paths) {
     const value = readPath(source, path);
@@ -364,17 +368,14 @@ export function buildSplitAllocations(bill: any, total: number): SplitAllocation
   const centrosHaveAmounts = rawCentros.some((item) => item.valor !== null || item.percentual !== null);
   const categoriasHaveAmounts = rawCategorias.some((item) => item.valor !== null || item.percentual !== null);
 
-  // CRITICAL: If centros_de_custo have NO amounts (only id+nome from search API),
-  // do NOT split evenly — use only the first centro with the full amount.
-  // Even splits create phantom allocations to wrong projects.
   const centros = centrosHaveAmounts
     ? distributeAmounts(rawCentros, total)
-    : rawCentros.length > 0
+    : rawCentros.length === 1
       ? [{ ...rawCentros[0], valorCalculado: total }]
       : [];
   const categorias = categoriasHaveAmounts
     ? distributeAmounts(rawCategorias, total)
-    : rawCategorias.length > 0
+    : rawCategorias.length === 1
       ? [{ ...rawCategorias[0], valorCalculado: total }]
       : [];
   const centrosDefinemValor = centrosHaveAmounts;
@@ -553,34 +554,56 @@ function resolveProjetoESite(
  */
 async function fetchBillDetail(
   accessToken: string,
-  billId: string,
+  bill: any,
 ): Promise<any | null> {
-  // Try multiple endpoint patterns — the search returns parcela-level data
-  const urls = [
-    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`,
-    `${CONTAAZUL_API}/v1/financeiro/contas-a-pagar/${billId}`,
-  ];
+  const candidateIds = Array.from(new Set(
+    [
+      pickStringValue(bill, ["parcela_id", "parcela.id", "id"]),
+      pickStringValue(bill, ["conta_a_pagar.id", "conta.id", "titulo.id", "evento_financeiro.id"]),
+    ].filter((value): value is string => Boolean(value)),
+  ));
 
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-      // Log first failure for debugging
-      if (url === urls[0]) {
+  for (const parcelaId of candidateIds) {
+    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`;
+
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const payload = await response.json();
+          return payload?.parcela || payload?.data || payload;
+        }
+
         const errBody = await response.text().catch(() => "");
-        console.log(`Detail fetch failed (${response.status}) for ${billId}: ${errBody.substring(0, 200)}`);
+
+        if (response.status === 429 && attempt < 4) {
+          const waitMs = attempt * 400;
+          console.log(`Detail fetch rate-limited for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms`);
+          await sleep(waitMs);
+          continue;
+        }
+
+        console.log(`Detail fetch failed (${response.status}) for parcela ${parcelaId}: ${errBody.substring(0, 300)}`);
+        break;
+      } catch (e: any) {
+        if (attempt < 4) {
+          const waitMs = attempt * 400;
+          console.log(`Detail fetch error for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms: ${e.message}`);
+          await sleep(waitMs);
+          continue;
+        }
+
+        console.log(`Detail fetch error for parcela ${parcelaId}: ${e.message}`);
       }
-    } catch (e: any) {
-      console.log(`Detail fetch error for ${billId}: ${e.message}`);
     }
   }
+
   return null;
 }
 
@@ -752,60 +775,59 @@ serve(async (req) => {
         let detailFetched = 0;
         let detailLogged = false;
 
-        const DETAIL_BATCH = 10;
-        for (let i = 0; i < multiCenterIndices.length; i += DETAIL_BATCH) {
-          const batch = multiCenterIndices.slice(i, i + DETAIL_BATCH);
-          const results = await Promise.allSettled(
-            batch.map((idx) => fetchBillDetail(accessToken, bills[idx].id)),
-          );
+        const DETAIL_THROTTLE_MS = 140;
+        for (const billIdx of multiCenterIndices) {
+          const detail = await fetchBillDetail(accessToken, bills[billIdx]);
 
-          results.forEach((result, batchIdx) => {
-            if (result.status === "fulfilled" && result.value) {
-              const detail = result.value;
-              const billIdx = batch[batchIdx];
-
-              // Log first detail response for debugging
-              if (!detailLogged) {
-                const allKeys = Object.keys(detail);
-                console.log("Detail bill ALL keys:", allKeys);
-                const rateioKeys = allKeys.filter((k) =>
-                  /rateio|split|alloc|centro|parcela|categori/i.test(k),
+          if (detail) {
+            if (!detailLogged) {
+              const allKeys = Object.keys(detail);
+              console.log("Detail bill ALL keys:", allKeys);
+              const rateioKeys = allKeys.filter((k) =>
+                /rateio|split|alloc|centro|parcela|categori/i.test(k),
+              );
+              for (const key of rateioKeys) {
+                const val = detail[key];
+                console.log(
+                  `Detail bill.${key}:`,
+                  JSON.stringify(val).substring(0, 800),
                 );
-                for (const key of rateioKeys) {
-                  const val = detail[key];
-                  console.log(
-                    `Detail bill.${key}:`,
-                    JSON.stringify(val).substring(0, 800),
-                  );
-                }
-                detailLogged = true;
               }
-
-              // Merge rateio data if present
-              if (detail.rateios && Array.isArray(detail.rateios) && detail.rateios.length > 0) {
-                bills[billIdx].rateios = detail.rateios;
-              } else if (detail.rateio && Array.isArray(detail.rateio) && detail.rateio.length > 0) {
-                bills[billIdx].rateio = detail.rateio;
-              }
-
-              // Check for parcelas with per-center amounts
-              if (detail.parcelas && Array.isArray(detail.parcelas)) {
-                bills[billIdx].parcelas_detail = detail.parcelas;
-              }
-
-              // Check for centros_de_custo with amounts in detail
-              if (detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
-                const hasAmounts = detail.centros_de_custo.some(
-                  (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
-                );
-                if (hasAmounts) {
-                  bills[billIdx].centros_de_custo = detail.centros_de_custo;
-                }
-              }
-
-              detailFetched++;
+              detailLogged = true;
             }
-          });
+
+            if (detail.rateios && Array.isArray(detail.rateios) && detail.rateios.length > 0) {
+              bills[billIdx].rateios = detail.rateios;
+            } else if (detail.rateio && Array.isArray(detail.rateio) && detail.rateio.length > 0) {
+              bills[billIdx].rateio = detail.rateio;
+            }
+
+            if (detail.parcelas && Array.isArray(detail.parcelas)) {
+              bills[billIdx].parcelas_detail = detail.parcelas;
+            }
+
+            if (detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
+              const hasAmounts = detail.centros_de_custo.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (hasAmounts) {
+                bills[billIdx].centros_de_custo = detail.centros_de_custo;
+              }
+            }
+
+            if (detail.categorias && Array.isArray(detail.categorias)) {
+              const hasAmounts = detail.categorias.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (hasAmounts || ensureArray(bills[billIdx].categorias).length === 0) {
+                bills[billIdx].categorias = detail.categorias;
+              }
+            }
+
+            detailFetched++;
+          }
+
+          await sleep(DETAIL_THROTTLE_MS);
         }
 
         console.log(`Detail fetched for ${detailFetched}/${multiCenterIndices.length} bills`);
