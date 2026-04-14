@@ -780,7 +780,7 @@ serve(async (req) => {
         let detailFetched = 0;
         let detailLogged = false;
 
-        const DETAIL_THROTTLE_MS = 140;
+        const DETAIL_THROTTLE_MS = 160;
         for (const billIdx of multiCenterIndices) {
           const detail = await fetchBillDetail(accessToken, bills[billIdx]);
 
@@ -788,30 +788,65 @@ serve(async (req) => {
             if (!detailLogged) {
               const allKeys = Object.keys(detail);
               console.log("Detail bill ALL keys:", allKeys);
-              const rateioKeys = allKeys.filter((k) =>
-                /rateio|split|alloc|centro|parcela|categori/i.test(k),
-              );
-              for (const key of rateioKeys) {
-                const val = detail[key];
-                console.log(
-                  `Detail bill.${key}:`,
-                  JSON.stringify(val).substring(0, 800),
-                );
+
+              // Log valor_composicao structure — this is where rateio amounts live
+              const vc = detail.valor_composicao;
+              if (vc && typeof vc === "object") {
+                console.log("Detail valor_composicao keys:", Object.keys(vc));
+                const vcCentros = ensureArray(vc.centros_de_custo || vc.centros_custo);
+                if (vcCentros.length > 0) {
+                  console.log("valor_composicao.centros_de_custo[0]:", JSON.stringify(vcCentros[0]).substring(0, 500));
+                  console.log("valor_composicao.centros_de_custo count:", vcCentros.length);
+                }
+                const vcCats = ensureArray(vc.categorias);
+                if (vcCats.length > 0) {
+                  console.log("valor_composicao.categorias[0]:", JSON.stringify(vcCats[0]).substring(0, 500));
+                }
+              } else {
+                console.log("Detail valor_composicao: NOT FOUND or not object");
+              }
+
+              // Also log rateios if present
+              if (detail.rateios) {
+                console.log("Detail rateios:", JSON.stringify(detail.rateios).substring(0, 800));
+              }
+              if (detail.rateio) {
+                console.log("Detail rateio:", JSON.stringify(detail.rateio).substring(0, 800));
               }
               detailLogged = true;
             }
 
+            // Extract rateio data from valor_composicao (primary source for split amounts)
+            const vc = detail.valor_composicao;
+            if (vc && typeof vc === "object") {
+              const vcCentros = ensureArray(vc.centros_de_custo || vc.centros_custo);
+              const hasAmounts = vcCentros.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (hasAmounts && vcCentros.length > 0) {
+                // Override centros_de_custo with the enriched version from valor_composicao
+                bills[billIdx].centros_de_custo = vcCentros;
+                console.log(`Bill ${billIdx}: enriched centros from valor_composicao (${vcCentros.length} centros with amounts)`);
+              }
+
+              const vcCats = ensureArray(vc.categorias);
+              const catsHaveAmounts = vcCats.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (catsHaveAmounts && vcCats.length > 0) {
+                bills[billIdx].categorias = vcCats;
+              }
+            }
+
+            // Also check top-level rateios/rateio from detail
             if (detail.rateios && Array.isArray(detail.rateios) && detail.rateios.length > 0) {
               bills[billIdx].rateios = detail.rateios;
             } else if (detail.rateio && Array.isArray(detail.rateio) && detail.rateio.length > 0) {
               bills[billIdx].rateio = detail.rateio;
             }
 
-            if (detail.parcelas && Array.isArray(detail.parcelas)) {
-              bills[billIdx].parcelas_detail = detail.parcelas;
-            }
-
-            if (detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
+            // Also override centros_de_custo from detail if they have amounts
+            if (!vc && detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
               const hasAmounts = detail.centros_de_custo.some(
                 (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
               );
@@ -820,7 +855,7 @@ serve(async (req) => {
               }
             }
 
-            if (detail.categorias && Array.isArray(detail.categorias)) {
+            if (!vc && detail.categorias && Array.isArray(detail.categorias)) {
               const hasAmounts = detail.categorias.some(
                 (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
               );
