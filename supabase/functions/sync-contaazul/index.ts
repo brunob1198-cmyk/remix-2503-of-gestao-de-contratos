@@ -368,13 +368,13 @@ export function buildSplitAllocations(bill: any, total: number): SplitAllocation
   const centrosHaveAmounts = rawCentros.some((item) => item.valor !== null || item.percentual !== null);
   const categoriasHaveAmounts = rawCategorias.some((item) => item.valor !== null || item.percentual !== null);
 
+  // For multi-center without amounts: after valor_composicao enrichment,
+  // if still no amounts, assign full value to first center (not even split)
   const centros = centrosHaveAmounts
     ? distributeAmounts(rawCentros, total)
-    : rawCentros.length === 1
+    : rawCentros.length >= 1
       ? [{ ...rawCentros[0], valorCalculado: total }]
-      : rawCentros.length > 1
-        ? rawCentros.map((c) => ({ ...c, valorCalculado: 0, valor: null, percentual: null }))
-        : [];
+      : [];
   const categorias = categoriasHaveAmounts
     ? distributeAmounts(rawCategorias, total)
     : rawCategorias.length === 1
