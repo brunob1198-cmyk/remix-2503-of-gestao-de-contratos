@@ -372,7 +372,9 @@ export function buildSplitAllocations(bill: any, total: number): SplitAllocation
     ? distributeAmounts(rawCentros, total)
     : rawCentros.length === 1
       ? [{ ...rawCentros[0], valorCalculado: total }]
-      : [];
+      : rawCentros.length > 1
+        ? rawCentros.map((c) => ({ ...c, valorCalculado: 0, valor: null, percentual: null }))
+        : [];
   const categorias = categoriasHaveAmounts
     ? distributeAmounts(rawCategorias, total)
     : rawCategorias.length === 1
