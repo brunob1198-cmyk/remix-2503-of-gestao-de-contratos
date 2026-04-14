@@ -799,33 +799,33 @@ serve(async (req) => {
 
           if (detail) {
             if (!detailLogged) {
-              const allKeys = Object.keys(detail);
-              console.log("Detail bill ALL keys:", allKeys);
+              console.log("Detail bill ALL keys:", Object.keys(detail));
 
-              // Log valor_composicao structure — this is where rateio amounts live
-              const vc = detail.valor_composicao;
-              if (vc && typeof vc === "object") {
-                console.log("Detail valor_composicao keys:", Object.keys(vc));
-                const vcCentros = ensureArray(vc.centros_de_custo || vc.centros_custo);
-                if (vcCentros.length > 0) {
-                  console.log("valor_composicao.centros_de_custo[0]:", JSON.stringify(vcCentros[0]).substring(0, 500));
-                  console.log("valor_composicao.centros_de_custo count:", vcCentros.length);
-                }
-                const vcCats = ensureArray(vc.categorias);
-                if (vcCats.length > 0) {
-                  console.log("valor_composicao.categorias[0]:", JSON.stringify(vcCats[0]).substring(0, 500));
+              // Log evento data — this is where rateio should come from
+              if (detail._evento_keys) {
+                console.log("Evento keys:", detail._evento_keys);
+                const evento = detail._evento_sample;
+                if (evento) {
+                  // Log all array/object fields that might contain rateio
+                  for (const key of detail._evento_keys) {
+                    const val = evento[key];
+                    if (Array.isArray(val) && val.length > 0) {
+                      console.log(`Evento.${key}[0]:`, JSON.stringify(val[0]).substring(0, 500));
+                      console.log(`Evento.${key} count:`, val.length);
+                    } else if (val && typeof val === "object") {
+                      console.log(`Evento.${key}:`, JSON.stringify(val).substring(0, 500));
+                    }
+                  }
                 }
               } else {
-                console.log("Detail valor_composicao: NOT FOUND or not object");
+                console.log("Evento: NOT FETCHED (no evento ID found)");
+                console.log("detail.evento:", JSON.stringify(detail.evento).substring(0, 300));
+                console.log("detail.fatura:", JSON.stringify(detail.fatura).substring(0, 300));
               }
 
-              // Also log rateios if present
-              if (detail.rateios) {
-                console.log("Detail rateios:", JSON.stringify(detail.rateios).substring(0, 800));
-              }
-              if (detail.rateio) {
-                console.log("Detail rateio:", JSON.stringify(detail.rateio).substring(0, 800));
-              }
+              // Log rateios if present
+              if (detail.rateios) console.log("Detail rateios:", JSON.stringify(detail.rateios).substring(0, 800));
+              if (detail.rateio) console.log("Detail rateio:", JSON.stringify(detail.rateio).substring(0, 800));
               detailLogged = true;
             }
 
