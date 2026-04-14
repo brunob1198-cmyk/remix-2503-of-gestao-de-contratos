@@ -551,9 +551,35 @@ function resolveProjetoESite(
 }
 
 /**
- * Fetch the detail of a single bill to get rateio/allocation data
- * that the search endpoint doesn't return.
- * Tries multiple endpoints: parcela detail AND the parent event (conta-a-pagar).
+ * Fetch with retry and rate-limit handling.
+ */
+async function fetchWithRetry(accessToken: string, url: string): Promise<any | null> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      if (response.ok) return await response.json();
+      if (response.status === 429 && attempt < 3) {
+        await sleep(attempt * 500);
+        continue;
+      }
+      break;
+    } catch (e: any) {
+      if (attempt < 3) { await sleep(attempt * 400); continue; }
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch the detail of a single bill to get rateio/allocation data.
+ * Strategy:
+ * 1. Fetch parcela detail → get evento ID
+ * 2. Fetch evento financeiro detail → get rateio/centros with amounts
  */
 async function fetchBillDetail(
   accessToken: string,
@@ -562,56 +588,41 @@ async function fetchBillDetail(
   const billId = pickStringValue(bill, ["id", "parcela_id"]);
   if (!billId) return null;
 
-  // Try multiple endpoint patterns to find the one that returns valor_composicao/rateio
-  const endpoints = [
+  // Step 1: Fetch parcela detail to get evento reference
+  const parcelaPayload = await fetchWithRetry(
+    accessToken,
     `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${billId}`,
-    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`,
-  ];
+  );
+  const detail = parcelaPayload?.parcela || parcelaPayload?.data || parcelaPayload;
+  if (!detail) return null;
 
-  for (const url of endpoints) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-          },
-        });
+  // Step 2: Try to fetch the parent event which may have rateio data
+  const eventoRef = detail?.evento;
+  const eventoId = typeof eventoRef === "object" ? eventoRef?.id : typeof eventoRef === "string" ? eventoRef : null;
 
-        if (response.ok) {
-          const payload = await response.json();
-          const detail = payload?.parcela || payload?.data || payload;
-          // Check if this endpoint has useful rateio data
-          const vc = detail?.valor_composicao;
-          if (vc && typeof vc === "object") {
-            return detail; // This endpoint has valor_composicao — use it
-          }
-          // Even without valor_composicao, if it has rateios, use it
-          if (detail?.rateios?.length > 0 || detail?.rateio?.length > 0) {
-            return detail;
-          }
-          // Store as fallback and try next endpoint
-          if (url === endpoints[endpoints.length - 1]) {
-            return detail; // Last endpoint — return whatever we got
-          }
-          continue; // Try next endpoint
-        }
+  if (eventoId) {
+    const eventoPayload = await fetchWithRetry(
+      accessToken,
+      `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${eventoId}`,
+    );
+    if (eventoPayload) {
+      const evento = eventoPayload?.evento || eventoPayload?.data || eventoPayload;
+      detail._evento_keys = Object.keys(evento);
+      detail._evento_sample = evento;
 
-        if (response.status === 429 && attempt < 3) {
-          await sleep(attempt * 500);
-          continue;
-        }
-        break; // Non-retryable error for this endpoint
-      } catch (e: any) {
-        if (attempt < 3) {
-          await sleep(attempt * 400);
-          continue;
-        }
+      // Merge rateio data from event into detail
+      if (evento.rateios?.length > 0) detail.rateios = evento.rateios;
+      if (evento.rateio?.length > 0) detail.rateio = evento.rateio;
+      if (evento.centros_de_custo?.length > 0) {
+        const hasAmounts = evento.centros_de_custo.some(
+          (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+        );
+        if (hasAmounts) detail.centros_de_custo = evento.centros_de_custo;
       }
     }
   }
 
-  return null;
+  return detail;
 }
 
 /**
