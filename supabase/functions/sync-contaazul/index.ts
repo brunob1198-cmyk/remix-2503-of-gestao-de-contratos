@@ -258,7 +258,12 @@ function rebalanceSplitValues<T extends { valor: number }>(items: T[], total: nu
 }
 
 function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
-  return ensureArray<any>(bill.rateio)
+  // Check both singular and plural forms — Conta Azul API uses "rateios" (plural)
+  const rateioArray = ensureArray<any>(bill.rateios).length > 0
+    ? ensureArray<any>(bill.rateios)
+    : ensureArray<any>(bill.rateio);
+
+  return rateioArray
     .map((item, index) => ({
       key: `rateio-${index}`,
       centroCusto: pickStringValue(item, [
@@ -272,6 +277,8 @@ function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
         "descricao_centro_custo",
         "centro_custo",
         "centro_de_custo",
+        "cost_center",
+        "nome",
       ]),
       categoriaErp: pickStringValue(item, [
         "categoria.nome",
@@ -282,6 +289,7 @@ function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
         "nome_categoria",
         "descricao_categoria",
         "categoria_erp",
+        "categoria",
       ]) || "Outros",
       valor: pickNumberValue(item, [
         "valor",
@@ -290,8 +298,9 @@ function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
         "valor_bruto",
         "valor_liquido",
         "total",
+        "amount",
       ]),
-      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage", "percent"]),
     }))
     .filter((item) => (
       item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
@@ -301,25 +310,31 @@ function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
 function normalizeCentrosCusto(bill: any): NamedAllocation[] {
   const rawCentros = ensureArray<any>(bill.centros_de_custo).length > 0
     ? ensureArray<any>(bill.centros_de_custo)
-    : ensureArray<any>(bill.centros_custo);
+    : ensureArray<any>(bill.centros_custo).length > 0
+      ? ensureArray<any>(bill.centros_custo)
+      : ensureArray<any>(bill.cost_centers);
 
   return rawCentros
     .map((item, index) => ({
       key: `centro-${index}`,
-      nome: pickStringValue(item, ["nome", "nome_centro_custo", "descricao", "descricao_centro_custo"]),
-      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total"]),
-      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+      nome: pickStringValue(item, ["nome", "nome_centro_custo", "descricao", "descricao_centro_custo", "name"]),
+      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total", "amount"]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage", "percent"]),
     }))
     .filter((item) => item.nome !== null || item.valor !== null || item.percentual !== null);
 }
 
 function normalizeCategorias(bill: any): NamedAllocation[] {
-  return ensureArray<any>(bill.categorias)
+  const catArray = ensureArray<any>(bill.categorias).length > 0
+    ? ensureArray<any>(bill.categorias)
+    : ensureArray<any>(bill.categories);
+
+  return catArray
     .map((item, index) => ({
       key: `categoria-${index}`,
-      nome: pickStringValue(item, ["nome", "nome_categoria", "descricao", "descricao_categoria"]),
-      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total"]),
-      percentual: pickNumberValue(item, ["percentual", "porcentagem"]),
+      nome: pickStringValue(item, ["nome", "nome_categoria", "descricao", "descricao_categoria", "name"]),
+      valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "valor_bruto", "total", "amount"]),
+      percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage", "percent"]),
     }))
     .filter((item) => item.nome !== null || item.valor !== null || item.percentual !== null);
 }
@@ -724,7 +739,8 @@ serve(async (req) => {
       const records = bills.flatMap((bill: any, idx: number) => {
         const erpIdBase = String(bill.id || bill.parcela_id || `CA-${idx}`);
         const descricao = bill.descricao || bill.descricao_parcela || "Sem descrição";
-        const valorTotal = toNumber(bill.total)
+        const valorTotal = toNumber(bill.valor_total)
+          ?? toNumber(bill.total)
           ?? toNumber(bill.valor_bruto)
           ?? toNumber(bill.nao_pago)
           ?? toNumber(bill.valor)
@@ -735,7 +751,7 @@ serve(async (req) => {
         const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
         const allocations = buildSplitAllocations(bill, valorTotal);
 
-        if (ensureArray(bill.rateio).length > 0) {
+        if (ensureArray(bill.rateios).length > 0 || ensureArray(bill.rateio).length > 0) {
           splitStats.despesasComRateio += 1;
         }
 
@@ -803,6 +819,25 @@ serve(async (req) => {
 
       console.log("Resumo de vínculo projeto/site:", matchStats);
       console.log("Resumo de rateio:", splitStats);
+
+      // Log sample of first few bills structure for debugging split issues
+      if (bills.length > 0) {
+        const sampleBill = bills[0];
+        const relevantKeys = Object.keys(sampleBill).filter(k =>
+          /rateio|centro|categori|cost|split|alloc/i.test(k) ||
+          /valor|total|bruto|liquido/i.test(k)
+        );
+        console.log("Sample bill relevant keys:", relevantKeys);
+        for (const key of relevantKeys) {
+          const val = sampleBill[key];
+          if (Array.isArray(val) && val.length > 0) {
+            console.log(`Sample bill.${key}[0] keys:`, Object.keys(val[0]));
+            console.log(`Sample bill.${key}[0]:`, JSON.stringify(val[0]).substring(0, 500));
+          } else if (val !== null && val !== undefined) {
+            console.log(`Sample bill.${key}:`, JSON.stringify(val).substring(0, 200));
+          }
+        }
+      }
 
       return new Response(
         JSON.stringify({
