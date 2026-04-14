@@ -551,22 +551,23 @@ function resolveProjetoESite(
 /**
  * Fetch the detail of a single bill to get rateio/allocation data
  * that the search endpoint doesn't return.
+ * Tries multiple endpoints: parcela detail AND the parent event (conta-a-pagar).
  */
 async function fetchBillDetail(
   accessToken: string,
   bill: any,
 ): Promise<any | null> {
-  const candidateIds = Array.from(new Set(
-    [
-      pickStringValue(bill, ["parcela_id", "parcela.id", "id"]),
-      pickStringValue(bill, ["conta_a_pagar.id", "conta.id", "titulo.id", "evento_financeiro.id"]),
-    ].filter((value): value is string => Boolean(value)),
-  ));
+  const billId = pickStringValue(bill, ["id", "parcela_id"]);
+  if (!billId) return null;
 
-  for (const parcelaId of candidateIds) {
-    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`;
+  // Try multiple endpoint patterns to find the one that returns valor_composicao/rateio
+  const endpoints = [
+    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${billId}`,
+    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/${billId}`,
+  ];
 
-    for (let attempt = 1; attempt <= 4; attempt++) {
+  for (const url of endpoints) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const response = await fetch(url, {
           headers: {
@@ -577,29 +578,33 @@ async function fetchBillDetail(
 
         if (response.ok) {
           const payload = await response.json();
-          return payload?.parcela || payload?.data || payload;
+          const detail = payload?.parcela || payload?.data || payload;
+          // Check if this endpoint has useful rateio data
+          const vc = detail?.valor_composicao;
+          if (vc && typeof vc === "object") {
+            return detail; // This endpoint has valor_composicao — use it
+          }
+          // Even without valor_composicao, if it has rateios, use it
+          if (detail?.rateios?.length > 0 || detail?.rateio?.length > 0) {
+            return detail;
+          }
+          // Store as fallback and try next endpoint
+          if (url === endpoints[endpoints.length - 1]) {
+            return detail; // Last endpoint — return whatever we got
+          }
+          continue; // Try next endpoint
         }
 
-        const errBody = await response.text().catch(() => "");
-
-        if (response.status === 429 && attempt < 4) {
-          const waitMs = attempt * 400;
-          console.log(`Detail fetch rate-limited for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms`);
-          await sleep(waitMs);
+        if (response.status === 429 && attempt < 3) {
+          await sleep(attempt * 500);
           continue;
         }
-
-        console.log(`Detail fetch failed (${response.status}) for parcela ${parcelaId}: ${errBody.substring(0, 300)}`);
-        break;
+        break; // Non-retryable error for this endpoint
       } catch (e: any) {
-        if (attempt < 4) {
-          const waitMs = attempt * 400;
-          console.log(`Detail fetch error for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms: ${e.message}`);
-          await sleep(waitMs);
+        if (attempt < 3) {
+          await sleep(attempt * 400);
           continue;
         }
-
-        console.log(`Detail fetch error for parcela ${parcelaId}: ${e.message}`);
       }
     }
   }
