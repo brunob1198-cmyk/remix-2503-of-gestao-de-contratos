@@ -1,41 +1,70 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { SortDir } from "@/components/medicoes/ColumnHeader";
+
+function loadPersisted<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function savePersisted<T>(key: string, value: T, fallback: T) {
+  try {
+    if (JSON.stringify(value) === JSON.stringify(fallback)) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+  } catch { /* quota */ }
+}
 
 export function useTableFilters<T, ColKey extends string>(
   items: T[], 
   columns: readonly ColKey[], 
-  getColValue: (item: T, col: ColKey) => string
+  getColValue: (item: T, col: ColKey) => string,
+  persistKey?: string
 ) {
-  const [sortColumn, setSortColumn] = useState<ColKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>(null);
-  
-  const initialSearchTexts = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: "" }), {} as Record<ColKey, string>), [columns]);
-  const initialSelectedFilters = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: new Set<string>() }), {} as Record<ColKey, Set<string>>), [columns]);
-  
-  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(initialSearchTexts);
-  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>(initialSelectedFilters);
+  const emptySearchTexts = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: "" }), {} as Record<ColKey, string>), [columns]);
+  const emptySelectedArrays = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: [] as string[] }), {} as Record<ColKey, string[]>), [columns]);
+
+  // Persisted or plain state
+  const [sortColumn, setSortColumn] = useState<ColKey | null>(() =>
+    persistKey ? loadPersisted<ColKey | null>(`${persistKey}_sortCol`, null) : null
+  );
+  const [sortDir, setSortDir] = useState<SortDir>(() =>
+    persistKey ? loadPersisted<SortDir>(`${persistKey}_sortDir`, null) : null
+  );
+  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() =>
+    persistKey ? loadPersisted(`${persistKey}_search`, emptySearchTexts) : emptySearchTexts
+  );
+  // Store selected filters as arrays for serialization, convert to Sets for use
+  const [selectedFilterArrays, setSelectedFilterArrays] = useState<Record<ColKey, string[]>>(() =>
+    persistKey ? loadPersisted(`${persistKey}_filters`, emptySelectedArrays) : emptySelectedArrays
+  );
+
+  const selectedFilters = useMemo(() => {
+    const result = {} as Record<ColKey, Set<string>>;
+    for (const col of columns) {
+      result[col] = new Set(selectedFilterArrays[col] || []);
+    }
+    return result;
+  }, [selectedFilterArrays, columns]);
+
+  // Persist on change
+  useEffect(() => {
+    if (!persistKey) return;
+    savePersisted(`${persistKey}_sortCol`, sortColumn, null);
+    savePersisted(`${persistKey}_sortDir`, sortDir, null);
+    savePersisted(`${persistKey}_search`, searchTexts, emptySearchTexts);
+    savePersisted(`${persistKey}_filters`, selectedFilterArrays, emptySelectedArrays);
+  }, [persistKey, sortColumn, sortDir, searchTexts, selectedFilterArrays, emptySearchTexts, emptySelectedArrays]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const handleSort = useCallback((col: ColKey) => {
-    setSortColumn(prevCol => {
-      if (prevCol === col) {
-        setSortDir(prevDir => {
-          if (prevDir === "asc") return "desc";
-          if (prevDir === "desc") return null;
-          return "asc";
-        });
-        return sortDir === "desc" ? null : col; // keep col unless going back to null
-      }
-      setSortDir("asc");
-      return col;
-    });
-  }, [sortDir]);
-
-  // Handle case where we click again and it zeroes:
-  // wait, the above handleSort has a closure trap if it uses state without functional updates.
-  // We can do it linearly:
   const handleSortSafe = (col: ColKey) => {
     if (sortColumn === col) {
       if (sortDir === "asc") {
@@ -54,24 +83,25 @@ export function useTableFilters<T, ColKey extends string>(
 
   const setSearchText = (col: ColKey, v: string) => setSearchTexts(prev => ({ ...prev, [col]: v }));
   const toggleValue = (col: ColKey, v: string) => {
-    setSelectedFilters(prev => {
-      const next = new Set(prev[col]);
-      next.has(v) ? next.delete(v) : next.add(v);
-      return { ...prev, [col]: next };
+    setSelectedFilterArrays(prev => {
+      const current = prev[col] || [];
+      const set = new Set(current);
+      set.has(v) ? set.delete(v) : set.add(v);
+      return { ...prev, [col]: Array.from(set) };
     });
   };
-  const selectAll = (col: ColKey, values: string[]) => setSelectedFilters(prev => ({ ...prev, [col]: new Set(values) }));
-  const clearAll = (col: ColKey) => setSelectedFilters(prev => ({ ...prev, [col]: new Set() }));
+  const selectAll = (col: ColKey, values: string[]) => setSelectedFilterArrays(prev => ({ ...prev, [col]: [...values] }));
+  const clearAll = (col: ColKey) => setSelectedFilterArrays(prev => ({ ...prev, [col]: [] }));
 
   const clearAllFilters = () => {
-    setSearchTexts(initialSearchTexts);
-    setSelectedFilters(initialSelectedFilters);
+    setSearchTexts(emptySearchTexts);
+    setSelectedFilterArrays(emptySelectedArrays);
     setSortColumn(null);
     setSortDir(null);
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = columns.some(c => searchTexts[c] !== "" || selectedFilters[c].size > 0);
+  const hasActiveFilters = columns.some(c => searchTexts[c] !== "" || (selectedFilterArrays[c]?.length || 0) > 0);
 
   const processedItems = useMemo(() => {
     let result = [...items];
