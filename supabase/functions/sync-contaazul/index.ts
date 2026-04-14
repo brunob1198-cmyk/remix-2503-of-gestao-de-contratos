@@ -709,6 +709,78 @@ serve(async (req) => {
       const bills = await fetchAllDespesas(accessToken, startDateStr, endDateStr);
       console.log(`Total despesas encontradas (deduplicadas): ${bills.length}`);
 
+      // Enrich multi-center bills with detail data for accurate rateio
+      const multiCenterIndices: number[] = [];
+      bills.forEach((bill: any, idx: number) => {
+        if (ensureArray(bill.centros_de_custo).length > 1) {
+          multiCenterIndices.push(idx);
+        }
+      });
+
+      if (multiCenterIndices.length > 0) {
+        console.log(`Fetching detail for ${multiCenterIndices.length} multi-center bills...`);
+        let detailFetched = 0;
+        let detailLogged = false;
+
+        const DETAIL_BATCH = 10;
+        for (let i = 0; i < multiCenterIndices.length; i += DETAIL_BATCH) {
+          const batch = multiCenterIndices.slice(i, i + DETAIL_BATCH);
+          const results = await Promise.allSettled(
+            batch.map((idx) => fetchBillDetail(accessToken, bills[idx].id)),
+          );
+
+          results.forEach((result, batchIdx) => {
+            if (result.status === "fulfilled" && result.value) {
+              const detail = result.value;
+              const billIdx = batch[batchIdx];
+
+              // Log first detail response for debugging
+              if (!detailLogged) {
+                const allKeys = Object.keys(detail);
+                console.log("Detail bill ALL keys:", allKeys);
+                const rateioKeys = allKeys.filter((k) =>
+                  /rateio|split|alloc|centro|parcela|categori/i.test(k),
+                );
+                for (const key of rateioKeys) {
+                  const val = detail[key];
+                  console.log(
+                    `Detail bill.${key}:`,
+                    JSON.stringify(val).substring(0, 800),
+                  );
+                }
+                detailLogged = true;
+              }
+
+              // Merge rateio data if present
+              if (detail.rateios && Array.isArray(detail.rateios) && detail.rateios.length > 0) {
+                bills[billIdx].rateios = detail.rateios;
+              } else if (detail.rateio && Array.isArray(detail.rateio) && detail.rateio.length > 0) {
+                bills[billIdx].rateio = detail.rateio;
+              }
+
+              // Check for parcelas with per-center amounts
+              if (detail.parcelas && Array.isArray(detail.parcelas)) {
+                bills[billIdx].parcelas_detail = detail.parcelas;
+              }
+
+              // Check for centros_de_custo with amounts in detail
+              if (detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
+                const hasAmounts = detail.centros_de_custo.some(
+                  (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+                );
+                if (hasAmounts) {
+                  bills[billIdx].centros_de_custo = detail.centros_de_custo;
+                }
+              }
+
+              detailFetched++;
+            }
+          });
+        }
+
+        console.log(`Detail fetched for ${detailFetched}/${multiCenterIndices.length} bills`);
+      }
+
       const [{ data: mapeamentos }, { data: projetos }, { data: sites }] = await Promise.all([
         supabase.from("mapeamento_categorias_erp").select("*"),
         supabase.from("projetos").select("id, codigo, nome"),
