@@ -262,53 +262,54 @@ function rebalanceSplitValues<T extends { valor: number }>(items: T[], total: nu
 }
 
 function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
-  // Check both singular and plural forms — Conta Azul API uses "rateios" (plural)
   const rateioArray = ensureArray<any>(bill.rateios).length > 0
     ? ensureArray<any>(bill.rateios)
     : ensureArray<any>(bill.rateio);
 
-  return rateioArray
-    .map((item, index) => ({
-      key: `rateio-${index}`,
-      centroCusto: pickStringValue(item, [
-        "centro_custo.nome",
-        "centro_custo.nome_centro_custo",
-        "centro_custo.descricao",
-        "centro_de_custo.nome",
-        "centro_de_custo.nome_centro_custo",
-        "centro_de_custo.descricao",
-        "nome_centro_custo",
-        "descricao_centro_custo",
-        "centro_custo",
-        "centro_de_custo",
-        "cost_center",
-        "nome",
-      ]),
-      categoriaErp: pickStringValue(item, [
-        "categoria.nome",
-        "categoria.nome_categoria",
-        "categoria.descricao",
-        "categoria_erp.nome",
-        "categoria_erp.nome_categoria",
-        "nome_categoria",
-        "descricao_categoria",
-        "categoria_erp",
-        "categoria",
-      ]) || "Outros",
-      valor: pickNumberValue(item, [
-        "valor",
-        "valor_rateio",
-        "valor_alocado",
-        "valor_bruto",
-        "valor_liquido",
-        "total",
-        "amount",
-      ]),
-      percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage", "percent"]),
-    }))
-    .filter((item) => (
-      item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
-    ));
+  if (!rateioArray.length) return [];
+
+  const results: RawRateioAllocation[] = [];
+
+  for (const item of rateioArray) {
+    const categoria = pickStringValue(item, [
+      "nome_categoria", "categoria.nome", "categoria", "descricao_categoria",
+    ]) || "Outros";
+
+    // Conta Azul nested format: each rateio item has rateio_centro_custo array
+    const centrosCusto = ensureArray<any>(item.rateio_centro_custo);
+
+    if (centrosCusto.length > 0) {
+      // Expand nested centro_custo allocations into flat entries
+      for (const cc of centrosCusto) {
+        const nome = pickStringValue(cc, ["nome_centro_custo", "nome", "descricao"]);
+        const valor = pickNumberValue(cc, ["valor", "valor_rateio", "valor_alocado"]);
+        const percentual = pickNumberValue(cc, ["percentual", "porcentagem"]);
+        results.push({
+          key: `rateio-${results.length}`,
+          centroCusto: nome,
+          categoriaErp: categoria,
+          valor,
+          percentual,
+        });
+      }
+    } else {
+      // Flat format fallback
+      results.push({
+        key: `rateio-${results.length}`,
+        centroCusto: pickStringValue(item, [
+          "centro_custo.nome", "centro_de_custo.nome", "nome_centro_custo",
+          "centro_custo", "centro_de_custo", "nome",
+        ]),
+        categoriaErp: categoria,
+        valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "total"]),
+        percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage"]),
+      });
+    }
+  }
+
+  return results.filter((item) => (
+    item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
+  ));
 }
 
 function normalizeCentrosCusto(bill: any): NamedAllocation[] {
