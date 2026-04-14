@@ -288,7 +288,7 @@ export default function AcompanhamentoMedicoesPage() {
     return "";
   };
 
-  const tableMedicoes = useTableFilters(medicoesAgrupadas, columnsMedicoes, getColValueMedicao);
+  const tableMedicoes = useTableFilters(medicoesAgrupadas, columnsMedicoes, getColValueMedicao, "acomp_medicoes");
 
   const totalValor = tableMedicoes.processedItems.reduce((sum, m) => sum + m.total_valor, 0);
 
