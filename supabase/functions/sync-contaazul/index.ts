@@ -262,53 +262,54 @@ function rebalanceSplitValues<T extends { valor: number }>(items: T[], total: nu
 }
 
 function normalizeRateioAllocations(bill: any): RawRateioAllocation[] {
-  // Check both singular and plural forms — Conta Azul API uses "rateios" (plural)
   const rateioArray = ensureArray<any>(bill.rateios).length > 0
     ? ensureArray<any>(bill.rateios)
     : ensureArray<any>(bill.rateio);
 
-  return rateioArray
-    .map((item, index) => ({
-      key: `rateio-${index}`,
-      centroCusto: pickStringValue(item, [
-        "centro_custo.nome",
-        "centro_custo.nome_centro_custo",
-        "centro_custo.descricao",
-        "centro_de_custo.nome",
-        "centro_de_custo.nome_centro_custo",
-        "centro_de_custo.descricao",
-        "nome_centro_custo",
-        "descricao_centro_custo",
-        "centro_custo",
-        "centro_de_custo",
-        "cost_center",
-        "nome",
-      ]),
-      categoriaErp: pickStringValue(item, [
-        "categoria.nome",
-        "categoria.nome_categoria",
-        "categoria.descricao",
-        "categoria_erp.nome",
-        "categoria_erp.nome_categoria",
-        "nome_categoria",
-        "descricao_categoria",
-        "categoria_erp",
-        "categoria",
-      ]) || "Outros",
-      valor: pickNumberValue(item, [
-        "valor",
-        "valor_rateio",
-        "valor_alocado",
-        "valor_bruto",
-        "valor_liquido",
-        "total",
-        "amount",
-      ]),
-      percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage", "percent"]),
-    }))
-    .filter((item) => (
-      item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
-    ));
+  if (!rateioArray.length) return [];
+
+  const results: RawRateioAllocation[] = [];
+
+  for (const item of rateioArray) {
+    const categoria = pickStringValue(item, [
+      "nome_categoria", "categoria.nome", "categoria", "descricao_categoria",
+    ]) || "Outros";
+
+    // Conta Azul nested format: each rateio item has rateio_centro_custo array
+    const centrosCusto = ensureArray<any>(item.rateio_centro_custo);
+
+    if (centrosCusto.length > 0) {
+      // Expand nested centro_custo allocations into flat entries
+      for (const cc of centrosCusto) {
+        const nome = pickStringValue(cc, ["nome_centro_custo", "nome", "descricao"]);
+        const valor = pickNumberValue(cc, ["valor", "valor_rateio", "valor_alocado"]);
+        const percentual = pickNumberValue(cc, ["percentual", "porcentagem"]);
+        results.push({
+          key: `rateio-${results.length}`,
+          centroCusto: nome,
+          categoriaErp: categoria,
+          valor,
+          percentual,
+        });
+      }
+    } else {
+      // Flat format fallback
+      results.push({
+        key: `rateio-${results.length}`,
+        centroCusto: pickStringValue(item, [
+          "centro_custo.nome", "centro_de_custo.nome", "nome_centro_custo",
+          "centro_custo", "centro_de_custo", "nome",
+        ]),
+        categoriaErp: categoria,
+        valor: pickNumberValue(item, ["valor", "valor_rateio", "valor_alocado", "total"]),
+        percentual: pickNumberValue(item, ["percentual", "porcentagem", "percentage"]),
+      });
+    }
+  }
+
+  return results.filter((item) => (
+    item.centroCusto !== null || item.categoriaErp !== "Outros" || item.valor !== null || item.percentual !== null
+  ));
 }
 
 function normalizeCentrosCusto(bill: any): NamedAllocation[] {
@@ -368,9 +369,11 @@ export function buildSplitAllocations(bill: any, total: number): SplitAllocation
   const centrosHaveAmounts = rawCentros.some((item) => item.valor !== null || item.percentual !== null);
   const categoriasHaveAmounts = rawCategorias.some((item) => item.valor !== null || item.percentual !== null);
 
+  // For multi-center without amounts: after valor_composicao enrichment,
+  // if still no amounts, assign full value to first center (not even split)
   const centros = centrosHaveAmounts
     ? distributeAmounts(rawCentros, total)
-    : rawCentros.length === 1
+    : rawCentros.length >= 1
       ? [{ ...rawCentros[0], valorCalculado: total }]
       : [];
   const categorias = categoriasHaveAmounts
@@ -549,62 +552,70 @@ function resolveProjetoESite(
 }
 
 /**
- * Fetch the detail of a single bill to get rateio/allocation data
- * that the search endpoint doesn't return.
+ * Fetch with retry and rate-limit handling.
+ */
+async function fetchWithRetry(accessToken: string, url: string): Promise<any | null> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      if (response.ok) return await response.json();
+      if (response.status === 429 && attempt < 3) {
+        await sleep(attempt * 500);
+        continue;
+      }
+      break;
+    } catch (e: any) {
+      if (attempt < 3) { await sleep(attempt * 400); continue; }
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch the detail of a single bill to get rateio/allocation data.
+ * The parcela detail contains an embedded `evento` object that may have rateio data.
  */
 async function fetchBillDetail(
   accessToken: string,
   bill: any,
 ): Promise<any | null> {
-  const candidateIds = Array.from(new Set(
-    [
-      pickStringValue(bill, ["parcela_id", "parcela.id", "id"]),
-      pickStringValue(bill, ["conta_a_pagar.id", "conta.id", "titulo.id", "evento_financeiro.id"]),
-    ].filter((value): value is string => Boolean(value)),
-  ));
+  const billId = pickStringValue(bill, ["id", "parcela_id"]);
+  if (!billId) return null;
 
-  for (const parcelaId of candidateIds) {
-    const url = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}`;
+  const parcelaPayload = await fetchWithRetry(
+    accessToken,
+    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${billId}`,
+  );
+  const detail = parcelaPayload?.parcela || parcelaPayload?.data || parcelaPayload;
+  if (!detail) return null;
 
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      try {
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-          },
-        });
+  // The evento object is EMBEDDED in the parcela response — use it directly
+  const evento = detail?.evento;
+  if (evento && typeof evento === "object") {
+    detail._evento_keys = Object.keys(evento);
+    detail._evento_sample = evento;
 
-        if (response.ok) {
-          const payload = await response.json();
-          return payload?.parcela || payload?.data || payload;
-        }
-
-        const errBody = await response.text().catch(() => "");
-
-        if (response.status === 429 && attempt < 4) {
-          const waitMs = attempt * 400;
-          console.log(`Detail fetch rate-limited for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms`);
-          await sleep(waitMs);
-          continue;
-        }
-
-        console.log(`Detail fetch failed (${response.status}) for parcela ${parcelaId}: ${errBody.substring(0, 300)}`);
-        break;
-      } catch (e: any) {
-        if (attempt < 4) {
-          const waitMs = attempt * 400;
-          console.log(`Detail fetch error for parcela ${parcelaId}; retry ${attempt} in ${waitMs}ms: ${e.message}`);
-          await sleep(waitMs);
-          continue;
-        }
-
-        console.log(`Detail fetch error for parcela ${parcelaId}: ${e.message}`);
-      }
+    // Extract rateio data from the embedded evento
+    if (Array.isArray(evento.rateios) && evento.rateios.length > 0) {
+      detail.rateios = evento.rateios;
+    }
+    if (Array.isArray(evento.rateio) && evento.rateio.length > 0) {
+      detail.rateio = evento.rateio;
+    }
+    if (Array.isArray(evento.centros_de_custo) && evento.centros_de_custo.length > 0) {
+      detail.centros_de_custo = evento.centros_de_custo;
+    }
+    if (Array.isArray(evento.categorias) && evento.categorias.length > 0) {
+      detail.categorias = evento.categorias;
     }
   }
 
-  return null;
+  return detail;
 }
 
 /**
@@ -775,38 +786,73 @@ serve(async (req) => {
         let detailFetched = 0;
         let detailLogged = false;
 
-        const DETAIL_THROTTLE_MS = 140;
+        const DETAIL_THROTTLE_MS = 160;
         for (const billIdx of multiCenterIndices) {
           const detail = await fetchBillDetail(accessToken, bills[billIdx]);
 
           if (detail) {
             if (!detailLogged) {
-              const allKeys = Object.keys(detail);
-              console.log("Detail bill ALL keys:", allKeys);
-              const rateioKeys = allKeys.filter((k) =>
-                /rateio|split|alloc|centro|parcela|categori/i.test(k),
-              );
-              for (const key of rateioKeys) {
-                const val = detail[key];
-                console.log(
-                  `Detail bill.${key}:`,
-                  JSON.stringify(val).substring(0, 800),
-                );
+              console.log("Detail bill ALL keys:", Object.keys(detail));
+
+              // Log evento data — this is where rateio should come from
+              if (detail._evento_keys) {
+                console.log("Evento keys:", detail._evento_keys);
+                const evento = detail._evento_sample;
+                if (evento) {
+                  // Log all array/object fields that might contain rateio
+                  for (const key of detail._evento_keys) {
+                    const val = evento[key];
+                    if (Array.isArray(val) && val.length > 0) {
+                      console.log(`Evento.${key}[0]:`, JSON.stringify(val[0]).substring(0, 500));
+                      console.log(`Evento.${key} count:`, val.length);
+                    } else if (val && typeof val === "object") {
+                      console.log(`Evento.${key}:`, JSON.stringify(val).substring(0, 500));
+                    }
+                  }
+                }
+              } else {
+                console.log("Evento: NOT FETCHED (no evento ID found)");
+                console.log("detail.evento:", JSON.stringify(detail.evento).substring(0, 300));
+                console.log("detail.fatura:", JSON.stringify(detail.fatura).substring(0, 300));
               }
+
+              // Log rateios if present
+              if (detail.rateios) console.log("Detail rateios:", JSON.stringify(detail.rateios).substring(0, 800));
+              if (detail.rateio) console.log("Detail rateio:", JSON.stringify(detail.rateio).substring(0, 800));
               detailLogged = true;
             }
 
+            // Extract rateio data from valor_composicao (primary source for split amounts)
+            const vc = detail.valor_composicao;
+            if (vc && typeof vc === "object") {
+              const vcCentros = ensureArray(vc.centros_de_custo || vc.centros_custo);
+              const hasAmounts = vcCentros.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (hasAmounts && vcCentros.length > 0) {
+                // Override centros_de_custo with the enriched version from valor_composicao
+                bills[billIdx].centros_de_custo = vcCentros;
+                console.log(`Bill ${billIdx}: enriched centros from valor_composicao (${vcCentros.length} centros with amounts)`);
+              }
+
+              const vcCats = ensureArray(vc.categorias);
+              const catsHaveAmounts = vcCats.some(
+                (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
+              );
+              if (catsHaveAmounts && vcCats.length > 0) {
+                bills[billIdx].categorias = vcCats;
+              }
+            }
+
+            // Also check top-level rateios/rateio from detail
             if (detail.rateios && Array.isArray(detail.rateios) && detail.rateios.length > 0) {
               bills[billIdx].rateios = detail.rateios;
             } else if (detail.rateio && Array.isArray(detail.rateio) && detail.rateio.length > 0) {
               bills[billIdx].rateio = detail.rateio;
             }
 
-            if (detail.parcelas && Array.isArray(detail.parcelas)) {
-              bills[billIdx].parcelas_detail = detail.parcelas;
-            }
-
-            if (detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
+            // Also override centros_de_custo from detail if they have amounts
+            if (!vc && detail.centros_de_custo && Array.isArray(detail.centros_de_custo)) {
               const hasAmounts = detail.centros_de_custo.some(
                 (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
               );
@@ -815,7 +861,7 @@ serve(async (req) => {
               }
             }
 
-            if (detail.categorias && Array.isArray(detail.categorias)) {
+            if (!vc && detail.categorias && Array.isArray(detail.categorias)) {
               const hasAmounts = detail.categorias.some(
                 (c: any) => c.valor != null || c.percentual != null || c.porcentagem != null,
               );
