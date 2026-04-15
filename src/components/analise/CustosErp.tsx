@@ -198,6 +198,11 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     }
     if (sortCol && sortDir) {
       items.sort((a, b) => {
+        if (sortCol === "competencia") {
+          const da = a.data_competencia || "";
+          const db = b.data_competencia || "";
+          return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+        }
         let va = getColValue(a, sortCol);
         let vb = getColValue(b, sortCol);
         if (sortCol === "valor") {
