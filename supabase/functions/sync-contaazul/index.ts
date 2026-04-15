@@ -187,6 +187,10 @@ function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+function getBaseErpId(erpId: string | null | undefined): string {
+  return (erpId || "").split("::")[0]?.trim() || "";
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -618,6 +622,33 @@ async function fetchBillDetail(
   return detail;
 }
 
+async function fetchAllExistingErpIds(): Promise<string[]> {
+  const pageSize = 1000;
+  const erpIds: string[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await supabase
+      .from("custo_real_erp")
+      .select("erp_id")
+      .range(from, to);
+
+    if (error) throw error;
+
+    const pageIds = (data || [])
+      .map((row: any) => row.erp_id)
+      .filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0);
+
+    erpIds.push(...pageIds);
+
+    if ((data || []).length < pageSize) {
+      break;
+    }
+  }
+
+  return erpIds;
+}
+
 /**
  * Fetch parcelas from the Conta Azul API using a specific date filter strategy.
  * The API requires data_vencimento_de/ate, but we can also add optional filters
@@ -928,6 +959,24 @@ serve(async (req) => {
         despesasMultiAlocacao: 0,
         registrosGerados: 0,
       };
+      const cleanupStats = {
+        basesProcessadas: 0,
+        idsAntigosEncontrados: 0,
+        idsAntigosRemovidos: 0,
+      };
+
+      const existingErpIds = await fetchAllExistingErpIds();
+      const existingIdsByBase = new Map<string, Set<string>>();
+
+      for (const erpId of existingErpIds) {
+        const baseId = getBaseErpId(erpId);
+        if (!baseId) continue;
+        const current = existingIdsByBase.get(baseId) || new Set<string>();
+        current.add(erpId);
+        existingIdsByBase.set(baseId, current);
+      }
+
+      const currentIdsByBase = new Map<string, Set<string>>();
 
       const records = bills.flatMap((bill: any, idx: number) => {
         const erpIdBase = String(bill.id || bill.parcela_id || `CA-${idx}`);
@@ -955,6 +1004,14 @@ serve(async (req) => {
         splitStats.registrosGerados += allocations.length;
 
         return allocations.map((allocation, allocationIndex) => {
+          const erpRecordId = allocations.length > 1
+            ? `${erpIdBase}::${allocation.key || allocationIndex}`
+            : erpIdBase;
+
+          const currentIds = currentIdsByBase.get(erpIdBase) || new Set<string>();
+          currentIds.add(erpRecordId);
+          currentIdsByBase.set(erpIdBase, currentIds);
+
           const categoriaErp = allocation.categoriaErp || "Outros";
 
           let categoriaInterna = mapCategorias.get(categoriaErp);
@@ -978,7 +1035,7 @@ serve(async (req) => {
           matchStats[strategy] = (matchStats[strategy] || 0) + 1;
 
           return {
-            erp_id: allocationIndex === 0 ? erpIdBase : `${erpIdBase}::${allocation.key}`,
+            erp_id: erpRecordId,
             descricao,
             valor: allocation.valor,
             data_pagamento: dataPagamento,
@@ -998,6 +1055,38 @@ serve(async (req) => {
         await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
       }
 
+      const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
+        const existingIds = existingIdsByBase.get(baseId);
+        if (!existingIds) return [];
+
+        return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId));
+      });
+
+      cleanupStats.basesProcessadas = currentIdsByBase.size;
+      cleanupStats.idsAntigosEncontrados = staleErpIds.length;
+
+      if (staleErpIds.length > 0) {
+        const staleIdChunks: string[][] = [];
+        const DELETE_CHUNK_SIZE = 500;
+
+        for (let i = 0; i < staleErpIds.length; i += DELETE_CHUNK_SIZE) {
+          staleIdChunks.push(staleErpIds.slice(i, i + DELETE_CHUNK_SIZE));
+        }
+
+        for (const chunk of staleIdChunks) {
+          const { error: deleteError } = await supabase
+            .from("custo_real_erp")
+            .delete()
+            .in("erp_id", chunk);
+
+          if (deleteError) {
+            console.error("Erro ao remover registros antigos de rateio:", deleteError.message);
+          } else {
+            cleanupStats.idsAntigosRemovidos += chunk.length;
+          }
+        }
+      }
+
       // Batch upsert records in chunks of 500
       const CHUNK_SIZE = 500;
       let processadas = 0;
@@ -1012,6 +1101,7 @@ serve(async (req) => {
 
       console.log("Resumo de vínculo projeto/site:", matchStats);
       console.log("Resumo de rateio:", splitStats);
+      console.log("Resumo limpeza rateio legado:", cleanupStats);
 
       // Log sample of first few bills structure for debugging split issues
       if (bills.length > 0) {
@@ -1035,9 +1125,10 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul.`,
+          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul e removidos ${cleanupStats.idsAntigosRemovidos} lançamentos legados.`,
           total: bills.length,
           processadas,
+          removidos_legado: cleanupStats.idsAntigosRemovidos,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
