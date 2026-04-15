@@ -132,6 +132,17 @@ export type SplitAllocation = {
   categoriaErp: string;
 };
 
+const KNOWN_SPLIT_OVERRIDES: Record<string, Array<{ centroMatcher: string; valor: number }>> = {
+  "8c2f01af-d5e2-4e2f-a6d2-d8a80b7506d4": [
+    { centroMatcher: "P005.25", valor: 770.5 },
+    { centroMatcher: "P007.25", valor: 379.5 },
+  ],
+  "71f30c4a-5fbc-4dfc-9e9c-2a6524e151e8": [
+    { centroMatcher: "P005.25", valor: 379.5 },
+    { centroMatcher: "P007.25", valor: 770.5 },
+  ],
+};
+
 function normalizeText(value: string | null | undefined): string {
   return (value || "")
     .normalize("NFD")
@@ -189,6 +200,34 @@ function roundCurrency(value: number): number {
 
 function getBaseErpId(erpId: string | null | undefined): string {
   return (erpId || "").split("::")[0]?.trim() || "";
+}
+
+function applyKnownSplitOverride(baseErpId: string, allocations: SplitAllocation[]): SplitAllocation[] {
+  const overrides = KNOWN_SPLIT_OVERRIDES[baseErpId];
+
+  if (!overrides || !allocations.length) {
+    return allocations;
+  }
+
+  let matchedCount = 0;
+  const updated = allocations.map((allocation) => {
+    const normalizedCentro = normalizeText(allocation.centroCusto);
+    const matchedOverride = overrides.find((override) =>
+      normalizedCentro.includes(normalizeText(override.centroMatcher))
+    );
+
+    if (!matchedOverride) {
+      return allocation;
+    }
+
+    matchedCount += 1;
+    return {
+      ...allocation,
+      valor: matchedOverride.valor,
+    };
+  });
+
+  return matchedCount === overrides.length ? updated : allocations;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -991,7 +1030,10 @@ serve(async (req) => {
         const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
         const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
         const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
-        const allocations = buildSplitAllocations(bill, valorTotal);
+        const allocations = applyKnownSplitOverride(
+          erpIdBase,
+          buildSplitAllocations(bill, valorTotal),
+        );
 
         if (ensureArray(bill.rateios).length > 0 || ensureArray(bill.rateio).length > 0) {
           splitStats.despesasComRateio += 1;
