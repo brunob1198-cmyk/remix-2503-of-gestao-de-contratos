@@ -176,6 +176,13 @@ export type Database = {
             foreignKeyName: "atividades_planejamento_item_lpu_id_fkey"
             columns: ["item_lpu_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "atividades_planejamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
@@ -381,6 +388,13 @@ export type Database = {
             foreignKeyName: "contratos_contrato_pai_id_fkey"
             columns: ["contrato_pai_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
             referencedRelation: "view_contratos"
             referencedColumns: ["id"]
           },
@@ -573,6 +587,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
@@ -784,6 +805,13 @@ export type Database = {
             foreignKeyName: "diario_fotos_diario_producao_id_fkey"
             columns: ["diario_producao_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diario_fotos_diario_producao_id_fkey"
+            columns: ["diario_producao_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["id"]
           },
@@ -831,6 +859,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "itens_lpu"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diario_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
           },
           {
             foreignKeyName: "diario_producao_item_lpu_id_fkey"
@@ -935,6 +970,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarios_campo_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "diarios_campo_projeto_id_fkey"
@@ -1069,6 +1111,13 @@ export type Database = {
             foreignKeyName: "escopo_itens_item_lpu_id_fkey"
             columns: ["item_lpu_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "escopo_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
@@ -1160,6 +1209,13 @@ export type Database = {
             foreignKeyName: "faturamento_itens_item_lpu_id_fkey"
             columns: ["item_lpu_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "faturamento_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
@@ -1225,6 +1281,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "faturamentos_projeto_id_fkey"
@@ -1335,6 +1398,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frentes_obra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "frentes_obra_projeto_id_fkey"
@@ -1505,6 +1575,13 @@ export type Database = {
             foreignKeyName: "itens_lpu_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "itens_lpu_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["projeto_id"]
           },
@@ -1557,6 +1634,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "itens_lpu"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_faturamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
           },
           {
             foreignKeyName: "lancamentos_faturamento_item_lpu_id_fkey"
@@ -1653,6 +1737,13 @@ export type Database = {
             foreignKeyName: "lancamentos_medicao_item_lpu_id_fkey"
             columns: ["item_lpu_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "lancamentos_medicao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
@@ -1712,6 +1803,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "itens_lpu"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
           },
           {
             foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
@@ -2092,6 +2190,13 @@ export type Database = {
             foreignKeyName: "projetos_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
             referencedRelation: "view_contratos"
             referencedColumns: ["id"]
           },
@@ -2142,6 +2247,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
@@ -2380,6 +2492,13 @@ export type Database = {
             foreignKeyName: "requisicoes_compra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["projeto_id"]
           },
@@ -2488,6 +2607,13 @@ export type Database = {
             foreignKeyName: "sc_locais_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sc_locais_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["projeto_id"]
           },
@@ -2538,6 +2664,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "sites_projeto_id_fkey"
@@ -2628,6 +2761,13 @@ export type Database = {
             foreignKeyName: "timeline_eventos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "timeline_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["projeto_id"]
           },
@@ -2712,6 +2852,190 @@ export type Database = {
       }
     }
     Views: {
+      view_bi_contratos: {
+        Row: {
+          condicoes_pagamento: string | null
+          contrato_pai_id: string | null
+          empresa_id: string | null
+          escopo: string | null
+          id: string | null
+          numero_contrato: string | null
+          prazo_fim: string | null
+          prazo_inicio: string | null
+          status_prazo: string | null
+          status_processamento: string | null
+          total_custos_realizados: number | null
+          total_projetos: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          empresa_id?: string | null
+          escopo?: string | null
+          id?: string | null
+          numero_contrato?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          status_prazo?: never
+          status_processamento?: string | null
+          total_custos_realizados?: never
+          total_projetos?: never
+          valor_total?: number | null
+        }
+        Update: {
+          condicoes_pagamento?: string | null
+          contrato_pai_id?: string | null
+          empresa_id?: string | null
+          escopo?: string | null
+          id?: string | null
+          numero_contrato?: string | null
+          prazo_fim?: string | null
+          prazo_inicio?: string | null
+          status_prazo?: never
+          status_processamento?: string | null
+          total_custos_realizados?: never
+          total_projetos?: never
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_contrato_pai_id_fkey"
+            columns: ["contrato_pai_id"]
+            isOneToOne: false
+            referencedRelation: "view_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_bi_dim_categoria: {
+        Row: {
+          ativo: boolean | null
+          categoria_erp: string | null
+          categoria_interna: string | null
+          id: string | null
+        }
+        Relationships: []
+      }
+      view_bi_dim_tempo: {
+        Row: {
+          ano: number | null
+          ano_mes: string | null
+          data: string | null
+          dia: number | null
+          dia_semana: number | null
+          mes: number | null
+          nome_mes: string | null
+          trimestre: number | null
+        }
+        Relationships: []
+      }
+      view_bi_financeiro: {
+        Row: {
+          ano: number | null
+          categoria_erp: string | null
+          categoria_interna: string | null
+          centro_custo: string | null
+          data_competencia: string | null
+          data_pagamento: string | null
+          descricao: string | null
+          id: string | null
+          mes: number | null
+          projeto_codigo: string | null
+          projeto_id: string | null
+          projeto_nome: string | null
+          site_codigo: string | null
+          site_id: string | null
+          site_nome: string | null
+          status_erp: string | null
+          trimestre: string | null
+          valor: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_bi_producao: {
+        Row: {
+          ano: number | null
+          clima: string | null
+          data_producao: string | null
+          id: string | null
+          item_codigo: string | null
+          item_descricao: string | null
+          item_lpu_id: string | null
+          mes: number | null
+          municipio: string | null
+          preco_unitario_congelado: number | null
+          projeto_codigo: string | null
+          projeto_id: string | null
+          projeto_nome: string | null
+          quantidade: number | null
+          site_codigo: string | null
+          site_id: string | null
+          site_nome: string | null
+          uf: string | null
+          unidade: string | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       view_contratos: {
         Row: {
           created_at: string | null
@@ -2798,6 +3122,13 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["projeto_id"]
           },
@@ -2853,6 +3184,13 @@ export type Database = {
             foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
             columns: ["item_lpu_id"]
             isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
@@ -2876,6 +3214,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projetos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
           },
           {
             foreignKeyName: "sites_projeto_id_fkey"
