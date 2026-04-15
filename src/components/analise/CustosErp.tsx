@@ -183,7 +183,19 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
     allCols.forEach(col => {
-      result[col] = Array.from(new Set(custosErp.map(item => getColValue(item, col)))).sort();
+      const vals = Array.from(new Set(custosErp.map(item => getColValue(item, col))));
+      if (col === "competencia") {
+        // Sort dates chronologically by underlying ISO date
+        const dateMap = new Map<string, string>();
+        custosErp.forEach(item => {
+          const display = getColValue(item, col);
+          if (!dateMap.has(display)) dateMap.set(display, item.data_competencia || "");
+        });
+        vals.sort((a, b) => (dateMap.get(a) || "").localeCompare(dateMap.get(b) || ""));
+      } else {
+        vals.sort();
+      }
+      result[col] = vals;
     });
     return result;
   }, [custosErp]);
@@ -198,6 +210,11 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     }
     if (sortCol && sortDir) {
       items.sort((a, b) => {
+        if (sortCol === "competencia") {
+          const da = a.data_competencia || "";
+          const db = b.data_competencia || "";
+          return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+        }
         let va = getColValue(a, sortCol);
         let vb = getColValue(b, sortCol);
         if (sortCol === "valor") {
