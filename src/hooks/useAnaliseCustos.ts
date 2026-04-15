@@ -296,13 +296,13 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   });
 
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
-    queryKey: ["custos_erp_multi", projetoIds, startDate, categoriasDesativadas],
+    queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       let q = (supabase as any).from("custo_real_erp").select("*");
       q = q.in("projeto_id", projetoIds);
       if (startDate) {
-        q = q.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
+        q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
       }
       const { data, error } = await q;
       if (error) throw error;
