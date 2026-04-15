@@ -46,6 +46,7 @@ const menuItems: MenuItem[] = [
   { title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios" },
   
   { title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
+  { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
 ];

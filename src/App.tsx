@@ -34,6 +34,7 @@ import PlanejamentoObraPage from "./pages/medicoes/PlanejamentoObra";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
+import PowerBIPage from "./pages/medicoes/PowerBI";
 const queryClient = new QueryClient();
 
 const RootRedirect = () => {
@@ -88,6 +89,7 @@ const App = () => (
               <Route path="supply-chain" element={<SupplyChainPage />} />
               
               <Route path="audit-log" element={<AuditLogPage />} />
+              <Route path="power-bi" element={<PowerBIPage />} />
               <Route path="perfil" element={<MeuPerfilPage />} />
             </Route>
 
