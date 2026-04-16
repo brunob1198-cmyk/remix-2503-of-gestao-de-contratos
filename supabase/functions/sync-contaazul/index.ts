@@ -854,35 +854,6 @@ serve(async (req) => {
       const bills = await fetchAllDespesas(accessToken, startDateStr, endDateStr);
       console.log(`Total despesas encontradas (deduplicadas): ${bills.length}`);
 
-      // Log first bill keys for diagnostic
-      if (bills.length > 0) {
-        const sampleBill = bills[0];
-        console.log("DIAGNOSTIC: First bill keys:", Object.keys(sampleBill));
-        console.log("DIAGNOSTIC: First bill evento_id:", sampleBill.evento_id);
-        console.log("DIAGNOSTIC: First bill evento:", typeof sampleBill.evento === "object" ? JSON.stringify(sampleBill.evento).substring(0, 500) : sampleBill.evento);
-        console.log("DIAGNOSTIC: First bill id:", sampleBill.id);
-        console.log("DIAGNOSTIC: First bill descricao:", sampleBill.descricao);
-        console.log("DIAGNOSTIC: First bill valor_total:", sampleBill.valor_total);
-        console.log("DIAGNOSTIC: First bill total:", sampleBill.total);
-        console.log("DIAGNOSTIC: First bill valor:", sampleBill.valor);
-        // Find a bill with similar description to check grouping
-        const painel = bills.find((b: any) => (b.descricao || "").toLowerCase().includes("painel"));
-        if (painel) {
-          console.log("DIAGNOSTIC: Painel bill keys:", Object.keys(painel));
-          console.log("DIAGNOSTIC: Painel evento_id:", painel.evento_id);
-          console.log("DIAGNOSTIC: Painel evento:", typeof painel.evento === "object" ? JSON.stringify(painel.evento).substring(0, 300) : painel.evento);
-          console.log("DIAGNOSTIC: Painel valor_total:", painel.valor_total, "total:", painel.total, "valor:", painel.valor, "nao_pago:", painel.nao_pago);
-          console.log("DIAGNOSTIC: Painel data_competencia:", painel.data_competencia, "data_vencimento:", painel.data_vencimento);
-          // Count how many bills have same description
-          const sameName = bills.filter((b: any) => b.descricao === painel.descricao);
-          console.log(`DIAGNOSTIC: Bills with same descricao as Painel: ${sameName.length}`);
-          if (sameName.length > 1) {
-            console.log("DIAGNOSTIC: Same-name bill IDs:", sameName.map((b: any) => b.id || b.parcela_id).join(", "));
-            console.log("DIAGNOSTIC: Same-name evento_ids:", sameName.map((b: any) => b.evento_id).join(", "));
-          }
-        }
-      }
-
       // Enrich multi-center bills with detail data for accurate rateio
       const multiCenterIndices: number[] = [];
       bills.forEach((bill: any, idx: number) => {
