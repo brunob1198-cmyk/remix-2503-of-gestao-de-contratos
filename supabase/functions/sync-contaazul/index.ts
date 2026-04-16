@@ -266,7 +266,18 @@ function distributeAmounts<T extends { valor: number | null; percentual: number 
   const explicitTotal = items.reduce((acc, item) => acc + (item.valor ?? 0), 0);
 
   if (allHaveValues && explicitTotal !== 0) {
-    return items.map((item) => ({ ...item, valorCalculado: item.valor ?? 0 }));
+    // If rateio values sum matches the target total, use them directly.
+    // If they DON'T match (e.g. rateio values represent the full event total
+    // while `total` is just this parcela's amount), scale proportionally.
+    const tolerance = Math.abs(total) * 0.01 + 0.02; // 1% + 2 cents
+    if (Math.abs(explicitTotal - total) <= tolerance || total === 0) {
+      return items.map((item) => ({ ...item, valorCalculado: item.valor ?? 0 }));
+    }
+    // Scale proportionally: each item gets (item.valor / explicitTotal) * total
+    return items.map((item) => ({
+      ...item,
+      valorCalculado: total * ((item.valor ?? 0) / explicitTotal),
+    }));
   }
 
   const allHavePercentages = items.every((item) => item.percentual !== null);
