@@ -1260,7 +1260,25 @@ serve(async (req) => {
         }
       }
 
-      // Batch upsert consolidated records in chunks of 500
+      // Cleanup old parcela-level and evt:: records that are now replaced by event-level records
+      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
+      
+      // Also clean up old evt:: records from previous consolidation approach
+      const oldEvtIds: string[] = [];
+      for (const erpId of existingErpIds) {
+        if (erpId.startsWith("evt::") && !allCurrentErpIds.has(erpId)) {
+          oldEvtIds.push(erpId);
+        }
+      }
+      if (oldEvtIds.length > 0) {
+        console.log(`Removing ${oldEvtIds.length} old evt:: records from previous sync approach`);
+        const DELETE_CHUNK = 500;
+        for (let i = 0; i < oldEvtIds.length; i += DELETE_CHUNK) {
+          await supabase.from("custo_real_erp").delete().in("erp_id", oldEvtIds.slice(i, i + DELETE_CHUNK));
+        }
+      }
+
+      // Batch upsert records in chunks of 500
       const CHUNK_SIZE = 500;
       let processadas = 0;
       for (let i = 0; i < consolidatedRecords.length; i += CHUNK_SIZE) {
