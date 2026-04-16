@@ -1028,32 +1028,116 @@ serve(async (req) => {
 
       const currentIdsByBase = new Map<string, Set<string>>();
 
-      const records = bills.flatMap((bill: any, idx: number) => {
-        const erpIdBase = String(bill.id || bill.parcela_id || `CA-${idx}`);
+      // ── Group parcelas by evento_id to process at event level ──
+      // Conta Azul returns parcelas (installments). Multiple parcelas belong to the same event.
+      // We must import at EVENT level, not parcela level, to avoid partial sums.
+      const eventGroups = new Map<string, { parcelas: any[]; indices: number[] }>();
+      for (let idx = 0; idx < bills.length; idx++) {
+        const bill = bills[idx];
+        const eventoId = bill.evento_id || bill.evento?.id || bill.id || bill.parcela_id || `CA-${idx}`;
+        const group = eventGroups.get(eventoId) || { parcelas: [], indices: [] };
+        group.parcelas.push(bill);
+        group.indices.push(idx);
+        eventGroups.set(eventoId, group);
+      }
+
+      const multiParcelaCount = Array.from(eventGroups.values()).filter(g => g.parcelas.length > 1).length;
+      console.log(`${eventGroups.size} unique events from ${bills.length} parcelas (${multiParcelaCount} multi-parcela events)`);
+
+      // Log first bill's ALL keys to understand API structure
+      if (bills.length > 0) {
+        console.log("First bill ALL keys:", Object.keys(bills[0]));
+        console.log("First bill evento_id:", bills[0].evento_id);
+        console.log("First bill evento:", bills[0].evento ? Object.keys(bills[0].evento) : "none");
+      }
+
+      // For multi-parcela events, fetch ONE parcela detail to get the event's true total value
+      const eventTrueTotal = new Map<string, { total: number; rateioSource: any }>();
+      const DETAIL_THROTTLE_MS_EVT = 160;
+
+      if (multiParcelaCount > 0) {
+        console.log(`Fetching event details for ${multiParcelaCount} multi-parcela events...`);
+        let detailCount = 0;
+        for (const [eventoId, group] of eventGroups) {
+          if (group.parcelas.length <= 1) continue;
+
+          const detail = await fetchBillDetail(accessToken, group.parcelas[0]);
+          if (detail?._evento_sample) {
+            const evtTotal = toNumber(detail._evento_sample.valor_total)
+              ?? toNumber(detail._evento_sample.total)
+              ?? toNumber(detail._evento_sample.valor_bruto);
+            if (evtTotal !== null && evtTotal > 0) {
+              eventTrueTotal.set(eventoId, {
+                total: evtTotal,
+                rateioSource: detail,
+              });
+              if (detailCount < 5) {
+                const parcelaSum = group.parcelas.reduce((s: number, b: any) => s + (toNumber(b.total) ?? toNumber(b.valor_total) ?? 0), 0);
+                console.log(`Event ${eventoId}: true total=${evtTotal}, parcelas=${group.parcelas.length}, parcela_sum=${parcelaSum}, desc=${group.parcelas[0].descricao}`);
+              }
+            }
+          } else if (detail) {
+            // Try to get evento total from other paths
+            const evtTotal = toNumber(detail.valor_total_evento)
+              ?? toNumber(detail.valor_evento);
+            if (evtTotal !== null && evtTotal > 0) {
+              eventTrueTotal.set(eventoId, { total: evtTotal, rateioSource: detail });
+            }
+          }
+          detailCount++;
+          await sleep(DETAIL_THROTTLE_MS_EVT);
+        }
+        console.log(`Fetched event details for ${detailCount} events, found true totals for ${eventTrueTotal.size}`);
+      }
+
+      // Process events (not individual parcelas)
+      const records = Array.from(eventGroups.entries()).flatMap(([eventoId, group]) => {
+        const bill = group.parcelas[0];
+        const erpIdBase = String(eventoId);
         const descricao = bill.descricao || bill.descricao_parcela || "Sem descrição";
-        const valorTotal = toNumber(bill.valor_total)
-          ?? toNumber(bill.total)
-          ?? toNumber(bill.valor_bruto)
-          ?? toNumber(bill.nao_pago)
-          ?? toNumber(bill.valor)
-          ?? 0;
         const dataPagamento = bill.data_pagamento || bill.data_vencimento || null;
         const dataCompetencia = bill.data_competencia || bill.data_vencimento || startDateStr;
-        const statusErp = (bill.status_traduzido || bill.status || "PENDENTE").toUpperCase();
-        const statusNormalizado = ["QUITADO", "RECEBIDO"].includes(statusErp) ? "pago" : "pendente";
-        const allocations = applyKnownSplitOverride(
-          erpIdBase,
-          buildSplitAllocations(bill, valorTotal),
-        );
 
-        if (ensureArray(bill.rateios).length > 0 || ensureArray(bill.rateio).length > 0) {
-          splitStats.despesasComRateio += 1;
+        const allPaid = group.parcelas.every((p: any) => {
+          const st = (p.status_traduzido || p.status || "").toUpperCase();
+          return ["QUITADO", "RECEBIDO"].includes(st);
+        });
+        const statusNormalizado = allPaid ? "pago" : "pendente";
+
+        let valorTotal: number;
+        let allocationSource = bill;
+
+        const eventInfo = eventTrueTotal.get(eventoId);
+        if (eventInfo) {
+          valorTotal = eventInfo.total;
+          allocationSource = eventInfo.rateioSource;
+          // Merge enriched rateio data from the bill processing step
+          const enrichedBill = bills[group.indices[0]];
+          if (enrichedBill.rateios && !allocationSource.rateios) allocationSource.rateios = enrichedBill.rateios;
+          if (enrichedBill.rateio && !allocationSource.rateio) allocationSource.rateio = enrichedBill.rateio;
+          if (enrichedBill.centros_de_custo && !allocationSource.centros_de_custo) allocationSource.centros_de_custo = enrichedBill.centros_de_custo;
+          if (enrichedBill.categorias && !allocationSource.categorias) allocationSource.categorias = enrichedBill.categorias;
+        } else {
+          // Single parcela or couldn't fetch detail
+          valorTotal = toNumber(bill.valor_total)
+            ?? toNumber(bill.total)
+            ?? toNumber(bill.valor_bruto)
+            ?? toNumber(bill.nao_pago)
+            ?? toNumber(bill.valor)
+            ?? 0;
         }
 
+        const allocations = applyKnownSplitOverride(
+          erpIdBase,
+          buildSplitAllocations(allocationSource, valorTotal),
+        );
+
+        if (ensureArray(allocationSource.rateios).length > 0 || ensureArray(allocationSource.rateio).length > 0) {
+          splitStats.despesasComRateio += 1;
+        }
         if (allocations.length > 1) {
           splitStats.despesasMultiAlocacao += 1;
         }
-
         splitStats.registrosGerados += allocations.length;
 
         return allocations.map((allocation, allocationIndex) => {
@@ -1066,7 +1150,6 @@ serve(async (req) => {
           currentIdsByBase.set(erpIdBase, currentIds);
 
           const categoriaErp = allocation.categoriaErp || "Outros";
-
           let categoriaInterna = mapCategorias.get(categoriaErp);
           if (!categoriaInterna) {
             categoriaInterna = categorizarDespesa(categoriaErp, descricao);
@@ -1103,39 +1186,10 @@ serve(async (req) => {
         });
       });
 
-      // ── Consolidate parcelas of the same event ──
-      // Parcelas (installments) of the same event share descricao + data_competencia + centro_custo + categoria_erp.
-      // We consolidate them into a single record with the summed value.
-      const consolidationMap = new Map<string, typeof records[number] & { _parcelaIds: string[] }>();
-      for (const rec of records) {
-        const groupKey = `${rec.descricao}||${rec.data_competencia}||${rec.centro_custo}||${rec.categoria_erp}`;
-        const existing = consolidationMap.get(groupKey);
-        if (existing) {
-          existing.valor = roundCurrency(existing.valor + rec.valor);
-          existing._parcelaIds.push(rec.erp_id);
-          // Keep the earliest payment date and most relevant status
-          if (rec.status_erp === "pago") existing.status_erp = "pago";
-          if (rec.data_pagamento && (!existing.data_pagamento || rec.data_pagamento < existing.data_pagamento)) {
-            existing.data_pagamento = rec.data_pagamento;
-          }
-        } else {
-          consolidationMap.set(groupKey, { ...rec, _parcelaIds: [rec.erp_id] });
-        }
-      }
+      // Records are already at event level — no parcela consolidation needed
+      const consolidatedRecords = records;
 
-      // Build consolidated records with stable erp_id based on grouping
-      const consolidatedRecords = Array.from(consolidationMap.values()).map((rec) => {
-        if (rec._parcelaIds.length > 1) {
-          // Use first parcela ID + "::evt" suffix to create a stable event-level ID
-          const sortedIds = [...rec._parcelaIds].sort();
-          rec.erp_id = `evt::${sortedIds[0]}`;
-          console.log(`Consolidated ${rec._parcelaIds.length} parcelas → ${rec.erp_id}: ${rec.descricao} = ${rec.valor}`);
-        }
-        const { _parcelaIds, ...record } = rec;
-        return record;
-      });
-
-      // Track consolidated IDs for cleanup
+      // Track IDs for cleanup
       const consolidatedIdsByBase = new Map<string, Set<string>>();
       for (const rec of consolidatedRecords) {
         const baseId = getBaseErpId(rec.erp_id) || rec.erp_id;
@@ -1144,40 +1198,18 @@ serve(async (req) => {
         consolidatedIdsByBase.set(baseId, current);
       }
 
-      console.log(`Records before consolidation: ${records.length}, after: ${consolidatedRecords.length}`);
-
       // Batch insert new category mappings
       if (newCategorias.size > 0) {
         await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
       }
 
-      // Cleanup: find old parcela-level IDs that were consolidated into event-level IDs
-      // AND old rateio-split records that changed
+      console.log(`Events: ${eventGroups.size}, Records generated: ${records.length}`);
+
       const allConsolidatedErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
-
-      // Also collect all original parcela IDs that got consolidated so we can delete them
-      const consolidatedParcelaIds: string[] = [];
-      for (const rec of consolidationMap.values()) {
-        if (rec._parcelaIds.length > 1) {
-          // These parcela-level erp_ids should be removed from DB (replaced by evt:: record)
-          consolidatedParcelaIds.push(...rec._parcelaIds);
-        }
-      }
-
-      // Delete old parcela-level records that are now consolidated
-      if (consolidatedParcelaIds.length > 0) {
-        console.log(`Removing ${consolidatedParcelaIds.length} old parcela-level records (now consolidated)`);
-        const DELETE_CHUNK_SIZE = 500;
-        for (let i = 0; i < consolidatedParcelaIds.length; i += DELETE_CHUNK_SIZE) {
-          const chunk = consolidatedParcelaIds.slice(i, i + DELETE_CHUNK_SIZE);
-          await supabase.from("custo_real_erp").delete().in("erp_id", chunk);
-        }
-      }
 
       const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
         const existingIds = existingIdsByBase.get(baseId);
         if (!existingIds) return [];
-
         return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId) && !allConsolidatedErpIds.has(erpId));
       });
 
@@ -1185,28 +1217,37 @@ serve(async (req) => {
       cleanupStats.idsAntigosEncontrados = staleErpIds.length;
 
       if (staleErpIds.length > 0) {
-        const staleIdChunks: string[][] = [];
         const DELETE_CHUNK_SIZE = 500;
-
         for (let i = 0; i < staleErpIds.length; i += DELETE_CHUNK_SIZE) {
-          staleIdChunks.push(staleErpIds.slice(i, i + DELETE_CHUNK_SIZE));
-        }
-
-        for (const chunk of staleIdChunks) {
+          const chunk = staleErpIds.slice(i, i + DELETE_CHUNK_SIZE);
           const { error: deleteError } = await supabase
             .from("custo_real_erp")
             .delete()
             .in("erp_id", chunk);
-
           if (deleteError) {
-            console.error("Erro ao remover registros antigos de rateio:", deleteError.message);
+            console.error("Erro ao remover registros antigos:", deleteError.message);
           } else {
             cleanupStats.idsAntigosRemovidos += chunk.length;
           }
         }
       }
+      
+      // Also clean up old evt:: records from previous consolidation approach
+      const oldEvtIds: string[] = [];
+      for (const erpId of existingErpIds) {
+        if (erpId.startsWith("evt::") && !allConsolidatedErpIds.has(erpId)) {
+          oldEvtIds.push(erpId);
+        }
+      }
+      if (oldEvtIds.length > 0) {
+        console.log(`Removing ${oldEvtIds.length} old evt:: records from previous sync approach`);
+        const DELETE_CHUNK = 500;
+        for (let i = 0; i < oldEvtIds.length; i += DELETE_CHUNK) {
+          await supabase.from("custo_real_erp").delete().in("erp_id", oldEvtIds.slice(i, i + DELETE_CHUNK));
+        }
+      }
 
-      // Batch upsert consolidated records in chunks of 500
+      // Batch upsert records in chunks of 500
       const CHUNK_SIZE = 500;
       let processadas = 0;
       for (let i = 0; i < consolidatedRecords.length; i += CHUNK_SIZE) {
@@ -1219,7 +1260,7 @@ serve(async (req) => {
       }
 
       // --- Orphan cleanup: remove records in DB for the synced period that are no longer in the API ---
-      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
+      const allCurrentErpIds2 = new Set(consolidatedRecords.map((r: any) => r.erp_id));
       const orphanStats = { found: 0, removed: 0 };
 
       // Fetch all existing records whose data_competencia falls within the synced period
@@ -1236,7 +1277,7 @@ serve(async (req) => {
         if (orphanErr) { console.error("Erro buscando órfãos:", orphanErr.message); break; }
         if (!orphanPage || orphanPage.length === 0) break;
         for (const row of orphanPage) {
-          if (!allCurrentErpIds.has(row.erp_id)) {
+          if (!allCurrentErpIds2.has(row.erp_id)) {
             orphanCandidates.push(row.erp_id);
           }
         }
@@ -1289,11 +1330,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas (consolidadas de ${records.length} parcelas em ${bills.length} despesas). Removidos ${cleanupStats.idsAntigosRemovidos} legados, ${consolidatedParcelaIds.length} parcelas consolidadas, e ${orphanStats.removed} órfãos.`,
+          message: `Sincronizadas ${processadas} linhas de ${eventGroups.size} eventos (${bills.length} parcelas). Removidos ${cleanupStats.idsAntigosRemovidos} legados e ${orphanStats.removed} órfãos. Eventos com total corrigido: ${eventTrueTotal.size}.`,
           total: bills.length,
+          eventos: eventGroups.size,
           processadas,
-          consolidadas: records.length - consolidatedRecords.length,
+          eventos_corrigidos: eventTrueTotal.size,
           removidos_legado: cleanupStats.idsAntigosRemovidos,
+          removidos_orfaos: orphanStats.removed,
           removidos_orfaos: orphanStats.removed,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
