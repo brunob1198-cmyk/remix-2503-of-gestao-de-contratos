@@ -1330,11 +1330,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas (consolidadas de ${records.length} parcelas em ${bills.length} despesas). Removidos ${cleanupStats.idsAntigosRemovidos} legados, ${consolidatedParcelaIds.length} parcelas consolidadas, e ${orphanStats.removed} órfãos.`,
+          message: `Sincronizadas ${processadas} linhas de ${eventGroups.size} eventos (${bills.length} parcelas). Removidos ${cleanupStats.idsAntigosRemovidos} legados e ${orphanStats.removed} órfãos. Eventos com total corrigido: ${eventTrueTotal.size}.`,
           total: bills.length,
+          eventos: eventGroups.size,
           processadas,
-          consolidadas: records.length - consolidatedRecords.length,
+          eventos_corrigidos: eventTrueTotal.size,
           removidos_legado: cleanupStats.idsAntigosRemovidos,
+          removidos_orfaos: orphanStats.removed,
           removidos_orfaos: orphanStats.removed,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
