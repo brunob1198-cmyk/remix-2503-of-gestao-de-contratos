@@ -1198,6 +1198,13 @@ serve(async (req) => {
         consolidatedIdsByBase.set(baseId, current);
       }
 
+      // Batch insert new category mappings
+      if (newCategorias.size > 0) {
+        await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
+      }
+
+      console.log(`Events: ${eventGroups.size}, Records generated: ${records.length}`);
+
       const allConsolidatedErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
 
       const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
