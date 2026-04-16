@@ -1318,9 +1318,10 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul. Removidos ${cleanupStats.idsAntigosRemovidos} legados e ${orphanStats.removed} órfãos.`,
+          message: `Sincronizadas ${processadas} linhas (consolidadas de ${records.length} parcelas em ${bills.length} despesas). Removidos ${cleanupStats.idsAntigosRemovidos} legados, ${consolidatedParcelaIds.length} parcelas consolidadas, e ${orphanStats.removed} órfãos.`,
           total: bills.length,
           processadas,
+          consolidadas: records.length - consolidatedRecords.length,
           removidos_legado: cleanupStats.idsAntigosRemovidos,
           removidos_orfaos: orphanStats.removed,
         }),
