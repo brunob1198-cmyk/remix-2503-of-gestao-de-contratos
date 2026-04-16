@@ -1212,10 +1212,11 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul e removidos ${cleanupStats.idsAntigosRemovidos} lançamentos legados.`,
+          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul. Removidos ${cleanupStats.idsAntigosRemovidos} legados e ${orphanStats.removed} órfãos.`,
           total: bills.length,
           processadas,
           removidos_legado: cleanupStats.idsAntigosRemovidos,
+          removidos_orfaos: orphanStats.removed,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
