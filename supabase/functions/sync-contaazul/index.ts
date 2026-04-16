@@ -1103,16 +1103,82 @@ serve(async (req) => {
         });
       });
 
+      // ── Consolidate parcelas of the same event ──
+      // Parcelas (installments) of the same event share descricao + data_competencia + centro_custo + categoria_erp.
+      // We consolidate them into a single record with the summed value.
+      const consolidationMap = new Map<string, typeof records[number] & { _parcelaIds: string[] }>();
+      for (const rec of records) {
+        const groupKey = `${rec.descricao}||${rec.data_competencia}||${rec.centro_custo}||${rec.categoria_erp}`;
+        const existing = consolidationMap.get(groupKey);
+        if (existing) {
+          existing.valor = roundCurrency(existing.valor + rec.valor);
+          existing._parcelaIds.push(rec.erp_id);
+          // Keep the earliest payment date and most relevant status
+          if (rec.status_erp === "pago") existing.status_erp = "pago";
+          if (rec.data_pagamento && (!existing.data_pagamento || rec.data_pagamento < existing.data_pagamento)) {
+            existing.data_pagamento = rec.data_pagamento;
+          }
+        } else {
+          consolidationMap.set(groupKey, { ...rec, _parcelaIds: [rec.erp_id] });
+        }
+      }
+
+      // Build consolidated records with stable erp_id based on grouping
+      const consolidatedRecords = Array.from(consolidationMap.values()).map((rec) => {
+        if (rec._parcelaIds.length > 1) {
+          // Use first parcela ID + "::evt" suffix to create a stable event-level ID
+          const sortedIds = [...rec._parcelaIds].sort();
+          rec.erp_id = `evt::${sortedIds[0]}`;
+          console.log(`Consolidated ${rec._parcelaIds.length} parcelas → ${rec.erp_id}: ${rec.descricao} = ${rec.valor}`);
+        }
+        const { _parcelaIds, ...record } = rec;
+        return record;
+      });
+
+      // Track consolidated IDs for cleanup
+      const consolidatedIdsByBase = new Map<string, Set<string>>();
+      for (const rec of consolidatedRecords) {
+        const baseId = getBaseErpId(rec.erp_id) || rec.erp_id;
+        const current = consolidatedIdsByBase.get(baseId) || new Set<string>();
+        current.add(rec.erp_id);
+        consolidatedIdsByBase.set(baseId, current);
+      }
+
+      console.log(`Records before consolidation: ${records.length}, after: ${consolidatedRecords.length}`);
+
       // Batch insert new category mappings
       if (newCategorias.size > 0) {
         await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
+      }
+
+      // Cleanup: find old parcela-level IDs that were consolidated into event-level IDs
+      // AND old rateio-split records that changed
+      const allConsolidatedErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
+
+      // Also collect all original parcela IDs that got consolidated so we can delete them
+      const consolidatedParcelaIds: string[] = [];
+      for (const rec of consolidationMap.values()) {
+        if (rec._parcelaIds.length > 1) {
+          // These parcela-level erp_ids should be removed from DB (replaced by evt:: record)
+          consolidatedParcelaIds.push(...rec._parcelaIds);
+        }
+      }
+
+      // Delete old parcela-level records that are now consolidated
+      if (consolidatedParcelaIds.length > 0) {
+        console.log(`Removing ${consolidatedParcelaIds.length} old parcela-level records (now consolidated)`);
+        const DELETE_CHUNK_SIZE = 500;
+        for (let i = 0; i < consolidatedParcelaIds.length; i += DELETE_CHUNK_SIZE) {
+          const chunk = consolidatedParcelaIds.slice(i, i + DELETE_CHUNK_SIZE);
+          await supabase.from("custo_real_erp").delete().in("erp_id", chunk);
+        }
       }
 
       const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
         const existingIds = existingIdsByBase.get(baseId);
         if (!existingIds) return [];
 
-        return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId));
+        return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId) && !allConsolidatedErpIds.has(erpId));
       });
 
       cleanupStats.basesProcessadas = currentIdsByBase.size;
@@ -1140,11 +1206,11 @@ serve(async (req) => {
         }
       }
 
-      // Batch upsert records in chunks of 500
+      // Batch upsert consolidated records in chunks of 500
       const CHUNK_SIZE = 500;
       let processadas = 0;
-      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
-        const chunk = records.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < consolidatedRecords.length; i += CHUNK_SIZE) {
+        const chunk = consolidatedRecords.slice(i, i + CHUNK_SIZE);
         const { error: upsertError } = await supabase.from("custo_real_erp").upsert(chunk, { onConflict: "erp_id" });
         if (upsertError) {
           console.error(`Erro upsert chunk ${i}:`, upsertError.message);
@@ -1153,7 +1219,7 @@ serve(async (req) => {
       }
 
       // --- Orphan cleanup: remove records in DB for the synced period that are no longer in the API ---
-      const allCurrentErpIds = new Set(records.map((r: any) => r.erp_id));
+      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
       const orphanStats = { found: 0, removed: 0 };
 
       // Fetch all existing records whose data_competencia falls within the synced period
@@ -1223,9 +1289,10 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Sincronizadas ${processadas} linhas de ${bills.length} despesas do Conta Azul. Removidos ${cleanupStats.idsAntigosRemovidos} legados e ${orphanStats.removed} órfãos.`,
+          message: `Sincronizadas ${processadas} linhas (consolidadas de ${records.length} parcelas em ${bills.length} despesas). Removidos ${cleanupStats.idsAntigosRemovidos} legados, ${consolidatedParcelaIds.length} parcelas consolidadas, e ${orphanStats.removed} órfãos.`,
           total: bills.length,
           processadas,
+          consolidadas: records.length - consolidatedRecords.length,
           removidos_legado: cleanupStats.idsAntigosRemovidos,
           removidos_orfaos: orphanStats.removed,
         }),
