@@ -1132,6 +1132,49 @@ serve(async (req) => {
         });
       });
 
+      // ── Consolidate parcelas of the same event ──
+      // Parcelas (installments) of the same event share descricao + data_competencia + centro_custo + categoria_erp.
+      // We consolidate them into a single record with the summed value.
+      const consolidationMap = new Map<string, typeof records[number] & { _parcelaIds: string[] }>();
+      for (const rec of records) {
+        const groupKey = `${rec.descricao}||${rec.data_competencia}||${rec.centro_custo}||${rec.categoria_erp}`;
+        const existing = consolidationMap.get(groupKey);
+        if (existing) {
+          existing.valor = roundCurrency(existing.valor + rec.valor);
+          existing._parcelaIds.push(rec.erp_id);
+          // Keep the earliest payment date and most relevant status
+          if (rec.status_erp === "pago") existing.status_erp = "pago";
+          if (rec.data_pagamento && (!existing.data_pagamento || rec.data_pagamento < existing.data_pagamento)) {
+            existing.data_pagamento = rec.data_pagamento;
+          }
+        } else {
+          consolidationMap.set(groupKey, { ...rec, _parcelaIds: [rec.erp_id] });
+        }
+      }
+
+      // Build consolidated records with stable erp_id based on grouping
+      const consolidatedRecords = Array.from(consolidationMap.values()).map((rec) => {
+        if (rec._parcelaIds.length > 1) {
+          // Use first parcela ID + "::evt" suffix to create a stable event-level ID
+          const sortedIds = [...rec._parcelaIds].sort();
+          rec.erp_id = `evt::${sortedIds[0]}`;
+          console.log(`Consolidated ${rec._parcelaIds.length} parcelas → ${rec.erp_id}: ${rec.descricao} = ${rec.valor}`);
+        }
+        const { _parcelaIds, ...record } = rec;
+        return record;
+      });
+
+      // Track consolidated IDs for cleanup
+      const consolidatedIdsByBase = new Map<string, Set<string>>();
+      for (const rec of consolidatedRecords) {
+        const baseId = getBaseErpId(rec.erp_id) || rec.erp_id;
+        const current = consolidatedIdsByBase.get(baseId) || new Set<string>();
+        current.add(rec.erp_id);
+        consolidatedIdsByBase.set(baseId, current);
+      }
+
+      console.log(`Records before consolidation: ${records.length}, after: ${consolidatedRecords.length}`);
+
       // Batch insert new category mappings
       if (newCategorias.size > 0) {
         await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
