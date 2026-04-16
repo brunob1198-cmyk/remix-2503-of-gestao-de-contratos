@@ -1198,40 +1198,11 @@ serve(async (req) => {
         consolidatedIdsByBase.set(baseId, current);
       }
 
-      console.log(`Records before consolidation: ${records.length}, after: ${consolidatedRecords.length}`);
-
-      // Batch insert new category mappings
-      if (newCategorias.size > 0) {
-        await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
-      }
-
-      // Cleanup: find old parcela-level IDs that were consolidated into event-level IDs
-      // AND old rateio-split records that changed
       const allConsolidatedErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
-
-      // Also collect all original parcela IDs that got consolidated so we can delete them
-      const consolidatedParcelaIds: string[] = [];
-      for (const rec of consolidationMap.values()) {
-        if (rec._parcelaIds.length > 1) {
-          // These parcela-level erp_ids should be removed from DB (replaced by evt:: record)
-          consolidatedParcelaIds.push(...rec._parcelaIds);
-        }
-      }
-
-      // Delete old parcela-level records that are now consolidated
-      if (consolidatedParcelaIds.length > 0) {
-        console.log(`Removing ${consolidatedParcelaIds.length} old parcela-level records (now consolidated)`);
-        const DELETE_CHUNK_SIZE = 500;
-        for (let i = 0; i < consolidatedParcelaIds.length; i += DELETE_CHUNK_SIZE) {
-          const chunk = consolidatedParcelaIds.slice(i, i + DELETE_CHUNK_SIZE);
-          await supabase.from("custo_real_erp").delete().in("erp_id", chunk);
-        }
-      }
 
       const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
         const existingIds = existingIdsByBase.get(baseId);
         if (!existingIds) return [];
-
         return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId) && !allConsolidatedErpIds.has(erpId));
       });
 
@@ -1239,29 +1210,20 @@ serve(async (req) => {
       cleanupStats.idsAntigosEncontrados = staleErpIds.length;
 
       if (staleErpIds.length > 0) {
-        const staleIdChunks: string[][] = [];
         const DELETE_CHUNK_SIZE = 500;
-
         for (let i = 0; i < staleErpIds.length; i += DELETE_CHUNK_SIZE) {
-          staleIdChunks.push(staleErpIds.slice(i, i + DELETE_CHUNK_SIZE));
-        }
-
-        for (const chunk of staleIdChunks) {
+          const chunk = staleErpIds.slice(i, i + DELETE_CHUNK_SIZE);
           const { error: deleteError } = await supabase
             .from("custo_real_erp")
             .delete()
             .in("erp_id", chunk);
-
           if (deleteError) {
-            console.error("Erro ao remover registros antigos de rateio:", deleteError.message);
+            console.error("Erro ao remover registros antigos:", deleteError.message);
           } else {
             cleanupStats.idsAntigosRemovidos += chunk.length;
           }
         }
       }
-
-      // Cleanup old parcela-level and evt:: records that are now replaced by event-level records
-      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
       
       // Also clean up old evt:: records from previous consolidation approach
       const oldEvtIds: string[] = [];
