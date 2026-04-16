@@ -1308,7 +1308,7 @@ serve(async (req) => {
         if (orphanErr) { console.error("Erro buscando órfãos:", orphanErr.message); break; }
         if (!orphanPage || orphanPage.length === 0) break;
         for (const row of orphanPage) {
-          if (!allCurrentErpIds.has(row.erp_id)) {
+          if (!allCurrentErpIds2.has(row.erp_id)) {
             orphanCandidates.push(row.erp_id);
           }
         }
