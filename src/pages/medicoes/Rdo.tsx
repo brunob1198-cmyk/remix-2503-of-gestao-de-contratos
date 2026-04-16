@@ -576,15 +576,53 @@ export default function RdoPage() {
                   </label>
                   <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-[160px]" />
                 </div>
-                <div className="space-y-1 min-w-[200px]">
+                <div className="space-y-1 min-w-[260px]">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Tag className="h-3 w-3" /> Item LPU
                   </label>
-                  <Input
-                    value={itemFilter}
-                    onChange={e => setItemFilter(e.target.value)}
-                    placeholder="Buscar item por código ou descrição..."
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                        <span className="truncate">
+                          {itemFilter
+                            ? (itensLpu.find(i => i.codigo === itemFilter)
+                                ? `${itemFilter} — ${itensLpu.find(i => i.codigo === itemFilter)?.descricao}`
+                                : itemFilter)
+                            : "Todos os itens"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[360px] p-0" align="start">
+                      <Command
+                        filter={(value, search) => {
+                          if (!search) return 1;
+                          return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Buscar por código ou descrição..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem value="__todos__" onSelect={() => setItemFilter("")}>
+                              <Check className={cn("mr-2 h-4 w-4", !itemFilter ? "opacity-100" : "opacity-0")} />
+                              Todos os itens
+                            </CommandItem>
+                            {itensLpu.map(item => (
+                              <CommandItem
+                                key={item.id}
+                                value={`${item.codigo} ${item.descricao}`}
+                                onSelect={() => setItemFilter(item.codigo)}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", itemFilter === item.codigo ? "opacity-100" : "opacity-0")} />
+                                <span className="truncate">{item.codigo} — {item.descricao}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-1 flex-1 min-w-[180px]">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
