@@ -1180,11 +1180,34 @@ serve(async (req) => {
         await supabase.from("mapeamento_categorias_erp").upsert(Array.from(newCategorias.values()), { onConflict: "categoria_erp" }).then(() => {});
       }
 
+      // Cleanup: find old parcela-level IDs that were consolidated into event-level IDs
+      // AND old rateio-split records that changed
+      const allConsolidatedErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
+
+      // Also collect all original parcela IDs that got consolidated so we can delete them
+      const consolidatedParcelaIds: string[] = [];
+      for (const rec of consolidationMap.values()) {
+        if (rec._parcelaIds.length > 1) {
+          // These parcela-level erp_ids should be removed from DB (replaced by evt:: record)
+          consolidatedParcelaIds.push(...rec._parcelaIds);
+        }
+      }
+
+      // Delete old parcela-level records that are now consolidated
+      if (consolidatedParcelaIds.length > 0) {
+        console.log(`Removing ${consolidatedParcelaIds.length} old parcela-level records (now consolidated)`);
+        const DELETE_CHUNK_SIZE = 500;
+        for (let i = 0; i < consolidatedParcelaIds.length; i += DELETE_CHUNK_SIZE) {
+          const chunk = consolidatedParcelaIds.slice(i, i + DELETE_CHUNK_SIZE);
+          await supabase.from("custo_real_erp").delete().in("erp_id", chunk);
+        }
+      }
+
       const staleErpIds = Array.from(currentIdsByBase.entries()).flatMap(([baseId, currentIds]) => {
         const existingIds = existingIdsByBase.get(baseId);
         if (!existingIds) return [];
 
-        return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId));
+        return Array.from(existingIds).filter((erpId) => !currentIds.has(erpId) && !allConsolidatedErpIds.has(erpId));
       });
 
       cleanupStats.basesProcessadas = currentIdsByBase.size;
@@ -1212,11 +1235,11 @@ serve(async (req) => {
         }
       }
 
-      // Batch upsert records in chunks of 500
+      // Batch upsert consolidated records in chunks of 500
       const CHUNK_SIZE = 500;
       let processadas = 0;
-      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
-        const chunk = records.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < consolidatedRecords.length; i += CHUNK_SIZE) {
+        const chunk = consolidatedRecords.slice(i, i + CHUNK_SIZE);
         const { error: upsertError } = await supabase.from("custo_real_erp").upsert(chunk, { onConflict: "erp_id" });
         if (upsertError) {
           console.error(`Erro upsert chunk ${i}:`, upsertError.message);
@@ -1225,7 +1248,7 @@ serve(async (req) => {
       }
 
       // --- Orphan cleanup: remove records in DB for the synced period that are no longer in the API ---
-      const allCurrentErpIds = new Set(records.map((r: any) => r.erp_id));
+      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
       const orphanStats = { found: 0, removed: 0 };
 
       // Fetch all existing records whose data_competencia falls within the synced period
