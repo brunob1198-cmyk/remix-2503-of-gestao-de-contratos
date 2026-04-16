@@ -122,7 +122,11 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
       );
 
       if (itemLpuId) {
-        result = result.filter(d => d.producoes.some(p => p.item_lpu?.codigo === itemLpuId || (p as any).item_lpu_id === itemLpuId));
+        const term = itemLpuId.toLowerCase();
+        result = result.filter(d => d.producoes.some(p =>
+          p.item_lpu?.codigo?.toLowerCase().includes(term) ||
+          p.item_lpu?.descricao?.toLowerCase().includes(term)
+        ));
       }
 
       if (busca && busca.trim()) {
