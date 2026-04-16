@@ -299,14 +299,27 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-      let q = (supabase as any).from("custo_real_erp").select("*");
-      q = q.in("projeto_id", projetoIds);
-      if (startDate) {
-        q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+      const BATCH_SIZE = 1000;
+      const allData: CustoErp[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let q = (supabase as any).from("custo_real_erp").select("*");
+        q = q.in("projeto_id", projetoIds);
+        if (startDate) {
+          q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+        }
+        q = q.range(offset, offset + BATCH_SIZE - 1);
+        const { data, error } = await q;
+        if (error) throw error;
+        const batch = (data || []) as CustoErp[];
+        allData.push(...batch);
+        hasMore = batch.length === BATCH_SIZE;
+        offset += BATCH_SIZE;
       }
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data as CustoErp[]).filter(
+
+      return allData.filter(
         item => !categoriasDesativadas.includes(item.categoria_erp)
       );
     },
