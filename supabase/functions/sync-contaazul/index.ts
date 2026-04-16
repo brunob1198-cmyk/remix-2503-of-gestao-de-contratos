@@ -1228,7 +1228,7 @@ serve(async (req) => {
       // Also clean up old evt:: records from previous consolidation approach
       const oldEvtIds: string[] = [];
       for (const erpId of existingErpIds) {
-        if (erpId.startsWith("evt::") && !allCurrentErpIds.has(erpId)) {
+        if (erpId.startsWith("evt::") && !allConsolidatedErpIds.has(erpId)) {
           oldEvtIds.push(erpId);
         }
       }
