@@ -844,7 +844,7 @@ export default function DiarioObraPage() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[360px] p-0" align="start">
+                    <PopoverContent className="w-[min(720px,95vw)] p-0" align="start">
                       <Command
                         filter={(value, search) => {
                           if (!search) return 1;
@@ -852,7 +852,7 @@ export default function DiarioObraPage() {
                         }}
                       >
                         <CommandInput placeholder="Buscar por código ou descrição..." />
-                        <CommandList>
+                        <CommandList className="max-h-[320px]">
                           <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
                           <CommandGroup>
                             {itensDisponiveis.map(i => (
@@ -860,9 +860,10 @@ export default function DiarioObraPage() {
                                 key={i.id || i.item_lpu_id}
                                 value={i.nome}
                                 onSelect={() => setProdItemId(i.item_lpu_id || "")}
+                                className="items-start"
                               >
-                                <Check className={cn("mr-2 h-4 w-4", prodItemId === i.item_lpu_id ? "opacity-100" : "opacity-0")} />
-                                <span className="truncate">{i.nome}</span>
+                                <Check className={cn("mr-2 h-4 w-4 mt-0.5 shrink-0", prodItemId === i.item_lpu_id ? "opacity-100" : "opacity-0")} />
+                                <span className="whitespace-normal break-words leading-snug">{i.nome}</span>
                               </CommandItem>
                             ))}
                           </CommandGroup>
