@@ -1291,7 +1291,7 @@ serve(async (req) => {
       }
 
       // --- Orphan cleanup: remove records in DB for the synced period that are no longer in the API ---
-      const allCurrentErpIds = new Set(consolidatedRecords.map((r: any) => r.erp_id));
+      const allCurrentErpIds2 = new Set(consolidatedRecords.map((r: any) => r.erp_id));
       const orphanStats = { found: 0, removed: 0 };
 
       // Fetch all existing records whose data_competencia falls within the synced period
