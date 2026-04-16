@@ -299,8 +299,8 @@ export default function RdoPage() {
   }, [setSelectedSiteIds]);
   const { itensLpu } = useItensLpu(firstProjetoId);
 
-  const [dataInicio, setDataInicio] = useState(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
-  const [dataFim, setDataFim] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [dataInicio, setDataInicio] = usePersistedState("rdo-data-inicio", format(subDays(new Date(), 30), "yyyy-MM-dd"));
+  const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
   const [itemFilter, setItemFilter] = useState<string>("all");
   const [busca, setBusca] = useState("");
 
