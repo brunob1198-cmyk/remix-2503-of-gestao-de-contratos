@@ -301,14 +301,14 @@ export default function RdoPage() {
 
   const [dataInicio, setDataInicio] = usePersistedState("rdo-data-inicio", format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
-  const [itemFilter, setItemFilter] = useState<string>("all");
+  const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
 
   const { data: diarios = [], isLoading } = useRdo(
     querySiteIds.length > 0 ? querySiteIds : undefined,
     dataInicio,
     dataFim,
-    itemFilter !== "all" ? itemFilter : undefined,
+    itemFilter.trim() || undefined,
     busca,
     sitesMap
   );
@@ -575,17 +575,13 @@ export default function RdoPage() {
                 </div>
                 <div className="space-y-1 min-w-[200px]">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <ClipboardList className="h-3 w-3" /> Item
+                    <Tag className="h-3 w-3" /> Item LPU
                   </label>
-                  <Select value={itemFilter} onValueChange={setItemFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os itens</SelectItem>
-                      {uniqueItems.map(i => (
-                        <SelectItem key={i.id} value={i.id}>{i.codigo} — {i.descricao}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    value={itemFilter}
+                    onChange={e => setItemFilter(e.target.value)}
+                    placeholder="Buscar item por código ou descrição..."
+                  />
                 </div>
                 <div className="space-y-1 flex-1 min-w-[180px]">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
