@@ -1141,9 +1141,54 @@ serve(async (req) => {
         processadas += chunk.length;
       }
 
+      // --- Orphan cleanup: remove records in DB for the synced period that are no longer in the API ---
+      const allCurrentErpIds = new Set(records.map((r: any) => r.erp_id));
+      const orphanStats = { found: 0, removed: 0 };
+
+      // Fetch all existing records whose data_competencia falls within the synced period
+      const ORPHAN_PAGE = 1000;
+      const orphanCandidates: string[] = [];
+      for (let from = 0; ; from += ORPHAN_PAGE) {
+        const { data: orphanPage, error: orphanErr } = await supabase
+          .from("custo_real_erp")
+          .select("erp_id")
+          .gte("data_competencia", startDateStr)
+          .lte("data_competencia", endDateStr)
+          .range(from, from + ORPHAN_PAGE - 1);
+
+        if (orphanErr) { console.error("Erro buscando órfãos:", orphanErr.message); break; }
+        if (!orphanPage || orphanPage.length === 0) break;
+        for (const row of orphanPage) {
+          if (!allCurrentErpIds.has(row.erp_id)) {
+            orphanCandidates.push(row.erp_id);
+          }
+        }
+        if (orphanPage.length < ORPHAN_PAGE) break;
+      }
+
+      orphanStats.found = orphanCandidates.length;
+
+      if (orphanCandidates.length > 0) {
+        console.log(`Removendo ${orphanCandidates.length} registros órfãos do período ${startDateStr} a ${endDateStr}`);
+        const DELETE_CHUNK = 500;
+        for (let i = 0; i < orphanCandidates.length; i += DELETE_CHUNK) {
+          const chunk = orphanCandidates.slice(i, i + DELETE_CHUNK);
+          const { error: delErr } = await supabase
+            .from("custo_real_erp")
+            .delete()
+            .in("erp_id", chunk);
+          if (delErr) {
+            console.error("Erro removendo órfãos:", delErr.message);
+          } else {
+            orphanStats.removed += chunk.length;
+          }
+        }
+      }
+
       console.log("Resumo de vínculo projeto/site:", matchStats);
       console.log("Resumo de rateio:", splitStats);
       console.log("Resumo limpeza rateio legado:", cleanupStats);
+      console.log("Resumo limpeza órfãos:", orphanStats);
 
       // Log sample of first few bills structure for debugging split issues
       if (bills.length > 0) {
