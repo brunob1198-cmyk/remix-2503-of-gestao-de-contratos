@@ -116,15 +116,27 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         .eq("ativo", false);
       const disabledSet = new Set((disabledCats || []).map((d: any) => d.categoria_erp));
 
-      // Fetch ERP costs by data_competencia (filter disabled categories)
-      const { data: erpDataRaw } = await (supabase as any)
-        .from("custo_real_erp")
-        .select("projeto_id, categoria_interna, categoria_erp, valor, data_competencia")
-        .in("projeto_id", projetoIds)
-        .gte("data_competencia", startDate)
-        .lte("data_competencia", endDate);
+      // Fetch ERP costs by data_competencia (filter disabled categories) — paginated
+      const BATCH_SIZE = 1000;
+      const allErpData: any[] = [];
+      let erpOffset = 0;
+      let erpHasMore = true;
 
-      const erpData = (erpDataRaw || []).filter((e: any) => !disabledSet.has(e.categoria_erp));
+      while (erpHasMore) {
+        const { data: batch } = await (supabase as any)
+          .from("custo_real_erp")
+          .select("projeto_id, categoria_interna, categoria_erp, valor, data_competencia")
+          .in("projeto_id", projetoIds)
+          .gte("data_competencia", startDate)
+          .lte("data_competencia", endDate)
+          .range(erpOffset, erpOffset + BATCH_SIZE - 1);
+        const rows = batch || [];
+        allErpData.push(...rows);
+        erpHasMore = rows.length === BATCH_SIZE;
+        erpOffset += BATCH_SIZE;
+      }
+
+      const erpData = allErpData.filter((e: any) => !disabledSet.has(e.categoria_erp));
 
       // Generate all months in range
       const months = eachMonthOfInterval({ start: periodoInicio, end: periodoFim });

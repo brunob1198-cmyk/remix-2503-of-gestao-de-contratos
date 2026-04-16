@@ -131,11 +131,22 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
         (categoriasMap || []).filter(c => !c.ativo).map(c => c.categoria_erp)
       );
 
-      // Fetch ERP costs for the project
-      const { data: erpData } = await (supabase as any)
-        .from("custo_real_erp")
-        .select("valor, categoria_erp")
-        .eq("projeto_id", resolvedProjetoId);
+      // Fetch ERP costs for the project — paginated
+      const allErpData: any[] = [];
+      let erpOffset = 0;
+      let erpHasMore = true;
+      while (erpHasMore) {
+        const { data: batch } = await (supabase as any)
+          .from("custo_real_erp")
+          .select("valor, categoria_erp")
+          .eq("projeto_id", resolvedProjetoId)
+          .range(erpOffset, erpOffset + 1000 - 1);
+        const rows = batch || [];
+        allErpData.push(...rows);
+        erpHasMore = rows.length === 1000;
+        erpOffset += 1000;
+      }
+      const erpData = allErpData;
       const uniqueErpCustos = (erpData || []).filter((c: any) => !disabledCategorias.has(c.categoria_erp));
 
       if (diarioIds.length > 0) {
