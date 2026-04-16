@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -829,16 +833,43 @@ export default function DiarioObraPage() {
               <div className="flex flex-wrap gap-2 items-end">
                 <div className="flex-1 min-w-[200px]">
                   <label className="text-xs text-muted-foreground mb-1 block">Item LPU {hasEscopo ? "(do Escopo)" : "(do Projeto)"}</label>
-                  <Select value={prodItemId} onValueChange={setProdItemId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione item" /></SelectTrigger>
-                    <SelectContent>
-                      {itensDisponiveis.map(i => (
-                        <SelectItem key={i.id || i.item_lpu_id} value={i.item_lpu_id || ""}>
-                          {i.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                        <span className="truncate">
+                          {prodItemId
+                            ? (itensDisponiveis.find(i => i.item_lpu_id === prodItemId)?.nome || "Selecione item")
+                            : "Selecione item"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[360px] p-0" align="start">
+                      <Command
+                        filter={(value, search) => {
+                          if (!search) return 1;
+                          return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput placeholder="Buscar por código ou descrição..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {itensDisponiveis.map(i => (
+                              <CommandItem
+                                key={i.id || i.item_lpu_id}
+                                value={i.nome}
+                                onSelect={() => setProdItemId(i.item_lpu_id || "")}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4", prodItemId === i.item_lpu_id ? "opacity-100" : "opacity-0")} />
+                                <span className="truncate">{i.nome}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="w-[140px]">
                   <label className="text-xs text-muted-foreground mb-1 block">
