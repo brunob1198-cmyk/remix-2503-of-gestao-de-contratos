@@ -1,4 +1,5 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -77,9 +78,19 @@ const getColValue = (row: MonthlyRow, col: ColKey): string => {
 };
 
 export default function ProducaoMensal() {
-  const [filtroProjetoId, setFiltroProjetoId] = useState<string>("");
-  const [periodoInicio, setPeriodoInicio] = useState<Date>(() => subMonths(new Date(), 2));
-  const [periodoFim, setPeriodoFim] = useState<Date>(() => new Date());
+  const [filtroProjetoId, setFiltroProjetoId] = usePersistedState<string>("relatorios:producao_mensal:projeto", "");
+  const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>(
+    "relatorios:producao_mensal:periodo_inicio",
+    format(subMonths(new Date(), 2), "yyyy-MM-dd")
+  );
+  const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>(
+    "relatorios:producao_mensal:periodo_fim",
+    format(new Date(), "yyyy-MM-dd")
+  );
+  const periodoInicio = useMemo(() => new Date(periodoInicioStr + "T00:00:00"), [periodoInicioStr]);
+  const periodoFim = useMemo(() => new Date(periodoFimStr + "T00:00:00"), [periodoFimStr]);
+  const setPeriodoInicio = useCallback((d: Date) => setPeriodoInicioStr(format(d, "yyyy-MM-dd")), [setPeriodoInicioStr]);
+  const setPeriodoFim = useCallback((d: Date) => setPeriodoFimStr(format(d, "yyyy-MM-dd")), [setPeriodoFimStr]);
 
   const { projetos } = useProjetos();
   const { contratos } = useContratos();
