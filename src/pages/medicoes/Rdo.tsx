@@ -301,7 +301,7 @@ export default function RdoPage() {
 
   const [dataInicio, setDataInicio] = usePersistedState("rdo-data-inicio", format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
-  const [itemFilter, setItemFilter] = useState<string>("all");
+  const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
 
   const { data: diarios = [], isLoading } = useRdo(
