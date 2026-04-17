@@ -173,7 +173,7 @@ export default function DiarioObraPage() {
 
   // Equipe form state
   const [eqRecursoId, setEqRecursoId] = useState("");
-  const [eqHoras, setEqHoras] = useState("8");
+  const [eqHoras, setEqHoras] = useState("0");
   const [eqCustoHora, setEqCustoHora] = useState("");
 
   // Equipamento form state
@@ -487,7 +487,7 @@ export default function DiarioObraPage() {
       custo_hora,
       custo_total,
     });
-    setEqRecursoId(""); setEqHoras("8"); setEqCustoHora("");
+    setEqRecursoId(""); setEqHoras("0"); setEqCustoHora("");
   };
 
   const handleAddEquipamento = async () => {
@@ -1197,7 +1197,6 @@ export default function DiarioObraPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>Função</TableHead>
                       <TableHead className="text-right">Horas</TableHead>
-                      <TableHead className="text-right">Custo Unit.</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -1215,13 +1214,6 @@ export default function DiarioObraPage() {
                               <Input type="number" value={editEquipeHoras} onChange={ev => setEditEquipeHoras(ev.target.value)} className="w-[70px] ml-auto h-8 text-right" />
                             ) : (
                               <span>{Number(e.horas)} <span className="text-xs text-muted-foreground">({unidadeLabel})</span></span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {isEditing ? (
-                              <Input type="number" value={editEquipeCustoHora} onChange={ev => setEditEquipeCustoHora(ev.target.value)} className="w-[90px] ml-auto h-8 text-right" />
-                            ) : (
-                              formatCurrency(Number(e.custo_hora))
                             )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums font-medium">{formatCurrency(Number(e.custo_total))}</TableCell>
