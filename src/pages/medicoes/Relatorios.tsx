@@ -78,6 +78,8 @@ export default function RelatoriosPage() {
       });
     },
   });
+
+  const filteredSites = projetoId
     ? sites.filter(s => s.projeto_id === projetoId)
     : sites;
 
