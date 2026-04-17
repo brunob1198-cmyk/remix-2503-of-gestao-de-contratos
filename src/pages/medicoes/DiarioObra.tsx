@@ -978,6 +978,35 @@ export default function DiarioObraPage() {
                 <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd}>
                   <Plus className="h-4 w-4 mr-1" /> Adicionar
                 </Button>
+                <input
+                  ref={prodUploadRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUploadProducaoPlanilha(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => prodUploadRef.current?.click()}
+                  title="Importar produção em lote (Excel/CSV)"
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Upload Planilha
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDownloadProducaoTemplate}
+                  title="Baixar modelo de planilha"
+                >
+                  <FileText className="h-4 w-4 mr-1" /> Modelo
+                </Button>
               </div>
 
               {/* Staging area for pending files */}
