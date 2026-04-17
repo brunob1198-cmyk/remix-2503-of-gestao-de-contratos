@@ -505,7 +505,7 @@ export default function RdoPage() {
                 <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline">Todos</button>
                 <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline">Limpar</button>
               </div>
-              <ScrollArea className="max-h-72">
+              <ScrollArea className="h-72 pr-3">
                 <div className="space-y-1">
                   {projetos.map(p => (
                     <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
