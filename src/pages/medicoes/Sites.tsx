@@ -22,8 +22,10 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import { SitesImporter } from "@/components/medicoes/SitesImporter";
 
-const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf"] as const;
+const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf", "valorEscopo"] as const;
 type ColKey = typeof columns[number];
+
+const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
 export default function SitesPage() {
   const { sites, isLoading, createSite, updateSite, deleteSite } = useSites();
