@@ -161,6 +161,7 @@ export default function DiarioObraPage() {
 
     await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
     await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
+    await atualizarObservacoes.mutateAsync({ id: diarioId, observacoes: obs });
     setHeaderSaved(true);
     toast({ title: "Diário salvo com sucesso!" });
     setTimeout(() => setHeaderSaved(false), 3000);
