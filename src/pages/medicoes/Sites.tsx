@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -20,8 +22,10 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import { SitesImporter } from "@/components/medicoes/SitesImporter";
 
-const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf"] as const;
+const columns = ["projeto", "codigo", "nome", "cliente", "municipio", "uf", "valorEscopo"] as const;
 type ColKey = typeof columns[number];
+
+const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
 export default function SitesPage() {
   const { sites, isLoading, createSite, updateSite, deleteSite } = useSites();
@@ -39,9 +43,26 @@ export default function SitesPage() {
   const [municipio, setMunicipio] = useState("");
   const [uf, setUf] = useState("");
 
+  // Carrega valor de escopo por site (sum of quantidade * valor_unitario)
+  const { data: escopoTotais = {} } = useQuery({
+    queryKey: ["sites-escopo-totais"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escopo_itens")
+        .select("site_id, quantidade, valor_unitario");
+      if (error) throw error;
+      const totais: Record<string, number> = {};
+      (data || []).forEach((it: any) => {
+        totais[it.site_id] = (totais[it.site_id] || 0) + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0);
+      });
+      return totais;
+    },
+  });
+
   const getColValue = (s: any, col: ColKey): string => {
     if (col === "projeto") return (s.projeto as any)?.codigo || "-";
     if (col === "cliente") return (s.projeto as any)?.clienteObj?.razao_social || "-";
+    if (col === "valorEscopo") return String(escopoTotais[s.id] || 0);
     return s[col] || "-";
   };
 
@@ -52,6 +73,11 @@ export default function SitesPage() {
     selectAll, clearAll, clearAllFilters, hasActiveFilters, processedItems, uniqueValues, paginatedItems,
     currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages
   } = useTableFilters(preFilteredSites, columns, getColValue);
+
+  const totalEscopoFiltrado = useMemo(
+    () => processedItems.reduce((sum, s: any) => sum + (escopoTotais[s.id] || 0), 0),
+    [processedItems, escopoTotais]
+  );
 
   const resetForm = () => { setProjetoId(""); setClienteId(""); setCodigo(""); setNome(""); setMunicipio(""); setUf(""); setEditingId(null); };
 
@@ -84,7 +110,7 @@ export default function SitesPage() {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  const columnLabels: Record<ColKey, string> = { projeto: "Projeto", codigo: "Código", nome: "Nome", cliente: "Cliente", municipio: "Município", uf: "UF" };
+  const columnLabels: Record<ColKey, string> = { projeto: "Projeto", codigo: "Código", nome: "Nome", cliente: "Cliente", municipio: "Município", uf: "UF", valorEscopo: "Valor Escopo" };
 
   return (
     <div className="space-y-6">
@@ -197,6 +223,7 @@ export default function SitesPage() {
                     <TableCell>{(s.projeto as any)?.clienteObj?.razao_social || "-"}</TableCell>
                     <TableCell>{s.municipio || "-"}</TableCell>
                     <TableCell>{s.uf || "-"}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(escopoTotais[s.id] || 0)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/medicoes/sites/${s.id}/escopo`)} title="Escopo da Obra"><ClipboardList className="h-4 w-4 text-primary" /></Button>
@@ -207,6 +234,13 @@ export default function SitesPage() {
                   </TableRow>
                 ))}
               </TableBody>
+              <tfoot className="border-t bg-muted/50 font-medium">
+                <TableRow>
+                  <TableCell colSpan={6} className="text-right font-semibold">Total{filterProjetoId || hasActiveFilters ? " (filtrado)" : ""}:</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(totalEscopoFiltrado)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </tfoot>
             </Table>
           )}
           
