@@ -110,7 +110,7 @@ export default function SitesPage() {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  const columnLabels: Record<ColKey, string> = { projeto: "Projeto", codigo: "Código", nome: "Nome", cliente: "Cliente", municipio: "Município", uf: "UF" };
+  const columnLabels: Record<ColKey, string> = { projeto: "Projeto", codigo: "Código", nome: "Nome", cliente: "Cliente", municipio: "Município", uf: "UF", valorEscopo: "Valor Escopo" };
 
   return (
     <div className="space-y-6">
