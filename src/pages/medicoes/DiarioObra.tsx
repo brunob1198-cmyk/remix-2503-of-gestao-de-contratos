@@ -35,6 +35,7 @@ import {
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
+import * as XLSX from "xlsx";
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -378,6 +379,87 @@ export default function DiarioObraPage() {
     queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
     queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
     toast({ title: "Produção adicionada com fotos!" });
+  };
+
+  const prodUploadRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadProducaoTemplate = () => {
+    const rows = [
+      { codigo: "EX001", quantidade: 10 },
+      { codigo: "EX002", quantidade: 5 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 20 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Producao");
+    XLSX.writeFile(wb, "modelo_producao_diario.xlsx");
+  };
+
+  const handleUploadProducaoPlanilha = async (file: File) => {
+    if (!diarioUf || !diarioMunicipio) {
+      toast({ title: "Localização obrigatória", description: "Selecione UF e Município antes de lançar produção.", variant: "destructive" });
+      return;
+    }
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+      if (!rows.length) {
+        toast({ title: "Planilha vazia", variant: "destructive" });
+        return;
+      }
+
+      // Build code → item map (case-insensitive)
+      const codeMap = new Map<string, { item_lpu_id: string; valor_unitario: number }>();
+      const lpuByCode = new Map(itensLpu.map(i => [String(i.codigo).trim().toLowerCase(), i]));
+      itensDisponiveis.forEach(i => {
+        if (!i.item_lpu_id) return;
+        const lpu = itensLpu.find(l => l.id === i.item_lpu_id);
+        if (lpu) codeMap.set(String(lpu.codigo).trim().toLowerCase(), { item_lpu_id: i.item_lpu_id, valor_unitario: i.valor_unitario });
+      });
+
+      const toInsert: Array<{ item_lpu_id: string; quantidade: number; preco_unitario_congelado: number; valor_total: number }> = [];
+      const erros: string[] = [];
+      rows.forEach((r, idx) => {
+        const codigo = String(r.codigo ?? r.Codigo ?? r.código ?? r.Código ?? "").trim().toLowerCase();
+        const qtdRaw = r.quantidade ?? r.Quantidade ?? r.qtd ?? r.Qtd;
+        const qtd = Number(String(qtdRaw).replace(",", "."));
+        if (!codigo) { erros.push(`Linha ${idx + 2}: código vazio`); return; }
+        if (!qtd || isNaN(qtd) || qtd <= 0) { erros.push(`Linha ${idx + 2}: quantidade inválida`); return; }
+        const match = codeMap.get(codigo) || (lpuByCode.get(codigo) ? { item_lpu_id: lpuByCode.get(codigo)!.id, valor_unitario: Number(lpuByCode.get(codigo)!.preco_unitario || 0) } : null);
+        if (!match) { erros.push(`Linha ${idx + 2}: código "${r.codigo}" não encontrado no ${hasEscopo ? "escopo" : "projeto"}`); return; }
+        toInsert.push({
+          item_lpu_id: match.item_lpu_id,
+          quantidade: qtd,
+          preco_unitario_congelado: match.valor_unitario,
+          valor_total: qtd * match.valor_unitario,
+        });
+      });
+
+      if (!toInsert.length) {
+        toast({ title: "Nenhum item válido", description: erros.slice(0, 5).join(" | "), variant: "destructive" });
+        return;
+      }
+
+      const diarioId = await ensureDiario();
+      if (!diarioId) return;
+
+      const payload = toInsert.map(i => ({ ...i, diario_id: diarioId }));
+      const { error } = await supabase.from("diario_producao").insert(payload);
+      if (error) {
+        toast({ title: "Erro ao importar", description: error.message, variant: "destructive" });
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+      toast({
+        title: `${toInsert.length} item(ns) importado(s)!`,
+        description: erros.length ? `${erros.length} linha(s) ignorada(s).` : undefined,
+      });
+    } catch (e: any) {
+      toast({ title: "Erro ao ler planilha", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleAddEquipe = async () => {
@@ -895,6 +977,35 @@ export default function DiarioObraPage() {
                 </div>
                 <Button onClick={handleAddProducao} size="sm" disabled={!prodItemId || !prodQtd}>
                   <Plus className="h-4 w-4 mr-1" /> Adicionar
+                </Button>
+                <input
+                  ref={prodUploadRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUploadProducaoPlanilha(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => prodUploadRef.current?.click()}
+                  title="Importar produção em lote (Excel/CSV)"
+                >
+                  <Upload className="h-4 w-4 mr-1" /> Upload Planilha
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDownloadProducaoTemplate}
+                  title="Baixar modelo de planilha"
+                >
+                  <FileText className="h-4 w-4 mr-1" /> Modelo
                 </Button>
               </div>
 
