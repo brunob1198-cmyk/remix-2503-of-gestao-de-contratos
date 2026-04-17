@@ -161,6 +161,7 @@ export default function DiarioObraPage() {
 
     await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
     await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
+    await atualizarObservacoes.mutateAsync({ id: diarioId, observacoes: obs });
     setHeaderSaved(true);
     toast({ title: "Diário salvo com sucesso!" });
     setTimeout(() => setHeaderSaved(false), 3000);
@@ -828,7 +829,7 @@ export default function DiarioObraPage() {
                     variant={headerSaved ? "outline" : "default"}
                     size="sm"
                     onClick={handleSaveHeader}
-                    disabled={atualizarClima.isPending || atualizarLocalizacao.isPending}
+                    disabled={atualizarClima.isPending || atualizarLocalizacao.isPending || atualizarObservacoes.isPending}
                     className={headerSaved ? "border-green-500 text-green-600" : ""}
                   >
                     {headerSaved ? (
@@ -1563,9 +1564,9 @@ export default function DiarioObraPage() {
                 placeholder="Anotações sobre o dia de trabalho..."
                 rows={4}
               />
-              <Button onClick={handleSaveObs} size="sm" disabled={atualizarObservacoes.isPending}>
-                Salvar observações
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                As observações são salvas junto com o diário ao clicar em <strong>Salvar</strong> no topo da página.
+              </p>
             </CardContent>
           </Card>
             </div>
