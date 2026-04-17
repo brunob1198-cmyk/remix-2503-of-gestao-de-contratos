@@ -43,9 +43,26 @@ export default function SitesPage() {
   const [municipio, setMunicipio] = useState("");
   const [uf, setUf] = useState("");
 
+  // Carrega valor de escopo por site (sum of quantidade * valor_unitario)
+  const { data: escopoTotais = {} } = useQuery({
+    queryKey: ["sites-escopo-totais"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("escopo_itens")
+        .select("site_id, quantidade, valor_unitario");
+      if (error) throw error;
+      const totais: Record<string, number> = {};
+      (data || []).forEach((it: any) => {
+        totais[it.site_id] = (totais[it.site_id] || 0) + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0);
+      });
+      return totais;
+    },
+  });
+
   const getColValue = (s: any, col: ColKey): string => {
     if (col === "projeto") return (s.projeto as any)?.codigo || "-";
     if (col === "cliente") return (s.projeto as any)?.clienteObj?.razao_social || "-";
+    if (col === "valorEscopo") return String(escopoTotais[s.id] || 0);
     return s[col] || "-";
   };
 
@@ -56,6 +73,11 @@ export default function SitesPage() {
     selectAll, clearAll, clearAllFilters, hasActiveFilters, processedItems, uniqueValues, paginatedItems,
     currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages
   } = useTableFilters(preFilteredSites, columns, getColValue);
+
+  const totalEscopoFiltrado = useMemo(
+    () => processedItems.reduce((sum, s: any) => sum + (escopoTotais[s.id] || 0), 0),
+    [processedItems, escopoTotais]
+  );
 
   const resetForm = () => { setProjetoId(""); setClienteId(""); setCodigo(""); setNome(""); setMunicipio(""); setUf(""); setEditingId(null); };
 
