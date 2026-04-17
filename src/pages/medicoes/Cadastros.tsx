@@ -1,4 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import ProjetosPage from "./Projetos";
 import SitesPage from "./Sites";
 import LpuPage from "./Lpu";
