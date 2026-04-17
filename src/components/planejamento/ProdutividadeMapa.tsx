@@ -155,14 +155,13 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         if (!mun) return;
 
         const key = `${mun}__${uf}`;
-        const coords = munCoords[key];
 
         if (!aggMap[key]) {
           aggMap[key] = {
             mun,
             uf,
-            lat: coords?.lat ?? null,
-            lng: coords?.lng ?? null,
+            lat: null,
+            lng: null,
             total: 0,
             totalValor: 0,
             count: 0,
@@ -176,12 +175,12 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const regioesBase = Object.values(aggMap);
 
-      // Fallback: EXIF coords from photos
+      // Priority 1+2: Try photo-level coords (EXIF then OCR) for each region
       await Promise.all(
         regioesBase
-          .filter((r) => (r.lat === null || r.lng === null) && r.photos.length > 0)
+          .filter((r) => r.photos.length > 0)
           .map(async (r) => {
-            const coordsFromPhoto = await getCoordinatesFromPhotos(r.photos);
+            const coordsFromPhoto = await resolveCoordsFromPhotos(r.photos, { maxPhotos: 5 });
             if (coordsFromPhoto) {
               r.lat = coordsFromPhoto.lat;
               r.lng = coordsFromPhoto.lng;
@@ -189,7 +188,18 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
           })
       );
 
-      // Fallback: Nominatim
+      // Priority 3: Município coordinates from IBGE (diary city)
+      regioesBase.forEach((r) => {
+        if (r.lat === null || r.lng === null) {
+          const coords = munCoords[`${r.mun}__${r.uf}`];
+          if (coords) {
+            r.lat = coords.lat;
+            r.lng = coords.lng;
+          }
+        }
+      });
+
+      // Last resort: Nominatim geocoding
       const missingCoords = regioesBase.filter((r) => r.lat === null || r.lng === null);
       if (missingCoords.length > 0) {
         await Promise.all(
@@ -210,6 +220,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
           })
         );
       }
+
 
       return regioesBase.map((a) => ({
         municipio: a.mun,
