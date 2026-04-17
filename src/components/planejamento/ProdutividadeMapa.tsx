@@ -11,7 +11,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
 import { MapPin, BarChart3, TrendingUp } from "lucide-react";
-import { extractExifGeoDataFromArrayBuffer } from "@/lib/exifExtractor";
+import { resolveCoordsFromPhotos } from "@/lib/photoGeolocation";
 
 interface ProdutividadeMapaProps {
   projetoId: string;
@@ -28,28 +28,6 @@ interface ProdRegiao {
   totalItens: number;
   avgQuantidade: number;
   photos: string[];
-}
-
-function isImageUrl(url: string): boolean {
-  const cleanUrl = url.split("?")[0].toLowerCase();
-  return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic"].some((ext) => cleanUrl.endsWith(ext));
-}
-
-async function getCoordinatesFromPhotos(photoUrls: string[]): Promise<{ lat: number; lng: number } | null> {
-  for (const url of photoUrls.filter(isImageUrl).slice(0, 3)) {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) continue;
-      const arrayBuffer = await response.arrayBuffer();
-      const exifData = extractExifGeoDataFromArrayBuffer(arrayBuffer);
-      if (exifData.hasGps && exifData.latitude !== null && exifData.longitude !== null) {
-        return { lat: exifData.latitude, lng: exifData.longitude };
-      }
-    } catch (error) {
-      console.warn("Falha ao ler GPS da foto do diário:", error);
-    }
-  }
-  return null;
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
