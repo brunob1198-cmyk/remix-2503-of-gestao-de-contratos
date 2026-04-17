@@ -223,6 +223,7 @@ export default function SitesPage() {
                     <TableCell>{(s.projeto as any)?.clienteObj?.razao_social || "-"}</TableCell>
                     <TableCell>{s.municipio || "-"}</TableCell>
                     <TableCell>{s.uf || "-"}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(escopoTotais[s.id] || 0)}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/medicoes/sites/${s.id}/escopo`)} title="Escopo da Obra"><ClipboardList className="h-4 w-4 text-primary" /></Button>
@@ -233,6 +234,13 @@ export default function SitesPage() {
                   </TableRow>
                 ))}
               </TableBody>
+              <tfoot className="border-t bg-muted/50 font-medium">
+                <TableRow>
+                  <TableCell colSpan={6} className="text-right font-semibold">Total{filterProjetoId || hasActiveFilters ? " (filtrado)" : ""}:</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(totalEscopoFiltrado)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </tfoot>
             </Table>
           )}
           
