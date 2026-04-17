@@ -105,7 +105,8 @@ export default function RelatoriosPage() {
 
   // Cross-reference report with flexible type selection
   const crossReferenceData = useMemo(() => {
-    let filteredProducao = [...producao];
+    // Production source = Diário de Obra (RDO)
+    let filteredProducao = [...diarioProducao];
     let filteredMedicao = [...medicao];
     let filteredFaturamento = [...faturamento];
 
@@ -126,12 +127,12 @@ export default function RelatoriosPage() {
 
     // Filter by date range
     if (dataInicio) {
-      filteredProducao = filteredProducao.filter(l => l.data_producao >= dataInicio);
+      filteredProducao = filteredProducao.filter(l => l.data_producao && l.data_producao >= dataInicio);
       filteredMedicao = filteredMedicao.filter(l => l.data_medicao >= dataInicio);
       filteredFaturamento = filteredFaturamento.filter(l => l.data_faturamento >= dataInicio);
     }
     if (dataFim) {
-      filteredProducao = filteredProducao.filter(l => l.data_producao <= dataFim);
+      filteredProducao = filteredProducao.filter(l => l.data_producao && l.data_producao <= dataFim);
       filteredMedicao = filteredMedicao.filter(l => l.data_medicao <= dataFim);
       filteredFaturamento = filteredFaturamento.filter(l => l.data_faturamento <= dataFim);
     }
@@ -149,13 +150,24 @@ export default function RelatoriosPage() {
     const processData = (
       origemData: any[],
       destinoData: any[],
-      origemField: string,
+      origemKind: "producao" | "medicao",
       destinoField: string | null
     ) => {
       origemData.forEach(l => {
-        const preco = Number(l.item_lpu?.preco_unitario || 0);
-        const valor = Number(l.quantidade) * preco;
+        // For Diário de Obra, prefer the frozen valor_total; fallback to quantidade * preço
+        let valor: number;
+        if (origemKind === "producao") {
+          valor = Number(l.valor_total) || 0;
+          if (!valor) {
+            const preco = Number(l.preco_unitario_congelado) || Number(l.item_lpu?.preco_unitario) || 0;
+            valor = Number(l.quantidade) * preco;
+          }
+        } else {
+          const preco = Number(l.item_lpu?.preco_unitario || 0);
+          valor = Number(l.quantidade) * preco;
+        }
         const key = l.site_id;
+        if (!key) return;
 
         if (!siteMap.has(key)) {
           siteMap.set(key, {
@@ -205,7 +217,7 @@ export default function RelatoriosPage() {
     });
 
     return Array.from(siteMap.values()).filter(s => s.total_origem > 0 || s.total_destino > 0);
-  }, [producao, medicao, faturamento, projetoId, selectedSiteIds, dataInicio, dataFim, sites, crossType]);
+  }, [diarioProducao, medicao, faturamento, projetoId, selectedSiteIds, dataInicio, dataFim, sites, crossType]);
 
   // Filter and sort cross reference data
   const filteredAndSortedCrossData = useMemo(() => {
