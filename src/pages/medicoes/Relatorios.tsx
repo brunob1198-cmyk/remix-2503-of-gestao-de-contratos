@@ -44,7 +44,40 @@ export default function RelatoriosPage() {
   const { lancamentos: medicao } = useLancamentosMedicao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
 
-  const filteredSites = projetoId 
+  // Production data from Diário de Obra (RDO) — source of truth for "Total Produzido"
+  const { data: diarioProducao = [] } = useQuery({
+    queryKey: ["diario_producao_cruzado"],
+    queryFn: async () => {
+      const { data: diarios, error: dErr } = await supabase
+        .from("diarios_obra")
+        .select("id, data, site_id, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))")
+        .limit(100000);
+      if (dErr) throw dErr;
+      if (!diarios || diarios.length === 0) return [];
+
+      const diarioIds = diarios.map((d: any) => d.id);
+      const { data: prods, error: pErr } = await supabase
+        .from("diario_producao")
+        .select("diario_id, item_lpu_id, quantidade, valor_total, preco_unitario_congelado, item_lpu:itens_lpu(preco_unitario)")
+        .in("diario_id", diarioIds)
+        .limit(100000);
+      if (pErr) throw pErr;
+
+      const diarioMap = new Map(diarios.map((d: any) => [d.id, d]));
+      return (prods ?? []).map((p: any) => {
+        const d: any = diarioMap.get(p.diario_id);
+        return {
+          site_id: d?.site_id,
+          site: d?.site,
+          data_producao: d?.data,
+          quantidade: Number(p.quantidade) || 0,
+          valor_total: Number(p.valor_total) || 0,
+          preco_unitario_congelado: Number(p.preco_unitario_congelado) || 0,
+          item_lpu: p.item_lpu,
+        };
+      });
+    },
+  });
     ? sites.filter(s => s.projeto_id === projetoId)
     : sites;
 
