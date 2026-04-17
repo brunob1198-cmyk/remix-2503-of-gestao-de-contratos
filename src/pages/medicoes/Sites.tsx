@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
@@ -29,7 +30,7 @@ export default function SitesPage() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [filterProjetoId, setFilterProjetoId] = useState<string>("");
+  const [filterProjetoId, setFilterProjetoId] = usePersistedState<string>("sites:filterProjetoId", "");
 
   const [projetoId, setProjetoId] = useState("");
   const [clienteId, setClienteId] = useState("");

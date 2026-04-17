@@ -1,4 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import ProjetosPage from "./Projetos";
 import SitesPage from "./Sites";
 import LpuPage from "./Lpu";
@@ -20,6 +23,18 @@ export default function CadastrosPage() {
 
   const defaultValue = showContratos ? "contratos" : showAreas ? "areas" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = usePersistedState<string>("cadastros:activeTab", defaultValue);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      searchParams.delete("tab");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, activeTab, setActiveTab, setSearchParams]);
+
   if (!defaultValue) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -35,7 +50,7 @@ export default function CadastrosPage() {
         <p className="text-muted-foreground">Gerencie projetos, sites e listas de preços unitária (LPU).</p>
       </div>
 
-      <Tabs defaultValue={defaultValue} className="space-y-4">
+      <Tabs value={activeTab || defaultValue} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           {showContratos && (
             <TabsTrigger value="contratos" className="flex items-center gap-2">
