@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,23 @@ export default function PowerBIPage() {
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
+    // Força remount do iframe + nova URL com timestamp para tentar invalidar cache do navegador.
+    // ATENÇÃO: o Power BI mantém um cache no servidor (até ~1h em "Publicar na Web").
+    // Se o relatório não atualizar visualmente, o cache server-side ainda está ativo.
     setRefreshKey((k) => k + 1);
-    toast.success("Dashboard atualizado");
+    setTimeout(() => {
+      try {
+        iframeRef.current?.contentWindow?.location.reload();
+      } catch {
+        // cross-origin: ignorado, o remount via key já cuida disso
+      }
+    }, 50);
+    toast.success("Recarregando dashboard", {
+      description: "O Power BI pode levar até 1h para refletir alterações publicadas.",
+    });
   };
 
   const addDashboard = () => {
@@ -225,6 +238,7 @@ export default function PowerBIPage() {
               <CardContent className="p-0">
                 <iframe
                   key={refreshKey}
+                  ref={iframeRef}
                   title={active.nome}
                   src={`${active.embedUrl}${active.embedUrl.includes("?") ? "&" : "?"}_t=${refreshKey}`}
                   className="w-full border-0"
