@@ -34,6 +34,12 @@ export default function PowerBIPage() {
   const [showConfig, setShowConfig] = useState(dashboards.length === 0);
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    setRefreshKey((k) => k + 1);
+    toast.success("Dashboard atualizado");
+  };
 
   const addDashboard = () => {
     if (!novoDash.nome || !novoDash.embedUrl) {
