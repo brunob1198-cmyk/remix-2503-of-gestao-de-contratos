@@ -211,16 +211,22 @@ export default function PowerBIPage() {
                   <Badge className={categoriaColors[active.categoria]}>{categoriaLabels[active.categoria]}</Badge>
                   <CardTitle className="text-base">{active.nome}</CardTitle>
                 </div>
-                <a href={active.embedUrl} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Power BI
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleRefresh}>
+                    <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
                   </Button>
-                </a>
+                  <a href={active.embedUrl} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="sm">
+                      <ExternalLink className="h-4 w-4 mr-1" /> Abrir no Power BI
+                    </Button>
+                  </a>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <iframe
+                  key={refreshKey}
                   title={active.nome}
-                  src={active.embedUrl}
+                  src={`${active.embedUrl}${active.embedUrl.includes("?") ? "&" : "?"}_t=${refreshKey}`}
                   className="w-full border-0"
                   style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}
                   allowFullScreen
