@@ -14,6 +14,7 @@ const ALLOWED_VIEWS = [
   "view_bi_producao",
   "view_producao_diario",
   "view_contratos",
+  "view_bi_analise_obras",
 ];
 
 Deno.serve(async (req) => {
