@@ -3090,6 +3090,8 @@ export type Database = {
       view_bi_financeiro: {
         Row: {
           ano: number | null
+          area_id: string | null
+          area_nome: string | null
           categoria_erp: string | null
           categoria_interna: string | null
           centro_custo: string | null
@@ -3144,11 +3146,20 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projetos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       view_bi_producao: {
         Row: {
           ano: number | null
+          area_id: string | null
+          area_nome: string | null
           clima: string | null
           data_producao: string | null
           id: string | null
@@ -3175,6 +3186,13 @@ export type Database = {
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
             referencedColumns: ["id"]
           },
         ]
