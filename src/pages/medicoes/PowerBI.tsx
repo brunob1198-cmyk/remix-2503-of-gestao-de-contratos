@@ -238,6 +238,7 @@ export default function PowerBIPage() {
               <CardContent className="p-0">
                 <iframe
                   key={refreshKey}
+                  ref={iframeRef}
                   title={active.nome}
                   src={`${active.embedUrl}${active.embedUrl.includes("?") ? "&" : "?"}_t=${refreshKey}`}
                   className="w-full border-0"
