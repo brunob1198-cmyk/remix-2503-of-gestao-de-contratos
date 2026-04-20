@@ -4,9 +4,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, ExternalLink, Settings, Eye, EyeOff, Plus, Trash2, Save, RefreshCw } from "lucide-react";
+import { BarChart3, ExternalLink, Settings, Eye, EyeOff, Plus, Trash2, Save, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { toast } from "sonner";
+
+/**
+ * Garante que a URL de embed do Power BI inclua parâmetros que melhoram
+ * a renderização responsiva dentro do iframe:
+ * - pageView=fitToWidth: ajusta a página ao tamanho disponível (evita "campos não reconhecidos" por corte)
+ * - chromeless desabilitado para manter navegação de páginas
+ */
+function buildEmbedUrl(rawUrl: string, cacheKey: number): string {
+  if (!rawUrl) return rawUrl;
+  try {
+    const url = new URL(rawUrl);
+    // pageView=fitToWidth força o Power BI a redimensionar o conteúdo proporcionalmente
+    if (!url.searchParams.has("pageView")) {
+      url.searchParams.set("pageView", "fitToWidth");
+    }
+    // cache-busting controlado para o botão Atualizar
+    url.searchParams.set("_t", String(cacheKey));
+    return url.toString();
+  } catch {
+    // Fallback caso a URL seja inválida como URL absoluta
+    const sep = rawUrl.includes("?") ? "&" : "?";
+    return `${rawUrl}${sep}pageView=fitToWidth&_t=${cacheKey}`;
+  }
+}
 
 interface DashboardConfig {
   id: string;
@@ -35,7 +59,24 @@ export default function PowerBIPage() {
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        await containerRef.current?.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch {
+      // Alguns navegadores podem bloquear; alternamos só o estado para "modo amplo"
+      setIsFullscreen((v) => !v);
+    }
+  };
 
   const handleRefresh = () => {
     // Força remount do iframe + nova URL com timestamp para tentar invalidar cache do navegador.
@@ -218,7 +259,10 @@ export default function PowerBIPage() {
           )}
 
           {active && (
-            <Card className="overflow-hidden">
+            <Card
+              ref={containerRef}
+              className={`overflow-hidden ${isFullscreen ? "fixed inset-0 z-50 rounded-none bg-background" : ""}`}
+            >
               <CardHeader className="py-3 flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge className={categoriaColors[active.categoria]}>{categoriaLabels[active.categoria]}</Badge>
@@ -227,6 +271,17 @@ export default function PowerBIPage() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={handleRefresh}>
                     <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={toggleFullscreen}>
+                    {isFullscreen ? (
+                      <>
+                        <Minimize2 className="h-4 w-4 mr-1" /> Sair da tela cheia
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-4 w-4 mr-1" /> Tela cheia
+                      </>
+                    )}
                   </Button>
                   <a href={active.embedUrl} target="_blank" rel="noopener noreferrer">
                     <Button variant="ghost" size="sm">
@@ -240,9 +295,12 @@ export default function PowerBIPage() {
                   key={refreshKey}
                   ref={iframeRef}
                   title={active.nome}
-                  src={`${active.embedUrl}${active.embedUrl.includes("?") ? "&" : "?"}_t=${refreshKey}`}
-                  className="w-full border-0"
-                  style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}
+                  src={buildEmbedUrl(active.embedUrl, refreshKey)}
+                  className="w-full border-0 bg-background"
+                  style={{
+                    height: isFullscreen ? "calc(100vh - 64px)" : "calc(100vh - 220px)",
+                    minHeight: "640px",
+                  }}
                   allowFullScreen
                 />
               </CardContent>
