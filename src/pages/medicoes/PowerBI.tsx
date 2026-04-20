@@ -59,7 +59,24 @@ export default function PowerBIPage() {
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        await containerRef.current?.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch {
+      // Alguns navegadores podem bloquear; alternamos só o estado para "modo amplo"
+      setIsFullscreen((v) => !v);
+    }
+  };
 
   const handleRefresh = () => {
     // Força remount do iframe + nova URL com timestamp para tentar invalidar cache do navegador.
