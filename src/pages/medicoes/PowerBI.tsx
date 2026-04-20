@@ -4,9 +4,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, ExternalLink, Settings, Eye, EyeOff, Plus, Trash2, Save, RefreshCw } from "lucide-react";
+import { BarChart3, ExternalLink, Settings, Eye, EyeOff, Plus, Trash2, Save, RefreshCw, Maximize2, Minimize2 } from "lucide-react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { toast } from "sonner";
+
+/**
+ * Garante que a URL de embed do Power BI inclua parâmetros que melhoram
+ * a renderização responsiva dentro do iframe:
+ * - pageView=fitToWidth: ajusta a página ao tamanho disponível (evita "campos não reconhecidos" por corte)
+ * - chromeless desabilitado para manter navegação de páginas
+ */
+function buildEmbedUrl(rawUrl: string, cacheKey: number): string {
+  if (!rawUrl) return rawUrl;
+  try {
+    const url = new URL(rawUrl);
+    // pageView=fitToWidth força o Power BI a redimensionar o conteúdo proporcionalmente
+    if (!url.searchParams.has("pageView")) {
+      url.searchParams.set("pageView", "fitToWidth");
+    }
+    // cache-busting controlado para o botão Atualizar
+    url.searchParams.set("_t", String(cacheKey));
+    return url.toString();
+  } catch {
+    // Fallback caso a URL seja inválida como URL absoluta
+    const sep = rawUrl.includes("?") ? "&" : "?";
+    return `${rawUrl}${sep}pageView=fitToWidth&_t=${cacheKey}`;
+  }
+}
 
 interface DashboardConfig {
   id: string;
