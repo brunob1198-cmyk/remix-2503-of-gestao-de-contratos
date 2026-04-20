@@ -259,7 +259,10 @@ export default function PowerBIPage() {
           )}
 
           {active && (
-            <Card className="overflow-hidden">
+            <Card
+              ref={containerRef}
+              className={`overflow-hidden ${isFullscreen ? "fixed inset-0 z-50 rounded-none bg-background" : ""}`}
+            >
               <CardHeader className="py-3 flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge className={categoriaColors[active.categoria]}>{categoriaLabels[active.categoria]}</Badge>
@@ -268,6 +271,17 @@ export default function PowerBIPage() {
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={handleRefresh}>
                     <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={toggleFullscreen}>
+                    {isFullscreen ? (
+                      <>
+                        <Minimize2 className="h-4 w-4 mr-1" /> Sair da tela cheia
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-4 w-4 mr-1" /> Tela cheia
+                      </>
+                    )}
                   </Button>
                   <a href={active.embedUrl} target="_blank" rel="noopener noreferrer">
                     <Button variant="ghost" size="sm">
@@ -281,9 +295,12 @@ export default function PowerBIPage() {
                   key={refreshKey}
                   ref={iframeRef}
                   title={active.nome}
-                  src={`${active.embedUrl}${active.embedUrl.includes("?") ? "&" : "?"}_t=${refreshKey}`}
-                  className="w-full border-0"
-                  style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}
+                  src={buildEmbedUrl(active.embedUrl, refreshKey)}
+                  className="w-full border-0 bg-background"
+                  style={{
+                    height: isFullscreen ? "calc(100vh - 64px)" : "calc(100vh - 220px)",
+                    minHeight: "640px",
+                  }}
                   allowFullScreen
                 />
               </CardContent>
