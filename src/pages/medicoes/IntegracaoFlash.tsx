@@ -1,0 +1,393 @@
+import { useState } from "react";
+import { format, subDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon, Loader2, RefreshCw, CheckCircle2, XCircle, Clock, Zap } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+export default function IntegracaoFlashPage() {
+  const { role } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const isAdmin = role === "admin";
+
+  const [startDate, setStartDate] = useState<Date | undefined>(subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  // Buscar logs de integração
+  const { data: logs = [], isLoading: loadingLogs } = useQuery({
+    queryKey: ["flash_integration_logs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("flash_integration_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Contar registros sincronizados
+  const { data: totalRegistros = 0 } = useQuery({
+    queryKey: ["flash_transactions_raw_count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("flash_transactions_raw")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      if (!startDate || !endDate) {
+        throw new Error("Selecione as datas de início e fim");
+      }
+      if (startDate > endDate) {
+        throw new Error("Data de início deve ser anterior à data de fim");
+      }
+
+      const { data, error } = await supabase.functions.invoke("flash-sync", {
+        body: {
+          startDate: format(startDate, "yyyy-MM-dd"),
+          endDate: format(endDate, "yyyy-MM-dd"),
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      setLastResult(data);
+      toast({
+        title: "Sincronização concluída",
+        description: `${data?.totalProcessed || 0} transações processadas em ${data?.duracao_ms || 0}ms`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["flash_integration_logs"] });
+      queryClient.invalidateQueries({ queryKey: ["flash_transactions_raw_count"] });
+    },
+    onError: (error: any) => {
+      setLastResult({ error: error.message });
+      toast({
+        title: "Erro na sincronização",
+        description: error.message || "Falha ao chamar a API da Flash",
+        variant: "destructive",
+      });
+      queryClient.invalidateQueries({ queryKey: ["flash_integration_logs"] });
+    },
+  });
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "sucesso":
+        return <Badge variant="secondary" className="bg-primary/10 text-primary gap-1"><CheckCircle2 className="h-3 w-3" /> Sucesso</Badge>;
+      case "erro":
+        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Erro</Badge>;
+      default:
+        return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> Pendente</Badge>;
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Acesso negado</AlertTitle>
+          <AlertDescription>
+            Apenas administradores podem acessar a Integração Flash.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Zap className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold">Integração Flash</h1>
+          <p className="text-sm text-muted-foreground">
+            Sincronização de transações da API Flash
+          </p>
+        </div>
+      </div>
+
+      {/* Status geral */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total sincronizado</CardDescription>
+            <CardTitle className="text-3xl">{totalRegistros}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">transações brutas armazenadas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Última execução</CardDescription>
+            <CardTitle className="text-lg">
+              {logs[0] ? format(new Date(logs[0].created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }) : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {logs[0] && statusBadge(logs[0].status)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Status do token</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Configurado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">FLASH_API_TOKEN ativo</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sincronização */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sincronizar Transações</CardTitle>
+          <CardDescription>
+            Selecione o período desejado e dispare a importação das transações via Flash API
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Data de Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data de Fim</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Atalhos rápidos */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStartDate(subDays(new Date(), 7));
+                setEndDate(new Date());
+              }}
+            >
+              Últimos 7 dias
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStartDate(subDays(new Date(), 30));
+                setEndDate(new Date());
+              }}
+            >
+              Últimos 30 dias
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStartDate(subDays(new Date(), 90));
+                setEndDate(new Date());
+              }}
+            >
+              Últimos 90 dias
+            </Button>
+          </div>
+
+          {/* Botão de sincronização */}
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending || !startDate || !endDate}
+              size="lg"
+              className="gap-2"
+            >
+              {syncMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sincronizando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Sincronizar Flash
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Progresso da sincronização */}
+          {syncMutation.isPending && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Importando transações...</span>
+                <span className="text-muted-foreground">Aguarde</span>
+              </div>
+              <Progress value={undefined} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                Esta operação pode levar alguns minutos dependendo do volume de dados.
+              </p>
+            </div>
+          )}
+
+          {/* Resultado da última execução */}
+          {lastResult && !syncMutation.isPending && (
+            <Alert variant={lastResult.error ? "destructive" : "default"}>
+              <AlertTitle>
+                {lastResult.error ? "Falha na sincronização" : "Sincronização concluída"}
+              </AlertTitle>
+              <AlertDescription>
+                {lastResult.error ? (
+                  <span>{lastResult.error}</span>
+                ) : (
+                  <div className="space-y-1 text-sm">
+                    <p><strong>Transações processadas:</strong> {lastResult.totalProcessed || 0}</p>
+                    <p><strong>Páginas consumidas:</strong> {lastResult.pages || 1}</p>
+                    <p><strong>Tempo total:</strong> {lastResult.duracao_ms || 0}ms</p>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Histórico de logs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Execuções</CardTitle>
+          <CardDescription>Últimas 20 sincronizações</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingLogs ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhuma sincronização registrada ainda.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Evento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>HTTP</TableHead>
+                    <TableHead>Duração</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-sm">
+                        {format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-sm font-mono">{log.evento}</TableCell>
+                      <TableCell>{statusBadge(log.status)}</TableCell>
+                      <TableCell className="text-sm">
+                        {log.http_status ? (
+                          <Badge variant={log.http_status < 400 ? "secondary" : "destructive"}>
+                            {log.http_status}
+                          </Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.duracao_ms ? `${log.duracao_ms}ms` : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm max-w-md truncate">
+                        {log.erro ? (
+                          <span className="text-destructive">{log.erro}</span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {(log.request as any)?.startDate} → {(log.request as any)?.endDate}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
