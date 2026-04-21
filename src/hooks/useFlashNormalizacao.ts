@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import {
+  buildMappingIndex,
+  normalizeFlashTransaction,
+  type FlashCategoryMappingLike,
+} from "@/lib/flashNormalization";
 
 export interface ContaAzulOption {
   id: string;
