@@ -494,9 +494,69 @@ export function useFlashNormalizacao() {
     [empresaId, saveNormalization]
   );
 
+  const [sending, setSending] = useState(false);
+
+  /**
+   * Envia um ou mais lançamentos normalizados ao Conta Azul
+   * via edge function `contaazul-send-transaction`.
+   */
+  const sendToContaAzul = useCallback(
+    async (rowIds: string[]) => {
+      if (!empresaId || !rowIds.length) return null;
+      const eligible = transactions.filter(
+        (t) =>
+          rowIds.includes(t.id) &&
+          t.status === "normalizado" &&
+          t.conta_azul_category_id &&
+          t.conta_azul_account_id
+      );
+      if (!eligible.length) {
+        toast.error("Nada para enviar", {
+          description: "Selecione lançamentos com status Normalizado.",
+        });
+        return null;
+      }
+      setSending(true);
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "contaazul-send-transaction",
+          { body: { flash_transaction_ids: eligible.map((t) => t.id) } }
+        );
+        if (error) throw error;
+
+        const sucesso = data?.sucesso ?? 0;
+        const erro = data?.erro ?? 0;
+        const skipped = data?.skipped ?? 0;
+
+        if (sucesso > 0) {
+          toast.success(`${sucesso} lançamento(s) enviado(s) ao Conta Azul.`);
+        }
+        if (erro > 0) {
+          toast.error(`${erro} lançamento(s) falharam`, {
+            description: "Veja a aba 'Logs' ou os detalhes da linha.",
+          });
+        }
+        if (skipped > 0 && sucesso === 0 && erro === 0) {
+          toast.info(`${skipped} lançamento(s) ignorado(s).`);
+        }
+
+        await fetchData();
+        return data;
+      } catch (e: any) {
+        console.error(e);
+        toast.error("Erro ao enviar ao Conta Azul", { description: e.message });
+        return null;
+      } finally {
+        setSending(false);
+      }
+    },
+    [empresaId, transactions, fetchData]
+  );
+
   return {
     loading,
     savingId,
+    sending,
     transactions,
     categorias,
     contas,
@@ -510,5 +570,6 @@ export function useFlashNormalizacao() {
     applyMappingToAllPending,
     bulkApplyToPending,
     reopenEnviado,
+    sendToContaAzul,
   };
 }
