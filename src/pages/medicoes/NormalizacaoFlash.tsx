@@ -310,6 +310,26 @@ export default function NormalizacaoFlashPage() {
             <TooltipContent>Aplicar mapeamento salvo</TooltipContent>
           </Tooltip>
         )}
+        {row.status === "normalizado" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-emerald-600"
+                disabled={sending}
+                onClick={() => sendToContaAzul([row.id])}
+              >
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Enviar ao Conta Azul</TooltipContent>
+          </Tooltip>
+        )}
         {isEnviado ? (
           <Tooltip>
             <TooltipTrigger asChild>
