@@ -1368,11 +1368,13 @@ export type Database = {
       }
       flash_integration_logs: {
         Row: {
+          conta_azul_transaction_id: string | null
           created_at: string
           duracao_ms: number | null
           empresa_id: string
           erro: string | null
           evento: string
+          flash_transaction_id: string | null
           http_status: number | null
           id: string
           request: Json
@@ -1380,11 +1382,13 @@ export type Database = {
           status: string
         }
         Insert: {
+          conta_azul_transaction_id?: string | null
           created_at?: string
           duracao_ms?: number | null
           empresa_id: string
           erro?: string | null
           evento?: string
+          flash_transaction_id?: string | null
           http_status?: number | null
           id?: string
           request?: Json
@@ -1392,11 +1396,13 @@ export type Database = {
           status?: string
         }
         Update: {
+          conta_azul_transaction_id?: string | null
           created_at?: string
           duracao_ms?: number | null
           empresa_id?: string
           erro?: string | null
           evento?: string
+          flash_transaction_id?: string | null
           http_status?: number | null
           id?: string
           request?: Json
