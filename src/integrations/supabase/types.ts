@@ -1319,6 +1319,77 @@ export type Database = {
           },
         ]
       }
+      faturamentos_conta_azul: {
+        Row: {
+          centro_custo: string | null
+          cliente_nome: string | null
+          created_at: string | null
+          data_emissao: string
+          erp_id: string
+          id: string
+          numero_nota: string | null
+          projeto_id: string | null
+          status: string | null
+          updated_at: string | null
+          valor_total: number
+        }
+        Insert: {
+          centro_custo?: string | null
+          cliente_nome?: string | null
+          created_at?: string | null
+          data_emissao: string
+          erp_id: string
+          id?: string
+          numero_nota?: string | null
+          projeto_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valor_total: number
+        }
+        Update: {
+          centro_custo?: string | null
+          cliente_nome?: string | null
+          created_at?: string | null
+          data_emissao?: string
+          erp_id?: string
+          id?: string
+          numero_nota?: string | null
+          projeto_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_analise_obras"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       flash_category_mapping: {
         Row: {
           conta_azul_account_id: string | null
