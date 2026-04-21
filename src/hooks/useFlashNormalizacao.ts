@@ -133,6 +133,11 @@ export function useFlashNormalizacao() {
       const normByTx = new Map<string, any>();
       (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
 
+      const mappingList = (mapRes.data || []) as CategoryMapping[];
+      const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
+
+      // Rows derivados, com auto-normalização aplicada quando possível
+      const autoNormPayloads: any[] = [];
       const rows = (txRes.data || []).map((raw: any) => {
         const base = mapTransactionRow(raw);
         const n = normByTx.get(raw.id);
@@ -144,15 +149,50 @@ export function useFlashNormalizacao() {
           base.conta_azul_account_name = n.conta_azul_account_name;
           base.tipo_operacao = n.tipo_operacao;
           base.status = n.status;
-        } else {
-          base.tipo_operacao = "despesa";
-          base.status = "pendente";
+          return base;
+        }
+
+        // Sem normalização ainda → tenta auto-normalizar pelo mapping
+        const normalized = normalizeFlashTransaction(
+          { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
+          mappingIdx
+        );
+        base.tipo_operacao = normalized.tipo_operacao;
+        base.status = normalized.status;
+        base.conta_azul_category_id = normalized.conta_azul_category_id;
+        base.conta_azul_category_name = normalized.conta_azul_category_name;
+        base.conta_azul_account_id = normalized.conta_azul_account_id;
+        base.conta_azul_account_name = normalized.conta_azul_account_name;
+
+        // Persiste sempre que houver auto-mapping (status=normalizado)
+        if (normalized.status === "normalizado") {
+          autoNormPayloads.push({
+            empresa_id: empresaId,
+            flash_transaction_id: raw.id,
+            conta_azul_category_id: normalized.conta_azul_category_id,
+            conta_azul_category_name: normalized.conta_azul_category_name,
+            conta_azul_account_id: normalized.conta_azul_account_id,
+            conta_azul_account_name: normalized.conta_azul_account_name,
+            tipo_operacao: normalized.tipo_operacao,
+            status: "normalizado",
+            normalizado_at: new Date().toISOString(),
+          });
         }
         return base;
       });
 
       setTransactions(rows);
-      setMappings((mapRes.data || []) as CategoryMapping[]);
+      setMappings(mappingList);
+
+      // Persiste auto-normalizações em background (não bloqueia a UI)
+      if (autoNormPayloads.length > 0) {
+        supabase
+          .from("flash_normalizacao")
+          .upsert(autoNormPayloads, { onConflict: "flash_transaction_id" })
+          .then(({ error }) => {
+            if (error) console.error("Auto-normalização falhou:", error);
+          });
+      }
     } catch (e: any) {
       console.error(e);
       toast.error("Erro ao carregar dados", { description: e.message });
