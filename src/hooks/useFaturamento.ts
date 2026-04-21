@@ -427,6 +427,7 @@ export interface FaturamentoContaAzul {
   centro_custo: string | null;
   projeto_id: string | null;
   status: string | null;
+  payload_json: any | null;
   created_at: string;
   updated_at: string;
 }
@@ -456,14 +457,19 @@ export function useSyncContaAzulVendas() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("sync-contaazul-vendas");
+    mutationFn: async (params?: { date_from?: string; date_to?: string }) => {
+      const { data, error } = await supabase.functions.invoke("sync-contaazul-vendas", {
+        body: params || {},
+      });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["faturamentos_conta_azul"] });
-      toast({ title: "Notas Fiscais sincronizadas com sucesso!" });
+      toast({
+        title: "Notas Fiscais sincronizadas",
+        description: `${data?.count ?? 0} notas processadas.`,
+      });
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao sincronizar Notas Fiscais", description: error.message, variant: "destructive" });
