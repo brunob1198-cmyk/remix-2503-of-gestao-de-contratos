@@ -493,6 +493,9 @@ export default function FaturamentoPage() {
             <TabsTrigger value="historico">
               <FileDown className="h-4 w-4 mr-2" /> Histórico de Faturas
             </TabsTrigger>
+            <TabsTrigger value="contaazul">
+              <ExternalLink className="h-4 w-4 mr-2" /> Notas Conta Azul
+            </TabsTrigger>
           </TabsList>
 
           {/* TAB: GERAR FATURA */}
