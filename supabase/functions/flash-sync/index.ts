@@ -284,6 +284,83 @@ Deno.serve(async (req) => {
         }
         inserted += count ?? chunk.length;
       }
+
+      // ===== Auto-normalização =====
+      // Para cada transação salva, tenta encontrar mapping em flash_category_mapping
+      // e marca como "normalizado" automaticamente. Sem mapping → "pendente".
+      try {
+        const externalIds = rows.map((r) => r.external_id);
+        const [{ data: savedRows }, { data: mappings }] = await Promise.all([
+          adminClient
+            .from("flash_transactions_raw")
+            .select("id, external_id, payload_json")
+            .eq("empresa_id", empresaId)
+            .in("external_id", externalIds),
+          adminClient
+            .from("flash_category_mapping")
+            .select("flash_type, conta_azul_category_id, conta_azul_category_name, conta_azul_account_id, conta_azul_account_name, tipo_operacao")
+            .eq("empresa_id", empresaId),
+        ]);
+
+        const mappingIdx = new Map<string, any>();
+        (mappings || []).forEach((m: any) => mappingIdx.set(m.flash_type, m));
+
+        const pickFlashType = (payload: any): string => {
+          if (!payload) return "indefinido";
+          const candidates = ["type", "tipo", "category", "categoria", "transaction_type", "expense_type"];
+          for (const k of candidates) {
+            const v = payload[k];
+            if (typeof v === "string" && v.trim()) return v.trim();
+            if (typeof v === "number") return String(v);
+          }
+          return "indefinido";
+        };
+
+        const normRows = (savedRows || []).map((r: any) => {
+          const flash_type = pickFlashType(r.payload_json);
+          const m = mappingIdx.get(flash_type);
+          const hasFull = !!(m && m.conta_azul_category_id && m.conta_azul_account_id);
+          return {
+            empresa_id: empresaId,
+            flash_transaction_id: r.id,
+            tipo_operacao: m?.tipo_operacao || "despesa",
+            conta_azul_category_id: m?.conta_azul_category_id ?? null,
+            conta_azul_category_name: m?.conta_azul_category_name ?? null,
+            conta_azul_account_id: m?.conta_azul_account_id ?? null,
+            conta_azul_account_name: m?.conta_azul_account_name ?? null,
+            status: hasFull ? "normalizado" : "pendente",
+            normalizado_at: hasFull ? new Date().toISOString() : null,
+          };
+        });
+
+        if (normRows.length > 0) {
+          // Upsert sem sobrescrever registros que já estão "enviado"
+          const { data: existing } = await adminClient
+            .from("flash_normalizacao")
+            .select("flash_transaction_id, status")
+            .eq("empresa_id", empresaId)
+            .in("flash_transaction_id", normRows.map((n) => n.flash_transaction_id));
+
+          const lockedIds = new Set(
+            (existing || []).filter((e: any) => e.status === "enviado").map((e: any) => e.flash_transaction_id)
+          );
+          const safeRows = normRows.filter((n) => !lockedIds.has(n.flash_transaction_id));
+
+          if (safeRows.length > 0) {
+            const chunk = 500;
+            for (let i = 0; i < safeRows.length; i += chunk) {
+              const slice = safeRows.slice(i, i + chunk);
+              const { error: nErr } = await adminClient
+                .from("flash_normalizacao")
+                .upsert(slice, { onConflict: "flash_transaction_id" });
+              if (nErr) console.error("Auto-normalização (chunk) falhou:", nErr);
+            }
+          }
+        }
+      } catch (normErr) {
+        console.error("Auto-normalização geral falhou:", normErr);
+        // Não interrompe o sync — apenas registra
+      }
     }
 
     const durationMs = Date.now() - startedAt;
