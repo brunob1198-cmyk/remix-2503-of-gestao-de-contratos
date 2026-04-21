@@ -134,6 +134,7 @@ export default function NormalizacaoFlashPage() {
   const {
     loading,
     savingId,
+    sending,
     transactions,
     categorias,
     contas,
@@ -147,6 +148,7 @@ export default function NormalizacaoFlashPage() {
     applyMappingToAllPending,
     bulkApplyToPending,
     reopenEnviado,
+    sendToContaAzul,
   } = useFlashNormalizacao();
 
   const [statusFilter, setStatusFilter] = useState<string>("todos");
