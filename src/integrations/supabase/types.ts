@@ -1419,11 +1419,15 @@ export type Database = {
           conta_azul_account_name: string | null
           conta_azul_category_id: string | null
           conta_azul_category_name: string | null
+          conta_azul_payload: Json | null
           created_at: string
           empresa_id: string
           enviado_at: string | null
           flash_transaction_id: string
+          flash_type_detectado: string | null
           id: string
+          mapping_id_usado: string | null
+          motivo: string | null
           normalizado_at: string | null
           observacao: string | null
           status: string
@@ -1435,11 +1439,15 @@ export type Database = {
           conta_azul_account_name?: string | null
           conta_azul_category_id?: string | null
           conta_azul_category_name?: string | null
+          conta_azul_payload?: Json | null
           created_at?: string
           empresa_id: string
           enviado_at?: string | null
           flash_transaction_id: string
+          flash_type_detectado?: string | null
           id?: string
+          mapping_id_usado?: string | null
+          motivo?: string | null
           normalizado_at?: string | null
           observacao?: string | null
           status?: string
@@ -1451,11 +1459,15 @@ export type Database = {
           conta_azul_account_name?: string | null
           conta_azul_category_id?: string | null
           conta_azul_category_name?: string | null
+          conta_azul_payload?: Json | null
           created_at?: string
           empresa_id?: string
           enviado_at?: string | null
           flash_transaction_id?: string
+          flash_type_detectado?: string | null
           id?: string
+          mapping_id_usado?: string | null
+          motivo?: string | null
           normalizado_at?: string | null
           observacao?: string | null
           status?: string
