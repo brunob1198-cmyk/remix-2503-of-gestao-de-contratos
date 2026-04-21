@@ -1,6 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+// Friendly labels used in realtime notifications
+const PEDIDO_STATUS_LABELS: Record<string, string> = {
+  emitido: "Emitido",
+  confirmado: "Confirmado pelo fornecedor",
+  em_transito: "Em trânsito",
+  saiu_para_entrega: "Saiu para entrega",
+  entregue_parcial: "Entregue parcialmente",
+  entregue: "Entregue",
+  cancelado: "Cancelado",
+};
 
 async function getEmpresaId(): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -321,6 +333,56 @@ export function usePedidosCompra() {
       return data;
     },
   });
+
+  // ─── Realtime: refresh list and notify on key status transitions ───
+  useEffect(() => {
+    const channel = supabase
+      .channel("pedidos_compra_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pedidos_compra" },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+
+          if (payload.eventType === "UPDATE") {
+            const oldStatus = (payload.old as any)?.status;
+            const newStatus = (payload.new as any)?.status;
+            const numero = (payload.new as any)?.numero || "";
+
+            if (oldStatus !== newStatus) {
+              if (newStatus === "saiu_para_entrega") {
+                toast({
+                  title: "🚚 Pedido saiu para entrega",
+                  description: `Pedido ${numero} está a caminho do destino.`,
+                });
+              } else if (newStatus === "entregue") {
+                toast({
+                  title: "✅ Pedido entregue",
+                  description: `Pedido ${numero} foi entregue com sucesso.`,
+                });
+              } else {
+                const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
+                toast({
+                  title: "Pedido atualizado",
+                  description: `Pedido ${numero} → ${label}`,
+                });
+              }
+            }
+          } else if (payload.eventType === "INSERT") {
+            const numero = (payload.new as any)?.numero || "";
+            toast({
+              title: "Novo pedido",
+              description: `Pedido ${numero} criado.`,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, toast]);
 
   const create = useMutation({
     mutationFn: async (ped: any) => {
