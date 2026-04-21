@@ -93,35 +93,62 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(profile.empresa_id);
 
-    // Fetch Vendas from Conta Azul
-    // Get last 90 days
-    const dateTo = new Date();
-    const dateFrom = new Date();
-    dateFrom.setDate(dateFrom.getDate() - 90);
-    const dateFromStr = dateFrom.toISOString().split('T')[0] + 'T00:00:00Z';
-    const dateToStr = dateTo.toISOString().split('T')[0] + 'T23:59:59Z';
-
-    const url = `${CONTAAZUL_API}/v1/vendas?data_inicio=${dateFromStr}&data_fim=${dateToStr}`;
-    console.log("Fetching sales from:", url);
-
-    const resp = await fetch(url, {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!resp.ok) {
-      const errBody = await resp.text();
-      console.error("Erro fetch vendas:", resp.status, errBody);
-      throw new Error("Erro ao buscar vendas no Conta Azul");
+    // Permite intervalo customizado via body, ou busca tudo (sem limite)
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
     }
 
-    const sales = await resp.json();
-    console.log(`Recebidas ${sales.length} vendas`);
+    const dateFromStr = body.date_from
+      ? `${body.date_from}T00:00:00Z`
+      : "2000-01-01T00:00:00Z"; // sem limite (desde sempre)
+    const dateToStr = body.date_to
+      ? `${body.date_to}T23:59:59Z`
+      : new Date().toISOString().split('T')[0] + 'T23:59:59Z';
 
-    const upserts = sales.map((sale: any) => {
-      // Find cost center in rateios if present
+    // Paginação completa via API do Conta Azul
+    const allSales: any[] = [];
+    let pagina = 0;
+    const tamanho_pagina = 100;
+    let totalRecebido = 0;
+
+    while (true) {
+      const url = `${CONTAAZUL_API}/v1/vendas?data_inicio=${dateFromStr}&data_fim=${dateToStr}&pagina=${pagina}&tamanho_pagina=${tamanho_pagina}`;
+      console.log("Fetching sales page:", pagina, "url:", url);
+
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        console.error("Erro fetch vendas:", resp.status, errBody);
+        throw new Error(`Erro ao buscar vendas no Conta Azul: HTTP ${resp.status}`);
+      }
+
+      const pageData = await resp.json();
+      const items = Array.isArray(pageData) ? pageData : (pageData.itens || pageData.items || pageData.data || []);
+      
+      if (!items || items.length === 0) break;
+      
+      allSales.push(...items);
+      totalRecebido += items.length;
+      
+      if (items.length < tamanho_pagina) break;
+      pagina++;
+      
+      // Hard cap de segurança
+      if (pagina > 200) break;
+    }
+
+    console.log(`Total de vendas recebidas: ${totalRecebido}`);
+
+    const upserts = allSales.map((sale: any) => {
       const centroCusto = (sale.rateio_centro_custo || [])
         .map((r: any) => r.centro_custo?.nome || r.centro_custo_nome)
         .filter(Boolean)
@@ -135,16 +162,21 @@ serve(async (req) => {
         valor_total: sale.valor_total || sale.valor || 0,
         centro_custo: centroCusto || null,
         status: sale.status,
+        payload_json: sale,
         updated_at: new Date().toISOString(),
       };
     });
 
     if (upserts.length > 0) {
-      const { error: upsertError } = await supabase
-        .from("faturamentos_conta_azul")
-        .upsert(upserts, { onConflict: "erp_id" });
-      
-      if (upsertError) throw upsertError;
+      // Upsert em chunks para evitar payloads gigantes
+      const chunkSize = 100;
+      for (let i = 0; i < upserts.length; i += chunkSize) {
+        const chunk = upserts.slice(i, i + chunkSize);
+        const { error: upsertError } = await supabase
+          .from("faturamentos_conta_azul")
+          .upsert(chunk, { onConflict: "erp_id" });
+        if (upsertError) throw upsertError;
+      }
     }
 
     return new Response(JSON.stringify({ success: true, count: upserts.length }), {

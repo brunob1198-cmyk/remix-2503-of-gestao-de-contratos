@@ -1328,6 +1328,7 @@ export type Database = {
           erp_id: string
           id: string
           numero_nota: string | null
+          payload_json: Json | null
           projeto_id: string | null
           status: string | null
           updated_at: string | null
@@ -1341,6 +1342,7 @@ export type Database = {
           erp_id: string
           id?: string
           numero_nota?: string | null
+          payload_json?: Json | null
           projeto_id?: string | null
           status?: string | null
           updated_at?: string | null
@@ -1354,6 +1356,7 @@ export type Database = {
           erp_id?: string
           id?: string
           numero_nota?: string | null
+          payload_json?: Json | null
           projeto_id?: string | null
           status?: string | null
           updated_at?: string | null
