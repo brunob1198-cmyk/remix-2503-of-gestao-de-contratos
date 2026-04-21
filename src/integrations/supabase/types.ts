@@ -1319,6 +1319,53 @@ export type Database = {
           },
         ]
       }
+      flash_category_mapping: {
+        Row: {
+          conta_azul_account_id: string | null
+          conta_azul_account_name: string | null
+          conta_azul_category_id: string | null
+          conta_azul_category_name: string | null
+          created_at: string
+          empresa_id: string
+          flash_type: string
+          id: string
+          tipo_operacao: string
+          updated_at: string
+        }
+        Insert: {
+          conta_azul_account_id?: string | null
+          conta_azul_account_name?: string | null
+          conta_azul_category_id?: string | null
+          conta_azul_category_name?: string | null
+          created_at?: string
+          empresa_id: string
+          flash_type: string
+          id?: string
+          tipo_operacao?: string
+          updated_at?: string
+        }
+        Update: {
+          conta_azul_account_id?: string | null
+          conta_azul_account_name?: string | null
+          conta_azul_category_id?: string | null
+          conta_azul_category_name?: string | null
+          created_at?: string
+          empresa_id?: string
+          flash_type?: string
+          id?: string
+          tipo_operacao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_category_mapping_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flash_integration_logs: {
         Row: {
           created_at: string
@@ -1362,6 +1409,72 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flash_normalizacao: {
+        Row: {
+          conta_azul_account_id: string | null
+          conta_azul_account_name: string | null
+          conta_azul_category_id: string | null
+          conta_azul_category_name: string | null
+          created_at: string
+          empresa_id: string
+          enviado_at: string | null
+          flash_transaction_id: string
+          id: string
+          normalizado_at: string | null
+          observacao: string | null
+          status: string
+          tipo_operacao: string
+          updated_at: string
+        }
+        Insert: {
+          conta_azul_account_id?: string | null
+          conta_azul_account_name?: string | null
+          conta_azul_category_id?: string | null
+          conta_azul_category_name?: string | null
+          created_at?: string
+          empresa_id: string
+          enviado_at?: string | null
+          flash_transaction_id: string
+          id?: string
+          normalizado_at?: string | null
+          observacao?: string | null
+          status?: string
+          tipo_operacao?: string
+          updated_at?: string
+        }
+        Update: {
+          conta_azul_account_id?: string | null
+          conta_azul_account_name?: string | null
+          conta_azul_category_id?: string | null
+          conta_azul_category_name?: string | null
+          created_at?: string
+          empresa_id?: string
+          enviado_at?: string | null
+          flash_transaction_id?: string
+          id?: string
+          normalizado_at?: string | null
+          observacao?: string | null
+          status?: string
+          tipo_operacao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_normalizacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flash_normalizacao_flash_transaction_id_fkey"
+            columns: ["flash_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "flash_transactions_raw"
             referencedColumns: ["id"]
           },
         ]

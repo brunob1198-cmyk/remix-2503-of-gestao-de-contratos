@@ -29,6 +29,7 @@ import RecursosPage from "./pages/medicoes/Recursos";
 import AnaliseObraPage from "./pages/medicoes/AnaliseObra";
 import IntegracaoErpPage from "./pages/medicoes/IntegracaoErp";
 import IntegracaoFlashPage from "./pages/medicoes/IntegracaoFlash";
+import NormalizacaoFlashPage from "./pages/medicoes/NormalizacaoFlash";
 import RdoPage from "./pages/medicoes/Rdo";
 import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
 import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="relatorios" element={<RelatoriosPage />} />
               <Route path="integracao-erp" element={<IntegracaoErpPage />} />
               <Route path="integracao-flash" element={<IntegracaoFlashPage />} />
+              <Route path="normalizacao-flash" element={<NormalizacaoFlashPage />} />
               <Route path="rdo" element={<RdoPage />} />
               <Route path="usuarios" element={<GerenciarUsuariosPage />} />
               <Route path="planejamento" element={<PlanejamentoObraPage />} />
