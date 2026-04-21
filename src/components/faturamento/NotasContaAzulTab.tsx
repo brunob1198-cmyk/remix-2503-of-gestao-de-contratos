@@ -332,14 +332,15 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 </Table>
               </div>
               <TablePagination
-                page={currentPage}
-                pageSize={pageSize}
-                totalCount={total}
+                currentPage={currentPage}
+                totalPages={totalPages}
                 onPageChange={setPage}
-                onPageSizeChange={(s) => {
+                itemsPerPage={pageSize}
+                onItemsPerPageChange={(s) => {
                   setPageSize(s);
                   setPage(1);
                 }}
+                totalItems={total}
               />
             </>
           )}
