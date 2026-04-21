@@ -408,6 +408,26 @@ export default function NormalizacaoFlashPage() {
             <Wand2 className="h-4 w-4 mr-2" />
             Aplicar mapeamentos aos pendentes
           </Button>
+          <Button
+            size="sm"
+            variant="default"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={sending || counts.normalizado === 0}
+            onClick={() => {
+              const ids = transactions
+                .filter((t) => t.status === "normalizado")
+                .map((t) => t.id);
+              if (!ids.length) return;
+              sendToContaAzul(ids);
+            }}
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Enviar normalizados ({counts.normalizado})
+          </Button>
         </div>
       </div>
 
