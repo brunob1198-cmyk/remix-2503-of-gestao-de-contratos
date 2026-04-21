@@ -47,6 +47,8 @@ export default function FaturamentoPage() {
   const gerarFaturamento = useGerarFaturamento();
   const updateStatus = useUpdateFaturamentoStatus();
   const updateFaturamento = useUpdateFaturamento();
+  const { data: notasContaAzul = [], isLoading: loadingContaAzul } = useFaturamentosContaAzul(activeProjetoIds);
+  const syncContaAzul = useSyncContaAzulVendas();
 
   // Edit fatura state
   const [editFatura, setEditFatura] = useState<any | null>(null);
