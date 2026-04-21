@@ -553,6 +553,24 @@ export function useFlashNormalizacao() {
     [empresaId, transactions, fetchData]
   );
 
+  /**
+   * Verifica se uma transação já foi integrada via logs (controle de duplicidade).
+   */
+  const isAlreadyIntegrated = useCallback(async (flashId: string) => {
+    const { data, error } = await supabase
+      .from("flash_integration_logs")
+      .select("id")
+      .eq("flash_transaction_id", flashId)
+      .eq("status", "ENVIADO")
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erro ao verificar duplicidade:", error);
+      return false;
+    }
+    return !!data;
+  }, []);
+
   return {
     loading,
     savingId,
@@ -571,5 +589,6 @@ export function useFlashNormalizacao() {
     bulkApplyToPending,
     reopenEnviado,
     sendToContaAzul,
+    isAlreadyIntegrated,
   };
 }

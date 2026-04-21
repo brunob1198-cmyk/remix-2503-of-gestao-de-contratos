@@ -81,6 +81,22 @@ async function getValidAccessToken(supabase: any, empresaId: string): Promise<st
   return await refreshAccessToken(supabase, empresaId, data);
 }
 
+async function isAlreadyIntegrated(supabase: any, flashTransactionId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("flash_integration_logs")
+    .select("id")
+    .eq("flash_transaction_id", flashTransactionId)
+    .eq("status", "ENVIADO")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erro ao verificar duplicidade:", error);
+    return false;
+  }
+
+  return !!data;
+}
+
 interface TransactionInput {
   flash_transaction_id: string;
   description: string;
@@ -99,6 +115,16 @@ async function sendOne(
 ) {
   const startedAt = Date.now();
 
+  // Verificação obrigatória de duplicidade
+  const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
+  if (alreadySent) {
+    return {
+      flash_transaction_id: input.flash_transaction_id,
+      status: "skipped",
+      error: "Transação já integrada anteriormente (controle de duplicidade)",
+    };
+  }
+
   // Payload conforme Conta Azul API v2 (financial-transactions)
   const payload = {
     description: input.description,
@@ -113,7 +139,7 @@ async function sendOne(
   let responseJson: any = null;
   let errorMsg: string | null = null;
   let contaAzulId: string | null = null;
-  let status: "sucesso" | "erro" = "erro";
+  let status: string = "erro";
 
   try {
     const resp = await fetch(`${CONTAAZUL_API}/v1/financial-transactions`, {
@@ -137,7 +163,7 @@ async function sendOne(
     if (!resp.ok) {
       errorMsg = `HTTP ${resp.status}: ${typeof responseJson === "object" ? JSON.stringify(responseJson) : text}`;
     } else {
-      status = "sucesso";
+      status = "ENVIADO";
       contaAzulId = responseJson?.id || responseJson?.uuid || null;
     }
   } catch (e: any) {
@@ -146,9 +172,11 @@ async function sendOne(
 
   const duracao = Date.now() - startedAt;
 
-  // Log persistente
+  // Log persistente com as novas colunas
   await supabase.from("flash_integration_logs").insert({
     empresa_id: empresaId,
+    flash_transaction_id: input.flash_transaction_id,
+    conta_azul_transaction_id: contaAzulId,
     evento: "send_transaction",
     status,
     http_status: httpStatus,
@@ -159,7 +187,7 @@ async function sendOne(
   });
 
   // Atualiza flash_normalizacao quando sucesso
-  if (status === "sucesso") {
+  if (status === "ENVIADO") {
     await supabase
       .from("flash_normalizacao")
       .update({
