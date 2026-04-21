@@ -1319,6 +1319,85 @@ export type Database = {
           },
         ]
       }
+      flash_integration_logs: {
+        Row: {
+          created_at: string
+          duracao_ms: number | null
+          empresa_id: string
+          erro: string | null
+          evento: string
+          http_status: number | null
+          id: string
+          request: Json
+          response: Json | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duracao_ms?: number | null
+          empresa_id: string
+          erro?: string | null
+          evento?: string
+          http_status?: number | null
+          id?: string
+          request?: Json
+          response?: Json | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          duracao_ms?: number | null
+          empresa_id?: string
+          erro?: string | null
+          evento?: string
+          http_status?: number | null
+          id?: string
+          request?: Json
+          response?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_integration_logs_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flash_transactions_raw: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          external_id: string
+          id: string
+          payload_json: Json
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          external_id: string
+          id?: string
+          payload_json: Json
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          external_id?: string
+          id?: string
+          payload_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_transactions_raw_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornecedores: {
         Row: {
           ativo: boolean | null
