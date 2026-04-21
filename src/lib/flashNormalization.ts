@@ -11,6 +11,7 @@
  */
 
 export interface FlashCategoryMappingLike {
+  id?: string;
   flash_type: string;
   conta_azul_category_id: string | null;
   conta_azul_category_name: string | null;
@@ -41,6 +42,8 @@ export interface NormalizedFlashTransaction {
   conta_azul_category_name: string | null;
   conta_azul_account_id: string | null;
   conta_azul_account_name: string | null;
+  /** ID do mapping aplicado, quando houver */
+  mapping_id_usado: string | null;
   /** Dados auxiliares prontos para envio futuro ao Conta Azul */
   conta_azul_payload: {
     description: string;
@@ -48,10 +51,16 @@ export interface NormalizedFlashTransaction {
     date: string | null;
     type: "receita" | "despesa";
     category_id: string | null;
+    category_name: string | null;
     account_id: string | null;
+    account_name: string | null;
+    external_id: string | null;
+    flash_type: string;
   } | null;
   /** Quando true → requer intervenção manual antes de enviar */
   requires_manual_review: boolean;
+  /** Motivo detalhado (sempre preenchido) */
+  motivo: string;
   reason?: string;
 }
 
@@ -141,6 +150,7 @@ export const normalizeFlashTransaction = (
     pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   if (!mapping) {
+    const motivo = `Pendente: nenhum mapeamento encontrado para o tipo Flash "${flash_type}". Defina manualmente categoria e conta financeira.`;
     return {
       flash_transaction_id: transaction.id,
       external_id: transaction.external_id ?? null,
@@ -151,14 +161,20 @@ export const normalizeFlashTransaction = (
       conta_azul_category_name: null,
       conta_azul_account_id: null,
       conta_azul_account_name: null,
+      mapping_id_usado: null,
       conta_azul_payload: null,
       requires_manual_review: true,
-      reason: `Nenhum mapeamento encontrado para o tipo "${flash_type}".`,
+      motivo,
+      reason: motivo,
     };
   }
 
   const hasFullMapping =
     !!mapping.conta_azul_category_id && !!mapping.conta_azul_account_id;
+
+  const motivo = hasFullMapping
+    ? `Normalizado automaticamente via mapping do tipo "${flash_type}" → ${mapping.conta_azul_category_name || mapping.conta_azul_category_id} / ${mapping.conta_azul_account_name || mapping.conta_azul_account_id}.`
+    : `Pendente: mapping para "${flash_type}" existe mas está incompleto (faltando ${!mapping.conta_azul_category_id ? "categoria" : ""}${!mapping.conta_azul_category_id && !mapping.conta_azul_account_id ? " e " : ""}${!mapping.conta_azul_account_id ? "conta financeira" : ""}).`;
 
   return {
     flash_transaction_id: transaction.id,
@@ -170,6 +186,7 @@ export const normalizeFlashTransaction = (
     conta_azul_category_name: mapping.conta_azul_category_name,
     conta_azul_account_id: mapping.conta_azul_account_id,
     conta_azul_account_name: mapping.conta_azul_account_name,
+    mapping_id_usado: mapping.id ?? null,
     conta_azul_payload: hasFullMapping
       ? {
           description: descricao,
@@ -177,13 +194,47 @@ export const normalizeFlashTransaction = (
           date: data,
           type: mapping.tipo_operacao,
           category_id: mapping.conta_azul_category_id,
+          category_name: mapping.conta_azul_category_name,
           account_id: mapping.conta_azul_account_id,
+          account_name: mapping.conta_azul_account_name,
+          external_id: transaction.external_id ?? null,
+          flash_type,
         }
       : null,
     requires_manual_review: !hasFullMapping,
-    reason: hasFullMapping
-      ? undefined
-      : "Mapeamento incompleto: categoria e/ou conta financeira ausente.",
+    motivo,
+    reason: hasFullMapping ? undefined : motivo,
+  };
+};
+
+/**
+ * Constrói o payload pronto para envio ao Conta Azul a partir de uma linha já normalizada.
+ * Retorna null se a linha não tem dados suficientes.
+ */
+export const buildContaAzulPayload = (params: {
+  descricao: string;
+  valor: number;
+  data: string | null;
+  tipo_operacao: "receita" | "despesa";
+  conta_azul_category_id: string | null;
+  conta_azul_category_name: string | null;
+  conta_azul_account_id: string | null;
+  conta_azul_account_name: string | null;
+  external_id: string | null;
+  flash_type: string;
+}) => {
+  if (!params.conta_azul_category_id || !params.conta_azul_account_id) return null;
+  return {
+    description: params.descricao,
+    amount: params.valor,
+    date: params.data,
+    type: params.tipo_operacao,
+    category_id: params.conta_azul_category_id,
+    category_name: params.conta_azul_category_name,
+    account_id: params.conta_azul_account_id,
+    account_name: params.conta_azul_account_name,
+    external_id: params.external_id,
+    flash_type: params.flash_type,
   };
 };
 
