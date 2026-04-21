@@ -416,3 +416,57 @@ export function useUpdateFaturamento() {
     },
   });
 }
+
+export interface FaturamentoContaAzul {
+  id: string;
+  erp_id: string;
+  numero_nota: string | null;
+  data_emissao: string;
+  cliente_nome: string | null;
+  valor_total: number;
+  centro_custo: string | null;
+  projeto_id: string | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useFaturamentosContaAzul(projetoIds?: string[]) {
+  return useQuery({
+    queryKey: ["faturamentos_conta_azul", projetoIds],
+    queryFn: async () => {
+      let query = supabase
+        .from("faturamentos_conta_azul")
+        .select("*")
+        .order("data_emissao", { ascending: false });
+
+      if (projetoIds && projetoIds.length > 0) {
+        query = query.in("projeto_id", projetoIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as FaturamentoContaAzul[];
+    },
+  });
+}
+
+export function useSyncContaAzulVendas() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("sync-contaazul-vendas");
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["faturamentos_conta_azul"] });
+      toast({ title: "Notas Fiscais sincronizadas com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao sincronizar Notas Fiscais", description: error.message, variant: "destructive" });
+    },
+  });
+}
