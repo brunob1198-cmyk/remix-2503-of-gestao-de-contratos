@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, MapPin, FileSpreadsheet,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
-  CalendarRange, ShoppingCart, History,
+  CalendarRange, ShoppingCart, History, Zap,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -49,6 +49,7 @@ const menuItems: MenuItem[] = [
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
+  { title: "Integração Flash", url: "/medicoes/integracao-flash", icon: Zap, adminOnly: true },
 ];
 
 export function MedicoesSidebar() {
