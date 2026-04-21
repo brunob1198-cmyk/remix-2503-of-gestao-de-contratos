@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
+  buildContaAzulPayload,
   buildMappingIndex,
   normalizeFlashTransaction,
   type FlashCategoryMappingLike,
@@ -33,6 +34,11 @@ export interface FlashTransactionRow {
   conta_azul_account_name?: string | null;
   tipo_operacao?: "receita" | "despesa";
   status?: "pendente" | "normalizado" | "enviado";
+  motivo?: string | null;
+  flash_type_detectado?: string | null;
+  mapping_id_usado?: string | null;
+  conta_azul_payload?: any | null;
+  enviado_at?: string | null;
 }
 
 interface CategoryMapping {
@@ -136,7 +142,6 @@ export function useFlashNormalizacao() {
       const mappingList = (mapRes.data || []) as CategoryMapping[];
       const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
 
-      // Rows derivados, com auto-normalização aplicada quando possível
       const autoNormPayloads: any[] = [];
       const rows = (txRes.data || []).map((raw: any) => {
         const base = mapTransactionRow(raw);
@@ -149,10 +154,14 @@ export function useFlashNormalizacao() {
           base.conta_azul_account_name = n.conta_azul_account_name;
           base.tipo_operacao = n.tipo_operacao;
           base.status = n.status;
+          base.motivo = n.motivo;
+          base.flash_type_detectado = n.flash_type_detectado || base.flash_type;
+          base.mapping_id_usado = n.mapping_id_usado;
+          base.conta_azul_payload = n.conta_azul_payload;
+          base.enviado_at = n.enviado_at;
           return base;
         }
 
-        // Sem normalização ainda → tenta auto-normalizar pelo mapping
         const normalized = normalizeFlashTransaction(
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
           mappingIdx
@@ -163,8 +172,11 @@ export function useFlashNormalizacao() {
         base.conta_azul_category_name = normalized.conta_azul_category_name;
         base.conta_azul_account_id = normalized.conta_azul_account_id;
         base.conta_azul_account_name = normalized.conta_azul_account_name;
+        base.motivo = normalized.motivo;
+        base.flash_type_detectado = normalized.flash_type;
+        base.mapping_id_usado = normalized.mapping_id_usado;
+        base.conta_azul_payload = normalized.conta_azul_payload;
 
-        // Persiste sempre que houver auto-mapping (status=normalizado)
         if (normalized.status === "normalizado") {
           autoNormPayloads.push({
             empresa_id: empresaId,
@@ -176,6 +188,10 @@ export function useFlashNormalizacao() {
             tipo_operacao: normalized.tipo_operacao,
             status: "normalizado",
             normalizado_at: new Date().toISOString(),
+            motivo: normalized.motivo,
+            flash_type_detectado: normalized.flash_type,
+            mapping_id_usado: normalized.mapping_id_usado,
+            conta_azul_payload: normalized.conta_azul_payload,
           });
         }
         return base;
@@ -184,7 +200,6 @@ export function useFlashNormalizacao() {
       setTransactions(rows);
       setMappings(mappingList);
 
-      // Persiste auto-normalizações em background (não bloqueia a UI)
       if (autoNormPayloads.length > 0) {
         supabase
           .from("flash_normalizacao")
@@ -246,10 +261,18 @@ export function useFlashNormalizacao() {
         conta_azul_account_name: string | null;
         tipo_operacao: "receita" | "despesa";
         status: "pendente" | "normalizado" | "enviado";
+        motivo: string | null;
       }>,
-      opts?: { saveMapping?: boolean }
+      opts?: { saveMapping?: boolean; allowEditEnviado?: boolean }
     ) => {
       if (!empresaId) return;
+      // Bloqueio padrão para enviado, salvo flag explícita
+      if (row.status === "enviado" && !opts?.allowEditEnviado) {
+        toast.error("Lançamento enviado", {
+          description: 'Use "Reabrir para correção" antes de editar.',
+        });
+        return;
+      }
       setSavingId(row.id);
       try {
         const merged = {
@@ -261,20 +284,56 @@ export function useFlashNormalizacao() {
           status: patch.status ?? row.status ?? "pendente",
         };
 
-        // Auto-promote to normalizado when both category + account are set
+        // Auto-promote para normalizado quando categoria + conta estão definidas
+        let autoPromoted = false;
         if (
           merged.status === "pendente" &&
           merged.conta_azul_category_id &&
           merged.conta_azul_account_id
         ) {
           merged.status = "normalizado";
+          autoPromoted = true;
         }
+
+        const mappingMatch = mappingByType.get(row.flash_type);
+        const motivo =
+          patch.motivo !== undefined
+            ? patch.motivo
+            : merged.status === "normalizado"
+            ? autoPromoted
+              ? `Normalizado manualmente: categoria e conta preenchidas pelo usuário em ${new Date().toLocaleString("pt-BR")}.`
+              : mappingMatch && mappingMatch.id === (row.mapping_id_usado || mappingMatch.id)
+              ? `Normalizado via mapping do tipo "${row.flash_type}" → ${merged.conta_azul_category_name} / ${merged.conta_azul_account_name}.`
+              : `Normalizado manualmente (sem mapping aplicado) em ${new Date().toLocaleString("pt-BR")}.`
+            : merged.status === "enviado"
+            ? `Enviado ao Conta Azul em ${new Date().toLocaleString("pt-BR")}.`
+            : `Pendente: aguardando definição de categoria e/ou conta financeira.`;
+
+        const payloadSnapshot = buildContaAzulPayload({
+          descricao: row.descricao,
+          valor: row.valor,
+          data: row.data,
+          tipo_operacao: merged.tipo_operacao,
+          conta_azul_category_id: merged.conta_azul_category_id,
+          conta_azul_category_name: merged.conta_azul_category_name,
+          conta_azul_account_id: merged.conta_azul_account_id,
+          conta_azul_account_name: merged.conta_azul_account_name,
+          external_id: row.external_id,
+          flash_type: row.flash_type,
+        });
 
         const upsertPayload: any = {
           empresa_id: empresaId,
           flash_transaction_id: row.id,
           ...merged,
-          normalizado_at: merged.status === "normalizado" ? new Date().toISOString() : null,
+          motivo,
+          flash_type_detectado: row.flash_type,
+          mapping_id_usado: opts?.saveMapping ? null : row.mapping_id_usado ?? null,
+          conta_azul_payload: payloadSnapshot,
+          normalizado_at:
+            merged.status === "normalizado" || merged.status === "enviado"
+              ? new Date().toISOString()
+              : null,
         };
 
         const { data, error } = await supabase
@@ -291,12 +350,15 @@ export function useFlashNormalizacao() {
                   ...t,
                   ...merged,
                   norm_id: data.id,
+                  motivo,
+                  flash_type_detectado: row.flash_type,
+                  conta_azul_payload: payloadSnapshot,
+                  enviado_at: data.enviado_at,
                 }
               : t
           )
         );
 
-        // Save reusable mapping
         if (opts?.saveMapping && row.flash_type && merged.conta_azul_category_id && merged.conta_azul_account_id) {
           const { data: mData, error: mError } = await supabase
             .from("flash_category_mapping")
@@ -328,7 +390,7 @@ export function useFlashNormalizacao() {
         setSavingId(null);
       }
     },
-    [empresaId]
+    [empresaId, mappingByType]
   );
 
   const applyMappingToAllPending = useCallback(async () => {
@@ -356,6 +418,82 @@ export function useFlashNormalizacao() {
     toast.success(`${count} lançamento(s) normalizado(s) automaticamente.`);
   }, [empresaId, mappingByType, transactions, saveNormalization]);
 
+  /**
+   * Aplica em lote categoria/conta a um conjunto de transações pendentes.
+   * Útil para a tela de revisão em lote de pendentes.
+   */
+  const bulkApplyToPending = useCallback(
+    async (
+      rowIds: string[],
+      values: {
+        conta_azul_category_id: string;
+        conta_azul_category_name: string;
+        conta_azul_account_id: string;
+        conta_azul_account_name: string;
+        tipo_operacao: "receita" | "despesa";
+        saveMappingPerType?: boolean;
+      }
+    ) => {
+      if (!empresaId || !rowIds.length) return;
+      const targets = transactions.filter((t) => rowIds.includes(t.id) && t.status === "pendente");
+      if (!targets.length) {
+        toast.info("Nenhuma transação pendente selecionada.");
+        return;
+      }
+      let count = 0;
+      const seenTypes = new Set<string>();
+      for (const row of targets) {
+        const isFirstOfType = values.saveMappingPerType && !seenTypes.has(row.flash_type);
+        seenTypes.add(row.flash_type);
+        await saveNormalization(
+          row,
+          {
+            conta_azul_category_id: values.conta_azul_category_id,
+            conta_azul_category_name: values.conta_azul_category_name,
+            conta_azul_account_id: values.conta_azul_account_id,
+            conta_azul_account_name: values.conta_azul_account_name,
+            tipo_operacao: values.tipo_operacao,
+            status: "normalizado",
+          },
+          { saveMapping: !!isFirstOfType }
+        );
+        count += 1;
+      }
+      toast.success(`${count} pendente(s) atualizado(s) em lote.`);
+    },
+    [empresaId, transactions, saveNormalization]
+  );
+
+  /**
+   * Reabre um lançamento "enviado" para correção, voltando-o para "normalizado".
+   */
+  const reopenEnviado = useCallback(
+    async (row: FlashTransactionRow) => {
+      if (row.status !== "enviado") return;
+      await saveNormalization(
+        row,
+        {
+          status: "normalizado",
+          motivo: `Reaberto para correção em ${new Date().toLocaleString("pt-BR")} (estava enviado).`,
+        },
+        { allowEditEnviado: true }
+      );
+      // Limpa enviado_at
+      if (empresaId) {
+        await supabase
+          .from("flash_normalizacao")
+          .update({ enviado_at: null })
+          .eq("flash_transaction_id", row.id)
+          .eq("empresa_id", empresaId);
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === row.id ? { ...t, enviado_at: null } : t))
+        );
+      }
+      toast.success("Lançamento reaberto para correção");
+    },
+    [empresaId, saveNormalization]
+  );
+
   return {
     loading,
     savingId,
@@ -370,5 +508,7 @@ export function useFlashNormalizacao() {
     refreshMetadata: fetchMetadata,
     saveNormalization,
     applyMappingToAllPending,
+    bulkApplyToPending,
+    reopenEnviado,
   };
 }
