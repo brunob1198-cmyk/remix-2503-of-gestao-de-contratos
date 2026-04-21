@@ -1061,6 +1061,74 @@ export default function FaturamentoPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="contaazul" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Notas Fiscais - Conta Azul</CardTitle>
+                    <p className="text-sm text-muted-foreground">Últimas notas fiscais emitidas sincronizadas do ERP</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => syncContaAzul.mutate()} 
+                    disabled={syncContaAzul.isPending}
+                  >
+                    {syncContaAzul.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Sincronizar Conta Azul
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {loadingContaAzul ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : notasContaAzul.length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <Receipt className="h-12 w-12 text-muted-foreground mx-auto opacity-20" />
+                      <p className="text-muted-foreground">Nenhuma nota fiscal encontrada no Conta Azul.</p>
+                      <Button variant="link" onClick={() => syncContaAzul.mutate()}>Clique aqui para sincronizar agora</Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border overflow-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nº Nota</TableHead>
+                            <TableHead>Data Emissão</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Centro de Custo</TableHead>
+                            <TableHead className="text-right">Valor Total</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {notasContaAzul.map((nota) => (
+                            <TableRow key={nota.id}>
+                              <TableCell className="font-medium">{nota.numero_nota || "S/N"}</TableCell>
+                              <TableCell>{format(new Date(nota.data_emissao + "T12:00:00"), "dd/MM/yyyy")}</TableCell>
+                              <TableCell className="max-w-[200px] truncate" title={nota.cliente_nome || ""}>
+                                {nota.cliente_nome}
+                              </TableCell>
+                              <TableCell className="max-w-[200px] truncate" title={nota.centro_custo || ""}>
+                                {nota.centro_custo || <span className="text-muted-foreground italic text-xs">Não alocado</span>}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {formatCurrency(nota.valor_total)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize">{nota.status || "Emitida"}</Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         )}
 
