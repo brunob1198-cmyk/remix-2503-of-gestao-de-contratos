@@ -175,13 +175,11 @@ Deno.serve(async (req) => {
   const userClient = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claimsData, error: claimsError } =
-    await userClient.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims) {
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData?.user) {
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
-  const userId = claimsData.claims.sub as string;
+  const userId = userData.user.id;
 
   // Service role for inserts that bypass RLS (logs + raw storage)
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
