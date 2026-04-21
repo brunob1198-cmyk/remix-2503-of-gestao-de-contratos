@@ -58,6 +58,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Send,
   Sparkles,
   Wand2,
 } from "lucide-react";
@@ -133,6 +134,7 @@ export default function NormalizacaoFlashPage() {
   const {
     loading,
     savingId,
+    sending,
     transactions,
     categorias,
     contas,
@@ -146,6 +148,7 @@ export default function NormalizacaoFlashPage() {
     applyMappingToAllPending,
     bulkApplyToPending,
     reopenEnviado,
+    sendToContaAzul,
   } = useFlashNormalizacao();
 
   const [statusFilter, setStatusFilter] = useState<string>("todos");
@@ -307,6 +310,26 @@ export default function NormalizacaoFlashPage() {
             <TooltipContent>Aplicar mapeamento salvo</TooltipContent>
           </Tooltip>
         )}
+        {row.status === "normalizado" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-emerald-600"
+                disabled={sending}
+                onClick={() => sendToContaAzul([row.id])}
+              >
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Enviar ao Conta Azul</TooltipContent>
+          </Tooltip>
+        )}
         {isEnviado ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -384,6 +407,26 @@ export default function NormalizacaoFlashPage() {
           <Button size="sm" onClick={applyMappingToAllPending} disabled={mappings.length === 0}>
             <Wand2 className="h-4 w-4 mr-2" />
             Aplicar mapeamentos aos pendentes
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={sending || counts.normalizado === 0}
+            onClick={() => {
+              const ids = transactions
+                .filter((t) => t.status === "normalizado")
+                .map((t) => t.id);
+              if (!ids.length) return;
+              sendToContaAzul(ids);
+            }}
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Enviar normalizados ({counts.normalizado})
           </Button>
         </div>
       </div>
