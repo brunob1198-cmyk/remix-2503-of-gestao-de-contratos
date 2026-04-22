@@ -59,7 +59,16 @@ export default function IntegracaoFlashPage() {
       const { data, error } = await supabase.functions.invoke("flash-sync", {
         body: { action: "test" },
       });
-      if (error) throw error;
+      
+      if (error) {
+        // Se houver erro de rede ou HTTP, o body pode estar aqui
+        const errorData = (error as any).context?.body || {};
+        const err = new Error(errorData.error || error.message || "Erro ao testar conexão");
+        (err as any).status = errorData.status || (error as any).status;
+        (err as any).hint = errorData.hint;
+        throw err;
+      }
+
       if (data?.success === false) {
         const err = new Error(data.error || "Erro ao testar conexão");
         (err as any).status = data.status;
@@ -99,10 +108,18 @@ export default function IntegracaoFlashPage() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorData = (error as any).context?.body || {};
+        const err = new Error(errorData.error || error.message || "Erro na sincronização");
+        (err as any).status = errorData.status || (error as any).status;
+        (err as any).hint = errorData.hint;
+        throw err;
+      }
+
       if (data?.success === false) {
         const err = new Error(data.error || "Erro na sincronização");
         (err as any).status = data.status;
+        (err as any).hint = data.hint;
         throw err;
       }
       return data;
