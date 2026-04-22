@@ -12,10 +12,11 @@ const corsHeaders = {
 
 // ====== CONFIG ======
 // Adjust the base URL / endpoint to match Flash's actual API.
+// Flash Business API usually uses /v1/business/transactions
 const FLASH_API_BASE_URL =
   Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.com.br";
 const FLASH_TRANSACTIONS_PATH =
-  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/v1/transactions";
+  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/v1/business/transactions";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
 const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "100");
 
@@ -102,6 +103,10 @@ async function getTransactions(params: {
       },
     });
 
+    if (res.status === 403) {
+      throw new Error("403 Forbidden: Acesso Negado. Verifique as permissões do token no painel da Flash (ex: Leitura de Transações / API Business).");
+    }
+
     const text = await res.text();
     let payload: FlashApiResponse;
     try {
@@ -146,7 +151,6 @@ async function getTransactions(params: {
       continue;
     }
     if (list.length >= FLASH_PAGE_SIZE && totalPages == null && hasMore == null) {
-      // No metadata, but a full page came back — try next page defensively.
       page += 1;
       continue;
     }
@@ -166,7 +170,6 @@ Deno.serve(async (req) => {
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Authenticate caller
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return jsonResponse({ error: "Não autorizado" }, 401);
@@ -180,10 +183,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Não autorizado" }, 401);
   }
   const userId = userData.user.id;
-
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Resolve empresa_id
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
     .select("empresa_id")
@@ -195,7 +196,6 @@ Deno.serve(async (req) => {
   }
   const empresaId = profile.empresa_id;
 
-  // Parse body
   let body: { startDate?: string; endDate?: string; action?: string } = {};
   try {
     if (req.method === "POST") {
@@ -214,13 +214,12 @@ Deno.serve(async (req) => {
 
   const flashToken = Deno.env.get("FLASH_API_TOKEN");
   if (!flashToken) {
-    return jsonResponse({ error: "FLASH_API_TOKEN não configurado nos segredos do Supabase" }, 500);
+    return jsonResponse({ error: "FLASH_API_TOKEN não configurado" }, 500);
   }
 
-  // --- ACTION: TEST CONNECTION ---
+  // Action: Test
   if (body.action === "test") {
     try {
-      // Tenta uma chamada simples (ex: 1 registro de hoje) para validar o token
       const today = new Date().toISOString().split('T')[0];
       const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
       url.searchParams.set("page_size", "1");
@@ -239,42 +238,23 @@ Deno.serve(async (req) => {
         return jsonResponse({
           success: false,
           status: 403,
-          error: "Acesso Negado (403). Verifique se o token tem permissões de 'Leitura de Transações' ou 'API Business' no painel da Flash.",
-          hint: "Certifique-se de que o token foi gerado com as permissões corretas e que o endpoint está habilitado para sua conta."
+          error: "Acesso Negado (403). Verifique se o token possui permissões para acessar a API de Negócios/Transações no painel da Flash.",
+          hint: "Geralmente é necessário habilitar o escopo 'business' ou 'transactions' na geração do token."
         }, 403);
-      }
-
-      if (res.status === 401) {
-        return jsonResponse({
-          success: false,
-          status: 401,
-          error: "Token Inválido (401). O FLASH_API_TOKEN configurado parece estar incorreto ou expirado.",
-        }, 401);
       }
 
       if (!res.ok) {
         const text = await res.text();
-        return jsonResponse({
-          success: false,
-          status: res.status,
-          error: `Erro na API Flash (${res.status}): ${text.slice(0, 200)}`,
-        }, res.status);
+        return jsonResponse({ success: false, status: res.status, error: `Erro na API: ${text.slice(0, 100)}` }, res.status);
       }
 
-      return jsonResponse({
-        success: true,
-        message: "Conexão com a Flash validada com sucesso!",
-        status: res.status,
-      });
+      return jsonResponse({ success: true, message: "Conexão estabelecida com sucesso!" });
     } catch (err) {
-      return jsonResponse({
-        success: false,
-        error: `Falha ao conectar na Flash: ${err.message}`,
-      }, 500);
+      return jsonResponse({ success: false, error: err.message }, 500);
     }
   }
 
-  // --- ACTION: SYNC (Default) ---
+  // Action: Sync
   const startDate = body.startDate;
   const endDate = body.endDate;
   const isoDate = /^\d{4}-\d{2}-\d{2}$/;
@@ -282,7 +262,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "startDate e endDate são obrigatórios (YYYY-MM-DD)" }, 400);
   }
 
-  // Log inicial
   const { data: logRow } = await adminClient
     .from("flash_integration_logs")
     .insert({
@@ -302,19 +281,99 @@ Deno.serve(async (req) => {
       token: flashToken,
     });
 
-    // ... processamento de transações (mantido igual ao anterior para brevidade, mas incluirei no write final se necessário)
-    // Para economizar tokens no line_replace, vou assumir que o usuário quer que eu mantenha a lógica de sync.
-    // MAS, eu preciso garantir que o erro 403 seja tratado dentro de getTransactions ou aqui.
-    
-    // Vou re-escrever o loop de sync de forma mais concisa ou garantir que ele continue funcionando.
-    // Na verdade, o line_replace acima substituiu tudo até o fim do arquivo. 
-    // Eu devia ter incluído o restante da lógica de sync.
-    
-    // Vou cancelar este pensamento e fazer um write completo do arquivo para garantir que não quebre nada.
-    
-    return jsonResponse({ success: true, count: transactions.length }); 
+    let inserted = 0;
+    if (transactions.length > 0) {
+      const rows = transactions.map((tx, idx) => ({
+        empresa_id: empresaId,
+        external_id: extractExternalId(tx, idx),
+        payload_json: tx,
+      }));
+
+      const chunkSize = 500;
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        const { error: upsertError, count } = await adminClient
+          .from("flash_transactions_raw")
+          .upsert(chunk, {
+            onConflict: "empresa_id,external_id",
+            count: "exact",
+          });
+        if (upsertError) throw upsertError;
+        inserted += count ?? chunk.length;
+      }
+
+      // Auto-normalization
+      try {
+        const externalIds = rows.map((r) => r.external_id);
+        const [{ data: savedRows }, { data: mappings }] = await Promise.all([
+          adminClient.from("flash_transactions_raw").select("id, external_id, payload_json").eq("empresa_id", empresaId).in("external_id", externalIds),
+          adminClient.from("flash_category_mapping").select("*").eq("empresa_id", empresaId),
+        ]);
+
+        const mappingIdx = new Map();
+        (mappings || []).forEach((m) => mappingIdx.set(m.flash_type, m));
+
+        const pickFlashType = (payload: any): string => {
+          const candidates = ["type", "tipo", "category", "categoria", "transaction_type"];
+          for (const k of candidates) {
+            if (payload[k]) return String(payload[k]).trim();
+          }
+          return "indefinido";
+        };
+
+        const normRows = (savedRows || []).map((r: any) => {
+          const flash_type = pickFlashType(r.payload_json);
+          const m = mappingIdx.get(flash_type);
+          const hasFull = !!(m && m.conta_azul_category_id && m.conta_azul_account_id);
+          return {
+            empresa_id: empresaId,
+            flash_transaction_id: r.id,
+            tipo_operacao: m?.tipo_operacao || "despesa",
+            conta_azul_category_id: m?.conta_azul_category_id ?? null,
+            conta_azul_category_name: m?.conta_azul_category_name ?? null,
+            conta_azul_account_id: m?.conta_azul_account_id ?? null,
+            conta_azul_account_name: m?.conta_azul_account_name ?? null,
+            status: hasFull ? "normalizado" : "pendente",
+            normalizado_at: hasFull ? new Date().toISOString() : null,
+          };
+        });
+
+        if (normRows.length > 0) {
+          const chunk = 500;
+          for (let i = 0; i < normRows.length; i += chunk) {
+            await adminClient.from("flash_normalizacao").upsert(normRows.slice(i, i + chunk), { onConflict: "flash_transaction_id" });
+          }
+        }
+      } catch (e) { console.error("Auto-norm failed", e); }
+    }
+
+    const durationMs = Date.now() - startedAt;
+    if (logId) {
+      await adminClient.from("flash_integration_logs").update({
+        status: "sucesso",
+        http_status: 200,
+        duracao_ms: durationMs,
+        response: { transactions_received: transactions.length, transactions_persisted: inserted, pages_fetched: pagesFetched },
+      }).eq("id", logId);
+    }
+
+    return jsonResponse({
+      success: true,
+      totalProcessed: transactions.length,
+      totalPersisted: inserted,
+      pages: pagesFetched,
+      duracao_ms: durationMs,
+    });
   } catch (err) {
-    // ... erro
-    return jsonResponse({ success: false, error: err.message }, 500);
+    const msg = err.message;
+    if (logId) {
+      await adminClient.from("flash_integration_logs").update({
+        status: "erro",
+        erro: msg,
+        http_status: msg.includes("403") ? 403 : 500,
+        duracao_ms: Date.now() - startedAt,
+      }).eq("id", logId);
+    }
+    return jsonResponse({ success: false, error: msg }, msg.includes("403") ? 403 : 500);
   }
 });
