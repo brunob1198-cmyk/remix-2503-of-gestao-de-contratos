@@ -479,9 +479,14 @@ export default function IntegracaoFlashPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {log.duracao_ms ? `${log.duracao_ms}ms` : "—"}
                       </TableCell>
-                      <TableCell className="text-sm max-w-md truncate">
+                      <TableCell className="text-sm max-w-md">
                         {log.erro ? (
-                          <span className="text-destructive">{log.erro}</span>
+                          <span
+                            className="text-destructive whitespace-pre-wrap break-words block"
+                            title={log.erro}
+                          >
+                            {log.erro}
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">
                             {(log.request as any)?.startDate} → {(log.request as any)?.endDate}
