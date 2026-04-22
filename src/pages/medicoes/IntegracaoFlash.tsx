@@ -54,19 +54,38 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  // Helper: extrai o JSON real do erro retornado pela edge function
+  // O supabase-js empacota o body em error.context (Response), precisa ler como texto e fazer parse.
+  const parseEdgeError = async (error: any, fallbackMsg: string) => {
+    let payload: any = {};
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.text === "function") {
+        const txt = await ctx.text();
+        try { payload = JSON.parse(txt); } catch { payload = { error: txt }; }
+      } else if (ctx?.body && typeof ctx.body === "string") {
+        try { payload = JSON.parse(ctx.body); } catch { payload = { error: ctx.body }; }
+      } else if (ctx?.body && typeof ctx.body === "object") {
+        payload = ctx.body;
+      }
+    } catch (e) {
+      // ignora
+    }
+    const err = new Error(payload.error || error?.message || fallbackMsg);
+    (err as any).status = payload.status ?? error?.status;
+    (err as any).hint = payload.hint;
+    (err as any).raw = payload;
+    return err;
+  };
+
   const testMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("flash-sync", {
         body: { action: "test" },
       });
-      
+
       if (error) {
-        // Se houver erro de rede ou HTTP, o body pode estar aqui
-        const errorData = (error as any).context?.body || {};
-        const err = new Error(errorData.error || error.message || "Erro ao testar conexão");
-        (err as any).status = errorData.status || (error as any).status;
-        (err as any).hint = errorData.hint;
-        throw err;
+        throw await parseEdgeError(error, "Erro ao testar conexão");
       }
 
       if (data?.success === false) {
