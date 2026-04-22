@@ -392,24 +392,33 @@ export default function IntegracaoFlashPage() {
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.error ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                 {lastResult.error ? "Falha na sincronização" : "Sincronização concluída"}
+                {lastResult.status && (
+                  <Badge variant="destructive" className="ml-2">HTTP {lastResult.status}</Badge>
+                )}
               </AlertTitle>
               <AlertDescription className="mt-2">
                 {lastResult.error ? (
-                  <div className="space-y-2">
-                    <p className="font-semibold">{lastResult.error}</p>
+                  <div className="space-y-3">
+                    <p className="font-semibold whitespace-pre-wrap break-words">
+                      {lastResult.error}
+                    </p>
+                    {lastResult.hint && (
+                      <p className="text-xs opacity-80 italic whitespace-pre-wrap break-words">
+                        💡 {lastResult.hint}
+                      </p>
+                    )}
                     {lastResult.status === 403 && (
-                      <div className="bg-destructive/10 p-3 rounded-md text-sm border border-destructive/20 mt-2">
-                        <p className="font-bold mb-1">Como corrigir o erro 403 (Acesso Negado):</p>
+                      <div className="bg-destructive/10 p-3 rounded-md text-sm border border-destructive/20">
+                        <p className="font-bold mb-2">Como corrigir o erro 403 (Acesso Negado):</p>
                         <ul className="list-disc list-inside space-y-1 opacity-90">
                           <li>Acesse o painel da Flash (RH/Financeiro).</li>
                           <li>Vá em Configurações &gt; Desenvolvedores / API.</li>
-                          <li>Certifique-se de que o Token possui as permissões de <strong>Leitura de Transações</strong> ou <strong>Business API</strong>.</li>
+                          <li>Confirme que o token possui permissão para <strong>Leitura de Transações</strong> (Business API).</li>
                           <li>Verifique se o token não expirou.</li>
-                          <li>Tente gerar um novo token e atualize nas configurações.</li>
+                          <li>Gere um novo token e atualize o secret <code className="bg-background/50 px-1 rounded">FLASH_API_TOKEN</code>.</li>
                         </ul>
                       </div>
                     )}
-                    {lastResult.hint && <p className="text-xs opacity-80 italic">{lastResult.hint}</p>}
                   </div>
                 ) : (
                   <div className="space-y-1 text-sm">
