@@ -54,6 +54,44 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("flash-sync", {
+        body: { action: "test" },
+      });
+      
+      if (error) {
+        // Se houver erro de rede ou HTTP, o body pode estar aqui
+        const errorData = (error as any).context?.body || {};
+        const err = new Error(errorData.error || error.message || "Erro ao testar conexão");
+        (err as any).status = errorData.status || (error as any).status;
+        (err as any).hint = errorData.hint;
+        throw err;
+      }
+
+      if (data?.success === false) {
+        const err = new Error(data.error || "Erro ao testar conexão");
+        (err as any).status = data.status;
+        (err as any).hint = data.hint;
+        throw err;
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Conexão OK",
+        description: data.message || "A API da Flash respondeu corretamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Falha na conexão",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       if (!startDate || !endDate) {
@@ -70,8 +108,20 @@ export default function IntegracaoFlashPage() {
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        const errorData = (error as any).context?.body || {};
+        const err = new Error(errorData.error || error.message || "Erro na sincronização");
+        (err as any).status = errorData.status || (error as any).status;
+        (err as any).hint = errorData.hint;
+        throw err;
+      }
+
+      if (data?.success === false) {
+        const err = new Error(data.error || "Erro na sincronização");
+        (err as any).status = data.status;
+        (err as any).hint = data.hint;
+        throw err;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -84,7 +134,11 @@ export default function IntegracaoFlashPage() {
       queryClient.invalidateQueries({ queryKey: ["flash_transactions_raw_count"] });
     },
     onError: (error: any) => {
-      setLastResult({ error: error.message });
+      setLastResult({ 
+        error: error.message, 
+        status: error.status,
+        hint: error.hint 
+      });
       toast({
         title: "Erro na sincronização",
         description: error.message || "Falha ao chamar a API da Flash",
@@ -268,11 +322,28 @@ export default function IntegracaoFlashPage() {
           </div>
 
           {/* Botão de sincronização */}
-          <div className="flex justify-end pt-2">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => testMutation.mutate()}
+              disabled={testMutation.isPending || syncMutation.isPending}
+              className="gap-2"
+            >
+              {testMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Testando...
+                </>
+              ) : (
+                <>
+                  <Clock className="h-4 w-4" />
+                  Validar Token
+                </>
+              )}
+            </Button>
             <Button
               onClick={() => syncMutation.mutate()}
               disabled={syncMutation.isPending || !startDate || !endDate}
-              size="lg"
               className="gap-2"
             >
               {syncMutation.isPending ? (
@@ -297,21 +368,34 @@ export default function IntegracaoFlashPage() {
                 <span className="text-muted-foreground">Aguarde</span>
               </div>
               <Progress value={undefined} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                Esta operação pode levar alguns minutos dependendo do volume de dados.
-              </p>
             </div>
           )}
 
           {/* Resultado da última execução */}
           {lastResult && !syncMutation.isPending && (
             <Alert variant={lastResult.error ? "destructive" : "default"}>
-              <AlertTitle>
+              <AlertTitle className="flex items-center gap-2">
+                {lastResult.error ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                 {lastResult.error ? "Falha na sincronização" : "Sincronização concluída"}
               </AlertTitle>
-              <AlertDescription>
+              <AlertDescription className="mt-2">
                 {lastResult.error ? (
-                  <span>{lastResult.error}</span>
+                  <div className="space-y-2">
+                    <p className="font-semibold">{lastResult.error}</p>
+                    {lastResult.status === 403 && (
+                      <div className="bg-destructive/10 p-3 rounded-md text-sm border border-destructive/20 mt-2">
+                        <p className="font-bold mb-1">Como corrigir o erro 403 (Acesso Negado):</p>
+                        <ul className="list-disc list-inside space-y-1 opacity-90">
+                          <li>Acesse o painel da Flash (RH/Financeiro).</li>
+                          <li>Vá em Configurações &gt; Desenvolvedores / API.</li>
+                          <li>Certifique-se de que o Token possui as permissões de <strong>Leitura de Transações</strong> ou <strong>Business API</strong>.</li>
+                          <li>Verifique se o token não expirou.</li>
+                          <li>Tente gerar um novo token e atualize nas configurações.</li>
+                        </ul>
+                      </div>
+                    )}
+                    {lastResult.hint && <p className="text-xs opacity-80 italic">{lastResult.hint}</p>}
+                  </div>
                 ) : (
                   <div className="space-y-1 text-sm">
                     <p><strong>Transações processadas:</strong> {lastResult.totalProcessed || 0}</p>
