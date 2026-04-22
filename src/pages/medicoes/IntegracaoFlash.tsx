@@ -128,11 +128,7 @@ export default function IntegracaoFlashPage() {
       });
 
       if (error) {
-        const errorData = (error as any).context?.body || {};
-        const err = new Error(errorData.error || error.message || "Erro na sincronização");
-        (err as any).status = errorData.status || (error as any).status;
-        (err as any).hint = errorData.hint;
-        throw err;
+        throw await parseEdgeError(error, "Erro na sincronização");
       }
 
       if (data?.success === false) {
