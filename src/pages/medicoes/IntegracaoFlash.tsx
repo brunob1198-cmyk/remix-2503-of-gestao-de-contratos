@@ -54,19 +54,38 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  // Helper: extrai o JSON real do erro retornado pela edge function
+  // O supabase-js empacota o body em error.context (Response), precisa ler como texto e fazer parse.
+  const parseEdgeError = async (error: any, fallbackMsg: string) => {
+    let payload: any = {};
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.text === "function") {
+        const txt = await ctx.text();
+        try { payload = JSON.parse(txt); } catch { payload = { error: txt }; }
+      } else if (ctx?.body && typeof ctx.body === "string") {
+        try { payload = JSON.parse(ctx.body); } catch { payload = { error: ctx.body }; }
+      } else if (ctx?.body && typeof ctx.body === "object") {
+        payload = ctx.body;
+      }
+    } catch (e) {
+      // ignora
+    }
+    const err = new Error(payload.error || error?.message || fallbackMsg);
+    (err as any).status = payload.status ?? error?.status;
+    (err as any).hint = payload.hint;
+    (err as any).raw = payload;
+    return err;
+  };
+
   const testMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("flash-sync", {
         body: { action: "test" },
       });
-      
+
       if (error) {
-        // Se houver erro de rede ou HTTP, o body pode estar aqui
-        const errorData = (error as any).context?.body || {};
-        const err = new Error(errorData.error || error.message || "Erro ao testar conexão");
-        (err as any).status = errorData.status || (error as any).status;
-        (err as any).hint = errorData.hint;
-        throw err;
+        throw await parseEdgeError(error, "Erro ao testar conexão");
       }
 
       if (data?.success === false) {
@@ -109,11 +128,7 @@ export default function IntegracaoFlashPage() {
       });
 
       if (error) {
-        const errorData = (error as any).context?.body || {};
-        const err = new Error(errorData.error || error.message || "Erro na sincronização");
-        (err as any).status = errorData.status || (error as any).status;
-        (err as any).hint = errorData.hint;
-        throw err;
+        throw await parseEdgeError(error, "Erro na sincronização");
       }
 
       if (data?.success === false) {
@@ -377,24 +392,33 @@ export default function IntegracaoFlashPage() {
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.error ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                 {lastResult.error ? "Falha na sincronização" : "Sincronização concluída"}
+                {lastResult.status && (
+                  <Badge variant="destructive" className="ml-2">HTTP {lastResult.status}</Badge>
+                )}
               </AlertTitle>
               <AlertDescription className="mt-2">
                 {lastResult.error ? (
-                  <div className="space-y-2">
-                    <p className="font-semibold">{lastResult.error}</p>
+                  <div className="space-y-3">
+                    <p className="font-semibold whitespace-pre-wrap break-words">
+                      {lastResult.error}
+                    </p>
+                    {lastResult.hint && (
+                      <p className="text-xs opacity-80 italic whitespace-pre-wrap break-words">
+                        💡 {lastResult.hint}
+                      </p>
+                    )}
                     {lastResult.status === 403 && (
-                      <div className="bg-destructive/10 p-3 rounded-md text-sm border border-destructive/20 mt-2">
-                        <p className="font-bold mb-1">Como corrigir o erro 403 (Acesso Negado):</p>
+                      <div className="bg-destructive/10 p-3 rounded-md text-sm border border-destructive/20">
+                        <p className="font-bold mb-2">Como corrigir o erro 403 (Acesso Negado):</p>
                         <ul className="list-disc list-inside space-y-1 opacity-90">
                           <li>Acesse o painel da Flash (RH/Financeiro).</li>
                           <li>Vá em Configurações &gt; Desenvolvedores / API.</li>
-                          <li>Certifique-se de que o Token possui as permissões de <strong>Leitura de Transações</strong> ou <strong>Business API</strong>.</li>
+                          <li>Confirme que o token possui permissão para <strong>Leitura de Transações</strong> (Business API).</li>
                           <li>Verifique se o token não expirou.</li>
-                          <li>Tente gerar um novo token e atualize nas configurações.</li>
+                          <li>Gere um novo token e atualize o secret <code className="bg-background/50 px-1 rounded">FLASH_API_TOKEN</code>.</li>
                         </ul>
                       </div>
                     )}
-                    {lastResult.hint && <p className="text-xs opacity-80 italic">{lastResult.hint}</p>}
                   </div>
                 ) : (
                   <div className="space-y-1 text-sm">
@@ -455,9 +479,14 @@ export default function IntegracaoFlashPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {log.duracao_ms ? `${log.duracao_ms}ms` : "—"}
                       </TableCell>
-                      <TableCell className="text-sm max-w-md truncate">
+                      <TableCell className="text-sm max-w-md">
                         {log.erro ? (
-                          <span className="text-destructive">{log.erro}</span>
+                          <span
+                            className="text-destructive whitespace-pre-wrap break-words block"
+                            title={log.erro}
+                          >
+                            {log.erro}
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">
                             {(log.request as any)?.startDate} → {(log.request as any)?.endDate}
