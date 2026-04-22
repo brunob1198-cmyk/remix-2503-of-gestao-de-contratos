@@ -54,6 +54,35 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("flash-sync", {
+        body: { action: "test" },
+      });
+      if (error) throw error;
+      if (data?.success === false) {
+        const err = new Error(data.error || "Erro ao testar conexão");
+        (err as any).status = data.status;
+        (err as any).hint = data.hint;
+        throw err;
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Conexão OK",
+        description: data.message || "A API da Flash respondeu corretamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Falha na conexão",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       if (!startDate || !endDate) {
@@ -71,7 +100,11 @@ export default function IntegracaoFlashPage() {
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.success === false) {
+        const err = new Error(data.error || "Erro na sincronização");
+        (err as any).status = data.status;
+        throw err;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -84,7 +117,11 @@ export default function IntegracaoFlashPage() {
       queryClient.invalidateQueries({ queryKey: ["flash_transactions_raw_count"] });
     },
     onError: (error: any) => {
-      setLastResult({ error: error.message });
+      setLastResult({ 
+        error: error.message, 
+        status: error.status,
+        hint: error.hint 
+      });
       toast({
         title: "Erro na sincronização",
         description: error.message || "Falha ao chamar a API da Flash",
