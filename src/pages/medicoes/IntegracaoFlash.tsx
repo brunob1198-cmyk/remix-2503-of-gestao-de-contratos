@@ -370,7 +370,7 @@ export default function IntegracaoFlashPage() {
                         <p className="font-bold mb-1">Como corrigir o erro 403 (Acesso Negado):</p>
                         <ul className="list-disc list-inside space-y-1 opacity-90">
                           <li>Acesse o painel da Flash (RH/Financeiro).</li>
-                          <li>Vá em Configurações > Desenvolvedores / API.</li>
+                          <li>Vá em Configurações &gt; Desenvolvedores / API.</li>
                           <li>Certifique-se de que o Token possui as permissões de <strong>Leitura de Transações</strong> ou <strong>Business API</strong>.</li>
                           <li>Verifique se o token não expirou.</li>
                           <li>Tente gerar um novo token e atualize nas configurações.</li>
