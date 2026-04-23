@@ -25,6 +25,9 @@ export default function LpuPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBdi, setEditBdi] = useState<string>("");
   const [editPreco, setEditPreco] = useState<string>("");
+  const [editCodigo, setEditCodigo] = useState<string>("");
+  const [editDescricao, setEditDescricao] = useState<string>("");
+  const [editUnidade, setEditUnidade] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const formatCurrency = (value: number) =>
@@ -50,10 +53,20 @@ export default function LpuPage() {
     setEditingId(item.id);
     setEditBdi(String(item.bdi ?? 1));
     setEditPreco(String(item.preco_unitario ?? 0));
+    setEditCodigo(item.codigo || "");
+    setEditDescricao(item.descricao || "");
+    setEditUnidade(item.unidade || "");
   };
 
   const handleSaveEdit = (id: string) => {
-    updateItemLpu.mutate({ id, bdi: parseFloat(editBdi) || 1, preco_unitario: parseFloat(editPreco) || 0 });
+    updateItemLpu.mutate({ 
+      id, 
+      bdi: parseFloat(editBdi) || 1, 
+      preco_unitario: parseFloat(editPreco) || 0,
+      codigo: editCodigo,
+      descricao: editDescricao,
+      unidade: editUnidade
+    });
     setEditingId(null);
   };
 
@@ -204,9 +217,27 @@ export default function LpuPage() {
                           aria-label={`Selecionar ${item.codigo}`}
                         />
                       </TableCell>
-                      <TableCell className="font-mono">{item.codigo}</TableCell>
-                      <TableCell className="max-w-md truncate">{item.descricao}</TableCell>
-                      <TableCell>{item.unidade}</TableCell>
+                      <TableCell className="font-mono">
+                        {editingId === item.id ? (
+                          <Input type="text" value={editCodigo} onChange={(e) => setEditCodigo(e.target.value)} className="w-24 font-mono text-sm" />
+                        ) : (
+                          item.codigo
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        {editingId === item.id ? (
+                          <Input type="text" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} className="w-full min-w-[200px]" />
+                        ) : (
+                          <span className="truncate block">{item.descricao}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingId === item.id ? (
+                          <Input type="text" value={editUnidade} onChange={(e) => setEditUnidade(e.target.value)} className="w-20 uppercase" />
+                        ) : (
+                          item.unidade
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
                         {editingId === item.id ? (
                           <Input type="number" step="0.01" value={editPreco} onChange={(e) => setEditPreco(e.target.value)} className="w-28 text-right" />

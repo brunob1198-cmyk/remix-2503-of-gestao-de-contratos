@@ -26,7 +26,11 @@ export const TELAS = [
   { id: "faturamento", label: "Portal de Faturamento" },
   { id: "relatorios", label: "Relatórios" },
   { id: "integracao-erp", label: "Integração ERP" },
+  { id: "integracao-flash", label: "Integração Flash" },
+  { id: "normalizacao-flash", label: "Normalização Flash" },
   { id: "supply-chain", label: "Supply Chain" },
+  { id: "power-bi", label: "Power BI" },
+  { id: "audit-log", label: "Logs de Auditoria" },
 ] as const;
 
 export function usePermissions() {
