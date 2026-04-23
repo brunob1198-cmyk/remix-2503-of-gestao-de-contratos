@@ -14,9 +14,9 @@ const corsHeaders = {
 // Adjust the base URL / endpoint to match Flash's actual API.
 // Flash Business API usually uses /v1/business/transactions
 const FLASH_API_BASE_URL =
-  Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.com.br";
+  Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.services";
 const FLASH_TRANSACTIONS_PATH =
-  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/v1/business/transactions";
+  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/expenses/v1/expenses";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
 const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "100");
 
