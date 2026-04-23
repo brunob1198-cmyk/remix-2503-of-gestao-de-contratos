@@ -110,13 +110,13 @@ serve(async (req) => {
 
     // Paginação completa via API do Conta Azul
     const allSales: any[] = [];
-    let pagina = 0;
-    const tamanho_pagina = 100;
+    let page = 1;
+    const size = 100;
     let totalRecebido = 0;
 
     while (true) {
-      const url = `${CONTAAZUL_API}/v1/vendas?data_inicio=${dateFromStr}&data_fim=${dateToStr}&pagina=${pagina}&tamanho_pagina=${tamanho_pagina}`;
-      console.log("Fetching sales page:", pagina, "url:", url);
+      const url = `${CONTAAZUL_API}/v1/vendas?emissao_inicial=${dateFromStr}&emissao_final=${dateToStr}&page=${page}&size=${size}`;
+      console.log("Fetching sales page:", page, "url:", url);
 
       const resp = await fetch(url, {
         headers: {
@@ -139,11 +139,11 @@ serve(async (req) => {
       allSales.push(...items);
       totalRecebido += items.length;
       
-      if (items.length < tamanho_pagina) break;
-      pagina++;
+      if (items.length < size) break;
+      page++;
       
       // Hard cap de segurança
-      if (pagina > 200) break;
+      if (page > 200) break;
     }
 
     console.log(`Total de vendas recebidas: ${totalRecebido}`);
