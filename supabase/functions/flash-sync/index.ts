@@ -217,15 +217,44 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "FLASH_API_TOKEN não configurado" }, 500);
   }
 
-  // Action: Test
-  if (body.action === "test") {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-      url.searchParams.set("page_size", "1");
-      url.searchParams.set("start_date", today);
-      url.searchParams.set("end_date", today);
+  // Helper: mascara o token nos headers para retorno de diagnóstico
+  const maskToken = (t: string) => {
+    if (!t) return "";
+    if (t.length <= 8) return "***";
+    return `${t.slice(0, 4)}…${t.slice(-4)} (len=${t.length})`;
+  };
 
+  // Action: Test - retorna diagnóstico completo (URL, headers, status, body)
+  if (body.action === "test") {
+    const today = new Date().toISOString().split('T')[0];
+    const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
+    url.searchParams.set("page_size", "1");
+    url.searchParams.set("start_date", today);
+    url.searchParams.set("end_date", today);
+
+    const requestHeaders = {
+      Authorization: `Bearer ${maskToken(flashToken)}`,
+      Accept: "application/json",
+    };
+
+    const diagnostic: Record<string, unknown> = {
+      request: {
+        method: "GET",
+        url: url.toString(),
+        base_url: FLASH_API_BASE_URL,
+        path: FLASH_TRANSACTIONS_PATH,
+        query_params: {
+          page_size: "1",
+          start_date: today,
+          end_date: today,
+        },
+        headers: requestHeaders,
+        body: null,
+        token_preview: maskToken(flashToken),
+      },
+    };
+
+    try {
       const res = await fetch(url.toString(), {
         method: "GET",
         headers: {
@@ -234,23 +263,49 @@ Deno.serve(async (req) => {
         },
       });
 
+      const responseHeaders: Record<string, string> = {};
+      res.headers.forEach((v, k) => { responseHeaders[k] = v; });
+
+      const text = await res.text();
+      let parsed: unknown = null;
+      try { parsed = text ? JSON.parse(text) : null; } catch { parsed = null; }
+
+      diagnostic.response = {
+        status: res.status,
+        statusText: res.statusText,
+        ok: res.ok,
+        headers: responseHeaders,
+        body_text: text.slice(0, 4000),
+        body_json: parsed,
+      };
+
       if (res.status === 403) {
         return jsonResponse({
           success: false,
           status: 403,
           error: "Acesso Negado (403). Verifique se o token possui permissões para acessar a API de Negócios/Transações no painel da Flash.",
-          hint: "Geralmente é necessário habilitar o escopo 'business' ou 'transactions' na geração do token."
+          hint: "Geralmente é necessário habilitar o escopo 'business' ou 'transactions' na geração do token. Veja 'diagnostic' para a chamada completa.",
+          diagnostic,
         }, 403);
       }
 
       if (!res.ok) {
-        const text = await res.text();
-        return jsonResponse({ success: false, status: res.status, error: `Erro na API: ${text.slice(0, 100)}` }, res.status);
+        return jsonResponse({
+          success: false,
+          status: res.status,
+          error: `Erro na API Flash: HTTP ${res.status} ${res.statusText}`,
+          diagnostic,
+        }, res.status);
       }
 
-      return jsonResponse({ success: true, message: "Conexão estabelecida com sucesso!" });
+      return jsonResponse({
+        success: true,
+        message: "Conexão estabelecida com sucesso!",
+        diagnostic,
+      });
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500);
+      diagnostic.exception = String(err?.message ?? err);
+      return jsonResponse({ success: false, error: err.message, diagnostic }, 500);
     }
   }
 
