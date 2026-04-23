@@ -461,7 +461,17 @@ export function useSyncContaAzulVendas() {
       const { data, error } = await supabase.functions.invoke("sync-contaazul-vendas", {
         body: params || {},
       });
-      if (error) throw error;
+      if (error) {
+        if (error instanceof Error && (error as any).context) {
+          try {
+            const body = await (error as any).context.json();
+            throw new Error(body.error || error.message);
+          } catch {
+            throw error;
+          }
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data: any) => {
