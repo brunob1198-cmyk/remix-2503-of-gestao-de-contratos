@@ -125,7 +125,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       while (erpHasMore) {
         const { data: batch } = await (supabase as any)
           .from("custo_real_erp")
-          .select("projeto_id, categoria_interna, categoria_erp, valor, data_competencia")
+          .select("projeto_id, categoria_interna, categoria_erp, valor, data_competencia, centro_custo")
           .in("projeto_id", projetoIds)
           .gte("data_competencia", startDate)
           .lte("data_competencia", endDate)
@@ -136,7 +136,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         erpOffset += BATCH_SIZE;
       }
 
-      const erpData = allErpData.filter((e: any) => !disabledSet.has(e.categoria_erp));
+      const erpData = allErpData.filter((e: any) => !disabledSet.has(e.categoria_erp) && e.centro_custo?.trim() !== "Reforma Sede Jardim América");
 
       // Generate all months in range
       const months = eachMonthOfInterval({ start: periodoInicio, end: periodoFim });

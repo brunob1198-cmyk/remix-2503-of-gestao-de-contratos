@@ -194,7 +194,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
         if (startDate) {
-          q = q.gte("data_pagamento", startDate).lte("data_pagamento", endDate);
+          q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
         }
         q = q.range(offset, offset + BATCH_SIZE - 1);
         const { data, error } = await q;

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export interface AnaliseFinanceira {
   receitaTotal: number;
@@ -66,9 +67,9 @@ export interface ProducaoItem {
   fotos?: string[];
 }
 
-export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
+export function useAnaliseObra(projetoId?: string, filterSiteId?: string, periodoInicio?: Date, periodoFim?: Date) {
   const { data, isLoading } = useQuery({
-    queryKey: ["analise_obra", projetoId, filterSiteId],
+    queryKey: ["analise_obra", projetoId, filterSiteId, periodoInicio?.toISOString(), periodoFim?.toISOString()],
     queryFn: async () => {
       if (!projetoId) return null;
 
@@ -135,19 +136,32 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string) {
       const allErpData: any[] = [];
       let erpOffset = 0;
       let erpHasMore = true;
+      let startDateStr: string | null = null;
+      let endDateStr: string | null = null;
+      if (periodoInicio) startDateStr = format(startOfMonth(periodoInicio), "yyyy-MM-dd");
+      if (periodoFim) endDateStr = format(endOfMonth(periodoFim), "yyyy-MM-dd");
+
       while (erpHasMore) {
-        const { data: batch } = await (supabase as any)
+        let q = (supabase as any)
           .from("custo_real_erp")
-          .select("valor, categoria_erp")
-          .eq("projeto_id", resolvedProjetoId)
-          .range(erpOffset, erpOffset + 1000 - 1);
+          .select("valor, categoria_erp, centro_custo")
+          .eq("projeto_id", resolvedProjetoId);
+        
+        if (startDateStr) {
+          q = q.gte("data_competencia", startDateStr).lte("data_competencia", endDateStr);
+        }
+
+        const { data: batch } = await q.range(erpOffset, erpOffset + 1000 - 1);
         const rows = batch || [];
         allErpData.push(...rows);
         erpHasMore = rows.length === 1000;
         erpOffset += 1000;
       }
       const erpData = allErpData;
-      const uniqueErpCustos = (erpData || []).filter((c: any) => !disabledCategorias.has(c.categoria_erp));
+      const uniqueErpCustos = (erpData || []).filter((c: any) => 
+        !disabledCategorias.has(c.categoria_erp) && 
+        c.centro_custo?.trim() !== "Reforma Sede Jardim América"
+      );
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
