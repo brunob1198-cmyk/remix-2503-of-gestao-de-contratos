@@ -206,7 +206,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       }
 
       return allData.filter(
-        item => !categoriasDesativadas.includes(item.categoria_erp)
+        item => !categoriasDesativadas.includes(item.categoria_erp) &&
+                item.centro_custo?.trim() !== "Reforma Sede Jardim América"
       );
     },
     enabled: !!projetoId
@@ -330,7 +331,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       }
 
       return allData.filter(
-        item => !categoriasDesativadas.includes(item.categoria_erp)
+        item => !categoriasDesativadas.includes(item.categoria_erp) &&
+                item.centro_custo?.trim() !== "Reforma Sede Jardim América"
       );
     },
     enabled: projetoIds.length > 0
