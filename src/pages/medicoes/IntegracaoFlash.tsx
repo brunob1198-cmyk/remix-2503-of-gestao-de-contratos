@@ -111,6 +111,27 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  const authProbeMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("flash-sync", {
+        body: { action: "test-auth" },
+      });
+      if (error) throw await parseEdgeError(error, "Erro ao sondar autenticação");
+      return data;
+    },
+    onSuccess: (data) => {
+      setLastResult({ authProbe: data });
+      toast({
+        title: data.winner ? "Variação encontrada!" : "Nenhuma variação funcionou",
+        description: data.winner ? `✅ ${data.winner}` : "Veja os detalhes abaixo de cada tentativa.",
+        variant: data.winner ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       if (!startDate || !endDate) {
