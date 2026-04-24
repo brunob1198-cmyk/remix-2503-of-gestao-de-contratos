@@ -58,7 +58,7 @@ function extractList(payload: FlashApiResponse): FlashTransaction[] {
   if (Array.isArray(payload)) return payload as FlashTransaction[];
   
   // Known data array keys
-  const list = payload.data ?? payload.items ?? payload.results ?? payload.transactions ?? payload.content ?? payload.expense_transactions;
+  const list = payload.data ?? payload.items ?? payload.results ?? payload.transactions ?? payload.expenses ?? payload.content ?? payload.expense_transactions;
   if (Array.isArray(list)) return list as FlashTransaction[];
 
   // Fallback: search for the first property that is an array
@@ -153,10 +153,10 @@ async function getTransactions(params: {
     pagesFetched += 1;
 
     // Pagination control
-    const nextCursor = (payload.next_cursor ?? null) as string | null;
-    const nextPage = payload.next_page ?? null;
-    const totalPages = payload.total_pages ?? null;
-    const hasMore = payload.has_more ?? null;
+    const nextCursor = (payload.next_cursor ?? payload.nextCursor ?? null) as string | null;
+    const nextPage = payload.next_page ?? payload.nextPage ?? null;
+    const totalPages = payload.total_pages ?? payload.totalPages ?? null;
+    const hasMore = payload.has_more ?? payload.hasMore ?? null;
 
     if (nextCursor) {
       cursor = nextCursor;
