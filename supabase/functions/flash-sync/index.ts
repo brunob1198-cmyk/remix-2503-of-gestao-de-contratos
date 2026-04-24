@@ -11,12 +11,17 @@ const corsHeaders = {
 };
 
 // ====== CONFIG ======
-// Adjust the base URL / endpoint to match Flash's actual API.
-// Flash Business API usually uses /v1/business/transactions
+// Flash API oficial - https://docs.api.flashapp.services
+// Autenticação: header `x-flash-auth: <chave_api>`
+// Endpoints documentados: /companies, /employees (NÃO há endpoint público de "expenses/transactions").
 const FLASH_API_BASE_URL =
   Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.services";
+// Endpoint usado para SYNC. Por padrão usamos /companies (documentado) só como prova de vida
+// até definirmos qual endpoint da Flash retorna as "transações" desejadas.
 const FLASH_TRANSACTIONS_PATH =
-  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/expenses/v1/expenses";
+  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/companies";
+// Endpoint sempre confiável para validar token (documentado)
+const FLASH_VALIDATE_PATH = "/companies";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
 const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "100");
 
