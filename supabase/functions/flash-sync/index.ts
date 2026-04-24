@@ -103,6 +103,15 @@ async function getTransactions(params: {
     const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
     url.searchParams.set("start_date", startDate);
     url.searchParams.set("end_date", endDate);
+    // Variações comuns de parâmetros de data (a API irá ignorar os inválidos)
+    url.searchParams.set("startDate", startDate);
+    url.searchParams.set("endDate", endDate);
+    url.searchParams.set("createdAtFrom", startDate);
+    url.searchParams.set("createdAtTo", endDate);
+    url.searchParams.set("transactionDateFrom", startDate);
+    url.searchParams.set("transactionDateTo", endDate);
+    url.searchParams.set("expenseDateFrom", startDate);
+    url.searchParams.set("expenseDateTo", endDate);
     url.searchParams.set("page_size", String(FLASH_PAGE_SIZE));
     if (cursor) {
       url.searchParams.set("cursor", cursor);
