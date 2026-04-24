@@ -229,44 +229,44 @@ Deno.serve(async (req) => {
     return `${t.slice(0, 4)}…${t.slice(-4)} (len=${t.length})`;
   };
 
-  // Action: test-auth - tenta múltiplas variações de autenticação
+  // Action: test-auth - sonda múltiplos caminhos candidatos para /companies
+  // (a doc lista path "/companies" mas o gateway Kong pode exigir prefixo de versão/serviço)
   if (body.action === "test-auth") {
-    const today = new Date().toISOString().split('T')[0];
-    const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-    url.searchParams.set("page_size", "1");
-    url.searchParams.set("start_date", today);
-    url.searchParams.set("end_date", today);
-
-    const variants: Array<{ name: string; headers: Record<string, string> }> = [
-      { name: "Authorization: Bearer <token>", headers: { Authorization: `Bearer ${flashToken}`, Accept: "application/json" } },
-      { name: "Authorization: <token> (raw)", headers: { Authorization: flashToken, Accept: "application/json" } },
-      { name: "apikey: <token> (Kong)", headers: { apikey: flashToken, Accept: "application/json" } },
-      { name: "x-api-key: <token>", headers: { "x-api-key": flashToken, Accept: "application/json" } },
-      { name: "Authorization: Basic <token>", headers: { Authorization: `Basic ${flashToken}`, Accept: "application/json" } },
-      { name: "Authorization: Token <token>", headers: { Authorization: `Token ${flashToken}`, Accept: "application/json" } },
+    const candidatePaths = [
+      "/companies",
+      "/v1/companies",
+      "/api/companies",
+      "/api/v1/companies",
+      "/hros/companies",
+      "/hros/v1/companies",
+      "/integration/companies",
+      "/integration/v1/companies",
+      "/employees/v1/companies",
+      "/companies/v1/companies",
     ];
 
     const results: Array<Record<string, unknown>> = [];
     let winner: string | null = null;
 
-    for (const v of variants) {
+    for (const p of candidatePaths) {
+      const url = new URL(p, FLASH_API_BASE_URL);
       try {
-        const res = await fetch(url.toString(), { method: "GET", headers: v.headers });
+        const res = await fetch(url.toString(), {
+          method: "GET",
+          headers: { "x-flash-auth": flashToken, Accept: "application/json" },
+        });
         const text = await res.text();
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((val, k) => { responseHeaders[k] = val; });
         results.push({
-          variant: v.name,
-          sent_headers: { ...v.headers, ...(v.headers.Authorization ? { Authorization: v.headers.Authorization.replace(flashToken, maskToken(flashToken)) } : {}), ...(v.headers.apikey ? { apikey: maskToken(flashToken) } : {}), ...(v.headers["x-api-key"] ? { "x-api-key": maskToken(flashToken) } : {}) },
+          path: p,
+          url: url.toString(),
           status: res.status,
           statusText: res.statusText,
           ok: res.ok,
-          response_headers: responseHeaders,
-          body_preview: text.slice(0, 500),
+          body_preview: text.slice(0, 300),
         });
-        if (res.ok && !winner) winner = v.name;
+        if (res.ok && !winner) winner = p;
       } catch (err) {
-        results.push({ variant: v.name, error: String(err?.message ?? err) });
+        results.push({ path: p, error: String(err?.message ?? err) });
       }
     }
 
@@ -274,9 +274,9 @@ Deno.serve(async (req) => {
       success: !!winner,
       winner,
       message: winner
-        ? `✅ Variação que funcionou: ${winner}`
-        : "❌ Nenhuma variação de autenticação funcionou. Veja os detalhes de cada tentativa.",
-      url: url.toString(),
+        ? `✅ Caminho que funcionou: ${winner}`
+        : "❌ Nenhum caminho retornou 200. Veja status de cada tentativa.",
+      header_used: "x-flash-auth (conforme documentação)",
       token_preview: maskToken(flashToken),
       attempts: results,
     });
