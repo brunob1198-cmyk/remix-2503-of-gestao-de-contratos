@@ -26,6 +26,8 @@ export interface FlashTransactionRow {
   valor: number;
   usuario: string;
   flash_type: string;
+  flash_category: string;
+  flash_cost_center: string;
   // normalization
   norm_id?: string;
   conta_azul_category_id?: string | null;
@@ -90,12 +92,14 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     payload_json: p,
     created_at: raw.created_at,
     data: pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]),
-    descricao: pickPayloadValue(p, ["description", "descricao", "merchant", "establishment", "name"]) || "—",
-    valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]),
+    descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment", "name", "comments"]) || "—",
+    valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario:
-      pickPayloadValue(p, ["user.name", "user.email", "employee.name", "usuario", "user_name"]) || "—",
+      pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type:
       pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido",
+    flash_category: pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome"]) || "—",
+    flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo"]) || "—",
   };
 };
 

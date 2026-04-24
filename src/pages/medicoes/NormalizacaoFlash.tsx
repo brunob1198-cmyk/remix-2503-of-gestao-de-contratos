@@ -522,6 +522,8 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[110px] text-right">Valor</TableHead>
                           <TableHead className="w-[120px]">Usuário</TableHead>
                           <TableHead className="w-[120px]">Tipo Flash</TableHead>
+                          <TableHead className="w-[120px]">Categoria Flash</TableHead>
+                          <TableHead className="w-[120px]">Centro de Custo</TableHead>
                           <TableHead className="w-[110px]">Operação</TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
@@ -565,6 +567,12 @@ export default function NormalizacaoFlashPage() {
                                     </Tooltip>
                                   )}
                                 </div>
+                              </TableCell>
+                              <TableCell className="text-xs truncate max-w-[120px]">
+                                {row.flash_category}
+                              </TableCell>
+                              <TableCell className="text-xs truncate max-w-[120px]">
+                                {row.flash_cost_center}
                               </TableCell>
                               <TableCell>
                                 <Select
