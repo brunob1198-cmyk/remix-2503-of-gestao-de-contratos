@@ -103,13 +103,13 @@ async function getTransactions(params: {
     const res = await fetch(url.toString(), {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "x-flash-auth": token,
         Accept: "application/json",
       },
     });
 
-    if (res.status === 403) {
-      throw new Error("403 Forbidden: Acesso Negado. Verifique as permissões do token no painel da Flash (ex: Leitura de Transações / API Business).");
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`${res.status}: Token Flash inválido ou sem permissão. Verifique a chave em hros.flashapp.com.br > Configurações > Plataforma > Chaves de acesso programático.`);
     }
 
     const text = await res.text();
