@@ -400,7 +400,7 @@ export default function IntegracaoFlashPage() {
               onClick={() => authProbeMutation.mutate()}
               disabled={authProbeMutation.isPending || syncMutation.isPending || testMutation.isPending}
               className="gap-2"
-              title="Tenta múltiplos formatos de autenticação (Bearer, apikey, x-api-key, raw, Basic, Token) e mostra qual funciona"
+              title="Sonda múltiplos paths candidatos para descobrir o endpoint correto da Flash"
             >
               {authProbeMutation.isPending ? (
                 <>
