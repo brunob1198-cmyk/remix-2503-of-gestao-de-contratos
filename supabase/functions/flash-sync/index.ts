@@ -224,6 +224,59 @@ Deno.serve(async (req) => {
     return `${t.slice(0, 4)}…${t.slice(-4)} (len=${t.length})`;
   };
 
+  // Action: test-auth - tenta múltiplas variações de autenticação
+  if (body.action === "test-auth") {
+    const today = new Date().toISOString().split('T')[0];
+    const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
+    url.searchParams.set("page_size", "1");
+    url.searchParams.set("start_date", today);
+    url.searchParams.set("end_date", today);
+
+    const variants: Array<{ name: string; headers: Record<string, string> }> = [
+      { name: "Authorization: Bearer <token>", headers: { Authorization: `Bearer ${flashToken}`, Accept: "application/json" } },
+      { name: "Authorization: <token> (raw)", headers: { Authorization: flashToken, Accept: "application/json" } },
+      { name: "apikey: <token> (Kong)", headers: { apikey: flashToken, Accept: "application/json" } },
+      { name: "x-api-key: <token>", headers: { "x-api-key": flashToken, Accept: "application/json" } },
+      { name: "Authorization: Basic <token>", headers: { Authorization: `Basic ${flashToken}`, Accept: "application/json" } },
+      { name: "Authorization: Token <token>", headers: { Authorization: `Token ${flashToken}`, Accept: "application/json" } },
+    ];
+
+    const results: Array<Record<string, unknown>> = [];
+    let winner: string | null = null;
+
+    for (const v of variants) {
+      try {
+        const res = await fetch(url.toString(), { method: "GET", headers: v.headers });
+        const text = await res.text();
+        const responseHeaders: Record<string, string> = {};
+        res.headers.forEach((val, k) => { responseHeaders[k] = val; });
+        results.push({
+          variant: v.name,
+          sent_headers: { ...v.headers, ...(v.headers.Authorization ? { Authorization: v.headers.Authorization.replace(flashToken, maskToken(flashToken)) } : {}), ...(v.headers.apikey ? { apikey: maskToken(flashToken) } : {}), ...(v.headers["x-api-key"] ? { "x-api-key": maskToken(flashToken) } : {}) },
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+          response_headers: responseHeaders,
+          body_preview: text.slice(0, 500),
+        });
+        if (res.ok && !winner) winner = v.name;
+      } catch (err) {
+        results.push({ variant: v.name, error: String(err?.message ?? err) });
+      }
+    }
+
+    return jsonResponse({
+      success: !!winner,
+      winner,
+      message: winner
+        ? `✅ Variação que funcionou: ${winner}`
+        : "❌ Nenhuma variação de autenticação funcionou. Veja os detalhes de cada tentativa.",
+      url: url.toString(),
+      token_preview: maskToken(flashToken),
+      attempts: results,
+    });
+  }
+
   // Action: Test - retorna diagnóstico completo (URL, headers, status, body)
   if (body.action === "test") {
     const today = new Date().toISOString().split('T')[0];
