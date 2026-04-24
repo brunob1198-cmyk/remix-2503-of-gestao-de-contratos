@@ -57,12 +57,19 @@ function jsonResponse(body: unknown, status = 200) {
 
 function extractList(payload: FlashApiResponse): FlashTransaction[] {
   if (Array.isArray(payload)) return payload as FlashTransaction[];
-  return (
-    payload.data ??
-    payload.items ??
-    payload.results ??
-    []
-  ) as FlashTransaction[];
+  
+  // Known data array keys
+  const list = payload.data ?? payload.items ?? payload.results ?? payload.transactions ?? payload.content ?? payload.expense_transactions;
+  if (Array.isArray(list)) return list as FlashTransaction[];
+
+  // Fallback: search for the first property that is an array
+  for (const key in payload) {
+    if (Array.isArray(payload[key])) {
+      return payload[key] as FlashTransaction[];
+    }
+  }
+
+  return [];
 }
 
 function extractExternalId(tx: FlashTransaction, fallbackIndex: number): string {

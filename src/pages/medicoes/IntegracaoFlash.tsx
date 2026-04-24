@@ -581,8 +581,15 @@ export default function IntegracaoFlashPage() {
                             {log.erro}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">
-                            {(log.request as any)?.startDate} → {(log.request as any)?.endDate}
+                          <span className="text-muted-foreground flex flex-col gap-1">
+                            <span>
+                              {(log.request as any)?.startDate} → {(log.request as any)?.endDate}
+                            </span>
+                            {log.response && (
+                              <span className="text-xs">
+                                Recebidos: {(log.response as any)?.transactions_received ?? 0} | Salvos: {(log.response as any)?.transactions_persisted ?? 0}
+                              </span>
+                            )}
                           </span>
                         )}
                       </TableCell>
