@@ -11,12 +11,21 @@ const corsHeaders = {
 };
 
 // ====== CONFIG ======
-// Adjust the base URL / endpoint to match Flash's actual API.
-// Flash Business API usually uses /v1/business/transactions
+// Flash API oficial - https://docs.api.flashapp.services
+// Autenticação: header `x-flash-auth: <chave_api>`
+// Endpoints reais (descobertos via OpenAPI da doc):
+//   GET /core/v1/companies         -> lista empresas
+//   GET /core/v1/companies/{id}    -> detalhe
+//   GET /core/v1/employees         -> lista colaboradores
+//   POST /benefits/v1/orders       -> pedidos de benefícios
+// IMPORTANTE: a API pública da Flash NÃO expõe "transações/expenses".
+// Para sincronização, usamos /core/v1/employees como fonte (cadastros) por padrão.
 const FLASH_API_BASE_URL =
   Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.services";
 const FLASH_TRANSACTIONS_PATH =
-  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/expenses/v1/expenses";
+  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/core/v1/employees";
+// Endpoint sempre confiável para validar token (documentado)
+const FLASH_VALIDATE_PATH = "/core/v1/companies";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
 const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "100");
 
@@ -98,13 +107,13 @@ async function getTransactions(params: {
     const res = await fetch(url.toString(), {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "x-flash-auth": token,
         Accept: "application/json",
       },
     });
 
-    if (res.status === 403) {
-      throw new Error("403 Forbidden: Acesso Negado. Verifique as permissões do token no painel da Flash (ex: Leitura de Transações / API Business).");
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`${res.status}: Token Flash inválido ou sem permissão. Verifique a chave em hros.flashapp.com.br > Configurações > Plataforma > Chaves de acesso programático.`);
     }
 
     const text = await res.text();
@@ -224,44 +233,44 @@ Deno.serve(async (req) => {
     return `${t.slice(0, 4)}…${t.slice(-4)} (len=${t.length})`;
   };
 
-  // Action: test-auth - tenta múltiplas variações de autenticação
+  // Action: test-auth - sonda múltiplos caminhos candidatos para /companies
+  // (a doc lista path "/companies" mas o gateway Kong pode exigir prefixo de versão/serviço)
   if (body.action === "test-auth") {
-    const today = new Date().toISOString().split('T')[0];
-    const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-    url.searchParams.set("page_size", "1");
-    url.searchParams.set("start_date", today);
-    url.searchParams.set("end_date", today);
-
-    const variants: Array<{ name: string; headers: Record<string, string> }> = [
-      { name: "Authorization: Bearer <token>", headers: { Authorization: `Bearer ${flashToken}`, Accept: "application/json" } },
-      { name: "Authorization: <token> (raw)", headers: { Authorization: flashToken, Accept: "application/json" } },
-      { name: "apikey: <token> (Kong)", headers: { apikey: flashToken, Accept: "application/json" } },
-      { name: "x-api-key: <token>", headers: { "x-api-key": flashToken, Accept: "application/json" } },
-      { name: "Authorization: Basic <token>", headers: { Authorization: `Basic ${flashToken}`, Accept: "application/json" } },
-      { name: "Authorization: Token <token>", headers: { Authorization: `Token ${flashToken}`, Accept: "application/json" } },
+    const candidatePaths = [
+      "/companies",
+      "/v1/companies",
+      "/api/companies",
+      "/api/v1/companies",
+      "/hros/companies",
+      "/hros/v1/companies",
+      "/integration/companies",
+      "/integration/v1/companies",
+      "/employees/v1/companies",
+      "/companies/v1/companies",
     ];
 
     const results: Array<Record<string, unknown>> = [];
     let winner: string | null = null;
 
-    for (const v of variants) {
+    for (const p of candidatePaths) {
+      const url = new URL(p, FLASH_API_BASE_URL);
       try {
-        const res = await fetch(url.toString(), { method: "GET", headers: v.headers });
+        const res = await fetch(url.toString(), {
+          method: "GET",
+          headers: { "x-flash-auth": flashToken, Accept: "application/json" },
+        });
         const text = await res.text();
-        const responseHeaders: Record<string, string> = {};
-        res.headers.forEach((val, k) => { responseHeaders[k] = val; });
         results.push({
-          variant: v.name,
-          sent_headers: { ...v.headers, ...(v.headers.Authorization ? { Authorization: v.headers.Authorization.replace(flashToken, maskToken(flashToken)) } : {}), ...(v.headers.apikey ? { apikey: maskToken(flashToken) } : {}), ...(v.headers["x-api-key"] ? { "x-api-key": maskToken(flashToken) } : {}) },
+          path: p,
+          url: url.toString(),
           status: res.status,
           statusText: res.statusText,
           ok: res.ok,
-          response_headers: responseHeaders,
-          body_preview: text.slice(0, 500),
+          body_preview: text.slice(0, 300),
         });
-        if (res.ok && !winner) winner = v.name;
+        if (res.ok && !winner) winner = p;
       } catch (err) {
-        results.push({ variant: v.name, error: String(err?.message ?? err) });
+        results.push({ path: p, error: String(err?.message ?? err) });
       }
     }
 
@@ -269,24 +278,20 @@ Deno.serve(async (req) => {
       success: !!winner,
       winner,
       message: winner
-        ? `✅ Variação que funcionou: ${winner}`
-        : "❌ Nenhuma variação de autenticação funcionou. Veja os detalhes de cada tentativa.",
-      url: url.toString(),
+        ? `✅ Caminho que funcionou: ${winner}`
+        : "❌ Nenhum caminho retornou 200. Veja status de cada tentativa.",
+      header_used: "x-flash-auth (conforme documentação)",
       token_preview: maskToken(flashToken),
       attempts: results,
     });
   }
 
-  // Action: Test - retorna diagnóstico completo (URL, headers, status, body)
+  // Action: Test - valida o token chamando /companies (endpoint oficial documentado)
   if (body.action === "test") {
-    const today = new Date().toISOString().split('T')[0];
-    const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-    url.searchParams.set("page_size", "1");
-    url.searchParams.set("start_date", today);
-    url.searchParams.set("end_date", today);
+    const url = new URL(FLASH_VALIDATE_PATH, FLASH_API_BASE_URL);
 
     const requestHeaders = {
-      Authorization: `Bearer ${maskToken(flashToken)}`,
+      "x-flash-auth": maskToken(flashToken),
       Accept: "application/json",
     };
 
@@ -295,15 +300,11 @@ Deno.serve(async (req) => {
         method: "GET",
         url: url.toString(),
         base_url: FLASH_API_BASE_URL,
-        path: FLASH_TRANSACTIONS_PATH,
-        query_params: {
-          page_size: "1",
-          start_date: today,
-          end_date: today,
-        },
+        path: FLASH_VALIDATE_PATH,
         headers: requestHeaders,
         body: null,
         token_preview: maskToken(flashToken),
+        docs: "https://docs.api.flashapp.services/Empresas/ListarEmpresas",
       },
     };
 
@@ -311,7 +312,7 @@ Deno.serve(async (req) => {
       const res = await fetch(url.toString(), {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${flashToken}`,
+          "x-flash-auth": flashToken,
           Accept: "application/json",
         },
       });
@@ -332,12 +333,22 @@ Deno.serve(async (req) => {
         body_json: parsed,
       };
 
+      if (res.status === 401) {
+        return jsonResponse({
+          success: false,
+          status: 401,
+          error: "401 Unauthorized: a chave de API da Flash é inválida ou foi revogada.",
+          hint: "Gere uma nova chave em hros.flashapp.com.br > Configurações > Plataforma > Chaves de acesso programático e atualize o secret FLASH_API_TOKEN.",
+          diagnostic,
+        }, 401);
+      }
+
       if (res.status === 403) {
         return jsonResponse({
           success: false,
           status: 403,
-          error: "Acesso Negado (403). Verifique se o token possui permissões para acessar a API de Negócios/Transações no painel da Flash.",
-          hint: "Geralmente é necessário habilitar o escopo 'business' ou 'transactions' na geração do token. Veja 'diagnostic' para a chamada completa.",
+          error: "403 Forbidden: o token é válido mas não possui permissão para o endpoint /companies.",
+          hint: "Solicite ao suporte da Flash (empresa@flashapp.com.br) habilitar a integração via API para sua empresa.",
           diagnostic,
         }, 403);
       }
@@ -351,9 +362,10 @@ Deno.serve(async (req) => {
         }, res.status);
       }
 
+      const list = Array.isArray(parsed) ? parsed : (parsed as any)?.data ?? (parsed as any)?.items ?? [];
       return jsonResponse({
         success: true,
-        message: "Conexão estabelecida com sucesso!",
+        message: `✅ Conexão estabelecida! ${Array.isArray(list) ? list.length : 0} empresa(s) acessível(is) via API Flash.`,
         diagnostic,
       });
     } catch (err) {
