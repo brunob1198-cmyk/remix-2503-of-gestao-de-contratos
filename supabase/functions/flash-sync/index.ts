@@ -18,12 +18,11 @@ const corsHeaders = {
 //   GET /core/v1/companies/{id}    -> detalhe
 //   GET /core/v1/employees         -> lista colaboradores
 //   POST /benefits/v1/orders       -> pedidos de benefícios
-// IMPORTANTE: a API pública da Flash NÃO expõe "transações/expenses".
-// Para sincronização, usamos /core/v1/employees como fonte (cadastros) por padrão.
+//   GET /expenses/v1/expenses      -> lista despesas (requer escopo específico)
 const FLASH_API_BASE_URL =
   Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.services";
 const FLASH_TRANSACTIONS_PATH =
-  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/core/v1/employees";
+  Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/expenses/v1/expenses";
 // Endpoint sempre confiável para validar token (documentado)
 const FLASH_VALIDATE_PATH = "/core/v1/companies";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");

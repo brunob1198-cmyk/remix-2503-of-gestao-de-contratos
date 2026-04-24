@@ -263,27 +263,26 @@ export default function IntegracaoFlashPage() {
         <CardHeader>
           <CardTitle>Sincronizar Dados da Flash</CardTitle>
           <CardDescription>
-            Importação de dados via Flash API (endpoint <code>/core/v1/employees</code>)
+            Importação de dados via Flash API (endpoint <code>/expenses/v1/expenses</code>)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert>
-            <AlertTitle>ℹ️ Sobre a API Flash</AlertTitle>
-            <AlertDescription className="text-sm space-y-1">
-              <p>
-                A API pública oficial da Flash (<a href="https://docs.api.flashapp.services" target="_blank" rel="noreferrer" className="underline">docs.api.flashapp.services</a>) disponibiliza apenas:
-              </p>
-              <ul className="list-disc pl-5">
-                <li><strong>Empresas</strong> — <code>GET /core/v1/companies</code></li>
-                <li><strong>Colaboradores</strong> — <code>GET /core/v1/employees</code> (CRUD)</li>
-                <li><strong>Pedidos de Benefícios</strong> — <code>POST /benefits/v1/orders</code></li>
-              </ul>
-              <p>
-                Não há endpoint público de "transações/despesas". Para importar movimentações financeiras é necessário solicitar à Flash a liberação de uma API específica de Expenses, ou utilizar um relatório exportado.
-              </p>
-            </AlertDescription>
-          </Alert>
-
+          <div className="bg-primary/5 rounded-md p-4 text-sm mb-6 border border-primary/20">
+            <h4 className="font-semibold flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4" /> Sobre a API Flash
+            </h4>
+            <p className="text-muted-foreground mb-2">
+              A API pública oficial da Flash (docs.api.flashapp.services) disponibiliza o endpoint:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li><strong>Despesas</strong> — <code>GET /expenses/v1/expenses</code></li>
+              <li>Empresas — <code>GET /core/v1/companies</code></li>
+              <li>Colaboradores — <code>GET /core/v1/employees</code></li>
+            </ul>
+            <p className="mt-3 text-muted-foreground">
+              A sincronização puxa as notas/despesas automaticamente do portal Flash para normalização e envio ao ERP.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
