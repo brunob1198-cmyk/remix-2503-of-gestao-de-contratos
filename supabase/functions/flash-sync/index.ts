@@ -479,7 +479,12 @@ Deno.serve(async (req) => {
         status: "sucesso",
         http_status: 200,
         duracao_ms: durationMs,
-        response: { transactions_received: transactions.length, transactions_persisted: inserted, pages_fetched: pagesFetched },
+        response: { 
+          transactions_received: transactions.length, 
+          transactions_persisted: inserted, 
+          pages_fetched: pagesFetched,
+          raw_response: lastResponse
+        },
       }).eq("id", logId);
     }
 
@@ -489,6 +494,7 @@ Deno.serve(async (req) => {
       totalPersisted: inserted,
       pages: pagesFetched,
       duracao_ms: durationMs,
+      rawResponse: lastResponse,
     });
   } catch (err) {
     const msg = err.message;

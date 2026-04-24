@@ -513,10 +513,18 @@ export default function IntegracaoFlashPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1 text-sm w-full">
                     <p><strong>Transações processadas:</strong> {lastResult.totalProcessed || 0}</p>
                     <p><strong>Páginas consumidas:</strong> {lastResult.pages || 1}</p>
                     <p><strong>Tempo total:</strong> {lastResult.duracao_ms || 0}ms</p>
+                    {lastResult.rawResponse && (
+                      <div className="mt-4 border rounded bg-muted/50 p-2">
+                        <p className="font-semibold text-xs mb-1">Payload Retornado (Debug):</p>
+                        <pre className="text-xs overflow-auto max-h-48">
+                          {JSON.stringify(lastResult.rawResponse, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </AlertDescription>
