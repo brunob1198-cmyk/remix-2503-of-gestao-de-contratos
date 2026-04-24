@@ -462,7 +462,7 @@ export default function IntegracaoFlashPage() {
           )}
 
           {/* Resultado da última execução */}
-          {lastResult && !syncMutation.isPending && (
+          {lastResult && !lastResult.authProbe && !syncMutation.isPending && (
             <Alert variant={lastResult.error ? "destructive" : "default"}>
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.error ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
