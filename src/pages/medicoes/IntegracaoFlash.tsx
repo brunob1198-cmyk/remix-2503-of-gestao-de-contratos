@@ -111,6 +111,27 @@ export default function IntegracaoFlashPage() {
     },
   });
 
+  const authProbeMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("flash-sync", {
+        body: { action: "test-auth" },
+      });
+      if (error) throw await parseEdgeError(error, "Erro ao sondar autenticação");
+      return data;
+    },
+    onSuccess: (data) => {
+      setLastResult({ authProbe: data });
+      toast({
+        title: data.winner ? "Variação encontrada!" : "Nenhuma variação funcionou",
+        description: data.winner ? `✅ ${data.winner}` : "Veja os detalhes abaixo de cada tentativa.",
+        variant: data.winner ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       if (!startDate || !endDate) {
@@ -341,7 +362,7 @@ export default function IntegracaoFlashPage() {
             <Button
               variant="outline"
               onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || syncMutation.isPending}
+              disabled={testMutation.isPending || syncMutation.isPending || authProbeMutation.isPending}
               className="gap-2"
             >
               {testMutation.isPending ? (
@@ -353,6 +374,25 @@ export default function IntegracaoFlashPage() {
                 <>
                   <Clock className="h-4 w-4" />
                   Validar Token
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => authProbeMutation.mutate()}
+              disabled={authProbeMutation.isPending || syncMutation.isPending || testMutation.isPending}
+              className="gap-2"
+              title="Tenta múltiplos formatos de autenticação (Bearer, apikey, x-api-key, raw, Basic, Token) e mostra qual funciona"
+            >
+              {authProbeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sondando auth...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Testar Variações de Auth
                 </>
               )}
             </Button>
@@ -386,8 +426,43 @@ export default function IntegracaoFlashPage() {
             </div>
           )}
 
+          {/* Resultado da sondagem de autenticação */}
+          {lastResult?.authProbe && !authProbeMutation.isPending && (
+            <Alert variant={lastResult.authProbe.winner ? "default" : "destructive"}>
+              <AlertTitle className="flex items-center gap-2">
+                {lastResult.authProbe.winner ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                Sondagem de Autenticação
+              </AlertTitle>
+              <AlertDescription className="mt-2 space-y-3">
+                <p className="font-semibold whitespace-pre-wrap break-words">
+                  {lastResult.authProbe.message}
+                </p>
+                <div className="text-xs space-y-1 opacity-80">
+                  <p><strong>URL:</strong> <code className="break-all">{lastResult.authProbe.url}</code></p>
+                  <p><strong>Token:</strong> <code>{lastResult.authProbe.token_preview}</code></p>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {lastResult.authProbe.attempts?.map((a: any, i: number) => (
+                    <div key={i} className="border border-border/40 rounded-md p-2 bg-background/40 text-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-mono font-semibold">{a.variant}</span>
+                        <Badge variant={a.ok ? "secondary" : "destructive"}>
+                          {a.status ? `HTTP ${a.status}` : "ERR"}
+                        </Badge>
+                      </div>
+                      {a.body_preview && (
+                        <pre className="whitespace-pre-wrap break-all opacity-70 mt-1">{a.body_preview}</pre>
+                      )}
+                      {a.error && <p className="text-destructive">{a.error}</p>}
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Resultado da última execução */}
-          {lastResult && !syncMutation.isPending && (
+          {lastResult && !lastResult.authProbe && !syncMutation.isPending && (
             <Alert variant={lastResult.error ? "destructive" : "default"}>
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.error ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
