@@ -261,12 +261,30 @@ export default function IntegracaoFlashPage() {
       {/* Sincronização */}
       <Card>
         <CardHeader>
-          <CardTitle>Sincronizar Transações</CardTitle>
+          <CardTitle>Sincronizar Dados da Flash</CardTitle>
           <CardDescription>
-            Selecione o período desejado e dispare a importação das transações via Flash API
+            Importação de dados via Flash API (endpoint <code>/core/v1/employees</code>)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Alert>
+            <AlertTitle>ℹ️ Sobre a API Flash</AlertTitle>
+            <AlertDescription className="text-sm space-y-1">
+              <p>
+                A API pública oficial da Flash (<a href="https://docs.api.flashapp.services" target="_blank" rel="noreferrer" className="underline">docs.api.flashapp.services</a>) disponibiliza apenas:
+              </p>
+              <ul className="list-disc pl-5">
+                <li><strong>Empresas</strong> — <code>GET /core/v1/companies</code></li>
+                <li><strong>Colaboradores</strong> — <code>GET /core/v1/employees</code> (CRUD)</li>
+                <li><strong>Pedidos de Benefícios</strong> — <code>POST /benefits/v1/orders</code></li>
+              </ul>
+              <p>
+                Não há endpoint público de "transações/despesas". Para importar movimentações financeiras é necessário solicitar à Flash a liberação de uma API específica de Expenses, ou utilizar um relatório exportado.
+              </p>
+            </AlertDescription>
+          </Alert>
+
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data de Início</Label>
