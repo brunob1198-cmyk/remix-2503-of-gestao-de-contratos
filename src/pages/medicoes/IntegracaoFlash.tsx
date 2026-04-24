@@ -362,7 +362,7 @@ export default function IntegracaoFlashPage() {
             <Button
               variant="outline"
               onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || syncMutation.isPending}
+              disabled={testMutation.isPending || syncMutation.isPending || authProbeMutation.isPending}
               className="gap-2"
             >
               {testMutation.isPending ? (
@@ -374,6 +374,25 @@ export default function IntegracaoFlashPage() {
                 <>
                   <Clock className="h-4 w-4" />
                   Validar Token
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => authProbeMutation.mutate()}
+              disabled={authProbeMutation.isPending || syncMutation.isPending || testMutation.isPending}
+              className="gap-2"
+              title="Tenta múltiplos formatos de autenticação (Bearer, apikey, x-api-key, raw, Basic, Token) e mostra qual funciona"
+            >
+              {authProbeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sondando auth...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Testar Variações de Auth
                 </>
               )}
             </Button>
