@@ -426,6 +426,41 @@ export default function IntegracaoFlashPage() {
             </div>
           )}
 
+          {/* Resultado da sondagem de autenticação */}
+          {lastResult?.authProbe && !authProbeMutation.isPending && (
+            <Alert variant={lastResult.authProbe.winner ? "default" : "destructive"}>
+              <AlertTitle className="flex items-center gap-2">
+                {lastResult.authProbe.winner ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                Sondagem de Autenticação
+              </AlertTitle>
+              <AlertDescription className="mt-2 space-y-3">
+                <p className="font-semibold whitespace-pre-wrap break-words">
+                  {lastResult.authProbe.message}
+                </p>
+                <div className="text-xs space-y-1 opacity-80">
+                  <p><strong>URL:</strong> <code className="break-all">{lastResult.authProbe.url}</code></p>
+                  <p><strong>Token:</strong> <code>{lastResult.authProbe.token_preview}</code></p>
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {lastResult.authProbe.attempts?.map((a: any, i: number) => (
+                    <div key={i} className="border border-border/40 rounded-md p-2 bg-background/40 text-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-mono font-semibold">{a.variant}</span>
+                        <Badge variant={a.ok ? "secondary" : "destructive"}>
+                          {a.status ? `HTTP ${a.status}` : "ERR"}
+                        </Badge>
+                      </div>
+                      {a.body_preview && (
+                        <pre className="whitespace-pre-wrap break-all opacity-70 mt-1">{a.body_preview}</pre>
+                      )}
+                      {a.error && <p className="text-destructive">{a.error}</p>}
+                    </div>
+                  ))}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Resultado da última execução */}
           {lastResult && !syncMutation.isPending && (
             <Alert variant={lastResult.error ? "destructive" : "default"}>
