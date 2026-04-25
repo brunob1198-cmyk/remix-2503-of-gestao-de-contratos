@@ -71,24 +71,43 @@ async function refreshAccessToken(empresaId: string, tokenData: any): Promise<st
   return newTokens.access_token;
 }
 
-// Tenta múltiplas variações de path/parâmetros para descobrir o endpoint correto de vendas
+// Tenta múltiplas variações de path/parâmetros para descobrir o endpoint correto de notas fiscais
 async function probeSalesEndpoint(accessToken: string, dateFrom: string, dateTo: string) {
   const dateFromISO = `${dateFrom}T00:00:00Z`;
   const dateToISO = `${dateTo}T23:59:59Z`;
 
-  // formato yyyy-mm-dd puro também
   const candidates = [
-    `${CONTAAZUL_API}/v1/sales?emission_start=${dateFrom}&emission_end=${dateTo}&page=1&size=10`,
-    `${CONTAAZUL_API}/v1/sales?startDate=${dateFrom}&endDate=${dateTo}&page=1&size=10`,
-    `${CONTAAZUL_API}/v1/sales?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/vendas?emissao_inicial=${dateFromISO}&emissao_final=${dateToISO}&page=1&size=10`,
-    `${CONTAAZUL_API}/v1/vendas?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_inicial=${dateFromISO}&data_emissao_final=${dateToISO}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_de=${dateFrom}&data_emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?data_inicial=${dateFrom}&data_final=${dateTo}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_de=${dateFromISO}&data_emissao_ate=${dateToISO}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?emissao_de=${dateFrom}&emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais/buscar?data_emissao_de=${dateFrom}&data_emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
     `${CONTAAZUL_API}/v1/notas-fiscais?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais/nfe?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/nfe?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/invoices?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-receber/buscar?data_emissao_inicial=${dateFromISO}&data_emissao_final=${dateToISO}&pagina=1&tamanho_pagina=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais/listar?pagina=1&tamanho_pagina=10`,
   ];
+
+  const results: any[] = [];
+  for (const url of candidates) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+      const text = await resp.text();
+      results.push({
+        url,
+        status: resp.status,
+        body: text.length > 800 ? text.slice(0, 800) + "..." : text,
+      });
+    } catch (e) {
+      results.push({ url, error: (e as Error).message });
+    }
+  }
+  return results;
+}
 
   const results: any[] = [];
   for (const url of candidates) {
