@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,9 +22,9 @@ import { useRdo, RdoDiarioResumo, RdoFoto } from "@/hooks/useRdo";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   FileText, Search, Calendar, Camera, X,
-  ChevronLeft, ChevronRight, MapPin, Users, Wrench, Truck,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Users, Wrench, Truck,
   DollarSign, ClipboardList, Eye, Image, MessageSquare, FileDown,
-  AlertTriangle, Loader2, Download, FolderArchive, Tag,
+  AlertTriangle, Loader2, Download, FolderArchive, Tag, Building2, TrendingUp, Wallet,
 } from "lucide-react";
 import { format, subDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -363,6 +365,75 @@ export default function RdoPage() {
   const totalFotos = diarios.reduce((s, d) => s + d.totalFotos, 0);
   const totalProd = diarios.reduce((s, d) => s + d.totalProducao, 0);
 
+  // Qtd sites atendidos no período (sites únicos com diário)
+  const qtdSitesAtendidos = useMemo(() => {
+    const set = new Set<string>();
+    diarios.forEach(d => set.add(d.site_id));
+    return set.size;
+  }, [diarios]);
+
+  // Média de valor produzido por dia (usa dias com registros)
+  const mediaPorDia = totalDias > 0 ? totalProd / totalDias : 0;
+
+  // Projetos efetivamente em escopo (selecionados ou todos os filteredSites)
+  const escopoProjetoIds = useMemo(() => {
+    if (selectedProjetoIds.length > 0) return selectedProjetoIds;
+    const ids = new Set<string>();
+    filteredSites.forEach(s => ids.add(s.projeto_id));
+    return Array.from(ids);
+  }, [selectedProjetoIds, filteredSites]);
+
+  // Valor do contrato vinculado aos projetos em escopo
+  const valorContratoProjeto = useMemo(() => {
+    return projetos
+      .filter(p => escopoProjetoIds.includes(p.id))
+      .reduce((s, p) => s + Number((p as any).valor_total || 0), 0);
+  }, [projetos, escopoProjetoIds]);
+
+  // Valor total acumulado de produção do(s) projeto(s) em escopo (todo o histórico)
+  const { data: producaoAcumuladaProjeto = 0 } = useQuery({
+    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds],
+    queryFn: async () => {
+      if (escopoProjetoIds.length === 0) return 0;
+      // Busca sites do(s) projeto(s)
+      const { data: sitesData, error: sitesErr } = await supabase
+        .from("sites")
+        .select("id")
+        .in("projeto_id", escopoProjetoIds);
+      if (sitesErr) throw sitesErr;
+      const siteIds = (sitesData || []).map((s: any) => s.id);
+      if (siteIds.length === 0) return 0;
+      // Busca diários desses sites
+      const { data: diariosData, error: diariosErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .in("site_id", siteIds);
+      if (diariosErr) throw diariosErr;
+      const diarioIds = (diariosData || []).map((d: any) => d.id);
+      if (diarioIds.length === 0) return 0;
+      // Soma valor_total de toda a produção
+      const { data: prodData, error: prodErr } = await supabase
+        .from("diario_producao")
+        .select("valor_total")
+        .in("diario_id", diarioIds);
+      if (prodErr) throw prodErr;
+      return (prodData || []).reduce((s: number, p: any) => s + Number(p.valor_total || 0), 0);
+    },
+    enabled: escopoProjetoIds.length > 0,
+  });
+
+  const saldoContrato = valorContratoProjeto - producaoAcumuladaProjeto;
+
+  // Expand/collapse all days
+  const allCollapsed = dayGroups.length > 0 && dayGroups.every(g => collapsedDays.has(g.data));
+  const toggleAllDays = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedDays(new Set());
+    } else {
+      setCollapsedDays(new Set(dayGroups.map(g => g.data)));
+    }
+  }, [allCollapsed, dayGroups]);
+
   // Download single day
   const handleDownloadDia = useCallback(async (diario: RdoDiarioResumo) => {
     setDownloading(true);
@@ -639,50 +710,99 @@ export default function RdoPage() {
           </Card>
 
           {/* Summary cards + Download buttons */}
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
-                  <p className="text-xs text-muted-foreground">Dias registrados</p>
-                </CardContent>
-              </Card>
-              {!isCliente && (
+          <div className="space-y-3">
+            {/* Linha 1: Métricas do período */}
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
-                    <p className="text-xs text-muted-foreground">Produção total</p>
+                    <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
+                    <p className="text-xs text-muted-foreground">Dias registrados</p>
                   </CardContent>
                 </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold tabular-nums">{qtdSitesAtendidos}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Building2 className="h-3 w-3" /> Qtd Sites
+                    </p>
+                  </CardContent>
+                </Card>
+                {!isCliente && (
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
+                      <p className="text-xs text-muted-foreground">Produção total</p>
+                    </CardContent>
+                  </Card>
+                )}
+                {!isCliente && (
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(mediaPorDia)}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        <TrendingUp className="h-3 w-3" /> Média R$/Dia
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
+                    <p className="text-xs text-muted-foreground">Fotos</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {diarios.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="gap-2 shrink-0"
+                  disabled={downloading}
+                  onClick={handleDownloadPeriodo}
+                >
+                  {downloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderArchive className="h-4 w-4" />
+                  )}
+                  Baixar Período (.zip)
+                </Button>
               )}
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
-                  <p className="text-xs text-muted-foreground">Fotos</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{diarios.reduce((s, d) => s + d.totalItens, 0)}</p>
-                  <p className="text-xs text-muted-foreground">Itens produzidos</p>
-                </CardContent>
-              </Card>
             </div>
 
-            {diarios.length > 0 && (
-              <Button
-                variant="outline"
-                className="gap-2 shrink-0"
-                disabled={downloading}
-                onClick={handleDownloadPeriodo}
-              >
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FolderArchive className="h-4 w-4" />
-                )}
-                Baixar Período (.zip)
-              </Button>
+            {/* Linha 2: Card consolidado de Contrato vs Produção (não exibido p/ cliente) */}
+            {!isCliente && escopoProjetoIds.length > 0 && (
+              <Card className="border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold">
+                      Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center md:text-left">
+                      <p className="text-xs text-muted-foreground mb-1">Valor do Contrato</p>
+                      <p className="text-xl font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                        {formatCurrency(valorContratoProjeto)}
+                      </p>
+                    </div>
+                    <div className="text-center md:text-left border-l-0 md:border-l md:pl-4">
+                      <p className="text-xs text-muted-foreground mb-1">Produção Acumulada</p>
+                      <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(producaoAcumuladaProjeto)}
+                      </p>
+                    </div>
+                    <div className="text-center md:text-left border-l-0 md:border-l md:pl-4">
+                      <p className="text-xs text-muted-foreground mb-1">Saldo de Contrato</p>
+                      <p className={`text-xl font-bold tabular-nums ${saldoContrato < 0 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                        {formatCurrency(saldoContrato)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
 
@@ -702,7 +822,23 @@ export default function RdoPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Timeline cards - left */}
               <div className="lg:col-span-1 space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
+                  {dayGroups.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={toggleAllDays}
+                    >
+                      {allCollapsed ? (
+                        <><ChevronDown className="h-3.5 w-3.5" /> Expandir todos</>
+                      ) : (
+                        <><ChevronUp className="h-3.5 w-3.5" /> Recolher todos</>
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <ScrollArea className="h-[calc(100vh-420px)]">
                   <div className="space-y-3 pr-2">
                     {dayGroups.map(group => {
