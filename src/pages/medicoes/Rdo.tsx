@@ -365,6 +365,75 @@ export default function RdoPage() {
   const totalFotos = diarios.reduce((s, d) => s + d.totalFotos, 0);
   const totalProd = diarios.reduce((s, d) => s + d.totalProducao, 0);
 
+  // Qtd sites atendidos no período (sites únicos com diário)
+  const qtdSitesAtendidos = useMemo(() => {
+    const set = new Set<string>();
+    diarios.forEach(d => set.add(d.site_id));
+    return set.size;
+  }, [diarios]);
+
+  // Média de valor produzido por dia (usa dias com registros)
+  const mediaPorDia = totalDias > 0 ? totalProd / totalDias : 0;
+
+  // Projetos efetivamente em escopo (selecionados ou todos os filteredSites)
+  const escopoProjetoIds = useMemo(() => {
+    if (selectedProjetoIds.length > 0) return selectedProjetoIds;
+    const ids = new Set<string>();
+    filteredSites.forEach(s => ids.add(s.projeto_id));
+    return Array.from(ids);
+  }, [selectedProjetoIds, filteredSites]);
+
+  // Valor do contrato vinculado aos projetos em escopo
+  const valorContratoProjeto = useMemo(() => {
+    return projetos
+      .filter(p => escopoProjetoIds.includes(p.id))
+      .reduce((s, p) => s + Number((p as any).valor_total || 0), 0);
+  }, [projetos, escopoProjetoIds]);
+
+  // Valor total acumulado de produção do(s) projeto(s) em escopo (todo o histórico)
+  const { data: producaoAcumuladaProjeto = 0 } = useQuery({
+    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds],
+    queryFn: async () => {
+      if (escopoProjetoIds.length === 0) return 0;
+      // Busca sites do(s) projeto(s)
+      const { data: sitesData, error: sitesErr } = await supabase
+        .from("sites")
+        .select("id")
+        .in("projeto_id", escopoProjetoIds);
+      if (sitesErr) throw sitesErr;
+      const siteIds = (sitesData || []).map((s: any) => s.id);
+      if (siteIds.length === 0) return 0;
+      // Busca diários desses sites
+      const { data: diariosData, error: diariosErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .in("site_id", siteIds);
+      if (diariosErr) throw diariosErr;
+      const diarioIds = (diariosData || []).map((d: any) => d.id);
+      if (diarioIds.length === 0) return 0;
+      // Soma valor_total de toda a produção
+      const { data: prodData, error: prodErr } = await supabase
+        .from("diario_producao")
+        .select("valor_total")
+        .in("diario_id", diarioIds);
+      if (prodErr) throw prodErr;
+      return (prodData || []).reduce((s: number, p: any) => s + Number(p.valor_total || 0), 0);
+    },
+    enabled: escopoProjetoIds.length > 0,
+  });
+
+  const saldoContrato = valorContratoProjeto - producaoAcumuladaProjeto;
+
+  // Expand/collapse all days
+  const allCollapsed = dayGroups.length > 0 && dayGroups.every(g => collapsedDays.has(g.data));
+  const toggleAllDays = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedDays(new Set());
+    } else {
+      setCollapsedDays(new Set(dayGroups.map(g => g.data)));
+    }
+  }, [allCollapsed, dayGroups]);
+
   // Download single day
   const handleDownloadDia = useCallback(async (diario: RdoDiarioResumo) => {
     setDownloading(true);
