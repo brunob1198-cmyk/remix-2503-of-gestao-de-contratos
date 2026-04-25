@@ -229,7 +229,13 @@ export default function AcompanhamentoMedicoesPage() {
     if (dataFim) filtered = filtered.filter(l => l.data_medicao <= dataFim);
 
     filtered.forEach(l => {
-      const key = `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
+      const obs = (l.observacao || "").toLowerCase();
+      const isAgrupadaOuMista = obs.includes("tipo:agrupada") || obs.includes("tipo:mista");
+      // Para medições agrupadas/mistas, agrupar apenas por número de medição (sem site_id),
+      // já que representam uma única medição consolidada de múltiplos sites
+      const key = isAgrupadaOuMista
+        ? `agrupada_${l.numero_medicao || 'sem_numero'}`
+        : `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
       const preco = Number(l.item_lpu?.preco_unitario || 0);
       const valor = Number(l.quantidade) * preco;
 
