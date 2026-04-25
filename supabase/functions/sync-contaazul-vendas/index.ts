@@ -71,6 +71,47 @@ async function refreshAccessToken(empresaId: string, tokenData: any): Promise<st
   return newTokens.access_token;
 }
 
+// Tenta múltiplas variações de path/parâmetros para descobrir o endpoint correto de vendas
+async function probeSalesEndpoint(accessToken: string, dateFrom: string, dateTo: string) {
+  const dateFromISO = `${dateFrom}T00:00:00Z`;
+  const dateToISO = `${dateTo}T23:59:59Z`;
+
+  // formato yyyy-mm-dd puro também
+  const candidates = [
+    `${CONTAAZUL_API}/v1/sales?emission_start=${dateFrom}&emission_end=${dateTo}&page=1&size=10`,
+    `${CONTAAZUL_API}/v1/sales?startDate=${dateFrom}&endDate=${dateTo}&page=1&size=10`,
+    `${CONTAAZUL_API}/v1/sales?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/vendas?emissao_inicial=${dateFromISO}&emissao_final=${dateToISO}&page=1&size=10`,
+    `${CONTAAZUL_API}/v1/vendas?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/notas-fiscais/nfe?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/nfe?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/invoices?page=1&size=10`,
+    `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-receber/buscar?data_emissao_inicial=${dateFromISO}&data_emissao_final=${dateToISO}&pagina=1&tamanho_pagina=10`,
+  ];
+
+  const results: any[] = [];
+  for (const url of candidates) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+      const text = await resp.text();
+      results.push({
+        url,
+        status: resp.status,
+        body: text.length > 500 ? text.slice(0, 500) + "..." : text,
+      });
+    } catch (e) {
+      results.push({ url, error: (e as Error).message });
+    }
+  }
+  return results;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -93,7 +134,6 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(profile.empresa_id);
 
-    // Permite intervalo customizado via body, ou busca tudo (sem limite)
     let body: any = {};
     try {
       body = await req.json();
@@ -101,85 +141,21 @@ serve(async (req) => {
       body = {};
     }
 
-    const dateFromStr = body.date_from
-      ? `${body.date_from}T00:00:00Z`
-      : "2000-01-01T00:00:00Z"; // sem limite (desde sempre)
-    const dateToStr = body.date_to
-      ? `${body.date_to}T23:59:59Z`
-      : new Date().toISOString().split('T')[0] + 'T23:59:59Z';
+    const dateFrom = body.date_from || "2000-01-01";
+    const dateTo = body.date_to || new Date().toISOString().split('T')[0];
 
-    // Paginação completa via API do Conta Azul
-    const allSales: any[] = [];
-    let page = 1;
-    const size = 100;
-    let totalRecebido = 0;
-
-    while (true) {
-      const url = `${CONTAAZUL_API}/v1/vendas?emissao_inicial=${dateFromStr}&emissao_final=${dateToStr}&page=${page}&size=${size}`;
-      console.log("Fetching sales page:", page, "url:", url);
-
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
+    // Modo probe: testa endpoints e retorna respostas
+    if (body.probe) {
+      const results = await probeSalesEndpoint(accessToken, dateFrom, dateTo);
+      return new Response(JSON.stringify({ probe: results }, null, 2), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
-      if (!resp.ok) {
-        const errBody = await resp.text();
-        console.error("Erro fetch vendas:", resp.status, errBody);
-        throw new Error(`Erro ao buscar vendas no Conta Azul: HTTP ${resp.status}`);
-      }
-
-      const pageData = await resp.json();
-      const items = Array.isArray(pageData) ? pageData : (pageData.itens || pageData.items || pageData.data || []);
-      
-      if (!items || items.length === 0) break;
-      
-      allSales.push(...items);
-      totalRecebido += items.length;
-      
-      if (items.length < size) break;
-      page++;
-      
-      // Hard cap de segurança
-      if (page > 200) break;
     }
 
-    console.log(`Total de vendas recebidas: ${totalRecebido}`);
-
-    const upserts = allSales.map((sale: any) => {
-      const centroCusto = (sale.rateio_centro_custo || [])
-        .map((r: any) => r.centro_custo?.nome || r.centro_custo_nome)
-        .filter(Boolean)
-        .join(", ");
-
-      return {
-        erp_id: sale.id,
-        numero_nota: sale.numero?.toString() || sale.numero_venda?.toString() || null,
-        data_emissao: sale.data_venda?.split('T')[0] || sale.data?.split('T')[0],
-        cliente_nome: sale.cliente?.nome || sale.cliente_nome,
-        valor_total: sale.valor_total || sale.valor || 0,
-        centro_custo: centroCusto || null,
-        status: sale.status,
-        payload_json: sale,
-        updated_at: new Date().toISOString(),
-      };
-    });
-
-    if (upserts.length > 0) {
-      // Upsert em chunks para evitar payloads gigantes
-      const chunkSize = 100;
-      for (let i = 0; i < upserts.length; i += chunkSize) {
-        const chunk = upserts.slice(i, i + chunkSize);
-        const { error: upsertError } = await supabase
-          .from("faturamentos_conta_azul")
-          .upsert(chunk, { onConflict: "erp_id" });
-        if (upsertError) throw upsertError;
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, count: upserts.length }), {
+    return new Response(JSON.stringify({
+      success: false,
+      message: "Endpoint de vendas em descoberta. Use {\"probe\":true} para diagnosticar.",
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
