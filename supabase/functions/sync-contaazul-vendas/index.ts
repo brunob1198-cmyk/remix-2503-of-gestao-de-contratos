@@ -71,42 +71,72 @@ async function refreshAccessToken(empresaId: string, tokenData: any): Promise<st
   return newTokens.access_token;
 }
 
-// Tenta múltiplas variações de path/parâmetros para descobrir o endpoint correto de notas fiscais
-async function probeSalesEndpoint(accessToken: string, dateFrom: string, dateTo: string) {
-  const dateFromISO = `${dateFrom}T00:00:00Z`;
-  const dateToISO = `${dateTo}T23:59:59Z`;
+// Divide o intervalo em janelas de até 15 dias (limite da API)
+function splitDateRange(dateFrom: string, dateTo: string, maxDays = 15): Array<{ from: string; to: string }> {
+  const windows: Array<{ from: string; to: string }> = [];
+  const start = new Date(`${dateFrom}T00:00:00Z`);
+  const end = new Date(`${dateTo}T00:00:00Z`);
 
-  const candidates = [
-    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_inicial=${dateFromISO}&data_emissao_final=${dateToISO}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_de=${dateFrom}&data_emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais?data_inicial=${dateFrom}&data_final=${dateTo}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais?data_emissao_de=${dateFromISO}&data_emissao_ate=${dateToISO}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais?emissao_de=${dateFrom}&emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais/buscar?data_emissao_de=${dateFrom}&data_emissao_ate=${dateTo}&pagina=1&tamanho_pagina=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais?page=1&size=10`,
-    `${CONTAAZUL_API}/v1/notas-fiscais/listar?pagina=1&tamanho_pagina=10`,
-  ];
+  let cursor = new Date(start);
+  while (cursor <= end) {
+    const windowEnd = new Date(cursor);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + maxDays - 1);
+    if (windowEnd > end) windowEnd.setTime(end.getTime());
 
-  const results: any[] = [];
-  for (const url of candidates) {
-    try {
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
-      });
-      const text = await resp.text();
-      results.push({
-        url,
-        status: resp.status,
-        body: text.length > 800 ? text.slice(0, 800) + "..." : text,
-      });
-    } catch (e) {
-      results.push({ url, error: (e as Error).message });
-    }
+    windows.push({
+      from: cursor.toISOString().split("T")[0],
+      to: windowEnd.toISOString().split("T")[0],
+    });
+
+    cursor = new Date(windowEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
-  return results;
+  return windows;
+}
+
+async function fetchNotasFiscaisWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
+  const allItems: any[] = [];
+  let pagina = 1;
+  const tamanhoPagina = 100;
+
+  while (true) {
+    const params = new URLSearchParams({
+      data_competencia_de: dataDe,
+      data_competencia_ate: dataAte,
+      pagina: pagina.toString(),
+      tamanho_pagina: tamanhoPagina.toString(),
+    });
+    const url = `${CONTAAZUL_API}/v1/notas-fiscais?${params.toString()}`;
+    console.log("Fetching NFs:", url);
+
+    const resp = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error("Erro fetch NFs:", resp.status, errBody);
+      throw new Error(`Erro ao buscar notas fiscais (${dataDe} a ${dataAte}): HTTP ${resp.status} - ${errBody}`);
+    }
+
+    const pageData = await resp.json();
+    const items = Array.isArray(pageData)
+      ? pageData
+      : (pageData.itens || pageData.items || pageData.data || pageData.notas_fiscais || pageData.content || []);
+
+    if (!items || items.length === 0) break;
+
+    allItems.push(...items);
+
+    if (items.length < tamanhoPagina) break;
+    pagina++;
+    if (pagina > 200) break; // safety cap
+  }
+
+  return allItems;
 }
 
 serve(async (req) => {
@@ -117,7 +147,7 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    
+
     const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !userData?.user) throw new Error("Usuário não autenticado");
 
@@ -138,23 +168,63 @@ serve(async (req) => {
       body = {};
     }
 
-    const dateFrom = body.date_from || "2000-01-01";
-    const dateTo = body.date_to || new Date().toISOString().split('T')[0];
+    // A API exige data_competencia_de/ate com janela máxima de 15 dias.
+    // Padrão: últimos 90 dias se não vier nada (busca ampla mas razoável).
+    const today = new Date().toISOString().split("T")[0];
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
+    const defaultFrom = ninetyDaysAgo.toISOString().split("T")[0];
 
-    // Modo probe: testa endpoints e retorna respostas
-    if (body.probe) {
-      const results = await probeSalesEndpoint(accessToken, dateFrom, dateTo);
-      return new Response(JSON.stringify({ probe: results }, null, 2), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const dateFrom = body.date_from || defaultFrom;
+    const dateTo = body.date_to || today;
+
+    // Quebra em janelas de 15 dias
+    const windows = splitDateRange(dateFrom, dateTo, 15);
+    console.log(`Total janelas de 15 dias: ${windows.length}`);
+
+    const allNotas: any[] = [];
+    for (const w of windows) {
+      const items = await fetchNotasFiscaisWindow(accessToken, w.from, w.to);
+      allNotas.push(...items);
     }
 
-    return new Response(JSON.stringify({
-      success: false,
-      message: "Endpoint de vendas em descoberta. Use {\"probe\":true} para diagnosticar.",
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log(`Total de notas fiscais recebidas: ${allNotas.length}`);
+
+    const upserts = allNotas.map((nf: any) => {
+      const centroCusto = (nf.rateio_centro_custo || nf.rateios_centro_custo || [])
+        .map((r: any) => r.centro_custo?.nome || r.centro_custo_nome || r.nome)
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        erp_id: nf.id || nf.uuid,
+        numero_nota: (nf.numero || nf.numero_nota || nf.numero_documento)?.toString() || null,
+        data_emissao:
+          (nf.data_emissao || nf.data_competencia || nf.data || "").split("T")[0] || null,
+        cliente_nome: nf.cliente?.nome || nf.cliente_nome || nf.destinatario?.nome || null,
+        valor_total: Number(nf.valor_total || nf.valor || nf.valor_nota || 0),
+        centro_custo: centroCusto || null,
+        status: nf.status || nf.situacao || null,
+        payload_json: nf,
+        updated_at: new Date().toISOString(),
+      };
+    }).filter((u: any) => u.erp_id);
+
+    if (upserts.length > 0) {
+      const chunkSize = 100;
+      for (let i = 0; i < upserts.length; i += chunkSize) {
+        const chunk = upserts.slice(i, i + chunkSize);
+        const { error: upsertError } = await supabase
+          .from("faturamentos_conta_azul")
+          .upsert(chunk, { onConflict: "erp_id" });
+        if (upsertError) throw upsertError;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, count: upserts.length, janelas: windows.length }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: (e as Error).message }), {
