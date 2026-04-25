@@ -103,6 +103,8 @@ async function fetchNotasFiscaisWindow(accessToken: string, dataDe: string, data
     const params = new URLSearchParams({
       data_competencia_de: dataDe,
       data_competencia_ate: dataAte,
+      data_emissao_de: dataDe,
+      data_emissao_ate: dataAte,
       pagina: pagina.toString(),
       tamanho_pagina: tamanhoPagina.toString(),
     });
