@@ -71,7 +71,7 @@ async function refreshAccessToken(empresaId: string, tokenData: any): Promise<st
   return newTokens.access_token;
 }
 
-// Divide o intervalo em janelas de até 15 dias (limite da API)
+// Quebra intervalo em janelas de até `maxDays` dias (NFS-e exige max 15 dias)
 function splitDateRange(dateFrom: string, dateTo: string, maxDays = 15): Array<{ from: string; to: string }> {
   const windows: Array<{ from: string; to: string }> = [];
   const start = new Date(`${dateFrom}T00:00:00Z`);
@@ -94,7 +94,8 @@ function splitDateRange(dateFrom: string, dateTo: string, maxDays = 15): Array<{
   return windows;
 }
 
-async function fetchNotasFiscaisWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
+// NFS-e (serviço) - /v1/notas-fiscais-servico - max 15 dias por janela
+async function fetchNotasServicoWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
   const allItems: any[] = [];
   let pagina = 1;
   const tamanhoPagina = 100;
@@ -103,13 +104,11 @@ async function fetchNotasFiscaisWindow(accessToken: string, dataDe: string, data
     const params = new URLSearchParams({
       data_competencia_de: dataDe,
       data_competencia_ate: dataAte,
-      data_emissao_de: dataDe,
-      data_emissao_ate: dataAte,
       pagina: pagina.toString(),
       tamanho_pagina: tamanhoPagina.toString(),
     });
-    const url = `${CONTAAZUL_API}/v1/notas-fiscais?${params.toString()}`;
-    console.log("Fetching NFs:", url);
+    const url = `${CONTAAZUL_API}/v1/notas-fiscais-servico?${params.toString()}`;
+    console.log("Fetching NFS-e:", url);
 
     const resp = await fetch(url, {
       headers: {
@@ -120,22 +119,71 @@ async function fetchNotasFiscaisWindow(accessToken: string, dataDe: string, data
 
     if (!resp.ok) {
       const errBody = await resp.text();
-      console.error("Erro fetch NFs:", resp.status, errBody);
-      throw new Error(`Erro ao buscar notas fiscais (${dataDe} a ${dataAte}): HTTP ${resp.status} - ${errBody}`);
+      console.error("Erro fetch NFS-e:", resp.status, errBody);
+      // Se for "nenhuma nota encontrada", apenas retorna vazio em vez de quebrar
+      if (resp.status === 404) return allItems;
+      throw new Error(`Erro NFS-e (${dataDe} a ${dataAte}): HTTP ${resp.status} - ${errBody}`);
     }
 
     const pageData = await resp.json();
-    const items = Array.isArray(pageData)
-      ? pageData
-      : (pageData.itens || pageData.items || pageData.data || pageData.notas_fiscais || pageData.content || []);
+    const items: any[] = pageData.itens || [];
 
-    if (!items || items.length === 0) break;
-
+    if (items.length === 0) break;
     allItems.push(...items);
 
+    const total = pageData.paginacao?.total_paginas || 1;
+    if (pagina >= total) break;
     if (items.length < tamanhoPagina) break;
     pagina++;
-    if (pagina > 200) break; // safety cap
+    if (pagina > 200) break;
+  }
+
+  return allItems;
+}
+
+// NF-e (produto) - /v1/notas-fiscais - usa data_inicial/data_final
+async function fetchNotasProdutoWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
+  const allItems: any[] = [];
+  let pagina = 1;
+  const tamanhoPagina = 100;
+
+  while (true) {
+    const params = new URLSearchParams({
+      data_inicial: dataDe,
+      data_final: dataAte,
+      pagina: pagina.toString(),
+      tamanho_pagina: tamanhoPagina.toString(),
+    });
+    const url = `${CONTAAZUL_API}/v1/notas-fiscais?${params.toString()}`;
+    console.log("Fetching NF-e:", url);
+
+    const resp = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error("Erro fetch NF-e:", resp.status, errBody);
+      if (resp.status === 404) return allItems;
+      // NF-e é opcional para empresas que só emitem serviço; loga mas não interrompe
+      console.warn(`NF-e indisponível (${dataDe} a ${dataAte}): HTTP ${resp.status}`);
+      return allItems;
+    }
+
+    const pageData = await resp.json();
+    const items: any[] = pageData.itens || [];
+
+    if (items.length === 0) break;
+    allItems.push(...items);
+
+    const total = pageData.paginacao?.total_paginas || 1;
+    if (pagina >= total) break;
+    if (items.length < tamanhoPagina) break;
+    pagina++;
+    if (pagina > 200) break;
   }
 
   return allItems;
@@ -170,8 +218,7 @@ serve(async (req) => {
       body = {};
     }
 
-    // A API exige data_competencia_de/ate com janela máxima de 15 dias.
-    // Padrão: últimos 90 dias se não vier nada (busca ampla mas razoável).
+    // Padrão: últimos 90 dias
     const today = new Date().toISOString().split("T")[0];
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
@@ -180,42 +227,57 @@ serve(async (req) => {
     const dateFrom = body.date_from || defaultFrom;
     const dateTo = body.date_to || today;
 
-    // Quebra em janelas de 15 dias
+    // Janelas de 15 dias (limite da API NFS-e)
     const windows = splitDateRange(dateFrom, dateTo, 15);
-    console.log(`Total janelas de 15 dias: ${windows.length}`);
+    console.log(`Total janelas: ${windows.length} | período ${dateFrom} a ${dateTo}`);
 
-    const allNotas: any[] = [];
+    const allNFSe: any[] = [];
+    const allNFe: any[] = [];
+
     for (const w of windows) {
-      const items = await fetchNotasFiscaisWindow(accessToken, w.from, w.to);
-      allNotas.push(...items);
+      const [nfse, nfe] = await Promise.all([
+        fetchNotasServicoWindow(accessToken, w.from, w.to),
+        fetchNotasProdutoWindow(accessToken, w.from, w.to),
+      ]);
+      allNFSe.push(...nfse);
+      allNFe.push(...nfe);
     }
 
-    console.log(`Total de notas fiscais recebidas: ${allNotas.length}`);
+    console.log(`NFS-e: ${allNFSe.length} | NF-e: ${allNFe.length}`);
 
-    const upserts = allNotas.map((nf: any) => {
-      const centroCusto = (nf.rateio_centro_custo || nf.rateios_centro_custo || [])
-        .map((r: any) => r.centro_custo?.nome || r.centro_custo_nome || r.nome)
-        .filter(Boolean)
-        .join(", ");
+    // Mapeia NFS-e (serviço)
+    const upsertsNFSe = allNFSe.map((nf: any) => ({
+      erp_id: nf.id,
+      numero_nota: (nf.numero_nfse || nf.numero_rps)?.toString() || null,
+      data_emissao: (nf.data_competencia ||
+        nf.informacao_transmissao?.data_inicio_emissao || "").split("T")[0] || null,
+      cliente_nome: nf.nome_cliente || null,
+      valor_total: Number(nf.valor_total_nfse || 0),
+      centro_custo: null,
+      status: nf.status || null,
+      payload_json: nf,
+      updated_at: new Date().toISOString(),
+    }));
 
-      return {
-        erp_id: nf.id || nf.uuid,
-        numero_nota: (nf.numero || nf.numero_nota || nf.numero_documento)?.toString() || null,
-        data_emissao:
-          (nf.data_emissao || nf.data_competencia || nf.data || "").split("T")[0] || null,
-        cliente_nome: nf.cliente?.nome || nf.cliente_nome || nf.destinatario?.nome || null,
-        valor_total: Number(nf.valor_total || nf.valor || nf.valor_nota || 0),
-        centro_custo: centroCusto || null,
-        status: nf.status || nf.situacao || null,
-        payload_json: nf,
-        updated_at: new Date().toISOString(),
-      };
-    }).filter((u: any) => u.erp_id);
+    // Mapeia NF-e (produto)
+    const upsertsNFe = allNFe.map((nf: any) => ({
+      erp_id: nf.chave_acesso || nf.id,
+      numero_nota: nf.numero_nota?.toString() || null,
+      data_emissao: (nf.data_emissao || "").split("T")[0] || null,
+      cliente_nome: nf.nome_destinatario || null,
+      valor_total: Number(nf.valor_total || 0),
+      centro_custo: null,
+      status: nf.status || null,
+      payload_json: nf,
+      updated_at: new Date().toISOString(),
+    }));
 
-    if (upserts.length > 0) {
+    const allUpserts = [...upsertsNFSe, ...upsertsNFe].filter((u: any) => u.erp_id);
+
+    if (allUpserts.length > 0) {
       const chunkSize = 100;
-      for (let i = 0; i < upserts.length; i += chunkSize) {
-        const chunk = upserts.slice(i, i + chunkSize);
+      for (let i = 0; i < allUpserts.length; i += chunkSize) {
+        const chunk = allUpserts.slice(i, i + chunkSize);
         const { error: upsertError } = await supabase
           .from("faturamentos_conta_azul")
           .upsert(chunk, { onConflict: "erp_id" });
@@ -224,7 +286,13 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, count: upserts.length, janelas: windows.length }),
+      JSON.stringify({
+        success: true,
+        count: allUpserts.length,
+        nfse: upsertsNFSe.length,
+        nfe: upsertsNFe.length,
+        janelas: windows.length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
