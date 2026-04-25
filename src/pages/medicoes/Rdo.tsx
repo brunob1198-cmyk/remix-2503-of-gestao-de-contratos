@@ -710,50 +710,99 @@ export default function RdoPage() {
           </Card>
 
           {/* Summary cards + Download buttons */}
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
-                  <p className="text-xs text-muted-foreground">Dias registrados</p>
-                </CardContent>
-              </Card>
-              {!isCliente && (
+          <div className="space-y-3">
+            {/* Linha 1: Métricas do período */}
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
-                    <p className="text-xs text-muted-foreground">Produção total</p>
+                    <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
+                    <p className="text-xs text-muted-foreground">Dias registrados</p>
                   </CardContent>
                 </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold tabular-nums">{qtdSitesAtendidos}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                      <Building2 className="h-3 w-3" /> Qtd Sites
+                    </p>
+                  </CardContent>
+                </Card>
+                {!isCliente && (
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
+                      <p className="text-xs text-muted-foreground">Produção total</p>
+                    </CardContent>
+                  </Card>
+                )}
+                {!isCliente && (
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(mediaPorDia)}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        <TrendingUp className="h-3 w-3" /> Média R$/Dia
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
+                    <p className="text-xs text-muted-foreground">Fotos</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {diarios.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="gap-2 shrink-0"
+                  disabled={downloading}
+                  onClick={handleDownloadPeriodo}
+                >
+                  {downloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderArchive className="h-4 w-4" />
+                  )}
+                  Baixar Período (.zip)
+                </Button>
               )}
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
-                  <p className="text-xs text-muted-foreground">Fotos</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold tabular-nums">{diarios.reduce((s, d) => s + d.totalItens, 0)}</p>
-                  <p className="text-xs text-muted-foreground">Itens produzidos</p>
-                </CardContent>
-              </Card>
             </div>
 
-            {diarios.length > 0 && (
-              <Button
-                variant="outline"
-                className="gap-2 shrink-0"
-                disabled={downloading}
-                onClick={handleDownloadPeriodo}
-              >
-                {downloading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FolderArchive className="h-4 w-4" />
-                )}
-                Baixar Período (.zip)
-              </Button>
+            {/* Linha 2: Card consolidado de Contrato vs Produção (não exibido p/ cliente) */}
+            {!isCliente && escopoProjetoIds.length > 0 && (
+              <Card className="border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold">
+                      Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center md:text-left">
+                      <p className="text-xs text-muted-foreground mb-1">Valor do Contrato</p>
+                      <p className="text-xl font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                        {formatCurrency(valorContratoProjeto)}
+                      </p>
+                    </div>
+                    <div className="text-center md:text-left border-l-0 md:border-l md:pl-4">
+                      <p className="text-xs text-muted-foreground mb-1">Produção Acumulada</p>
+                      <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(producaoAcumuladaProjeto)}
+                      </p>
+                    </div>
+                    <div className="text-center md:text-left border-l-0 md:border-l md:pl-4">
+                      <p className="text-xs text-muted-foreground mb-1">Saldo de Contrato</p>
+                      <p className={`text-xl font-bold tabular-nums ${saldoContrato < 0 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                        {formatCurrency(saldoContrato)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
 
