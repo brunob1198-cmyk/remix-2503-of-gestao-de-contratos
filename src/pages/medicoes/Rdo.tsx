@@ -22,9 +22,9 @@ import { useRdo, RdoDiarioResumo, RdoFoto } from "@/hooks/useRdo";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   FileText, Search, Calendar, Camera, X,
-  ChevronLeft, ChevronRight, MapPin, Users, Wrench, Truck,
+  ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MapPin, Users, Wrench, Truck,
   DollarSign, ClipboardList, Eye, Image, MessageSquare, FileDown,
-  AlertTriangle, Loader2, Download, FolderArchive, Tag,
+  AlertTriangle, Loader2, Download, FolderArchive, Tag, Building2, TrendingUp, Wallet,
 } from "lucide-react";
 import { format, subDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
