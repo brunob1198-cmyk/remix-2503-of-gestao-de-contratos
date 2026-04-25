@@ -231,10 +231,11 @@ export default function AcompanhamentoMedicoesPage() {
     filtered.forEach(l => {
       const obs = (l.observacao || "").toLowerCase();
       const isAgrupadaOuMista = obs.includes("tipo:agrupada") || obs.includes("tipo:mista");
-      // Para medições agrupadas/mistas, agrupar apenas por número de medição (sem site_id),
-      // já que representam uma única medição consolidada de múltiplos sites
+      // Para medições agrupadas/mistas, agrupar por projeto e número de medição (sem site_id),
+      // já que representam uma única medição consolidada de múltiplos sites do mesmo projeto
+      const projetoId = l.site?.projeto?.id || l.site?.projeto_id || 'sem_projeto';
       const key = isAgrupadaOuMista
-        ? `agrupada_${l.numero_medicao || 'sem_numero'}`
+        ? `agrupada_${projetoId}_${l.numero_medicao || 'sem_numero'}`
         : `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
       const preco = Number(l.item_lpu?.preco_unitario || 0);
       const valor = Number(l.quantidade) * preco;
