@@ -822,7 +822,23 @@ export default function RdoPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Timeline cards - left */}
               <div className="lg:col-span-1 space-y-3">
-                <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
+                  {dayGroups.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={toggleAllDays}
+                    >
+                      {allCollapsed ? (
+                        <><ChevronDown className="h-3.5 w-3.5" /> Expandir todos</>
+                      ) : (
+                        <><ChevronUp className="h-3.5 w-3.5" /> Recolher todos</>
+                      )}
+                    </Button>
+                  )}
+                </div>
                 <ScrollArea className="h-[calc(100vh-420px)]">
                   <div className="space-y-3 pr-2">
                     {dayGroups.map(group => {
