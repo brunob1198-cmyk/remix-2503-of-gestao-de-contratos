@@ -71,6 +71,124 @@ async function refreshAccessToken(empresaId: string, tokenData: any): Promise<st
   return newTokens.access_token;
 }
 
+// Quebra intervalo em janelas de até `maxDays` dias (NFS-e exige max 15 dias)
+function splitDateRange(dateFrom: string, dateTo: string, maxDays = 15): Array<{ from: string; to: string }> {
+  const windows: Array<{ from: string; to: string }> = [];
+  const start = new Date(`${dateFrom}T00:00:00Z`);
+  const end = new Date(`${dateTo}T00:00:00Z`);
+
+  let cursor = new Date(start);
+  while (cursor <= end) {
+    const windowEnd = new Date(cursor);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + maxDays - 1);
+    if (windowEnd > end) windowEnd.setTime(end.getTime());
+
+    windows.push({
+      from: cursor.toISOString().split("T")[0],
+      to: windowEnd.toISOString().split("T")[0],
+    });
+
+    cursor = new Date(windowEnd);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return windows;
+}
+
+// NFS-e (serviço) - /v1/notas-fiscais-servico - max 15 dias por janela
+async function fetchNotasServicoWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
+  const allItems: any[] = [];
+  let pagina = 1;
+  const tamanhoPagina = 100;
+
+  while (true) {
+    const params = new URLSearchParams({
+      data_competencia_de: dataDe,
+      data_competencia_ate: dataAte,
+      pagina: pagina.toString(),
+      tamanho_pagina: tamanhoPagina.toString(),
+    });
+    const url = `${CONTAAZUL_API}/v1/notas-fiscais-servico?${params.toString()}`;
+    console.log("Fetching NFS-e:", url);
+
+    const resp = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error("Erro fetch NFS-e:", resp.status, errBody);
+      // Se for "nenhuma nota encontrada", apenas retorna vazio em vez de quebrar
+      if (resp.status === 404) return allItems;
+      throw new Error(`Erro NFS-e (${dataDe} a ${dataAte}): HTTP ${resp.status} - ${errBody}`);
+    }
+
+    const pageData = await resp.json();
+    const items: any[] = pageData.itens || [];
+
+    if (items.length === 0) break;
+    allItems.push(...items);
+
+    const total = pageData.paginacao?.total_paginas || 1;
+    if (pagina >= total) break;
+    if (items.length < tamanhoPagina) break;
+    pagina++;
+    if (pagina > 200) break;
+  }
+
+  return allItems;
+}
+
+// NF-e (produto) - /v1/notas-fiscais - usa data_inicial/data_final
+async function fetchNotasProdutoWindow(accessToken: string, dataDe: string, dataAte: string): Promise<any[]> {
+  const allItems: any[] = [];
+  let pagina = 1;
+  const tamanhoPagina = 100;
+
+  while (true) {
+    const params = new URLSearchParams({
+      data_inicial: dataDe,
+      data_final: dataAte,
+      pagina: pagina.toString(),
+      tamanho_pagina: tamanhoPagina.toString(),
+    });
+    const url = `${CONTAAZUL_API}/v1/notas-fiscais?${params.toString()}`;
+    console.log("Fetching NF-e:", url);
+
+    const resp = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error("Erro fetch NF-e:", resp.status, errBody);
+      if (resp.status === 404) return allItems;
+      // NF-e é opcional para empresas que só emitem serviço; loga mas não interrompe
+      console.warn(`NF-e indisponível (${dataDe} a ${dataAte}): HTTP ${resp.status}`);
+      return allItems;
+    }
+
+    const pageData = await resp.json();
+    const items: any[] = pageData.itens || [];
+
+    if (items.length === 0) break;
+    allItems.push(...items);
+
+    const total = pageData.paginacao?.total_paginas || 1;
+    if (pagina >= total) break;
+    if (items.length < tamanhoPagina) break;
+    pagina++;
+    if (pagina > 200) break;
+  }
+
+  return allItems;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -79,7 +197,7 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    
+
     const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !userData?.user) throw new Error("Usuário não autenticado");
 
@@ -93,7 +211,6 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(profile.empresa_id);
 
-    // Permite intervalo customizado via body, ou busca tudo (sem limite)
     let body: any = {};
     try {
       body = await req.json();
@@ -101,77 +218,66 @@ serve(async (req) => {
       body = {};
     }
 
-    const dateFromStr = body.date_from
-      ? `${body.date_from}T00:00:00Z`
-      : "2000-01-01T00:00:00Z"; // sem limite (desde sempre)
-    const dateToStr = body.date_to
-      ? `${body.date_to}T23:59:59Z`
-      : new Date().toISOString().split('T')[0] + 'T23:59:59Z';
+    // Padrão: últimos 90 dias
+    const today = new Date().toISOString().split("T")[0];
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
+    const defaultFrom = ninetyDaysAgo.toISOString().split("T")[0];
 
-    // Paginação completa via API do Conta Azul
-    const allSales: any[] = [];
-    let page = 1;
-    const size = 100;
-    let totalRecebido = 0;
+    const dateFrom = body.date_from || defaultFrom;
+    const dateTo = body.date_to || today;
 
-    while (true) {
-      const url = `${CONTAAZUL_API}/v1/vendas?emissao_inicial=${dateFromStr}&emissao_final=${dateToStr}&page=${page}&size=${size}`;
-      console.log("Fetching sales page:", page, "url:", url);
+    // Janelas de 15 dias (limite da API NFS-e)
+    const windows = splitDateRange(dateFrom, dateTo, 15);
+    console.log(`Total janelas: ${windows.length} | período ${dateFrom} a ${dateTo}`);
 
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
-      });
+    const allNFSe: any[] = [];
+    const allNFe: any[] = [];
 
-      if (!resp.ok) {
-        const errBody = await resp.text();
-        console.error("Erro fetch vendas:", resp.status, errBody);
-        throw new Error(`Erro ao buscar vendas no Conta Azul: HTTP ${resp.status}`);
-      }
-
-      const pageData = await resp.json();
-      const items = Array.isArray(pageData) ? pageData : (pageData.itens || pageData.items || pageData.data || []);
-      
-      if (!items || items.length === 0) break;
-      
-      allSales.push(...items);
-      totalRecebido += items.length;
-      
-      if (items.length < size) break;
-      page++;
-      
-      // Hard cap de segurança
-      if (page > 200) break;
+    for (const w of windows) {
+      const [nfse, nfe] = await Promise.all([
+        fetchNotasServicoWindow(accessToken, w.from, w.to),
+        fetchNotasProdutoWindow(accessToken, w.from, w.to),
+      ]);
+      allNFSe.push(...nfse);
+      allNFe.push(...nfe);
     }
 
-    console.log(`Total de vendas recebidas: ${totalRecebido}`);
+    console.log(`NFS-e: ${allNFSe.length} | NF-e: ${allNFe.length}`);
 
-    const upserts = allSales.map((sale: any) => {
-      const centroCusto = (sale.rateio_centro_custo || [])
-        .map((r: any) => r.centro_custo?.nome || r.centro_custo_nome)
-        .filter(Boolean)
-        .join(", ");
+    // Mapeia NFS-e (serviço)
+    const upsertsNFSe = allNFSe.map((nf: any) => ({
+      erp_id: nf.id,
+      numero_nota: (nf.numero_nfse || nf.numero_rps)?.toString() || null,
+      data_emissao: (nf.data_competencia ||
+        nf.informacao_transmissao?.data_inicio_emissao || "").split("T")[0] || null,
+      cliente_nome: nf.nome_cliente || null,
+      valor_total: Number(nf.valor_total_nfse || 0),
+      centro_custo: null,
+      status: nf.status || null,
+      payload_json: nf,
+      updated_at: new Date().toISOString(),
+    }));
 
-      return {
-        erp_id: sale.id,
-        numero_nota: sale.numero?.toString() || sale.numero_venda?.toString() || null,
-        data_emissao: sale.data_venda?.split('T')[0] || sale.data?.split('T')[0],
-        cliente_nome: sale.cliente?.nome || sale.cliente_nome,
-        valor_total: sale.valor_total || sale.valor || 0,
-        centro_custo: centroCusto || null,
-        status: sale.status,
-        payload_json: sale,
-        updated_at: new Date().toISOString(),
-      };
-    });
+    // Mapeia NF-e (produto)
+    const upsertsNFe = allNFe.map((nf: any) => ({
+      erp_id: nf.chave_acesso || nf.id,
+      numero_nota: nf.numero_nota?.toString() || null,
+      data_emissao: (nf.data_emissao || "").split("T")[0] || null,
+      cliente_nome: nf.nome_destinatario || null,
+      valor_total: Number(nf.valor_total || 0),
+      centro_custo: null,
+      status: nf.status || null,
+      payload_json: nf,
+      updated_at: new Date().toISOString(),
+    }));
 
-    if (upserts.length > 0) {
-      // Upsert em chunks para evitar payloads gigantes
+    const allUpserts = [...upsertsNFSe, ...upsertsNFe].filter((u: any) => u.erp_id);
+
+    if (allUpserts.length > 0) {
       const chunkSize = 100;
-      for (let i = 0; i < upserts.length; i += chunkSize) {
-        const chunk = upserts.slice(i, i + chunkSize);
+      for (let i = 0; i < allUpserts.length; i += chunkSize) {
+        const chunk = allUpserts.slice(i, i + chunkSize);
         const { error: upsertError } = await supabase
           .from("faturamentos_conta_azul")
           .upsert(chunk, { onConflict: "erp_id" });
@@ -179,9 +285,16 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, count: upserts.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        count: allUpserts.length,
+        nfse: upsertsNFSe.length,
+        nfe: upsertsNFe.length,
+        janelas: windows.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: (e as Error).message }), {
