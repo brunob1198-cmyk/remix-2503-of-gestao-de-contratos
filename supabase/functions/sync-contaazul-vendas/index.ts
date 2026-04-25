@@ -109,28 +109,6 @@ async function probeSalesEndpoint(accessToken: string, dateFrom: string, dateTo:
   return results;
 }
 
-  const results: any[] = [];
-  for (const url of candidates) {
-    try {
-      const resp = await fetch(url, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "application/json",
-        },
-      });
-      const text = await resp.text();
-      results.push({
-        url,
-        status: resp.status,
-        body: text.length > 500 ? text.slice(0, 500) + "..." : text,
-      });
-    } catch (e) {
-      results.push({ url, error: (e as Error).message });
-    }
-  }
-  return results;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
