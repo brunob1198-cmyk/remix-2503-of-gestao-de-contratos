@@ -229,7 +229,13 @@ export default function AcompanhamentoMedicoesPage() {
     if (dataFim) filtered = filtered.filter(l => l.data_medicao <= dataFim);
 
     filtered.forEach(l => {
-      const key = `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
+      const obs = (l.observacao || "").toLowerCase();
+      const isAgrupadaOuMista = obs.includes("tipo:agrupada") || obs.includes("tipo:mista");
+      // Para medições agrupadas/mistas, agrupar apenas por número de medição (sem site_id),
+      // já que representam uma única medição consolidada de múltiplos sites
+      const key = isAgrupadaOuMista
+        ? `agrupada_${l.numero_medicao || 'sem_numero'}`
+        : `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
       const preco = Number(l.item_lpu?.preco_unitario || 0);
       const valor = Number(l.quantidade) * preco;
 
@@ -699,14 +705,16 @@ export default function AcompanhamentoMedicoesPage() {
     let items: any[];
 
     if (gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista") {
-      // For agrupada/mista: group items by item_lpu_id, summing quantities across sites
-      // Use the first site_id found (or pick an arbitrary one)
-      const grouped = new Map<string, { site_id: string; item_lpu_id: string; quantidade: number }>();
+      // For agrupada/mista: group items by item_lpu_id, summing quantities across sites.
+      // CRITICAL: All items must share the SAME site_id so the resulting medição
+      // is treated as a single consolidated record (not split by site in the listing).
+      // We use the first site_id encountered as the "anchor" site.
+      const anchorSiteId = selectedItens[0]?.site_id;
+      const grouped = new Map<string, { item_lpu_id: string; quantidade: number }>();
       selectedItens.forEach(item => {
         const key = item.item_lpu_id;
         if (!grouped.has(key)) {
           grouped.set(key, {
-            site_id: item.site_id,
             item_lpu_id: item.item_lpu_id,
             quantidade: item.quantidade + item.quantidade_pendente,
           });
@@ -717,7 +725,7 @@ export default function AcompanhamentoMedicoesPage() {
       });
 
       items = Array.from(grouped.values()).map(g => ({
-        site_id: g.site_id,
+        site_id: anchorSiteId,
         item_lpu_id: g.item_lpu_id,
         data_medicao: today,
         quantidade: g.quantidade,
