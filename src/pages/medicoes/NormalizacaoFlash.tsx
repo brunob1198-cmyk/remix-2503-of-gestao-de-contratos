@@ -851,6 +851,55 @@ export default function NormalizacaoFlashPage() {
         </Card>
       </div>
 
+      {/* Filtro de período global — vale para Lançamentos, Pendentes e contadores */}
+      <Card>
+        <CardContent className="py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CalendarRange className="h-4 w-4 text-muted-foreground" />
+              <span>Período</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">De</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 w-[150px] text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">Até</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 w-[150px] text-xs"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                <X className="mr-1 h-3 w-3" />
+                Limpar período
+              </Button>
+            )}
+            <span className="ml-auto text-xs text-muted-foreground">
+              {dateFrom || dateTo
+                ? `Aplicado a todas as abas — ${dateFiltered.length} lançamento(s) no período`
+                : "Sem filtro — exibindo todos os lançamentos"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
