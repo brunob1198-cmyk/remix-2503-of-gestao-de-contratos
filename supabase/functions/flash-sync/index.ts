@@ -432,6 +432,7 @@ Deno.serve(async (req) => {
           .upsert(chunk, {
             onConflict: "empresa_id,external_id",
             count: "exact",
+            ignoreDuplicates: false,
           });
         if (upsertError) throw upsertError;
         inserted += count ?? chunk.length;
