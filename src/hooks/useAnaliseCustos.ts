@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -313,17 +314,21 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
   const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
 
-  const { data: categoriasDesativadas = [] } = useQuery({
-    queryKey: ["categorias_erp_desativadas"],
+  const { data: categoriasMapeamento = [] } = useQuery({
+    queryKey: ["mapeamento_categorias_erp_all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
-        .select("categoria_erp")
-        .eq("ativo", false);
+        .select("categoria_erp, categoria_interna, ativo");
       if (error) throw error;
-      return (data || []).map(d => d.categoria_erp);
+      return data || [];
     },
   });
+
+  const categoriasDesativadas = useMemo(() => 
+    categoriasMapeamento.filter(c => !c.ativo).map(c => c.categoria_erp),
+    [categoriasMapeamento]
+  );
 
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
@@ -359,20 +364,17 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
-      // 1. Get current record
       const { data: current } = await supabase
         .from("custo_real_erp")
         .select("categoria_erp")
         .eq("erp_id", erpId)
         .single();
 
-      // 2. Update record
       const { error } = await supabase.from("custo_real_erp" as any)
         .update({ categoria_interna: newCategoria })
         .eq("erp_id", erpId);
       if (error) throw error;
 
-      // 3. Learning step
       if (current?.categoria_erp) {
         await supabase.from("mapeamento_categorias_erp").upsert({
           categoria_erp: current.categoria_erp,
@@ -385,9 +387,32 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
-      toast.success("Categoria atualizada e sistema atualizado para futuros registros.");
+      toast.success("Categoria atualizada.");
     }
   });
 
-  return { custosErp, loadCustos, updateCategoria };
+  const updateBulkCategorias = useMutation({
+    mutationFn: async (updates: { erp_id: string; categoria_interna: string; categoria_erp: string }[]) => {
+      // update custo_real_erp for each
+      for (const up of updates) {
+        await supabase.from("custo_real_erp" as any)
+          .update({ categoria_interna: up.categoria_interna })
+          .eq("erp_id", up.erp_id);
+        
+        await supabase.from("mapeamento_categorias_erp").upsert({
+          categoria_erp: up.categoria_erp,
+          categoria_interna: up.categoria_interna,
+          criado_por_ia: false,
+          ativo: true
+        }, { onConflict: "categoria_erp" });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
+      toast.success("Correções em lote aplicadas com sucesso.");
+    }
+  });
+
+  return { custosErp, loadCustos, updateCategoria, updateBulkCategorias, categoriasMapeamento };
 }
