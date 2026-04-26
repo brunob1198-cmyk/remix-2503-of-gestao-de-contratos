@@ -936,49 +936,46 @@ export default function NormalizacaoFlashPage() {
                     </Select>
                   </div>
                 </div>
-                
-                <div className="flex flex-wrap items-center gap-2">
-                  <MultiSelectFilter 
-                    title="Usuário" 
-                    options={filterOptions.users} 
-                    selected={selectedUsers} 
-                    onSelect={setSelectedUsers} 
-                  />
-                  <MultiSelectFilter 
-                    title="Tipo Flash" 
-                    options={filterOptions.types} 
-                    selected={selectedTypes} 
-                    onSelect={setSelectedTypes} 
-                  />
-                  <MultiSelectFilter 
-                    title="Categoria Flash" 
-                    options={filterOptions.categories} 
-                    selected={selectedCategories} 
-                    onSelect={setSelectedCategories} 
-                  />
-                  <MultiSelectFilter 
-                    title="Centro de Custo" 
-                    options={filterOptions.costCenters} 
-                    selected={selectedCostCenters} 
-                    onSelect={setSelectedCostCenters} 
-                  />
-                  
-                  {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
-                    <Button 
-                      variant="ghost" 
+
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
+                    {selectedUsers.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Usuário ({selectedUsers.length})
+                      </Badge>
+                    )}
+                    {selectedTypes.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Tipo Flash ({selectedTypes.length})
+                      </Badge>
+                    )}
+                    {selectedCategories.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Categoria Flash ({selectedCategories.length})
+                      </Badge>
+                    )}
+                    {selectedCostCenters.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Centro de Custo ({selectedCostCenters.length})
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setSelectedUsers([]);
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                       }}
-                      className="h-8 px-2 lg:px-3"
+                      className="h-7 px-2"
                     >
-                      Limpar filtros
-                      <RotateCcw className="ml-2 h-3 w-3" />
+                      Limpar
+                      <RotateCcw className="ml-1 h-3 w-3" />
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
