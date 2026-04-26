@@ -322,6 +322,118 @@ export default function NormalizacaoFlashPage() {
     }
   };
 
+  const toggleSort = (key: keyof FlashTransactionRow) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        return null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const MultiSelectFilter = ({ 
+    title, 
+    options, 
+    selected, 
+    onSelect 
+  }: { 
+    title: string; 
+    options: string[]; 
+    selected: string[]; 
+    onSelect: (val: string[]) => void 
+  }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 border-dashed">
+            <Filter className="mr-2 h-3 w-3" />
+            {title}
+            {selected.length > 0 && (
+              <>
+                <Separator orientation="vertical" className="mx-2 h-4" />
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                  {selected.length}
+                </Badge>
+                <div className="hidden space-x-1 lg:flex">
+                  {selected.length > 2 ? (
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {selected.length} selecionados
+                    </Badge>
+                  ) : (
+                    options
+                      .filter((option) => selected.includes(option))
+                      .map((option) => (
+                        <Badge variant="secondary" key={option} className="rounded-sm px-1 font-normal">
+                          {option}
+                        </Badge>
+                      ))
+                  )}
+                </div>
+              </>
+            )}
+            <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={title} />
+            <CommandList>
+              <CommandEmpty>Nenhum resultado.</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected.includes(option);
+                  return (
+                    <CommandItem
+                      key={option}
+                      onSelect={() => {
+                        if (isSelected) {
+                          onSelect(selected.filter((s) => s !== option));
+                        } else {
+                          onSelect([...selected, option]);
+                        }
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Checkbox checked={isSelected} className="h-3 w-3" />
+                      </div>
+                      <span className="truncate">{option}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              {selected.length > 0 && (
+                <>
+                  <Separator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => onSelect([])}
+                      className="justify-center text-center"
+                    >
+                      Limpar filtros
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+  const SortIcon = ({ column }: { column: keyof FlashTransactionRow }) => {
+    if (sortConfig?.key !== column) return <ArrowUpAZ className="ml-2 h-3 w-3 opacity-0 group-hover:opacity-50" />;
+    return sortConfig.direction === 'asc' ? <ArrowUpAZ className="ml-2 h-3 w-3" /> : <ArrowDownAZ className="ml-2 h-3 w-3" />;
+  };
+
   const renderActionButtons = (row: FlashTransactionRow) => {
     const hasMapping = mappingByType.has(row.flash_type);
     const isSaving = savingId === row.id;
