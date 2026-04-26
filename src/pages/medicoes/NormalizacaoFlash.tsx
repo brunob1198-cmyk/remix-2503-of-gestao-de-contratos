@@ -935,7 +935,7 @@ export default function NormalizacaoFlashPage() {
                                     })
                                   }
                                   placeholder="Selecionar conta..."
-                                  disabled={true}
+                                  disabled={fieldsDisabled}
                                 />
                               </TableCell>
                               <TableCell>{statusBadge(row.status)}</TableCell>
