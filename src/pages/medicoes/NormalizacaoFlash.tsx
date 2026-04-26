@@ -276,18 +276,49 @@ export default function NormalizacaoFlashPage() {
     }
   }, [contas]);
 
-  // Extract unique values for filters
+  // Helper: parse a tx date as a comparable yyyy-mm-dd string (or null)
+  const txDateKey = (d: string | null): string | null => {
+    if (!d) return null;
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) {
+        // Already in yyyy-mm-dd?
+        if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+        return null;
+      }
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const day = String(dt.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    } catch {
+      return null;
+    }
+  };
+
+  // Apply the period filter first — used by all tabs
+  const dateFiltered = useMemo(() => {
+    if (!dateFrom && !dateTo) return transactions;
+    return transactions.filter((t) => {
+      const k = txDateKey(t.data);
+      if (!k) return !dateFrom && !dateTo ? true : false;
+      if (dateFrom && k < dateFrom) return false;
+      if (dateTo && k > dateTo) return false;
+      return true;
+    });
+  }, [transactions, dateFrom, dateTo]);
+
+  // Extract unique values for filters (from period-filtered data)
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const users = Array.from(new Set(dateFiltered.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(dateFiltered.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(dateFiltered.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(dateFiltered.map(t => t.flash_cost_center))).filter(Boolean).sort();
     
     return { users, types, categories, costCenters };
-  }, [transactions]);
+  }, [dateFiltered]);
 
   const filtered = useMemo(() => {
-    let result = transactions.filter((t) => {
+    let result = dateFiltered.filter((t) => {
       if (statusFilter !== "todos" && t.status !== statusFilter) return false;
       
       // Multi-select filters
@@ -323,7 +354,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [transactions, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -333,12 +364,12 @@ export default function NormalizacaoFlashPage() {
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const pendentes = useMemo(
-    () => transactions.filter((t) => t.status === "pendente"),
-    [transactions]
+    () => dateFiltered.filter((t) => t.status === "pendente"),
+    [dateFiltered]
   );
 
   const counts = useMemo(() => {
-    return transactions.reduce(
+    return dateFiltered.reduce(
       (acc, t) => {
         acc.total += 1;
         if (t.status === "normalizado") acc.normalizado += 1;
@@ -348,7 +379,7 @@ export default function NormalizacaoFlashPage() {
       },
       { total: 0, pendente: 0, normalizado: 0, enviado: 0 }
     );
-  }, [transactions]);
+  }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     const m = mappingByType.get(row.flash_type);
