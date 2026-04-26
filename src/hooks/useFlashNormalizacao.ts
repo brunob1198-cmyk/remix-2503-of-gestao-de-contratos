@@ -153,7 +153,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 export function useFlashNormalizacao() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
-  const [loading, setLoading] = useState(false); // Inicia como falso para evitar flash de loading infinito se profile demorar
+  const [loading, setLoading] = useState(true); // Alterado para true para garantir que o primeiro carregamento seja visível
   const [savingId, setSavingId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
   const [mappings, setMappings] = useState<CategoryMapping[]>([]);
