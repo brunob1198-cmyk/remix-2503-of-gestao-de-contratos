@@ -89,17 +89,38 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
   const flash_type = flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw;
 
-  const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome"]) || "—";
+  const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
   let flash_category = flash_category_raw;
   
-  if (flash_category_raw === "Refeição") flash_category = "Refeição";
-  else if (flash_category_raw === "Alimentação") flash_category = "Alimentação";
-  else if (flash_category_raw === "Combustível") flash_category = "Combustível";
-  else if (flash_category_raw === "Mobilidade") flash_category = "Mobilidade";
-  else if (flash_category_raw === "Saúde") flash_category = "Saúde";
-  else if (flash_category_raw === "Cultura") flash_category = "Cultura";
-  else if (flash_category_raw === "Educação") flash_category = "Educação";
-  else if (flash_category_raw === "Outros") flash_category = "Outros";
+  // Padronização para português
+  const categoryTranslations: Record<string, string> = {
+    "Refeição": "Refeição",
+    "MEAL": "Refeição",
+    "Alimentação": "Alimentação",
+    "FOOD": "Alimentação",
+    "Combustível": "Combustível",
+    "FUEL": "Combustível",
+    "Mobilidade": "Mobilidade",
+    "MOBILITY": "Mobilidade",
+    "Saúde": "Saúde",
+    "HEALTH": "Saúde",
+    "Cultura": "Cultura",
+    "CULTURE": "Cultura",
+    "Educação": "Educação",
+    "EDUCATION": "Educação",
+    "Outros": "Outros",
+    "OTHERS": "Outros",
+    "Toll": "Pedágio",
+    "TOLL": "Pedágio",
+    "Parking": "Estacionamento",
+    "PARKING": "Estacionamento",
+  };
+
+  if (categoryTranslations[flash_category_raw]) {
+    flash_category = categoryTranslations[flash_category_raw];
+  } else if (flash_category_raw.toUpperCase() === "TOLL") {
+    flash_category = "Pedágio";
+  }
 
   return {
     id: raw.id,
@@ -113,7 +134,17 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type,
     flash_category,
-    flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo", "employee.costCenter.name", "user.costCenter.name"]) || "—",
+    flash_cost_center: pickPayloadValue(p, [
+      "costCenter.name", 
+      "cost_center.name", 
+      "centro_custo", 
+      "employee.costCenter.name", 
+      "user.costCenter.name",
+      "employee.cost_center.name",
+      "user.cost_center.name",
+      "costCenter.externalId",
+      "costCenter.code"
+    ]) || "—",
   };
 };
 
