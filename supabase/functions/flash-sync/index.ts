@@ -418,11 +418,23 @@ Deno.serve(async (req) => {
 
     let inserted = 0;
     if (transactions.length > 0) {
-      const rows = transactions.map((tx, idx) => ({
-        empresa_id: empresaId,
-        external_id: extractExternalId(tx, idx),
-        payload_json: tx,
-      }));
+      // Remove duplicates from the API response before upserting
+      const uniqueRowsMap = new Map();
+      transactions.forEach((tx, idx) => {
+        const extId = extractExternalId(tx, idx);
+        const key = `${empresaId}:${extId}`;
+        // If the same external_id appears multiple times in the payload, 
+        // keep only one to avoid Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time"
+        if (!uniqueRowsMap.has(key)) {
+          uniqueRowsMap.set(key, {
+            empresa_id: empresaId,
+            external_id: extId,
+            payload_json: tx,
+          });
+        }
+      });
+
+      const rows = Array.from(uniqueRowsMap.values());
 
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
@@ -432,7 +444,6 @@ Deno.serve(async (req) => {
           .upsert(chunk, {
             onConflict: "empresa_id,external_id",
             count: "exact",
-            ignoreDuplicates: false,
           });
         if (upsertError) throw upsertError;
         inserted += count ?? chunk.length;
