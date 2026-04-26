@@ -247,14 +247,33 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string, newCategoria: string }) => {
+      // 1. Get current record to know original category
+      const { data: current } = await supabase
+        .from("custo_real_erp")
+        .select("categoria_erp")
+        .eq("erp_id", erpId)
+        .single();
+
+      // 2. Update record
       const { error } = await (supabase as any).from("custo_real_erp")
          .update({ categoria_interna: newCategoria })
          .eq("erp_id", erpId);
       if (error) throw error;
+
+      // 3. Learning Step: Upsert mapping
+      if (current?.categoria_erp) {
+        await supabase.from("mapeamento_categorias_erp").upsert({
+          categoria_erp: current.categoria_erp,
+          categoria_interna: newCategoria,
+          criado_por_ia: false, // User manual adjustment
+          ativo: true
+        }, { onConflict: "categoria_erp" });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
-      toast.success("Categoria atualizada.");
+      queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      toast.success("Categoria atualizada e sistema atualizado para futuros registros.");
     }
   });
 
@@ -340,14 +359,33 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
+      // 1. Get current record
+      const { data: current } = await supabase
+        .from("custo_real_erp")
+        .select("categoria_erp")
+        .eq("erp_id", erpId)
+        .single();
+
+      // 2. Update record
       const { error } = await supabase.from("custo_real_erp" as any)
         .update({ categoria_interna: newCategoria })
         .eq("erp_id", erpId);
       if (error) throw error;
+
+      // 3. Learning step
+      if (current?.categoria_erp) {
+        await supabase.from("mapeamento_categorias_erp").upsert({
+          categoria_erp: current.categoria_erp,
+          categoria_interna: newCategoria,
+          criado_por_ia: false,
+          ativo: true
+        }, { onConflict: "categoria_erp" });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
-      toast.success("Categoria atualizada.");
+      queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
+      toast.success("Categoria atualizada e sistema atualizado para futuros registros.");
     }
   });
 
