@@ -218,12 +218,15 @@ export function useFlashNormalizacao() {
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
           mappingIdx
         );
+        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+
         base.tipo_operacao = normalized.tipo_operacao;
         base.status = normalized.status;
         base.conta_azul_category_id = normalized.conta_azul_category_id;
         base.conta_azul_category_name = normalized.conta_azul_category_name;
-        base.conta_azul_account_id = normalized.conta_azul_account_id;
-        base.conta_azul_account_name = normalized.conta_azul_account_name;
+        base.conta_azul_account_id = flashAccount?.id ?? normalized.conta_azul_account_id;
+        base.conta_azul_account_name = flashAccount?.name ?? normalized.conta_azul_account_name;
         base.motivo = normalized.motivo;
         base.flash_type_detectado = normalized.flash_type;
         base.mapping_id_usado = normalized.mapping_id_usado;
