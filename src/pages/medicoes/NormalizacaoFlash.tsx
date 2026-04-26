@@ -734,13 +734,48 @@ export default function NormalizacaoFlashPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[90px]">Data</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="w-[110px] text-right">Valor</TableHead>
-                          <TableHead className="w-[120px]">Usuário</TableHead>
-                          <TableHead className="w-[120px]">Tipo Flash</TableHead>
-                          <TableHead className="w-[120px]">Categoria Flash</TableHead>
-                          <TableHead className="w-[120px]">Centro de Custo</TableHead>
+                          <TableHead 
+                            className="w-[90px] cursor-pointer group"
+                            onClick={() => toggleSort('data')}
+                          >
+                            <div className="flex items-center">Data <SortIcon column="data" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer group"
+                            onClick={() => toggleSort('descricao')}
+                          >
+                            <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[110px] text-right cursor-pointer group"
+                            onClick={() => toggleSort('valor')}
+                          >
+                            <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('usuario')}
+                          >
+                            <div className="flex items-center">Usuário <SortIcon column="usuario" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_type')}
+                          >
+                            <div className="flex items-center">Tipo Flash <SortIcon column="flash_type" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_category')}
+                          >
+                            <div className="flex items-center">Categoria Flash <SortIcon column="flash_category" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_cost_center')}
+                          >
+                            <div className="flex items-center">Centro de Custo <SortIcon column="flash_cost_center" /></div>
+                          </TableHead>
                           <TableHead className="w-[110px]">Operação</TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
