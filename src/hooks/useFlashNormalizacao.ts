@@ -196,10 +196,15 @@ export function useFlashNormalizacao() {
       const mappingList = (mapRes.data || []) as CategoryMapping[];
       const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
 
+      const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+      const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+
       const autoNormPayloads: any[] = [];
       const rows = (txRes.data || []).map((raw: any) => {
         const base = mapTransactionRow(raw);
         const n = normByTx.get(raw.id);
+        
+        // Se já existe normalização, usamos ela
         if (n) {
           base.norm_id = n.id;
           base.conta_azul_category_id = n.conta_azul_category_id;
@@ -213,15 +218,21 @@ export function useFlashNormalizacao() {
           base.mapping_id_usado = n.mapping_id_usado;
           base.conta_azul_payload = n.conta_azul_payload;
           base.enviado_at = n.enviado_at;
+
+          // Se a conta não estiver preenchida na normalização salva, tentamos preencher com a conta fixa
+          if (!base.conta_azul_account_id && flashAccount) {
+            base.conta_azul_account_id = flashAccount.id;
+            base.conta_azul_account_name = flashAccount.name;
+          }
+
           return base;
         }
 
+        // Se não existe, tentamos normalizar agora
         const normalized = normalizeFlashTransaction(
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
           mappingIdx
         );
-        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
-        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
 
         base.tipo_operacao = normalized.tipo_operacao;
         base.status = normalized.status;
@@ -234,23 +245,23 @@ export function useFlashNormalizacao() {
         base.mapping_id_usado = normalized.mapping_id_usado;
         base.conta_azul_payload = normalized.conta_azul_payload;
 
-        if (normalized.status === "normalizado") {
-          autoNormPayloads.push({
-            empresa_id: empresaId,
-            flash_transaction_id: raw.id,
-            conta_azul_category_id: normalized.conta_azul_category_id,
-            conta_azul_category_name: normalized.conta_azul_category_name,
-            conta_azul_account_id: flashAccount?.id ?? normalized.conta_azul_account_id,
-            conta_azul_account_name: flashAccount?.name ?? normalized.conta_azul_account_name,
-            tipo_operacao: normalized.tipo_operacao,
-            status: "normalizado",
-            normalizado_at: new Date().toISOString(),
-            motivo: normalized.motivo,
-            flash_type_detectado: normalized.flash_type,
-            mapping_id_usado: normalized.mapping_id_usado,
-            conta_azul_payload: normalized.conta_azul_payload,
-          });
-        }
+        // Sempre criamos a normalização se ela não existir
+        autoNormPayloads.push({
+          empresa_id: empresaId,
+          flash_transaction_id: raw.id,
+          conta_azul_category_id: base.conta_azul_category_id,
+          conta_azul_category_name: base.conta_azul_category_name,
+          conta_azul_account_id: base.conta_azul_account_id,
+          conta_azul_account_name: base.conta_azul_account_name,
+          tipo_operacao: base.tipo_operacao,
+          status: base.status,
+          normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
+          motivo: base.motivo,
+          flash_type_detectado: base.flash_type_detectado,
+          mapping_id_usado: base.mapping_id_usado,
+          conta_azul_payload: base.conta_azul_payload,
+        });
+
         return base;
       });
 

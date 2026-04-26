@@ -508,6 +508,10 @@ Deno.serve(async (req) => {
             conta_azul_account_name: fixedAccountName,
             status: hasFull ? "normalizado" : "pendente",
             normalizado_at: hasFull ? new Date().toISOString() : null,
+            flash_type_detectado: flash_type,
+            motivo: hasFull 
+              ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")` 
+              : `Pendente: aguardando mapeamento para o tipo "${flash_type}"`,
           };
         });
 
