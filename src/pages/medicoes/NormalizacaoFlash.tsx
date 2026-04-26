@@ -50,8 +50,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  ChevronDown,
   Eye,
   FileSpreadsheet,
+  Filter,
   Info,
   Loader2,
   RefreshCw,
@@ -69,6 +88,7 @@ import {
   type ContaAzulOption,
 } from "@/hooks/useFlashNormalizacao";
 import { exportNormalizacaoFlashToExcel } from "@/lib/flashNormalizacaoExport";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
