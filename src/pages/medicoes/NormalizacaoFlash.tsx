@@ -776,7 +776,6 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center">Centro de Custo <SortIcon column="flash_cost_center" /></div>
                           </TableHead>
-                          <TableHead className="w-[110px]">Operação</TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
                           <TableHead className="w-[110px]">Status</TableHead>
@@ -825,23 +824,6 @@ export default function NormalizacaoFlashPage() {
                               </TableCell>
                               <TableCell className="text-xs truncate max-w-[120px]">
                                 {row.flash_cost_center}
-                              </TableCell>
-                              <TableCell>
-                                <Select
-                                  value={row.tipo_operacao || "despesa"}
-                                  onValueChange={(v) =>
-                                    saveNormalization(row, { tipo_operacao: v as "receita" | "despesa" })
-                                  }
-                                  disabled={fieldsDisabled}
-                                >
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="despesa" className="text-xs">Despesa</SelectItem>
-                                    <SelectItem value="receita" className="text-xs">Receita</SelectItem>
-                                  </SelectContent>
-                                </Select>
                               </TableCell>
                               <TableCell>
                                 <OptionSelect
