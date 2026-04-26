@@ -616,7 +616,7 @@ export default function NormalizacaoFlashPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 pb-20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Normalização Flash</h1>
@@ -799,7 +799,7 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto relative min-h-[400px]">
+                  <div className="overflow-x-auto relative min-h-[500px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
