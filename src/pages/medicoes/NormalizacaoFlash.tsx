@@ -799,11 +799,17 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
                           </TableHead>
-                          <TableHead 
+                           <TableHead 
                             className="w-[120px] cursor-pointer group"
                             onClick={() => toggleSort('usuario')}
                           >
                             <div className="flex items-center">Usuário <SortIcon column="usuario" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[150px] cursor-pointer group"
+                            onClick={() => toggleSort('comentarios')}
+                          >
+                            <div className="flex items-center">Comentários <SortIcon column="comentarios" /></div>
                           </TableHead>
                           <TableHead 
                             className="w-[120px] cursor-pointer group"
@@ -851,6 +857,16 @@ export default function NormalizacaoFlashPage() {
                                 {formatCurrency(row.valor)}
                               </TableCell>
                               <TableCell className="text-xs truncate max-w-[120px]">{row.usuario}</TableCell>
+                              <TableCell className="text-xs truncate max-w-[150px]">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block truncate">{row.comentarios}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs break-words">{row.comentarios}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-1">
                                   <Badge variant="secondary" className="text-[10px]">

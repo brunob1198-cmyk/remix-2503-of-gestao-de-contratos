@@ -33,6 +33,7 @@ export function exportNormalizacaoFlashToExcel(rows: FlashTransactionRow[]) {
     Descrição: r.descricao,
     Valor: r.valor,
     Usuário: r.usuario,
+    Comentários: r.comentarios,
     "Tipo Flash": r.flash_type,
     Operação: r.tipo_operacao === "receita" ? "Receita" : "Despesa",
     "Categoria Conta Azul": r.conta_azul_category_name || "",
@@ -50,18 +51,19 @@ export function exportNormalizacaoFlashToExcel(rows: FlashTransactionRow[]) {
 
   // Larguras razoáveis
   ws["!cols"] = [
-    { wch: 12 },
-    { wch: 40 },
-    { wch: 12 },
-    { wch: 20 },
-    { wch: 18 },
-    { wch: 12 },
-    { wch: 28 },
-    { wch: 28 },
-    { wch: 14 },
-    { wch: 50 },
-    { wch: 22 },
-    { wch: 60 },
+    { wch: 12 }, // Data
+    { wch: 40 }, // Descrição
+    { wch: 12 }, // Valor
+    { wch: 20 }, // Usuário
+    { wch: 30 }, // Comentários
+    { wch: 18 }, // Tipo Flash
+    { wch: 12 }, // Operação
+    { wch: 28 }, // Categoria Conta Azul
+    { wch: 28 }, // Conta Financeira Conta Azul
+    { wch: 14 }, // Status
+    { wch: 50 }, // Motivo
+    { wch: 22 }, // ID Externo Flash
+    { wch: 60 }, // Payload Pronto (JSON)
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, "Normalização Flash");
