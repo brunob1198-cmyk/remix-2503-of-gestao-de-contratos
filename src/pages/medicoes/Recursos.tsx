@@ -409,14 +409,21 @@ export default function RecursosPage() {
   function handleEdit() {
     if (!editRecurso || !editCusto) return;
     const r = recursos.find((x) => x.id === editRecurso)!;
-    const needsUpdate = 
+    
+    // Convert current value for comparison
+    const currentCusto = getCustoAtual(editRecurso);
+    const newCustoVal = parseFloat(editCusto);
+    
+    const needsInfoUpdate = 
       editNome !== r.nome || 
       editTipo !== r.tipo ||
       editUnidade !== r.unidade ||
       (r.tipo === "pessoa" && editCargo !== (r.cargo || "")) || 
       (r.tipo === "veiculo" && editPlaca !== (r.placa || ""));
       
-    if (needsUpdate) {
+    const needsCustoUpdate = !currentCusto || currentCusto.custo_unitario !== newCustoVal;
+
+    if (needsInfoUpdate) {
       updateRecurso.mutate({ 
         id: editRecurso, 
         nome: editNome, 
@@ -425,18 +432,19 @@ export default function RecursosPage() {
         unidade: editUnidade,
         cargo: editTipo === "pessoa" ? editCargo || null : null, 
         placa: editTipo === "veiculo" ? editPlaca || null : null 
+      }, {
+        onSuccess: () => {
+          if (!needsCustoUpdate) setEditRecurso(null);
+        }
       });
     }
     
-    const currentCusto = getCustoAtual(editRecurso);
-    const newCustoVal = parseFloat(editCusto);
-    
-    if (!currentCusto || currentCusto.custo_unitario !== newCustoVal) {
+    if (needsCustoUpdate) {
       updateCusto.mutate(
         { recurso_id: editRecurso, custo_unitario: newCustoVal, data_inicio: editDataInicio, motivo: editMotivo || undefined },
         { onSuccess: () => setEditRecurso(null) }
       );
-    } else {
+    } else if (!needsInfoUpdate) {
       setEditRecurso(null);
     }
   }
