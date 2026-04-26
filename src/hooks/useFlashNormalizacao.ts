@@ -308,8 +308,10 @@ export function useFlashNormalizacao() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (empresaId) {
+      fetchData();
+    }
+  }, [empresaId, fetchData]);
 
   useEffect(() => {
     fetchMetadata();
