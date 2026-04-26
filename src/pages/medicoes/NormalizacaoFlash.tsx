@@ -620,8 +620,12 @@ export default function NormalizacaoFlashPage() {
             Atualizar Conta Azul
           </Button>
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Recarregar
+            {loading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Recarregar retornos
           </Button>
           <Button size="sm" onClick={applyMappingToAllPending} disabled={mappings.length === 0}>
             <Wand2 className="h-4 w-4 mr-2" />
