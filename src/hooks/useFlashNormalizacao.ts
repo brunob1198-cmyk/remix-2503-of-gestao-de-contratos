@@ -334,12 +334,14 @@ export function useFlashNormalizacao() {
 
   useEffect(() => {
     if (empresaId) {
-      fetchData();
+      fetchData().catch(err => console.error("Initial fetchData failed:", err));
+    } else {
+      setLoading(false);
     }
   }, [empresaId, fetchData]);
 
   useEffect(() => {
-    fetchMetadata();
+    fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
   }, [fetchMetadata]);
 
   const mappingByType = useMemo(() => {
