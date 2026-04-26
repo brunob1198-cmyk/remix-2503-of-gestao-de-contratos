@@ -177,10 +177,12 @@ export default function NormalizacaoFlashPage() {
   const handleRefresh = async () => {
     setLoadingFilter(true);
     try {
+      console.log("Manual refresh triggered");
       await refresh(true);
       // O hook já emite o toast de sucesso e faz o log
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao recarregar manualmente:", error);
+      toast.error("Erro ao recarregar", { description: error.message });
     } finally {
       setLoadingFilter(false);
     }
