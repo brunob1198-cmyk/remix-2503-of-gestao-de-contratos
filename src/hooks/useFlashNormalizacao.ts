@@ -165,8 +165,15 @@ export function useFlashNormalizacao() {
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!empresaId) return;
     setLoading(true);
-    if (forceRefresh) toast.info("Recarregando dados do banco...");
+    if (forceRefresh) {
+      toast.info("Recarregando dados do banco...");
+      console.log("Forcing database refresh for empresaId:", empresaId);
+    }
+    
     try {
+      // Use a cache buster or a unique timestamp to ensure no caching if possible, 
+      // though Supabase client usually bypasses browser cache for POST/GET with auth.
+      
       // 1. Fetch raw transactions, normalization and mapping
       const [txRes, normRes, mapRes] = await Promise.all([
         supabase
@@ -190,6 +197,8 @@ export function useFlashNormalizacao() {
       if (txRes.error) throw txRes.error;
       if (normRes.error) throw normRes.error;
       if (mapRes.error) throw mapRes.error;
+
+      console.log(`Fetched ${txRes.data?.length || 0} raw transactions and ${normRes.data?.length || 0} normalization records.`);
 
       const normByTx = new Map<string, any>();
       (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
@@ -266,17 +275,18 @@ export function useFlashNormalizacao() {
       setMappings(mappingList);
 
       if (autoNormPayloads.length > 0) {
-        supabase
+        const { error: upsertError } = await supabase
           .from("flash_normalizacao")
-          .upsert(autoNormPayloads, { onConflict: "flash_transaction_id" })
-          .then(({ error }) => {
-            if (error) console.error("Auto-normalização falhou:", error);
-          });
+          .upsert(autoNormPayloads, { onConflict: "flash_transaction_id" });
+        
+        if (upsertError) {
+          console.error("Auto-normalização falhou:", upsertError);
+        }
       }
       
       if (forceRefresh) {
         toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`);
-        console.log("Forced refresh complete. Rows:", rows.length);
+        console.log("Forced refresh complete. Total rows in state:", rows.length);
       }
     } catch (e: any) {
       console.error("fetchData error:", e);
