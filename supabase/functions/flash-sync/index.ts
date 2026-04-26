@@ -153,20 +153,37 @@ async function getTransactions(params: {
 
     lastResponse = payload;
     const list = extractList(payload);
-    all.push(...list);
+
+    // Detecta se a página atual contém apenas IDs já vistos — sinal de que
+    // a API ignorou a paginação (loop infinito retornando a mesma página).
+    let newOnPage = 0;
+    for (const tx of list) {
+      const id = (tx.id as string) ?? (tx.external_id as string) ?? "";
+      if (id && seenIds.has(id)) continue;
+      if (id) seenIds.add(id);
+      all.push(tx);
+      newOnPage += 1;
+    }
     pagesFetched += 1;
+    console.log(`[flash-sync] Page ${page}: received=${list.length}, new=${newOnPage}, totalUnique=${all.length}`);
 
     // Pagination control
-    const nextCursor = (payload.next_cursor ?? payload.nextCursor ?? null) as string | null;
+    const nextCursor = (payload.next_cursor ?? payload.nextCursor ?? payload.pageToken ?? payload.nextPageToken ?? null) as string | null;
     const nextPage = payload.next_page ?? payload.nextPage ?? null;
     const totalPages = payload.total_pages ?? payload.totalPages ?? null;
     const hasMore = payload.has_more ?? payload.hasMore ?? null;
 
-    if (nextCursor) {
+    // Se a página inteira foi de duplicatas → API não respeita paginação. Pare.
+    if (list.length > 0 && newOnPage === 0) {
+      console.warn(`[flash-sync] Página ${page} sem novos itens — interrompendo paginação.`);
+      break;
+    }
+
+    if (nextCursor && nextCursor !== cursor) {
       cursor = nextCursor;
       continue;
     }
-    if (typeof nextPage === "number") {
+    if (typeof nextPage === "number" && nextPage > page) {
       page = nextPage;
       continue;
     }
