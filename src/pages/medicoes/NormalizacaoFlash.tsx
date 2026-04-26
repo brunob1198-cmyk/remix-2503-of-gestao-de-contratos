@@ -648,29 +648,74 @@ export default function NormalizacaoFlashPage() {
         <TabsContent value="lancamentos" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-base">Lançamentos Flash</CardTitle>
-                <div className="ml-auto flex flex-wrap gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar..."
-                      className="pl-8 h-9 w-[200px]"
-                    />
+              <div className="flex flex-col space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-base">Lançamentos Flash</CardTitle>
+                  <div className="ml-auto flex flex-wrap gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Buscar descrição, usuário..."
+                        className="pl-8 h-9 w-[250px]"
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[160px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os status</SelectItem>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="normalizado">Normalizado</SelectItem>
+                        <SelectItem value="enviado">Enviado</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[160px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os status</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="normalizado">Normalizado</SelectItem>
-                      <SelectItem value="enviado">Enviado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <MultiSelectFilter 
+                    title="Usuário" 
+                    options={filterOptions.users} 
+                    selected={selectedUsers} 
+                    onSelect={setSelectedUsers} 
+                  />
+                  <MultiSelectFilter 
+                    title="Tipo Flash" 
+                    options={filterOptions.types} 
+                    selected={selectedTypes} 
+                    onSelect={setSelectedTypes} 
+                  />
+                  <MultiSelectFilter 
+                    title="Categoria Flash" 
+                    options={filterOptions.categories} 
+                    selected={selectedCategories} 
+                    onSelect={setSelectedCategories} 
+                  />
+                  <MultiSelectFilter 
+                    title="Centro de Custo" 
+                    options={filterOptions.costCenters} 
+                    selected={selectedCostCenters} 
+                    onSelect={setSelectedCostCenters} 
+                  />
+                  
+                  {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setSelectedUsers([]);
+                        setSelectedTypes([]);
+                        setSelectedCategories([]);
+                        setSelectedCostCenters([]);
+                      }}
+                      className="h-8 px-2 lg:px-3"
+                    >
+                      Limpar filtros
+                      <RotateCcw className="ml-2 h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
