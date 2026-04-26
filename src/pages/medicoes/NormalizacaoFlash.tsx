@@ -212,6 +212,10 @@ export default function NormalizacaoFlashPage() {
   const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>(
     searchParams.get("costCenters")?.split(",").filter(Boolean) || []
   );
+
+  // Period filter (applies to all tabs)
+  const [dateFrom, setDateFrom] = useState<string>(searchParams.get("from") || "");
+  const [dateTo, setDateTo] = useState<string>(searchParams.get("to") || "");
   
   // Sort from URL
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(
