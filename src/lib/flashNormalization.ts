@@ -98,7 +98,11 @@ const pickNumber = (payload: any, paths: string[]): number => {
 };
 
 export const extractFlashType = (transaction: FlashRawTransactionLike): string => {
-  if (transaction.flash_type && transaction.flash_type.trim()) return transaction.flash_type.trim();
+  if (transaction.flash_type && transaction.flash_type.trim()) {
+    const type = transaction.flash_type.trim();
+    if (type === "CORPORATE_CARD") return "Cartão Corporativo";
+    return type;
+  }
   const fromPayload = pickValue(transaction.payload_json, [
     "type",
     "tipo",
@@ -107,6 +111,8 @@ export const extractFlashType = (transaction: FlashRawTransactionLike): string =
     "transaction_type",
     "expense_type",
   ]);
+  
+  if (fromPayload === "CORPORATE_CARD") return "Cartão Corporativo";
   return fromPayload || "indefinido";
 };
 

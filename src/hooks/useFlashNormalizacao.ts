@@ -86,6 +86,9 @@ const pickPayloadNumber = (payload: any, paths: string[]): number => {
 
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
+  const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
+  const flash_type = flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw;
+
   return {
     id: raw.id,
     external_id: raw.external_id,
@@ -96,8 +99,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario:
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
-    flash_type:
-      pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido",
+    flash_type,
     flash_category: pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome"]) || "—",
     flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo"]) || "—",
   };
