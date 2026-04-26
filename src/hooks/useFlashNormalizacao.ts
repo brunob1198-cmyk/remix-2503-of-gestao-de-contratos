@@ -174,8 +174,7 @@ export function useFlashNormalizacao() {
           .not("payload_json->type", "eq", "DEPOSIT") // Filtra depósitos na raiz
           .not("payload_json->tipo", "eq", "DEPOSIT")
           .not("payload_json->transaction_type", "eq", "DEPOSIT")
-          .order("created_at", { ascending: false })
-          .limit(500),
+          .order("created_at", { ascending: false }),
         supabase
           .from("flash_normalizacao")
           .select("*")

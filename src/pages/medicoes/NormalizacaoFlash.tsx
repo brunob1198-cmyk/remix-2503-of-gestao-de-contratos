@@ -799,7 +799,7 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto relative min-h-[400px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
