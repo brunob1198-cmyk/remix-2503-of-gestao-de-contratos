@@ -300,7 +300,7 @@ export function useFlashNormalizacao() {
       }
       
       if (forceRefresh) {
-        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`);
+        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`, { id: "refresh-flash" });
         console.log("Forced refresh complete. Total rows in state:", rows.length);
       }
     } catch (e: any) {
