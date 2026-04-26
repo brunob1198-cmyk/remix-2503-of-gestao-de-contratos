@@ -50,8 +50,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  ChevronDown,
   Eye,
   FileSpreadsheet,
+  Filter,
   Info,
   Loader2,
   RefreshCw,
@@ -69,6 +88,7 @@ import {
   type ContaAzulOption,
 } from "@/hooks/useFlashNormalizacao";
 import { exportNormalizacaoFlashToExcel } from "@/lib/flashNormalizacaoExport";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -155,6 +175,13 @@ export default function NormalizacaoFlashPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
 
+  // Filtros Avançados
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(null);
+
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
@@ -168,9 +195,26 @@ export default function NormalizacaoFlashPage() {
   const [bulkSaveMapping, setBulkSaveMapping] = useState(true);
   const [bulkApplying, setBulkApplying] = useState(false);
 
+  // Extract unique values for filters
+  const filterOptions = useMemo(() => {
+    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    
+    return { users, types, categories, costCenters };
+  }, [transactions]);
+
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    let result = transactions.filter((t) => {
       if (statusFilter !== "todos" && t.status !== statusFilter) return false;
+      
+      // Multi-select filters
+      if (selectedUsers.length > 0 && !selectedUsers.includes(t.usuario)) return false;
+      if (selectedTypes.length > 0 && !selectedTypes.includes(t.flash_type)) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
+      if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -182,7 +226,23 @@ export default function NormalizacaoFlashPage() {
       }
       return true;
     });
-  }, [transactions, statusFilter, search]);
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        
+        if (aVal === bVal) return 0;
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
+        
+        const comparison = aVal < bVal ? -1 : 1;
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return result;
+  }, [transactions, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
 
   const pendentes = useMemo(
     () => transactions.filter((t) => t.status === "pendente"),
@@ -260,6 +320,118 @@ export default function NormalizacaoFlashPage() {
     } finally {
       setBulkApplying(false);
     }
+  };
+
+  const toggleSort = (key: keyof FlashTransactionRow) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        return null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const MultiSelectFilter = ({ 
+    title, 
+    options, 
+    selected, 
+    onSelect 
+  }: { 
+    title: string; 
+    options: string[]; 
+    selected: string[]; 
+    onSelect: (val: string[]) => void 
+  }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 border-dashed">
+            <Filter className="mr-2 h-3 w-3" />
+            {title}
+            {selected.length > 0 && (
+              <>
+                <Separator orientation="vertical" className="mx-2 h-4" />
+                <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                  {selected.length}
+                </Badge>
+                <div className="hidden space-x-1 lg:flex">
+                  {selected.length > 2 ? (
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {selected.length} selecionados
+                    </Badge>
+                  ) : (
+                    options
+                      .filter((option) => selected.includes(option))
+                      .map((option) => (
+                        <Badge variant="secondary" key={option} className="rounded-sm px-1 font-normal">
+                          {option}
+                        </Badge>
+                      ))
+                  )}
+                </div>
+              </>
+            )}
+            <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={title} />
+            <CommandList>
+              <CommandEmpty>Nenhum resultado.</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected.includes(option);
+                  return (
+                    <CommandItem
+                      key={option}
+                      onSelect={() => {
+                        if (isSelected) {
+                          onSelect(selected.filter((s) => s !== option));
+                        } else {
+                          onSelect([...selected, option]);
+                        }
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Checkbox checked={isSelected} className="h-3 w-3" />
+                      </div>
+                      <span className="truncate">{option}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              {selected.length > 0 && (
+                <>
+                  <Separator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => onSelect([])}
+                      className="justify-center text-center"
+                    >
+                      Limpar filtros
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+  const SortIcon = ({ column }: { column: keyof FlashTransactionRow }) => {
+    if (sortConfig?.key !== column) return <ArrowUpAZ className="ml-2 h-3 w-3 opacity-0 group-hover:opacity-50" />;
+    return sortConfig.direction === 'asc' ? <ArrowUpAZ className="ml-2 h-3 w-3" /> : <ArrowDownAZ className="ml-2 h-3 w-3" />;
   };
 
   const renderActionButtons = (row: FlashTransactionRow) => {
@@ -476,29 +648,74 @@ export default function NormalizacaoFlashPage() {
         <TabsContent value="lancamentos" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-base">Lançamentos Flash</CardTitle>
-                <div className="ml-auto flex flex-wrap gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar..."
-                      className="pl-8 h-9 w-[200px]"
-                    />
+              <div className="flex flex-col space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-base">Lançamentos Flash</CardTitle>
+                  <div className="ml-auto flex flex-wrap gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Buscar descrição, usuário..."
+                        className="pl-8 h-9 w-[250px]"
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[160px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os status</SelectItem>
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="normalizado">Normalizado</SelectItem>
+                        <SelectItem value="enviado">Enviado</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[160px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os status</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="normalizado">Normalizado</SelectItem>
-                      <SelectItem value="enviado">Enviado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-2">
+                  <MultiSelectFilter 
+                    title="Usuário" 
+                    options={filterOptions.users} 
+                    selected={selectedUsers} 
+                    onSelect={setSelectedUsers} 
+                  />
+                  <MultiSelectFilter 
+                    title="Tipo Flash" 
+                    options={filterOptions.types} 
+                    selected={selectedTypes} 
+                    onSelect={setSelectedTypes} 
+                  />
+                  <MultiSelectFilter 
+                    title="Categoria Flash" 
+                    options={filterOptions.categories} 
+                    selected={selectedCategories} 
+                    onSelect={setSelectedCategories} 
+                  />
+                  <MultiSelectFilter 
+                    title="Centro de Custo" 
+                    options={filterOptions.costCenters} 
+                    selected={selectedCostCenters} 
+                    onSelect={setSelectedCostCenters} 
+                  />
+                  
+                  {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setSelectedUsers([]);
+                        setSelectedTypes([]);
+                        setSelectedCategories([]);
+                        setSelectedCostCenters([]);
+                      }}
+                      className="h-8 px-2 lg:px-3"
+                    >
+                      Limpar filtros
+                      <RotateCcw className="ml-2 h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -517,13 +734,48 @@ export default function NormalizacaoFlashPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[90px]">Data</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="w-[110px] text-right">Valor</TableHead>
-                          <TableHead className="w-[120px]">Usuário</TableHead>
-                          <TableHead className="w-[120px]">Tipo Flash</TableHead>
-                          <TableHead className="w-[120px]">Categoria Flash</TableHead>
-                          <TableHead className="w-[120px]">Centro de Custo</TableHead>
+                          <TableHead 
+                            className="w-[90px] cursor-pointer group"
+                            onClick={() => toggleSort('data')}
+                          >
+                            <div className="flex items-center">Data <SortIcon column="data" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer group"
+                            onClick={() => toggleSort('descricao')}
+                          >
+                            <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[110px] text-right cursor-pointer group"
+                            onClick={() => toggleSort('valor')}
+                          >
+                            <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('usuario')}
+                          >
+                            <div className="flex items-center">Usuário <SortIcon column="usuario" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_type')}
+                          >
+                            <div className="flex items-center">Tipo Flash <SortIcon column="flash_type" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_category')}
+                          >
+                            <div className="flex items-center">Categoria Flash <SortIcon column="flash_category" /></div>
+                          </TableHead>
+                          <TableHead 
+                            className="w-[120px] cursor-pointer group"
+                            onClick={() => toggleSort('flash_cost_center')}
+                          >
+                            <div className="flex items-center">Centro de Custo <SortIcon column="flash_cost_center" /></div>
+                          </TableHead>
                           <TableHead className="w-[110px]">Operação</TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
