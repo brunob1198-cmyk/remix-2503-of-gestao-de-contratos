@@ -174,6 +174,14 @@ export default function NormalizacaoFlashPage() {
     sendToContaAzul,
   } = useFlashNormalizacao();
 
+  const handleRefresh = async () => {
+    toast.promise(refresh(), {
+      loading: 'Buscando lançamentos no banco de dados...',
+      success: 'Lançamentos atualizados com sucesso!',
+      error: 'Falha ao sincronizar dados.',
+    });
+  };
+
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Status filter from URL
@@ -637,7 +645,7 @@ export default function NormalizacaoFlashPage() {
             )}
             Atualizar Conta Azul
           </Button>
-          <Button variant="outline" size="sm" onClick={() => refresh()} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -1214,6 +1222,7 @@ export default function NormalizacaoFlashPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Dialog: Motivo da normalização */}
       <Dialog open={!!motivoDialogRow} onOpenChange={(o) => !o && setMotivoDialogRow(null)}>

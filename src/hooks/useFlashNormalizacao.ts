@@ -153,7 +153,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 export function useFlashNormalizacao() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Inicia como falso para evitar flash de loading infinito se profile demorar
   const [savingId, setSavingId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
   const [mappings, setMappings] = useState<CategoryMapping[]>([]);
@@ -167,12 +167,13 @@ export function useFlashNormalizacao() {
     setLoading(true);
     if (forceRefresh) toast.info("Recarregando dados do banco...");
     try {
+      // 1. Fetch raw transactions, normalization and mapping
       const [txRes, normRes, mapRes] = await Promise.all([
         supabase
           .from("flash_transactions_raw")
           .select("id, external_id, payload_json, created_at")
           .eq("empresa_id", empresaId)
-          .not("payload_json->type", "eq", "DEPOSIT") // Filtra depósitos na raiz
+          .not("payload_json->type", "eq", "DEPOSIT")
           .not("payload_json->tipo", "eq", "DEPOSIT")
           .not("payload_json->transaction_type", "eq", "DEPOSIT")
           .order("created_at", { ascending: false }),
@@ -204,7 +205,6 @@ export function useFlashNormalizacao() {
         const base = mapTransactionRow(raw);
         const n = normByTx.get(raw.id);
         
-        // Se já existe normalização, usamos ela
         if (n) {
           base.norm_id = n.id;
           base.conta_azul_category_id = n.conta_azul_category_id;
@@ -219,7 +219,6 @@ export function useFlashNormalizacao() {
           base.conta_azul_payload = n.conta_azul_payload;
           base.enviado_at = n.enviado_at;
 
-          // Se a conta não estiver preenchida na normalização salva, tentamos preencher com a conta fixa
           if (!base.conta_azul_account_id && flashAccount) {
             base.conta_azul_account_id = flashAccount.id;
             base.conta_azul_account_name = flashAccount.name;
@@ -228,7 +227,6 @@ export function useFlashNormalizacao() {
           return base;
         }
 
-        // Se não existe, tentamos normalizar agora
         const normalized = normalizeFlashTransaction(
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
           mappingIdx
@@ -245,7 +243,6 @@ export function useFlashNormalizacao() {
         base.mapping_id_usado = normalized.mapping_id_usado;
         base.conta_azul_payload = normalized.conta_azul_payload;
 
-        // Sempre criamos a normalização se ela não existir
         autoNormPayloads.push({
           empresa_id: empresaId,
           flash_transaction_id: raw.id,
@@ -276,9 +273,13 @@ export function useFlashNormalizacao() {
             if (error) console.error("Auto-normalização falhou:", error);
           });
       }
-      if (forceRefresh) toast.success("Dados atualizados com sucesso!");
+      
+      if (forceRefresh) {
+        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`);
+        console.log("Forced refresh complete. Rows:", rows.length);
+      }
     } catch (e: any) {
-      console.error(e);
+      console.error("fetchData error:", e);
       toast.error("Erro ao carregar dados", { description: e.message });
     } finally {
       setLoading(false);
@@ -307,8 +308,10 @@ export function useFlashNormalizacao() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (empresaId) {
+      fetchData();
+    }
+  }, [empresaId, fetchData]);
 
   useEffect(() => {
     fetchMetadata();
