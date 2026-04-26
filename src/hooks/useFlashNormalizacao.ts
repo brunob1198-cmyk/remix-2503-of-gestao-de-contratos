@@ -318,7 +318,7 @@ export function useFlashNormalizacao() {
     setLoadingMetadata(true);
     setMetadataError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: {} });
+      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force: true } });
       if (error) throw error;
       setCategorias(data?.categorias || []);
       setContas(data?.contas_financeiras || []);
