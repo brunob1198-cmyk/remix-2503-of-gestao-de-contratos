@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,16 +172,53 @@ export default function NormalizacaoFlashPage() {
     sendToContaAzul,
   } = useFlashNormalizacao();
 
-  const [statusFilter, setStatusFilter] = useState<string>("todos");
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Status filter from URL
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "todos");
+  // Search filter from URL
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
 
-  // Filtros Avançados
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(null);
+  // Multi-select filters from URL
+  const [selectedUsers, setSelectedUsers] = useState<string[]>(
+    searchParams.get("users")?.split(",").filter(Boolean) || []
+  );
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(
+    searchParams.get("types")?.split(",").filter(Boolean) || []
+  );
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    searchParams.get("categories")?.split(",").filter(Boolean) || []
+  );
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>(
+    searchParams.get("costCenters")?.split(",").filter(Boolean) || []
+  );
+  
+  // Sort from URL
+  const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(
+    searchParams.get("sort") ? {
+      key: searchParams.get("sort") as keyof FlashTransactionRow,
+      direction: (searchParams.get("dir") as 'asc' | 'desc') || 'asc'
+    } : null
+  );
+
+  // Update URL search params when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "todos") params.set("status", statusFilter);
+    if (search) params.set("q", search);
+    if (selectedUsers.length > 0) params.set("users", selectedUsers.join(","));
+    if (selectedTypes.length > 0) params.set("types", selectedTypes.join(","));
+    if (selectedCategories.length > 0) params.set("categories", selectedCategories.join(","));
+    if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
+    if (sortConfig) {
+      params.set("sort", sortConfig.key as string);
+      params.set("dir", sortConfig.direction);
+    }
+    
+    // Use replace: true to avoid filling history with every keystroke
+    setSearchParams(params, { replace: true });
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
