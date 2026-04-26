@@ -810,12 +810,24 @@ export default function NormalizacaoFlashPage() {
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Carregando lançamentos...</p>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                  Nenhum lançamento encontrado. Sincronize dados na tela "Integração Flash".
+                <div className="text-center py-12 text-muted-foreground text-sm flex flex-col items-center gap-2">
+                  <Search className="h-8 w-8 opacity-20" />
+                  <p>Nenhum lançamento encontrado para os filtros selecionados.</p>
+                  <Button variant="link" onClick={() => {
+                    setSearch("");
+                    setStatusFilter("todos");
+                    setSelectedUsers([]);
+                    setSelectedTypes([]);
+                    setSelectedCategories([]);
+                    setSelectedCostCenters([]);
+                  }}>
+                    Limpar todos os filtros
+                  </Button>
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>

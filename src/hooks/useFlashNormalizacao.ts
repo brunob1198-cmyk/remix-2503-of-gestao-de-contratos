@@ -153,7 +153,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 export function useFlashNormalizacao() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
-  const [loading, setLoading] = useState(true); // Alterado para true para garantir que o primeiro carregamento seja visível
+  const [loading, setLoading] = useState(false); 
   const [savingId, setSavingId] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
   const [mappings, setMappings] = useState<CategoryMapping[]>([]);
@@ -165,11 +165,12 @@ export function useFlashNormalizacao() {
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!empresaId) {
       console.log("fetchData skip: no empresaId");
+      setLoading(false);
       return;
     }
     setLoading(true);
     if (forceRefresh) {
-      toast.info("Recarregando dados do banco...");
+      toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
       console.log("Forcing database refresh for empresaId:", empresaId);
     }
     
@@ -182,9 +183,6 @@ export function useFlashNormalizacao() {
         .from("flash_transactions_raw")
         .select("id, external_id, payload_json, created_at")
         .eq("empresa_id", empresaId)
-        .not("payload_json->type", "eq", "DEPOSIT")
-        .not("payload_json->tipo", "eq", "DEPOSIT")
-        .not("payload_json->transaction_type", "eq", "DEPOSIT")
         .order("created_at", { ascending: false });
 
       if (txRes.error) {
@@ -302,12 +300,15 @@ export function useFlashNormalizacao() {
       }
       
       if (forceRefresh) {
-        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`);
+        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`, { id: "refresh-flash" });
         console.log("Forced refresh complete. Total rows in state:", rows.length);
       }
     } catch (e: any) {
       console.error("fetchData error:", e);
-      toast.error("Erro ao carregar dados", { description: e.message });
+      toast.error("Erro ao carregar dados", { 
+        description: e.message,
+        id: "refresh-flash" 
+      });
     } finally {
       setLoading(false);
     }
@@ -317,7 +318,7 @@ export function useFlashNormalizacao() {
     setLoadingMetadata(true);
     setMetadataError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: {} });
+      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force: true } });
       if (error) throw error;
       setCategorias(data?.categorias || []);
       setContas(data?.contas_financeiras || []);
@@ -328,7 +329,7 @@ export function useFlashNormalizacao() {
       console.error(e);
       const msg = e?.message || "Erro ao buscar metadata Conta Azul";
       setMetadataError(msg);
-      toast.error("Erro Conta Azul", { description: msg });
+      toast.error("Erro Conta Azul", { description: msg, id: "ca-metadata" });
     } finally {
       setLoadingMetadata(false);
     }
@@ -336,12 +337,14 @@ export function useFlashNormalizacao() {
 
   useEffect(() => {
     if (empresaId) {
-      fetchData();
+      fetchData().catch(err => console.error("Initial fetchData failed:", err));
+    } else {
+      setLoading(false);
     }
   }, [empresaId, fetchData]);
 
   useEffect(() => {
-    fetchMetadata();
+    fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
   }, [fetchMetadata]);
 
   const mappingByType = useMemo(() => {
