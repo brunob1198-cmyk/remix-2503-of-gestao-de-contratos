@@ -89,6 +89,18 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
   const flash_type = flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw;
 
+  const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome"]) || "—";
+  let flash_category = flash_category_raw;
+  
+  if (flash_category_raw === "Refeição") flash_category = "Refeição";
+  else if (flash_category_raw === "Alimentação") flash_category = "Alimentação";
+  else if (flash_category_raw === "Combustível") flash_category = "Combustível";
+  else if (flash_category_raw === "Mobilidade") flash_category = "Mobilidade";
+  else if (flash_category_raw === "Saúde") flash_category = "Saúde";
+  else if (flash_category_raw === "Cultura") flash_category = "Cultura";
+  else if (flash_category_raw === "Educação") flash_category = "Educação";
+  else if (flash_category_raw === "Outros") flash_category = "Outros";
+
   return {
     id: raw.id,
     external_id: raw.external_id,
@@ -100,7 +112,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     usuario:
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type,
-    flash_category: pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome"]) || "—",
+    flash_category,
     flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo"]) || "—",
   };
 };
