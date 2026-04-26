@@ -163,7 +163,10 @@ export function useFlashNormalizacao() {
   const [metadataError, setMetadataError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
-    if (!empresaId) return;
+    if (!empresaId) {
+      console.log("fetchData skip: no empresaId");
+      return;
+    }
     setLoading(true);
     if (forceRefresh) {
       toast.info("Recarregando dados do banco...");
@@ -171,32 +174,43 @@ export function useFlashNormalizacao() {
     }
     
     try {
-      // Use a cache buster or a unique timestamp to ensure no caching if possible, 
-      // though Supabase client usually bypasses browser cache for POST/GET with auth.
+      console.log("Fetching data for empresaId:", empresaId);
       
       // 1. Fetch raw transactions, normalization and mapping
-      const [txRes, normRes, mapRes] = await Promise.all([
-        supabase
-          .from("flash_transactions_raw")
-          .select("id, external_id, payload_json, created_at")
-          .eq("empresa_id", empresaId)
-          .not("payload_json->type", "eq", "DEPOSIT")
-          .not("payload_json->tipo", "eq", "DEPOSIT")
-          .not("payload_json->transaction_type", "eq", "DEPOSIT")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("flash_normalizacao")
-          .select("*")
-          .eq("empresa_id", empresaId),
-        supabase
-          .from("flash_category_mapping")
-          .select("*")
-          .eq("empresa_id", empresaId),
-      ]);
+      // We don't use Promise.all to isolate potential errors and ensure logs
+      const txRes = await supabase
+        .from("flash_transactions_raw")
+        .select("id, external_id, payload_json, created_at")
+        .eq("empresa_id", empresaId)
+        .not("payload_json->type", "eq", "DEPOSIT")
+        .not("payload_json->tipo", "eq", "DEPOSIT")
+        .not("payload_json->transaction_type", "eq", "DEPOSIT")
+        .order("created_at", { ascending: false });
 
-      if (txRes.error) throw txRes.error;
-      if (normRes.error) throw normRes.error;
-      if (mapRes.error) throw mapRes.error;
+      if (txRes.error) {
+        console.error("Error fetching raw transactions:", txRes.error);
+        throw txRes.error;
+      }
+
+      const normRes = await supabase
+        .from("flash_normalizacao")
+        .select("*")
+        .eq("empresa_id", empresaId);
+
+      if (normRes.error) {
+        console.error("Error fetching normalizations:", normRes.error);
+        throw normRes.error;
+      }
+
+      const mapRes = await supabase
+        .from("flash_category_mapping")
+        .select("*")
+        .eq("empresa_id", empresaId);
+
+      if (mapRes.error) {
+        console.error("Error fetching mappings:", mapRes.error);
+        throw mapRes.error;
+      }
 
       console.log(`Fetched ${txRes.data?.length || 0} raw transactions and ${normRes.data?.length || 0} normalization records.`);
 
@@ -207,6 +221,7 @@ export function useFlashNormalizacao() {
       const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
 
       const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+      // Use the latest 'contas' state or try to find it from the data if available
       const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
 
       const autoNormPayloads: any[] = [];
@@ -271,10 +286,12 @@ export function useFlashNormalizacao() {
         return base;
       });
 
+      console.log("Mapping completed. Final rows count:", rows.length);
       setTransactions(rows);
       setMappings(mappingList);
 
       if (autoNormPayloads.length > 0) {
+        console.log("Upserting auto-normalizations:", autoNormPayloads.length);
         const { error: upsertError } = await supabase
           .from("flash_normalizacao")
           .upsert(autoNormPayloads, { onConflict: "flash_transaction_id" });
