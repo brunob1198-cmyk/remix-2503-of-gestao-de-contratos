@@ -165,6 +165,7 @@ export function useFlashNormalizacao() {
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!empresaId) {
       console.log("fetchData skip: no empresaId");
+      setLoading(false);
       return;
     }
     setLoading(true);
