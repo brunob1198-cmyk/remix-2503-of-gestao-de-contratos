@@ -68,6 +68,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  CalendarRange,
   ChevronDown,
   Eye,
   FileSpreadsheet,
@@ -83,6 +84,7 @@ import {
   Wand2,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
