@@ -574,7 +574,8 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-xs truncate max-w-[120px]">
                                 {row.flash_cost_center}
                               </TableCell>
-                              <TableCell>
+                        <TableCell className="text-xs">{row.flash_cost_center}</TableCell>
+                        <TableCell>
                                 <Select
                                   value={row.tipo_operacao || "despesa"}
                                   onValueChange={(v) =>
