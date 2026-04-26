@@ -189,6 +189,8 @@ export default function RecursosPage() {
   const [editNome, setEditNome] = useState("");
   const [editCargo, setEditCargo] = useState("");
   const [editPlaca, setEditPlaca] = useState("");
+  const [editTipo, setEditTipo] = useState<TipoRecurso>("pessoa");
+  const [editUnidade, setEditUnidade] = useState<UnidadeRecurso>("hora");
   const [editCusto, setEditCusto] = useState("");
   const [editMotivo, setEditMotivo] = useState("");
   const [editDataInicio, setEditDataInicio] = useState(new Date().toISOString().split("T")[0]);
@@ -395,6 +397,8 @@ export default function RecursosPage() {
       setEditNome(r.nome);
       setEditCargo(r.cargo || "");
       setEditPlaca(r.placa || "");
+      setEditTipo(r.tipo);
+      setEditUnidade(r.unidade);
       setEditCusto(c ? String(c.custo_unitario) : "");
       setEditMotivo("");
       setEditDataInicio(new Date().toISOString().split("T")[0]);
@@ -405,14 +409,36 @@ export default function RecursosPage() {
   function handleEdit() {
     if (!editRecurso || !editCusto) return;
     const r = recursos.find((x) => x.id === editRecurso)!;
-    const needsUpdate = editNome !== r.nome || (r.tipo === "pessoa" && editCargo !== (r.cargo || "")) || (r.tipo === "veiculo" && editPlaca !== (r.placa || ""));
+    const needsUpdate = 
+      editNome !== r.nome || 
+      editTipo !== r.tipo ||
+      editUnidade !== r.unidade ||
+      (r.tipo === "pessoa" && editCargo !== (r.cargo || "")) || 
+      (r.tipo === "veiculo" && editPlaca !== (r.placa || ""));
+      
     if (needsUpdate) {
-      updateRecurso.mutate({ id: editRecurso, nome: editNome, ativo: r.ativo, cargo: r.tipo === "pessoa" ? editCargo || null : undefined, placa: r.tipo === "veiculo" ? editPlaca || null : undefined });
+      updateRecurso.mutate({ 
+        id: editRecurso, 
+        nome: editNome, 
+        ativo: r.ativo, 
+        tipo: editTipo,
+        unidade: editUnidade,
+        cargo: editTipo === "pessoa" ? editCargo || null : null, 
+        placa: editTipo === "veiculo" ? editPlaca || null : null 
+      });
     }
-    updateCusto.mutate(
-      { recurso_id: editRecurso, custo_unitario: parseFloat(editCusto), data_inicio: editDataInicio, motivo: editMotivo || undefined },
-      { onSuccess: () => setEditRecurso(null) }
-    );
+    
+    const currentCusto = getCustoAtual(editRecurso);
+    const newCustoVal = parseFloat(editCusto);
+    
+    if (!currentCusto || currentCusto.custo_unitario !== newCustoVal) {
+      updateCusto.mutate(
+        { recurso_id: editRecurso, custo_unitario: newCustoVal, data_inicio: editDataInicio, motivo: editMotivo || undefined },
+        { onSuccess: () => setEditRecurso(null) }
+      );
+    } else {
+      setEditRecurso(null);
+    }
   }
 
   function handleDelete() {
@@ -933,18 +959,33 @@ export default function RecursosPage() {
               <Label>Nome</Label>
               <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} />
             </div>
-            {editRecurso && recursos.find(r => r.id === editRecurso)?.tipo === "pessoa" && (
+            <div>
+              <Label>Tipo</Label>
+              <RadioGroup value={editTipo} onValueChange={(v) => setEditTipo(v as TipoRecurso)} className="flex gap-4 mt-1">
+                <div className="flex items-center gap-2"><RadioGroupItem value="pessoa" id="et-p" /><Label htmlFor="et-p">Pessoa</Label></div>
+                <div className="flex items-center gap-2"><RadioGroupItem value="equipamento" id="et-e" /><Label htmlFor="et-e">Equipamento</Label></div>
+                <div className="flex items-center gap-2"><RadioGroupItem value="veiculo" id="et-v" /><Label htmlFor="et-v">Veículo</Label></div>
+              </RadioGroup>
+            </div>
+            {editTipo === "pessoa" && (
               <div>
                 <Label>Cargo / Função</Label>
                 <Input value={editCargo} onChange={(e) => setEditCargo(e.target.value)} placeholder="Ex: Pedreiro, Servente" />
               </div>
             )}
-            {editRecurso && recursos.find(r => r.id === editRecurso)?.tipo === "veiculo" && (
+            {editTipo === "veiculo" && (
               <div>
                 <Label>Placa</Label>
                 <Input value={editPlaca} onChange={(e) => setEditPlaca(e.target.value)} placeholder="Ex: ABC-1D23" />
               </div>
             )}
+            <div>
+              <Label>Unidade</Label>
+              <RadioGroup value={editUnidade} onValueChange={(v) => setEditUnidade(v as UnidadeRecurso)} className="flex gap-4 mt-1">
+                <div className="flex items-center gap-2"><RadioGroupItem value="hora" id="eu-h" /><Label htmlFor="eu-h">Hora</Label></div>
+                <div className="flex items-center gap-2"><RadioGroupItem value="dia" id="eu-d" /><Label htmlFor="eu-d">Dia</Label></div>
+              </RadioGroup>
+            </div>
             <div>
               <Label>Custo atual (R$)</Label>
               <Input type="number" value={editCusto} onChange={(e) => setEditCusto(e.target.value)} />
