@@ -113,7 +113,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type,
     flash_category,
-    flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo"]) || "—",
+    flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "centro_custo", "employee.costCenter.name", "user.costCenter.name"]) || "—",
   };
 };
 
