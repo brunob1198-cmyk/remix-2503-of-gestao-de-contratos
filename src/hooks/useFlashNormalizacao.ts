@@ -327,11 +327,14 @@ export function useFlashNormalizacao() {
       }
       setSavingId(row.id);
       try {
+        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+
         const merged = {
           conta_azul_category_id: patch.conta_azul_category_id ?? row.conta_azul_category_id ?? null,
           conta_azul_category_name: patch.conta_azul_category_name ?? row.conta_azul_category_name ?? null,
-          conta_azul_account_id: patch.conta_azul_account_id ?? row.conta_azul_account_id ?? null,
-          conta_azul_account_name: patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
+          conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id ?? null,
+          conta_azul_account_name: flashAccount?.name ?? patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
           tipo_operacao: patch.tipo_operacao ?? row.tipo_operacao ?? "despesa",
           status: patch.status ?? row.status ?? "pendente",
         };
