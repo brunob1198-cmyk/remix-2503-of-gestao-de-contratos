@@ -175,6 +175,13 @@ export default function NormalizacaoFlashPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
 
+  // Filtros Avançados
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(null);
+
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
@@ -188,9 +195,26 @@ export default function NormalizacaoFlashPage() {
   const [bulkSaveMapping, setBulkSaveMapping] = useState(true);
   const [bulkApplying, setBulkApplying] = useState(false);
 
+  // Extract unique values for filters
+  const filterOptions = useMemo(() => {
+    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    
+    return { users, types, categories, costCenters };
+  }, [transactions]);
+
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    let result = transactions.filter((t) => {
       if (statusFilter !== "todos" && t.status !== statusFilter) return false;
+      
+      // Multi-select filters
+      if (selectedUsers.length > 0 && !selectedUsers.includes(t.usuario)) return false;
+      if (selectedTypes.length > 0 && !selectedTypes.includes(t.flash_type)) return false;
+      if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
+      if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -202,7 +226,23 @@ export default function NormalizacaoFlashPage() {
       }
       return true;
     });
-  }, [transactions, statusFilter, search]);
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+        
+        if (aVal === bVal) return 0;
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
+        
+        const comparison = aVal < bVal ? -1 : 1;
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return result;
+  }, [transactions, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
 
   const pendentes = useMemo(
     () => transactions.filter((t) => t.status === "pendente"),
