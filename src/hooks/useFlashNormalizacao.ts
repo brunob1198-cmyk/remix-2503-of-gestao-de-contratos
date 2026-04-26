@@ -305,7 +305,10 @@ export function useFlashNormalizacao() {
       }
     } catch (e: any) {
       console.error("fetchData error:", e);
-      toast.error("Erro ao carregar dados", { description: e.message });
+      toast.error("Erro ao carregar dados", { 
+        description: e.message,
+        id: "refresh-flash" 
+      });
     } finally {
       setLoading(false);
     }
