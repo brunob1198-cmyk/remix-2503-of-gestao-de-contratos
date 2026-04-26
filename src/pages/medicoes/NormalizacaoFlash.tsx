@@ -175,14 +175,19 @@ export default function NormalizacaoFlashPage() {
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
-    toast.promise(refresh(), {
-      loading: 'Buscando lançamentos no banco de dados...',
-      success: 'Lançamentos atualizados com sucesso!',
-      error: 'Falha ao sincronizar dados.',
-    });
+    setLoadingFilter(true);
+    try {
+      await refresh(true);
+      // O hook já emite o toast de sucesso e faz o log
+    } catch (error) {
+      console.error("Erro ao recarregar manualmente:", error);
+    } finally {
+      setLoadingFilter(false);
+    }
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const [loadingFilter, setLoadingFilter] = useState(false);
   
   // Status filter from URL
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "todos");
@@ -645,8 +650,13 @@ export default function NormalizacaoFlashPage() {
             )}
             Atualizar Conta Azul
           </Button>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-            {loading ? (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh} 
+            disabled={loading || loadingFilter}
+          >
+            {loading || loadingFilter ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
