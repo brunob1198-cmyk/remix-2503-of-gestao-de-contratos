@@ -85,45 +85,57 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
   const map = (categoriaErp || "").toLowerCase();
   const desc = (descricao || "").toLowerCase();
 
-  // New DE-PARA Internalized logic as fallback
+  // Internalized DE-PARA logic based on provided table
+  // Materials
   if (
     map.includes("construção") || map.includes("elétrica") || map.includes("hidráulica") || 
     map.includes("material") || map.includes("ferramentas") || map.includes("cimento") || 
     map.includes("areia") || map.includes("brita") || map.includes("tintas") || 
-    map.includes("epi") || map.includes("aço") || desc.includes("aço") || desc.includes("cimento")
+    map.includes("acabamento") || map.includes("epi") || map.includes("aço") ||
+    desc.includes("aço") || desc.includes("cimento") || desc.includes("tinta")
   ) return "Materiais";
 
+  // Mão de Obra
   if (
     map.includes("salário") || map.includes("folha") || map.includes("encargos") || 
     map.includes("fgts") || map.includes("inss") || map.includes("subempreiteiro") || 
     map.includes("terceiros") || map.includes("horas extras") || map.includes("periculosidade") ||
-    desc.includes("mão de obra") || desc.includes("obra")
+    map.includes("insalubridade") || map.includes("adicional") ||
+    desc.includes("mão de obra") || desc.includes("serviço de") || desc.includes("obra")
   ) return "Mão de Obra";
 
+  // Equipamentos
   if (
     map.includes("máquina") || map.includes("andaime") || map.includes("locação") || 
-    map.includes("aluguel") || map.includes("ferramenta elétrica") || map.includes("manutenção de equipamento")
+    map.includes("aluguel de máquinas") || map.includes("ferramenta elétrica") || 
+    map.includes("manutenção de equipamento") || map.includes("betoneira") ||
+    map.includes("munck") || map.includes("escavadeira")
   ) return "Equipamentos";
 
+  // Transporte
   if (
     map.includes("transporte") || map.includes("frete") || map.includes("carreto") || 
     map.includes("veículo") || map.includes("pedágio") || map.includes("estacionamento") ||
-    map.includes("combustível")
+    map.includes("combustível") || map.includes("viagem") || map.includes("hospedagem")
   ) {
-    if (map.includes("máquina")) return "Equipamentos";
+    // If it's specifically for machines, it's Equipamentos, otherwise Transporte
+    if (map.includes("máquina") || desc.includes("máquina")) return "Equipamentos";
     return "Transporte";
   }
 
+  // Indiretos
   if (
     map.includes("aluguel de container") || map.includes("água") || map.includes("luz") || 
     map.includes("internet") || map.includes("telefone") || map.includes("limpeza") || 
-    map.includes("segurança") || map.includes("vigilância") || map.includes("sede") || map.includes("jardim américa")
+    map.includes("segurança") || map.includes("vigilância") || map.includes("sede") || 
+    map.includes("escritório") || map.includes("canteiro") || map.includes("seguro") ||
+    map.includes("taxa") || map.includes("imposto") || map.includes("alvará") || map.includes("iss")
   ) return "Indiretos";
 
+  // Financeiros (Fallback for specific finance cases)
   if (
-    map.includes("taxa") || map.includes("licença") || map.includes("seguro") || 
     map.includes("financeiro") || map.includes("tarifa") || map.includes("juros") || 
-    map.includes("multa") || map.includes("banco") || map.includes("imposto")
+    map.includes("multa") || map.includes("banco")
   ) return "Financeiros";
 
   return "Indiretos";
