@@ -163,8 +163,10 @@ export function useRecursos() {
   });
 
   const updateRecurso = useMutation({
-    mutationFn: async (input: { id: string; nome: string; ativo: boolean; cargo?: string | null; placa?: string | null }) => {
+    mutationFn: async (input: { id: string; nome: string; ativo: boolean; tipo?: TipoRecurso; unidade?: UnidadeRecurso; cargo?: string | null; placa?: string | null }) => {
       const updateData: any = { nome: input.nome, ativo: input.ativo };
+      if (input.tipo !== undefined) updateData.tipo = input.tipo;
+      if (input.unidade !== undefined) updateData.unidade = input.unidade;
       if (input.cargo !== undefined) updateData.cargo = input.cargo;
       if (input.placa !== undefined) updateData.placa = input.placa;
       const { error } = await supabase
