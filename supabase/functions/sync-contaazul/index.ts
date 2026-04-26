@@ -85,11 +85,47 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
   const map = (categoriaErp || "").toLowerCase();
   const desc = (descricao || "").toLowerCase();
 
-  if (map.includes("folha") || map.includes("salário") || desc.includes("obra") || map.includes("remuneração")) return "Mão de Obra";
-  if (map.includes("aço") || map.includes("cimento") || map.includes("material") || map.includes("fornecedor")) return "Materiais";
-  if (map.includes("aluguel") || map.includes("locação") || map.includes("equipamento") || map.includes("ferramenta")) return "Equipamentos";
-  if (map.includes("frete") || map.includes("combustível") || map.includes("transporte")) return "Transporte";
-  if (map.includes("imposto") || map.includes("banco") || map.includes("financeiro") || map.includes("tarifa") || map.includes("juros")) return "Financeiros";
+  // New DE-PARA Internalized logic as fallback
+  if (
+    map.includes("construção") || map.includes("elétrica") || map.includes("hidráulica") || 
+    map.includes("material") || map.includes("ferramentas") || map.includes("cimento") || 
+    map.includes("areia") || map.includes("brita") || map.includes("tintas") || 
+    map.includes("epi") || map.includes("aço") || desc.includes("aço") || desc.includes("cimento")
+  ) return "Materiais";
+
+  if (
+    map.includes("salário") || map.includes("folha") || map.includes("encargos") || 
+    map.includes("fgts") || map.includes("inss") || map.includes("subempreiteiro") || 
+    map.includes("terceiros") || map.includes("horas extras") || map.includes("periculosidade") ||
+    desc.includes("mão de obra") || desc.includes("obra")
+  ) return "Mão de Obra";
+
+  if (
+    map.includes("máquina") || map.includes("andaime") || map.includes("locação") || 
+    map.includes("aluguel") || map.includes("ferramenta elétrica") || map.includes("manutenção de equipamento")
+  ) return "Equipamentos";
+
+  if (
+    map.includes("transporte") || map.includes("frete") || map.includes("carreto") || 
+    map.includes("veículo") || map.includes("pedágio") || map.includes("estacionamento") ||
+    map.includes("combustível")
+  ) {
+    if (map.includes("máquina")) return "Equipamentos";
+    return "Transporte";
+  }
+
+  if (
+    map.includes("aluguel de container") || map.includes("água") || map.includes("luz") || 
+    map.includes("internet") || map.includes("telefone") || map.includes("limpeza") || 
+    map.includes("segurança") || map.includes("vigilância") || map.includes("sede") || map.includes("jardim américa")
+  ) return "Indiretos";
+
+  if (
+    map.includes("taxa") || map.includes("licença") || map.includes("seguro") || 
+    map.includes("financeiro") || map.includes("tarifa") || map.includes("juros") || 
+    map.includes("multa") || map.includes("banco") || map.includes("imposto")
+  ) return "Financeiros";
+
   return "Indiretos";
 }
 
