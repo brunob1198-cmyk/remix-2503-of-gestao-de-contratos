@@ -28,6 +28,7 @@ export interface FlashTransactionRow {
   flash_type: string;
   flash_category: string;
   flash_cost_center: string;
+  comentarios: string;
   // normalization
   norm_id?: string;
   conta_azul_category_id?: string | null;
@@ -145,6 +146,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "costCenter.externalId",
       "costCenter.code"
     ]) || "—",
+    comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "observation", "note"]) || "—",
   };
 };
 
