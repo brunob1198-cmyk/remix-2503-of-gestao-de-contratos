@@ -68,6 +68,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
+  CalendarRange,
   ChevronDown,
   Eye,
   FileSpreadsheet,
@@ -83,6 +84,7 @@ import {
   Wand2,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -210,6 +212,10 @@ export default function NormalizacaoFlashPage() {
   const [selectedCostCenters, setSelectedCostCenters] = useState<string[]>(
     searchParams.get("costCenters")?.split(",").filter(Boolean) || []
   );
+
+  // Period filter (applies to all tabs)
+  const [dateFrom, setDateFrom] = useState<string>(searchParams.get("from") || "");
+  const [dateTo, setDateTo] = useState<string>(searchParams.get("to") || "");
   
   // Sort from URL
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(
@@ -226,7 +232,7 @@ export default function NormalizacaoFlashPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -237,6 +243,8 @@ export default function NormalizacaoFlashPage() {
     if (selectedTypes.length > 0) params.set("types", selectedTypes.join(","));
     if (selectedCategories.length > 0) params.set("categories", selectedCategories.join(","));
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
     if (sortConfig) {
       params.set("sort", sortConfig.key as string);
       params.set("dir", sortConfig.direction);
@@ -244,7 +252,7 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
@@ -268,18 +276,49 @@ export default function NormalizacaoFlashPage() {
     }
   }, [contas]);
 
-  // Extract unique values for filters
+  // Helper: parse a tx date as a comparable yyyy-mm-dd string (or null)
+  const txDateKey = (d: string | null): string | null => {
+    if (!d) return null;
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) {
+        // Already in yyyy-mm-dd?
+        if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+        return null;
+      }
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const day = String(dt.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    } catch {
+      return null;
+    }
+  };
+
+  // Apply the period filter first — used by all tabs
+  const dateFiltered = useMemo(() => {
+    if (!dateFrom && !dateTo) return transactions;
+    return transactions.filter((t) => {
+      const k = txDateKey(t.data);
+      if (!k) return !dateFrom && !dateTo ? true : false;
+      if (dateFrom && k < dateFrom) return false;
+      if (dateTo && k > dateTo) return false;
+      return true;
+    });
+  }, [transactions, dateFrom, dateTo]);
+
+  // Extract unique values for filters (from period-filtered data)
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const users = Array.from(new Set(dateFiltered.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(dateFiltered.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(dateFiltered.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(dateFiltered.map(t => t.flash_cost_center))).filter(Boolean).sort();
     
     return { users, types, categories, costCenters };
-  }, [transactions]);
+  }, [dateFiltered]);
 
   const filtered = useMemo(() => {
-    let result = transactions.filter((t) => {
+    let result = dateFiltered.filter((t) => {
       if (statusFilter !== "todos" && t.status !== statusFilter) return false;
       
       // Multi-select filters
@@ -315,7 +354,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [transactions, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -325,12 +364,12 @@ export default function NormalizacaoFlashPage() {
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const pendentes = useMemo(
-    () => transactions.filter((t) => t.status === "pendente"),
-    [transactions]
+    () => dateFiltered.filter((t) => t.status === "pendente"),
+    [dateFiltered]
   );
 
   const counts = useMemo(() => {
-    return transactions.reduce(
+    return dateFiltered.reduce(
       (acc, t) => {
         acc.total += 1;
         if (t.status === "normalizado") acc.normalizado += 1;
@@ -340,7 +379,7 @@ export default function NormalizacaoFlashPage() {
       },
       { total: 0, pendente: 0, normalizado: 0, enviado: 0 }
     );
-  }, [transactions]);
+  }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     const m = mappingByType.get(row.flash_type);
@@ -498,6 +537,91 @@ export default function NormalizacaoFlashPage() {
                       className="justify-center text-center"
                     >
                       Limpar filtros
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+  // Compact filter to embed inside a column header (icon button).
+  const ColumnHeaderFilter = ({
+    title,
+    options,
+    selected,
+    onSelect,
+  }: {
+    title: string;
+    options: string[];
+    selected: string[];
+    onSelect: (val: string[]) => void;
+  }) => {
+    const active = selected.length > 0;
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("h-6 w-6 shrink-0", active && "text-primary")}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Filtrar ${title}`}
+          >
+            <Filter className={cn("h-3 w-3", active && "fill-current")} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[220px] p-0"
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Command>
+            <CommandInput placeholder={`Filtrar ${title}...`} />
+            <CommandList>
+              <CommandEmpty>Nenhum resultado.</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected.includes(option);
+                  return (
+                    <CommandItem
+                      key={option}
+                      onSelect={() => {
+                        if (isSelected) {
+                          onSelect(selected.filter((s) => s !== option));
+                        } else {
+                          onSelect([...selected, option]);
+                        }
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Checkbox checked={isSelected} className="h-3 w-3" />
+                      </div>
+                      <span className="truncate">{option}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              {active && (
+                <>
+                  <Separator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => onSelect([])}
+                      className="justify-center text-center"
+                    >
+                      Limpar
                     </CommandItem>
                   </CommandGroup>
                 </>
@@ -727,6 +851,55 @@ export default function NormalizacaoFlashPage() {
         </Card>
       </div>
 
+      {/* Filtro de período global — vale para Lançamentos, Pendentes e contadores */}
+      <Card>
+        <CardContent className="py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CalendarRange className="h-4 w-4 text-muted-foreground" />
+              <span>Período</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">De</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 w-[150px] text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">Até</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 w-[150px] text-xs"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                <X className="mr-1 h-3 w-3" />
+                Limpar período
+              </Button>
+            )}
+            <span className="ml-auto text-xs text-muted-foreground">
+              {dateFrom || dateTo
+                ? `Aplicado a todas as abas — ${dateFiltered.length} lançamento(s) no período`
+                : "Sem filtro — exibindo todos os lançamentos"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
         <TabsList>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
@@ -763,49 +936,46 @@ export default function NormalizacaoFlashPage() {
                     </Select>
                   </div>
                 </div>
-                
-                <div className="flex flex-wrap items-center gap-2">
-                  <MultiSelectFilter 
-                    title="Usuário" 
-                    options={filterOptions.users} 
-                    selected={selectedUsers} 
-                    onSelect={setSelectedUsers} 
-                  />
-                  <MultiSelectFilter 
-                    title="Tipo Flash" 
-                    options={filterOptions.types} 
-                    selected={selectedTypes} 
-                    onSelect={setSelectedTypes} 
-                  />
-                  <MultiSelectFilter 
-                    title="Categoria Flash" 
-                    options={filterOptions.categories} 
-                    selected={selectedCategories} 
-                    onSelect={setSelectedCategories} 
-                  />
-                  <MultiSelectFilter 
-                    title="Centro de Custo" 
-                    options={filterOptions.costCenters} 
-                    selected={selectedCostCenters} 
-                    onSelect={setSelectedCostCenters} 
-                  />
-                  
-                  {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
-                    <Button 
-                      variant="ghost" 
+
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
+                    {selectedUsers.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Usuário ({selectedUsers.length})
+                      </Badge>
+                    )}
+                    {selectedTypes.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Tipo Flash ({selectedTypes.length})
+                      </Badge>
+                    )}
+                    {selectedCategories.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Categoria Flash ({selectedCategories.length})
+                      </Badge>
+                    )}
+                    {selectedCostCenters.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Centro de Custo ({selectedCostCenters.length})
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setSelectedUsers([]);
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                       }}
-                      className="h-8 px-2 lg:px-3"
+                      className="h-7 px-2"
                     >
-                      Limpar filtros
-                      <RotateCcw className="ml-2 h-3 w-3" />
+                      Limpar
+                      <RotateCcw className="ml-1 h-3 w-3" />
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -853,11 +1023,22 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
                           </TableHead>
-                           <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('usuario')}
-                          >
-                            <div className="flex items-center">Usuário <SortIcon column="usuario" /></div>
+                           <TableHead className="w-[140px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('usuario')}
+                              >
+                                Usuário <SortIcon column="usuario" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Usuário"
+                                options={filterOptions.users}
+                                selected={selectedUsers}
+                                onSelect={setSelectedUsers}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
                             className="w-[150px] cursor-pointer group"
@@ -865,23 +1046,56 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center">Comentários <SortIcon column="comentarios" /></div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_type')}
-                          >
-                            <div className="flex items-center">Tipo Flash <SortIcon column="flash_type" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_type')}
+                              >
+                                Tipo Flash <SortIcon column="flash_type" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Tipo Flash"
+                                options={filterOptions.types}
+                                selected={selectedTypes}
+                                onSelect={setSelectedTypes}
+                              />
+                            </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_category')}
-                          >
-                            <div className="flex items-center">Categoria Flash <SortIcon column="flash_category" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_category')}
+                              >
+                                Categoria Flash <SortIcon column="flash_category" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Categoria Flash"
+                                options={filterOptions.categories}
+                                selected={selectedCategories}
+                                onSelect={setSelectedCategories}
+                              />
+                            </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_cost_center')}
-                          >
-                            <div className="flex items-center">Centro de Custo <SortIcon column="flash_cost_center" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_cost_center')}
+                              >
+                                Centro de Custo <SortIcon column="flash_cost_center" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Centro de Custo"
+                                options={filterOptions.costCenters}
+                                selected={selectedCostCenters}
+                                onSelect={setSelectedCostCenters}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
