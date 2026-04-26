@@ -329,7 +329,7 @@ export function useFlashNormalizacao() {
       console.error(e);
       const msg = e?.message || "Erro ao buscar metadata Conta Azul";
       setMetadataError(msg);
-      toast.error("Erro Conta Azul", { description: msg });
+      toast.error("Erro Conta Azul", { description: msg, id: "ca-metadata" });
     } finally {
       setLoadingMetadata(false);
     }
