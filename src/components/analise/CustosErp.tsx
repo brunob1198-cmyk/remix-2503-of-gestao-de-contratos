@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,10 @@ import { format, parseISO } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
-import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X, AlertCircle, CheckCircle2, Wand2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface CustosErpProps {
   projetoIds: string[];
@@ -19,7 +20,6 @@ interface CustosErpProps {
   periodoFim: Date;
 }
 
-// Categorias padrão usadas na Análise de Custos
 const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
@@ -104,127 +104,60 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
 }
 
 export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpProps) {
-  const { custosErp, loadCustos, updateCategoria } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
+  const { custosErp, loadCustos, updateCategoria, updateBulkCategorias, categoriasMapeamento } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
 
   const allCols: ColKey[] = ["competencia", "descricao", "mapeamento", "centro_custo", "valor", "status", "categoria"];
 
-  // Persist filters to localStorage
-  const STORAGE_KEY = "custos_erp_filters";
-
-  function loadPersisted() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return null;
-  }
-
-  const persisted = useMemo(() => loadPersisted(), []);
-
-  const [sortCol, setSortCol] = useState<ColKey | null>(persisted?.sortCol ?? null);
-  const [sortDir, setSortDir] = useState<SortDir>(persisted?.sortDir ?? null);
+  const [sortCol, setSortCol] = useState<ColKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(persisted?.itemsPerPage ?? 20);
-  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
-    if (persisted?.searchTexts) return persisted.searchTexts;
-    const init: any = {};
-    allCols.forEach(c => init[c] = "");
-    return init;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>({
+    competencia: "", descricao: "", mapeamento: "", centro_custo: "", valor: "", status: "", categoria: ""
   });
-  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>(() => {
-    if (persisted?.selectedFilters) {
-      const restored: any = {};
-      allCols.forEach(c => restored[c] = new Set(persisted.selectedFilters[c] || []));
-      return restored;
-    }
-    const init: any = {};
-    allCols.forEach(c => init[c] = new Set());
-    return init;
+  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>({
+    competencia: new Set(), descricao: new Set(), mapeamento: new Set(), centro_custo: new Set(), valor: new Set(), status: new Set(), categoria: new Set()
   });
 
-  // Save to localStorage on change
-  useEffect(() => {
-    try {
-      const serializable: any = {
-        sortCol, sortDir, itemsPerPage, searchTexts,
-        selectedFilters: Object.fromEntries(allCols.map(c => [c, Array.from(selectedFilters[c])])),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-    } catch {}
-  }, [sortCol, sortDir, itemsPerPage, searchTexts, selectedFilters]);
-
-  function handleSort(col: ColKey) {
-    if (sortCol === col) {
-      setSortDir(prev => prev === "asc" ? "desc" : prev === "desc" ? null : "asc");
-      if (sortDir === "desc") setSortCol(null);
-    } else {
-      setSortCol(col);
-      setSortDir("asc");
-    }
-  }
-
-  function setSearchText(col: ColKey, v: string) {
-    setSearchTexts(prev => ({ ...prev, [col]: v }));
-  }
-  function toggleValue(col: ColKey, v: string) {
-    setSelectedFilters(prev => {
-      const next = new Set(prev[col]);
-      next.has(v) ? next.delete(v) : next.add(v);
-      return { ...prev, [col]: next };
-    });
-  }
-  function selectAll(col: ColKey, values: string[]) {
-    setSelectedFilters(prev => ({ ...prev, [col]: new Set(values) }));
-  }
-  function clearAll(col: ColKey) {
-    setSelectedFilters(prev => ({ ...prev, [col]: new Set() }));
-  }
+  const [showOnlyConflicts, setShowOnlyConflicts] = useState(false);
 
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
     allCols.forEach(col => {
       const vals = Array.from(new Set(custosErp.map(item => getColValue(item, col))));
-      if (col === "competencia") {
-        // Sort dates chronologically by underlying ISO date
-        const dateMap = new Map<string, string>();
-        custosErp.forEach(item => {
-          const display = getColValue(item, col);
-          if (!dateMap.has(display)) dateMap.set(display, item.data_competencia || "");
-        });
-        vals.sort((a, b) => (dateMap.get(a) || "").localeCompare(dateMap.get(b) || ""));
-      } else {
-        vals.sort();
-      }
+      vals.sort();
       result[col] = vals;
     });
     return result;
   }, [custosErp]);
 
+  const conflicts = useMemo(() => {
+    return custosErp.filter(item => {
+      const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
+      return mapping && mapping.categoria_interna !== item.categoria_interna;
+    });
+  }, [custosErp, categoriasMapeamento]);
+
   const filteredItems = useMemo(() => {
-    let items = [...custosErp];
+    let items = showOnlyConflicts ? conflicts : [...custosErp];
+    
     for (const col of allCols) {
       const search = searchTexts[col].toLowerCase();
       const selected = selectedFilters[col];
       if (search) items = items.filter(item => getColValue(item, col).toLowerCase().includes(search));
       if (selected.size > 0) items = items.filter(item => selected.has(getColValue(item, col)));
     }
+
     if (sortCol && sortDir) {
       items.sort((a, b) => {
-        if (sortCol === "competencia") {
-          const da = a.data_competencia || "";
-          const db = b.data_competencia || "";
-          return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
-        }
         let va = getColValue(a, sortCol);
         let vb = getColValue(b, sortCol);
-        if (sortCol === "valor") {
-          return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
-        }
+        if (sortCol === "valor") return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
         return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
       });
     }
     return items;
-  }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
+  }, [custosErp, conflicts, showOnlyConflicts, searchTexts, selectedFilters, sortCol, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -233,73 +166,81 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     return filteredItems.slice(start, start + itemsPerPage);
   }, [filteredItems, safeCurrentPage, itemsPerPage]);
 
-  // Reset page when filters change
-  const filterKey = JSON.stringify({ searchTexts, selectedFilters: Object.fromEntries(allCols.map(c => [c, Array.from(selectedFilters[c])])) });
-  useMemo(() => { setCurrentPage(1); }, [filterKey]);
-
-  const hasActiveFilters = allCols.some(c => searchTexts[c] !== "" || selectedFilters[c].size > 0);
-
-  function clearAllFilters() {
-    const emptySearch: any = {};
-    const emptyFilter: any = {};
-    allCols.forEach(c => { emptySearch[c] = ""; emptyFilter[c] = new Set(); });
-    setSearchTexts(emptySearch);
-    setSelectedFilters(emptyFilter);
-    setSortCol(null);
-    setSortDir(null);
-    setCurrentPage(1);
-  }
-
-  function handleExportExcel() {
-    const rows = filteredItems.map(item => ({
-      [COL_LABELS.competencia]: item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-",
-      [COL_LABELS.descricao]: item.descricao,
-      [COL_LABELS.mapeamento]: item.categoria_erp,
-      [COL_LABELS.centro_custo]: item.centro_custo || "",
-      [COL_LABELS.valor]: item.valor,
-      [COL_LABELS.status]: item.status_erp?.toUpperCase() || "",
-      [COL_LABELS.categoria]: item.categoria_interna,
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Auditoria ERP");
-    XLSX.writeFile(wb, `auditoria_erp_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-  }
+  const handleBulkCorrect = () => {
+    const updates = conflicts.map(item => {
+      const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
+      return {
+        erp_id: item.erp_id,
+        categoria_erp: item.categoria_erp,
+        categoria_interna: mapping?.categoria_interna || item.categoria_interna
+      };
+    });
+    updateBulkCategorias.mutate(updates);
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
   return (
     <Card className="mt-4">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle>Auditoria de Despesas - Conta Azul</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Auditoria de Despesas - Conta Azul
+              {conflicts.length > 0 && (
+                <Badge variant="destructive" className="animate-pulse">
+                  {conflicts.length} Incoerências
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>
-              Visualize e re-categorize as despesas vinculadas a esta Obra e Site (Centro de Custo). A Inteligência Artificial já tentou categorizar os itens iniciais.
+              Verificação automática de categorias ERP vs Regras de Mapeamento (DE-PARA).
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                <X className="h-4 w-4 mr-1" /> Limpar filtros
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              variant={showOnlyConflicts ? "destructive" : "outline"} 
+              size="sm" 
+              onClick={() => setShowOnlyConflicts(!showOnlyConflicts)}
+              className="gap-2"
+            >
+              <AlertCircle className="h-4 w-4" />
+              {showOnlyConflicts ? "Mostrar Tudo" : "Ver Incoerências"}
+            </Button>
+            {conflicts.length > 0 && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-white"
+                onClick={handleBulkCorrect}
+                disabled={updateBulkCategorias.isPending}
+              >
+                {updateBulkCategorias.isPending ? <Wand2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Corrigir {conflicts.length} em Lote
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={filteredItems.length === 0}>
-              <Download className="h-4 w-4 mr-1" /> Exportar Excel
+            <Button variant="outline" size="sm" onClick={() => {}} disabled={filteredItems.length === 0}>
+              <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {conflicts.length > 0 && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Incoerências Identificadas</AlertTitle>
+            <AlertDescription>
+              Foram encontrados {conflicts.length} lançamentos cujas categorias atuais divergem das regras de mapeamento salvas. Clique em "Corrigir em Lote" para aplicar as regras do DE-PARA automaticamente.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {loadCustos ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-20 w-full" />
             <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : custosErp.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground border rounded-md">
-            Nenhuma despesa ou pagamento ERP encontrado para este mês ou site.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border">
@@ -307,70 +248,79 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               <thead className="bg-muted text-muted-foreground">
                 <tr>
                   {allCols.map(col => (
-                    <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : col === "status" || col === "categoria" ? "text-center" : "text-left"} whitespace-nowrap`}>
+                    <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
                       <ColumnHeaderFilter
                         label={COL_LABELS[col]}
                         sortDir={sortCol === col ? sortDir : null}
-                        onSort={() => handleSort(col)}
+                        onSort={() => {
+                          if (sortCol === col) setSortDir(sortDir === "asc" ? "desc" : sortDir === "desc" ? null : "asc");
+                          else { setSortCol(col); setSortDir("asc"); }
+                        }}
                         searchText={searchTexts[col]}
-                        onSearchChange={(v) => setSearchText(col, v)}
+                        onSearchChange={(v) => setSearchTexts(prev => ({ ...prev, [col]: v }))}
                         uniqueValues={uniqueValues[col]}
                         selectedValues={selectedFilters[col]}
-                        onToggleValue={(v) => toggleValue(col, v)}
-                        onSelectAll={() => selectAll(col, uniqueValues[col])}
-                        onClearAll={() => clearAll(col)}
+                        onToggleValue={(v) => {
+                          const next = new Set(selectedFilters[col]);
+                          next.has(v) ? next.delete(v) : next.add(v);
+                          setSelectedFilters(prev => ({ ...prev, [col]: next }));
+                        }}
+                        onSelectAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set(uniqueValues[col]) }))}
+                        onClearAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set() }))}
                       />
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredItems.length === 0 ? (
-                  <tr><td colSpan={allCols.length} className="text-center py-6 text-muted-foreground">Nenhum resultado com os filtros aplicados</td></tr>
-                ) : paginatedItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-muted/10">
-                    <td className="py-2 px-3 text-muted-foreground">
-                       {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
-                    </td>
-                    <td className="py-2 px-3 font-medium">{item.descricao}</td>
-                    <td className="py-2 px-3 text-xs text-muted-foreground">{item.categoria_erp}</td>
-                    <td className="py-2 px-3 text-xs">
-                       {item.centro_custo ? (
-                         <Badge variant="outline" className="bg-primary/5">{item.centro_custo}</Badge>
-                       ) : (
-                         <span className="text-muted-foreground italic">Sem vínculo</span>
-                       )}
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono">{formatCurrency(item.valor)}</td>
-                    <td className="py-2 px-3 text-center">
-                       <Badge variant={item.status_erp === "pago" ? "secondary" : "outline"} className={item.status_erp === "pago" ? "bg-emerald-500/10 text-emerald-600" : ""}>
-                         {item.status_erp?.toUpperCase()}
-                       </Badge>
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                       <Select 
-                         value={item.categoria_interna} 
-                         onValueChange={(val) => updateCategoria.mutate({ erpId: item.erp_id, newCategoria: val })}
-                       >
-                         <SelectTrigger className="h-7 text-xs">
-                           <SelectValue />
-                         </SelectTrigger>
-                         <SelectContent>
-                            {CATEGORIAS_PADRAO.map(cat => (
-                              <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
-                            ))}
-                         </SelectContent>
-                       </Select>
-                    </td>
-                  </tr>
-                ))}
-                {filteredItems.length > 0 && (
-                  <tr className="bg-muted/50 font-semibold border-t-2">
-                    <td colSpan={4} className="py-2 px-3 text-right">Subtotal (todos os {filteredItems.length} registros)</td>
-                    <td className="py-2 px-3 text-right font-mono">{formatCurrency(filteredItems.reduce((acc, item) => acc + Number(item.valor), 0))}</td>
-                    <td colSpan={2}></td>
-                  </tr>
-                )}
+                {paginatedItems.map((item) => {
+                  const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
+                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna;
+                  
+                  return (
+                    <tr key={item.id} className={`hover:bg-muted/10 transition-colors ${isConflict ? "bg-red-50/50 dark:bg-red-950/10" : ""}`}>
+                      <td className="py-2 px-3 text-muted-foreground">
+                        {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
+                      </td>
+                      <td className="py-2 px-3 font-medium">{item.descricao}</td>
+                      <td className="py-2 px-3 text-xs text-muted-foreground">
+                        {item.categoria_erp}
+                        {isConflict && (
+                          <div className="text-[10px] text-destructive mt-1 font-medium">
+                            Sugestão DE-PARA: {mapping.categoria_interna}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-xs">
+                        {item.centro_custo ? <Badge variant="outline">{item.centro_custo}</Badge> : "-"}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono">{formatCurrency(item.valor)}</td>
+                      <td className="py-2 px-3">
+                        <Badge variant={item.status_erp === "pago" ? "secondary" : "outline"}>
+                          {item.status_erp?.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={item.categoria_interna} 
+                            onValueChange={(val) => updateCategoria.mutate({ erpId: item.erp_id, newCategoria: val })}
+                          >
+                            <SelectTrigger className={`h-7 text-xs ${isConflict ? "border-destructive text-destructive font-bold" : ""}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORIAS_PADRAO.map(cat => (
+                                <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {isConflict && <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <TablePagination
@@ -378,7 +328,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               itemsPerPage={itemsPerPage}
-              onItemsPerPageChange={(v) => { setItemsPerPage(v); setCurrentPage(1); }}
+              onItemsPerPageChange={setItemsPerPage}
               totalItems={filteredItems.length}
             />
           </div>
