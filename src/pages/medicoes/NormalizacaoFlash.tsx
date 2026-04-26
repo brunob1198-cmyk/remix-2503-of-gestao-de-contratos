@@ -1223,6 +1223,7 @@ export default function NormalizacaoFlashPage() {
         </DialogContent>
       </Dialog>
 
+
       {/* Dialog: Motivo da normalização */}
       <Dialog open={!!motivoDialogRow} onOpenChange={(o) => !o && setMotivoDialogRow(null)}>
         <DialogContent className="max-w-lg">
