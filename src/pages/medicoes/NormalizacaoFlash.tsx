@@ -174,6 +174,14 @@ export default function NormalizacaoFlashPage() {
     sendToContaAzul,
   } = useFlashNormalizacao();
 
+  const handleRefresh = async () => {
+    toast.promise(refresh(), {
+      loading: 'Buscando lançamentos no banco de dados...',
+      success: 'Lançamentos atualizados com sucesso!',
+      error: 'Falha ao sincronizar dados.',
+    });
+  };
+
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Status filter from URL
