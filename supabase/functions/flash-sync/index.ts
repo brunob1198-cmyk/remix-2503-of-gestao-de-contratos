@@ -101,23 +101,26 @@ async function getTransactions(params: {
 
   while (pagesFetched < FLASH_MAX_PAGES) {
     const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-    url.searchParams.set("start_date", startDate);
-    url.searchParams.set("end_date", endDate);
-    // Variações comuns de parâmetros de data (a API irá ignorar os inválidos)
+    // Filtros de data — a API Flash usa camelCase (startDate/endDate),
+    // mas mantemos as variantes snake_case para tolerância.
     url.searchParams.set("startDate", startDate);
     url.searchParams.set("endDate", endDate);
-    url.searchParams.set("createdAtFrom", startDate);
-    url.searchParams.set("createdAtTo", endDate);
-    url.searchParams.set("transactionDateFrom", startDate);
-    url.searchParams.set("transactionDateTo", endDate);
-    url.searchParams.set("expenseDateFrom", startDate);
-    url.searchParams.set("expenseDateTo", endDate);
+    url.searchParams.set("start_date", startDate);
+    url.searchParams.set("end_date", endDate);
+    // Tamanho de página — Flash usa pageSize (camelCase). Mantém variantes.
+    url.searchParams.set("pageSize", String(FLASH_PAGE_SIZE));
     url.searchParams.set("page_size", String(FLASH_PAGE_SIZE));
+    url.searchParams.set("limit", String(FLASH_PAGE_SIZE));
     if (cursor) {
       url.searchParams.set("cursor", cursor);
+      url.searchParams.set("pageToken", cursor);
     } else {
+      // Flash usa pageNumber (camelCase). Adicionamos variantes para compat.
+      url.searchParams.set("pageNumber", String(page));
       url.searchParams.set("page", String(page));
+      url.searchParams.set("offset", String((page - 1) * FLASH_PAGE_SIZE));
     }
+    console.log(`[flash-sync] Fetching page ${page} (cursor=${cursor ?? "none"}): ${url.toString()}`);
 
     const res = await fetch(url.toString(), {
       method: "GET",
