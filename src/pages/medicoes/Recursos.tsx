@@ -772,13 +772,31 @@ export default function RecursosPage() {
                             </TableCell>
                             <TableCell className="text-right whitespace-nowrap" style={{ width: actionsColumnWidth, minWidth: actionsColumnWidth }}>
                               <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => openEdit(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => openEdit(r.id)}
+                                  className="h-8 w-8 p-0 hover:bg-muted"
+                                  title="Editar recurso"
+                                >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => setHistRecurso(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => setHistRecurso(r.id)}
+                                  className="h-8 w-8 p-0 hover:bg-muted"
+                                  title="Histórico de custos"
+                                >
                                   <History className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                  onClick={() => setDeleteConfirmId(r.id)}
+                                  title="Excluir recurso"
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
