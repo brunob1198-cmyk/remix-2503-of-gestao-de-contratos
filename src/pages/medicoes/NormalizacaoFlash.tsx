@@ -548,6 +548,91 @@ export default function NormalizacaoFlashPage() {
     );
   };
 
+  // Compact filter to embed inside a column header (icon button).
+  const ColumnHeaderFilter = ({
+    title,
+    options,
+    selected,
+    onSelect,
+  }: {
+    title: string;
+    options: string[];
+    selected: string[];
+    onSelect: (val: string[]) => void;
+  }) => {
+    const active = selected.length > 0;
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("h-6 w-6 shrink-0", active && "text-primary")}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Filtrar ${title}`}
+          >
+            <Filter className={cn("h-3 w-3", active && "fill-current")} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[220px] p-0"
+          align="start"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Command>
+            <CommandInput placeholder={`Filtrar ${title}...`} />
+            <CommandList>
+              <CommandEmpty>Nenhum resultado.</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected.includes(option);
+                  return (
+                    <CommandItem
+                      key={option}
+                      onSelect={() => {
+                        if (isSelected) {
+                          onSelect(selected.filter((s) => s !== option));
+                        } else {
+                          onSelect([...selected, option]);
+                        }
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Checkbox checked={isSelected} className="h-3 w-3" />
+                      </div>
+                      <span className="truncate">{option}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              {active && (
+                <>
+                  <Separator />
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => onSelect([])}
+                      className="justify-center text-center"
+                    >
+                      Limpar
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   const SortIcon = ({ column }: { column: keyof FlashTransactionRow }) => {
     if (sortConfig?.key !== column) return <ArrowUpAZ className="ml-2 h-3 w-3 opacity-0 group-hover:opacity-50" />;
     return sortConfig.direction === 'asc' ? <ArrowUpAZ className="ml-2 h-3 w-3" /> : <ArrowDownAZ className="ml-2 h-3 w-3" />;
