@@ -271,7 +271,7 @@ export function useFlashNormalizacao() {
     } finally {
       setLoading(false);
     }
-  }, [empresaId]);
+  }, [empresaId, contas]);
 
   const fetchMetadata = useCallback(async () => {
     setLoadingMetadata(true);
