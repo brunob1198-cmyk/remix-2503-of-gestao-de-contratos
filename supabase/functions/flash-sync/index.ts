@@ -418,17 +418,28 @@ Deno.serve(async (req) => {
 
     let inserted = 0;
     if (transactions.length > 0) {
-      // Remove duplicates from the API response before upserting
+      // Deduplicação rigorosa antes de gravar no banco
+      // Usamos um conjunto por (external_id + data + valor) para garantir que
+      // nunca tentemos fazer upsert do mesmo registro lógico mais de uma vez no mesmo lote.
       const uniqueRowsMap = new Map();
+      
       transactions.forEach((tx, idx) => {
         const extId = extractExternalId(tx, idx);
-        const key = `${empresaId}:${extId}`;
-        // If the same external_id appears multiple times in the payload, 
-        // keep only one to avoid Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time"
-        if (!uniqueRowsMap.has(key)) {
-          uniqueRowsMap.set(key, {
+        
+        // Tenta extrair data e valor do payload para a chave de unicidade determinística
+        // Compatível com a nova constraint no banco
+        const txDate = tx.transaction_date || tx.date || tx.created_at || "no-date";
+        const txAmount = tx.amount || tx.value || 0;
+        
+        // Chave composta para evitar duplicatas da API no mesmo lote
+        const uniquenessKey = `${empresaId}:${extId}:${txDate}:${txAmount}`;
+        
+        if (!uniqueRowsMap.has(uniquenessKey)) {
+          uniqueRowsMap.set(uniquenessKey, {
             empresa_id: empresaId,
             external_id: extId,
+            transaction_date: txDate !== "no-date" ? txDate : null,
+            amount: typeof txAmount === "number" ? txAmount : parseFloat(String(txAmount)) || null,
             payload_json: tx,
           });
         }
@@ -439,13 +450,18 @@ Deno.serve(async (req) => {
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
+        // O conflito agora é resolvido pela chave determinística (empresa_id, external_id, transaction_date, amount)
         const { error: upsertError, count } = await adminClient
           .from("flash_transactions_raw")
           .upsert(chunk, {
-            onConflict: "empresa_id,external_id",
+            onConflict: "empresa_id,external_id,transaction_date,amount",
             count: "exact",
           });
-        if (upsertError) throw upsertError;
+        
+        if (upsertError) {
+          console.error(`Erro no lote de upsert (índice ${i}):`, upsertError);
+          throw upsertError;
+        }
         inserted += count ?? chunk.length;
       }
 

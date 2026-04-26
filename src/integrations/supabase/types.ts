@@ -1573,25 +1573,31 @@ export type Database = {
       }
       flash_transactions_raw: {
         Row: {
+          amount: number | null
           created_at: string
           empresa_id: string
           external_id: string
           id: string
           payload_json: Json
+          transaction_date: string | null
         }
         Insert: {
+          amount?: number | null
           created_at?: string
           empresa_id: string
           external_id: string
           id?: string
           payload_json: Json
+          transaction_date?: string | null
         }
         Update: {
+          amount?: number | null
           created_at?: string
           empresa_id?: string
           external_id?: string
           id?: string
           payload_json?: Json
+          transaction_date?: string | null
         }
         Relationships: [
           {
