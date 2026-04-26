@@ -1010,7 +1010,7 @@ export default function NormalizacaoFlashPage() {
                     value={bulkAcc?.id || null}
                     onChange={(id, name) => setBulkAcc({ id, name })}
                     placeholder="Selecionar..."
-                    disabled={true}
+                    disabled={loadingMetadata}
                   />
                 </div>
                 <div className="space-y-1">
