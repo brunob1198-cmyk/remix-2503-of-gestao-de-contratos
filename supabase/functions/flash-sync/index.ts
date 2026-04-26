@@ -94,6 +94,7 @@ async function getTransactions(params: {
 }> {
   const { startDate, endDate, token } = params;
   const all: FlashTransaction[] = [];
+  const seenIds = new Set<string>();
   let page = 1;
   let cursor: string | null = null;
   let pagesFetched = 0;
