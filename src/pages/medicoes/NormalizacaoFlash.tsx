@@ -888,7 +888,7 @@ export default function NormalizacaoFlashPage() {
                                     })
                                   }
                                   placeholder="Selecionar conta..."
-                                  disabled={fieldsDisabled}
+                                  disabled={true}
                                 />
                               </TableCell>
                               <TableCell>{statusBadge(row.status)}</TableCell>
