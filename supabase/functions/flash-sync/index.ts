@@ -439,52 +439,77 @@ Deno.serve(async (req) => {
 
     let inserted = 0;
     if (transactions.length > 0) {
-      // Deduplicação rigorosa antes de gravar no banco
-      // Usamos um conjunto por (external_id + data + valor) para garantir que
-      // nunca tentemos fazer upsert do mesmo registro lógico mais de uma vez no mesmo lote.
-      const uniqueRowsMap = new Map();
-      
+      // Deduplicação por external_id (chave de negócio da Flash).
+      // Garantimos que nunca tentemos fazer upsert do mesmo external_id duas
+      // vezes no mesmo lote — o que viola a constraint única e aborta a query.
+      const uniqueRowsMap = new Map<string, any>();
+
+      const toIsoDate = (raw: unknown): string | null => {
+        if (!raw) return null;
+        const s = String(raw);
+        // Já é YYYY-MM-DD?
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        // ISO datetime → pega só a parte da data
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (m) return m[1];
+        // Fallback: tenta parsear
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        return null;
+      };
+
       transactions.forEach((tx, idx) => {
         const extId = extractExternalId(tx, idx);
-        
-        // Tenta extrair data e valor do payload para a chave de unicidade determinística
-        // Compatível com a nova constraint no banco
-        const txDate = tx.transaction_date || tx.date || tx.created_at || "no-date";
-        const txAmount = tx.amount || tx.value || 0;
-        
-        // Chave composta para evitar duplicatas da API no mesmo lote
-        const uniquenessKey = `${empresaId}:${extId}:${txDate}:${txAmount}`;
-        
-        if (!uniqueRowsMap.has(uniquenessKey)) {
-          uniqueRowsMap.set(uniquenessKey, {
-            empresa_id: empresaId,
-            external_id: extId,
-            transaction_date: txDate !== "no-date" ? txDate : null,
-            amount: typeof txAmount === "number" ? txAmount : parseFloat(String(txAmount)) || null,
-            payload_json: tx,
-          });
-        }
+
+        // A API Flash retorna `date` no nível raiz da despesa (ISO datetime)
+        // e também em `transaction.date`. Tentamos múltiplos caminhos.
+        const txDate =
+          toIsoDate(tx.transaction_date) ||
+          toIsoDate(tx.date) ||
+          toIsoDate((tx as any).transaction?.date) ||
+          toIsoDate((tx as any).ocrData?.date) ||
+          toIsoDate(tx.created_at);
+
+        const rawAmount =
+          tx.amount ??
+          (tx as any).transaction?.amount ??
+          (tx as any).value ??
+          0;
+        const txAmount =
+          typeof rawAmount === "number"
+            ? rawAmount
+            : parseFloat(String(rawAmount)) || 0;
+
+        // Deduplica por external_id. Mantém o último (que tem dados mais ricos).
+        uniqueRowsMap.set(extId, {
+          empresa_id: empresaId,
+          external_id: extId,
+          transaction_date: txDate,
+          amount: txAmount,
+          payload_json: tx,
+        });
       });
 
       const rows = Array.from(uniqueRowsMap.values());
+      console.log(`[flash-sync] Total recebido: ${transactions.length}, únicos por external_id: ${rows.length}`);
 
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
-        // O conflito agora é resolvido pela chave determinística (empresa_id, external_id, transaction_date, amount)
         const { error: upsertError, count } = await adminClient
           .from("flash_transactions_raw")
           .upsert(chunk, {
             onConflict: "empresa_id,external_id,transaction_date,amount",
             count: "exact",
           });
-        
+
         if (upsertError) {
           console.error(`Erro no lote de upsert (índice ${i}):`, upsertError);
           throw upsertError;
         }
         inserted += count ?? chunk.length;
       }
+      console.log(`[flash-sync] Upsert concluído: ${inserted} linhas afetadas`);
 
       // Auto-normalization
       try {
