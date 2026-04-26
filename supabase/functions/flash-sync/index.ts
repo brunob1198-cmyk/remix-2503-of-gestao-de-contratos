@@ -418,11 +418,23 @@ Deno.serve(async (req) => {
 
     let inserted = 0;
     if (transactions.length > 0) {
-      const rows = transactions.map((tx, idx) => ({
-        empresa_id: empresaId,
-        external_id: extractExternalId(tx, idx),
-        payload_json: tx,
-      }));
+      // Remove duplicates from the API response before upserting
+      const uniqueRowsMap = new Map();
+      transactions.forEach((tx, idx) => {
+        const extId = extractExternalId(tx, idx);
+        const key = `${empresaId}:${extId}`;
+        // If the same external_id appears multiple times in the payload, 
+        // keep only one to avoid Postgres "ON CONFLICT DO UPDATE command cannot affect row a second time"
+        if (!uniqueRowsMap.has(key)) {
+          uniqueRowsMap.set(key, {
+            empresa_id: empresaId,
+            external_id: extId,
+            payload_json: tx,
+          });
+        }
+      });
+
+      const rows = Array.from(uniqueRowsMap.values());
 
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
@@ -432,7 +444,6 @@ Deno.serve(async (req) => {
           .upsert(chunk, {
             onConflict: "empresa_id,external_id",
             count: "exact",
-            ignoreDuplicates: false,
           });
         if (upsertError) throw upsertError;
         inserted += count ?? chunk.length;
@@ -460,15 +471,25 @@ Deno.serve(async (req) => {
         const normRows = (savedRows || []).map((r: any) => {
           const flash_type = pickFlashType(r.payload_json);
           const m = mappingIdx.get(flash_type);
-          const hasFull = !!(m && m.conta_azul_category_id && m.conta_azul_account_id);
+          
+          // Force use of "Flash - Cartão Corporativo" account (UUID from previous context/settings)
+          // We look for existing mapping or use default for the card account
+          const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash - Cartão Corporativo"
+          const fixedAccountName = "Flash - Cartão Corporativo";
+
+          const categoryId = m?.conta_azul_category_id ?? null;
+          const categoryName = m?.conta_azul_category_name ?? null;
+          
+          const hasFull = !!(categoryId && fixedAccountId);
+          
           return {
             empresa_id: empresaId,
             flash_transaction_id: r.id,
             tipo_operacao: m?.tipo_operacao || "despesa",
-            conta_azul_category_id: m?.conta_azul_category_id ?? null,
-            conta_azul_category_name: m?.conta_azul_category_name ?? null,
-            conta_azul_account_id: m?.conta_azul_account_id ?? null,
-            conta_azul_account_name: m?.conta_azul_account_name ?? null,
+            conta_azul_category_id: categoryId,
+            conta_azul_category_name: categoryName,
+            conta_azul_account_id: fixedAccountId,
+            conta_azul_account_name: fixedAccountName,
             status: hasFull ? "normalizado" : "pendente",
             normalizado_at: hasFull ? new Date().toISOString() : null,
           };
@@ -477,7 +498,9 @@ Deno.serve(async (req) => {
         if (normRows.length > 0) {
           const chunk = 500;
           for (let i = 0; i < normRows.length; i += chunk) {
-            await adminClient.from("flash_normalizacao").upsert(normRows.slice(i, i + chunk), { onConflict: "flash_transaction_id" });
+            await adminClient.from("flash_normalizacao").upsert(normRows.slice(i, i + chunk), { 
+              onConflict: "flash_transaction_id" 
+            });
           }
         }
       } catch (e) { console.error("Auto-norm failed", e); }

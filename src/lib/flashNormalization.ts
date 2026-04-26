@@ -155,8 +155,12 @@ export const normalizeFlashTransaction = (
     transaction.data ||
     pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
+  // Fixa a conta financeira conforme solicitado pelo usuário
+  const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash - Cartão Corporativo"
+  const fixedAccountName = "Flash - Cartão Corporativo";
+
   if (!mapping) {
-    const motivo = `Pendente: nenhum mapeamento encontrado para o tipo Flash "${flash_type}". Defina manualmente categoria e conta financeira.`;
+    const motivo = `Pendente: nenhum mapeamento encontrado para o tipo Flash "${flash_type}". Defina manualmente a categoria.`;
     return {
       flash_transaction_id: transaction.id,
       external_id: transaction.external_id ?? null,
@@ -165,8 +169,8 @@ export const normalizeFlashTransaction = (
       tipo_operacao: "despesa",
       conta_azul_category_id: null,
       conta_azul_category_name: null,
-      conta_azul_account_id: null,
-      conta_azul_account_name: null,
+      conta_azul_account_id: fixedAccountId,
+      conta_azul_account_name: fixedAccountName,
       mapping_id_usado: null,
       conta_azul_payload: null,
       requires_manual_review: true,
@@ -175,12 +179,13 @@ export const normalizeFlashTransaction = (
     };
   }
 
-  const hasFullMapping =
-    !!mapping.conta_azul_category_id && !!mapping.conta_azul_account_id;
+  const categoryId = mapping.conta_azul_category_id;
+  const categoryName = mapping.conta_azul_category_name;
+  const hasFullMapping = !!categoryId && !!fixedAccountId;
 
   const motivo = hasFullMapping
-    ? `Normalizado automaticamente via mapping do tipo "${flash_type}" → ${mapping.conta_azul_category_name || mapping.conta_azul_category_id} / ${mapping.conta_azul_account_name || mapping.conta_azul_account_id}.`
-    : `Pendente: mapping para "${flash_type}" existe mas está incompleto (faltando ${!mapping.conta_azul_category_id ? "categoria" : ""}${!mapping.conta_azul_category_id && !mapping.conta_azul_account_id ? " e " : ""}${!mapping.conta_azul_account_id ? "conta financeira" : ""}).`;
+    ? `Normalizado automaticamente via mapping do tipo "${flash_type}" → ${categoryName || categoryId} / ${fixedAccountName}.`
+    : `Pendente: mapping para "${flash_type}" existe mas está incompleto (faltando categoria).`;
 
   return {
     flash_transaction_id: transaction.id,
@@ -188,10 +193,10 @@ export const normalizeFlashTransaction = (
     flash_type,
     status: hasFullMapping ? "normalizado" : "pendente",
     tipo_operacao: mapping.tipo_operacao,
-    conta_azul_category_id: mapping.conta_azul_category_id,
-    conta_azul_category_name: mapping.conta_azul_category_name,
-    conta_azul_account_id: mapping.conta_azul_account_id,
-    conta_azul_account_name: mapping.conta_azul_account_name,
+    conta_azul_category_id: categoryId,
+    conta_azul_category_name: categoryName,
+    conta_azul_account_id: fixedAccountId,
+    conta_azul_account_name: fixedAccountName,
     mapping_id_usado: mapping.id ?? null,
     conta_azul_payload: hasFullMapping
       ? {
@@ -199,10 +204,10 @@ export const normalizeFlashTransaction = (
           amount: valor,
           date: data,
           type: mapping.tipo_operacao,
-          category_id: mapping.conta_azul_category_id,
-          category_name: mapping.conta_azul_category_name,
-          account_id: mapping.conta_azul_account_id,
-          account_name: mapping.conta_azul_account_name,
+          category_id: categoryId,
+          category_name: categoryName,
+          account_id: fixedAccountId,
+          account_name: fixedAccountName,
           external_id: transaction.external_id ?? null,
           flash_type,
         }
