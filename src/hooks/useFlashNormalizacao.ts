@@ -162,9 +162,10 @@ export function useFlashNormalizacao() {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     if (!empresaId) return;
     setLoading(true);
+    if (forceRefresh) toast.info("Recarregando dados do banco...");
     try {
       const [txRes, normRes, mapRes] = await Promise.all([
         supabase
@@ -275,6 +276,7 @@ export function useFlashNormalizacao() {
             if (error) console.error("Auto-normalização falhou:", error);
           });
       }
+      if (forceRefresh) toast.success("Dados atualizados com sucesso!");
     } catch (e: any) {
       console.error(e);
       toast.error("Erro ao carregar dados", { description: e.message });
