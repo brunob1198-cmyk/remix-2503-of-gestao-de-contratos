@@ -1024,8 +1024,12 @@ export default function RecursosPage() {
               <Label>Data início</Label>
               <Input type="date" value={editDataInicio} onChange={(e) => setEditDataInicio(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleEdit} disabled={updateCusto.isPending}>
-              {updateCusto.isPending ? "Salvando..." : "Salvar alteração"}
+            <Button 
+              className="w-full" 
+              onClick={handleEdit} 
+              disabled={updateRecurso.isPending || updateCusto.isPending}
+            >
+              {(updateRecurso.isPending || updateCusto.isPending) ? "Salvando..." : "Salvar alterações"}
             </Button>
           </div>
         </DialogContent>
