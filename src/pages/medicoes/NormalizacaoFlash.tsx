@@ -1023,11 +1023,22 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
                           </TableHead>
-                           <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('usuario')}
-                          >
-                            <div className="flex items-center">Usuário <SortIcon column="usuario" /></div>
+                           <TableHead className="w-[140px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('usuario')}
+                              >
+                                Usuário <SortIcon column="usuario" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Usuário"
+                                options={filterOptions.users}
+                                selected={selectedUsers}
+                                onSelect={setSelectedUsers}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
                             className="w-[150px] cursor-pointer group"
@@ -1035,23 +1046,56 @@ export default function NormalizacaoFlashPage() {
                           >
                             <div className="flex items-center">Comentários <SortIcon column="comentarios" /></div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_type')}
-                          >
-                            <div className="flex items-center">Tipo Flash <SortIcon column="flash_type" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_type')}
+                              >
+                                Tipo Flash <SortIcon column="flash_type" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Tipo Flash"
+                                options={filterOptions.types}
+                                selected={selectedTypes}
+                                onSelect={setSelectedTypes}
+                              />
+                            </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_category')}
-                          >
-                            <div className="flex items-center">Categoria Flash <SortIcon column="flash_category" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_category')}
+                              >
+                                Categoria Flash <SortIcon column="flash_category" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Categoria Flash"
+                                options={filterOptions.categories}
+                                selected={selectedCategories}
+                                onSelect={setSelectedCategories}
+                              />
+                            </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[120px] cursor-pointer group"
-                            onClick={() => toggleSort('flash_cost_center')}
-                          >
-                            <div className="flex items-center">Centro de Custo <SortIcon column="flash_cost_center" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_cost_center')}
+                              >
+                                Centro de Custo <SortIcon column="flash_cost_center" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Centro de Custo"
+                                options={filterOptions.costCenters}
+                                selected={selectedCostCenters}
+                                onSelect={setSelectedCostCenters}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
