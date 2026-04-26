@@ -94,6 +94,7 @@ async function getTransactions(params: {
 }> {
   const { startDate, endDate, token } = params;
   const all: FlashTransaction[] = [];
+  const seenIds = new Set<string>();
   let page = 1;
   let cursor: string | null = null;
   let pagesFetched = 0;
@@ -101,23 +102,26 @@ async function getTransactions(params: {
 
   while (pagesFetched < FLASH_MAX_PAGES) {
     const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
-    url.searchParams.set("start_date", startDate);
-    url.searchParams.set("end_date", endDate);
-    // Variações comuns de parâmetros de data (a API irá ignorar os inválidos)
+    // Filtros de data — a API Flash usa camelCase (startDate/endDate),
+    // mas mantemos as variantes snake_case para tolerância.
     url.searchParams.set("startDate", startDate);
     url.searchParams.set("endDate", endDate);
-    url.searchParams.set("createdAtFrom", startDate);
-    url.searchParams.set("createdAtTo", endDate);
-    url.searchParams.set("transactionDateFrom", startDate);
-    url.searchParams.set("transactionDateTo", endDate);
-    url.searchParams.set("expenseDateFrom", startDate);
-    url.searchParams.set("expenseDateTo", endDate);
+    url.searchParams.set("start_date", startDate);
+    url.searchParams.set("end_date", endDate);
+    // Tamanho de página — Flash usa pageSize (camelCase). Mantém variantes.
+    url.searchParams.set("pageSize", String(FLASH_PAGE_SIZE));
     url.searchParams.set("page_size", String(FLASH_PAGE_SIZE));
+    url.searchParams.set("limit", String(FLASH_PAGE_SIZE));
     if (cursor) {
       url.searchParams.set("cursor", cursor);
+      url.searchParams.set("pageToken", cursor);
     } else {
+      // Flash usa pageNumber (camelCase). Adicionamos variantes para compat.
+      url.searchParams.set("pageNumber", String(page));
       url.searchParams.set("page", String(page));
+      url.searchParams.set("offset", String((page - 1) * FLASH_PAGE_SIZE));
     }
+    console.log(`[flash-sync] Fetching page ${page} (cursor=${cursor ?? "none"}): ${url.toString()}`);
 
     const res = await fetch(url.toString(), {
       method: "GET",
@@ -149,20 +153,37 @@ async function getTransactions(params: {
 
     lastResponse = payload;
     const list = extractList(payload);
-    all.push(...list);
+
+    // Detecta se a página atual contém apenas IDs já vistos — sinal de que
+    // a API ignorou a paginação (loop infinito retornando a mesma página).
+    let newOnPage = 0;
+    for (const tx of list) {
+      const id = (tx.id as string) ?? (tx.external_id as string) ?? "";
+      if (id && seenIds.has(id)) continue;
+      if (id) seenIds.add(id);
+      all.push(tx);
+      newOnPage += 1;
+    }
     pagesFetched += 1;
+    console.log(`[flash-sync] Page ${page}: received=${list.length}, new=${newOnPage}, totalUnique=${all.length}`);
 
     // Pagination control
-    const nextCursor = (payload.next_cursor ?? payload.nextCursor ?? null) as string | null;
+    const nextCursor = (payload.next_cursor ?? payload.nextCursor ?? payload.pageToken ?? payload.nextPageToken ?? null) as string | null;
     const nextPage = payload.next_page ?? payload.nextPage ?? null;
     const totalPages = payload.total_pages ?? payload.totalPages ?? null;
     const hasMore = payload.has_more ?? payload.hasMore ?? null;
 
-    if (nextCursor) {
+    // Se a página inteira foi de duplicatas → API não respeita paginação. Pare.
+    if (list.length > 0 && newOnPage === 0) {
+      console.warn(`[flash-sync] Página ${page} sem novos itens — interrompendo paginação.`);
+      break;
+    }
+
+    if (nextCursor && nextCursor !== cursor) {
       cursor = nextCursor;
       continue;
     }
-    if (typeof nextPage === "number") {
+    if (typeof nextPage === "number" && nextPage > page) {
       page = nextPage;
       continue;
     }
@@ -418,52 +439,77 @@ Deno.serve(async (req) => {
 
     let inserted = 0;
     if (transactions.length > 0) {
-      // Deduplicação rigorosa antes de gravar no banco
-      // Usamos um conjunto por (external_id + data + valor) para garantir que
-      // nunca tentemos fazer upsert do mesmo registro lógico mais de uma vez no mesmo lote.
-      const uniqueRowsMap = new Map();
-      
+      // Deduplicação por external_id (chave de negócio da Flash).
+      // Garantimos que nunca tentemos fazer upsert do mesmo external_id duas
+      // vezes no mesmo lote — o que viola a constraint única e aborta a query.
+      const uniqueRowsMap = new Map<string, any>();
+
+      const toIsoDate = (raw: unknown): string | null => {
+        if (!raw) return null;
+        const s = String(raw);
+        // Já é YYYY-MM-DD?
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        // ISO datetime → pega só a parte da data
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (m) return m[1];
+        // Fallback: tenta parsear
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        return null;
+      };
+
       transactions.forEach((tx, idx) => {
         const extId = extractExternalId(tx, idx);
-        
-        // Tenta extrair data e valor do payload para a chave de unicidade determinística
-        // Compatível com a nova constraint no banco
-        const txDate = tx.transaction_date || tx.date || tx.created_at || "no-date";
-        const txAmount = tx.amount || tx.value || 0;
-        
-        // Chave composta para evitar duplicatas da API no mesmo lote
-        const uniquenessKey = `${empresaId}:${extId}:${txDate}:${txAmount}`;
-        
-        if (!uniqueRowsMap.has(uniquenessKey)) {
-          uniqueRowsMap.set(uniquenessKey, {
-            empresa_id: empresaId,
-            external_id: extId,
-            transaction_date: txDate !== "no-date" ? txDate : null,
-            amount: typeof txAmount === "number" ? txAmount : parseFloat(String(txAmount)) || null,
-            payload_json: tx,
-          });
-        }
+
+        // A API Flash retorna `date` no nível raiz da despesa (ISO datetime)
+        // e também em `transaction.date`. Tentamos múltiplos caminhos.
+        const txDate =
+          toIsoDate(tx.transaction_date) ||
+          toIsoDate(tx.date) ||
+          toIsoDate((tx as any).transaction?.date) ||
+          toIsoDate((tx as any).ocrData?.date) ||
+          toIsoDate(tx.created_at);
+
+        const rawAmount =
+          tx.amount ??
+          (tx as any).transaction?.amount ??
+          (tx as any).value ??
+          0;
+        const txAmount =
+          typeof rawAmount === "number"
+            ? rawAmount
+            : parseFloat(String(rawAmount)) || 0;
+
+        // Deduplica por external_id. Mantém o último (que tem dados mais ricos).
+        uniqueRowsMap.set(extId, {
+          empresa_id: empresaId,
+          external_id: extId,
+          transaction_date: txDate,
+          amount: txAmount,
+          payload_json: tx,
+        });
       });
 
       const rows = Array.from(uniqueRowsMap.values());
+      console.log(`[flash-sync] Total recebido: ${transactions.length}, únicos por external_id: ${rows.length}`);
 
       const chunkSize = 500;
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize);
-        // O conflito agora é resolvido pela chave determinística (empresa_id, external_id, transaction_date, amount)
         const { error: upsertError, count } = await adminClient
           .from("flash_transactions_raw")
           .upsert(chunk, {
             onConflict: "empresa_id,external_id,transaction_date,amount",
             count: "exact",
           });
-        
+
         if (upsertError) {
           console.error(`Erro no lote de upsert (índice ${i}):`, upsertError);
           throw upsertError;
         }
         inserted += count ?? chunk.length;
       }
+      console.log(`[flash-sync] Upsert concluído: ${inserted} linhas afetadas`);
 
       // Auto-normalization
       try {
