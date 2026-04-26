@@ -233,6 +233,15 @@ export default function NormalizacaoFlashPage() {
   const [bulkSaveMapping, setBulkSaveMapping] = useState(true);
   const [bulkApplying, setBulkApplying] = useState(false);
 
+  // Efeito para fixar a conta financeira padrão "Flash - Cartão Corporativo"
+  useEffect(() => {
+    const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+    const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+    if (flashAccount) {
+      setBulkAcc({ id: flashAccount.id, name: flashAccount.name });
+    }
+  }, [contas]);
+
   // Extract unique values for filters
   const filterOptions = useMemo(() => {
     const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
@@ -888,7 +897,7 @@ export default function NormalizacaoFlashPage() {
                                     })
                                   }
                                   placeholder="Selecionar conta..."
-                                  disabled={fieldsDisabled}
+                                  disabled={true}
                                 />
                               </TableCell>
                               <TableCell>{statusBadge(row.status)}</TableCell>
@@ -932,7 +941,7 @@ export default function NormalizacaoFlashPage() {
                     value={bulkAcc?.id || null}
                     onChange={(id, name) => setBulkAcc({ id, name })}
                     placeholder="Selecionar..."
-                    disabled={loadingMetadata}
+                    disabled={true}
                   />
                 </div>
                 <div className="space-y-1">

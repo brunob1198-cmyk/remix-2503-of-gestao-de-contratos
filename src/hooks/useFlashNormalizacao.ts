@@ -218,12 +218,15 @@ export function useFlashNormalizacao() {
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
           mappingIdx
         );
+        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+
         base.tipo_operacao = normalized.tipo_operacao;
         base.status = normalized.status;
         base.conta_azul_category_id = normalized.conta_azul_category_id;
         base.conta_azul_category_name = normalized.conta_azul_category_name;
-        base.conta_azul_account_id = normalized.conta_azul_account_id;
-        base.conta_azul_account_name = normalized.conta_azul_account_name;
+        base.conta_azul_account_id = flashAccount?.id ?? normalized.conta_azul_account_id;
+        base.conta_azul_account_name = flashAccount?.name ?? normalized.conta_azul_account_name;
         base.motivo = normalized.motivo;
         base.flash_type_detectado = normalized.flash_type;
         base.mapping_id_usado = normalized.mapping_id_usado;
@@ -235,8 +238,8 @@ export function useFlashNormalizacao() {
             flash_transaction_id: raw.id,
             conta_azul_category_id: normalized.conta_azul_category_id,
             conta_azul_category_name: normalized.conta_azul_category_name,
-            conta_azul_account_id: normalized.conta_azul_account_id,
-            conta_azul_account_name: normalized.conta_azul_account_name,
+            conta_azul_account_id: flashAccount?.id ?? normalized.conta_azul_account_id,
+            conta_azul_account_name: flashAccount?.name ?? normalized.conta_azul_account_name,
             tipo_operacao: normalized.tipo_operacao,
             status: "normalizado",
             normalizado_at: new Date().toISOString(),
@@ -327,11 +330,14 @@ export function useFlashNormalizacao() {
       }
       setSavingId(row.id);
       try {
+        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+
         const merged = {
           conta_azul_category_id: patch.conta_azul_category_id ?? row.conta_azul_category_id ?? null,
           conta_azul_category_name: patch.conta_azul_category_name ?? row.conta_azul_category_name ?? null,
-          conta_azul_account_id: patch.conta_azul_account_id ?? row.conta_azul_account_id ?? null,
-          conta_azul_account_name: patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
+          conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id ?? null,
+          conta_azul_account_name: flashAccount?.name ?? patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
           tipo_operacao: patch.tipo_operacao ?? row.tipo_operacao ?? "despesa",
           status: patch.status ?? row.status ?? "pendente",
         };
