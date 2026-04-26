@@ -170,7 +170,7 @@ export function useFlashNormalizacao() {
     }
     setLoading(true);
     if (forceRefresh) {
-      toast.info("Recarregando dados do banco...");
+      toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
       console.log("Forcing database refresh for empresaId:", empresaId);
     }
     
