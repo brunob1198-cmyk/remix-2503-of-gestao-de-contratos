@@ -81,6 +81,8 @@ import {
   Send,
   Sparkles,
   Wand2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -201,6 +203,15 @@ export default function NormalizacaoFlashPage() {
       direction: (searchParams.get("dir") as 'asc' | 'desc') || 'asc'
     } : null
   );
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -290,6 +301,13 @@ export default function NormalizacaoFlashPage() {
 
     return result;
   }, [transactions, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(startIndex, startIndex + itemsPerPage);
+  }, [filtered, currentPage]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const pendentes = useMemo(
     () => transactions.filter((t) => t.status === "pendente"),
@@ -840,7 +858,7 @@ export default function NormalizacaoFlashPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filtered.map((row) => {
+                        {paginatedData.map((row) => {
                           const hasMapping = mappingByType.has(row.flash_type);
                           const isEnviado = row.status === "enviado";
                           const fieldsDisabled = isEnviado || loadingMetadata;
@@ -928,6 +946,37 @@ export default function NormalizacaoFlashPage() {
                       </TableBody>
                     </Table>
                   </div>
+
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between space-x-2 py-4 border-t mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        Mostrando <strong>{(currentPage - 1) * itemsPerPage + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, filtered.length)}</strong> de <strong>{filtered.length}</strong> lançamentos
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Anterior
+                        </Button>
+                        <div className="flex items-center gap-1 text-sm font-medium">
+                          Página {currentPage} de {totalPages}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Próximo
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TooltipProvider>
               )}
             </CardContent>
