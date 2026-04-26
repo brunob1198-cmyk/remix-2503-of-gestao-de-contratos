@@ -616,7 +616,7 @@ export default function NormalizacaoFlashPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 pb-20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Normalização Flash</h1>
@@ -637,7 +637,7 @@ export default function NormalizacaoFlashPage() {
             )}
             Atualizar Conta Azul
           </Button>
-          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => refresh()} disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -799,7 +799,7 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto relative min-h-[400px]">
+                  <div className="overflow-x-auto relative min-h-[500px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -935,7 +935,7 @@ export default function NormalizacaoFlashPage() {
                                     })
                                   }
                                   placeholder="Selecionar conta..."
-                                  disabled={true}
+                                  disabled={fieldsDisabled}
                                 />
                               </TableCell>
                               <TableCell>{statusBadge(row.status)}</TableCell>
@@ -1010,7 +1010,7 @@ export default function NormalizacaoFlashPage() {
                     value={bulkAcc?.id || null}
                     onChange={(id, name) => setBulkAcc({ id, name })}
                     placeholder="Selecionar..."
-                    disabled={true}
+                    disabled={loadingMetadata}
                   />
                 </div>
                 <div className="space-y-1">
