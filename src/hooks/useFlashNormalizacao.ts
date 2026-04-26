@@ -169,6 +169,9 @@ export function useFlashNormalizacao() {
           .from("flash_transactions_raw")
           .select("id, external_id, payload_json, created_at")
           .eq("empresa_id", empresaId)
+          .not("payload_json->type", "eq", "DEPOSIT") // Filtra depósitos na raiz
+          .not("payload_json->tipo", "eq", "DEPOSIT")
+          .not("payload_json->transaction_type", "eq", "DEPOSIT")
           .order("created_at", { ascending: false })
           .limit(500),
         supabase
