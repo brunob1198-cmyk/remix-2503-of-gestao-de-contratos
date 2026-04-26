@@ -667,7 +667,7 @@ export function useFlashNormalizacao() {
     mappingByType,
     loadingMetadata,
     metadataError,
-    refresh: () => fetchData(true),
+    refresh: (force = true) => fetchData(force),
     refreshMetadata: fetchMetadata,
     saveNormalization,
     applyMappingToAllPending,
