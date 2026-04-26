@@ -409,14 +409,21 @@ export default function RecursosPage() {
   function handleEdit() {
     if (!editRecurso || !editCusto) return;
     const r = recursos.find((x) => x.id === editRecurso)!;
-    const needsUpdate = 
+    
+    // Convert current value for comparison
+    const currentCusto = getCustoAtual(editRecurso);
+    const newCustoVal = parseFloat(editCusto);
+    
+    const needsInfoUpdate = 
       editNome !== r.nome || 
       editTipo !== r.tipo ||
       editUnidade !== r.unidade ||
       (r.tipo === "pessoa" && editCargo !== (r.cargo || "")) || 
       (r.tipo === "veiculo" && editPlaca !== (r.placa || ""));
       
-    if (needsUpdate) {
+    const needsCustoUpdate = !currentCusto || currentCusto.custo_unitario !== newCustoVal;
+
+    if (needsInfoUpdate) {
       updateRecurso.mutate({ 
         id: editRecurso, 
         nome: editNome, 
@@ -425,18 +432,19 @@ export default function RecursosPage() {
         unidade: editUnidade,
         cargo: editTipo === "pessoa" ? editCargo || null : null, 
         placa: editTipo === "veiculo" ? editPlaca || null : null 
+      }, {
+        onSuccess: () => {
+          if (!needsCustoUpdate) setEditRecurso(null);
+        }
       });
     }
     
-    const currentCusto = getCustoAtual(editRecurso);
-    const newCustoVal = parseFloat(editCusto);
-    
-    if (!currentCusto || currentCusto.custo_unitario !== newCustoVal) {
+    if (needsCustoUpdate) {
       updateCusto.mutate(
         { recurso_id: editRecurso, custo_unitario: newCustoVal, data_inicio: editDataInicio, motivo: editMotivo || undefined },
         { onSuccess: () => setEditRecurso(null) }
       );
-    } else {
+    } else if (!needsInfoUpdate) {
       setEditRecurso(null);
     }
   }
@@ -772,13 +780,31 @@ export default function RecursosPage() {
                             </TableCell>
                             <TableCell className="text-right whitespace-nowrap" style={{ width: actionsColumnWidth, minWidth: actionsColumnWidth }}>
                               <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => openEdit(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => openEdit(r.id)}
+                                  className="h-8 w-8 p-0 hover:bg-muted"
+                                  title="Editar recurso"
+                                >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => setHistRecurso(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => setHistRecurso(r.id)}
+                                  className="h-8 w-8 p-0 hover:bg-muted"
+                                  title="Histórico de custos"
+                                >
                                   <History className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirmId(r.id)}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                  onClick={() => setDeleteConfirmId(r.id)}
+                                  title="Excluir recurso"
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -998,8 +1024,12 @@ export default function RecursosPage() {
               <Label>Data início</Label>
               <Input type="date" value={editDataInicio} onChange={(e) => setEditDataInicio(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={handleEdit} disabled={updateCusto.isPending}>
-              {updateCusto.isPending ? "Salvando..." : "Salvar alteração"}
+            <Button 
+              className="w-full" 
+              onClick={handleEdit} 
+              disabled={updateRecurso.isPending || updateCusto.isPending}
+            >
+              {(updateRecurso.isPending || updateCusto.isPending) ? "Salvando..." : "Salvar alterações"}
             </Button>
           </div>
         </DialogContent>
