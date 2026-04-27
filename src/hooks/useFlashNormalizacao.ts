@@ -216,8 +216,7 @@ export function useFlashNormalizacao() {
         .from("flash_transactions_raw")
         .select("id, external_id, payload_json, created_at")
         .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(10000);
+        .order("created_at", { ascending: false });
 
       if (txRes.error) {
         console.error("Error fetching raw transactions:", txRes.error);

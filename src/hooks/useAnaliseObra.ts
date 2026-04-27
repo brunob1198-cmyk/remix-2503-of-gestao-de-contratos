@@ -151,7 +151,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           q = q.gte("data_competencia", startDateStr).lte("data_competencia", endDateStr);
         }
 
-        const { data: batch } = await q.range(erpOffset, erpOffset + 1000 - 1);
+        const { data: batch } = await q;
         const rows = batch || [];
         allErpData.push(...rows);
         erpHasMore = rows.length === 1000;
