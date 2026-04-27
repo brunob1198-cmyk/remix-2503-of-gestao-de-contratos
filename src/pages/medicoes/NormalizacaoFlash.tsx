@@ -1030,6 +1030,7 @@ export default function NormalizacaoFlashPage() {
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
+                        // Mantemos dateFrom e dateTo no estado, para não resetar o filtro de Período
                         const params = new URLSearchParams(searchParams);
                         params.delete("data");
                         params.delete("desc");
