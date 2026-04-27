@@ -100,7 +100,7 @@ export default function DiarioObraPage() {
   const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
 
 
-  const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, periodoInicio, periodoFim);
+  const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, "2000-01-01", "2099-12-31");
 
   // Build previsoes map (daily production targets from planejamento)
   const previsoes: Record<string, number> = {};
