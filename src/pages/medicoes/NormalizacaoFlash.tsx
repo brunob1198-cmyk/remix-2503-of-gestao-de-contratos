@@ -280,7 +280,7 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
