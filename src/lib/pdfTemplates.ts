@@ -105,10 +105,10 @@ export const pdfGlobalStyles = `
     .foto-row { display: flex; gap: 16px; margin-bottom: 0; }
     .foto-row .foto-card { width: calc(50% - 8px); }
     /* Group label bar below each photo */
-    .foto-label-bar { padding: 6px 10px 8px; background: #fff; display: flex; align-items: center; justify-content: center; min-height: 28px; }
-    .foto-label-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; line-height: 1; text-align: center; margin: 0 auto; }
+    .foto-label-bar { padding: 6px 10px 8px; background: #fff; display: flex; align-items: center; justify-content: flex-start; min-height: 28px; }
+    .foto-label-badge { display: inline-flex; align-items: center; justify-content: center; padding: 0 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; line-height: 24px; text-align: center; height: 24px; vertical-align: middle; }
     /* Section group header above each set of photos */
-    .foto-group-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 8px 12px; border-radius: 0 4px 4px 0; margin: 14px 0 8px; page-break-after: avoid; display: flex; align-items: center; justify-content: flex-start; min-height: 32px; }
+    .foto-group-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 0 12px; border-radius: 0 4px 4px 0; margin: 14px 0 8px; page-break-after: avoid; display: flex; align-items: center; justify-content: flex-start; height: 32px; line-height: 32px; }
   </style>
 `;
 
