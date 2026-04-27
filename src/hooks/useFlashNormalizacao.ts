@@ -164,8 +164,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
 
-  // Date: extract raw date portion to avoid timezone shift (Flash returns UTC midnight)
-  const rawDate = pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
+  // Date: prioritize transaction_date from table, then payload values
+  const rawDate = raw.transaction_date || pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   return {
     id: raw.id,
