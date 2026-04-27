@@ -1226,8 +1226,9 @@ export default function NormalizacaoFlashPage() {
                             </div>
                           </TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
-                          <TableHead className="w-[200px]">Conta financeira CA</TableHead>
-                          <TableHead className="w-[160px]">Status (Prestação Flash)</TableHead>
+                          <TableHead className="w-[180px]">Conta financeira CA</TableHead>
+                          <TableHead className="w-[160px]">Status CA</TableHead>
+                          <TableHead className="w-[180px]">Prestação de Contas</TableHead>
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1318,14 +1319,16 @@ export default function NormalizacaoFlashPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <div className="flex flex-col gap-0.5">
-                                  {statusBadge(row.status)}
-                                  {row.flash_prestacao_contas && row.flash_prestacao_contas !== "—" && (
-                                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                                      {row.flash_prestacao_contas}
-                                    </span>
-                                  )}
-                                </div>
+                                {statusBadge(row.status)}
+                              </TableCell>
+                              <TableCell>
+                                {row.flash_prestacao_contas && row.flash_prestacao_contas !== "—" ? (
+                                  <Badge variant="outline" className="text-[10px] font-normal uppercase border-muted-foreground/30">
+                                    {row.flash_prestacao_contas}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-[10px]">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-right">{renderActionButtons(row)}</TableCell>
                             </TableRow>
