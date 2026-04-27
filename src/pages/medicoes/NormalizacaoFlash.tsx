@@ -402,7 +402,7 @@ export default function NormalizacaoFlashPage() {
   );
 
   const counts = useMemo(() => {
-    return dateFiltered.reduce(
+    return transactions.reduce(
       (acc, t) => {
         acc.total += 1;
         if (t.status === "normalizado") acc.normalizado += 1;
@@ -412,7 +412,7 @@ export default function NormalizacaoFlashPage() {
       },
       { total: 0, pendente: 0, normalizado: 0, enviado: 0 }
     );
-  }, [dateFiltered]);
+  }, [transactions]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
