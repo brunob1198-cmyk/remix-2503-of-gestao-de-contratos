@@ -253,8 +253,19 @@ export default function NormalizacaoFlashPage() {
     if (selectedTypes.length > 0) params.set("types", selectedTypes.join(","));
     if (selectedCategories.length > 0) params.set("categories", selectedCategories.join(","));
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
-    if (dateFrom) params.set("from", dateFrom);
-    if (dateTo) params.set("to", dateTo);
+    if (dateFrom) {
+      params.set("from", dateFrom);
+      localStorage.setItem("flash_filter_from", dateFrom);
+    } else {
+      localStorage.removeItem("flash_filter_from");
+    }
+    
+    if (dateTo) {
+      params.set("to", dateTo);
+      localStorage.setItem("flash_filter_to", dateTo);
+    } else {
+      localStorage.removeItem("flash_filter_to");
+    }
     if (tab !== "lancamentos") params.set("tab", tab);
     if (currentPage > 1) params.set("page", currentPage.toString());
     if (sortConfig) {
