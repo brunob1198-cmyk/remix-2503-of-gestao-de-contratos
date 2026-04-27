@@ -29,6 +29,7 @@ export interface FlashTransactionRow {
   flash_category: string;
   flash_cost_center: string;
   comentarios: string;
+  flash_prestacao_contas: string;
   // normalization
   norm_id?: string;
   conta_azul_category_id?: string | null;
@@ -85,6 +86,22 @@ const pickPayloadNumber = (payload: any, paths: string[]): number => {
   return 0;
 };
 
+/**
+ * Parse a date string preserving the LOCAL date as-is (no UTC shift).
+ * Flash returns dates like "2026-04-07T03:00:00.000Z" which, in UTC-3,
+ * should be treated as April 7th. We extract only the date part from
+ * the ISO string without timezone conversion.
+ */
+const parseFlashDate = (raw: string | null): string | null => {
+  if (!raw) return null;
+  // Already yyyy-mm-dd — use directly
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // ISO datetime — just grab the date portion BEFORE any T (no timezone conversion)
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  return null;
+};
+
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
   const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
@@ -123,12 +140,27 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_category = "Pedágio";
   }
 
+  // Coluna de Prestação de contas vinda do Flash
+  const flash_prestacao_contas =
+    pickPayloadValue(p, [
+      "accountabilityStatus",
+      "accountability_status",
+      "prestacao_de_contas",
+      "prestacaoDeContas",
+      "accountability",
+      "expenseStatus",
+      "expense_status",
+    ]) || "—";
+
+  // Date: extract raw date portion to avoid timezone shift (Flash returns UTC midnight)
+  const rawDate = pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
+
   return {
     id: raw.id,
     external_id: raw.external_id,
     payload_json: p,
     created_at: raw.created_at,
-    data: pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]),
+    data: parseFlashDate(rawDate),
     descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment", "name", "comments"]) || "—",
     valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario:
@@ -147,6 +179,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "costCenter.code"
     ]) || "—",
     comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "observation", "note"]) || "—",
+    flash_prestacao_contas,
   };
 };
 
@@ -183,7 +216,8 @@ export function useFlashNormalizacao() {
         .from("flash_transactions_raw")
         .select("id, external_id, payload_json, created_at")
         .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(10000);
 
       if (txRes.error) {
         console.error("Error fetching raw transactions:", txRes.error);
@@ -218,9 +252,9 @@ export function useFlashNormalizacao() {
       const mappingList = (mapRes.data || []) as CategoryMapping[];
       const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
 
-      const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
+      const FLASH_CARD_ACCOUNT_NAME = "Flash";
       // Use the latest 'contas' state or try to find it from the data if available
-      const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+      const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
 
       const autoNormPayloads: any[] = [];
       const rows = (txRes.data || []).map((raw: any) => {
@@ -377,8 +411,8 @@ export function useFlashNormalizacao() {
       }
       setSavingId(row.id);
       try {
-        const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
-        const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+        // Busca a conta Flash por nome (qualquer nome contendo 'flash')
+        const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
 
         const merged = {
           conta_azul_category_id: patch.conta_azul_category_id ?? row.conta_azul_category_id ?? null,

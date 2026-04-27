@@ -267,32 +267,22 @@ export default function NormalizacaoFlashPage() {
   const [bulkSaveMapping, setBulkSaveMapping] = useState(true);
   const [bulkApplying, setBulkApplying] = useState(false);
 
-  // Efeito para fixar a conta financeira padrão "Flash - Cartão Corporativo"
+  // Efeito para fixar a conta financeira padrão "Flash" (qualquer conta com 'flash' no nome)
   useEffect(() => {
-    const FLASH_CARD_ACCOUNT_NAME = "Flash - Cartão Corporativo";
-    const flashAccount = contas.find(c => c.name === FLASH_CARD_ACCOUNT_NAME);
+    const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
     if (flashAccount) {
       setBulkAcc({ id: flashAccount.id, name: flashAccount.name });
     }
   }, [contas]);
 
   // Helper: parse a tx date as a comparable yyyy-mm-dd string (or null)
+  // Avoids UTC conversion — we extract the date portion directly from the string.
   const txDateKey = (d: string | null): string | null => {
     if (!d) return null;
-    try {
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) {
-        // Already in yyyy-mm-dd?
-        if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
-        return null;
-      }
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, "0");
-      const day = String(dt.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    } catch {
-      return null;
-    }
+    // Direct yyyy-mm-dd or starts with it (e.g. "2026-04-07T...")
+    const m = d.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    return null;
   };
 
   // Apply the period filter first — used by all tabs
@@ -1099,7 +1089,7 @@ export default function NormalizacaoFlashPage() {
                           </TableHead>
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[200px]">Conta financeira CA</TableHead>
-                          <TableHead className="w-[110px]">Status</TableHead>
+                          <TableHead className="w-[160px]">Status (Prestação Flash)</TableHead>
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1171,20 +1161,20 @@ export default function NormalizacaoFlashPage() {
                                 />
                               </TableCell>
                               <TableCell>
-                                <OptionSelect
-                                  options={contas}
-                                  value={row.conta_azul_account_id}
-                                  onChange={(id, name) =>
-                                    saveNormalization(row, {
-                                      conta_azul_account_id: id,
-                                      conta_azul_account_name: name,
-                                    })
-                                  }
-                                  placeholder="Selecionar conta..."
-                                  disabled={fieldsDisabled}
-                                />
+                                <div className="flex items-center h-8 px-2 text-xs rounded-md border bg-muted/40 text-muted-foreground gap-1">
+                                  <span className="truncate">{row.conta_azul_account_name || "Flash"}</span>
+                                </div>
                               </TableCell>
-                              <TableCell>{statusBadge(row.status)}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-0.5">
+                                  {statusBadge(row.status)}
+                                  {row.flash_prestacao_contas && row.flash_prestacao_contas !== "—" && (
+                                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                                      {row.flash_prestacao_contas}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
                               <TableCell className="text-right">{renderActionButtons(row)}</TableCell>
                             </TableRow>
                           );
