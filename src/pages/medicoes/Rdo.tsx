@@ -72,32 +72,33 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           ${getLogoHtml()}
           <div>
             <h1 class="header-title">Relatório Diário de Obra</h1>
-            <p class="header-subtitle">RDO — ${dataFormatada}</p>
+            <p class="header-subtitle">DOCUMENTO OFICIAL — ${dataFormatada}</p>
           </div>
         </div>
-        ${clienteLogoUrl ? `<div class="header-right" style="display:flex; align-items:flex-end;">${getClientLogoHtml(clienteLogoUrl)}</div>` : ''}
+        ${clienteLogoUrl ? `<div class="header-right">${getClientLogoHtml(clienteLogoUrl)}</div>` : ''}
       </div>
 
       <div class="site-info-bar">
         ${siteLabel ? `<div class="site-info-item"><strong>Site:</strong> ${siteLabel}</div>` : ''}
         ${localidade ? `<div class="site-info-item"><strong>Localidade:</strong> ${localidade}</div>` : ''}
         <div class="site-info-item"><strong>Data:</strong> ${dataFormatada}</div>
+        <div class="site-info-item"><strong>Clima:</strong> ${diario.clima || "Não informado"}</div>
       </div>
 
       ${diario.producoes.length > 0 ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Produção</h2>
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Produção Executada</h2>
         <table>
           <thead>
             <tr>
-              <th>Item</th>
-              <th class="text-right">Qtd</th>
-              ${!isCliente ? '<th class="text-right">Valor</th>' : ''}
+              <th style="width: 70%;">Item LPU / Descrição</th>
+              <th class="text-right" style="width: 15%;">Qtd</th>
+              ${!isCliente ? '<th class="text-right" style="width: 15%;">Total</th>' : ''}
             </tr>
           </thead>
           <tbody>
             ${diario.producoes.map(p => `
               <tr>
-                <td>${p.item_lpu?.codigo} — ${p.item_lpu?.descricao}</td>
+                <td><strong>${p.item_lpu?.codigo}</strong> — ${p.item_lpu?.descricao}</td>
                 <td class="text-right">${Number(p.quantidade)} ${p.item_lpu?.unidade}</td>
                 ${!isCliente ? `<td class="text-right">${formatCurrency(Number(p.valor_total))}</td>` : ''}
               </tr>
@@ -115,13 +116,13 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
       ` : ''}
 
       ${diario.equipe.length > 0 ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Equipe</h2>
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Recursos Humanos</h2>
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Função</th>
-              <th class="text-right">Horas</th>
+              <th style="width: 50%;">Nome Completo</th>
+              <th style="width: 35%;">Função / Cargo</th>
+              <th class="text-right" style="width: 15%;">Horas</th>
             </tr>
           </thead>
           <tbody>
@@ -136,46 +137,29 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         </table>
       ` : ''}
 
-      ${diario.equipamentos.length > 0 ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Equipamentos</h2>
+      ${diario.equipamentos.length > 0 || diario.veiculos.length > 0 ? `
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> Equipamentos e Veículos</h2>
         <table>
           <thead>
             <tr>
-              <th>Descrição</th>
-              <th class="text-right">Horas</th>
+              <th style="width: 40%;">Recurso</th>
+              <th style="width: 25%;">Detalhes / Placa</th>
+              <th class="text-right" style="width: 35%;">Uso / Quilometragem</th>
             </tr>
           </thead>
           <tbody>
             ${diario.equipamentos.map(e => `
               <tr>
                 <td>${e.descricao}</td>
+                <td>Equipamento</td>
                 <td class="text-right">${e.horas}h</td>
               </tr>
             `).join('')}
-          </tbody>
-        </table>
-      ` : ''}
-
-      ${diario.veiculos.length > 0 ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> Veículos</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Veículo</th>
-              <th class="text-right">Placa</th>
-              <th class="text-right">KM Inicial</th>
-              <th class="text-right">KM Final</th>
-              <th class="text-right">KM Rodados</th>
-            </tr>
-          </thead>
-          <tbody>
             ${diario.veiculos.map(v => `
               <tr>
                 <td>${v.descricao}</td>
-                <td class="text-right">${v.placa || "—"}</td>
-                <td class="text-right">${Number(v.km_inicial || 0).toLocaleString('pt-BR')}</td>
-                <td class="text-right">${Number(v.km_final || 0).toLocaleString('pt-BR')}</td>
-                <td class="text-right"><strong>${Number(v.km_rodados || 0).toLocaleString('pt-BR')} km</strong></td>
+                <td>${v.placa || "Veículo"}</td>
+                <td class="text-right">${Number(v.km_inicial || 0).toLocaleString('pt-BR')} km → ${Number(v.km_final || 0).toLocaleString('pt-BR')} km (${Number(v.km_rodados || 0).toLocaleString('pt-BR')} km)</td>
               </tr>
             `).join('')}
           </tbody>
@@ -183,8 +167,8 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
       ` : ''}
 
       ${diario.observacoes ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Observações</h2>
-        <div style="color:#334155; padding: 12px 16px; background: #f0f4f8; border-radius: 6px; border: 1px solid #d0d7e0; line-height: 1.6; white-space: pre-line;">${diario.observacoes}</div>
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Observações Gerais</h2>
+        <div class="observations-box">${diario.observacoes}</div>
       ` : ''}
 
       ${diario.fotos.length > 0 ? (() => {
@@ -196,28 +180,29 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           itemGroups.get(key)!.push(f);
         });
         return `
+        <div style="page-break-before: always;"></div>
         <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg> Relatório Fotográfico</h2>
         ${itemOrder.map(key => {
           const photos = itemGroups.get(key)!;
           const first = photos[0];
-          const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Sem item vinculado';
+          const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Diversos / Sem item vinculado';
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
                 <img src="${f.url}" alt="foto" />
                 ${f.legenda ? `<div class="foto-info"><div class="foto-legenda">${f.legenda}</div></div>` : ''}
               </div>`;
-          // Render in pairs so each row avoids page breaks
+          
           const rows: string[] = [];
           for (let i = 0; i < photos.length; i += 2) {
             if (i + 1 < photos.length) {
-              rows.push(`<div class="foto-row" style="page-break-inside:avoid; break-inside:avoid;">${renderCard(photos[i])}${renderCard(photos[i+1])}</div>`);
+              rows.push(`<div class="foto-row">${renderCard(photos[i])}${renderCard(photos[i+1])}</div>`);
             } else {
-              rows.push(`<div class="foto-row" style="page-break-inside:avoid; break-inside:avoid;">${renderCard(photos[i])}</div>`);
+              rows.push(`<div class="foto-row">${renderCard(photos[i])}</div>`);
             }
           }
           return `
           <div class="foto-item-group" style="page-break-inside:avoid; break-inside:avoid;">
-            <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+            <div class="photo-group-title">${title}</div>
             <div class="foto-grid">
               ${rows.join('')}
             </div>
