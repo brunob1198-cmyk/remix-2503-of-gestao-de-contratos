@@ -135,9 +135,9 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const conflicts = useMemo(() => {
     return custosErp.filter(item => {
       const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-      return mapping && mapping.categoria_interna !== item.categoria_interna;
+      return mapping && mapping.categoria_interna !== item.categoria_interna && !ignoredConflicts.has(item.erp_id);
     });
-  }, [custosErp, categoriasMapeamento]);
+  }, [custosErp, categoriasMapeamento, ignoredConflicts]);
 
   const filteredItems = useMemo(() => {
     let items = showOnlyConflicts ? conflicts : [...custosErp];
