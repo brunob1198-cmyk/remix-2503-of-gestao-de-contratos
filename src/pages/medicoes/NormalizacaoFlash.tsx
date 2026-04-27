@@ -197,7 +197,7 @@ export default function NormalizacaoFlashPage() {
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "todos");
   // Search filter from URL
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
+  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">((searchParams.get("tab") as any) || "lancamentos");
 
   // Multi-select filters from URL
   const [selectedUsers, setSelectedUsers] = useState<string[]>(
@@ -226,13 +226,18 @@ export default function NormalizacaoFlashPage() {
   );
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
   const itemsPerPage = 50;
 
-  // Reset page when filters change
+  // Reset page when filters change (but NOT when changing date range or sorting, 
+  // if we want to preserve them, but usually filters should reset page to 1)
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo]);
+    // Only reset if it's not the initial mount from URL
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("page")) {
+      setCurrentPage(1);
+    }
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -245,6 +250,8 @@ export default function NormalizacaoFlashPage() {
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
+    if (tab !== "lancamentos") params.set("tab", tab);
+    if (currentPage > 1) params.set("page", currentPage.toString());
     if (sortConfig) {
       params.set("sort", sortConfig.key as string);
       params.set("dir", sortConfig.direction);
@@ -252,7 +259,7 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
