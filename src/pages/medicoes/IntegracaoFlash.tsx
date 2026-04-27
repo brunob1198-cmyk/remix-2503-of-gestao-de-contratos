@@ -427,8 +427,8 @@ export default function IntegracaoFlashPage() {
             </div>
           )}
 
-          {/* Resultado da sondagem de autenticação */}
-          {lastResult?.authProbe && !authProbeMutation.isPending && (
+          {/* Resultado da sondagem de autenticação removido */}
+          {lastResult?.authProbe && (
             <Alert variant={lastResult.authProbe.winner ? "default" : "destructive"}>
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.authProbe.winner ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
