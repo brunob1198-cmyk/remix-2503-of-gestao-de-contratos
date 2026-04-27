@@ -246,7 +246,7 @@ export default function NormalizacaoFlashPage() {
     if (!params.get("page")) {
       setCurrentPage(1);
     }
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao]);
 
   // Update URL search params when filters change
   useEffect(() => {
