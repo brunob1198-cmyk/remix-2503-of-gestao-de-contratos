@@ -92,6 +92,7 @@ import {
   type FlashTransactionRow,
   type ContaAzulOption,
 } from "@/hooks/useFlashNormalizacao";
+import { normalizeFlashTransaction } from "@/lib/flashNormalization";
 import { exportNormalizacaoFlashToExcel } from "@/lib/flashNormalizacaoExport";
 import { cn } from "@/lib/utils";
 
@@ -197,7 +198,7 @@ export default function NormalizacaoFlashPage() {
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "todos");
   // Search filter from URL
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
+  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">((searchParams.get("tab") as any) || "lancamentos");
 
   // Multi-select filters from URL
   const [selectedUsers, setSelectedUsers] = useState<string[]>(
@@ -226,13 +227,18 @@ export default function NormalizacaoFlashPage() {
   );
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
   const itemsPerPage = 50;
 
-  // Reset page when filters change
+  // Reset page when filters change (but NOT when changing date range or sorting, 
+  // if we want to preserve them, but usually filters should reset page to 1)
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo]);
+    // Only reset if it's not the initial mount from URL
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("page")) {
+      setCurrentPage(1);
+    }
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -245,6 +251,8 @@ export default function NormalizacaoFlashPage() {
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
+    if (tab !== "lancamentos") params.set("tab", tab);
+    if (currentPage > 1) params.set("page", currentPage.toString());
     if (sortConfig) {
       params.set("sort", sortConfig.key as string);
       params.set("dir", sortConfig.direction);
@@ -252,12 +260,15 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
   const [confirmReopenRow, setConfirmReopenRow] = useState<FlashTransactionRow | null>(null);
+
+  // Selection for bulk sending
+  const [selectedToSendIds, setSelectedToSendIds] = useState<string[]>([]);
 
   // Bulk pendentes
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
@@ -317,6 +328,16 @@ export default function NormalizacaoFlashPage() {
       if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
 
+      // Novos filtros nos cabeçalhos
+      const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
+      if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
+
+      const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
+      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
+
+      const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
+      if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -344,7 +365,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, searchParams]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -372,16 +393,32 @@ export default function NormalizacaoFlashPage() {
   }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
-    const m = mappingByType.get(row.flash_type);
-    if (!m) return;
-    await saveNormalization(row, {
-      conta_azul_category_id: m.conta_azul_category_id,
-      conta_azul_category_name: m.conta_azul_category_name,
-      conta_azul_account_id: m.conta_azul_account_id,
-      conta_azul_account_name: m.conta_azul_account_name,
-      tipo_operacao: m.tipo_operacao,
-      status: "normalizado",
-    });
+    // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
+    const normalized = normalizeFlashTransaction(
+      { 
+        id: row.id, 
+        external_id: row.external_id, 
+        payload_json: row.payload_json, 
+        flash_type: row.flash_type,
+        flash_category: row.flash_category,
+        flash_cost_center: row.flash_cost_center,
+        descricao: row.descricao
+      },
+      mappings as any[]
+    );
+
+    if (normalized.status === "normalizado") {
+      await saveNormalization(row, {
+        conta_azul_category_id: normalized.conta_azul_category_id,
+        conta_azul_category_name: normalized.conta_azul_category_name,
+        conta_azul_account_id: normalized.conta_azul_account_id,
+        conta_azul_account_name: normalized.conta_azul_account_name,
+        tipo_operacao: normalized.tipo_operacao,
+        status: "normalizado",
+      });
+    } else {
+      toast.info("Nenhum mapeamento compatível encontrado para este lançamento específico.");
+    }
   };
 
   const handleExport = () => {
@@ -787,6 +824,25 @@ export default function NormalizacaoFlashPage() {
             size="sm"
             variant="default"
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={sending || selectedToSendIds.length === 0}
+            onClick={() => {
+              if (!selectedToSendIds.length) return;
+              sendToContaAzul(selectedToSendIds).then(() => {
+                setSelectedToSendIds([]);
+              });
+            }}
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Enviar selecionados ({selectedToSendIds.length})
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
             disabled={sending || counts.normalizado === 0}
             onClick={() => {
               const ids = transactions
@@ -801,7 +857,7 @@ export default function NormalizacaoFlashPage() {
             ) : (
               <Send className="h-4 w-4 mr-2" />
             )}
-            Enviar normalizados ({counts.normalizado})
+            Enviar todos normalizados ({counts.normalizado})
           </Button>
         </div>
       </div>
@@ -927,7 +983,8 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || 
+                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
                     {selectedUsers.length > 0 && (
@@ -950,6 +1007,21 @@ export default function NormalizacaoFlashPage() {
                         Centro de Custo ({selectedCostCenters.length})
                       </Badge>
                     )}
+                    {searchParams.get("data") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Data ({searchParams.get("data")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("desc") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Descrição ({searchParams.get("desc")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("val") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Valor ({searchParams.get("val")?.split(",").length})
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -958,6 +1030,12 @@ export default function NormalizacaoFlashPage() {
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
+                        // Mantemos dateFrom e dateTo no estado, para não resetar o filtro de Período
+                        const params = new URLSearchParams(searchParams);
+                        params.delete("data");
+                        params.delete("desc");
+                        params.delete("val");
+                        setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
                     >
@@ -985,6 +1063,11 @@ export default function NormalizacaoFlashPage() {
                     setSelectedTypes([]);
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
+                    const params = new URLSearchParams(searchParams);
+                    params.delete("data");
+                    params.delete("desc");
+                    params.delete("val");
+                    setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
                   </Button>
@@ -995,23 +1078,75 @@ export default function NormalizacaoFlashPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox 
+                              checked={paginatedData.length > 0 && paginatedData.every(r => r.status === 'normalizado' ? selectedToSendIds.includes(r.id) : true)}
+                              onCheckedChange={(checked) => {
+                                const normalizadosInPage = paginatedData.filter(r => r.status === 'normalizado').map(r => r.id);
+                                if (checked) {
+                                  setSelectedToSendIds(prev => Array.from(new Set([...prev, ...normalizadosInPage])));
+                                } else {
+                                  setSelectedToSendIds(prev => prev.filter(id => !normalizadosInPage.includes(id)));
+                                }
+                              }}
+                            />
+                          </TableHead>
                           <TableHead 
-                            className="w-[90px] cursor-pointer group"
+                            className="w-[110px] cursor-pointer group"
                             onClick={() => toggleSort('data')}
                           >
-                            <div className="flex items-center">Data <SortIcon column="data" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Data <SortIcon column="data" /></div>
+                              <ColumnHeaderFilter
+                                title="Data"
+                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("data", val.join(","));
+                                  else params.delete("data");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
                             className="cursor-pointer group"
                             onClick={() => toggleSort('descricao')}
                           >
-                            <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                              <ColumnHeaderFilter
+                                title="Descrição"
+                                options={Array.from(new Set(dateFiltered.map(t => t.descricao))).filter(Boolean).sort()}
+                                selected={searchParams.get("desc")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("desc", val.join(","));
+                                  else params.delete("desc");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
-                            className="w-[110px] text-right cursor-pointer group"
+                            className="w-[130px] text-right cursor-pointer group"
                             onClick={() => toggleSort('valor')}
                           >
-                            <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center">Valor <SortIcon column="valor" /></div>
+                              <ColumnHeaderFilter
+                                title="Valor"
+                                options={Array.from(new Set(dateFiltered.map(t => formatCurrency(t.valor)))).filter(Boolean).sort()}
+                                selected={searchParams.get("val")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("val", val.join(","));
+                                  else params.delete("val");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                            <TableHead className="w-[140px]">
                             <div className="flex items-center gap-1">
@@ -1100,6 +1235,18 @@ export default function NormalizacaoFlashPage() {
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
                             <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
+                              <TableCell>
+                                {row.status === "normalizado" && (
+                                  <Checkbox 
+                                    checked={selectedToSendIds.includes(row.id)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedToSendIds(prev => 
+                                        checked ? [...prev, row.id] : prev.filter(id => id !== row.id)
+                                      );
+                                    }}
+                                  />
+                                )}
+                              </TableCell>
                               <TableCell className="text-xs">{formatDate(row.data)}</TableCell>
                               <TableCell className="max-w-[300px]">
                                 <Tooltip>
@@ -1162,7 +1309,9 @@ export default function NormalizacaoFlashPage() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center h-8 px-2 text-xs rounded-md border bg-muted/40 text-muted-foreground gap-1">
-                                  <span className="truncate">{row.conta_azul_account_name || "Flash"}</span>
+                                  <span className="truncate">
+                                    {row.conta_azul_account_name?.includes("Flash") ? "Flash" : (row.conta_azul_account_name || "Flash")}
+                                  </span>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -1383,18 +1532,28 @@ export default function NormalizacaoFlashPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo Flash</TableHead>
+                      <TableHead>Categoria Flash</TableHead>
                       <TableHead>Operação</TableHead>
                       <TableHead>Categoria Conta Azul</TableHead>
-                      <TableHead>Conta financeira Conta Azul</TableHead>
+                      <TableHead>Conta financeira CA</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mappings.map((m) => (
+                    {mappings.map((m: any) => (
                       <TableRow key={m.id}>
                         <TableCell>
                           <Badge variant="secondary" className="text-xs">
                             {m.flash_type}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {m.flash_category ? (
+                            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
+                              {m.flash_category}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
                         <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>

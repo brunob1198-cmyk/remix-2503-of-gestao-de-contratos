@@ -15,22 +15,19 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       // Get all production data from diário de obra
       const { data: producao, error: prodError } = await supabase
         .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
-        .limit(100000);
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)");
       if (prodError) throw prodError;
 
       // Get all measurement data
       const { data: medicao, error: medError } = await supabase
         .from("lancamentos_medicao")
-        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)")
-        .limit(100000);
+        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)");
       if (medError) throw medError;
 
       // Get all billing data
       const { data: faturamento, error: fatError } = await supabase
         .from("lancamentos_faturamento")
-        .select("site_id, quantidade, valor_faturado, item_lpu:itens_lpu(preco_unitario)")
-        .limit(100000);
+        .select("site_id, quantidade, valor_faturado, item_lpu:itens_lpu(preco_unitario)");
       if (fatError) throw fatError;
 
       // Get sites with project mapping
@@ -126,8 +123,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
 
       // Get all production data from diário de obra
       let prodQuery = supabase.from("diario_producao")
-        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
-        .limit(100000);
+        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)");
       const { data: producaoRaw } = await prodQuery;
       // Map to include site_id at top level for easier processing
       const producao = (producaoRaw || []).map(p => ({
@@ -138,14 +134,14 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       })).filter(p => p.site_id && (!filteredSiteIds.length || filteredSiteIds.includes(p.site_id)));
 
       // Get all measurement data
-      let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade").limit(100000);
+      let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade");
       if (filteredSiteIds.length > 0) {
         medQuery = medQuery.in("site_id", filteredSiteIds);
       }
       const { data: medicao } = await medQuery;
 
       // Get all billing data
-      let fatQuery = supabase.from("lancamentos_faturamento").select("site_id, item_lpu_id, quantidade, valor_faturado").limit(100000);
+      let fatQuery = supabase.from("lancamentos_faturamento").select("site_id, item_lpu_id, quantidade, valor_faturado");
       if (filteredSiteIds.length > 0) {
         fatQuery = fatQuery.in("site_id", filteredSiteIds);
       }

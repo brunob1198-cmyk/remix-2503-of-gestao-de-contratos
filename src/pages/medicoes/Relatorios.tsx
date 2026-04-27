@@ -348,105 +348,12 @@ export default function RelatoriosPage() {
             <LayoutGrid className="h-4 w-4 mr-2" />
             Quadro Geral
           </TabsTrigger>
-          <TabsTrigger value="geral">Relatórios Gerais</TabsTrigger>
           <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
           <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
         </TabsList>
 
         <TabsContent value="quadro_geral" className="space-y-4">
           <QuadroGeral />
-        </TabsContent>
-
-        <TabsContent value="geral" className="space-y-4">
-          <div className="flex gap-4 items-center">
-            <Select value={projetoId || "all"} onValueChange={(v) => setProjetoId(v === "all" ? "" : v)}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Filtrar por projeto" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os projetos</SelectItem>
-                {projetos.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.codigo} - {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={handleExportDashboard}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-green-600" />
-                  Resumo Geral
-                </CardTitle>
-                <CardDescription>
-                  Dashboard com totais por projeto e item LPU
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" variant="outline">
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => exportLancamentosToExcel(producao, "producao")}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-                  Produção
-                </CardTitle>
-                <CardDescription>
-                  {producao.length} lançamentos de produção
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" variant="outline" disabled={producao.length === 0}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => exportLancamentosToExcel(medicao, "medicao")}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-purple-600" />
-                  Medição
-                </CardTitle>
-                <CardDescription>
-                  {medicao.length} lançamentos de medição
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" variant="outline" disabled={medicao.length === 0}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => exportLancamentosToExcel(faturamento, "faturamento")}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-                  Faturamento
-                </CardTitle>
-                <CardDescription>
-                  {faturamento.length} lançamentos de faturamento
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" variant="outline" disabled={faturamento.length === 0}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="cruzado" className="space-y-4">

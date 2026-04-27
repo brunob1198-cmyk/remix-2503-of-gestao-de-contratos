@@ -26,7 +26,7 @@ const FLASH_TRANSACTIONS_PATH =
 // Endpoint sempre confiável para validar token (documentado)
 const FLASH_VALIDATE_PATH = "/core/v1/companies";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
-const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "100");
+const FLASH_MAX_PAGES = Number(Deno.env.get("FLASH_MAX_PAGES") ?? "1000");
 
 interface FlashTransaction {
   id?: string;

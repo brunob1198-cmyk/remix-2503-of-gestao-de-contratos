@@ -216,8 +216,7 @@ export function useFlashNormalizacao() {
         .from("flash_transactions_raw")
         .select("id, external_id, payload_json, created_at")
         .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(10000);
+        .order("created_at", { ascending: false });
 
       if (txRes.error) {
         console.error("Error fetching raw transactions:", txRes.error);
@@ -250,7 +249,8 @@ export function useFlashNormalizacao() {
       (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
 
       const mappingList = (mapRes.data || []) as CategoryMapping[];
-      const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
+      // Já não precisamos do mappingIdx fixo, pois a lógica agora é mais complexa e usa a lista completa
+
 
       const FLASH_CARD_ACCOUNT_NAME = "Flash";
       // Use the latest 'contas' state or try to find it from the data if available
@@ -285,7 +285,7 @@ export function useFlashNormalizacao() {
 
         const normalized = normalizeFlashTransaction(
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
-          mappingIdx
+          mappingList as FlashCategoryMappingLike[]
         );
 
         base.tipo_operacao = normalized.tipo_operacao;
@@ -381,8 +381,11 @@ export function useFlashNormalizacao() {
     fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
   }, [fetchMetadata]);
 
+  // Mantemos o mappingByType apenas para retrocompatibilidade simples se necessário,
+  // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
   const mappingByType = useMemo(() => {
     const map = new Map<string, CategoryMapping>();
+    // No caso de conflito, o último (provavelmente mais recente ou específico) ganha no Map simples
     mappings.forEach((m) => map.set(m.flash_type, m));
     return map;
   }, [mappings]);
@@ -412,7 +415,7 @@ export function useFlashNormalizacao() {
       setSavingId(row.id);
       try {
         // Busca a conta Flash por nome (qualquer nome contendo 'flash')
-        const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
+        const flashAccount = contas.find(c => c.name?.toLowerCase() === "flash" || c.name?.toLowerCase().includes("flash"));
 
         const merged = {
           conta_azul_category_id: patch.conta_azul_category_id ?? row.conta_azul_category_id ?? null,
@@ -499,28 +502,36 @@ export function useFlashNormalizacao() {
         );
 
         if (opts?.saveMapping && row.flash_type && merged.conta_azul_category_id && merged.conta_azul_account_id) {
+          // Salva um mapeamento mais inteligente baseado nos detalhes da transação atual
           const { data: mData, error: mError } = await supabase
             .from("flash_category_mapping")
             .upsert(
               {
                 empresa_id: empresaId,
                 flash_type: row.flash_type,
+                flash_category: row.flash_category,
+                flash_cost_center: row.flash_cost_center,
                 conta_azul_category_id: merged.conta_azul_category_id,
                 conta_azul_category_name: merged.conta_azul_category_name,
                 conta_azul_account_id: merged.conta_azul_account_id,
                 conta_azul_account_name: merged.conta_azul_account_name,
                 tipo_operacao: merged.tipo_operacao,
               },
-              { onConflict: "empresa_id,flash_type" }
+              { onConflict: "empresa_id,flash_type,flash_category,flash_cost_center" }
             )
             .select()
             .single();
+            
           if (mError) throw mError;
+          
           setMappings((prev) => {
-            const filtered = prev.filter((m) => m.flash_type !== row.flash_type);
-            return [...filtered, mData as CategoryMapping];
+            const others = prev.filter((m) => m.id !== mData.id);
+            return [...others, mData as CategoryMapping];
           });
-          toast.success("Mapeamento salvo", { description: `Tipo "${row.flash_type}" será aplicado automaticamente.` });
+          
+          toast.success("Mapeamento inteligente salvo", { 
+            description: `Tipo "${row.flash_type}" (Cat: ${row.flash_category}) será aplicado automaticamente.` 
+          });
         }
       } catch (e: any) {
         console.error(e);
