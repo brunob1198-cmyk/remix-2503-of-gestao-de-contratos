@@ -130,7 +130,7 @@ async function sendOne(
     description: input.description,
     value: Math.abs(Number(input.value) || 0),
     type: input.type === "receita" ? "REVENUE" : "EXPENSE",
-    date: input.date || new Date().toISOString().split("T")[0],
+    date: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
     category_id: input.category_id,
     financial_account_id: input.financial_account_id,
   };
