@@ -370,7 +370,8 @@ export default function NormalizacaoFlashPage() {
         if (
           !t.descricao.toLowerCase().includes(q) &&
           !t.usuario.toLowerCase().includes(q) &&
-          !t.flash_type.toLowerCase().includes(q)
+          !t.flash_type.toLowerCase().includes(q) &&
+          !(t.flash_prestacao_contas || "").toLowerCase().includes(q)
         )
           return false;
       }
