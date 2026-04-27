@@ -415,7 +415,7 @@ export function useFlashNormalizacao() {
       setSavingId(row.id);
       try {
         // Busca a conta Flash por nome (qualquer nome contendo 'flash')
-        const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
+        const flashAccount = contas.find(c => c.name?.toLowerCase() === "flash" || c.name?.toLowerCase().includes("flash"));
 
         const merged = {
           conta_azul_category_id: patch.conta_azul_category_id ?? row.conta_azul_category_id ?? null,
