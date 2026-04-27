@@ -27,8 +27,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       // Get all billing data
       const { data: faturamento, error: fatError } = await supabase
         .from("lancamentos_faturamento")
-        .select("site_id, quantidade, valor_faturado, item_lpu:itens_lpu(preco_unitario)")
-        .limit(100000);
+        .select("site_id, quantidade, valor_faturado, item_lpu:itens_lpu(preco_unitario)");
       if (fatError) throw fatError;
 
       // Get sites with project mapping
