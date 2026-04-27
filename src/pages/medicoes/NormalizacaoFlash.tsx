@@ -229,10 +229,15 @@ export default function NormalizacaoFlashPage() {
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
   const itemsPerPage = 50;
 
-  // Reset page when filters change
+  // Reset page when filters change (but NOT when changing date range or sorting, 
+  // if we want to preserve them, but usually filters should reset page to 1)
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo]);
+    // Only reset if it's not the initial mount from URL
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("page")) {
+      setCurrentPage(1);
+    }
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters]);
 
   // Update URL search params when filters change
   useEffect(() => {
