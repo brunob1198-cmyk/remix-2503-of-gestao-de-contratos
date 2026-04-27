@@ -308,15 +308,15 @@ export default function NormalizacaoFlashPage() {
     });
   }, [transactions, dateFrom, dateTo]);
 
-  // Extract unique values for filters (from period-filtered data)
+  // Extract unique values for filters (from all transactions to avoid hiding options)
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(dateFiltered.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(dateFiltered.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(dateFiltered.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(dateFiltered.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
     
     return { users, types, categories, costCenters };
-  }, [dateFiltered]);
+  }, [transactions]);
 
   const filtered = useMemo(() => {
     let result = dateFiltered.filter((t) => {
