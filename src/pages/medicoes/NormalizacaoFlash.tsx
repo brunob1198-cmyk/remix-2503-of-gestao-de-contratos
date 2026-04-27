@@ -267,6 +267,9 @@ export default function NormalizacaoFlashPage() {
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
   const [confirmReopenRow, setConfirmReopenRow] = useState<FlashTransactionRow | null>(null);
 
+  // Selection for bulk sending
+  const [selectedToSendIds, setSelectedToSendIds] = useState<string[]>([]);
+
   // Bulk pendentes
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [bulkCat, setBulkCat] = useState<{ id: string; name: string } | null>(null);
@@ -811,6 +814,25 @@ export default function NormalizacaoFlashPage() {
             size="sm"
             variant="default"
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={sending || selectedToSendIds.length === 0}
+            onClick={() => {
+              if (!selectedToSendIds.length) return;
+              sendToContaAzul(selectedToSendIds).then(() => {
+                setSelectedToSendIds([]);
+              });
+            }}
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Enviar selecionados ({selectedToSendIds.length})
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
             disabled={sending || counts.normalizado === 0}
             onClick={() => {
               const ids = transactions
@@ -825,7 +847,7 @@ export default function NormalizacaoFlashPage() {
             ) : (
               <Send className="h-4 w-4 mr-2" />
             )}
-            Enviar normalizados ({counts.normalizado})
+            Enviar todos normalizados ({counts.normalizado})
           </Button>
         </div>
       </div>
@@ -1019,6 +1041,19 @@ export default function NormalizacaoFlashPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox 
+                              checked={paginatedData.length > 0 && paginatedData.every(r => r.status === 'normalizado' ? selectedToSendIds.includes(r.id) : true)}
+                              onCheckedChange={(checked) => {
+                                const normalizadosInPage = paginatedData.filter(r => r.status === 'normalizado').map(r => r.id);
+                                if (checked) {
+                                  setSelectedToSendIds(prev => Array.from(new Set([...prev, ...normalizadosInPage])));
+                                } else {
+                                  setSelectedToSendIds(prev => prev.filter(id => !normalizadosInPage.includes(id)));
+                                }
+                              }}
+                            />
+                          </TableHead>
                           <TableHead 
                             className="w-[90px] cursor-pointer group"
                             onClick={() => toggleSort('data')}
@@ -1124,6 +1159,18 @@ export default function NormalizacaoFlashPage() {
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
                             <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
+                              <TableCell>
+                                {row.status === "normalizado" && (
+                                  <Checkbox 
+                                    checked={selectedToSendIds.includes(row.id)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedToSendIds(prev => 
+                                        checked ? [...prev, row.id] : prev.filter(id => id !== row.id)
+                                      );
+                                    }}
+                                  />
+                                )}
+                              </TableCell>
                               <TableCell className="text-xs">{formatDate(row.data)}</TableCell>
                               <TableCell className="max-w-[300px]">
                                 <Tooltip>
