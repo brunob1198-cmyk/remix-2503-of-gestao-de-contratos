@@ -379,16 +379,32 @@ export default function NormalizacaoFlashPage() {
   }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
-    const m = mappingByType.get(row.flash_type);
-    if (!m) return;
-    await saveNormalization(row, {
-      conta_azul_category_id: m.conta_azul_category_id,
-      conta_azul_category_name: m.conta_azul_category_name,
-      conta_azul_account_id: m.conta_azul_account_id,
-      conta_azul_account_name: m.conta_azul_account_name,
-      tipo_operacao: m.tipo_operacao,
-      status: "normalizado",
-    });
+    // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
+    const normalized = normalizeFlashTransaction(
+      { 
+        id: row.id, 
+        external_id: row.external_id, 
+        payload_json: row.payload_json, 
+        flash_type: row.flash_type,
+        flash_category: row.flash_category,
+        flash_cost_center: row.flash_cost_center,
+        descricao: row.descricao
+      },
+      mappings as any[]
+    );
+
+    if (normalized.status === "normalizado") {
+      await saveNormalization(row, {
+        conta_azul_category_id: normalized.conta_azul_category_id,
+        conta_azul_category_name: normalized.conta_azul_category_name,
+        conta_azul_account_id: normalized.conta_azul_account_id,
+        conta_azul_account_name: normalized.conta_azul_account_name,
+        tipo_operacao: normalized.tipo_operacao,
+        status: "normalizado",
+      });
+    } else {
+      toast.info("Nenhum mapeamento compatível encontrado para este lançamento específico.");
+    }
   };
 
   const handleExport = () => {
