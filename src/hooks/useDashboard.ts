@@ -141,7 +141,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       const { data: medicao } = await medQuery;
 
       // Get all billing data
-      let fatQuery = supabase.from("lancamentos_faturamento").select("site_id, item_lpu_id, quantidade, valor_faturado").limit(100000);
+      let fatQuery = supabase.from("lancamentos_faturamento").select("site_id, item_lpu_id, quantidade, valor_faturado");
       if (filteredSiteIds.length > 0) {
         fatQuery = fatQuery.in("site_id", filteredSiteIds);
       }
