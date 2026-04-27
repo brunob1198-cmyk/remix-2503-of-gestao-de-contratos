@@ -336,8 +336,9 @@ export default function NormalizacaoFlashPage() {
     const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
     const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
     const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
     
-    return { users, types, categories, costCenters };
+    return { users, types, categories, costCenters, prestacaoContas };
   }, [transactions]);
 
   const filtered = useMemo(() => {
