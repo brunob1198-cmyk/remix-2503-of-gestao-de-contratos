@@ -123,8 +123,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
 
       // Get all production data from diário de obra
       let prodQuery = supabase.from("diario_producao")
-        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
-        .limit(100000);
+        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)");
       const { data: producaoRaw } = await prodQuery;
       // Map to include site_id at top level for easier processing
       const producao = (producaoRaw || []).map(p => ({
