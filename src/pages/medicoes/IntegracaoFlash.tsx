@@ -398,25 +398,6 @@ export default function IntegracaoFlashPage() {
               )}
             </Button>
             <Button
-              variant="secondary"
-              onClick={() => authProbeMutation.mutate()}
-              disabled={authProbeMutation.isPending || syncMutation.isPending || testMutation.isPending}
-              className="gap-2"
-              title="Sonda múltiplos paths candidatos para descobrir o endpoint correto da Flash"
-            >
-              {authProbeMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sondando auth...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  Testar Variações de Auth
-                </>
-              )}
-            </Button>
-            <Button
               onClick={() => syncMutation.mutate()}
               disabled={syncMutation.isPending || !startDate || !endDate}
               className="gap-2"
