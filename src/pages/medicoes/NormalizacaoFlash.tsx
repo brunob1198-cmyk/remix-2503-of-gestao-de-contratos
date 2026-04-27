@@ -1241,8 +1241,7 @@ export default function NormalizacaoFlashPage() {
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
                             <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
-                      <TableCell className="text-xs font-medium">{row.flash_prestacao_contas}</TableCell>
-                      <TableCell>
+                              <TableCell>
                                 {row.status === "normalizado" && (
                                   <Checkbox 
                                     checked={selectedToSendIds.includes(row.id)}
