@@ -214,6 +214,10 @@ export default function NormalizacaoFlashPage() {
     searchParams.get("costCenters")?.split(",").filter(Boolean) || []
   );
 
+  const [selectedPrestacao, setSelectedPrestacao] = useState<string[]>(
+    searchParams.get("prestacao")?.split(",").filter(Boolean) || []
+  );
+
   // Period filter (applies to all tabs)
   const [dateFrom, setDateFrom] = useState<string>(() => {
     return searchParams.get("from") || localStorage.getItem("flash_filter_from") || "";
@@ -242,7 +246,7 @@ export default function NormalizacaoFlashPage() {
     if (!params.get("page")) {
       setCurrentPage(1);
     }
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -253,6 +257,7 @@ export default function NormalizacaoFlashPage() {
     if (selectedTypes.length > 0) params.set("types", selectedTypes.join(","));
     if (selectedCategories.length > 0) params.set("categories", selectedCategories.join(","));
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
+    if (selectedPrestacao.length > 0) params.set("prestacao", selectedPrestacao.join(","));
     if (dateFrom) {
       params.set("from", dateFrom);
       localStorage.setItem("flash_filter_from", dateFrom);
@@ -275,7 +280,7 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
@@ -331,8 +336,9 @@ export default function NormalizacaoFlashPage() {
     const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
     const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
     const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
     
-    return { users, types, categories, costCenters };
+    return { users, types, categories, costCenters, prestacaoContas };
   }, [transactions]);
 
   const filtered = useMemo(() => {
@@ -344,6 +350,7 @@ export default function NormalizacaoFlashPage() {
       if (selectedTypes.length > 0 && !selectedTypes.includes(t.flash_type)) return false;
       if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
+      if (selectedPrestacao.length > 0 && !selectedPrestacao.includes(t.flash_prestacao_contas)) return false;
 
       // Novos filtros nos cabeçalhos
       const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
@@ -363,7 +370,8 @@ export default function NormalizacaoFlashPage() {
         if (
           !t.descricao.toLowerCase().includes(q) &&
           !t.usuario.toLowerCase().includes(q) &&
-          !t.flash_type.toLowerCase().includes(q)
+          !t.flash_type.toLowerCase().includes(q) &&
+          !(t.flash_prestacao_contas || "").toLowerCase().includes(q)
         )
           return false;
       }
@@ -1003,7 +1011,7 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || 
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || selectedPrestacao.length > 0 ||
                   searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
@@ -1025,6 +1033,11 @@ export default function NormalizacaoFlashPage() {
                     {selectedCostCenters.length > 0 && (
                       <Badge variant="secondary" className="text-[11px]">
                         Centro de Custo ({selectedCostCenters.length})
+                      </Badge>
+                    )}
+                    {selectedPrestacao.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Prestação de Contas ({selectedPrestacao.length})
                       </Badge>
                     )}
                     {searchParams.get("data") && (
@@ -1050,6 +1063,7 @@ export default function NormalizacaoFlashPage() {
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
+                        setSelectedPrestacao([]);
                         // Mantemos dateFrom e dateTo no estado, para não resetar o filtro de Período
                         const params = new URLSearchParams(searchParams);
                         params.delete("data");
@@ -1083,6 +1097,7 @@ export default function NormalizacaoFlashPage() {
                     setSelectedTypes([]);
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
+                    setSelectedPrestacao([]);
                     const params = new URLSearchParams(searchParams);
                     params.delete("data");
                     params.delete("desc");
@@ -1245,7 +1260,23 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[180px]">Conta financeira CA</TableHead>
                           <TableHead className="w-[160px]">Status CA</TableHead>
-                          <TableHead className="w-[180px]">Prestação de Contas</TableHead>
+                          <TableHead className="w-[180px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_prestacao_contas')}
+                              >
+                                Prestação de Contas <SortIcon column="flash_prestacao_contas" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Prestação de Contas"
+                                options={filterOptions.prestacaoContas}
+                                selected={selectedPrestacao}
+                                onSelect={setSelectedPrestacao}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
