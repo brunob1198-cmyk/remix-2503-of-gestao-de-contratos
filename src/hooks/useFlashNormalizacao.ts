@@ -382,8 +382,11 @@ export function useFlashNormalizacao() {
     fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
   }, [fetchMetadata]);
 
+  // Mantemos o mappingByType apenas para retrocompatibilidade simples se necessário,
+  // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
   const mappingByType = useMemo(() => {
     const map = new Map<string, CategoryMapping>();
+    // No caso de conflito, o último (provavelmente mais recente ou específico) ganha no Map simples
     mappings.forEach((m) => map.set(m.flash_type, m));
     return map;
   }, [mappings]);
