@@ -134,7 +134,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       })).filter(p => p.site_id && (!filteredSiteIds.length || filteredSiteIds.includes(p.site_id)));
 
       // Get all measurement data
-      let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade").limit(100000);
+      let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade");
       if (filteredSiteIds.length > 0) {
         medQuery = medQuery.in("site_id", filteredSiteIds);
       }
