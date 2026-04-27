@@ -464,9 +464,9 @@ Deno.serve(async (req) => {
         // A API Flash retorna `date` no nível raiz da despesa (ISO datetime)
         // e também em `transaction.date`. Tentamos múltiplos caminhos.
         const txDate =
+          toIsoDate((tx as any).transaction?.date) ||
           toIsoDate(tx.transaction_date) ||
           toIsoDate(tx.date) ||
-          toIsoDate((tx as any).transaction?.date) ||
           toIsoDate((tx as any).ocrData?.date) ||
           toIsoDate(tx.created_at);
 
