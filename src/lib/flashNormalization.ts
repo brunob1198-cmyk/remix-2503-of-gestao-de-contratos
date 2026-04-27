@@ -1,18 +1,13 @@
 /**
  * Lógica de normalização automática de transações da Flash.
- *
- * Sempre que um lançamento da Flash é carregado, tentamos:
- *   1. Identificar o `flash_type` da transação.
- *   2. Procurar um mapeamento existente em `flash_category_mapping`.
- *   3. Se houver mapping → status = "normalizado" e dados prontos para envio.
- *   4. Caso contrário     → status = "pendente" (intervenção manual).
- *
- * Esta função NÃO envia nada para o Conta Azul — apenas prepara o payload.
  */
 
 export interface FlashCategoryMappingLike {
   id?: string;
   flash_type: string;
+  flash_category?: string | null;
+  flash_cost_center?: string | null;
+  flash_description_pattern?: string | null;
   conta_azul_category_id: string | null;
   conta_azul_category_name: string | null;
   conta_azul_account_id: string | null;
@@ -26,6 +21,8 @@ export interface FlashRawTransactionLike {
   payload_json?: any;
   // Se vier já parseado de uma row "derivada":
   flash_type?: string | null;
+  flash_category?: string | null;
+  flash_cost_center?: string | null;
   descricao?: string | null;
   valor?: number | null;
   data?: string | null;
@@ -42,9 +39,7 @@ export interface NormalizedFlashTransaction {
   conta_azul_category_name: string | null;
   conta_azul_account_id: string | null;
   conta_azul_account_name: string | null;
-  /** ID do mapping aplicado, quando houver */
   mapping_id_usado: string | null;
-  /** Dados auxiliares prontos para envio futuro ao Conta Azul */
   conta_azul_payload: {
     description: string;
     amount: number;
@@ -57,9 +52,7 @@ export interface NormalizedFlashTransaction {
     external_id: string | null;
     flash_type: string;
   } | null;
-  /** Quando true → requer intervenção manual antes de enviar */
   requires_manual_review: boolean;
-  /** Motivo detalhado (sempre preenchido) */
   motivo: string;
   reason?: string;
 }
@@ -117,50 +110,58 @@ export const extractFlashType = (transaction: FlashRawTransactionLike): string =
 };
 
 /**
- * Indexa uma lista de mapeamentos por flash_type para lookup O(1).
- */
-export const buildMappingIndex = (
-  mappings: FlashCategoryMappingLike[]
-): Map<string, FlashCategoryMappingLike> => {
-  const idx = new Map<string, FlashCategoryMappingLike>();
-  for (const m of mappings) {
-    if (m.flash_type) idx.set(m.flash_type, m);
-  }
-  return idx;
-};
-
-/**
  * Normaliza uma transação individual da Flash usando o índice de mapeamentos.
- *
- * Retorna um objeto pronto para `upsert` em `flash_normalizacao` e, se possível,
- * o `conta_azul_payload` que será enviado futuramente ao Conta Azul.
+ * Implementa lógica de matching prioritária (mais específico para menos específico).
  */
 export const normalizeFlashTransaction = (
   transaction: FlashRawTransactionLike,
-  mappingIndex: Map<string, FlashCategoryMappingLike>
+  mappings: FlashCategoryMappingLike[]
 ): NormalizedFlashTransaction => {
   const flash_type = extractFlashType(transaction);
-  const mapping = mappingIndex.get(flash_type);
-
   const payload = transaction.payload_json || {};
-  const descricao =
-    transaction.descricao ||
-    pickValue(payload, ["description", "descricao", "merchant", "establishment", "name"]) ||
-    "—";
-  const valor =
-    typeof transaction.valor === "number"
-      ? transaction.valor
-      : pickNumber(payload, ["amount", "value", "valor", "total"]);
-  const data =
-    transaction.data ||
-    pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
+  
+  // Extrair metadados para matching inteligente
+  const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
+  const flash_cost_center = transaction.flash_cost_center || pickValue(payload, ["costCenter.name", "cost_center.name", "centro_custo", "employee.costCenter.name"]) || "—";
+  const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
+  
+  const valor = typeof transaction.valor === "number" ? transaction.valor : pickNumber(payload, ["amount", "value", "valor", "total"]);
+  const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   // Fixa a conta financeira conforme solicitado pelo usuário
   const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash - Cartão Corporativo"
   const fixedAccountName = "Flash - Cartão Corporativo";
 
+  // Encontrar o melhor mapping baseado em especificidade
+  const sortedMappings = [...mappings].sort((a, b) => {
+    let scoreA = 0;
+    let scoreB = 0;
+    if (a.flash_category) scoreA += 10;
+    if (a.flash_cost_center) scoreA += 5;
+    if (a.flash_description_pattern) scoreA += 20;
+    
+    if (b.flash_category) scoreB += 10;
+    if (b.flash_cost_center) scoreB += 5;
+    if (b.flash_description_pattern) scoreB += 20;
+    
+    return scoreB - scoreA;
+  });
+
+  const mapping = sortedMappings.find(m => {
+    if (m.flash_type !== flash_type) return false;
+    
+    if (m.flash_category && m.flash_category !== flash_category) return false;
+    if (m.flash_cost_center && m.flash_cost_center !== flash_cost_center) return false;
+    if (m.flash_description_pattern) {
+      const pattern = m.flash_description_pattern.toLowerCase();
+      if (!descricao.toLowerCase().includes(pattern)) return false;
+    }
+    
+    return true;
+  });
+
   if (!mapping) {
-    const motivo = `Pendente: nenhum mapeamento encontrado para o tipo Flash "${flash_type}". Defina manualmente a categoria.`;
+    const motivo = `Pendente: nenhum mapeamento encontrado para o tipo "${flash_type}" [Cat: ${flash_category} | CC: ${flash_cost_center}].`;
     return {
       flash_transaction_id: transaction.id,
       external_id: transaction.external_id ?? null,
@@ -184,8 +185,8 @@ export const normalizeFlashTransaction = (
   const hasFullMapping = !!categoryId && !!fixedAccountId;
 
   const motivo = hasFullMapping
-    ? `Normalizado automaticamente via mapping do tipo "${flash_type}" → ${categoryName || categoryId} / ${fixedAccountName}.`
-    : `Pendente: mapping para "${flash_type}" existe mas está incompleto (faltando categoria).`;
+    ? `Normalizado automaticamente via mapping inteligente ("${flash_type}" + detalhes) → ${categoryName || categoryId}.`
+    : `Pendente: mapping encontrado mas incompleto.`;
 
   return {
     flash_transaction_id: transaction.id,
@@ -218,10 +219,6 @@ export const normalizeFlashTransaction = (
   };
 };
 
-/**
- * Constrói o payload pronto para envio ao Conta Azul a partir de uma linha já normalizada.
- * Retorna null se a linha não tem dados suficientes.
- */
 export const buildContaAzulPayload = (params: {
   descricao: string;
   valor: number;
@@ -249,13 +246,19 @@ export const buildContaAzulPayload = (params: {
   };
 };
 
-/**
- * Normaliza um lote de transações de uma vez.
- */
 export const normalizeFlashTransactionBatch = (
   transactions: FlashRawTransactionLike[],
   mappings: FlashCategoryMappingLike[]
 ): NormalizedFlashTransaction[] => {
-  const idx = buildMappingIndex(mappings);
-  return transactions.map((tx) => normalizeFlashTransaction(tx, idx));
+  return transactions.map((tx) => normalizeFlashTransaction(tx, mappings));
+};
+
+export const buildMappingIndex = (
+  mappings: FlashCategoryMappingLike[]
+): Map<string, FlashCategoryMappingLike> => {
+  const idx = new Map<string, FlashCategoryMappingLike>();
+  for (const m of mappings) {
+    if (m.flash_type) idx.set(m.flash_type, m);
+  }
+  return idx;
 };
