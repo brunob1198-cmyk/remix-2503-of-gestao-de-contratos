@@ -52,6 +52,11 @@ export const pdfGlobalStyles = `
     .foto-legenda { font-size: 10px; color: #334155; margin: 4px 0 0 0; font-style: italic; word-wrap: break-word; overflow-wrap: break-word; }
     .foto-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 0; }
     .foto-row .foto-card { width: calc(50% - 7px); margin-bottom: 12px; }
+    /* Group label bar below each photo */
+    .foto-label-bar { padding: 6px 10px 8px; background: #fff; }
+    .foto-label-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; }
+    /* Section group header above each set of photos */
+    .foto-group-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; border-radius: 0 4px 4px 0; margin: 14px 0 8px; page-break-after: avoid; }
   </style>
 `;
 

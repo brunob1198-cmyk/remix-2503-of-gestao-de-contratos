@@ -191,7 +191,10 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         const itemGroups = new Map<string, typeof diario.fotos>();
         const itemOrder: string[] = [];
         diario.fotos.forEach(f => {
-          const key = f.item_evidencia ? f.item_evidencia.codigo : '__sem_item__';
+          // Group by item_evidencia when linked to production, otherwise by classificacao
+          const key = f.item_evidencia
+            ? f.item_evidencia.codigo
+            : (f.classificacao || '__geral__');
           if (!itemGroups.has(key)) { itemGroups.set(key, []); itemOrder.push(key); }
           itemGroups.get(key)!.push(f);
         });
@@ -200,11 +203,15 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         ${itemOrder.map(key => {
           const photos = itemGroups.get(key)!;
           const first = photos[0];
-          const title = first.item_evidencia ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}` : 'Sem item vinculado';
+          const title = first.item_evidencia
+            ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}`
+            : (first.classificacao && first.classificacao !== '__geral__' ? first.classificacao : 'Geral');
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
                 <img src="${f.url}" alt="foto" />
-                ${f.legenda ? `<div class="foto-info"><div class="foto-legenda">${f.legenda}</div></div>` : ''}
+                <div class="foto-label-bar">
+                  <span class="foto-label-badge">${title}</span>
+                </div>
               </div>`;
           // Render in pairs so each row avoids page breaks
           const rows: string[] = [];
@@ -217,7 +224,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           }
           return `
           <div class="foto-item-group" style="page-break-inside:avoid; break-inside:avoid;">
-            <h3 style="font-size:13px; margin:16px 0 8px; color:#1e3a5f;">${title}</h3>
+            <div class="foto-group-header">${title}</div>
             <div class="foto-grid">
               ${rows.join('')}
             </div>
@@ -1063,7 +1070,10 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
     const map = new Map<string, RdoFoto[]>();
     const order: string[] = [];
     diario.fotos.forEach(f => {
-      const key = f.item_evidencia ? f.item_evidencia.codigo : "__sem_item__";
+      // Group by LPU item when linked to production; otherwise group by classificacao
+      const key = f.item_evidencia
+        ? f.item_evidencia.codigo
+        : (f.classificacao || '__geral__');
       if (!map.has(key)) {
         map.set(key, []);
         order.push(key);
@@ -1075,7 +1085,9 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
       const first = photos[0];
       const label = first.item_evidencia
         ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}`
-        : "Sem item vinculado";
+        : (first.classificacao && first.classificacao !== '__geral__'
+            ? first.classificacao
+            : 'Geral');
       groups.push({ key, label, photos });
     });
     return groups;
@@ -1238,39 +1250,43 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                 <Badge variant="secondary" className="ml-auto text-xs">{diario.fotos.length}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {fotosByItem.map(({ key, label, photos }) => (
                 <div key={key}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Tag className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="text-xs font-semibold truncate">{label}</span>
+                  {/* Group label header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Tag className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-bold text-foreground">{label}</span>
                     <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{photos.length}</Badge>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {/* 2-column card grid */}
+                  <div className="grid grid-cols-2 gap-3">
                     {photos.map(f => (
-                      <button
-                        key={f.id}
-                        onClick={() => onPhotoClick(f)}
-                        className="relative aspect-square rounded-lg overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all active:scale-[0.97] group"
-                      >
-                        <img
-                          src={f.url}
-                          alt={f.legenda || "Foto"}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                          <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 space-y-0.5">
-                          <Badge className={`text-[9px] px-1 py-0 ${classificacaoBadgeClass[f.classificacao] || ""}`}>
-                            {classificacaoLabel[f.classificacao] || f.classificacao}
-                          </Badge>
+                      <div key={f.id} className="rounded-lg overflow-hidden border shadow-sm">
+                        <button
+                          onClick={() => onPhotoClick(f)}
+                          className="block w-full relative group"
+                        >
+                          <img
+                            src={f.url}
+                            alt={f.legenda || label}
+                            className="w-full object-cover aspect-[4/3]"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                        {/* Description + green badge below photo */}
+                        <div className="px-2 pt-1.5 pb-2 space-y-1">
                           {f.legenda && (
-                            <p className="text-[10px] text-white truncate">{f.legenda}</p>
+                            <p className="text-xs font-medium text-foreground leading-snug">{f.legenda}</p>
                           )}
+                          <span className="inline-block rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2.5 py-0.5">
+                            {label}
+                          </span>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>

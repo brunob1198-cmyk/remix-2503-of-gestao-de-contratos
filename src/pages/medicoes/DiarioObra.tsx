@@ -30,7 +30,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText,
+  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag,
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,6 +56,14 @@ export default function DiarioObraPage() {
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
   const [diarioClima, setDiarioClima] = useState("");
   const [headerSaved, setHeaderSaved] = useState(false);
+
+  // Photo groups state (persisted per site in localStorage)
+  const [photoGroups, setPhotoGroups] = usePersistedState<string[]>(
+    `diario_photo_groups_${selectedSiteId || "default"}`,
+    ["Execução", "Vistoria"]
+  );
+  const [newGroupName, setNewGroupName] = useState("");
+  const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Reset site when projeto changes
   const handleProjetoChange = (projetoId: string) => {
@@ -1489,57 +1497,174 @@ export default function DiarioObraPage() {
             </CardContent>
           </Card>
 
-          {/* ===== FOTOS GERAIS ===== */}
+          {/* ===== FOTOS GERAIS - GRUPOS PERSONALIZÁVEIS ===== */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Camera className="h-5 w-5 text-pink-600" />
-                Fotos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept={ACCEPTED_FILE_TYPES}
-                    multiple
-                    className="hidden"
-                    onChange={e => handleUploadFoto(e, "execucao")}
+                <CardTitle className="text-base">Fotos</CardTitle>
+                <Badge variant="secondary" className="ml-1">
+                  {fotos.filter(f => !f.diario_producao_id).length}
+                </Badge>
+                <div className="ml-auto flex items-center gap-2">
+                  <Input
+                    value={newGroupName}
+                    onChange={e => setNewGroupName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newGroupName.trim()) {
+                        const name = newGroupName.trim();
+                        if (!photoGroups.includes(name)) setPhotoGroups(prev => [...prev, name]);
+                        setNewGroupName("");
+                      }
+                    }}
+                    placeholder="Nome do grupo..."
+                    className="h-8 w-[160px] text-xs"
                   />
-                  <div className="flex items-center gap-2 border rounded-md px-3 py-2 hover:bg-accent transition-colors w-fit">
-                    <Upload className="h-4 w-4" />
-                    <span className="text-sm">Enviar Fotos</span>
-                  </div>
-                </label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={!newGroupName.trim()}
+                    onClick={() => {
+                      const name = newGroupName.trim();
+                      if (name && !photoGroups.includes(name)) setPhotoGroups(prev => [...prev, name]);
+                      setNewGroupName("");
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Novo Grupo
+                  </Button>
+                </div>
               </div>
-
-              {(() => {
-                const fotosGerais = fotos.filter(f => !f.diario_producao_id);
-                return fotosGerais.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {fotosGerais.map(f => (
-                      <div key={f.id} className="relative group rounded-lg overflow-hidden border">
-                        {isFileImage(f.url) ? (
-                          <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" />
-                        ) : (
-                          <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
-                            <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
-                            <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
-                          </div>
-                        )}
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {photoGroups.map(groupName => {
+                const groupFotos = fotos.filter(
+                  f => !f.diario_producao_id && f.classificacao === groupName
+                );
+                const inputRef = (el: HTMLInputElement | null) => {
+                  photoGroupUploadRefs.current[groupName] = el;
+                };
+                return (
+                  <div key={groupName} className="space-y-2">
+                    {/* Group header */}
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span className="text-sm font-semibold">{groupName}</span>
+                      <Badge variant="secondary" className="text-[10px]">{groupFotos.length}</Badge>
+                      <div className="ml-auto flex items-center gap-2">
+                        {/* Upload for this group */}
+                        <input
+                          ref={inputRef}
+                          type="file"
+                          accept={ACCEPTED_FILE_TYPES}
+                          multiple
+                          className="hidden"
+                          onChange={e => handleUploadFoto(e, groupName)}
+                        />
                         <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removeFoto.mutate(f.id)}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => photoGroupUploadRefs.current[groupName]?.click()}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Upload className="h-3.5 w-3.5 mr-1" /> Enviar Fotos
+                        </Button>
+                        {/* Remove group only if empty */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          disabled={groupFotos.length > 0}
+                          title={groupFotos.length > 0 ? "Remova as fotos antes de excluir o grupo" : "Remover grupo"}
+                          onClick={() => setPhotoGroups(prev => prev.filter(g => g !== groupName))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    ))}
+                    </div>
+                    {/* Photo grid for group */}
+                    {groupFotos.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {groupFotos.map(f => (
+                          <div key={f.id} className="relative group rounded-lg overflow-hidden border">
+                            {isFileImage(f.url) ? (
+                              <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" />
+                            ) : (
+                              <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
+                                <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
+                                <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
+                              </div>
+                            )}
+                            {/* Group badge */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                              <span className="inline-block rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 truncate max-w-full">
+                                {groupName}
+                              </span>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeFoto.mutate(f.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {groupFotos.length === 0 && (
+                      <div className="rounded-md border-2 border-dashed border-border/50 py-5 flex flex-col items-center gap-1 text-muted-foreground">
+                        <Camera className="h-6 w-6 opacity-30" />
+                        <p className="text-xs">Nenhuma foto neste grupo ainda.</p>
+                      </div>
+                    )}
                   </div>
-                ) : null;
+                );
+              })}
+
+              {/* Fotos sem grupo (classificacao = "execucao" antigo ou null) */}
+              {(() => {
+                const semGrupo = fotos.filter(
+                  f => !f.diario_producao_id && !photoGroups.includes(f.classificacao)
+                );
+                if (semGrupo.length === 0) return null;
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-semibold text-muted-foreground">Outras Fotos</span>
+                      <Badge variant="secondary" className="text-[10px]">{semGrupo.length}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {semGrupo.map(f => (
+                        <div key={f.id} className="relative group rounded-lg overflow-hidden border">
+                          {isFileImage(f.url) ? (
+                            <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" />
+                          ) : (
+                            <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
+                              <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
+                              <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                            <span className="inline-block rounded-full bg-gray-600 text-white text-[10px] font-semibold px-2 py-0.5 truncate max-w-full">
+                              {f.classificacao || "geral"}
+                            </span>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeFoto.mutate(f.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
               })()}
             </CardContent>
           </Card>
