@@ -257,6 +257,7 @@ export default function NormalizacaoFlashPage() {
     if (selectedTypes.length > 0) params.set("types", selectedTypes.join(","));
     if (selectedCategories.length > 0) params.set("categories", selectedCategories.join(","));
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
+    if (selectedPrestacao.length > 0) params.set("prestacao", selectedPrestacao.join(","));
     if (dateFrom) {
       params.set("from", dateFrom);
       localStorage.setItem("flash_filter_from", dateFrom);
