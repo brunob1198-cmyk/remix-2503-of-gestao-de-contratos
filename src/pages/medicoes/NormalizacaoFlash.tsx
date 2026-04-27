@@ -1260,7 +1260,23 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[200px]">Categoria CA</TableHead>
                           <TableHead className="w-[180px]">Conta financeira CA</TableHead>
                           <TableHead className="w-[160px]">Status CA</TableHead>
-                          <TableHead className="w-[180px]">Prestação de Contas</TableHead>
+                          <TableHead className="w-[180px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('flash_prestacao_contas')}
+                              >
+                                Prestação de Contas <SortIcon column="flash_prestacao_contas" />
+                              </button>
+                              <ColumnHeaderFilter
+                                title="Prestação de Contas"
+                                options={filterOptions.prestacaoContas}
+                                selected={selectedPrestacao}
+                                onSelect={setSelectedPrestacao}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
