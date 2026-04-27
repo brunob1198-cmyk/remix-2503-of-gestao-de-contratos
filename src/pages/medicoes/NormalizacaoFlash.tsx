@@ -308,15 +308,15 @@ export default function NormalizacaoFlashPage() {
     });
   }, [transactions, dateFrom, dateTo]);
 
-  // Extract unique values for filters (from period-filtered data)
+  // Extract unique values for filters (from all transactions to avoid hiding options)
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(dateFiltered.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(dateFiltered.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(dateFiltered.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(dateFiltered.map(t => t.flash_cost_center))).filter(Boolean).sort();
+    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
+    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
+    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
+    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
     
     return { users, types, categories, costCenters };
-  }, [dateFiltered]);
+  }, [transactions]);
 
   const filtered = useMemo(() => {
     let result = dateFiltered.filter((t) => {
@@ -333,7 +333,10 @@ export default function NormalizacaoFlashPage() {
       if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
 
       const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
-      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
+      if (descFilter.length > 0) {
+        // Comparação exata com os valores das opções, que foram extraídos de t.descricao
+        if (!descFilter.includes(t.descricao)) return false;
+      }
 
       const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
       if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
@@ -1099,7 +1102,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Data <SortIcon column="data" /></div>
                               <ColumnHeaderFilter
                                 title="Data"
-                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                options={Array.from(new Set(transactions.map(t => formatDate(t.data)))).filter(Boolean).sort()}
                                 selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
@@ -1118,7 +1121,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
                               <ColumnHeaderFilter
                                 title="Descrição"
-                                options={Array.from(new Set(dateFiltered.map(t => t.descricao))).filter(Boolean).sort()}
+                                options={Array.from(new Set(transactions.map(t => t.descricao))).filter(Boolean).sort()}
                                 selected={searchParams.get("desc")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
@@ -1137,7 +1140,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Valor <SortIcon column="valor" /></div>
                               <ColumnHeaderFilter
                                 title="Valor"
-                                options={Array.from(new Set(dateFiltered.map(t => formatCurrency(t.valor)))).filter(Boolean).sort()}
+                                options={Array.from(new Set(transactions.map(t => formatCurrency(t.valor)))).filter(Boolean).sort()}
                                 selected={searchParams.get("val")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
