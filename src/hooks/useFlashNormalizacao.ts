@@ -143,6 +143,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   // Coluna de Prestação de contas vinda do Flash
   const flash_prestacao_contas =
     pickPayloadValue(p, [
+      "status", // Nível raiz da despesa na Flash costuma ter o status (Aprovado, etc)
       "accountabilityStatus",
       "accountability_status",
       "prestacao_de_contas",

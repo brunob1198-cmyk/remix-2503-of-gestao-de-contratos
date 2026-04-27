@@ -1102,7 +1102,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Data <SortIcon column="data" /></div>
                               <ColumnHeaderFilter
                                 title="Data"
-                                options={Array.from(new Set(transactions.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
                                 selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
@@ -1121,7 +1121,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
                               <ColumnHeaderFilter
                                 title="Descrição"
-                                options={Array.from(new Set(transactions.map(t => t.descricao))).filter(Boolean).sort()}
+                                options={Array.from(new Set(dateFiltered.map(t => t.descricao))).filter(Boolean).sort()}
                                 selected={searchParams.get("desc")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
@@ -1239,7 +1239,8 @@ export default function NormalizacaoFlashPage() {
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
                             <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
-                              <TableCell>
+                      <TableCell className="text-xs font-medium">{row.flash_prestacao_contas}</TableCell>
+                      <TableCell>
                                 {row.status === "normalizado" && (
                                   <Checkbox 
                                     checked={selectedToSendIds.includes(row.id)}
