@@ -534,10 +534,9 @@ Deno.serve(async (req) => {
           const flash_type = pickFlashType(r.payload_json);
           const m = mappingIdx.get(flash_type);
           
-          // Force use of "Flash - Cartão Corporativo" account (UUID from previous context/settings)
-          // We look for existing mapping or use default for the card account
-          const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash - Cartão Corporativo"
-          const fixedAccountName = "Flash - Cartão Corporativo";
+          // Force use of "Flash" account (ID from production)
+          const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; 
+          const fixedAccountName = "Flash";
 
           const categoryId = m?.conta_azul_category_id ?? null;
           const categoryName = m?.conta_azul_category_name ?? null;

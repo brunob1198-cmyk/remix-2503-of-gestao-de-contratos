@@ -1317,7 +1317,7 @@ export default function NormalizacaoFlashPage() {
                               <TableCell>
                                 <div className="flex items-center h-8 px-2 text-xs rounded-md border bg-muted/40 text-muted-foreground gap-1">
                                   <span className="truncate">
-                                    {row.conta_azul_account_name?.includes("Flash") ? "Flash" : (row.conta_azul_account_name || "Flash")}
+                                    {row.conta_azul_account_name || "Flash"}
                                   </span>
                                 </div>
                               </TableCell>

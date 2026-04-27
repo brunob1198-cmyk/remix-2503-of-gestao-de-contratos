@@ -129,7 +129,7 @@ export const normalizeFlashTransaction = (
   const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   // A conta financeira correta para o Conta Azul é apenas "Flash"
-  const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // Mantendo o ID original
+  const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash"
   const fixedAccountName = "Flash";
 
   // Encontrar o melhor mapping baseado em especificidade
