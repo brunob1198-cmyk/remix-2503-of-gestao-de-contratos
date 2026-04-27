@@ -28,19 +28,40 @@ export default function IntegracaoFlashPage() {
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [lastResult, setLastResult] = useState<any>(null);
 
+  // Pagination for logs
+  const [logPage, setLogPage] = useState(1);
+  const logsPerPage = 10;
+
   // Buscar logs de integração
-  const { data: logs = [], isLoading: loadingLogs } = useQuery({
-    queryKey: ["flash_integration_logs"],
+  const { data: logsData, isLoading: loadingLogs } = useQuery({
+    queryKey: ["flash_integration_logs", logPage],
     queryFn: async () => {
+      // Get count
+      const { count } = await supabase
+        .from("flash_integration_logs")
+        .select("*", { count: "exact", head: true });
+
+      // Get page data
+      const from = (logPage - 1) * logsPerPage;
+      const to = from + logsPerPage - 1;
+
       const { data, error } = await supabase
         .from("flash_integration_logs")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .range(from, to);
+
       if (error) throw error;
-      return data || [];
+      return {
+        logs: data || [],
+        total: count || 0
+      };
     },
   });
+
+  const logs = logsData?.logs || [];
+  const totalLogs = logsData?.total || 0;
+  const totalLogPages = Math.ceil(totalLogs / logsPerPage);
 
   // Contar registros sincronizados
   const { data: totalRegistros = 0 } = useQuery({
