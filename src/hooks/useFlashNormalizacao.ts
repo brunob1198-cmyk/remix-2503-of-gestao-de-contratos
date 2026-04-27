@@ -335,6 +335,8 @@ export function useFlashNormalizacao() {
       setTransactions(rows);
       setMappings(mappingList);
 
+      // We perform a batch upsert to ensure all transactions have a corresponding normalization record.
+      // We use a small delay or non-blocking approach if the volume is very high, but for ~1500 rows it's fine.
       if (autoNormPayloads.length > 0) {
         console.log("Upserting auto-normalizations:", autoNormPayloads.length);
         const { error: upsertError } = await supabase
