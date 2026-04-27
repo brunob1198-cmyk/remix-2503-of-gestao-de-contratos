@@ -141,7 +141,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   }
 
   // Coluna de Prestação de contas vinda do Flash
-  const flash_prestacao_contas =
+  const flash_prestacao_contas_raw =
     pickPayloadValue(p, [
       "status", // Nível raiz da despesa na Flash costuma ter o status (Aprovado, etc)
       "accountabilityStatus",
@@ -152,6 +152,17 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "expenseStatus",
       "expense_status",
     ]) || "—";
+
+  const statusMap: Record<string, string> = {
+    "DRAFT": "Em fechamento",
+    "PENDING_ACCOUNTING": "Em aprovação",
+    "PENDING": "Pendente",
+    "APPROVED": "Aprovado",
+    "COMPLETED": "Concluído",
+    "REJECTED": "Rejeitado",
+  };
+
+  const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
 
   // Date: extract raw date portion to avoid timezone shift (Flash returns UTC midnight)
   const rawDate = pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);

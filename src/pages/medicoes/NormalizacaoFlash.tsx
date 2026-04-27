@@ -301,7 +301,9 @@ export default function NormalizacaoFlashPage() {
     if (!dateFrom && !dateTo) return transactions;
     return transactions.filter((t) => {
       const k = txDateKey(t.data);
-      if (!k) return !dateFrom && !dateTo ? true : false;
+      if (!k) return !dateFrom && !dateTo;
+      
+      // Filter inclusive: dateFrom <= k <= dateTo
       if (dateFrom && k < dateFrom) return false;
       if (dateTo && k > dateTo) return false;
       return true;
