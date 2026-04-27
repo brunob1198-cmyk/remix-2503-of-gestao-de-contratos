@@ -142,7 +142,7 @@ async function sendOne(
   let status: string = "erro";
 
   try {
-    const resp = await fetch(`${CONTAAZUL_API}/v1/sales`, {
+    const resp = await fetch(`${CONTAAZUL_API}/v1/financial-transactions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
