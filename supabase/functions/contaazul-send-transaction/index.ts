@@ -137,7 +137,10 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: Math.abs(Number(input.value) || 0)
+        valor: Math.abs(Number(input.value) || 0),
+        composicao_valor: {
+          valor_bruto: Math.abs(Number(input.value) || 0)
+        }
       }
     ],
     condicao_pagamento: {
@@ -145,7 +148,8 @@ async function sendOne(
         {
           data_vencimento: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
           valor_bruto: Math.abs(Number(input.value) || 0),
-          conta_financeira: input.financial_account_id
+          conta_financeira: input.financial_account_id,
+          descricao: `Parcela única - ${input.description}`
         }
       ]
     }
