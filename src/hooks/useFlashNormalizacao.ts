@@ -164,8 +164,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
 
-  // Date: extract raw date portion to avoid timezone shift (Flash returns UTC midnight)
-  const rawDate = pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
+  // Date: prioritize transaction_date from table, then payload values
+  const rawDate = raw.transaction_date || pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   return {
     id: raw.id,
@@ -222,29 +222,70 @@ export function useFlashNormalizacao() {
     try {
       console.log("Fetching data for empresaId:", empresaId);
       
-      // 1. Fetch raw transactions, normalization and mapping
-      // We don't use Promise.all to isolate potential errors and ensure logs
-      const txRes = await supabase
-        .from("flash_transactions_raw")
-        .select("id, external_id, payload_json, created_at")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(102000);
+      // 1. Fetch raw transactions in batches to bypass Supabase 1000-row limit
+      let allTransactions: any[] = [];
+      let lastCount = 0;
+      let rangeStart = 0;
+      const BATCH_SIZE = 1000;
+      
+      console.log("Starting batch fetch for transactions...");
+      
+      do {
+        const { data, error } = await supabase
+          .from("flash_transactions_raw")
+          .select("id, external_id, payload_json, created_at, transaction_date")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+          .range(rangeStart, rangeStart + BATCH_SIZE - 1);
 
-      if (txRes.error) {
-        console.error("Error fetching raw transactions:", txRes.error);
-        throw txRes.error;
-      }
+        if (error) {
+          console.error("Error fetching raw transactions batch:", error);
+          throw error;
+        }
 
-      const normRes = await supabase
-        .from("flash_normalizacao")
-        .select("*")
-        .eq("empresa_id", empresaId);
+        if (data) {
+          allTransactions = [...allTransactions, ...data];
+          lastCount = data.length;
+          rangeStart += BATCH_SIZE;
+          console.log(`Fetched batch: ${data.length} records (Total: ${allTransactions.length})`);
+        } else {
+          lastCount = 0;
+        }
+      } while (lastCount === BATCH_SIZE && allTransactions.length < 100000);
 
-      if (normRes.error) {
-        console.error("Error fetching normalizations:", normRes.error);
-        throw normRes.error;
-      }
+      const txRes = { data: allTransactions };
+
+
+      // 2. Fetch normalization records in batches
+      let allNormalizations: any[] = [];
+      rangeStart = 0;
+      
+      console.log("Starting batch fetch for normalizations...");
+      
+      do {
+        const { data, error } = await supabase
+          .from("flash_normalizacao")
+          .select("*")
+          .eq("empresa_id", empresaId)
+          .range(rangeStart, rangeStart + BATCH_SIZE - 1);
+
+        if (error) {
+          console.error("Error fetching normalizations batch:", error);
+          throw error;
+        }
+
+        if (data) {
+          allNormalizations = [...allNormalizations, ...data];
+          lastCount = data.length;
+          rangeStart += BATCH_SIZE;
+          console.log(`Fetched normalization batch: ${data.length} records (Total: ${allNormalizations.length})`);
+        } else {
+          lastCount = 0;
+        }
+      } while (lastCount === BATCH_SIZE && allNormalizations.length < 100000);
+
+      const normRes = { data: allNormalizations };
+
 
       const mapRes = await supabase
         .from("flash_category_mapping")
