@@ -333,7 +333,10 @@ export default function NormalizacaoFlashPage() {
       if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
 
       const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
-      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
+      if (descFilter.length > 0) {
+        // Comparação exata com os valores das opções, que foram extraídos de t.descricao
+        if (!descFilter.includes(t.descricao)) return false;
+      }
 
       const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
       if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
