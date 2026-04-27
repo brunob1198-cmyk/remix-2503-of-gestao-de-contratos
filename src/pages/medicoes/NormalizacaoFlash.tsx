@@ -350,6 +350,7 @@ export default function NormalizacaoFlashPage() {
       if (selectedTypes.length > 0 && !selectedTypes.includes(t.flash_type)) return false;
       if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
+      if (selectedPrestacao.length > 0 && !selectedPrestacao.includes(t.flash_prestacao_contas)) return false;
 
       // Novos filtros nos cabeçalhos
       const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
