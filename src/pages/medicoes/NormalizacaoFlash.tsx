@@ -226,7 +226,7 @@ export default function NormalizacaoFlashPage() {
   );
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
   const itemsPerPage = 50;
 
   // Reset page when filters change
