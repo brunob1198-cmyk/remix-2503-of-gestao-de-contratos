@@ -1407,9 +1407,10 @@ export default function NormalizacaoFlashPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo Flash</TableHead>
+                      <TableHead>Categoria Flash</TableHead>
                       <TableHead>Operação</TableHead>
                       <TableHead>Categoria Conta Azul</TableHead>
-                      <TableHead>Conta financeira Conta Azul</TableHead>
+                      <TableHead>Conta financeira CA</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
