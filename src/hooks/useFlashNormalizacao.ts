@@ -500,28 +500,36 @@ export function useFlashNormalizacao() {
         );
 
         if (opts?.saveMapping && row.flash_type && merged.conta_azul_category_id && merged.conta_azul_account_id) {
+          // Salva um mapeamento mais inteligente baseado nos detalhes da transação atual
           const { data: mData, error: mError } = await supabase
             .from("flash_category_mapping")
             .upsert(
               {
                 empresa_id: empresaId,
                 flash_type: row.flash_type,
+                flash_category: row.flash_category,
+                flash_cost_center: row.flash_cost_center,
                 conta_azul_category_id: merged.conta_azul_category_id,
                 conta_azul_category_name: merged.conta_azul_category_name,
                 conta_azul_account_id: merged.conta_azul_account_id,
                 conta_azul_account_name: merged.conta_azul_account_name,
                 tipo_operacao: merged.tipo_operacao,
               },
-              { onConflict: "empresa_id,flash_type" }
+              { onConflict: "empresa_id,flash_type,flash_category,flash_cost_center" }
             )
             .select()
             .single();
+            
           if (mError) throw mError;
+          
           setMappings((prev) => {
-            const filtered = prev.filter((m) => m.flash_type !== row.flash_type);
-            return [...filtered, mData as CategoryMapping];
+            const others = prev.filter((m) => m.id !== mData.id);
+            return [...others, mData as CategoryMapping];
           });
-          toast.success("Mapeamento salvo", { description: `Tipo "${row.flash_type}" será aplicado automaticamente.` });
+          
+          toast.success("Mapeamento inteligente salvo", { 
+            description: `Tipo "${row.flash_type}" (Cat: ${row.flash_category}) será aplicado automaticamente.` 
+          });
         }
       } catch (e: any) {
         console.error(e);
