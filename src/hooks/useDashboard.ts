@@ -15,8 +15,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       // Get all production data from diário de obra
       const { data: producao, error: prodError } = await supabase
         .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
-        .limit(100000);
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)");
       if (prodError) throw prodError;
 
       // Get all measurement data
