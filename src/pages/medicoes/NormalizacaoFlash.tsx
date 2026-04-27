@@ -214,6 +214,10 @@ export default function NormalizacaoFlashPage() {
     searchParams.get("costCenters")?.split(",").filter(Boolean) || []
   );
 
+  const [selectedPrestacao, setSelectedPrestacao] = useState<string[]>(
+    searchParams.get("prestacao")?.split(",").filter(Boolean) || []
+  );
+
   // Period filter (applies to all tabs)
   const [dateFrom, setDateFrom] = useState<string>(() => {
     return searchParams.get("from") || localStorage.getItem("flash_filter_from") || "";
