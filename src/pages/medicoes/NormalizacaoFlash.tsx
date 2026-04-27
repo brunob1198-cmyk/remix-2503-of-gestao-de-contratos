@@ -245,6 +245,8 @@ export default function NormalizacaoFlashPage() {
     if (selectedCostCenters.length > 0) params.set("costCenters", selectedCostCenters.join(","));
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
+    if (tab !== "lancamentos") params.set("tab", tab);
+    if (currentPage > 1) params.set("page", currentPage.toString());
     if (sortConfig) {
       params.set("sort", sortConfig.key as string);
       params.set("dir", sortConfig.direction);
@@ -252,7 +254,7 @@ export default function NormalizacaoFlashPage() {
     
     // Use replace: true to avoid filling history with every keystroke
     setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
