@@ -102,6 +102,15 @@ const formatCurrency = (n: number) =>
 const formatDate = (d: string | null) => {
   if (!d) return "—";
   try {
+    // Formato esperado: yyyy-mm-dd
+    const parts = d.split("-");
+    if (parts.length === 3) {
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      return `${day}/${month}/${year}`;
+    }
+    // Fallback se não estiver no formato yyyy-mm-dd
     const date = new Date(d);
     if (isNaN(date.getTime())) return d;
     return date.toLocaleDateString("pt-BR");

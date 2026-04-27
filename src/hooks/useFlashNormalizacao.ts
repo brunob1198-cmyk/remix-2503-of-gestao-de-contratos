@@ -94,11 +94,18 @@ const pickPayloadNumber = (payload: any, paths: string[]): number => {
  */
 const parseFlashDate = (raw: string | null): string | null => {
   if (!raw) return null;
-  // Already yyyy-mm-dd — use directly
+  // Se já for yyyy-mm-dd (ex: vindo da coluna transaction_date formatada), usa direto
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  // ISO datetime — just grab the date portion BEFORE any T (no timezone conversion)
+  
+  // Se for ISO ou tiver tempo, extraímos a parte da data
+  // Flash envia 2026-04-07T03:00:00.000Z. Se o browser for UTC-3, Date.parse subtrai 3h, 
+  // virando 2026-04-07T00:00:00.000, o que ainda é dia 07.
+  // Mas se for 2026-04-07T02:00:00.000Z, vira 2026-04-06T23:00:00 no browser.
+  
+  // A solução robusta é ignorar o tempo e o "Z" se presente para datas de transação
   const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
   if (m) return m[1];
+  
   return null;
 };
 
