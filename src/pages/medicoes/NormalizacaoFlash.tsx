@@ -1055,22 +1055,61 @@ export default function NormalizacaoFlashPage() {
                             />
                           </TableHead>
                           <TableHead 
-                            className="w-[90px] cursor-pointer group"
+                            className="w-[110px] cursor-pointer group"
                             onClick={() => toggleSort('data')}
                           >
-                            <div className="flex items-center">Data <SortIcon column="data" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Data <SortIcon column="data" /></div>
+                              <ColumnHeaderFilter
+                                title="Data"
+                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("data", val.join(","));
+                                  else params.delete("data");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
                             className="cursor-pointer group"
                             onClick={() => toggleSort('descricao')}
                           >
-                            <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                              <ColumnHeaderFilter
+                                title="Descrição"
+                                options={Array.from(new Set(dateFiltered.map(t => t.descricao))).filter(Boolean).sort()}
+                                selected={searchParams.get("desc")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("desc", val.join(","));
+                                  else params.delete("desc");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
-                            className="w-[110px] text-right cursor-pointer group"
+                            className="w-[130px] text-right cursor-pointer group"
                             onClick={() => toggleSort('valor')}
                           >
-                            <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center">Valor <SortIcon column="valor" /></div>
+                              <ColumnHeaderFilter
+                                title="Valor"
+                                options={Array.from(new Set(dateFiltered.map(t => formatCurrency(t.valor)))).filter(Boolean).sort()}
+                                selected={searchParams.get("val")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("val", val.join(","));
+                                  else params.delete("val");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                            <TableHead className="w-[140px]">
                             <div className="flex items-center gap-1">
