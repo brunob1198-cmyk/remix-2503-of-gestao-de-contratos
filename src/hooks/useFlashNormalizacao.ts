@@ -286,7 +286,7 @@ export function useFlashNormalizacao() {
 
         const normalized = normalizeFlashTransaction(
           { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
-          mappingIdx
+          mappingList as FlashCategoryMappingLike[]
         );
 
         base.tipo_operacao = normalized.tipo_operacao;
