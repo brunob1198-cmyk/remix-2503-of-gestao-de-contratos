@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,19 +29,40 @@ export default function IntegracaoFlashPage() {
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [lastResult, setLastResult] = useState<any>(null);
 
+  // Pagination for logs
+  const [logPage, setLogPage] = useState(1);
+  const logsPerPage = 10;
+
   // Buscar logs de integração
-  const { data: logs = [], isLoading: loadingLogs } = useQuery({
-    queryKey: ["flash_integration_logs"],
+  const { data: logsData, isLoading: loadingLogs } = useQuery({
+    queryKey: ["flash_integration_logs", logPage],
     queryFn: async () => {
+      // Get count
+      const { count } = await supabase
+        .from("flash_integration_logs")
+        .select("*", { count: "exact", head: true });
+
+      // Get page data
+      const from = (logPage - 1) * logsPerPage;
+      const to = from + logsPerPage - 1;
+
       const { data, error } = await supabase
         .from("flash_integration_logs")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(20);
+        .range(from, to);
+
       if (error) throw error;
-      return data || [];
+      return {
+        logs: data || [],
+        total: count || 0
+      };
     },
   });
+
+  const logs = logsData?.logs || [];
+  const totalLogs = logsData?.total || 0;
+  const totalLogPages = Math.ceil(totalLogs / logsPerPage);
 
   // Contar registros sincronizados
   const { data: totalRegistros = 0 } = useQuery({
@@ -604,6 +626,52 @@ export default function IntegracaoFlashPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {totalLogPages > 1 && (
+            <div className="flex items-center justify-between space-x-2 py-4 border-t mt-4">
+              <div className="text-sm text-muted-foreground">
+                Página <strong>{logPage}</strong> de <strong>{totalLogPages}</strong> (Total: {totalLogs})
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setLogPage(1)}
+                  disabled={logPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setLogPage(prev => Math.max(prev - 1, 1))}
+                  disabled={logPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setLogPage(prev => Math.min(prev + 1, totalLogPages))}
+                  disabled={logPage === totalLogPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setLogPage(totalLogPages)}
+                  disabled={logPage === totalLogPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
