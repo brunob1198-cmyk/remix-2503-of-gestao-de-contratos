@@ -1011,7 +1011,7 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || 
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || selectedPrestacao.length > 0 ||
                   searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
