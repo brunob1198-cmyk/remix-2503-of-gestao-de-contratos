@@ -125,14 +125,30 @@ async function sendOne(
     };
   }
 
-  // Payload conforme Conta Azul API v2 (financial-transactions)
+  // Payload conforme Conta Azul API v1 (eventos-financeiros)
+  // Nota: A API V2 /v1/financial-transactions parece estar instável ou requer scopes específicos.
+  // Usamos o endpoint de contas-a-pagar da V1 que é mais robusto para despesas.
   const payload = {
-    description: input.description,
-    value: Math.abs(Number(input.value) || 0),
-    type: input.type === "receita" ? "REVENUE" : "EXPENSE",
-    date: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
-    category_id: input.category_id,
-    financial_account_id: input.financial_account_id,
+    data_competencia: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
+    valor: Math.abs(Number(input.value) || 0),
+    descricao: input.description,
+    observacao: `Flash - ${input.description}`,
+    conta_financeira: input.financial_account_id,
+    rateio: [
+      {
+        id_categoria: input.category_id,
+        valor: Math.abs(Number(input.value) || 0)
+      }
+    ],
+    condicao_pagamento: {
+      parcelas: [
+        {
+          data_vencimento: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
+          valor_bruto: Math.abs(Number(input.value) || 0),
+          conta_financeira: input.financial_account_id
+        }
+      ]
+    }
   };
 
   let httpStatus: number | null = null;
@@ -142,7 +158,11 @@ async function sendOne(
   let status: string = "erro";
 
   try {
-    const resp = await fetch(`${CONTAAZUL_API}/v1/financial-transactions`, {
+    const endpoint = input.type === "receita" 
+      ? `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-receber`
+      : `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar`;
+
+    const resp = await fetch(endpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
