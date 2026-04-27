@@ -120,6 +120,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   });
 
   const [showOnlyConflicts, setShowOnlyConflicts] = useState(false);
+  const [ignoredConflicts, setIgnoredConflicts] = useState<Set<string>>(new Set());
 
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
