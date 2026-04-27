@@ -344,7 +344,6 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         if (startDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
         }
-        q = q.range(offset, offset + BATCH_SIZE - 1);
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
