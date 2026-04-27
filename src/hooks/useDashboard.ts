@@ -21,8 +21,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       // Get all measurement data
       const { data: medicao, error: medError } = await supabase
         .from("lancamentos_medicao")
-        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)")
-        .limit(100000);
+        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)");
       if (medError) throw medError;
 
       // Get all billing data
