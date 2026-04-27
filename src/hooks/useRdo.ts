@@ -14,6 +14,7 @@ export interface RdoDiarioResumo {
   id: string;
   data: string;
   observacoes: string | null;
+  clima: string | null;
   site_id: string;
   site_codigo?: string;
   site_nome?: string;
@@ -100,6 +101,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           id: d.id,
           data: d.data,
           observacoes: d.observacoes,
+          clima: (d as any).clima || null,
           site_id: d.site_id,
           site_codigo: siteInfo?.codigo || "",
           site_nome: siteInfo?.nome || "",
