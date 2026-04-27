@@ -92,6 +92,7 @@ import {
   type FlashTransactionRow,
   type ContaAzulOption,
 } from "@/hooks/useFlashNormalizacao";
+import { normalizeFlashTransaction } from "@/lib/flashNormalization";
 import { exportNormalizacaoFlashToExcel } from "@/lib/flashNormalizacaoExport";
 import { cn } from "@/lib/utils";
 
