@@ -328,6 +328,16 @@ export default function NormalizacaoFlashPage() {
       if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
 
+      // Novos filtros nos cabeçalhos
+      const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
+      if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
+
+      const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
+      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
+
+      const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
+      if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -355,7 +365,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, searchParams]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
