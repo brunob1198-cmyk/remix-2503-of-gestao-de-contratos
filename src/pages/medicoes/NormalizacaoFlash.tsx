@@ -220,10 +220,10 @@ export default function NormalizacaoFlashPage() {
 
   // Period filter (applies to all tabs)
   const [dateFrom, setDateFrom] = useState<string>(() => {
-    return searchParams.get("from") || localStorage.getItem("flash_filter_from") || "";
+    return searchParams.get("from") || "";
   });
   const [dateTo, setDateTo] = useState<string>(() => {
-    return searchParams.get("to") || localStorage.getItem("flash_filter_to") || "";
+    return searchParams.get("to") || "";
   });
   
   // Sort from URL
@@ -260,16 +260,10 @@ export default function NormalizacaoFlashPage() {
     if (selectedPrestacao.length > 0) params.set("prestacao", selectedPrestacao.join(","));
     if (dateFrom) {
       params.set("from", dateFrom);
-      localStorage.setItem("flash_filter_from", dateFrom);
-    } else {
-      localStorage.removeItem("flash_filter_from");
     }
     
     if (dateTo) {
       params.set("to", dateTo);
-      localStorage.setItem("flash_filter_to", dateTo);
-    } else {
-      localStorage.removeItem("flash_filter_to");
     }
     if (tab !== "lancamentos") params.set("tab", tab);
     if (currentPage > 1) params.set("page", currentPage.toString());
