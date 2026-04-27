@@ -382,7 +382,7 @@ export default function IntegracaoFlashPage() {
             <Button
               variant="outline"
               onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || syncMutation.isPending || authProbeMutation.isPending}
+              disabled={testMutation.isPending || syncMutation.isPending}
               className="gap-2"
             >
               {testMutation.isPending ? (
