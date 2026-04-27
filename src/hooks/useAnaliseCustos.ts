@@ -197,7 +197,6 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         if (startDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
         }
-        q = q.range(offset, offset + BATCH_SIZE - 1);
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
