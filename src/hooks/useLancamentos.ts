@@ -13,8 +13,7 @@ export function useLancamentosProducao(siteId?: string) {
       let query = supabase
         .from("lancamentos_producao")
         .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_producao", { ascending: false })
-        .limit(100000);
+        .order("data_producao", { ascending: false });
       
       if (siteId) {
         query = query.eq("site_id", siteId);
