@@ -104,10 +104,13 @@ async function getTransactions(params: {
     const url = new URL(FLASH_TRANSACTIONS_PATH, FLASH_API_BASE_URL);
     // Filtros de data — a API Flash usa camelCase (startDate/endDate),
     // mas mantemos as variantes snake_case para tolerância.
+    // Filtros de data exatos para despesas: begin_date e end_date.
+    // Usamos também as variações camelCase para compatibilidade com outros endpoints.
+    url.searchParams.set("begin_date", startDate);
+    url.searchParams.set("end_date", endDate);
+    url.searchParams.set("start_date", startDate);
     url.searchParams.set("startDate", startDate);
     url.searchParams.set("endDate", endDate);
-    url.searchParams.set("start_date", startDate);
-    url.searchParams.set("end_date", endDate);
     // Tamanho de página — Flash usa pageSize (camelCase). Mantém variantes.
     url.searchParams.set("pageSize", String(FLASH_PAGE_SIZE));
     url.searchParams.set("page_size", String(FLASH_PAGE_SIZE));
