@@ -1110,13 +1110,13 @@ export default function NormalizacaoFlashPage() {
                         <TableRow>
                           <TableHead className="w-[40px]">
                             <Checkbox 
-                              checked={paginatedData.length > 0 && paginatedData.every(r => r.status === 'normalizado' ? selectedToSendIds.includes(r.id) : true)}
+                              checked={paginatedData.length > 0 && paginatedData.every(r => selectedToSendIds.includes(r.id))}
                               onCheckedChange={(checked) => {
-                                const normalizadosInPage = paginatedData.filter(r => r.status === 'normalizado').map(r => r.id);
+                                const idsInPage = paginatedData.map(r => r.id);
                                 if (checked) {
-                                  setSelectedToSendIds(prev => Array.from(new Set([...prev, ...normalizadosInPage])));
+                                  setSelectedToSendIds(prev => Array.from(new Set([...prev, ...idsInPage])));
                                 } else {
-                                  setSelectedToSendIds(prev => prev.filter(id => !normalizadosInPage.includes(id)));
+                                  setSelectedToSendIds(prev => prev.filter(id => !idsInPage.includes(id)));
                                 }
                               }}
                             />
@@ -1283,16 +1283,14 @@ export default function NormalizacaoFlashPage() {
                           return (
                             <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
                               <TableCell>
-                                {row.status === "normalizado" && (
-                                  <Checkbox 
-                                    checked={selectedToSendIds.includes(row.id)}
-                                    onCheckedChange={(checked) => {
-                                      setSelectedToSendIds(prev => 
-                                        checked ? [...prev, row.id] : prev.filter(id => id !== row.id)
-                                      );
-                                    }}
-                                  />
-                                )}
+                                <Checkbox 
+                                  checked={selectedToSendIds.includes(row.id)}
+                                  onCheckedChange={(checked) => {
+                                    setSelectedToSendIds(prev => 
+                                      checked ? [...prev, row.id] : prev.filter(id => id !== row.id)
+                                    );
+                                  }}
+                                />
                               </TableCell>
                               <TableCell className="text-xs">{formatDate(row.data)}</TableCell>
                               <TableCell className="max-w-[300px]">
