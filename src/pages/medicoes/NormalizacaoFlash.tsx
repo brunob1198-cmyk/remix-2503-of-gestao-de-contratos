@@ -236,7 +236,7 @@ export default function NormalizacaoFlashPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
-  const itemsPerPage = 50;
+  const itemsPerPage = 500;
 
   // Reset page when filters change (but NOT when changing date range or sorting, 
   // if we want to preserve them, but usually filters should reset page to 1)
