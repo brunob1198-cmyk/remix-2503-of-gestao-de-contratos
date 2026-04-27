@@ -105,8 +105,8 @@ export const pdfGlobalStyles = `
     .foto-row { display: flex; gap: 16px; margin-bottom: 0; }
     .foto-row .foto-card { width: calc(50% - 8px); }
     /* Group label bar below each photo */
-    .foto-label-bar { padding: 6px 10px 8px; background: #fff; }
-    .foto-label-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; }
+    .foto-label-bar { padding: 6px 10px 8px; background: #fff; display: flex; align-items: center; justify-content: flex-start; }
+    .foto-label-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; line-height: 1; }
     /* Section group header above each set of photos */
     .foto-group-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; border-radius: 0 4px 4px 0; margin: 14px 0 8px; page-break-after: avoid; }
   </style>
