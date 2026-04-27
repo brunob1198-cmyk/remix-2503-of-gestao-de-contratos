@@ -1401,6 +1401,9 @@ export type Database = {
           conta_azul_category_name: string | null
           created_at: string
           empresa_id: string
+          flash_category: string | null
+          flash_cost_center: string | null
+          flash_description_pattern: string | null
           flash_type: string
           id: string
           tipo_operacao: string
@@ -1413,6 +1416,9 @@ export type Database = {
           conta_azul_category_name?: string | null
           created_at?: string
           empresa_id: string
+          flash_category?: string | null
+          flash_cost_center?: string | null
+          flash_description_pattern?: string | null
           flash_type: string
           id?: string
           tipo_operacao?: string
@@ -1425,6 +1431,9 @@ export type Database = {
           conta_azul_category_name?: string | null
           created_at?: string
           empresa_id?: string
+          flash_category?: string | null
+          flash_cost_center?: string | null
+          flash_description_pattern?: string | null
           flash_type?: string
           id?: string
           tipo_operacao?: string

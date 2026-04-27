@@ -92,6 +92,7 @@ import {
   type FlashTransactionRow,
   type ContaAzulOption,
 } from "@/hooks/useFlashNormalizacao";
+import { normalizeFlashTransaction } from "@/lib/flashNormalization";
 import { exportNormalizacaoFlashToExcel } from "@/lib/flashNormalizacaoExport";
 import { cn } from "@/lib/utils";
 
@@ -379,16 +380,32 @@ export default function NormalizacaoFlashPage() {
   }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
-    const m = mappingByType.get(row.flash_type);
-    if (!m) return;
-    await saveNormalization(row, {
-      conta_azul_category_id: m.conta_azul_category_id,
-      conta_azul_category_name: m.conta_azul_category_name,
-      conta_azul_account_id: m.conta_azul_account_id,
-      conta_azul_account_name: m.conta_azul_account_name,
-      tipo_operacao: m.tipo_operacao,
-      status: "normalizado",
-    });
+    // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
+    const normalized = normalizeFlashTransaction(
+      { 
+        id: row.id, 
+        external_id: row.external_id, 
+        payload_json: row.payload_json, 
+        flash_type: row.flash_type,
+        flash_category: row.flash_category,
+        flash_cost_center: row.flash_cost_center,
+        descricao: row.descricao
+      },
+      mappings as any[]
+    );
+
+    if (normalized.status === "normalizado") {
+      await saveNormalization(row, {
+        conta_azul_category_id: normalized.conta_azul_category_id,
+        conta_azul_category_name: normalized.conta_azul_category_name,
+        conta_azul_account_id: normalized.conta_azul_account_id,
+        conta_azul_account_name: normalized.conta_azul_account_name,
+        tipo_operacao: normalized.tipo_operacao,
+        status: "normalizado",
+      });
+    } else {
+      toast.info("Nenhum mapeamento compatível encontrado para este lançamento específico.");
+    }
   };
 
   const handleExport = () => {
@@ -1390,18 +1407,28 @@ export default function NormalizacaoFlashPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo Flash</TableHead>
+                      <TableHead>Categoria Flash</TableHead>
                       <TableHead>Operação</TableHead>
                       <TableHead>Categoria Conta Azul</TableHead>
-                      <TableHead>Conta financeira Conta Azul</TableHead>
+                      <TableHead>Conta financeira CA</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mappings.map((m) => (
+                    {mappings.map((m: any) => (
                       <TableRow key={m.id}>
                         <TableCell>
                           <Badge variant="secondary" className="text-xs">
                             {m.flash_type}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {m.flash_category ? (
+                            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
+                              {m.flash_category}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
                         <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
