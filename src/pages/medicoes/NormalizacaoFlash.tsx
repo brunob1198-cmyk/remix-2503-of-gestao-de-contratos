@@ -1102,7 +1102,7 @@ export default function NormalizacaoFlashPage() {
                               <div className="flex items-center">Data <SortIcon column="data" /></div>
                               <ColumnHeaderFilter
                                 title="Data"
-                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                options={Array.from(new Set(transactions.map(t => formatDate(t.data)))).filter(Boolean).sort()}
                                 selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
                                 onSelect={(val) => {
                                   const params = new URLSearchParams(searchParams);
