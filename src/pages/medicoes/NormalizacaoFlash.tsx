@@ -328,6 +328,16 @@ export default function NormalizacaoFlashPage() {
       if (selectedCategories.length > 0 && !selectedCategories.includes(t.flash_category)) return false;
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
 
+      // Novos filtros nos cabeçalhos
+      const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
+      if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
+
+      const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
+      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
+
+      const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
+      if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -355,7 +365,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, searchParams]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -973,7 +983,8 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || 
+                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
                     {selectedUsers.length > 0 && (
@@ -996,6 +1007,21 @@ export default function NormalizacaoFlashPage() {
                         Centro de Custo ({selectedCostCenters.length})
                       </Badge>
                     )}
+                    {searchParams.get("data") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Data ({searchParams.get("data")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("desc") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Descrição ({searchParams.get("desc")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("val") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Valor ({searchParams.get("val")?.split(",").length})
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1004,6 +1030,11 @@ export default function NormalizacaoFlashPage() {
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
+                        const params = new URLSearchParams(searchParams);
+                        params.delete("data");
+                        params.delete("desc");
+                        params.delete("val");
+                        setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
                     >
@@ -1031,6 +1062,11 @@ export default function NormalizacaoFlashPage() {
                     setSelectedTypes([]);
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
+                    const params = new URLSearchParams(searchParams);
+                    params.delete("data");
+                    params.delete("desc");
+                    params.delete("val");
+                    setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
                   </Button>
@@ -1055,22 +1091,61 @@ export default function NormalizacaoFlashPage() {
                             />
                           </TableHead>
                           <TableHead 
-                            className="w-[90px] cursor-pointer group"
+                            className="w-[110px] cursor-pointer group"
                             onClick={() => toggleSort('data')}
                           >
-                            <div className="flex items-center">Data <SortIcon column="data" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Data <SortIcon column="data" /></div>
+                              <ColumnHeaderFilter
+                                title="Data"
+                                options={Array.from(new Set(dateFiltered.map(t => formatDate(t.data)))).filter(Boolean).sort()}
+                                selected={searchParams.get("data")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("data", val.join(","));
+                                  else params.delete("data");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
                             className="cursor-pointer group"
                             onClick={() => toggleSort('descricao')}
                           >
-                            <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center">Descrição <SortIcon column="descricao" /></div>
+                              <ColumnHeaderFilter
+                                title="Descrição"
+                                options={Array.from(new Set(dateFiltered.map(t => t.descricao))).filter(Boolean).sort()}
+                                selected={searchParams.get("desc")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("desc", val.join(","));
+                                  else params.delete("desc");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                           <TableHead 
-                            className="w-[110px] text-right cursor-pointer group"
+                            className="w-[130px] text-right cursor-pointer group"
                             onClick={() => toggleSort('valor')}
                           >
-                            <div className="flex items-center justify-end">Valor <SortIcon column="valor" /></div>
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="flex items-center">Valor <SortIcon column="valor" /></div>
+                              <ColumnHeaderFilter
+                                title="Valor"
+                                options={Array.from(new Set(dateFiltered.map(t => formatCurrency(t.valor)))).filter(Boolean).sort()}
+                                selected={searchParams.get("val")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("val", val.join(","));
+                                  else params.delete("val");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
                           </TableHead>
                            <TableHead className="w-[140px]">
                             <div className="flex items-center gap-1">
