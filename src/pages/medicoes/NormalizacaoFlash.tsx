@@ -197,7 +197,7 @@ export default function NormalizacaoFlashPage() {
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") || "todos");
   // Search filter from URL
   const [search, setSearch] = useState(searchParams.get("q") || "");
-  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">("lancamentos");
+  const [tab, setTab] = useState<"lancamentos" | "pendentes" | "mapeamentos">((searchParams.get("tab") as any) || "lancamentos");
 
   // Multi-select filters from URL
   const [selectedUsers, setSelectedUsers] = useState<string[]>(
