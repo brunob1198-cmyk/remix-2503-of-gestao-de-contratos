@@ -1097,6 +1097,7 @@ export default function NormalizacaoFlashPage() {
                     setSelectedTypes([]);
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
+                    setSelectedPrestacao([]);
                     const params = new URLSearchParams(searchParams);
                     params.delete("data");
                     params.delete("desc");
