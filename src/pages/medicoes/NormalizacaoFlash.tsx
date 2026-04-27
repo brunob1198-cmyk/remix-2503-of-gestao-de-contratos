@@ -236,7 +236,7 @@ export default function NormalizacaoFlashPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
-  const itemsPerPage = 500;
+  const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get("limit") || "100"));
 
   // Reset page when filters change (but NOT when changing date range or sorting, 
   // if we want to preserve them, but usually filters should reset page to 1)
@@ -267,6 +267,7 @@ export default function NormalizacaoFlashPage() {
     }
     if (tab !== "lancamentos") params.set("tab", tab);
     if (currentPage > 1) params.set("page", currentPage.toString());
+    if (itemsPerPage !== 100) params.set("limit", itemsPerPage.toString());
     if (sortConfig) {
       params.set("sort", sortConfig.key as string);
       params.set("dir", sortConfig.direction);
@@ -402,7 +403,8 @@ export default function NormalizacaoFlashPage() {
   );
 
   const counts = useMemo(() => {
-    return transactions.reduce(
+    // Usamos dateFiltered para que os contadores no topo respeitem o filtro de período selecionado
+    return dateFiltered.reduce(
       (acc, t) => {
         acc.total += 1;
         if (t.status === "normalizado") acc.normalizado += 1;
@@ -412,7 +414,7 @@ export default function NormalizacaoFlashPage() {
       },
       { total: 0, pendente: 0, normalizado: 0, enviado: 0 }
     );
-  }, [transactions]);
+  }, [dateFiltered]);
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
