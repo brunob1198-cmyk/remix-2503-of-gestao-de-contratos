@@ -133,26 +133,7 @@ export default function IntegracaoFlashPage() {
     },
   });
 
-  const authProbeMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("flash-sync", {
-        body: { action: "test-auth" },
-      });
-      if (error) throw await parseEdgeError(error, "Erro ao sondar autenticação");
-      return data;
-    },
-    onSuccess: (data) => {
-      setLastResult({ authProbe: data });
-      toast({
-        title: data.winner ? "Variação encontrada!" : "Nenhuma variação funcionou",
-        description: data.winner ? `✅ ${data.winner}` : "Veja os detalhes abaixo de cada tentativa.",
-        variant: data.winner ? "default" : "destructive",
-      });
-    },
-    onError: (error: any) => {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    },
-  });
+  // Auth probe mutation removed as requested
 
   const syncMutation = useMutation({
     mutationFn: async () => {
@@ -401,7 +382,7 @@ export default function IntegracaoFlashPage() {
             <Button
               variant="outline"
               onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || syncMutation.isPending || authProbeMutation.isPending}
+              disabled={testMutation.isPending || syncMutation.isPending}
               className="gap-2"
             >
               {testMutation.isPending ? (
@@ -413,25 +394,6 @@ export default function IntegracaoFlashPage() {
                 <>
                   <Clock className="h-4 w-4" />
                   Validar Token
-                </>
-              )}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => authProbeMutation.mutate()}
-              disabled={authProbeMutation.isPending || syncMutation.isPending || testMutation.isPending}
-              className="gap-2"
-              title="Sonda múltiplos paths candidatos para descobrir o endpoint correto da Flash"
-            >
-              {authProbeMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Sondando auth...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  Testar Variações de Auth
                 </>
               )}
             </Button>
@@ -465,8 +427,8 @@ export default function IntegracaoFlashPage() {
             </div>
           )}
 
-          {/* Resultado da sondagem de autenticação */}
-          {lastResult?.authProbe && !authProbeMutation.isPending && (
+          {/* Resultado da sondagem de autenticação removido */}
+          {lastResult?.authProbe && (
             <Alert variant={lastResult.authProbe.winner ? "default" : "destructive"}>
               <AlertTitle className="flex items-center gap-2">
                 {lastResult.authProbe.winner ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
