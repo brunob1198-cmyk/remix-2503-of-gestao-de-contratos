@@ -215,8 +215,12 @@ export default function NormalizacaoFlashPage() {
   );
 
   // Period filter (applies to all tabs)
-  const [dateFrom, setDateFrom] = useState<string>(searchParams.get("from") || "");
-  const [dateTo, setDateTo] = useState<string>(searchParams.get("to") || "");
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    return searchParams.get("from") || localStorage.getItem("flash_filter_from") || "";
+  });
+  const [dateTo, setDateTo] = useState<string>(() => {
+    return searchParams.get("to") || localStorage.getItem("flash_filter_to") || "";
+  });
   
   // Sort from URL
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlashTransactionRow; direction: 'asc' | 'desc' } | null>(
