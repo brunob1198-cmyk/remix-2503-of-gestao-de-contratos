@@ -316,7 +316,21 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                               ))}
                             </SelectContent>
                           </Select>
-                          {isConflict && <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
+                          {isConflict && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={() => setIgnoredConflicts(prev => {
+                                const next = new Set(prev);
+                                next.add(item.erp_id);
+                                return next;
+                              })}
+                              title="Ignorar divergência"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
