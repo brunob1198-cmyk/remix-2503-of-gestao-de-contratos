@@ -1035,6 +1035,11 @@ export default function NormalizacaoFlashPage() {
                         Centro de Custo ({selectedCostCenters.length})
                       </Badge>
                     )}
+                    {selectedPrestacao.length > 0 && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Prestação de Contas ({selectedPrestacao.length})
+                      </Badge>
+                    )}
                     {searchParams.get("data") && (
                       <Badge variant="secondary" className="text-[11px]">
                         Data ({searchParams.get("data")?.split(",").length})
