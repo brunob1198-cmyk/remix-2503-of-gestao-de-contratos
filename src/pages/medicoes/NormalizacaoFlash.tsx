@@ -983,7 +983,8 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0) && (
+                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || 
+                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
                     {selectedUsers.length > 0 && (
@@ -1006,6 +1007,21 @@ export default function NormalizacaoFlashPage() {
                         Centro de Custo ({selectedCostCenters.length})
                       </Badge>
                     )}
+                    {searchParams.get("data") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Data ({searchParams.get("data")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("desc") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Descrição ({searchParams.get("desc")?.split(",").length})
+                      </Badge>
+                    )}
+                    {searchParams.get("val") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Valor ({searchParams.get("val")?.split(",").length})
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1014,6 +1030,11 @@ export default function NormalizacaoFlashPage() {
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
+                        const params = new URLSearchParams(searchParams);
+                        params.delete("data");
+                        params.delete("desc");
+                        params.delete("val");
+                        setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
                     >
