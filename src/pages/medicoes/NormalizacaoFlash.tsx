@@ -1414,12 +1414,21 @@ export default function NormalizacaoFlashPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mappings.map((m) => (
+                    {mappings.map((m: any) => (
                       <TableRow key={m.id}>
                         <TableCell>
                           <Badge variant="secondary" className="text-xs">
                             {m.flash_type}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {m.flash_category ? (
+                            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
+                              {m.flash_category}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
                         <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
