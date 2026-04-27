@@ -250,7 +250,8 @@ export function useFlashNormalizacao() {
       (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
 
       const mappingList = (mapRes.data || []) as CategoryMapping[];
-      const mappingIdx = buildMappingIndex(mappingList as FlashCategoryMappingLike[]);
+      // Já não precisamos do mappingIdx fixo, pois a lógica agora é mais complexa e usa a lista completa
+
 
       const FLASH_CARD_ACCOUNT_NAME = "Flash";
       // Use the latest 'contas' state or try to find it from the data if available
