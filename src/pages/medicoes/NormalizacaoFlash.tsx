@@ -1062,6 +1062,11 @@ export default function NormalizacaoFlashPage() {
                     setSelectedTypes([]);
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
+                    const params = new URLSearchParams(searchParams);
+                    params.delete("data");
+                    params.delete("desc");
+                    params.delete("val");
+                    setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
                   </Button>
