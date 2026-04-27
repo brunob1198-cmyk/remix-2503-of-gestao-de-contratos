@@ -274,8 +274,7 @@ export default function NormalizacaoFlashPage() {
     }
     
     // Use replace: true to avoid filling history with every keystroke
-    setSearchParams(params, { replace: true });
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, dateFrom, dateTo, tab, currentPage, setSearchParams]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, dateFrom, dateTo, tab, currentPage, itemsPerPage, setSearchParams]);
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
@@ -1382,36 +1381,57 @@ export default function NormalizacaoFlashPage() {
                     </Table>
                   </div>
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between space-x-2 py-4 border-t mt-4">
-                      <div className="text-sm text-muted-foreground">
-                        Mostrando <strong>{(currentPage - 1) * itemsPerPage + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, filtered.length)}</strong> de <strong>{filtered.length}</strong> lançamentos
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2 py-4 border-t">
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-muted-foreground whitespace-nowrap">
+                        Mostrando <strong>{filtered.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</strong> a <strong>{Math.min(currentPage * itemsPerPage, filtered.length)}</strong> de <strong>{filtered.length}</strong> lançamentos
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
+                      <div className="flex items-center gap-2 border-l pl-4">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Itens por página:</span>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={(v) => {
+                            setItemsPerPage(parseInt(v));
+                            setCurrentPage(1);
+                          }}
                         >
-                          <ChevronLeft className="h-4 w-4 mr-1" />
-                          Anterior
-                        </Button>
-                        <div className="flex items-center gap-1 text-sm font-medium">
-                          Página {currentPage} de {totalPages}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Próximo
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
+                          <SelectTrigger className="h-8 w-[70px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                            <SelectItem value="200">200</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="h-8"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Anterior
+                      </Button>
+                      <div className="text-sm font-medium min-w-[100px] text-center">
+                        Página {currentPage} de {totalPages || 1}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        className="h-8"
+                      >
+                        Próximo
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
                 </TooltipProvider>
               )}
             </CardContent>
