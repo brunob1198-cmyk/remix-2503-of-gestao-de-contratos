@@ -137,11 +137,7 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: Math.abs(Number(input.value) || 0),
-        composicao_valor: {
-          valor_bruto: Math.abs(Number(input.value) || 0),
-          valor: Math.abs(Number(input.value) || 0)
-        }
+        valor: Math.abs(Number(input.value) || 0)
       }
     ],
     condicao_pagamento: {
@@ -151,9 +147,9 @@ async function sendOne(
           valor_bruto: Math.abs(Number(input.value) || 0),
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          composicao_valor: {
+          detalhe_valor: {
             valor_bruto: Math.abs(Number(input.value) || 0),
-            valor: Math.abs(Number(input.value) || 0)
+            valor_liquido: Math.abs(Number(input.value) || 0)
           }
         }
       ]
@@ -162,12 +158,12 @@ async function sendOne(
 
   // Validação interna antes do POST
   for (const parcela of payload.condicao_pagamento.parcelas) {
-    if (!parcela.composicao_valor || parcela.composicao_valor.valor_bruto === undefined) {
-      console.error("Falha na validação pré-envio: Parcela sem composição de valor correta", { flash_id: input.flash_transaction_id });
+    if (!parcela.detalhe_valor || parcela.detalhe_valor.valor_bruto === undefined) {
+      console.error("Falha na validação pré-envio: Parcela sem detalhe de valor correto", { flash_id: input.flash_transaction_id });
       return {
         flash_transaction_id: input.flash_transaction_id,
         status: "erro",
-        error: "Erro interno: Composição de valor da parcela não gerada corretamente.",
+        error: "Erro interno: Detalhe de valor da parcela não gerado corretamente.",
       };
     }
   }
