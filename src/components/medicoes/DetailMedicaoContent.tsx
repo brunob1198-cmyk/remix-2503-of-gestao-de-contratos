@@ -28,7 +28,7 @@ function chunkPairs<T>(arr: T[]): T[][] {
 }
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
-const PDF_EXPORT_MIN_WIDTH = 1024;
+const PDF_EXPORT_MIN_WIDTH = 1120;
 
 const waitForNextPaint = async () => {
   await new Promise<void>((resolve) => {
@@ -36,45 +36,24 @@ const waitForNextPaint = async () => {
   });
 };
 
-const waitForPdfAssets = async (element: HTMLElement) => {
-  const images = Array.from(element.querySelectorAll("img"));
-
-  await Promise.all(
-    images.map((img) => {
-      if (img.complete) {
-        return img.decode?.().catch(() => undefined) ?? Promise.resolve();
-      }
-
-      return new Promise<void>((resolve) => {
-        const done = () => resolve();
-        img.addEventListener("load", done, { once: true });
-        img.addEventListener("error", done, { once: true });
-      });
-    }),
-  );
-
-  await document.fonts.ready.catch(() => undefined);
-  await waitForNextPaint();
-};
-
 const createPdfExportContainer = (source: HTMLElement) => {
   const content = source.cloneNode(true) as HTMLDivElement;
   const container = document.createElement("div");
-  const contentWidth = Math.max(Math.ceil(source.scrollWidth), PDF_EXPORT_MIN_WIDTH);
+  const contentWidth = PDF_EXPORT_MIN_WIDTH;
 
   container.setAttribute("data-pdf-export", "medicao-detalhe");
   Object.assign(container.style, {
     position: "absolute",
-    left: "0",
+    left: "-9999px",
     top: "0",
     width: `${contentWidth}px`,
-    padding: "24px",
+    padding: "40px",
     background: "#ffffff",
     overflow: "visible",
     pointerEvents: "none",
     boxSizing: "border-box",
-    zIndex: "-1",
-    opacity: "0.01",
+    zIndex: "-1000",
+    opacity: "0",
   });
 
   content.style.width = "100%";
@@ -85,77 +64,16 @@ const createPdfExportContainer = (source: HTMLElement) => {
     img.loading = "eager";
     img.decoding = "sync";
     img.crossOrigin = "anonymous";
+    if (img.src && !img.src.startsWith('data:')) {
+      const sep = img.src.includes('?') ? '&' : '?';
+      img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
+    }
   });
 
   container.appendChild(content);
   document.body.appendChild(container);
 
   return { container, content, contentWidth };
-};
-
-/**
- * Collect safe break-point positions (top edges of data-pdf-section elements).
- * These are Y positions in the content where it's safe to start a new page.
- */
-const collectSafeBreakPoints = (content: HTMLElement): number[] => {
-  const contentRect = content.getBoundingClientRect();
-  const sections = Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]"))
-    .filter((el) => !el.parentElement?.closest("[data-pdf-section]"));
-
-  const breakPoints: number[] = [];
-  for (const el of sections) {
-    const rect = el.getBoundingClientRect();
-    const top = Math.max(0, Math.floor(rect.top - contentRect.top));
-    if (top > 0) breakPoints.push(top);
-  }
-
-  return [...new Set(breakPoints)].sort((a, b) => a - b);
-};
-
-/**
- * Build page slices from the full content height using safe break points.
- * Each slice = { start, height } representing a vertical strip of the content.
- */
-const buildPageSlices = (
-  totalHeight: number,
-  pageHeightPx: number,
-  safeBreaks: number[],
-): { start: number; height: number }[] => {
-  const slices: { start: number; height: number }[] = [];
-  let cursor = 0;
-
-  while (cursor < totalHeight) {
-    const remaining = totalHeight - cursor;
-
-    // If remaining content fits in one page, take it all
-    if (remaining <= pageHeightPx) {
-      slices.push({ start: cursor, height: remaining });
-      break;
-    }
-
-    // Find the last safe break point that fits within this page
-    const pageEnd = cursor + pageHeightPx;
-    let bestBreak = -1;
-
-    for (const bp of safeBreaks) {
-      if (bp <= cursor) continue; // already past
-      if (bp > pageEnd) break; // beyond this page
-      bestBreak = bp;
-    }
-
-    // Use the best break point, or fall back to full page height
-    // Require at least 80px of content to avoid tiny slivers
-    if (bestBreak > cursor + 80) {
-      slices.push({ start: cursor, height: bestBreak - cursor });
-      cursor = bestBreak;
-    } else {
-      // No safe break found - take full page height
-      slices.push({ start: cursor, height: pageHeightPx });
-      cursor += pageHeightPx;
-    }
-  }
-
-  return slices;
 };
 
 interface DetailMedicaoContentProps {
