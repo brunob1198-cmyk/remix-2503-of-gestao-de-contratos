@@ -230,44 +230,6 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
             </Button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-2">
-          <Card className="bg-muted/30 border-none shadow-none">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total Selecionado</span>
-              <span className="text-2xl font-bold font-mono text-primary">
-                {formatCurrency(totalValor)}
-              </span>
-              <span className="text-[10px] text-muted-foreground mt-1">
-                {filteredItems.length} lançamentos filtrados
-              </span>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-muted/30 border-none shadow-none">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Incoerências</span>
-              <span className={`text-2xl font-bold ${conflicts.length > 0 ? "text-destructive" : "text-emerald-600"}`}>
-                {conflicts.length}
-              </span>
-              <span className="text-[10px] text-muted-foreground mt-1 text-center">
-                Mapeamentos que precisam de atenção
-              </span>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-muted/30 border-none shadow-none">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Projetos Ativos</span>
-              <span className="text-2xl font-bold text-primary">
-                {projetoIds.length}
-              </span>
-              <span className="text-[10px] text-muted-foreground mt-1">
-                Filtro global aplicado
-              </span>
-            </CardContent>
-          </Card>
-        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {conflicts.length > 0 && (
@@ -293,6 +255,11 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                 <tr>
                   {allCols.map(col => (
                     <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
+                      {col === "valor" && (
+                        <div className="mb-1 text-[10px] text-primary font-bold uppercase tracking-wider">
+                          Subtotal: {formatCurrency(totalValor)}
+                        </div>
+                      )}
                       <ColumnHeaderFilter
                         label={COL_LABELS[col]}
                         sortDir={sortCol === col ? sortDir : null}
