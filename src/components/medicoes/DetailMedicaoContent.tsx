@@ -535,7 +535,7 @@ export function DetailMedicaoContent({
           const renderedHeight = (slice.height * usableWidth) / contentWidth;
           if (i > 0) pdf.addPage();
 
-          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.8);
+          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Lower quality for memory optimization during addImage
           pdf.addImage(
             pageImageData,
             "JPEG",
