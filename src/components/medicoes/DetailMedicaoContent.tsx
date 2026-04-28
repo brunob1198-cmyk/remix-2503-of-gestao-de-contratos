@@ -4,11 +4,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileText, Camera, MapPin, Calendar, Loader2 } from "lucide-react";
-import { useRef, useState, useMemo, useCallback } from "react";
+import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { PDFDocument } from "pdf-lib";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  ensureImagesLoaded, 
+  collectSafeBreakPoints, 
+  buildPageSlices,
+  PDFExportLog 
+} from "@/lib/pdfExportUtils";
 
 function chunkPairs<T>(arr: T[]): T[][] {
   const result: T[][] = [];
