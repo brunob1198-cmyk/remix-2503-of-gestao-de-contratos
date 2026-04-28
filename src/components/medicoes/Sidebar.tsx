@@ -82,7 +82,7 @@ export function MedicoesSidebar() {
             <SidebarMenu>
               {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
                       to={item.url}
                       className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
@@ -98,7 +98,7 @@ export function MedicoesSidebar() {
               {/* Admin-only: Gerenciar Usuários */}
               {role === "admin" && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild tooltip="Gerenciar Usuários">
                     <NavLink
                       to="/medicoes/usuarios"
                       className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
@@ -113,7 +113,7 @@ export function MedicoesSidebar() {
 
               {/* Meu Perfil */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild tooltip="Meu Perfil">
                   <NavLink
                     to="/medicoes/perfil"
                     className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
