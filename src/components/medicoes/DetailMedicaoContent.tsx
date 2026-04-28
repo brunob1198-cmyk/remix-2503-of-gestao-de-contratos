@@ -398,17 +398,18 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card">
-        <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center">
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col">
+        <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
           <img
             src={foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
             decoding="sync"
+            crossOrigin="anonymous"
           />
         </div>
-        <div className="p-3 bg-muted/20 space-y-1.5">
+        <div className="p-3 bg-muted/20 space-y-1.5 flex-1">
           {options?.showItem !== false && foto.item_codigo && (
             <p className="font-semibold text-xs text-foreground break-words">
               {foto.item_codigo} — {foto.item_descricao}
