@@ -734,19 +734,28 @@ export function DetailMedicaoContent({
           {/* Header */}
           <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-              <img 
-                src={`${detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"}${ (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? ( (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url"))?.includes('?') ? '&' : '?' ) + 't=' + Date.now() : ''}`} 
-                alt="Logo Empresa" 
-                style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
-                crossOrigin="anonymous"
-                onError={(e) => { 
-                  e.currentTarget.style.display = 'none';
-                  const fallback = document.createElement('div');
-                  fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
-                  fallback.innerText = 'LOGO DA EMPRESA';
-                  e.currentTarget.parentNode?.insertBefore(fallback, e.currentTarget);
-                }} 
-              />
+              {(detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? (
+                <img 
+                  src={`${detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")}${ (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url"))?.includes('?') ? '&' : '?' }t=${Date.now()}`} 
+                  alt="Logo Empresa" 
+                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
+                  crossOrigin="anonymous"
+                  onError={(e) => { 
+                    const target = e.currentTarget;
+                    if (target.dataset.errorHandled) return;
+                    target.dataset.errorHandled = "true";
+                    target.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
+                    fallback.innerText = 'LOGO INDISPONÍVEL';
+                    target.parentNode?.insertBefore(fallback, target);
+                  }} 
+                />
+              ) : (
+                <div style={{ width: '140px', height: '50px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', border: '1px dashed #cbd5e1', borderRadius: '4px' }}>
+                  LOGO DA EMPRESA
+                </div>
+              )}
               <div>
                 <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
                 <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
