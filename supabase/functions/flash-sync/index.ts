@@ -502,7 +502,7 @@ Deno.serve(async (req) => {
         const { error: upsertError, count } = await adminClient
           .from("flash_transactions_raw")
           .upsert(chunk, {
-            onConflict: "empresa_id,external_id,transaction_date,amount",
+            onConflict: "empresa_id,external_id",
             count: "exact",
           });
 
