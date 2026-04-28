@@ -284,12 +284,18 @@ export default function RdoPage() {
 
   const toggleProjeto = useCallback((id: string) => {
     setSelectedProjetoIds(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      // Clear site selection when projects change
-      setSelectedSiteIds([]);
+      const isRemoving = prev.includes(id);
+      const next = isRemoving ? prev.filter(x => x !== id) : [...prev, id];
+      
+      // Se estou removendo um projeto, preciso remover os sites que pertencem a esse projeto da seleção
+      if (isRemoving) {
+        const sitesToRemove = sites.filter(s => s.projeto_id === id).map(s => s.id);
+        setSelectedSiteIds(prevSites => prevSites.filter(sid => !sitesToRemove.includes(sid)));
+      }
+      
       return next;
     });
-  }, [setSelectedProjetoIds, setSelectedSiteIds]);
+  }, [setSelectedProjetoIds, setSelectedSiteIds, sites]);
 
   const toggleSite = useCallback((id: string) => {
     setSelectedSiteIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
