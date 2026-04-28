@@ -345,7 +345,15 @@ export function useFlashNormalizacao() {
         }
 
         const normalized = normalizeFlashTransaction(
-          { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
+          { 
+            id: raw.id, 
+            external_id: raw.external_id, 
+            payload_json: raw.payload_json, 
+            flash_type: base.flash_type,
+            flash_category: base.flash_category,
+            flash_cost_center: base.flash_cost_center,
+            descricao: base.descricao
+          },
           mappingList as FlashCategoryMappingLike[]
         );
 
