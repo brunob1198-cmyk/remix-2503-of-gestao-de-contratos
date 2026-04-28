@@ -229,10 +229,10 @@ export default function NormalizacaoFlashPage() {
 
   // Period filter (applies to all tabs)
   const [dateFrom, setDateFrom] = useState<string>(() => {
-    return searchParams.get("from") || "";
+    return searchParams.get("from") || localStorage.getItem("flash_date_from") || "";
   });
   const [dateTo, setDateTo] = useState<string>(() => {
-    return searchParams.get("to") || "";
+    return searchParams.get("to") || localStorage.getItem("flash_date_to") || "";
   });
   
   // Sort from URL
@@ -942,7 +942,11 @@ export default function NormalizacaoFlashPage() {
               <Input
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDateFrom(val);
+                  localStorage.setItem("flash_date_from", val);
+                }}
                 className="h-8 w-[150px] text-xs"
               />
             </div>
@@ -951,7 +955,11 @@ export default function NormalizacaoFlashPage() {
               <Input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDateTo(val);
+                  localStorage.setItem("flash_date_to", val);
+                }}
                 className="h-8 w-[150px] text-xs"
               />
             </div>
