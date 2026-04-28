@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   ensureImagesLoaded, 
+  getImagesForSlice,
   collectSafeBreakPoints, 
   buildPageSlices,
   isCanvasBlank,
@@ -35,6 +36,17 @@ const waitForNextPaint = async (ms = 100) => {
   await new Promise<void>((resolve) => setTimeout(resolve, ms));
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+};
+
+const isLogoImage = (img: HTMLImageElement) => img.alt.toLowerCase().includes("logo");
+
+const prepareImagePositions = (content: HTMLElement) => {
+  const contentRect = content.getBoundingClientRect();
+  content.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+    const rect = img.getBoundingClientRect();
+    img.dataset.pdfTop = String(Math.max(0, rect.top - contentRect.top));
+    img.dataset.pdfBottom = String(Math.max(0, rect.bottom - contentRect.top));
   });
 };
 
@@ -63,10 +75,13 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.style.overflow = "visible";
 
   content.querySelectorAll("img").forEach((img) => {
-    img.loading = "eager";
-    img.decoding = "sync";
+    img.loading = "lazy";
+    img.decoding = "async";
     img.crossOrigin = "anonymous";
-    if (img.src && !img.src.startsWith('data:')) {
+    if (isLogoImage(img)) {
+      img.loading = "eager";
+    }
+    if (img.src && !img.src.startsWith('data:') && isLogoImage(img)) {
       const sep = img.src.includes('?') ? '&' : '?';
       img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
     }
