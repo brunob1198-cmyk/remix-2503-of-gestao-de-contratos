@@ -129,20 +129,31 @@ export const normalizeFlashTransaction = (
   const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   // A conta financeira correta para o Conta Azul é apenas "Flash"
-  const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; // ID da conta "Flash"
-  const fixedAccountName = "Flash";
+  // Vamos buscar dinamicamente no hook, mas deixamos um ID fallback aqui se necessário
+  const fallbackAccountId = "679d675b-006f-474a-be93-b68480396557"; 
+  const fallbackAccountName = "Flash";
 
   // Encontrar o melhor mapping baseado em especificidade
   const sortedMappings = [...mappings].sort((a, b) => {
     let scoreA = 0;
     let scoreB = 0;
-    if (a.flash_category) scoreA += 10;
-    if (a.flash_cost_center) scoreA += 5;
-    if (a.flash_description_pattern) scoreA += 20;
     
-    if (b.flash_category) scoreB += 10;
-    if (b.flash_cost_center) scoreB += 5;
-    if (b.flash_description_pattern) scoreB += 20;
+    // Critérios de pontuação:
+    // 1. Descrição (mais específico)
+    // 2. Categoria + Centro de Custo
+    // 3. Categoria
+    // 4. Centro de Custo
+    // 5. Apenas Tipo
+    
+    if (a.flash_description_pattern) scoreA += 100;
+    if (a.flash_category && a.flash_cost_center) scoreA += 50;
+    else if (a.flash_category) scoreA += 30;
+    else if (a.flash_cost_center) scoreA += 20;
+    
+    if (b.flash_description_pattern) scoreB += 100;
+    if (b.flash_category && b.flash_cost_center) scoreB += 50;
+    else if (b.flash_category) scoreB += 30;
+    else if (b.flash_cost_center) scoreB += 20;
     
     return scoreB - scoreA;
   });
@@ -150,8 +161,13 @@ export const normalizeFlashTransaction = (
   const mapping = sortedMappings.find(m => {
     if (m.flash_type !== flash_type) return false;
     
+    // Se o mapping define categoria, deve bater
     if (m.flash_category && m.flash_category !== flash_category) return false;
+    
+    // Se o mapping define centro de custo, deve bater
     if (m.flash_cost_center && m.flash_cost_center !== flash_cost_center) return false;
+    
+    // Se o mapping define padrão de descrição, deve bater
     if (m.flash_description_pattern) {
       const pattern = m.flash_description_pattern.toLowerCase();
       if (!descricao.toLowerCase().includes(pattern)) return false;
