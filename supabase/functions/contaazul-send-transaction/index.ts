@@ -160,6 +160,18 @@ async function sendOne(
     }
   };
 
+  // Validação interna antes do POST
+  for (const parcela of payload.condicao_pagamento.parcelas) {
+    if (!parcela.composicao_valor || parcela.composicao_valor.valor_bruto === undefined) {
+      console.error("Falha na validação pré-envio: Parcela sem composição de valor correta", { flash_id: input.flash_transaction_id });
+      return {
+        flash_transaction_id: input.flash_transaction_id,
+        status: "erro",
+        error: "Erro interno: Composição de valor da parcela não gerada corretamente.",
+      };
+    }
+  }
+
   let httpStatus: number | null = null;
   let responseJson: any = null;
   let errorMsg: string | null = null;
