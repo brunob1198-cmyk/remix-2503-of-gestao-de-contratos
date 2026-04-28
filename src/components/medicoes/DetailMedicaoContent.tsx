@@ -794,9 +794,12 @@ export function DetailMedicaoContent({
           {/* Header */}
           <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
-              {(detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? (
+              {(() => {
+                const empresaLogoSrc = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "";
+                const hasValidEmpresaLogo = empresaLogoSrc && empresaLogoSrc !== "/logo.png";
+                return hasValidEmpresaLogo ? (
                 <img 
-                  src={`${detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")}${ (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url"))?.includes('?') ? '&' : '?' }t=${Date.now()}`} 
+                  src={empresaLogoSrc} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
@@ -809,15 +812,18 @@ export function DetailMedicaoContent({
                     if (currentRetry < maxRetries) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
-                      const originalSrc = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "";
-                      const sep = originalSrc.includes('?') ? '&' : '?';
+                      const sep = empresaLogoSrc.includes('?') ? '&' : '?';
                       
                       addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo da empresa...`, "info");
                       
-                      // Small delay before retry
+                      // On second retry, drop crossOrigin to bypass CORS preflight failures
+                      if (nextRetry >= 2) {
+                        target.removeAttribute('crossorigin');
+                      }
+                      
                       setTimeout(() => {
-                        target.src = `${originalSrc}${sep}retry=${nextRetry}&t=${Date.now()}`;
-                      }, 1000);
+                        target.src = `${empresaLogoSrc}${sep}retry=${nextRetry}`;
+                      }, 800);
                       return;
                     }
 
