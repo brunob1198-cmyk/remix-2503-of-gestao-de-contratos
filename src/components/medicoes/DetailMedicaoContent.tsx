@@ -496,6 +496,14 @@ export function DetailMedicaoContent({
               if (clonedContent) {
                 clonedContent.style.transform = `translateY(-${slice.start}px)`;
                 clonedContent.style.transformOrigin = "top left";
+                
+                // Hide logos if they were already rendered in a previous page
+                if (pageNum > 1) {
+                  const logos = clonedContent.querySelectorAll('.pdf-header-logo');
+                  logos.forEach((logo) => {
+                    (logo as HTMLElement).style.visibility = 'hidden';
+                  });
+                }
               }
             }
           });
