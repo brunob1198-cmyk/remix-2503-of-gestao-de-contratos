@@ -527,7 +527,8 @@ export function DetailMedicaoContent({
           logging: false,
           onclone: (doc) => {
             // Shift content up so the current slice is at the top
-            const clonedContent = doc.querySelector('[data-pdf-export="medicao-detalhe"] > div') as HTMLElement;
+            const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
+            const clonedContent = container?.firstElementChild as HTMLElement;
             if (clonedContent) {
               clonedContent.style.transform = `translateY(-${slice.start}px)`;
               clonedContent.style.transformOrigin = "top left";
