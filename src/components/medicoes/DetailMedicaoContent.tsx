@@ -496,6 +496,14 @@ export function DetailMedicaoContent({
               if (clonedContent) {
                 clonedContent.style.transform = `translateY(-${slice.start}px)`;
                 clonedContent.style.transformOrigin = "top left";
+                
+                // Hide logos if they were already rendered in a previous page
+                if (pageNum > 1) {
+                  const logos = clonedContent.querySelectorAll('.pdf-header-logo');
+                  logos.forEach((logo) => {
+                    (logo as HTMLElement).style.visibility = 'hidden';
+                  });
+                }
               }
             }
           });
@@ -732,7 +740,7 @@ export function DetailMedicaoContent({
           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
         >
           {/* Header */}
-          <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
+          <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? (
                 <img 
@@ -749,6 +757,7 @@ export function DetailMedicaoContent({
                     fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
                     fallback.innerText = 'LOGO INDISPONÍVEL';
                     target.parentNode?.insertBefore(fallback, target);
+                    addLog("Falha ao carregar logo da empresa no cabeçalho.", "error");
                   }} 
                 />
               ) : (
@@ -776,7 +785,13 @@ export function DetailMedicaoContent({
                   alt="Logo Cliente" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
                   crossOrigin="anonymous" 
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  onError={(e) => { 
+                    const target = e.currentTarget;
+                    if (target.dataset.errorHandled) return;
+                    target.dataset.errorHandled = "true";
+                    target.style.display = 'none'; 
+                    addLog("Falha ao carregar logo do cliente no cabeçalho.", "error");
+                  }}
                 />
               )}
             </div>
