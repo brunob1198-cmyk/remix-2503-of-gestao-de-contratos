@@ -216,6 +216,7 @@ async function sendOne(
     empresa_id: empresaId,
     flash_transaction_id: input.flash_transaction_id,
     conta_azul_transaction_id: contaAzulId,
+    conta_azul_protocolo: contaAzulProtocolo,
     evento: "send_transaction",
     status,
     http_status: httpStatus,
