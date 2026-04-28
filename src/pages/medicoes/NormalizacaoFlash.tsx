@@ -355,18 +355,30 @@ export default function NormalizacaoFlashPage() {
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
       if (selectedPrestacao.length > 0 && !selectedPrestacao.includes(t.flash_prestacao_contas)) return false;
 
-      // Novos filtros nos cabeçalhos
+      // Filtros nos cabeçalhos vindos dos searchParams
       const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
       if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
 
       const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
-      if (descFilter.length > 0) {
-        // Comparação exata com os valores das opções, que foram extraídos de t.descricao
-        if (!descFilter.includes(t.descricao)) return false;
-      }
+      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
 
       const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
       if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
+
+      const userHeaderFilter = searchParams.get("user")?.split(",").filter(Boolean) || [];
+      if (userHeaderFilter.length > 0 && !userHeaderFilter.includes(t.usuario)) return false;
+
+      const typeHeaderFilter = searchParams.get("type")?.split(",").filter(Boolean) || [];
+      if (typeHeaderFilter.length > 0 && !typeHeaderFilter.includes(t.flash_type)) return false;
+
+      const catHeaderFilter = searchParams.get("cat")?.split(",").filter(Boolean) || [];
+      if (catHeaderFilter.length > 0 && !catHeaderFilter.includes(t.flash_category)) return false;
+
+      const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
+      if (ccHeaderFilter.length > 0 && !ccHeaderFilter.includes(t.flash_cost_center)) return false;
+
+      const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
+      if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
       if (search) {
         const q = search.toLowerCase();
@@ -396,7 +408,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, searchParams]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, searchParams]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1023,48 +1035,50 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || selectedPrestacao.length > 0 ||
-                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
+                {(searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
+                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val") ||
+                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") || 
+                  searchParams.get("cc") || searchParams.get("prest")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
-                    {selectedUsers.length > 0 && (
+                    {(searchParams.get("users") || searchParams.get("user")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Usuário ({selectedUsers.length})
+                        Usuário
                       </Badge>
                     )}
-                    {selectedTypes.length > 0 && (
+                    {(searchParams.get("types") || searchParams.get("type")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Tipo Flash ({selectedTypes.length})
+                        Tipo Flash
                       </Badge>
                     )}
-                    {selectedCategories.length > 0 && (
+                    {(searchParams.get("categories") || searchParams.get("cat")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Categoria Flash ({selectedCategories.length})
+                        Categoria Flash
                       </Badge>
                     )}
-                    {selectedCostCenters.length > 0 && (
+                    {(searchParams.get("costCenters") || searchParams.get("cc")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Centro de Custo ({selectedCostCenters.length})
+                        Centro de Custo
                       </Badge>
                     )}
-                    {selectedPrestacao.length > 0 && (
+                    {(searchParams.get("prestacao") || searchParams.get("prest")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Prestação de Contas ({selectedPrestacao.length})
+                        Prestação de Contas
                       </Badge>
                     )}
                     {searchParams.get("data") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Data ({searchParams.get("data")?.split(",").length})
+                        Data
                       </Badge>
                     )}
                     {searchParams.get("desc") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Descrição ({searchParams.get("desc")?.split(",").length})
+                        Descrição
                       </Badge>
                     )}
                     {searchParams.get("val") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Valor ({searchParams.get("val")?.split(",").length})
+                        Valor
                       </Badge>
                     )}
                     <Button
@@ -1076,11 +1090,15 @@ export default function NormalizacaoFlashPage() {
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                         setSelectedPrestacao([]);
-                        // Mantemos dateFrom e dateTo no estado, para não resetar o filtro de Período
                         const params = new URLSearchParams(searchParams);
                         params.delete("data");
                         params.delete("desc");
                         params.delete("val");
+                        params.delete("user");
+                        params.delete("type");
+                        params.delete("cat");
+                        params.delete("cc");
+                        params.delete("prest");
                         setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
@@ -1114,6 +1132,11 @@ export default function NormalizacaoFlashPage() {
                     params.delete("data");
                     params.delete("desc");
                     params.delete("val");
+                    params.delete("user");
+                    params.delete("type");
+                    params.delete("cat");
+                    params.delete("cc");
+                    params.delete("prest");
                     setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
@@ -1207,8 +1230,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Usuário"
                                 options={filterOptions.users}
-                                selected={selectedUsers}
-                                onSelect={setSelectedUsers}
+                                selected={searchParams.get("user")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("user", val.join(","));
+                                  else params.delete("user");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
@@ -1230,8 +1258,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Tipo Flash"
                                 options={filterOptions.types}
-                                selected={selectedTypes}
-                                onSelect={setSelectedTypes}
+                                selected={searchParams.get("type")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("type", val.join(","));
+                                  else params.delete("type");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
@@ -1247,8 +1280,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Categoria Flash"
                                 options={filterOptions.categories}
-                                selected={selectedCategories}
-                                onSelect={setSelectedCategories}
+                                selected={searchParams.get("cat")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("cat", val.join(","));
+                                  else params.delete("cat");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
@@ -1264,8 +1302,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Centro de Custo"
                                 options={filterOptions.costCenters}
-                                selected={selectedCostCenters}
-                                onSelect={setSelectedCostCenters}
+                                selected={searchParams.get("cc")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("cc", val.join(","));
+                                  else params.delete("cc");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
@@ -1284,8 +1327,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Prestação de Contas"
                                 options={filterOptions.prestacaoContas}
-                                selected={selectedPrestacao}
-                                onSelect={setSelectedPrestacao}
+                                selected={searchParams.get("prest")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("prest", val.join(","));
+                                  else params.delete("prest");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
