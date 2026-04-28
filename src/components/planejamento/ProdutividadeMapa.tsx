@@ -110,7 +110,10 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const dInfo = diarioMap[p.diario_id];
         const mun = dInfo?.municipio || sites.find((s) => s.id === dInfo?.site_id)?.municipio;
         const uf = dInfo?.uf || sites.find((s) => s.id === dInfo?.site_id)?.uf;
-        if (mun && uf) municipios.add(`${mun}__${uf}`);
+        if (mun && uf) {
+          // Normalizamos para evitar problemas de case sensitivity no matching
+          municipios.add(`${mun.trim().toUpperCase()}__${uf.trim().toUpperCase()}`);
+        }
       });
 
       const munEntries = Array.from(municipios).map((entry) => {
@@ -120,18 +123,25 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       let munCoords: Record<string, { lat: number; lng: number; uf: string }> = {};
 
       if (munEntries.length > 0) {
-        // Buscamos coordenadas exatas filtrando por nome E UF para evitar erros entre estados
+        // Buscamos coordenadas exatas. Como .in() pode ser case-sensitive,
+        // buscamos e depois filtramos manualmente para garantir o match robusto.
         const { data: ibge } = await supabase
           .from("municipios_ibge")
           .select("nome, uf, latitude, longitude")
-          .in("nome", munEntries.map((entry) => entry.nome));
+          .in("uf", Array.from(new Set(munEntries.map(e => e.uf))));
 
         (ibge ?? []).forEach((m) => {
           if (m.latitude && m.longitude) {
-            // Verificamos se o registro do IBGE realmente pertence ao UF esperado do diário
-            const entryKey = `${m.nome}__${m.uf}`;
+            const normalizedNome = m.nome.trim().toUpperCase();
+            const normalizedUf = m.uf.trim().toUpperCase();
+            const entryKey = `${normalizedNome}__${normalizedUf}`;
+            
             if (municipios.has(entryKey)) {
-              munCoords[entryKey] = { lat: Number(m.latitude), lng: Number(m.longitude), uf: m.uf };
+              munCoords[entryKey] = { 
+                lat: Number(m.latitude), 
+                lng: Number(m.longitude), 
+                uf: m.uf 
+              };
             }
           }
         });
