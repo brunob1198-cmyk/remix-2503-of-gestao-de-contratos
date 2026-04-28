@@ -791,10 +791,9 @@ export function DetailMedicaoContent({
             ) : tipoMedicao === "mista" ? (
               /* MISTA: Photos grouped by site with per-site production table */
               <div className="space-y-6">
-                {fotosBySite.map(([siteName, { fotos, siteId }]) => {
+                {fotosBySiteAndClass.map(({ siteName, siteId, classes }) => {
                   const siteItems = productionBySite.get(siteId) || [];
                   const siteTotal = getSiteItemsTotal(siteItems);
-                  const photoPairs = chunkPairs(fotos);
 
                   const siteSummary = (
                     <div
@@ -849,34 +848,36 @@ export function DetailMedicaoContent({
                   return (
                     <div
                       key={siteName}
-                      className="border rounded-lg overflow-hidden"
+                      className="border rounded-lg overflow-hidden bg-card"
                     >
-                      {photoPairs.length > 0 ? (
-                        photoPairs.map((pair, pi) => (
-                          <div
-                            key={`${siteName}-${pi}`}
-                            data-pdf-section={pi === 0 ? "site-medicao-intro" : "site-medicao-foto-row"}
-                            style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
-                          >
-                            {pi === 0 && siteSummary}
-                            <div className="p-3">
-                              <div
-                                className="foto-card pdf-keep-together grid grid-cols-2 gap-4 items-start"
-                                style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
-                              >
-                                {pair.map((foto) => renderPhotoCard(foto))}
-                              </div>
+                      {/* Header for the site */}
+                      <div data-pdf-section="site-medicao-intro">
+                        {siteSummary}
+                      </div>
+
+                      {/* Photo groups by classification */}
+                      <div className="divide-y">
+                        {classes.map(([className, fotos]) => {
+                          const photoPairs = chunkPairs(fotos);
+                          return (
+                            <div key={className} className="p-3 space-y-3">
+                              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
+                                {className}
+                              </h3>
+                              {photoPairs.map((pair, pi) => (
+                                <div
+                                  key={`${className}-${pi}`}
+                                  data-pdf-section="site-medicao-foto-row"
+                                  className="grid grid-cols-2 gap-4 items-stretch"
+                                  style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+                                >
+                                  {pair.map((foto) => renderPhotoCard(foto))}
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div
-                          data-pdf-section="site-medicao-intro"
-                          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
-                        >
-                          {siteSummary}
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
