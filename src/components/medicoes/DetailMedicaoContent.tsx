@@ -708,7 +708,7 @@ export function DetailMedicaoContent({
                 <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
               {clienteLogoUrl && (
-                <img src={clienteLogoUrl} alt="Logo Cliente" style={{ maxHeight: 48, objectFit: "contain", marginLeft: "15px" }} />
+                <img src={`${clienteLogoUrl}${clienteLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="Logo Cliente" style={{ maxHeight: 48, objectFit: "contain", marginLeft: "15px" }} crossOrigin="anonymous" />
               )}
             </div>
           </div>
