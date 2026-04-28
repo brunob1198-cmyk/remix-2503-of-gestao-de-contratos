@@ -13,6 +13,7 @@ export interface TimelineEvento {
   equipe_id: string | null;
   latitude: number | null;
   longitude: number | null;
+  coord_source?: string;
   imagem_url: string | null;
   status: string;
   observacao: string | null;
@@ -177,6 +178,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
             equipe_id: null,
             latitude: lat,
             longitude: lng,
+            coord_source: sourceLabel,
             imagem_url: f.url,
             status: "ok",
             observacao: `Foto do diário em ${f.diario.data}${
