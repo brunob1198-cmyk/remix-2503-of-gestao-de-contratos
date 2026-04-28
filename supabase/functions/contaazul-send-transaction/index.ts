@@ -139,7 +139,8 @@ async function sendOne(
         id_categoria: input.category_id,
         valor: Math.abs(Number(input.value) || 0),
         composicao_valor: {
-          valor_bruto: Math.abs(Number(input.value) || 0)
+          valor_bruto: Math.abs(Number(input.value) || 0),
+          valor_liquido: Math.abs(Number(input.value) || 0)
         }
       }
     ],
@@ -151,7 +152,8 @@ async function sendOne(
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
           composicao_valor: {
-            valor_bruto: Math.abs(Number(input.value) || 0)
+            valor_bruto: Math.abs(Number(input.value) || 0),
+            valor_liquido: Math.abs(Number(input.value) || 0)
           }
         }
       ]
