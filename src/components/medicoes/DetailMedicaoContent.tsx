@@ -557,7 +557,7 @@ export function DetailMedicaoContent({
         setExportProgress(progress);
         
         // Small delay to let browser breathe
-        await new Promise(resolve => setTimeout(resolve, 30));
+        await new Promise(resolve => setTimeout(resolve, 150)); // More breathing room for browser to GC between pages
       }
 
       const endTime = Date.now();
