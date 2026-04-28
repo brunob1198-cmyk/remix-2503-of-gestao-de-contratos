@@ -1826,7 +1826,63 @@ export default function NormalizacaoFlashPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm reabrir enviado */}
+      {/* Dialog: Log de Integração */}
+      <Dialog open={!!logDialogRow} onOpenChange={(o) => !o && setLogDialogRow(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Log de Integração Conta Azul</DialogTitle>
+            <DialogDescription>
+              Resposta completa recebida do Conta Azul para este lançamento.
+            </DialogDescription>
+          </DialogHeader>
+          {logDialogRow && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Status Portal</p>
+                  <p className={cn("text-sm font-bold", logDialogRow.status === "ENVIADO" ? "text-emerald-600" : "text-rose-600")}>
+                    {logDialogRow.status}
+                  </p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">HTTP Status</p>
+                  <p className="text-sm font-bold">{logDialogRow.http_status || "—"}</p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Protocolo</p>
+                  <p className="text-sm font-mono">{logDialogRow.conta_azul_protocolo || "—"}</p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Reconciliado</p>
+                  <p className="text-sm font-bold">{logDialogRow.reconciliado ? "Sim ✅" : "Pendente ⏳"}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">RESPOSTA COMPLETA (API):</p>
+                <ScrollArea className="h-[300px] w-full border rounded-md p-4 bg-slate-950">
+                  <pre className="text-[11px] text-slate-200 font-mono">
+                    {JSON.stringify(logDialogRow.response, null, 2)}
+                  </pre>
+                </ScrollArea>
+              </div>
+
+              {logDialogRow.erro && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-md">
+                  <p className="text-xs font-semibold text-rose-700 mb-1">ERRO DETALHADO:</p>
+                  <p className="text-xs text-rose-600 font-mono">{logDialogRow.erro}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogDialogRow(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!confirmReopenRow} onOpenChange={(o) => !o && setConfirmReopenRow(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
