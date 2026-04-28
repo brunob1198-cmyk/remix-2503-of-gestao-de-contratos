@@ -195,7 +195,9 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     "IN_ACCOUNTABILITY": "Em prestação de contas",
     "ACCOUNTABILITY_DRAFT": "Rascunho de prestação",
     "SUBMITTED": "Enviado",
-    "SETTLED": "Liquidado"
+    "SETTLED": "Liquidado",
+    "PENDING_APPROVAL": "Aguardando aprovação",
+    "REQUIRE_CHANGES": "Necessita alterações"
   };
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
