@@ -29,9 +29,9 @@ export function extractExifGeoDataFromArrayBuffer(arrayBuffer: ArrayBuffer): Exi
     let dateTime: string | null = null;
 
     // Extract GPS
-    if (tags.gps) {
-      latitude = tags.gps.Latitude ?? null;
-      longitude = tags.gps.Longitude ?? null;
+    if (tags.gps && tags.gps.Latitude !== undefined && tags.gps.Longitude !== undefined) {
+      latitude = tags.gps.Latitude;
+      longitude = tags.gps.Longitude;
     }
 
     // Fallback: try raw GPS tags
