@@ -1677,6 +1677,41 @@ export type Database = {
           },
         ]
       }
+      foto_geolocalizacao_ajustes: {
+        Row: {
+          created_at: string | null
+          foto_id: string
+          id: string
+          latitude: number
+          longitude: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          foto_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          foto_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "foto_geolocalizacao_ajustes_foto_id_fkey"
+            columns: ["foto_id"]
+            isOneToOne: true
+            referencedRelation: "diario_fotos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       frentes_obra: {
         Row: {
           created_at: string
