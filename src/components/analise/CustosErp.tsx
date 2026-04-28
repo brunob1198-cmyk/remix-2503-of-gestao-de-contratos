@@ -161,6 +161,10 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     return items;
   }, [custosErp, conflicts, showOnlyConflicts, searchTexts, selectedFilters, sortCol, sortDir]);
 
+  const totalValor = useMemo(() => {
+    return filteredItems.reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
+  }, [filteredItems]);
+
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedItems = useMemo(() => {
