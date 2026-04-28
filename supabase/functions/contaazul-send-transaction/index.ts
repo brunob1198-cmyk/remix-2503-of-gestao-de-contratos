@@ -114,7 +114,7 @@ async function sendOne(
   input: TransactionInput
 ) {
   const startedAt = Date.now();
-
+  
   // Verificação obrigatória de duplicidade
   const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
   if (alreadySent) {
@@ -125,31 +125,31 @@ async function sendOne(
     };
   }
 
+  const transactionValue = Math.abs(Number(input.value) || 0);
+  const transactionDate = input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0];
+
   // Payload conforme Conta Azul API v1 (eventos-financeiros)
-  // Nota: A API V2 /v1/financial-transactions parece estar instável ou requer scopes específicos.
-  // Usamos o endpoint de contas-a-pagar da V1 que é mais robusto para despesas.
   const payload = {
-    data_competencia: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
-    valor: Math.abs(Number(input.value) || 0),
+    data_competencia: transactionDate,
+    valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
     conta_financeira: input.financial_account_id,
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: Math.abs(Number(input.value) || 0)
+        valor: transactionValue
       }
     ],
     condicao_pagamento: {
       parcelas: [
         {
-          data_vencimento: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
-          valor_bruto: Math.abs(Number(input.value) || 0),
+          data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
           detalhe_valor: {
-            valor_bruto: Math.abs(Number(input.value) || 0),
-            valor_liquido: Math.abs(Number(input.value) || 0)
+            valor_bruto: transactionValue,
+            valor_liquido: transactionValue
           }
         }
       ]
