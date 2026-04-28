@@ -1219,8 +1219,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Usuário"
                                 options={filterOptions.users}
-                                selected={selectedUsers}
-                                onSelect={setSelectedUsers}
+                                selected={searchParams.get("user")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("user", val.join(","));
+                                  else params.delete("user");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
