@@ -10,8 +10,9 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaf
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
-import { MapPin, BarChart3, TrendingUp } from "lucide-react";
+import { MapPin, BarChart3, TrendingUp, AlertTriangle, Info } from "lucide-react";
 import { resolveCoordsFromPhotos } from "@/lib/photoGeolocation";
+import { isPointInUF } from "@/lib/geoUtils";
 
 interface ProdutividadeMapaProps {
   projetoId: string;
@@ -28,6 +29,9 @@ interface ProdRegiao {
   totalItens: number;
   avgQuantidade: number;
   photos: string[];
+  source?: "IBGE" | "EXIF" | "OCR" | "NOMINATIM";
+  evidence?: string;
+  isError?: boolean;
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
@@ -193,7 +197,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const regioesBase = Object.values(aggMap);
 
-      // Prioridade 1: Município coordinates from IBGE (Muito mais estável para ranking por cidade)
+      // Prioridade 1: Município coordinates from IBGE
       regioesBase.forEach((r) => {
         const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
         const key = `${normalize(r.mun)}__${normalize(r.uf)}`;
@@ -201,31 +205,29 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         if (coords) {
           r.lat = coords.lat;
           r.lng = coords.lng;
+          r.source = "IBGE";
+          r.evidence = `Coordenada oficial da cidade ${r.mun}/${r.uf} via base IBGE.`;
         }
       });
 
-      // Prioridade 2: Foto-level coords (apenas se não encontramos no IBGE ou para refinamento)
-      // Para manter a "fidelidade ao local das fotos" pedida anteriormente, 
-      // mas sem quebrar a posição da cidade no ranking:
+      // Prioridade 2: Foto-level coords (EXIF/OCR)
       await Promise.all(
-        regioesBase
-          .filter((r) => r.photos.length > 0)
-          .map(async (r) => {
+        regioesBase.map(async (r) => {
+          if (r.photos.length > 0 && !r.lat) {
             const coordsFromPhoto = await resolveCoordsFromPhotos(r.photos, { maxPhotos: 5 });
             if (coordsFromPhoto) {
-              // Se já temos a cidade (IBGE), verificamos se a foto está no mesmo estado
-              // para evitar que fotos "saltem" para outros estados por erro de GPS.
-              // Se não temos a cidade, aceitamos a foto.
-              if (!r.lat || !r.lng) {
+              // Verificação extra: confirmar se a coordenada da foto está dentro do UF
+              if (isPointInUF(coordsFromPhoto.lat, coordsFromPhoto.lng, r.uf)) {
                 r.lat = coordsFromPhoto.lat;
                 r.lng = coordsFromPhoto.lng;
+                r.source = coordsFromPhoto.source.toUpperCase() as any;
+                r.evidence = `Geolocalização extraída diretamente da imagem via ${coordsFromPhoto.source}. Validada dentro do estado ${r.uf}.`;
               } else {
-                // Opcional: poderíamos refinar o ponto da cidade com o da foto se for "perto",
-                // mas para resolver a reclamação do usuário de "nem perto das cidades corretas",
-                // vamos manter a coordenada oficial do município como âncora.
+                console.warn(`Coordenada ${coordsFromPhoto.source} de ${r.mun}/${r.uf} caiu fora do estado e foi ignorada.`);
               }
             }
-          })
+          }
+        })
       );
 
       // Last resort: Nominatim geocoding
@@ -234,15 +236,21 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         await Promise.all(
           missingCoords.map(async (regiao) => {
             try {
-              // Adicionando o estado (UF) na busca para evitar ambiguidades (como Bocaiuva em MG vs outros locais)
               const q = encodeURIComponent(`${regiao.mun}, ${regiao.uf}, Brazil`);
               const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
                 headers: { "User-Agent": "LovableApp/1.0" },
               });
               const data = await resp.json();
               if (data?.[0]?.lat && data?.[0]?.lon) {
-                regiao.lat = Number(data[0].lat);
-                regiao.lng = Number(data[0].lon);
+                const lat = Number(data[0].lat);
+                const lng = Number(data[0].lon);
+                // Validar UF antes de aceitar
+                if (isPointInUF(lat, lng, regiao.uf)) {
+                  regiao.lat = lat;
+                  regiao.lng = lng;
+                  regiao.source = "NOMINATIM";
+                  regiao.evidence = `Busca externa (Nominatim) para ${regiao.mun}/${regiao.uf}. Validada dentro do estado.`;
+                }
               }
             } catch (e) {
               console.warn(`Nominatim fallback failed for ${regiao.mun}/${regiao.uf}`, e);
@@ -250,6 +258,15 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
           })
         );
       }
+
+      // Final validation and error tagging
+      regioesBase.forEach(r => {
+        if (r.lat && r.lng && !isPointInUF(r.lat, r.lng, r.uf)) {
+          // @ts-ignore
+          r.isError = true;
+          r.evidence = `ERRO: Ponto (${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}) localizado fora do estado ${r.uf}.`;
+        }
+      });
 
 
       return regioesBase.map((a) => ({
