@@ -32,8 +32,8 @@ import { getPdfOptions } from "@/lib/pdfTemplates";
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
 const waitForNextPaint = async (ms = 100) => {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => setTimeout(resolve, ms));
+  await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
 };
