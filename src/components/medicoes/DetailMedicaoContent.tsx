@@ -440,8 +440,8 @@ export function DetailMedicaoContent({
         loadResult.failed > 0 ? "error" : "success");
       
       setExportProgress(15);
-      addLog("Estabilizando layout...", "info");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      addLog("Estabilizando layout e finalizando carregamento...", "info");
+      await waitForNextPaint(3000); // Increased stabilization time for large photo sets
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
