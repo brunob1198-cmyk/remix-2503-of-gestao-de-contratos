@@ -143,8 +143,16 @@ export function useTimelineEventos(projetoId?: string, filters?: {
         .in("foto_id", diarioData.map((f: any) => f.id));
       const adjustmentsMap = Object.fromEntries((adjustments ?? []).map((a: any) => [a.foto_id, a]));
 
+      // Fetch existing cache for these URLs to avoid redundant calls
+      const { data: dbCache } = await supabase
+        .from("foto_geolocalizacao_cache")
+        .select("url, latitude, longitude, source")
+        .in("url", (diarioData ?? []).map((f: any) => f.url));
+      
+      const dbCacheMap = Object.fromEntries((dbCache ?? []).map((c: any) => [c.url, c]));
+
       // Map daily report photos to TimelineEvento format.
-      // Priority for coords: 1) Manual Adjustment 2) EXIF metadata 3) OCR 4) municipio
+      // Priority for coords: 1) Manual Adjustment 2) DB Cache 3) EXIF metadata 4) OCR 5) municipio
       const diarioEvents: TimelineEvento[] = await Promise.all(
         (diarioData ?? []).map(async (f: any) => {
           const info = diarioMunMap[f.diario_id];
@@ -152,13 +160,18 @@ export function useTimelineEventos(projetoId?: string, filters?: {
 
           let lat: number | null = null;
           let lng: number | null = null;
-          let source: "manual" | "exif" | "ocr" | "municipio" | null = null;
+          let source: "manual" | "exif" | "ocr" | "municipio" | "cache" | null = null;
 
           const adjustment = adjustmentsMap[f.id];
           if (adjustment) {
             lat = adjustment.latitude;
             lng = adjustment.longitude;
             source = "manual";
+          } else if (dbCacheMap[f.url]) {
+            const cached = dbCacheMap[f.url];
+            lat = cached.latitude;
+            lng = cached.longitude;
+            source = cached.source;
           } else {
             const photoCoords = await resolvePhotoCoords(f.url);
             if (photoCoords) {
