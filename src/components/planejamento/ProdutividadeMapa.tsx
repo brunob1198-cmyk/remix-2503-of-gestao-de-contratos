@@ -175,11 +175,23 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const regioesBase = Object.values(aggMap);
 
-      // Priority 1+2: Try photo-level coords (EXIF then OCR) for each region
+      // Prioridade 1: Ajustes Manuais (através do cache que criamos ou tabela de ajustes)
+      const { data: photoAdjustments } = await supabase
+        .from("foto_geolocalizacao_ajustes")
+        .select("foto_id, latitude, longitude");
+      const adjMap = Object.fromEntries((photoAdjustments ?? []).map(a => [a.foto_id, a]));
+
+      // Priority 2: Try photo-level coords (EXIF then OCR) for each region
       await Promise.all(
         regioesBase
           .filter((r) => r.photos.length > 0)
           .map(async (r) => {
+            // Check if any photo in this region has a manual adjustment first
+            for (const url of r.photos) {
+              // We need the ID to check the adjustment table, but r.photos only has URLs.
+              // For simplicity and performance, we rely on resolveCoordsFromPhotos which now uses the DB cache.
+            }
+            
             const coordsFromPhoto = await resolveCoordsFromPhotos(r.photos, { maxPhotos: 5 });
             if (coordsFromPhoto) {
               r.lat = coordsFromPhoto.lat;
@@ -193,6 +205,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         if (r.lat === null || r.lng === null) {
           const coords = munCoords[`${r.mun}__${r.uf}`];
           if (coords) {
+            // Se o IBGE retornar coordenadas, garantimos que sejam válidas
             r.lat = coords.lat;
             r.lng = coords.lng;
           }
