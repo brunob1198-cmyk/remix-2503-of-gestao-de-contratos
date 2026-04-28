@@ -59,12 +59,14 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
 
       const diarioIds = diarios.map(d => d.id);
 
+      // Usamos paginação para buscar todas as fotos se houver muitas, 
+      // mas como o default do Supabase é 1000, forçamos um range maior para garantir a contagem real.
       const [prodRes, equipeRes, equipRes, veicRes, fotosRes] = await Promise.all([
         supabase.from("diario_producao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade)").in("diario_id", diarioIds),
         supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
         supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
         supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
-        supabase.from("diario_fotos").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_fotos").select("*").in("diario_id", diarioIds).range(0, 9999),
       ]);
 
       const allProd = prodRes.data || [];
