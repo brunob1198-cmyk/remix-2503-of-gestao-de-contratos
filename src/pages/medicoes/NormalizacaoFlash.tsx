@@ -1035,48 +1035,50 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(selectedUsers.length > 0 || selectedTypes.length > 0 || selectedCategories.length > 0 || selectedCostCenters.length > 0 || selectedPrestacao.length > 0 ||
-                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val")) && (
+                {(searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
+                  searchParams.get("data") || searchParams.get("desc") || searchParams.get("val") ||
+                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") || 
+                  searchParams.get("cc") || searchParams.get("prest")) && (
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
-                    {selectedUsers.length > 0 && (
+                    {(searchParams.get("users") || searchParams.get("user")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Usuário ({selectedUsers.length})
+                        Usuário
                       </Badge>
                     )}
-                    {selectedTypes.length > 0 && (
+                    {(searchParams.get("types") || searchParams.get("type")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Tipo Flash ({selectedTypes.length})
+                        Tipo Flash
                       </Badge>
                     )}
-                    {selectedCategories.length > 0 && (
+                    {(searchParams.get("categories") || searchParams.get("cat")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Categoria Flash ({selectedCategories.length})
+                        Categoria Flash
                       </Badge>
                     )}
-                    {selectedCostCenters.length > 0 && (
+                    {(searchParams.get("costCenters") || searchParams.get("cc")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Centro de Custo ({selectedCostCenters.length})
+                        Centro de Custo
                       </Badge>
                     )}
-                    {selectedPrestacao.length > 0 && (
+                    {(searchParams.get("prestacao") || searchParams.get("prest")) && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Prestação de Contas ({selectedPrestacao.length})
+                        Prestação de Contas
                       </Badge>
                     )}
                     {searchParams.get("data") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Data ({searchParams.get("data")?.split(",").length})
+                        Data
                       </Badge>
                     )}
                     {searchParams.get("desc") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Descrição ({searchParams.get("desc")?.split(",").length})
+                        Descrição
                       </Badge>
                     )}
                     {searchParams.get("val") && (
                       <Badge variant="secondary" className="text-[11px]">
-                        Valor ({searchParams.get("val")?.split(",").length})
+                        Valor
                       </Badge>
                     )}
                     <Button
@@ -1088,11 +1090,15 @@ export default function NormalizacaoFlashPage() {
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                         setSelectedPrestacao([]);
-                        // Mantemos dateFrom e dateTo no estado, para não resetar o filtro de Período
                         const params = new URLSearchParams(searchParams);
                         params.delete("data");
                         params.delete("desc");
                         params.delete("val");
+                        params.delete("user");
+                        params.delete("type");
+                        params.delete("cat");
+                        params.delete("cc");
+                        params.delete("prest");
                         setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
