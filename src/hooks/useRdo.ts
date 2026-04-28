@@ -64,7 +64,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
         supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
         supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
         supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
-        supabase.from("diario_fotos").select("*").in("diario_id", diarioIds).limit(100000),
+        supabase.from("diario_fotos").select("*").in("diario_id", diarioIds),
       ]);
 
       const allProd = prodRes.data || [];
