@@ -352,6 +352,22 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                   );
                 })}
               </tbody>
+              <tfoot className="bg-muted/50 border-t font-medium">
+                <tr>
+                  {allCols.map(col => (
+                    <td key={`footer-${col}`} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
+                      {col === "valor" ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Subtotal</span>
+                          <span className="text-sm font-mono text-primary font-bold">{formatCurrency(totalValor)}</span>
+                        </div>
+                      ) : col === "descricao" ? (
+                        <span className="text-xs text-muted-foreground">Total de {filteredItems.length} lançamentos</span>
+                      ) : null}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
             </table>
             <TablePagination
               currentPage={safeCurrentPage}
