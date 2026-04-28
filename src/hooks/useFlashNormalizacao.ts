@@ -620,29 +620,49 @@ export function useFlashNormalizacao() {
   );
 
   const applyMappingToAllPending = useCallback(async () => {
-    if (!empresaId || mappingByType.size === 0) return;
-    const pendingRows = transactions.filter(
-      (t) => t.status === "pendente" && mappingByType.has(t.flash_type)
-    );
+    if (!empresaId || mappings.length === 0) return;
+    
+    const pendingRows = transactions.filter(t => t.status === "pendente");
+    
     if (!pendingRows.length) {
-      toast.info("Nenhum lançamento pendente com mapeamento disponível.");
+      toast.info("Nenhum lançamento pendente encontrado.");
       return;
     }
+    
     let count = 0;
     for (const row of pendingRows) {
-      const m = mappingByType.get(row.flash_type)!;
-      await saveNormalization(row, {
-        conta_azul_category_id: m.conta_azul_category_id,
-        conta_azul_category_name: m.conta_azul_category_name,
-        conta_azul_account_id: m.conta_azul_account_id,
-        conta_azul_account_name: m.conta_azul_account_name,
-        tipo_operacao: m.tipo_operacao,
-        status: "normalizado",
-      });
-      count += 1;
+      const normalized = normalizeFlashTransaction(
+        { 
+          id: row.id, 
+          external_id: row.external_id, 
+          payload_json: row.payload_json, 
+          flash_type: row.flash_type,
+          flash_category: row.flash_category,
+          flash_cost_center: row.flash_cost_center,
+          descricao: row.descricao
+        },
+        mappings as any[]
+      );
+
+      if (normalized.status === "normalizado") {
+        await saveNormalization(row, {
+          conta_azul_category_id: normalized.conta_azul_category_id,
+          conta_azul_category_name: normalized.conta_azul_category_name,
+          conta_azul_account_id: normalized.conta_azul_account_id,
+          conta_azul_account_name: normalized.conta_azul_account_name,
+          tipo_operacao: normalized.tipo_operacao,
+          status: "normalizado",
+        });
+        count += 1;
+      }
     }
-    toast.success(`${count} lançamento(s) normalizado(s) automaticamente.`);
-  }, [empresaId, mappingByType, transactions, saveNormalization]);
+    
+    if (count > 0) {
+      toast.success(`${count} lançamento(s) normalizado(s) automaticamente usando mapeamento inteligente.`);
+    } else {
+      toast.info("Nenhum mapeamento compatível encontrado para os lançamentos pendentes.");
+    }
+  }, [empresaId, mappings, transactions, saveNormalization]);
 
   /**
    * Aplica em lote categoria/conta a um conjunto de transações pendentes.
