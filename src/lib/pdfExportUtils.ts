@@ -69,59 +69,102 @@ export function isCanvasBlank(canvas: HTMLCanvasElement): boolean {
 /**
  * Ensures all images in an element are fully loaded and decoded
  */
-export async function ensureImagesLoaded(element: HTMLElement, onProgress?: (msg: string) => void): Promise<{ total: number, loaded: number, failed: number }> {
-  const images = Array.from(element.querySelectorAll("img"));
+const FALLBACK_IMAGE_SRC =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"><rect width="640" height="480" fill="#f8fafc"/><text x="320" y="240" text-anchor="middle" dominant-baseline="middle" fill="#94a3b8" font-family="Arial" font-size="24">Imagem indisponível</text></svg>`
+  );
+
+export async function ensureImagesLoaded(
+  element: HTMLElement,
+  onProgress?: (msg: string) => void,
+  options?: { images?: HTMLImageElement[]; concurrency?: number; timeoutMs?: number; label?: string }
+): Promise<{ total: number, loaded: number, failed: number }> {
+  const images = options?.images || Array.from(element.querySelectorAll("img"));
   if (images.length === 0) return { total: 0, loaded: 0, failed: 0 };
 
   let loadedCount = 0;
   let failedCount = 0;
-  onProgress?.(`Aguardando carregamento de ${images.length} imagens...`);
+  let cursor = 0;
+  const concurrency = Math.max(1, options?.concurrency || 6);
+  const timeoutMs = options?.timeoutMs || 30000;
+  const label = options?.label || "Imagens";
 
-  await Promise.all(
-    images.map(async (img) => {
-      // Set crossOrigin before anything else
-      if (!img.src.startsWith('data:')) {
-        img.crossOrigin = "anonymous";
-      }
-      
-      try {
-        if (img.complete && img.naturalWidth > 0) {
-          await img.decode().catch(() => {});
-          loadedCount++;
-        } else {
-          await new Promise<void>((resolve) => {
-            const timeout = setTimeout(() => {
-              console.warn(`Timeout loading image: ${img.src}`);
-              failedCount++;
-              resolve();
-            }, 10000);
+  onProgress?.(`Aguardando carregamento de ${images.length} imagens${options?.label ? ` (${options.label})` : ""}...`);
 
-            img.onload = () => {
-              clearTimeout(timeout);
-              loadedCount++;
-              resolve();
-            };
-            img.onerror = () => {
-              clearTimeout(timeout);
-              console.error(`Falha ao carregar imagem: ${img.src}`);
-              failedCount++;
-              resolve(); 
-            };
-          });
-          await img.decode().catch(() => {});
+  const loadOne = async (img: HTMLImageElement): Promise<boolean> => {
+    if (!img.src) return false;
+    if (img.dataset.pdfLoadFailed === "true") return false;
+    if (!img.src.startsWith("data:")) img.crossOrigin = "anonymous";
+    img.loading = "eager";
+    img.decoding = "async";
+
+    if (img.complete && img.naturalWidth > 0) {
+      await img.decode().catch(() => {});
+      return true;
+    }
+
+    return await new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        img.removeEventListener("load", onLoad);
+        img.removeEventListener("error", onError);
+        if (!ok) {
+          img.dataset.pdfLoadFailed = "true";
+          img.src = FALLBACK_IMAGE_SRC;
         }
-      } catch (e) {
-        console.error("Erro ao decodificar imagem:", e);
-        failedCount++;
-      } finally {
-        if ((loadedCount + failedCount) % 5 === 0 || (loadedCount + failedCount) === images.length) {
-          onProgress?.(`Imagens: ${loadedCount + failedCount}/${images.length} processadas`);
-        }
+        resolve(ok);
+      };
+      const onLoad = () => finish(img.naturalWidth > 0);
+      const onError = () => finish(false);
+      const timeout = setTimeout(() => finish(false), timeoutMs);
+
+      img.addEventListener("load", onLoad, { once: true });
+      img.addEventListener("error", onError, { once: true });
+      const currentSrc = img.currentSrc || img.src;
+      img.src = currentSrc;
+    });
+  };
+
+  const worker = async () => {
+    while (cursor < images.length) {
+      const index = cursor++;
+      const ok = await loadOne(images[index]);
+      if (ok) loadedCount++;
+      else failedCount++;
+      const processed = loadedCount + failedCount;
+      if (processed % 10 === 0 || processed === images.length) {
+        onProgress?.(`${label}: ${processed}/${images.length} processadas`);
       }
-    })
-  );
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, images.length) }, worker));
 
   return { total: images.length, loaded: loadedCount, failed: failedCount };
+}
+
+export function getImagesForSlice(
+  element: HTMLElement,
+  start: number,
+  height: number,
+  buffer = 600
+): HTMLImageElement[] {
+  const contentRect = element.getBoundingClientRect();
+  return Array.from(element.querySelectorAll<HTMLImageElement>("img")).filter((img) => {
+    const top = Number(img.dataset.pdfTop ?? NaN);
+    const bottom = Number(img.dataset.pdfBottom ?? NaN);
+    if (!Number.isNaN(top) && !Number.isNaN(bottom)) {
+      return bottom >= start - buffer && top <= start + height + buffer;
+    }
+    const rect = img.getBoundingClientRect();
+    const fallbackTop = rect.top - contentRect.top;
+    const fallbackBottom = fallbackTop + rect.height;
+    return fallbackBottom >= start - buffer && fallbackTop <= start + height + buffer;
+  });
 }
 
 /**

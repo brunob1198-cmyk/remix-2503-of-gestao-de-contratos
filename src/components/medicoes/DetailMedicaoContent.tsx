@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   ensureImagesLoaded, 
+  getImagesForSlice,
   collectSafeBreakPoints, 
   buildPageSlices,
   isCanvasBlank,
@@ -35,6 +36,17 @@ const waitForNextPaint = async (ms = 100) => {
   await new Promise<void>((resolve) => setTimeout(resolve, ms));
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+};
+
+const isLogoImage = (img: HTMLImageElement) => img.alt.toLowerCase().includes("logo");
+
+const prepareImagePositions = (content: HTMLElement) => {
+  const contentRect = content.getBoundingClientRect();
+  content.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+    const rect = img.getBoundingClientRect();
+    img.dataset.pdfTop = String(Math.max(0, rect.top - contentRect.top));
+    img.dataset.pdfBottom = String(Math.max(0, rect.bottom - contentRect.top));
   });
 };
 
@@ -63,10 +75,13 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.style.overflow = "visible";
 
   content.querySelectorAll("img").forEach((img) => {
-    img.loading = "eager";
-    img.decoding = "sync";
+    img.loading = "lazy";
+    img.decoding = "async";
     img.crossOrigin = "anonymous";
-    if (img.src && !img.src.startsWith('data:')) {
+    if (isLogoImage(img)) {
+      img.loading = "eager";
+    }
+    if (img.src && !img.src.startsWith('data:') && isLogoImage(img)) {
       const sep = img.src.includes('?') ? '&' : '?';
       img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
     }
@@ -430,18 +445,23 @@ export function DetailMedicaoContent({
       exportContainer = container;
 
       setExportProgress(5);
-      addLog("Carregando recursos e imagens...", "info");
+      const allImages = Array.from(content.querySelectorAll<HTMLImageElement>("img"));
+      const logoImages = allImages.filter(isLogoImage);
+      const photoImages = allImages.filter((img) => !isLogoImage(img));
+      addLog(`Documento com ${photoImages.length} fotos e ${logoImages.length} logo(s).`, "info");
       
-      const expectedImages = content.querySelectorAll("img").length;
-      addLog(`Imagens esperadas no documento: ${expectedImages}`, "info");
+      const logoLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+        images: logoImages,
+        concurrency: 2,
+        timeoutMs: 12000,
+        label: "Logos",
+      });
+      addLog(`Logos preparadas: ${logoLoadResult.loaded} carregadas, ${logoLoadResult.failed} substituídas.`, "success");
       
-      const loadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
-      addLog(`Carregamento concluído: ${loadResult.loaded} carregadas, ${loadResult.failed} falhas.`, 
-        loadResult.failed > 0 ? "error" : "success");
-      
-      setExportProgress(15);
-      addLog("Estabilizando layout e finalizando carregamento...", "info");
-      await waitForNextPaint(3000); // Increased stabilization time for large photo sets
+      setExportProgress(12);
+      addLog("Estabilizando layout para paginação...", "info");
+      await waitForNextPaint(600);
+      prepareImagePositions(content);
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
@@ -478,9 +498,25 @@ export function DetailMedicaoContent({
         let retryCount = 0;
         const maxRetries = 2;
         let pageCanvas: HTMLCanvasElement | null = null;
+        const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
+
+        if (imagesInSlice.length > 0) {
+          const sliceLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+            images: imagesInSlice,
+            concurrency: 4,
+            timeoutMs: 20000,
+            label: `Página ${pageNum}`,
+          });
+          if (sliceLoadResult.failed > 0) {
+            addLog(`Página ${pageNum}: ${sliceLoadResult.failed} imagem(ns) indisponíveis foram substituídas.`, "info");
+          }
+          await waitForNextPaint(100);
+        }
         
         const renderPage = async () => {
           const pStart = Date.now();
+          const sliceTop = slice.start;
+          const sliceBottom = slice.start + slice.height;
           const canvas = await html2canvas(content, {
             scale,
             useCORS: true,
@@ -495,6 +531,16 @@ export function DetailMedicaoContent({
               const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
               const clonedContent = container?.firstElementChild as HTMLElement;
               if (clonedContent) {
+                clonedContent.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+                  const top = Number(img.dataset.pdfTop ?? 0);
+                  const bottom = Number(img.dataset.pdfBottom ?? 0);
+                  const isOutsideSlice = bottom < sliceTop - 800 || top > sliceBottom + 800;
+                  if (isOutsideSlice && !isLogoImage(img)) {
+                    img.style.visibility = "hidden";
+                    img.removeAttribute("src");
+                    img.removeAttribute("srcset");
+                  }
+                });
                 clonedContent.style.transform = `translateY(-${slice.start}px)`;
                 clonedContent.style.transformOrigin = "top left";
                 
@@ -556,8 +602,13 @@ export function DetailMedicaoContent({
         const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
         setExportProgress(progress);
         
-        // Small delay to let browser breathe
-        await new Promise(resolve => setTimeout(resolve, 150)); // More breathing room for browser to GC between pages
+        imagesInSlice.forEach((img) => {
+          if (!isLogoImage(img)) {
+            img.removeAttribute("src");
+            img.removeAttribute("srcset");
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 120));
       }
 
       const endTime = Date.now();
