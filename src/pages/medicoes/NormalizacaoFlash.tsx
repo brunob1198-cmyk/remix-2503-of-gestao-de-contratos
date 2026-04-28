@@ -1633,6 +1633,15 @@ export default function NormalizacaoFlashPage() {
                             <span className="text-muted-foreground italic text-[10px]">Todos</span>
                           )}
                         </TableCell>
+                        <TableCell className="text-xs">
+                          {m.flash_cost_center ? (
+                            <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
+                              {m.flash_cost_center}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
                         <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
                         <TableCell className="text-xs">{m.conta_azul_account_name || "—"}</TableCell>
