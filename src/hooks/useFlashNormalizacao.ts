@@ -456,8 +456,13 @@ export function useFlashNormalizacao() {
   // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
   const mappingByType = useMemo(() => {
     const map = new Map<string, CategoryMapping>();
-    // No caso de conflito, o último (provavelmente mais recente ou específico) ganha no Map simples
-    mappings.forEach((m) => map.set(m.flash_type, m));
+    // No caso de conflito de tipo simples, o mais recente ou específico ganha no Map simples
+    // Mas agora usamos a lista completa no fetchData para matching inteligente
+    mappings.forEach((m) => {
+      // Usamos apenas o tipo como chave para manter compatibilidade com UI legada
+      // Mas o ideal é o matching por granularidade
+      map.set(m.flash_type, m);
+    });
     return map;
   }, [mappings]);
 
