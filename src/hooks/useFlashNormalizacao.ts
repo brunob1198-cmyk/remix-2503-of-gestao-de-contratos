@@ -345,7 +345,15 @@ export function useFlashNormalizacao() {
         }
 
         const normalized = normalizeFlashTransaction(
-          { id: raw.id, external_id: raw.external_id, payload_json: raw.payload_json, flash_type: base.flash_type },
+          { 
+            id: raw.id, 
+            external_id: raw.external_id, 
+            payload_json: raw.payload_json, 
+            flash_type: base.flash_type,
+            flash_category: base.flash_category,
+            flash_cost_center: base.flash_cost_center,
+            descricao: base.descricao
+          },
           mappingList as FlashCategoryMappingLike[]
         );
 
@@ -448,8 +456,13 @@ export function useFlashNormalizacao() {
   // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
   const mappingByType = useMemo(() => {
     const map = new Map<string, CategoryMapping>();
-    // No caso de conflito, o último (provavelmente mais recente ou específico) ganha no Map simples
-    mappings.forEach((m) => map.set(m.flash_type, m));
+    // No caso de conflito de tipo simples, o mais recente ou específico ganha no Map simples
+    // Mas agora usamos a lista completa no fetchData para matching inteligente
+    mappings.forEach((m) => {
+      // Usamos apenas o tipo como chave para manter compatibilidade com UI legada
+      // Mas o ideal é o matching por granularidade
+      map.set(m.flash_type, m);
+    });
     return map;
   }, [mappings]);
 
@@ -500,15 +513,25 @@ export function useFlashNormalizacao() {
           autoPromoted = true;
         }
 
-        const mappingMatch = mappingByType.get(row.flash_type);
+        const normalizedMatch = normalizeFlashTransaction(
+          { 
+            id: row.id, 
+            flash_type: row.flash_type, 
+            flash_category: row.flash_category, 
+            flash_cost_center: row.flash_cost_center,
+            descricao: row.descricao
+          },
+          mappings as any[]
+        );
+
         const motivo =
           patch.motivo !== undefined
             ? patch.motivo
             : merged.status === "normalizado"
             ? autoPromoted
               ? `Normalizado manualmente: categoria e conta preenchidas pelo usuário em ${new Date().toLocaleString("pt-BR")}.`
-              : mappingMatch && mappingMatch.id === (row.mapping_id_usado || mappingMatch.id)
-              ? `Normalizado via mapping do tipo "${row.flash_type}" → ${merged.conta_azul_category_name} / ${merged.conta_azul_account_name}.`
+              : normalizedMatch.mapping_id_usado
+              ? `Normalizado via mapping inteligente → ${merged.conta_azul_category_name} / ${merged.conta_azul_account_name}.`
               : `Normalizado manualmente (sem mapping aplicado) em ${new Date().toLocaleString("pt-BR")}.`
             : merged.status === "enviado"
             ? `Enviado ao Conta Azul em ${new Date().toLocaleString("pt-BR")}.`
@@ -585,7 +608,11 @@ export function useFlashNormalizacao() {
             .select()
             .single();
             
-          if (mError) throw mError;
+          if (mError) {
+            console.error("Erro ao salvar mapeamento:", mError);
+            // Se falhar o upsert por conflito de chave única ou algo assim, tentamos atualizar
+            throw mError;
+          }
           
           setMappings((prev) => {
             const others = prev.filter((m) => m.id !== mData.id);
@@ -593,7 +620,7 @@ export function useFlashNormalizacao() {
           });
           
           toast.success("Mapeamento inteligente salvo", { 
-            description: `Tipo "${row.flash_type}" (Cat: ${row.flash_category}) será aplicado automaticamente.` 
+            description: `Tipo "${row.flash_type}" com categoria "${row.flash_category}" agora será mapeado automaticamente.` 
           });
         }
       } catch (e: any) {
@@ -607,29 +634,49 @@ export function useFlashNormalizacao() {
   );
 
   const applyMappingToAllPending = useCallback(async () => {
-    if (!empresaId || mappingByType.size === 0) return;
-    const pendingRows = transactions.filter(
-      (t) => t.status === "pendente" && mappingByType.has(t.flash_type)
-    );
+    if (!empresaId || mappings.length === 0) return;
+    
+    const pendingRows = transactions.filter(t => t.status === "pendente");
+    
     if (!pendingRows.length) {
-      toast.info("Nenhum lançamento pendente com mapeamento disponível.");
+      toast.info("Nenhum lançamento pendente encontrado.");
       return;
     }
+    
     let count = 0;
     for (const row of pendingRows) {
-      const m = mappingByType.get(row.flash_type)!;
-      await saveNormalization(row, {
-        conta_azul_category_id: m.conta_azul_category_id,
-        conta_azul_category_name: m.conta_azul_category_name,
-        conta_azul_account_id: m.conta_azul_account_id,
-        conta_azul_account_name: m.conta_azul_account_name,
-        tipo_operacao: m.tipo_operacao,
-        status: "normalizado",
-      });
-      count += 1;
+      const normalized = normalizeFlashTransaction(
+        { 
+          id: row.id, 
+          external_id: row.external_id, 
+          payload_json: row.payload_json, 
+          flash_type: row.flash_type,
+          flash_category: row.flash_category,
+          flash_cost_center: row.flash_cost_center,
+          descricao: row.descricao
+        },
+        mappings as any[]
+      );
+
+      if (normalized.status === "normalizado") {
+        await saveNormalization(row, {
+          conta_azul_category_id: normalized.conta_azul_category_id,
+          conta_azul_category_name: normalized.conta_azul_category_name,
+          conta_azul_account_id: normalized.conta_azul_account_id,
+          conta_azul_account_name: normalized.conta_azul_account_name,
+          tipo_operacao: normalized.tipo_operacao,
+          status: "normalizado",
+        });
+        count += 1;
+      }
     }
-    toast.success(`${count} lançamento(s) normalizado(s) automaticamente.`);
-  }, [empresaId, mappingByType, transactions, saveNormalization]);
+    
+    if (count > 0) {
+      toast.success(`${count} lançamento(s) normalizado(s) automaticamente usando mapeamento inteligente.`);
+    } else {
+      toast.info("Nenhum mapeamento compatível encontrado para os lançamentos pendentes.");
+    }
+  }, [empresaId, mappings, transactions, saveNormalization]);
 
   /**
    * Aplica em lote categoria/conta a um conjunto de transações pendentes.

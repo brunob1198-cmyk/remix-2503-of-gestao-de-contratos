@@ -1610,6 +1610,7 @@ export default function NormalizacaoFlashPage() {
                     <TableRow>
                       <TableHead>Tipo Flash</TableHead>
                       <TableHead>Categoria Flash</TableHead>
+                      <TableHead>Centro de Custo Flash</TableHead>
                       <TableHead>Operação</TableHead>
                       <TableHead>Categoria Conta Azul</TableHead>
                       <TableHead>Conta financeira CA</TableHead>
@@ -1627,6 +1628,15 @@ export default function NormalizacaoFlashPage() {
                           {m.flash_category ? (
                             <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
                               {m.flash_category}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {m.flash_cost_center ? (
+                            <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
+                              {m.flash_cost_center}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground italic text-[10px]">Todos</span>
