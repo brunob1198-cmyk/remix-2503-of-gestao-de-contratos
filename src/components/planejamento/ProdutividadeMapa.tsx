@@ -171,7 +171,8 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun || !uf) return;
 
-        const key = `${mun.trim().toUpperCase()}__${uf.trim().toUpperCase()}`;
+        const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+        const key = `${normalize(mun)}__${normalize(uf)}`;
 
         if (!aggMap[key]) {
           aggMap[key] = {
