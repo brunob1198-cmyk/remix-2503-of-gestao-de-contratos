@@ -120,15 +120,19 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       let munCoords: Record<string, { lat: number; lng: number; uf: string }> = {};
 
       if (munEntries.length > 0) {
+        // Buscamos coordenadas exatas filtrando por nome E UF para evitar erros entre estados
         const { data: ibge } = await supabase
           .from("municipios_ibge")
           .select("nome, uf, latitude, longitude")
-          .in("nome", munEntries.map((entry) => entry.nome))
-          .in("uf", munEntries.map((entry) => entry.uf));
+          .in("nome", munEntries.map((entry) => entry.nome));
 
         (ibge ?? []).forEach((m) => {
           if (m.latitude && m.longitude) {
-            munCoords[`${m.nome}__${m.uf}`] = { lat: Number(m.latitude), lng: Number(m.longitude), uf: m.uf };
+            // Verificamos se o registro do IBGE realmente pertence ao UF esperado do diário
+            const entryKey = `${m.nome}__${m.uf}`;
+            if (municipios.has(entryKey)) {
+              munCoords[entryKey] = { lat: Number(m.latitude), lng: Number(m.longitude), uf: m.uf };
+            }
           }
         });
       }
