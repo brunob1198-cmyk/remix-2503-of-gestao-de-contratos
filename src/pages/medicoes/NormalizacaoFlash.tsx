@@ -229,10 +229,10 @@ export default function NormalizacaoFlashPage() {
 
   // Period filter (applies to all tabs)
   const [dateFrom, setDateFrom] = useState<string>(() => {
-    return searchParams.get("from") || "";
+    return searchParams.get("from") || localStorage.getItem("flash_date_from") || "";
   });
   const [dateTo, setDateTo] = useState<string>(() => {
-    return searchParams.get("to") || "";
+    return searchParams.get("to") || localStorage.getItem("flash_date_to") || "";
   });
   
   // Sort from URL
