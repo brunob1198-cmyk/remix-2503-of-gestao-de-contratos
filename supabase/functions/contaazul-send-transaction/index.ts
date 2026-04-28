@@ -149,7 +149,10 @@ async function sendOne(
           data_vencimento: input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0],
           valor_bruto: Math.abs(Number(input.value) || 0),
           conta_financeira: input.financial_account_id,
-          descricao: `Parcela única - ${input.description}`
+          descricao: `Parcela única - ${input.description}`,
+          composicao_valor: {
+            valor_bruto: Math.abs(Number(input.value) || 0)
+          }
         }
       ]
     }
