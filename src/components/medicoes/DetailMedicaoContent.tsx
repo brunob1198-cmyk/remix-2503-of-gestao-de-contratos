@@ -16,6 +16,7 @@ import {
   ensureImagesLoaded, 
   collectSafeBreakPoints, 
   buildPageSlices,
+  isCanvasBlank,
   PDFExportLog 
 } from "@/lib/pdfExportUtils";
 
@@ -429,8 +430,13 @@ export function DetailMedicaoContent({
 
       setExportProgress(5);
       addLog("Carregando recursos e imagens...", "info");
-      // Use the utility to ensure images are loaded
-      await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
+      
+      const expectedImages = content.querySelectorAll("img").length;
+      addLog(`Imagens esperadas no documento: ${expectedImages}`, "info");
+      
+      const loadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
+      addLog(`Carregamento concluído: ${loadResult.loaded} carregadas, ${loadResult.failed} falhas.`, 
+        loadResult.failed > 0 ? "error" : "success");
       
       setExportProgress(15);
       addLog("Estabilizando layout...", "info");
@@ -452,7 +458,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 2; // Increase scale back for higher quality since we render per slice
+      const scale = 1.5; // Adaptive scale: balanced for memory and quality
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -463,72 +469,90 @@ export function DetailMedicaoContent({
       addLog(`Total de páginas a gerar: ${slices.length}`, "info");
       setExportProgress(20);
 
+      const startTime = Date.now();
+
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
         const pageNum = i + 1;
+        let retryCount = 0;
+        const maxRetries = 2;
+        let pageCanvas: HTMLCanvasElement | null = null;
         
-        addLog(`Renderizando página ${pageNum}/${slices.length}...`, "info");
-
-        const pageCanvas = await html2canvas(content, {
-          scale,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: "#ffffff",
-          width: contentWidth,
-          height: slice.height,
-          windowWidth: contentWidth,
-          windowHeight: slice.height,
-          logging: false,
-          onclone: (doc) => {
-            const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
-            const clonedContent = container?.firstElementChild as HTMLElement;
-            if (clonedContent) {
-              clonedContent.style.transform = `translateY(-${slice.start}px)`;
-              clonedContent.style.transformOrigin = "top left";
+        const renderPage = async () => {
+          const pStart = Date.now();
+          const canvas = await html2canvas(content, {
+            scale,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: "#ffffff",
+            width: contentWidth,
+            height: slice.height,
+            windowWidth: contentWidth,
+            windowHeight: slice.height,
+            logging: false,
+            onclone: (doc) => {
+              const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
+              const clonedContent = container?.firstElementChild as HTMLElement;
+              if (clonedContent) {
+                clonedContent.style.transform = `translateY(-${slice.start}px)`;
+                clonedContent.style.transformOrigin = "top left";
+              }
             }
-          }
-        });
+          });
+          const pEnd = Date.now();
+          const canvasSizeMB = (canvas.width * canvas.height * 4) / (1024 * 1024);
+          addLog(`Página ${pageNum}: ${canvas.width}x${canvas.height} (${canvasSizeMB.toFixed(1)}MB) em ${pEnd - pStart}ms`, "info");
+          return canvas;
+        };
 
-        // Basic check for blank canvas
-        const ctx = pageCanvas.getContext('2d');
-        if (ctx) {
-          const pixelData = ctx.getImageData(0, 0, pageCanvas.width, pageCanvas.height).data;
-          let isBlank = true;
-          for (let p = 0; p < pixelData.length; p += 4) {
-            if (pixelData[p] !== 255 || pixelData[p+1] !== 255 || pixelData[p+2] !== 255) {
-              isBlank = false;
-              break;
-            }
+        while (retryCount <= maxRetries) {
+          addLog(`Renderizando página ${pageNum}/${slices.length}${retryCount > 0 ? ` (Tentativa ${retryCount + 1})` : ""}...`, "info");
+          pageCanvas = await renderPage();
+          
+          if (!isCanvasBlank(pageCanvas)) {
+            break;
           }
-          if (isBlank) {
-            addLog(`AVISO: Página ${pageNum} parece estar em branco!`, "error");
+          
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            addLog(`Página ${pageNum} saiu em branco. Re-tentando...`, "error");
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          } else {
+            addLog(`Falha persistente na página ${pageNum}: Renderização em branco após ${maxRetries + 1} tentativas.`, "error");
           }
         }
 
-        const renderedHeight = (slice.height * usableWidth) / contentWidth;
-        if (i > 0) pdf.addPage();
+        if (pageCanvas) {
+          const renderedHeight = (slice.height * usableWidth) / contentWidth;
+          if (i > 0) pdf.addPage();
 
-        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
-        pdf.addImage(
-          pageImageData,
-          "JPEG",
-          marginLeft,
-          marginTop,
-          usableWidth,
-          renderedHeight,
-          undefined,
-          "FAST"
-        );
+          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.8);
+          pdf.addImage(
+            pageImageData,
+            "JPEG",
+            marginLeft,
+            marginTop,
+            usableWidth,
+            renderedHeight,
+            undefined,
+            "FAST"
+          );
 
-        // Cleanup
-        pageCanvas.width = 0;
-        pageCanvas.height = 0;
+          // Garbage collection help
+          pageCanvas.width = 0;
+          pageCanvas.height = 0;
+          pageCanvas = null;
+        }
 
         const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
         setExportProgress(progress);
         
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Small delay to let browser breathe
+        await new Promise(resolve => setTimeout(resolve, 30));
       }
+
+      const endTime = Date.now();
+      addLog(`Renderização completa em ${((endTime - startTime) / 1000).toFixed(1)}s`, "success");
 
       setExportProgress(85);
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;

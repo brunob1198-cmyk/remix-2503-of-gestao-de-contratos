@@ -28,21 +28,53 @@ export async function getSafeImageUrl(url: string): Promise<string> {
   } catch (error) {
     console.warn(`CORS failure for image: ${url}. Attempting proxy/local fallback.`, error);
     
-    // In a real production app, you might use a proxy here.
-    // For now, we'll return the original URL and hope html2canvas can handle it 
-    // or it will trigger the 'onerror' in the UI.
-    return url;
+    // Fallback: try to convert to base64 if possible
+    try {
+      const resp = await fetch(url, { mode: 'no-cors' });
+      // no-cors fetch doesn't allow reading body, so this is mostly to check existence
+      // If we can't get a proper CORS response, we just return the original URL 
+      // with cache busting and hope html2canvas handles it with useCORS: true
+      return timestampedUrl;
+    } catch (e) {
+      return url;
+    }
   }
+}
+
+/**
+ * Validates if a canvas has actual content (not just a blank white/transparent page)
+ */
+export function isCanvasBlank(canvas: HTMLCanvasElement): boolean {
+  const context = canvas.getContext('2d');
+  if (!context) return true;
+  
+  const pixelData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  
+  // Check a sample of pixels for performance
+  const step = 20; // Check every 20th pixel
+  for (let i = 0; i < pixelData.length; i += 4 * step) {
+    const r = pixelData[i];
+    const g = pixelData[i + 1];
+    const b = pixelData[i + 2];
+    const a = pixelData[i + 3];
+    
+    // If not white and not transparent
+    if (a > 0 && (r < 250 || g < 250 || b < 250)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
  * Ensures all images in an element are fully loaded and decoded
  */
-export async function ensureImagesLoaded(element: HTMLElement, onProgress?: (msg: string) => void): Promise<void> {
+export async function ensureImagesLoaded(element: HTMLElement, onProgress?: (msg: string) => void): Promise<{ total: number, loaded: number, failed: number }> {
   const images = Array.from(element.querySelectorAll("img"));
-  if (images.length === 0) return;
+  if (images.length === 0) return { total: 0, loaded: 0, failed: 0 };
 
   let loadedCount = 0;
+  let failedCount = 0;
   onProgress?.(`Aguardando carregamento de ${images.length} imagens...`);
 
   await Promise.all(
@@ -53,28 +85,43 @@ export async function ensureImagesLoaded(element: HTMLElement, onProgress?: (msg
       }
       
       try {
-        if (img.complete) {
+        if (img.complete && img.naturalWidth > 0) {
           await img.decode().catch(() => {});
+          loadedCount++;
         } else {
           await new Promise<void>((resolve) => {
-            img.onload = () => resolve();
+            const timeout = setTimeout(() => {
+              console.warn(`Timeout loading image: ${img.src}`);
+              failedCount++;
+              resolve();
+            }, 10000);
+
+            img.onload = () => {
+              clearTimeout(timeout);
+              loadedCount++;
+              resolve();
+            };
             img.onerror = () => {
+              clearTimeout(timeout);
               console.error(`Falha ao carregar imagem: ${img.src}`);
-              resolve(); // Resolve anyway to not block PDF generation
+              failedCount++;
+              resolve(); 
             };
           });
           await img.decode().catch(() => {});
         }
       } catch (e) {
         console.error("Erro ao decodificar imagem:", e);
+        failedCount++;
       } finally {
-        loadedCount++;
-        if (loadedCount % 5 === 0 || loadedCount === images.length) {
-          onProgress?.(`Imagens: ${loadedCount}/${images.length} carregadas`);
+        if ((loadedCount + failedCount) % 5 === 0 || (loadedCount + failedCount) === images.length) {
+          onProgress?.(`Imagens: ${loadedCount + failedCount}/${images.length} processadas`);
         }
       }
     })
   );
+
+  return { total: images.length, loaded: loadedCount, failed: failedCount };
 }
 
 /**
@@ -120,7 +167,7 @@ export const buildPageSlices = (
       bestBreak = bp;
     }
 
-    if (bestBreak > cursor + 100) { // Increased minimum sliver height
+    if (bestBreak > cursor + 100) { 
       slices.push({ start: cursor, height: bestBreak - cursor });
       cursor = bestBreak;
     } else {
