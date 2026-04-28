@@ -437,6 +437,27 @@ export default function NormalizacaoFlashPage() {
     );
   }, [dateFiltered]);
 
+  const handleViewLog = async (row: FlashTransactionRow) => {
+    try {
+      const { data, error } = await supabase
+        .from("flash_integration_logs")
+        .select("*")
+        .eq("flash_transaction_id", row.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.info("Nenhum log de envio encontrado para este lançamento.");
+        return;
+      }
+      setLogDialogRow(data);
+    } catch (error: any) {
+      toast.error("Erro ao buscar log", { description: error.message });
+    }
+  };
+
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
     const normalized = normalizeFlashTransaction(
