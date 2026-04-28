@@ -586,15 +586,36 @@ export function DetailMedicaoContent({
       .sort();
   }, [isMultiSite, siteProduction, sites]);
 
-  // Group photos by site for mista/separada display
-  const fotosBySite = useMemo(() => {
-    const map = new Map<string, { fotos: DiarioFotoWithItem[]; siteId: string }>();
+  // Group photos by site AND classification (Vistoria/Execução) for mista
+  const fotosBySiteAndClass = useMemo(() => {
+    const map = new Map<string, Map<string, DiarioFotoWithItem[]>>();
+    
     diarioFotos.forEach(f => {
-      const key = f.site_nome || "Sem site";
-      if (!map.has(key)) map.set(key, { fotos: [], siteId: f.site_id || "" });
-      map.get(key)!.fotos.push(f);
+      const siteKey = f.site_nome || "Sem site";
+      if (!map.has(siteKey)) map.set(siteKey, new Map());
+      
+      const siteGroup = map.get(siteKey)!;
+      const classKey = f.classificacao === "antes" ? "Vistoria" : 
+                       f.classificacao === "execucao" ? "Execução" : 
+                       classLabel(f.classificacao);
+      
+      if (!siteGroup.has(classKey)) siteGroup.set(classKey, []);
+      siteGroup.get(classKey)!.push(f);
     });
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+    // Return sorted entries
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([siteName, classMap]) => ({
+        siteName,
+        siteId: diarioFotos.find(f => (f.site_nome || "Sem site") === siteName)?.site_id || "",
+        classes: Array.from(classMap.entries()).sort((a, b) => {
+          // Priority: Vistoria then Execução
+          if (a[0] === "Vistoria") return -1;
+          if (b[0] === "Vistoria") return 1;
+          return a[0].localeCompare(b[0]);
+        })
+      }));
   }, [diarioFotos]);
 
   // Group photos by item (for separada single-site)
