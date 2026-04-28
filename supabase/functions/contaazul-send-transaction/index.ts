@@ -140,7 +140,7 @@ async function sendOne(
         valor: Math.abs(Number(input.value) || 0),
         composicao_valor: {
           valor_bruto: Math.abs(Number(input.value) || 0),
-          valor_liquido: Math.abs(Number(input.value) || 0)
+          valor: Math.abs(Number(input.value) || 0)
         }
       }
     ],
@@ -153,7 +153,7 @@ async function sendOne(
           descricao: `Parcela única - ${input.description}`,
           composicao_valor: {
             valor_bruto: Math.abs(Number(input.value) || 0),
-            valor_liquido: Math.abs(Number(input.value) || 0)
+            valor: Math.abs(Number(input.value) || 0)
           }
         }
       ]
