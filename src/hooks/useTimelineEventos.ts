@@ -34,7 +34,9 @@ export function useTimelineEventos(projetoId?: string, filters?: {
 
   const query = useQuery({
     queryKey: ["timeline_eventos", projetoId, filters],
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    staleTime: 1000 * 60 * 15, // 15 minutes cache
+    gcTime: 1000 * 60 * 30, // Keep in memory longer
+    placeholderData: (previousData) => previousData, // Maintain UI stability during refetch
     queryFn: async () => {
       if (!projetoId) return [];
 
