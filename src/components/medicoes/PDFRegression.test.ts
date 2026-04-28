@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { expect, test, describe } from "vitest";
 import { collectSafeBreakPoints, buildPageSlices } from "../../lib/pdfExportUtils";
 
