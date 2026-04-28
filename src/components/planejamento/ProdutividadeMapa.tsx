@@ -154,7 +154,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; totalValor: number; count: number; photos: string[] }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; totalValor: number; count: number; photos: string[]; source?: string; evidence?: string; isError?: boolean }> = {};
 
       const photosByMunicipio: Record<string, string[]> = {};
       (photosData ?? []).forEach((photo) => {
@@ -279,6 +279,9 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         totalItens: a.count,
         avgQuantidade: a.count > 0 ? a.total / a.count : 0,
         photos: Array.from(new Set(a.photos)).slice(0, 10),
+        source: a.source,
+        evidence: a.evidence,
+        isError: a.isError,
       })) as ProdRegiao[];
     },
     enabled: !!projetoId,
