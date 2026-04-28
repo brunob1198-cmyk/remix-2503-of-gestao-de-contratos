@@ -859,7 +859,7 @@ export function DetailMedicaoContent({
               </div>
               {clienteLogoUrl && (
                 <img 
-                  src={`${clienteLogoUrl}${clienteLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 
+                  src={clienteLogoUrl} 
                   alt="Logo Cliente" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
                   crossOrigin="anonymous" 
