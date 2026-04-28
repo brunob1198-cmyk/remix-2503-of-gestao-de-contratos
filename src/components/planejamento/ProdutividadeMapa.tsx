@@ -218,7 +218,8 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         await Promise.all(
           missingCoords.map(async (regiao) => {
             try {
-              const q = encodeURIComponent(`${regiao.mun} ${regiao.uf} Brazil`);
+              // Adicionando o estado (UF) na busca para evitar ambiguidades (como Bocaiuva em MG vs outros locais)
+              const q = encodeURIComponent(`${regiao.mun}, ${regiao.uf}, Brazil`);
               const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
                 headers: { "User-Agent": "LovableApp/1.0" },
               });
