@@ -445,18 +445,23 @@ export function DetailMedicaoContent({
       exportContainer = container;
 
       setExportProgress(5);
-      addLog("Carregando recursos e imagens...", "info");
+      const allImages = Array.from(content.querySelectorAll<HTMLImageElement>("img"));
+      const logoImages = allImages.filter(isLogoImage);
+      const photoImages = allImages.filter((img) => !isLogoImage(img));
+      addLog(`Documento com ${photoImages.length} fotos e ${logoImages.length} logo(s).`, "info");
       
-      const expectedImages = content.querySelectorAll("img").length;
-      addLog(`Imagens esperadas no documento: ${expectedImages}`, "info");
+      const logoLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+        images: logoImages,
+        concurrency: 2,
+        timeoutMs: 12000,
+        label: "Logos",
+      });
+      addLog(`Logos preparadas: ${logoLoadResult.loaded} carregadas, ${logoLoadResult.failed} substituídas.`, "success");
       
-      const loadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
-      addLog(`Carregamento concluído: ${loadResult.loaded} carregadas, ${loadResult.failed} falhas.`, 
-        loadResult.failed > 0 ? "error" : "success");
-      
-      setExportProgress(15);
-      addLog("Estabilizando layout e finalizando carregamento...", "info");
-      await waitForNextPaint(3000); // Increased stabilization time for large photo sets
+      setExportProgress(12);
+      addLog("Estabilizando layout para paginação...", "info");
+      await waitForNextPaint(600);
+      prepareImagePositions(content);
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
