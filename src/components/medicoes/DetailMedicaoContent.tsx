@@ -55,8 +55,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
 
   container.setAttribute("data-pdf-export", "medicao-detalhe");
   Object.assign(container.style, {
-    position: "fixed",
-    left: "-10000px",
+    position: "absolute",
+    left: "0",
     top: "0",
     width: `${contentWidth}px`,
     padding: "24px",
@@ -64,6 +64,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
     overflow: "visible",
     pointerEvents: "none",
     boxSizing: "border-box",
+    zIndex: "-1",
+    opacity: "0.01",
   });
 
   content.style.width = "100%";
@@ -73,6 +75,7 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.querySelectorAll("img").forEach((img) => {
     img.loading = "eager";
     img.decoding = "sync";
+    img.crossOrigin = "anonymous";
   });
 
   container.appendChild(content);
@@ -418,7 +421,7 @@ export function DetailMedicaoContent({
       <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo">
         <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}cache=true`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -495,61 +498,56 @@ export function DetailMedicaoContent({
       const usableHeight = pageHeight - marginTop - marginBottom;
       
       // Use a fixed scale for better predictability
-      const scale = 2;
+      const scale = 1.5; // Reduced scale for better memory management in large reports
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // 1. Render the ENTIRE content as a single large canvas
-      // We use a high scale to ensure quality, but handle memory by slicing it
-      const fullCanvas = await html2canvas(content, {
-        scale,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: true, // Enable logging for debugging during dev
-        width: contentWidth,
-        height: totalHeight,
-        windowWidth: contentWidth,
-        windowHeight: totalHeight,
-        onclone: (doc) => {
-          // Additional safety: ensure all images in the clone have crossOrigin
-          const images = doc.querySelectorAll('img');
-          images.forEach(img => {
-            img.setAttribute('crossOrigin', 'anonymous');
-          });
-        }
-      });
-
-      // 2. Collect safe break points and build page slices
+      // 1. Collect safe break points and build page slices
       const safeBreaks = collectSafeBreakPoints(content);
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 3. Slice the single canvas into pages
-      const scaledWidth = fullCanvas.width;
-      const pxPerUnit = scaledWidth / contentWidth;
-
+      // 2. Render each slice individually to avoid canvas size limits
+      console.log(`Iniciando geração de PDF com ${slices.length} páginas...`);
+      
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
-        const srcY = Math.round(slice.start * pxPerUnit);
-        const srcH = Math.round(slice.height * pxPerUnit);
-
-        // Create a canvas for this page slice
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = scaledWidth;
-        pageCanvas.height = srcH;
-        const ctx = pageCanvas.getContext("2d", { alpha: false })!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, scaledWidth, srcH);
         
-        // Draw the slice from the full canvas
-        ctx.drawImage(fullCanvas, 0, srcY, scaledWidth, srcH, 0, 0, scaledWidth, srcH);
+        // Progress log for debugging
+        if (i % 5 === 0 || i === slices.length - 1) {
+          console.log(`Renderizando página ${i + 1} de ${slices.length}...`);
+        }
+
+        const pageCanvas = await html2canvas(content, {
+          scale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: contentWidth,
+          height: slice.height,
+          windowWidth: contentWidth,
+          windowHeight: slice.height, // Set window height to exactly the slice height
+          logging: false,
+          onclone: (doc) => {
+            // Shift content up so the current slice is at the top
+            const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
+            const clonedContent = container?.firstElementChild as HTMLElement;
+            if (clonedContent) {
+              clonedContent.style.transform = `translateY(-${slice.start}px)`;
+              clonedContent.style.transformOrigin = "top left";
+            }
+            
+            const images = doc.querySelectorAll('img');
+            images.forEach(img => {
+              img.setAttribute('crossOrigin', 'anonymous');
+            });
+          }
+        });
 
         const renderedHeight = (slice.height * usableWidth) / contentWidth;
 
         if (i > 0) pdf.addPage();
 
         // Use JPEG for better compression and to avoid transparency issues
-        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
+        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Reduced quality slightly for large docs
         
         pdf.addImage(
           pageImageData,
@@ -561,6 +559,15 @@ export function DetailMedicaoContent({
           undefined,
           "FAST"
         );
+
+        // Clear canvas memory
+        pageCanvas.width = 0;
+        pageCanvas.height = 0;
+
+        // Small delay to prevent UI freezing and let garbage collector work
+        if (i % 3 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
       }
 
       // Handle cover page merge if necessary
