@@ -133,8 +133,9 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
         (ibge ?? []).forEach((m) => {
           if (m.latitude && m.longitude) {
-            const normalizedNome = m.nome.trim().toUpperCase();
-            const normalizedUf = m.uf.trim().toUpperCase();
+            const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+            const normalizedNome = normalize(m.nome);
+            const normalizedUf = normalize(m.uf);
             const entryKey = `${normalizedNome}__${normalizedUf}`;
             
             if (municipios.has(entryKey)) {
