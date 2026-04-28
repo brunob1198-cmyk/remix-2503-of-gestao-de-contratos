@@ -416,17 +416,25 @@ export function DetailMedicaoContent({
     if (!printRef.current || isExporting) return;
 
     setIsExporting(true);
+    setExportProgress(0);
+    setExportLogs([]);
+    addLog("Iniciando processo de exportação...", "info");
+    
     let exportContainer: HTMLDivElement | null = null;
 
     try {
+      addLog("Preparando contêiner de exportação...", "info");
       const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
       exportContainer = container;
 
-      // Ensure all images are loaded
-      await waitForPdfAssets(content);
+      setExportProgress(5);
+      addLog("Carregando recursos e imagens...", "info");
+      // Use the utility to ensure images are loaded
+      await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
       
-      // Critical: Extra delay to ensure layout stability and font rendering
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setExportProgress(15);
+      addLog("Estabilizando layout...", "info");
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
@@ -444,58 +452,63 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      // Use a fixed scale for better predictability
-      const scale = 1.5; // Reduced scale for better memory management in large reports
+      const scale = 2; // Increase scale back for higher quality since we render per slice
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // 1. Collect safe break points and build page slices
+      addLog(`Altura total: ${totalHeight}px. Calculando quebras de página...`, "info");
       const safeBreaks = collectSafeBreakPoints(content);
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 2. Render each slice individually to avoid canvas size limits
-      console.log(`Iniciando geração de PDF com ${slices.length} páginas...`);
-      
+      addLog(`Total de páginas a gerar: ${slices.length}`, "info");
+      setExportProgress(20);
+
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
+        const pageNum = i + 1;
         
-        // Progress log for debugging
-        if (i % 5 === 0 || i === slices.length - 1) {
-          console.log(`Renderizando página ${i + 1} de ${slices.length}...`);
-        }
+        addLog(`Renderizando página ${pageNum}/${slices.length}...`, "info");
 
         const pageCanvas = await html2canvas(content, {
           scale,
           useCORS: true,
+          allowTaint: false,
           backgroundColor: "#ffffff",
           width: contentWidth,
           height: slice.height,
           windowWidth: contentWidth,
-          windowHeight: slice.height, // Set window height to exactly the slice height
+          windowHeight: slice.height,
           logging: false,
           onclone: (doc) => {
-            // Shift content up so the current slice is at the top
             const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
             const clonedContent = container?.firstElementChild as HTMLElement;
             if (clonedContent) {
               clonedContent.style.transform = `translateY(-${slice.start}px)`;
               clonedContent.style.transformOrigin = "top left";
             }
-            
-            const images = doc.querySelectorAll('img');
-            images.forEach(img => {
-              img.setAttribute('crossOrigin', 'anonymous');
-            });
           }
         });
 
-        const renderedHeight = (slice.height * usableWidth) / contentWidth;
+        // Basic check for blank canvas
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          const pixelData = ctx.getImageData(0, 0, pageCanvas.width, pageCanvas.height).data;
+          let isBlank = true;
+          for (let p = 0; p < pixelData.length; p += 4) {
+            if (pixelData[p] !== 255 || pixelData[p+1] !== 255 || pixelData[p+2] !== 255) {
+              isBlank = false;
+              break;
+            }
+          }
+          if (isBlank) {
+            addLog(`AVISO: Página ${pageNum} parece estar em branco!`, "error");
+          }
+        }
 
+        const renderedHeight = (slice.height * usableWidth) / contentWidth;
         if (i > 0) pdf.addPage();
 
-        // Use JPEG for better compression and to avoid transparency issues
-        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Reduced quality slightly for large docs
-        
+        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
         pdf.addImage(
           pageImageData,
           "JPEG",
@@ -507,19 +520,21 @@ export function DetailMedicaoContent({
           "FAST"
         );
 
-        // Clear canvas memory
+        // Cleanup
         pageCanvas.width = 0;
         pageCanvas.height = 0;
 
-        // Small delay to prevent UI freezing and let garbage collector work
-        if (i % 3 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 30));
-        }
+        const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
+        setExportProgress(progress);
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Handle cover page merge if necessary
+      setExportProgress(85);
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
+      
       if (capaUrl) {
+        addLog("Mesclando com capa PDF...", "info");
         try {
           const measurementPdfBytes = pdf.output("arraybuffer");
           const capaResponse = await fetch(capaUrl);
@@ -543,14 +558,21 @@ export function DetailMedicaoContent({
           a.download = filename;
           a.click();
           URL.revokeObjectURL(url);
+          addLog("PDF gerado com sucesso!", "success");
         } catch (mergeErr) {
-          console.error("Erro ao mesclar capa:", mergeErr);
+          addLog("Falha ao mesclar capa, salvando apenas conteúdo.", "error");
           pdf.save(filename);
         }
       } else {
+        addLog("Salvando arquivo PDF...", "info");
         pdf.save(filename);
+        addLog("PDF gerado com sucesso!", "success");
       }
+      
+      setExportProgress(100);
+      setTimeout(() => setShowLogPanel(false), 3000);
     } catch (e) {
+      addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
       console.error("Erro ao exportar PDF:", e);
     } finally {
       exportContainer?.remove();
