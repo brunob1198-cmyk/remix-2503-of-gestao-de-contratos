@@ -31,7 +31,8 @@ import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
-const waitForNextPaint = async () => {
+const waitForNextPaint = async (ms = 100) => {
+  await new Promise<void>((resolve) => setTimeout(resolve, ms));
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
@@ -366,10 +367,10 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo">
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '320px' }}>
         <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}cache=true&t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=640&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -439,8 +440,8 @@ export function DetailMedicaoContent({
         loadResult.failed > 0 ? "error" : "success");
       
       setExportProgress(15);
-      addLog("Estabilizando layout...", "info");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      addLog("Estabilizando layout e finalizando carregamento...", "info");
+      await waitForNextPaint(3000); // Increased stabilization time for large photo sets
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
@@ -458,7 +459,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 1.5; // Adaptive scale: balanced for memory and quality
+      const scale = 1.0; // Optimized scale to reduce memory footprint for large volumes of photos
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -534,7 +535,7 @@ export function DetailMedicaoContent({
           const renderedHeight = (slice.height * usableWidth) / contentWidth;
           if (i > 0) pdf.addPage();
 
-          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.8);
+          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Lower quality for memory optimization during addImage
           pdf.addImage(
             pageImageData,
             "JPEG",
@@ -556,7 +557,7 @@ export function DetailMedicaoContent({
         setExportProgress(progress);
         
         // Small delay to let browser breathe
-        await new Promise(resolve => setTimeout(resolve, 30));
+        await new Promise(resolve => setTimeout(resolve, 150)); // More breathing room for browser to GC between pages
       }
 
       const endTime = Date.now();
