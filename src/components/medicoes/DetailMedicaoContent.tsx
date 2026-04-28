@@ -335,10 +335,12 @@ export function DetailMedicaoContent({
       const diarioIds = diarios.map(d => d.id);
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
+      // Improved query to handle large amounts of photos if necessary
       const { data: fotos, error: fErr } = await supabase
         .from("diario_fotos")
         .select("*")
-        .in("diario_id", diarioIds);
+        .in("diario_id", diarioIds)
+        .order('created_at', { ascending: true }); // Ensure consistent order
       if (fErr) return [];
 
       const producaoIds = (fotos || [])
@@ -360,10 +362,17 @@ export function DetailMedicaoContent({
         const diario = diarioMap.get(f.diario_id);
         const producao = (f as any).diario_producao_id ? producaoMap.get((f as any).diario_producao_id) : null;
         const fotoSite = diario ? sites.find(s => s.id === diario.site_id) : null;
+        
+        // Normalize classification case to match UI logic
+        let rawClass = (f.classificacao || "").trim();
+        let normalizedClass = rawClass;
+        if (rawClass.toLowerCase() === "vistoria") normalizedClass = "antes";
+        if (rawClass.toLowerCase() === "execucao" || rawClass.toLowerCase() === "execução") normalizedClass = "execucao";
+
         return {
           id: f.id,
           url: f.url,
-          classificacao: f.classificacao,
+          classificacao: normalizedClass,
           legenda: f.legenda,
           diario_producao_id: (f as any).diario_producao_id,
           item_codigo: producao?.item_lpu?.codigo,
@@ -379,18 +388,26 @@ export function DetailMedicaoContent({
   });
 
   const classLabel = (cls: string) => {
-    switch (cls) {
-      case "execucao": return "Execução";
-      case "antes": return "Antes";
+    switch (cls?.toLowerCase()) {
+      case "execucao":
+      case "execução":
+        return "Execução";
+      case "antes":
+      case "vistoria":
+        return "Vistoria";
       case "problema": return "Problema";
-      default: return cls;
+      default: return cls || "Outros";
     }
   };
 
   const classColor = (cls: string) => {
-    switch (cls) {
-      case "execucao": return "#2563eb";
-      case "antes": return "#16a34a";
+    switch (cls?.toLowerCase()) {
+      case "execucao":
+      case "execução":
+        return "#2563eb";
+      case "antes":
+      case "vistoria":
+        return "#16a34a";
       case "problema": return "#dc2626";
       default: return "#6b7280";
     }
@@ -456,6 +473,8 @@ export function DetailMedicaoContent({
       exportContainer = container;
 
       await waitForPdfAssets(content);
+      // Extra wait for complex layouts and ensuring all images are truly ready for canvas
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
@@ -595,8 +614,9 @@ export function DetailMedicaoContent({
       if (!map.has(siteKey)) map.set(siteKey, new Map());
       
       const siteGroup = map.get(siteKey)!;
-      const classKey = f.classificacao === "antes" ? "Vistoria" : 
-                       f.classificacao === "execucao" ? "Execução" : 
+      const clsLower = f.classificacao?.toLowerCase();
+      const classKey = (clsLower === "antes" || clsLower === "vistoria") ? "Vistoria" : 
+                       (clsLower === "execucao" || clsLower === "execução") ? "Execução" : 
                        classLabel(f.classificacao);
       
       if (!siteGroup.has(classKey)) siteGroup.set(classKey, []);
