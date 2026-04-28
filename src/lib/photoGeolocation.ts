@@ -29,9 +29,10 @@ const photoCoordsCache = new Map<string, PhotoCoords | null>();
 
 /**
  * Resolve coordinates of a single photo following the priority:
- * 1. EXIF metadata
- * 2. OCR (coordinates written/burned in the image) via AI
- * 3. null (caller may fallback to municipio)
+ * 1. Database Cache (foto_geolocalizacao_cache)
+ * 2. EXIF metadata
+ * 3. OCR (coordinates written/burned in the image) via AI
+ * 4. null (caller may fallback to municipio)
  */
 export async function resolvePhotoCoords(
   url: string,
@@ -39,9 +40,28 @@ export async function resolvePhotoCoords(
 ): Promise<PhotoCoords | null> {
   const { tryOcr = true } = options;
   if (!isImageUrl(url)) return null;
+  
+  // Memory cache first
   if (photoCoordsCache.has(url)) return photoCoordsCache.get(url) ?? null;
 
   try {
+    // 1. Check Database Cache
+    const { data: cached } = await supabase
+      .from("foto_geolocalizacao_cache")
+      .select("latitude, longitude, source")
+      .eq("url", url)
+      .maybeSingle();
+
+    if (cached) {
+      const result: PhotoCoords = {
+        lat: cached.latitude,
+        lng: cached.longitude,
+        source: cached.source as any,
+      };
+      photoCoordsCache.set(url, result);
+      return result;
+    }
+
     const response = await fetch(url);
     if (!response.ok) {
       photoCoordsCache.set(url, null);
@@ -49,20 +69,20 @@ export async function resolvePhotoCoords(
     }
     const arrayBuffer = await response.arrayBuffer();
 
-    // 1. EXIF
+    let result: PhotoCoords | null = null;
+
+    // 2. EXIF
     const exif = extractExifGeoDataFromArrayBuffer(arrayBuffer);
     if (exif.hasGps && exif.latitude !== null && exif.longitude !== null) {
-      const result: PhotoCoords = {
+      result = {
         lat: exif.latitude,
         lng: exif.longitude,
         source: "exif",
       };
-      photoCoordsCache.set(url, result);
-      return result;
     }
 
-    // 2. OCR via edge function
-    if (tryOcr) {
+    // 3. OCR via edge function
+    if (!result && tryOcr) {
       try {
         const base64 = arrayBufferToBase64(arrayBuffer);
         const { data, error } = await supabase.functions.invoke(
@@ -70,17 +90,27 @@ export async function resolvePhotoCoords(
           { body: { imageBase64: base64 } }
         );
         if (!error && data?.latitude != null && data?.longitude != null) {
-          const result: PhotoCoords = {
+          result = {
             lat: Number(data.latitude),
             lng: Number(data.longitude),
             source: "ocr",
           };
-          photoCoordsCache.set(url, result);
-          return result;
         }
       } catch (e) {
         console.warn("OCR geolocation failed:", e);
       }
+    }
+
+    if (result) {
+      // Save to both caches
+      photoCoordsCache.set(url, result);
+      await supabase.from("foto_geolocalizacao_cache").upsert({
+        url,
+        latitude: result.lat,
+        longitude: result.lng,
+        source: result.source,
+      });
+      return result;
     }
   } catch (e) {
     console.warn("Failed to fetch photo for geolocation:", url, e);
