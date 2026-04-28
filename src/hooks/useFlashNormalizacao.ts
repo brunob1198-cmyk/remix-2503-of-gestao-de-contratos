@@ -112,7 +112,23 @@ const parseFlashDate = (raw: string | null): string | null => {
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
   const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
-  const flash_type = flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw;
+  
+  const typeTranslations: Record<string, string> = {
+    "CORPORATE_CARD": "Cartão Corporativo",
+    "MEAL": "Refeição",
+    "FOOD": "Alimentação",
+    "FUEL": "Combustível",
+    "MOBILITY": "Mobilidade",
+    "HEALTH": "Saúde",
+    "CULTURE": "Cultura",
+    "EDUCATION": "Educação",
+    "GIFT": "Presente",
+    "FLEXIBLE": "Flexível",
+    "REWARD": "Recompensa",
+    "EXPENSE_REFUND": "Reembolso",
+  };
+
+  const flash_type = typeTranslations[flash_type_raw] || (flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw);
 
   const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
   let flash_category = flash_category_raw;
@@ -167,6 +183,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     "APPROVED": "Aprovado",
     "COMPLETED": "Concluído",
     "REJECTED": "Rejeitado",
+    "FINISHED": "Finalizado",
+    "CANCELLED": "Cancelado",
   };
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
