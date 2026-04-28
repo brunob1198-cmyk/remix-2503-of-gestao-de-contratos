@@ -448,7 +448,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                             </div>
                             <div>
                               <p className="text-muted-foreground text-[10px]">Produção</p>
-                              <p className="font-semibold">{r.totalQuantidade.toLocaleString()} {r.totalQuantidade > 1 ? 'un' : 'un'}</p>
+                              <p className="font-semibold">{r.totalQuantidade.toLocaleString()} un</p>
                             </div>
                             <div>
                               <p className="text-muted-foreground text-[10px]">Lançamentos</p>
@@ -484,32 +484,17 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                               "{r.evidence}"
                             </div>
                           )}
-                        </div>
-                      </Popup>
-                            <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
-                            <p>Lançamentos: <strong>{r.totalItens}</strong></p>
-                          </div>
-
-                          <div className="bg-muted p-2 rounded-md space-y-1 mt-2">
-                            <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase">
-                              <Info className="h-3 w-3" /> Diagnóstico de Posição
-                            </div>
-                            <p className="text-[10px]">Fonte: <strong>{r.source || "N/A"}</strong></p>
-                            <p className="text-[10px] leading-tight text-muted-foreground italic">
-                              "{r.evidence || "Sem evidências registradas."}"
-                            </p>
-                          </div>
 
                           {r.photos.length > 0 && (
-                            <div className="space-y-1 pt-1">
+                            <div className="space-y-1 pt-1 border-t mt-2">
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
-                              <div className="grid grid-cols-2 gap-1 max-w-[140px]">
+                              <div className="grid grid-cols-4 gap-1">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
+                                  <img key={i} src={url} className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (
-                                <p className="text-[10px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
+                                <p className="text-[9px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
                               )}
                             </div>
                           )}
