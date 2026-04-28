@@ -330,6 +330,17 @@ export default function RdoPage() {
   const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
 
+  const clearFilters = useCallback(() => {
+    setSelectedProjetoIds([]);
+    setSelectedSiteIds([]);
+    setDataInicio(format(subDays(new Date(), 30), "yyyy-MM-dd"));
+    setDataFim(format(new Date(), "yyyy-MM-dd"));
+    setItemFilter("");
+    setBusca("");
+    setSiteSearch("");
+    setProjetoSearch("");
+  }, [setSelectedProjetoIds, setSelectedSiteIds, setDataInicio, setDataFim]);
+
   const { data: diarios = [], isLoading } = useRdo(
     querySiteIds.length > 0 ? querySiteIds : undefined,
     dataInicio,
