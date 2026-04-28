@@ -513,15 +513,25 @@ export function useFlashNormalizacao() {
           autoPromoted = true;
         }
 
-        const mappingMatch = mappingByType.get(row.flash_type);
+        const normalizedMatch = normalizeFlashTransaction(
+          { 
+            id: row.id, 
+            flash_type: row.flash_type, 
+            flash_category: row.flash_category, 
+            flash_cost_center: row.flash_cost_center,
+            descricao: row.descricao
+          },
+          mappings as any[]
+        );
+
         const motivo =
           patch.motivo !== undefined
             ? patch.motivo
             : merged.status === "normalizado"
             ? autoPromoted
               ? `Normalizado manualmente: categoria e conta preenchidas pelo usuário em ${new Date().toLocaleString("pt-BR")}.`
-              : mappingMatch && mappingMatch.id === (row.mapping_id_usado || mappingMatch.id)
-              ? `Normalizado via mapping do tipo "${row.flash_type}" → ${merged.conta_azul_category_name} / ${merged.conta_azul_account_name}.`
+              : normalizedMatch.mapping_id_usado
+              ? `Normalizado via mapping inteligente → ${merged.conta_azul_category_name} / ${merged.conta_azul_account_name}.`
               : `Normalizado manualmente (sem mapping aplicado) em ${new Date().toLocaleString("pt-BR")}.`
             : merged.status === "enviado"
             ? `Enviado ao Conta Azul em ${new Date().toLocaleString("pt-BR")}.`
