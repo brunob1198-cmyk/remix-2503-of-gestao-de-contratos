@@ -248,7 +248,7 @@ export default function RdoPage() {
     ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
     : sites;
 
-  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v2", []);
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v4", []);
 
   // Build sites map for the hook
   const sitesMap = useMemo(() => {
