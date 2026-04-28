@@ -412,63 +412,63 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
 
       {/* Diagnostic Dialog */}
       <Dialog open={showDiagnostic} onOpenChange={setShowDiagnostic}>
-        <DialogContent className=\"max-w-4xl max-h-[80vh] flex flex-col\">
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
           <SheetHeader>
             <SheetTitle>Diagnóstico de Geolocalização</SheetTitle>
           </SheetHeader>
-          <div className=\"overflow-hidden flex-1 flex flex-col mt-4\">
-            <ScrollArea className=\"flex-1\">
-              <div className=\"space-y-4\">
-                <table className=\"w-full text-sm\">
-                  <thead className=\"bg-muted/50\">
+          <div className="overflow-hidden flex-1 flex flex-col mt-4">
+            <ScrollArea className="flex-1">
+              <div className="space-y-4">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <th className=\"p-2 text-left\">Miniatura</th>
-                      <th className=\"p-2 text-left\">Item/Data</th>
-                      <th className=\"p-2 text-left\">Fonte das Coordenadas</th>
-                      <th className=\"p-2 text-left\">Lat/Lng</th>
+                      <th className="p-2 text-left">Miniatura</th>
+                      <th className="p-2 text-left">Item/Data</th>
+                      <th className="p-2 text-left">Fonte das Coordenadas</th>
+                      <th className="p-2 text-left">Lat/Lng</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {eventos.filter(e => e.tipo === \"foto\").map((e) => (
-                      <tr key={e.id} className=\"border-b hover:bg-muted/20 transition-colors\">
-                        <td className=\"p-2\">
+                    {eventos.filter(e => e.tipo === "foto").map((e) => (
+                      <tr key={e.id} className="border-b hover:bg-muted/20 transition-colors">
+                        <td className="p-2">
                           {e.imagem_url ? (
                             <img 
                               src={e.imagem_url} 
-                              alt=\"\" 
-                              className=\"w-12 h-12 object-cover rounded cursor-pointer\" 
+                              alt="" 
+                              className="w-12 h-12 object-cover rounded cursor-pointer" 
                               onClick={() => setFullScreenImage(e.imagem_url)}
                             />
                           ) : (
-                            <div className=\"w-12 h-12 bg-muted rounded flex items-center justify-center\">
-                              <ImageIcon className=\"h-4 w-4 text-muted-foreground\" />
+                            <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                              <ImageIcon className="h-4 w-4 text-muted-foreground" />
                             </div>
                           )}
                         </td>
-                        <td className=\"p-2\">
-                          <div className=\"font-medium\">{e.item}</div>
-                          <div className=\"text-xs text-muted-foreground\">{format(parseISO(e.data), \"dd/MM/yyyy\")}</div>
+                        <td className="p-2">
+                          <div className="font-medium">{e.item}</div>
+                          <div className="text-xs text-muted-foreground">{format(parseISO(e.data), "dd/MM/yyyy")}</div>
                         </td>
-                        <td className=\"p-2\">
-                          <Badge variant={e.coord_source === \"Ajuste Manual\" ? \"default\" : \"secondary\"} className=\"text-[10px]\">
-                            {e.coord_source || \"N/A\"}
+                        <td className="p-2">
+                          <Badge variant={e.coord_source === "Ajuste Manual" ? "default" : "secondary"} className="text-[10px]">
+                            {e.coord_source || "N/A"}
                           </Badge>
                         </td>
-                        <td className=\"p-2 font-mono text-xs\">
+                        <td className="p-2 font-mono text-xs">
                           {e.latitude ? (
                             <>
                               {e.latitude.toFixed(6)},<br />{e.longitude?.toFixed(6)}
                             </>
                           ) : (
-                            <span className=\"text-destructive italic\">Não posicionada</span>
+                            <span className="text-destructive italic">Não posicionada</span>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {eventos.filter(e => e.tipo === \"foto\").length === 0 && (
-                  <div className=\"text-center py-8 text-muted-foreground\">
+                {eventos.filter(e => e.tipo === "foto").length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
                     Nenhuma foto encontrada no período selecionado.
                   </div>
                 )}
