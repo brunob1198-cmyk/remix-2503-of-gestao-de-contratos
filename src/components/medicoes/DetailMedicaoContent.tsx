@@ -515,6 +515,8 @@ export function DetailMedicaoContent({
         
         const renderPage = async () => {
           const pStart = Date.now();
+          const sliceTop = slice.start;
+          const sliceBottom = slice.start + slice.height;
           const canvas = await html2canvas(content, {
             scale,
             useCORS: true,
@@ -529,6 +531,16 @@ export function DetailMedicaoContent({
               const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
               const clonedContent = container?.firstElementChild as HTMLElement;
               if (clonedContent) {
+                clonedContent.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+                  const top = Number(img.dataset.pdfTop ?? 0);
+                  const bottom = Number(img.dataset.pdfBottom ?? 0);
+                  const isOutsideSlice = bottom < sliceTop - 800 || top > sliceBottom + 800;
+                  if (isOutsideSlice && !isLogoImage(img)) {
+                    img.style.visibility = "hidden";
+                    img.removeAttribute("src");
+                    img.removeAttribute("srcset");
+                  }
+                });
                 clonedContent.style.transform = `translateY(-${slice.start}px)`;
                 clonedContent.style.transformOrigin = "top left";
                 
