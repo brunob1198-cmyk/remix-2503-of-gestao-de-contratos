@@ -472,103 +472,115 @@ export function DetailMedicaoContent({
       const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
       exportContainer = container;
 
+      // Ensure all images are loaded
       await waitForPdfAssets(content);
-      // Extra wait for complex layouts and ensuring all images are truly ready for canvas
-      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Critical: Extra delay to ensure layout stability and font rendering
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
-      const pdf = new jsPDF(baseOptions.jsPDF?.orientation ?? "portrait", "mm", baseOptions.jsPDF?.format ?? "a4");
+      
+      const pdf = new jsPDF({
+        orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
+        unit: "mm",
+        format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
+        compress: true
+      });
+
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
-      const scale = 1.3;
-      const imageQuality = 0.78;
+      
+      // Use a fixed scale for better predictability
+      const scale = 2;
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // 1. Render the ENTIRE content as a single large canvas (one html2canvas call)
+      // 1. Render the ENTIRE content as a single large canvas
+      // We use a high scale to ensure quality, but handle memory by slicing it
       const fullCanvas = await html2canvas(content, {
         scale,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#ffffff",
-        logging: false,
+        logging: true, // Enable logging for debugging during dev
         width: contentWidth,
         height: totalHeight,
         windowWidth: contentWidth,
         windowHeight: totalHeight,
-        scrollX: 0,
-        scrollY: 0,
+        onclone: (doc) => {
+          // Additional safety: ensure all images in the clone have crossOrigin
+          const images = doc.querySelectorAll('img');
+          images.forEach(img => {
+            img.setAttribute('crossOrigin', 'anonymous');
+          });
+        }
       });
 
       // 2. Collect safe break points and build page slices
       const safeBreaks = collectSafeBreakPoints(content);
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 3. Slice the single canvas into pages using drawImage (very fast, no re-render)
+      // 3. Slice the single canvas into pages
       const scaledWidth = fullCanvas.width;
-      const pxPerUnit = scaledWidth / contentWidth; // scale factor applied by html2canvas
+      const pxPerUnit = scaledWidth / contentWidth;
 
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
         const srcY = Math.round(slice.start * pxPerUnit);
         const srcH = Math.round(slice.height * pxPerUnit);
 
-        // Create a small canvas for this page slice
+        // Create a canvas for this page slice
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = scaledWidth;
         pageCanvas.height = srcH;
-        const ctx = pageCanvas.getContext("2d")!;
+        const ctx = pageCanvas.getContext("2d", { alpha: false })!;
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, scaledWidth, srcH);
+        
+        // Draw the slice from the full canvas
         ctx.drawImage(fullCanvas, 0, srcY, scaledWidth, srcH, 0, 0, scaledWidth, srcH);
 
-        const renderedHeight = (srcH * usableWidth) / scaledWidth;
+        const renderedHeight = (slice.height * usableWidth) / contentWidth;
 
         if (i > 0) pdf.addPage();
 
+        // Use JPEG for better compression and to avoid transparency issues
+        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
+        
         pdf.addImage(
-          pageCanvas.toDataURL("image/jpeg", imageQuality),
+          pageImageData,
           "JPEG",
           marginLeft,
           marginTop,
           usableWidth,
           renderedHeight,
           undefined,
-          "MEDIUM",
+          "FAST"
         );
       }
 
-      // Get the measurement PDF bytes
-      const measurementPdfBytes = pdf.output("arraybuffer");
-
-      // If there's a cover page, merge it
+      // Handle cover page merge if necessary
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
       if (capaUrl) {
         try {
+          const measurementPdfBytes = pdf.output("arraybuffer");
           const capaResponse = await fetch(capaUrl);
           const capaBytes = await capaResponse.arrayBuffer();
 
-          // Load cover PDF
           const capaPdf = await PDFDocument.load(capaBytes, { ignoreEncryption: true });
-          
-          // Load measurement PDF
           const measurementPdf = await PDFDocument.load(measurementPdfBytes);
-
-          // Create final merged document
           const mergedPdf = await PDFDocument.create();
 
-          // Copy cover pages first
           const capaPages = await mergedPdf.copyPages(capaPdf, capaPdf.getPageIndices());
           capaPages.forEach(page => mergedPdf.addPage(page));
 
-          // Copy measurement pages
           const measurementPages = await mergedPdf.copyPages(measurementPdf, measurementPdf.getPageIndices());
           measurementPages.forEach(page => mergedPdf.addPage(page));
 
-          // Save merged PDF
           const mergedBytes = await mergedPdf.save();
           const blob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
@@ -578,14 +590,14 @@ export function DetailMedicaoContent({
           a.click();
           URL.revokeObjectURL(url);
         } catch (mergeErr) {
-          console.error("Erro ao mesclar capa, exportando sem capa:", mergeErr);
+          console.error("Erro ao mesclar capa:", mergeErr);
           pdf.save(filename);
         }
       } else {
         pdf.save(filename);
       }
     } catch (e) {
-      console.error("Erro ao exportar PDF da medição:", e);
+      console.error("Erro ao exportar PDF:", e);
     } finally {
       exportContainer?.remove();
       setIsExporting(false);
