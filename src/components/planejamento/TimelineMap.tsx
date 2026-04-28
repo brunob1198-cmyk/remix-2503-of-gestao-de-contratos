@@ -40,14 +40,10 @@ function createColoredIcon(tipo: string, isActive: boolean = false) {
   });
 }
 
-function InvalidateMapSize({ trigger }: { trigger: number }) {
+function InvalidateMapSize({ trigger }: { trigger: any }) {
   const map = useMap();
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      map.invalidateSize();
-    }, 50);
-
-    return () => window.clearTimeout(timeout);
+    map.invalidateSize();
   }, [map, trigger]);
 
   return null;
@@ -101,10 +97,11 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineM
     <MapContainer
       center={defaultCenter}
       zoom={5}
+      scrollWheelZoom={true}
       style={{ height: "100%", width: "100%", minHeight: "480px", borderRadius: "inherit" }}
       className="z-0 h-full w-full"
     >
-      <InvalidateMapSize trigger={eventos.length} />
+      <InvalidateMapSize trigger={eventos.length + (activeEvento?.id || "")} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

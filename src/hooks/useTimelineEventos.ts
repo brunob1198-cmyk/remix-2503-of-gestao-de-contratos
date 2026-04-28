@@ -33,6 +33,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
 
   const query = useQuery({
     queryKey: ["timeline_eventos", projetoId, filters],
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
     queryFn: async () => {
       if (!projetoId) return [];
 
