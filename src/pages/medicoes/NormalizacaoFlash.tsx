@@ -1247,8 +1247,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Tipo Flash"
                                 options={filterOptions.types}
-                                selected={selectedTypes}
-                                onSelect={setSelectedTypes}
+                                selected={searchParams.get("type")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("type", val.join(","));
+                                  else params.delete("type");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
