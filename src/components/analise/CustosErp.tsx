@@ -154,7 +154,15 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
       items.sort((a, b) => {
         let va = getColValue(a, sortCol);
         let vb = getColValue(b, sortCol);
+        
         if (sortCol === "valor") return sortDir === "asc" ? Number(va) - Number(vb) : Number(vb) - Number(va);
+        
+        if (sortCol === "competencia") {
+          const dateA = a.data_competencia ? new Date(a.data_competencia).getTime() : 0;
+          const dateB = b.data_competencia ? new Date(b.data_competencia).getTime() : 0;
+          return sortDir === "asc" ? dateA - dateB : dateB - dateA;
+        }
+
         return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
       });
     }
