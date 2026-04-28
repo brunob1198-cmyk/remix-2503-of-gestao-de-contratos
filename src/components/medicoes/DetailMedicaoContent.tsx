@@ -602,8 +602,13 @@ export function DetailMedicaoContent({
         const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
         setExportProgress(progress);
         
-        // Small delay to let browser breathe
-        await new Promise(resolve => setTimeout(resolve, 150)); // More breathing room for browser to GC between pages
+        imagesInSlice.forEach((img) => {
+          if (!isLogoImage(img)) {
+            img.removeAttribute("src");
+            img.removeAttribute("srcset");
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 120));
       }
 
       const endTime = Date.now();
