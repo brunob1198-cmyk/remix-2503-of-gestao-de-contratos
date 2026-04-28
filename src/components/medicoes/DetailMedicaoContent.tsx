@@ -4,11 +4,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileText, Camera, MapPin, Calendar, Loader2 } from "lucide-react";
-import { useRef, useState, useMemo, useCallback } from "react";
+import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { PDFDocument } from "pdf-lib";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  ensureImagesLoaded, 
+  collectSafeBreakPoints, 
+  buildPageSlices,
+  PDFExportLog 
+} from "@/lib/pdfExportUtils";
 
 function chunkPairs<T>(arr: T[]): T[][] {
   const result: T[][] = [];
@@ -19,7 +28,7 @@ function chunkPairs<T>(arr: T[]): T[][] {
 }
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
-const PDF_EXPORT_MIN_WIDTH = 1024;
+const PDF_EXPORT_MIN_WIDTH = 1120;
 
 const waitForNextPaint = async () => {
   await new Promise<void>((resolve) => {
@@ -27,45 +36,24 @@ const waitForNextPaint = async () => {
   });
 };
 
-const waitForPdfAssets = async (element: HTMLElement) => {
-  const images = Array.from(element.querySelectorAll("img"));
-
-  await Promise.all(
-    images.map((img) => {
-      if (img.complete) {
-        return img.decode?.().catch(() => undefined) ?? Promise.resolve();
-      }
-
-      return new Promise<void>((resolve) => {
-        const done = () => resolve();
-        img.addEventListener("load", done, { once: true });
-        img.addEventListener("error", done, { once: true });
-      });
-    }),
-  );
-
-  await document.fonts.ready.catch(() => undefined);
-  await waitForNextPaint();
-};
-
 const createPdfExportContainer = (source: HTMLElement) => {
   const content = source.cloneNode(true) as HTMLDivElement;
   const container = document.createElement("div");
-  const contentWidth = Math.max(Math.ceil(source.scrollWidth), PDF_EXPORT_MIN_WIDTH);
+  const contentWidth = PDF_EXPORT_MIN_WIDTH;
 
   container.setAttribute("data-pdf-export", "medicao-detalhe");
   Object.assign(container.style, {
     position: "absolute",
-    left: "0",
+    left: "-9999px",
     top: "0",
     width: `${contentWidth}px`,
-    padding: "24px",
+    padding: "40px",
     background: "#ffffff",
     overflow: "visible",
     pointerEvents: "none",
     boxSizing: "border-box",
-    zIndex: "-1",
-    opacity: "0.01",
+    zIndex: "-1000",
+    opacity: "0",
   });
 
   content.style.width = "100%";
@@ -76,77 +64,16 @@ const createPdfExportContainer = (source: HTMLElement) => {
     img.loading = "eager";
     img.decoding = "sync";
     img.crossOrigin = "anonymous";
+    if (img.src && !img.src.startsWith('data:')) {
+      const sep = img.src.includes('?') ? '&' : '?';
+      img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
+    }
   });
 
   container.appendChild(content);
   document.body.appendChild(container);
 
   return { container, content, contentWidth };
-};
-
-/**
- * Collect safe break-point positions (top edges of data-pdf-section elements).
- * These are Y positions in the content where it's safe to start a new page.
- */
-const collectSafeBreakPoints = (content: HTMLElement): number[] => {
-  const contentRect = content.getBoundingClientRect();
-  const sections = Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]"))
-    .filter((el) => !el.parentElement?.closest("[data-pdf-section]"));
-
-  const breakPoints: number[] = [];
-  for (const el of sections) {
-    const rect = el.getBoundingClientRect();
-    const top = Math.max(0, Math.floor(rect.top - contentRect.top));
-    if (top > 0) breakPoints.push(top);
-  }
-
-  return [...new Set(breakPoints)].sort((a, b) => a - b);
-};
-
-/**
- * Build page slices from the full content height using safe break points.
- * Each slice = { start, height } representing a vertical strip of the content.
- */
-const buildPageSlices = (
-  totalHeight: number,
-  pageHeightPx: number,
-  safeBreaks: number[],
-): { start: number; height: number }[] => {
-  const slices: { start: number; height: number }[] = [];
-  let cursor = 0;
-
-  while (cursor < totalHeight) {
-    const remaining = totalHeight - cursor;
-
-    // If remaining content fits in one page, take it all
-    if (remaining <= pageHeightPx) {
-      slices.push({ start: cursor, height: remaining });
-      break;
-    }
-
-    // Find the last safe break point that fits within this page
-    const pageEnd = cursor + pageHeightPx;
-    let bestBreak = -1;
-
-    for (const bp of safeBreaks) {
-      if (bp <= cursor) continue; // already past
-      if (bp > pageEnd) break; // beyond this page
-      bestBreak = bp;
-    }
-
-    // Use the best break point, or fall back to full page height
-    // Require at least 80px of content to avoid tiny slivers
-    if (bestBreak > cursor + 80) {
-      slices.push({ start: cursor, height: bestBreak - cursor });
-      cursor = bestBreak;
-    } else {
-      // No safe break found - take full page height
-      slices.push({ start: cursor, height: pageHeightPx });
-      cursor += pageHeightPx;
-    }
-  }
-
-  return slices;
 };
 
 interface DetailMedicaoContentProps {
@@ -199,6 +126,26 @@ export function DetailMedicaoContent({
 }: DetailMedicaoContentProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
+  const [showLogPanel, setShowLogPanel] = useState(false);
+
+  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    const newLog: PDFExportLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      type
+    };
+    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
+    console.log(`[PDF Export] ${message}`);
+  }, []);
+
+  // Update logs when exporting state changes
+  useEffect(() => {
+    if (isExporting) {
+      setShowLogPanel(true);
+    }
+  }, [isExporting]);
 
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
@@ -421,7 +368,7 @@ export function DetailMedicaoContent({
       <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo">
         <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}cache=true`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}cache=true&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -469,17 +416,25 @@ export function DetailMedicaoContent({
     if (!printRef.current || isExporting) return;
 
     setIsExporting(true);
+    setExportProgress(0);
+    setExportLogs([]);
+    addLog("Iniciando processo de exportação...", "info");
+    
     let exportContainer: HTMLDivElement | null = null;
 
     try {
+      addLog("Preparando contêiner de exportação...", "info");
       const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
       exportContainer = container;
 
-      // Ensure all images are loaded
-      await waitForPdfAssets(content);
+      setExportProgress(5);
+      addLog("Carregando recursos e imagens...", "info");
+      // Use the utility to ensure images are loaded
+      await ensureImagesLoaded(content, (msg) => addLog(msg, "info"));
       
-      // Critical: Extra delay to ensure layout stability and font rendering
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setExportProgress(15);
+      addLog("Estabilizando layout...", "info");
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
@@ -497,58 +452,63 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      // Use a fixed scale for better predictability
-      const scale = 1.5; // Reduced scale for better memory management in large reports
+      const scale = 2; // Increase scale back for higher quality since we render per slice
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // 1. Collect safe break points and build page slices
+      addLog(`Altura total: ${totalHeight}px. Calculando quebras de página...`, "info");
       const safeBreaks = collectSafeBreakPoints(content);
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 2. Render each slice individually to avoid canvas size limits
-      console.log(`Iniciando geração de PDF com ${slices.length} páginas...`);
-      
+      addLog(`Total de páginas a gerar: ${slices.length}`, "info");
+      setExportProgress(20);
+
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
+        const pageNum = i + 1;
         
-        // Progress log for debugging
-        if (i % 5 === 0 || i === slices.length - 1) {
-          console.log(`Renderizando página ${i + 1} de ${slices.length}...`);
-        }
+        addLog(`Renderizando página ${pageNum}/${slices.length}...`, "info");
 
         const pageCanvas = await html2canvas(content, {
           scale,
           useCORS: true,
+          allowTaint: false,
           backgroundColor: "#ffffff",
           width: contentWidth,
           height: slice.height,
           windowWidth: contentWidth,
-          windowHeight: slice.height, // Set window height to exactly the slice height
+          windowHeight: slice.height,
           logging: false,
           onclone: (doc) => {
-            // Shift content up so the current slice is at the top
             const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
             const clonedContent = container?.firstElementChild as HTMLElement;
             if (clonedContent) {
               clonedContent.style.transform = `translateY(-${slice.start}px)`;
               clonedContent.style.transformOrigin = "top left";
             }
-            
-            const images = doc.querySelectorAll('img');
-            images.forEach(img => {
-              img.setAttribute('crossOrigin', 'anonymous');
-            });
           }
         });
 
-        const renderedHeight = (slice.height * usableWidth) / contentWidth;
+        // Basic check for blank canvas
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          const pixelData = ctx.getImageData(0, 0, pageCanvas.width, pageCanvas.height).data;
+          let isBlank = true;
+          for (let p = 0; p < pixelData.length; p += 4) {
+            if (pixelData[p] !== 255 || pixelData[p+1] !== 255 || pixelData[p+2] !== 255) {
+              isBlank = false;
+              break;
+            }
+          }
+          if (isBlank) {
+            addLog(`AVISO: Página ${pageNum} parece estar em branco!`, "error");
+          }
+        }
 
+        const renderedHeight = (slice.height * usableWidth) / contentWidth;
         if (i > 0) pdf.addPage();
 
-        // Use JPEG for better compression and to avoid transparency issues
-        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Reduced quality slightly for large docs
-        
+        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
         pdf.addImage(
           pageImageData,
           "JPEG",
@@ -560,19 +520,21 @@ export function DetailMedicaoContent({
           "FAST"
         );
 
-        // Clear canvas memory
+        // Cleanup
         pageCanvas.width = 0;
         pageCanvas.height = 0;
 
-        // Small delay to prevent UI freezing and let garbage collector work
-        if (i % 3 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 30));
-        }
+        const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
+        setExportProgress(progress);
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Handle cover page merge if necessary
+      setExportProgress(85);
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
+      
       if (capaUrl) {
+        addLog("Mesclando com capa PDF...", "info");
         try {
           const measurementPdfBytes = pdf.output("arraybuffer");
           const capaResponse = await fetch(capaUrl);
@@ -596,14 +558,21 @@ export function DetailMedicaoContent({
           a.download = filename;
           a.click();
           URL.revokeObjectURL(url);
+          addLog("PDF gerado com sucesso!", "success");
         } catch (mergeErr) {
-          console.error("Erro ao mesclar capa:", mergeErr);
+          addLog("Falha ao mesclar capa, salvando apenas conteúdo.", "error");
           pdf.save(filename);
         }
       } else {
+        addLog("Salvando arquivo PDF...", "info");
         pdf.save(filename);
+        addLog("PDF gerado com sucesso!", "success");
       }
+      
+      setExportProgress(100);
+      setTimeout(() => setShowLogPanel(false), 3000);
     } catch (e) {
+      addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
       console.error("Erro ao exportar PDF:", e);
     } finally {
       exportContainer?.remove();
@@ -675,8 +644,56 @@ export function DetailMedicaoContent({
 
   return (
     <div className="space-y-4">
+      {/* Progress and Logs UI */}
+      {showLogPanel && (
+        <Card className="border-primary/20 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-primary" />
+              Progresso da Exportação
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={() => setShowLogPanel(false)}
+              disabled={isExporting}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span>{isExporting ? "Processando..." : "Concluído"}</span>
+                <span className="font-bold">{exportProgress}%</span>
+              </div>
+              <Progress value={exportProgress} className="h-2" />
+            </div>
+            
+            <ScrollArea className="h-32 rounded-md border bg-muted/30 p-2">
+              <div className="space-y-1.5">
+                {exportLogs.map((log, i) => (
+                  <div key={i} className="text-[10px] flex items-start gap-2 border-b border-muted/50 pb-1 last:border-0">
+                    <span className="text-muted-foreground shrink-0">{log.timestamp}</span>
+                    <span className={`flex items-center gap-1 ${
+                      log.type === 'error' ? 'text-destructive' : 
+                      log.type === 'success' ? 'text-green-600' : 'text-foreground'
+                    }`}>
+                      {log.type === 'error' && <AlertCircle className="h-2.5 w-2.5" />}
+                      {log.type === 'success' && <CheckCircle2 className="h-2.5 w-2.5" />}
+                      {log.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action buttons */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <Button onClick={handleExportPdf} variant="outline" size="sm" disabled={isExporting}>
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : "Exportar PDF"}
