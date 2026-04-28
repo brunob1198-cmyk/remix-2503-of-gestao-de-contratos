@@ -366,7 +366,7 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo">
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '320px' }}>
         <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
           <img
             src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}cache=true&t=${Date.now()}`}
