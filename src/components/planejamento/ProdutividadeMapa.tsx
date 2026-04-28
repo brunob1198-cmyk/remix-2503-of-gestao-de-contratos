@@ -32,6 +32,8 @@ interface ProdRegiao {
   source?: "IBGE" | "EXIF" | "OCR" | "NOMINATIM";
   evidence?: string;
   isError?: boolean;
+  officialLat?: number | null;
+  officialLng?: number | null;
 }
 
 function FitBoundsRegiao({ regioes }: { regioes: ProdRegiao[] }) {
@@ -154,7 +156,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
       }
 
       // Aggregate by municipality
-      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; totalValor: number; count: number; photos: string[]; source?: string; evidence?: string; isError?: boolean }> = {};
+      const aggMap: Record<string, { mun: string; uf: string; lat: number | null; lng: number | null; total: number; totalValor: number; count: number; photos: string[]; source?: string; evidence?: string; isError?: boolean; officialLat?: number | null; officialLng?: number | null }> = {};
 
       const photosByMunicipio: Record<string, string[]> = {};
       (photosData ?? []).forEach((photo) => {
@@ -203,10 +205,15 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const key = `${normalize(r.mun)}__${normalize(r.uf)}`;
         const coords = munCoords[key];
         if (coords) {
-          r.lat = coords.lat;
-          r.lng = coords.lng;
-          r.source = "IBGE";
-          r.evidence = `Coordenada oficial da cidade ${r.mun}/${r.uf} via base IBGE.`;
+          r.officialLat = coords.lat;
+          r.officialLng = coords.lng;
+          
+          if (!r.lat) {
+            r.lat = coords.lat;
+            r.lng = coords.lng;
+            r.source = "IBGE";
+            r.evidence = `Coordenada oficial da cidade ${r.mun}/${r.uf} via base IBGE.`;
+          }
         }
       });
 
@@ -282,6 +289,8 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         source: a.source,
         evidence: a.evidence,
         isError: a.isError,
+        officialLat: a.officialLat,
+        officialLng: a.officialLng,
       })) as ProdRegiao[];
     },
     enabled: !!projetoId,
@@ -421,38 +430,71 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                       }}
                     >
                       <Popup>
-                        <div className="text-xs space-y-2 min-w-[200px]">
-                          <div className="flex items-center justify-between border-b pb-1">
-                            <p className="font-bold">{r.municipio}/{r.uf}</p>
-                            {r.isError && <Badge variant="destructive" className="text-[9px] h-4">Erro Local</Badge>}
+                        <div className="text-xs space-y-2 min-w-[220px] p-1">
+                          <div className="flex items-center justify-between border-b pb-1.5 mb-1.5">
+                            <div>
+                              <p className="font-bold text-sm">{r.municipio}/{r.uf}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">
+                                {r.latitude.toFixed(5)}, {r.longitude.toFixed(5)}
+                              </p>
+                            </div>
+                            {r.isError && <Badge variant="destructive" className="text-[9px] h-4">Erro de UF</Badge>}
                           </div>
                           
-                          <div className="space-y-0.5">
-                            <p>Valor Total: <strong>{formatCurrency(r.totalValor)}</strong></p>
-                            <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
-                            <p>Lançamentos: <strong>{r.totalItens}</strong></p>
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                            <div>
+                              <p className="text-muted-foreground text-[10px]">Valor Total</p>
+                              <p className="font-semibold">{formatCurrency(r.totalValor)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-[10px]">Produção</p>
+                              <p className="font-semibold">{r.totalQuantidade.toLocaleString()} un</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-[10px]">Lançamentos</p>
+                              <p className="font-semibold">{r.totalItens}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground text-[10px]">Fonte GPS</p>
+                              <Badge variant="outline" className="text-[9px] h-4 font-normal px-1">
+                                {r.source || "N/A"}
+                              </Badge>
+                            </div>
                           </div>
 
-                          <div className="bg-muted p-2 rounded-md space-y-1 mt-2">
-                            <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase">
-                              <Info className="h-3 w-3" /> Diagnóstico de Posição
+                          {r.officialLat && r.officialLng && (
+                            <div className="mt-2 pt-2 border-t flex items-center justify-between bg-muted/30 p-1.5 rounded">
+                              <div>
+                                <p className="text-[9px] text-muted-foreground uppercase font-semibold">Distância ao Centro</p>
+                                <p className="font-mono text-[11px]">
+                                  {(() => {
+                                    const dist = L.latLng(r.latitude, r.longitude).distanceTo(L.latLng(r.officialLat!, r.officialLng!));
+                                    if (dist < 10) return "No centro oficial";
+                                    if (dist < 1000) return `${Math.round(dist)} m`;
+                                    return `${(dist / 1000).toFixed(2)} km`;
+                                  })()}
+                                </p>
+                              </div>
+                              <Info className="h-3 w-3 text-muted-foreground opacity-50" />
                             </div>
-                            <p className="text-[10px]">Fonte: <strong>{r.source || "N/A"}</strong></p>
-                            <p className="text-[10px] leading-tight text-muted-foreground italic">
-                              "{r.evidence || "Sem evidências registradas."}"
-                            </p>
-                          </div>
+                          )}
+
+                          {r.evidence && (
+                            <div className="mt-1.5 p-1.5 rounded bg-blue-50/50 dark:bg-blue-900/10 text-[10px] leading-tight text-blue-700 dark:text-blue-300 italic border border-blue-100/50 dark:border-blue-900/20">
+                              "{r.evidence}"
+                            </div>
+                          )}
 
                           {r.photos.length > 0 && (
-                            <div className="space-y-1 pt-1">
+                            <div className="space-y-1 pt-1 border-t mt-2">
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
-                              <div className="grid grid-cols-2 gap-1 max-w-[140px]">
+                              <div className="grid grid-cols-4 gap-1">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                  <img key={i} src={url} className="w-full h-12 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
+                                  <img key={i} src={url} className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (
-                                <p className="text-[10px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
+                                <p className="text-[9px] text-muted-foreground">+{r.photos.length - 4} fotos</p>
                               )}
                             </div>
                           )}
