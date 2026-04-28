@@ -195,7 +195,8 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       // Prioridade 1: Município coordinates from IBGE (Muito mais estável para ranking por cidade)
       regioesBase.forEach((r) => {
-        const key = `${r.mun.trim().toUpperCase()}__${r.uf.trim().toUpperCase()}`;
+        const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+        const key = `${normalize(r.mun)}__${normalize(r.uf)}`;
         const coords = munCoords[key];
         if (coords) {
           r.lat = coords.lat;
