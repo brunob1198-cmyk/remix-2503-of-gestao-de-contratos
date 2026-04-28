@@ -172,6 +172,7 @@ async function sendOne(
   let responseJson: any = null;
   let errorMsg: string | null = null;
   let contaAzulId: string | null = null;
+  let contaAzulProtocolo: string | null = null;
   let status: string = "erro";
 
   try {
