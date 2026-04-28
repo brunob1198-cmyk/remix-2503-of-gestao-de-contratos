@@ -608,7 +608,11 @@ export function useFlashNormalizacao() {
             .select()
             .single();
             
-          if (mError) throw mError;
+          if (mError) {
+            console.error("Erro ao salvar mapeamento:", mError);
+            // Se falhar o upsert por conflito de chave única ou algo assim, tentamos atualizar
+            throw mError;
+          }
           
           setMappings((prev) => {
             const others = prev.filter((m) => m.id !== mData.id);
@@ -616,7 +620,7 @@ export function useFlashNormalizacao() {
           });
           
           toast.success("Mapeamento inteligente salvo", { 
-            description: `Tipo "${row.flash_type}" (Cat: ${row.flash_category}) será aplicado automaticamente.` 
+            description: `Tipo "${row.flash_type}" com categoria "${row.flash_category}" agora será mapeado automaticamente.` 
           });
         }
       } catch (e: any) {
