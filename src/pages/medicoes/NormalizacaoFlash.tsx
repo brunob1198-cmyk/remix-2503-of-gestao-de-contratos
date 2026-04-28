@@ -355,18 +355,30 @@ export default function NormalizacaoFlashPage() {
       if (selectedCostCenters.length > 0 && !selectedCostCenters.includes(t.flash_cost_center)) return false;
       if (selectedPrestacao.length > 0 && !selectedPrestacao.includes(t.flash_prestacao_contas)) return false;
 
-      // Novos filtros nos cabeçalhos
+      // Filtros nos cabeçalhos vindos dos searchParams
       const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
       if (dataFilter.length > 0 && !dataFilter.includes(formatDate(t.data))) return false;
 
       const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
-      if (descFilter.length > 0) {
-        // Comparação exata com os valores das opções, que foram extraídos de t.descricao
-        if (!descFilter.includes(t.descricao)) return false;
-      }
+      if (descFilter.length > 0 && !descFilter.includes(t.descricao)) return false;
 
       const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
       if (valFilter.length > 0 && !valFilter.includes(formatCurrency(t.valor))) return false;
+
+      const userHeaderFilter = searchParams.get("user")?.split(",").filter(Boolean) || [];
+      if (userHeaderFilter.length > 0 && !userHeaderFilter.includes(t.usuario)) return false;
+
+      const typeHeaderFilter = searchParams.get("type")?.split(",").filter(Boolean) || [];
+      if (typeHeaderFilter.length > 0 && !typeHeaderFilter.includes(t.flash_type)) return false;
+
+      const catHeaderFilter = searchParams.get("cat")?.split(",").filter(Boolean) || [];
+      if (catHeaderFilter.length > 0 && !catHeaderFilter.includes(t.flash_category)) return false;
+
+      const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
+      if (ccHeaderFilter.length > 0 && !ccHeaderFilter.includes(t.flash_cost_center)) return false;
+
+      const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
+      if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
       if (search) {
         const q = search.toLowerCase();
@@ -396,7 +408,7 @@ export default function NormalizacaoFlashPage() {
     }
 
     return result;
-  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, sortConfig, searchParams]);
+  }, [dateFiltered, statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, sortConfig, searchParams]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
