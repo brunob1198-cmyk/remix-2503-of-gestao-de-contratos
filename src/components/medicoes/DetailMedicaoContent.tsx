@@ -687,9 +687,10 @@ export function DetailMedicaoContent({
           <div className="header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               <img 
-                src={detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"} 
+                src={`${detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"}${ (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? ( (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url"))?.includes('?') ? '&' : '?' ) + 't=' + Date.now() : ''}`} 
                 alt="Logo Empresa" 
                 style={{ maxHeight: 48, objectFit: "contain" }} 
+                crossOrigin="anonymous"
                 onError={(e) => { e.currentTarget.outerHTML = '<div style="width:120px;height:48px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;">LOGO DA EMPRESA</div>'; }} 
               />
               <div>
