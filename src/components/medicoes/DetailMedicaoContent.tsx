@@ -497,7 +497,7 @@ export function DetailMedicaoContent({
       const usableHeight = pageHeight - marginTop - marginBottom;
       
       // Use a fixed scale for better predictability
-      const scale = 2;
+      const scale = 1.5; // Reduced scale for better memory management in large reports
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
