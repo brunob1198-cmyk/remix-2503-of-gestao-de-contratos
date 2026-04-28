@@ -13,6 +13,7 @@ export interface TimelineEvento {
   equipe_id: string | null;
   latitude: number | null;
   longitude: number | null;
+  coord_source?: string;
   imagem_url: string | null;
   status: string;
   observacao: string | null;
@@ -135,31 +136,46 @@ export function useTimelineEventos(projetoId?: string, filters?: {
         });
       }
 
+      // Fetch manual adjustments
+      const { data: adjustments } = await supabase
+        .from("foto_geolocalizacao_ajustes")
+        .select("foto_id, latitude, longitude")
+        .in("foto_id", diarioData.map((f: any) => f.id));
+      const adjustmentsMap = Object.fromEntries((adjustments ?? []).map((a: any) => [a.foto_id, a]));
+
       // Map daily report photos to TimelineEvento format.
-      // Priority for coords: 1) EXIF metadata 2) OCR of coords burned in image 3) municipio from diary
+      // Priority for coords: 1) Manual Adjustment 2) EXIF metadata 3) OCR 4) municipio
       const diarioEvents: TimelineEvento[] = await Promise.all(
         (diarioData ?? []).map(async (f: any) => {
           const info = diarioMunMap[f.diario_id];
           const munCoord = info?.municipio ? munCoords[info.municipio] : null;
 
-          // Try photo-level coords first (EXIF -> OCR)
           let lat: number | null = null;
           let lng: number | null = null;
-          let source: "exif" | "ocr" | "municipio" | null = null;
+          let source: "manual" | "exif" | "ocr" | "municipio" | null = null;
 
-          const photoCoords = await resolvePhotoCoords(f.url);
-          if (photoCoords) {
-            lat = photoCoords.lat;
-            lng = photoCoords.lng;
-            source = photoCoords.source;
-          } else if (munCoord) {
-            lat = munCoord.lat;
-            lng = munCoord.lng;
-            source = "municipio";
+          const adjustment = adjustmentsMap[f.id];
+          if (adjustment) {
+            lat = adjustment.latitude;
+            lng = adjustment.longitude;
+            source = "manual";
+          } else {
+            const photoCoords = await resolvePhotoCoords(f.url);
+            if (photoCoords) {
+              lat = photoCoords.lat;
+              lng = photoCoords.lng;
+              source = photoCoords.source;
+            } else if (munCoord) {
+              lat = munCoord.lat;
+              lng = munCoord.lng;
+              source = "municipio";
+            }
           }
 
           const sourceLabel =
-            source === "exif"
+            source === "manual"
+              ? "Ajuste Manual"
+              : source === "exif"
               ? "GPS da foto"
               : source === "ocr"
               ? "Coordenadas lidas da imagem"
@@ -177,6 +193,7 @@ export function useTimelineEventos(projetoId?: string, filters?: {
             equipe_id: null,
             latitude: lat,
             longitude: lng,
+            coord_source: sourceLabel,
             imagem_url: f.url,
             status: "ok",
             observacao: `Foto do diário em ${f.diario.data}${
