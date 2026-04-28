@@ -185,6 +185,17 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     "REJECTED": "Rejeitado",
     "FINISHED": "Finalizado",
     "CANCELLED": "Cancelado",
+    "PAID": "Pago",
+    "OPEN": "Aberto",
+    "IN_REVIEW": "Em revisão",
+    "REFUNDED": "Reembolsado",
+    "EXPIRED": "Expirado",
+    "OVERDUE": "Atrasado",
+    "REIMBURSED": "Reembolsado",
+    "IN_ACCOUNTABILITY": "Em prestação de contas",
+    "ACCOUNTABILITY_DRAFT": "Rascunho de prestação",
+    "SUBMITTED": "Enviado",
+    "SETTLED": "Liquidado"
   };
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
