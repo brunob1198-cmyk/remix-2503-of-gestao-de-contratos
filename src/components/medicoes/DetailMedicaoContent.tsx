@@ -55,8 +55,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
 
   container.setAttribute("data-pdf-export", "medicao-detalhe");
   Object.assign(container.style, {
-    position: "fixed",
-    left: "-10000px",
+    position: "absolute",
+    left: "0",
     top: "0",
     width: `${contentWidth}px`,
     padding: "24px",
@@ -64,6 +64,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
     overflow: "visible",
     pointerEvents: "none",
     boxSizing: "border-box",
+    zIndex: "-1",
+    opacity: "0.01",
   });
 
   content.style.width = "100%";
