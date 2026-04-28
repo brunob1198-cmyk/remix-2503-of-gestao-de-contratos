@@ -644,8 +644,56 @@ export function DetailMedicaoContent({
 
   return (
     <div className="space-y-4">
+      {/* Progress and Logs UI */}
+      {showLogPanel && (
+        <Card className="border-primary/20 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-primary" />
+              Progresso da Exportação
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={() => setShowLogPanel(false)}
+              disabled={isExporting}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span>{isExporting ? "Processando..." : "Concluído"}</span>
+                <span className="font-bold">{exportProgress}%</span>
+              </div>
+              <Progress value={exportProgress} className="h-2" />
+            </div>
+            
+            <ScrollArea className="h-32 rounded-md border bg-muted/30 p-2">
+              <div className="space-y-1.5">
+                {exportLogs.map((log, i) => (
+                  <div key={i} className="text-[10px] flex items-start gap-2 border-b border-muted/50 pb-1 last:border-0">
+                    <span className="text-muted-foreground shrink-0">{log.timestamp}</span>
+                    <span className={`flex items-center gap-1 ${
+                      log.type === 'error' ? 'text-destructive' : 
+                      log.type === 'success' ? 'text-green-600' : 'text-foreground'
+                    }`}>
+                      {log.type === 'error' && <AlertCircle className="h-2.5 w-2.5" />}
+                      {log.type === 'success' && <CheckCircle2 className="h-2.5 w-2.5" />}
+                      {log.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action buttons */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <Button onClick={handleExportPdf} variant="outline" size="sm" disabled={isExporting}>
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : "Exportar PDF"}
