@@ -442,7 +442,8 @@ const SidebarMenuButton = React.forwardRef<
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state, setOpen } = useSidebar();
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const button = (
     <Comp
@@ -451,24 +452,28 @@ const SidebarMenuButton = React.forwardRef<
       data-size={size}
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...props}
     />
   );
 
-  if (!tooltip) {
-    return button;
-  }
+  const tooltipContent = tooltip || props.children;
 
   if (typeof tooltip === "string") {
     tooltip = {
       children: tooltip,
     };
+  } else if (!tooltip && typeof props.children === "string") {
+    tooltip = {
+      children: props.children,
+    };
   }
 
   return (
-    <Tooltip>
+    <Tooltip open={state === "collapsed" && !isMobile ? isHovered : false}>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="right" align="center" hidden={state !== "collapsed" || isMobile} {...tooltip} />
+      <TooltipContent side="right" align="center" {...(tooltip as any)} />
     </Tooltip>
   );
 });
