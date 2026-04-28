@@ -597,8 +597,8 @@ export default function RdoPage() {
                 <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline">Todos</button>
                 <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline">Limpar</button>
               </div>
-              <ScrollArea className="max-h-72">
-                <div className="space-y-1">
+              <ScrollArea className="h-72">
+                <div className="space-y-1 pr-3">
                   {filteredSites.map(s => (
                     <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
                       <Checkbox checked={selectedSiteIds.includes(s.id)} onCheckedChange={() => toggleSite(s.id)} className="h-3.5 w-3.5" />

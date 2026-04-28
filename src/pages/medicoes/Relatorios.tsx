@@ -419,7 +419,7 @@ export default function RelatoriosPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="max-h-60 overflow-auto p-2">
+                      <div className="max-h-72 overflow-auto p-2">
                         {filteredSites.length === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-4">
                             Nenhum site disponível
