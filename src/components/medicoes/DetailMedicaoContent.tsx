@@ -522,11 +522,17 @@ export function DetailMedicaoContent({
           backgroundColor: "#ffffff",
           width: contentWidth,
           height: slice.height,
-          y: slice.start,
           windowWidth: contentWidth,
-          windowHeight: totalHeight,
+          windowHeight: slice.height, // Set window height to exactly the slice height
           logging: false,
           onclone: (doc) => {
+            // Shift content up so the current slice is at the top
+            const clonedContent = doc.querySelector('[data-pdf-export="medicao-detalhe"] > div') as HTMLElement;
+            if (clonedContent) {
+              clonedContent.style.transform = `translateY(-${slice.start}px)`;
+              clonedContent.style.transformOrigin = "top left";
+            }
+            
             const images = doc.querySelectorAll('img');
             images.forEach(img => {
               img.setAttribute('crossOrigin', 'anonymous');
