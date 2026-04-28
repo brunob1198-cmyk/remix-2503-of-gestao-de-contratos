@@ -413,21 +413,36 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                       center={[r.latitude, r.longitude]}
                       radius={getRadius(r[metrica], maxValue)}
                       pathOptions={{
-                        fillColor: getColor(r[metrica], maxValue),
-                        color: "white",
-                        weight: 2,
+                        fillColor: r.isError ? "#ef4444" : getColor(r[metrica], maxValue),
+                        color: r.isError ? "#991b1b" : "white",
+                        weight: r.isError ? 3 : 2,
                         fillOpacity: 0.75,
+                        dashArray: r.isError ? "5, 5" : undefined,
                       }}
                     >
                       <Popup>
-                        <div className="text-xs space-y-2">
-                          <p className="font-bold border-b pb-1">{r.municipio}/{r.uf}</p>
+                        <div className="text-xs space-y-2 min-w-[200px]">
+                          <div className="flex items-center justify-between border-b pb-1">
+                            <p className="font-bold">{r.municipio}/{r.uf}</p>
+                            {r.isError && <Badge variant="destructive" className="text-[9px] h-4">Erro Local</Badge>}
+                          </div>
+                          
                           <div className="space-y-0.5">
                             <p>Valor Total: <strong>{formatCurrency(r.totalValor)}</strong></p>
                             <p>Quantidade Total: <strong>{r.totalQuantidade.toLocaleString("pt-BR")}</strong></p>
                             <p>Lançamentos: <strong>{r.totalItens}</strong></p>
-                            <p>Média: <strong>{r.avgQuantidade.toFixed(1)}</strong></p>
                           </div>
+
+                          <div className="bg-muted p-2 rounded-md space-y-1 mt-2">
+                            <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground uppercase">
+                              <Info className="h-3 w-3" /> Diagnóstico de Posição
+                            </div>
+                            <p className="text-[10px]">Fonte: <strong>{r.source || "N/A"}</strong></p>
+                            <p className="text-[10px] leading-tight text-muted-foreground italic">
+                              "{r.evidence || "Sem evidências registradas."}"
+                            </p>
+                          </div>
+
                           {r.photos.length > 0 && (
                             <div className="space-y-1 pt-1">
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
