@@ -13,7 +13,7 @@ import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Play, Pause, SkipForward, MapPin, Calendar, List, Filter,
-  Image as ImageIcon, ChevronLeft, ChevronRight, X
+  Image as ImageIcon, ChevronLeft, ChevronRight, X, Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -69,6 +69,7 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
   const [showFilters, setShowFilters] = useState(false);
   const playRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   // Unique days
   const days = useMemo(() => {
@@ -163,6 +164,10 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
           <Filter className="h-4 w-4 mr-1" /> Filtros
         </Button>
 
+        <Button variant="outline" size="sm" onClick={() => setShowDiagnostic(true)}>
+          <Info className="h-4 w-4 mr-1" /> Diagnóstico
+        </Button>
+
         {selectedDay && (
           <Badge variant="secondary" className="gap-1">
             {format(parseISO(selectedDay), "dd/MM/yyyy")}
@@ -239,6 +244,7 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
               eventos={mapEvents}
               activeEvento={activePlayEvent}
               onSelectEvento={setSelectedEvento}
+              onUpdateEvento={refetch}
             />
           </CardContent>
         </Card>
@@ -401,6 +407,74 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
           {fullScreenImage && (
             <img src={fullScreenImage} alt="Evidência" className="w-full h-auto rounded-md" />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diagnostic Dialog */}
+      <Dialog open={showDiagnostic} onOpenChange={setShowDiagnostic}>
+        <DialogContent className=\"max-w-4xl max-h-[80vh] flex flex-col\">
+          <SheetHeader>
+            <SheetTitle>Diagnóstico de Geolocalização</SheetTitle>
+          </SheetHeader>
+          <div className=\"overflow-hidden flex-1 flex flex-col mt-4\">
+            <ScrollArea className=\"flex-1\">
+              <div className=\"space-y-4\">
+                <table className=\"w-full text-sm\">
+                  <thead className=\"bg-muted/50\">
+                    <tr>
+                      <th className=\"p-2 text-left\">Miniatura</th>
+                      <th className=\"p-2 text-left\">Item/Data</th>
+                      <th className=\"p-2 text-left\">Fonte das Coordenadas</th>
+                      <th className=\"p-2 text-left\">Lat/Lng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eventos.filter(e => e.tipo === \"foto\").map((e) => (
+                      <tr key={e.id} className=\"border-b hover:bg-muted/20 transition-colors\">
+                        <td className=\"p-2\">
+                          {e.imagem_url ? (
+                            <img 
+                              src={e.imagem_url} 
+                              alt=\"\" 
+                              className=\"w-12 h-12 object-cover rounded cursor-pointer\" 
+                              onClick={() => setFullScreenImage(e.imagem_url)}
+                            />
+                          ) : (
+                            <div className=\"w-12 h-12 bg-muted rounded flex items-center justify-center\">
+                              <ImageIcon className=\"h-4 w-4 text-muted-foreground\" />
+                            </div>
+                          )}
+                        </td>
+                        <td className=\"p-2\">
+                          <div className=\"font-medium\">{e.item}</div>
+                          <div className=\"text-xs text-muted-foreground\">{format(parseISO(e.data), \"dd/MM/yyyy\")}</div>
+                        </td>
+                        <td className=\"p-2\">
+                          <Badge variant={e.coord_source === \"Ajuste Manual\" ? \"default\" : \"secondary\"} className=\"text-[10px]\">
+                            {e.coord_source || \"N/A\"}
+                          </Badge>
+                        </td>
+                        <td className=\"p-2 font-mono text-xs\">
+                          {e.latitude ? (
+                            <>
+                              {e.latitude.toFixed(6)},<br />{e.longitude?.toFixed(6)}
+                            </>
+                          ) : (
+                            <span className=\"text-destructive italic\">Não posicionada</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {eventos.filter(e => e.tipo === \"foto\").length === 0 && (
+                  <div className=\"text-center py-8 text-muted-foreground\">
+                    Nenhuma foto encontrada no período selecionado.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
