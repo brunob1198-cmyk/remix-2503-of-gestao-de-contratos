@@ -498,6 +498,20 @@ export function DetailMedicaoContent({
         let retryCount = 0;
         const maxRetries = 2;
         let pageCanvas: HTMLCanvasElement | null = null;
+        const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
+
+        if (imagesInSlice.length > 0) {
+          const sliceLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+            images: imagesInSlice,
+            concurrency: 4,
+            timeoutMs: 20000,
+            label: `Página ${pageNum}`,
+          });
+          if (sliceLoadResult.failed > 0) {
+            addLog(`Página ${pageNum}: ${sliceLoadResult.failed} imagem(ns) indisponíveis foram substituídas.`, "info");
+          }
+          await waitForNextPaint(100);
+        }
         
         const renderPage = async () => {
           const pStart = Date.now();
