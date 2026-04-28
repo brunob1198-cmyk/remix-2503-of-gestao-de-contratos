@@ -743,10 +743,23 @@ export default function NormalizacaoFlashPage() {
             <Button
               size="icon"
               variant="ghost"
+              className="h-7 w-7 text-blue-600"
+              onClick={() => handleViewLog(row)}
+            >
+              <Info className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ver log de integração</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
               className="h-7 w-7"
               onClick={() => setMotivoDialogRow(row)}
             >
-              <Info className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Ver motivo da normalização</TooltipContent>
