@@ -876,9 +876,14 @@ export function DetailMedicaoContent({
                       
                       addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo do cliente...`, "info");
                       
+                      // On second retry, drop crossOrigin to bypass CORS preflight failures
+                      if (nextRetry >= 2) {
+                        target.removeAttribute('crossorigin');
+                      }
+                      
                       setTimeout(() => {
-                        target.src = `${clienteLogoUrl}${sep}retry=${nextRetry}&t=${Date.now()}`;
-                      }, 1000);
+                        target.src = `${clienteLogoUrl}${sep}retry=${nextRetry}`;
+                      }, 800);
                       return;
                     }
 
