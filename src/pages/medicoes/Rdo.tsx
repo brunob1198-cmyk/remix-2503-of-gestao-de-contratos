@@ -242,13 +242,36 @@ export default function RdoPage() {
   const { role } = useAuth();
   const isCliente = role === "cliente";
   const { projetos } = useProjetos();
-  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("rdo_projeto_ids_v2", []);
+  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("rdo_projeto_ids_v5", []);
   const { sites } = useSites();
-  const filteredSites = selectedProjetoIds.length > 0
-    ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
-    : sites;
+  const [siteSearch, setSiteSearch] = useState("");
+  const [projetoSearch, setProjetoSearch] = useState("");
 
-  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v4", []);
+  const filteredSites = useMemo(() => {
+    let result = selectedProjetoIds.length > 0
+      ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
+      : sites;
+    
+    if (siteSearch.trim()) {
+      const search = siteSearch.toLowerCase();
+      result = result.filter(s => 
+        s.codigo.toLowerCase().includes(search) || 
+        s.nome.toLowerCase().includes(search)
+      );
+    }
+    return result;
+  }, [sites, selectedProjetoIds, siteSearch]);
+
+  const filteredProjetosList = useMemo(() => {
+    if (!projetoSearch.trim()) return projetos;
+    const search = projetoSearch.toLowerCase();
+    return projetos.filter(p => 
+      p.codigo.toLowerCase().includes(search) || 
+      p.nome.toLowerCase().includes(search)
+    );
+  }, [projetos, projetoSearch]);
+
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v6", []);
 
   // Build sites map for the hook
   const sitesMap = useMemo(() => {
@@ -306,6 +329,17 @@ export default function RdoPage() {
   const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
   const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
+
+  const clearFilters = useCallback(() => {
+    setSelectedProjetoIds([]);
+    setSelectedSiteIds([]);
+    setDataInicio(format(subDays(new Date(), 30), "yyyy-MM-dd"));
+    setDataFim(format(new Date(), "yyyy-MM-dd"));
+    setItemFilter("");
+    setBusca("");
+    setSiteSearch("");
+    setProjetoSearch("");
+  }, [setSelectedProjetoIds, setSelectedSiteIds, setDataInicio, setDataFim]);
 
   const { data: diarios = [], isLoading } = useRdo(
     querySiteIds.length > 0 ? querySiteIds : undefined,
@@ -562,7 +596,7 @@ export default function RdoPage() {
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between font-normal">
+              <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
                 {projetoLabel}
                 {selectedProjetoIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedProjetoIds.length}</Badge>
@@ -570,18 +604,39 @@ export default function RdoPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-3 space-y-2" align="start">
-              <div className="flex gap-2 text-xs mb-1">
-                <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline">Todos</button>
-                <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline">Limpar</button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar projeto..."
+                    className="pl-8 h-9"
+                    value={projetoSearch}
+                    onChange={(e) => setProjetoSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Todos</button>
+                  <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Limpar</button>
+                </div>
               </div>
-              <ScrollArea className="h-72 pr-3">
+              <ScrollArea className="h-72 pr-3 focus-visible:ring-1 focus-visible:ring-primary">
                 <div className="space-y-1">
-                  {projetos.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
-                      <Checkbox checked={selectedProjetoIds.includes(p.id)} onCheckedChange={() => toggleProjeto(p.id)} className="h-3.5 w-3.5" />
+                  {filteredProjetosList.map(p => (
+                    <label 
+                      key={p.id} 
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1 focus-within:bg-accent focus-within:ring-1 focus-within:ring-primary transition-colors"
+                    >
+                      <Checkbox 
+                        checked={selectedProjetoIds.includes(p.id)} 
+                        onCheckedChange={() => toggleProjeto(p.id)} 
+                        className="h-3.5 w-3.5" 
+                      />
                       <span className="truncate">{p.codigo} — {p.nome}</span>
                     </label>
                   ))}
+                  {filteredProjetosList.length === 0 && (
+                    <p className="text-xs text-center text-muted-foreground py-4">Nenhum projeto encontrado</p>
+                  )}
                 </div>
               </ScrollArea>
             </PopoverContent>
@@ -591,7 +646,7 @@ export default function RdoPage() {
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between font-normal">
+              <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
                 {siteLabel}
                 {selectedSiteIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedSiteIds.length}</Badge>
@@ -599,23 +654,54 @@ export default function RdoPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-3 space-y-2" align="start">
-              <div className="flex gap-2 text-xs mb-1">
-                <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline">Todos</button>
-                <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline">Limpar</button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar site..."
+                    className="pl-8 h-9"
+                    value={siteSearch}
+                    onChange={(e) => setSiteSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Todos</button>
+                  <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Limpar</button>
+                </div>
               </div>
-              <ScrollArea className="h-72">
+              <ScrollArea className="h-72 focus-visible:ring-1 focus-visible:ring-primary">
                 <div className="space-y-1 pr-3">
                   {filteredSites.map(s => (
-                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
-                      <Checkbox checked={selectedSiteIds.includes(s.id)} onCheckedChange={() => toggleSite(s.id)} className="h-3.5 w-3.5" />
+                    <label 
+                      key={s.id} 
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1 focus-within:bg-accent focus-within:ring-1 focus-within:ring-primary transition-colors"
+                    >
+                      <Checkbox 
+                        checked={selectedSiteIds.includes(s.id)} 
+                        onCheckedChange={() => toggleSite(s.id)} 
+                        className="h-3.5 w-3.5" 
+                      />
                       <span className="truncate">{s.codigo} — {s.nome}</span>
                     </label>
                   ))}
+                  {filteredSites.length === 0 && (
+                    <p className="text-xs text-center text-muted-foreground py-4">Nenhum site encontrado</p>
+                  )}
                 </div>
               </ScrollArea>
             </PopoverContent>
           </Popover>
         </div>
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={clearFilters}
+          className="text-muted-foreground hover:text-primary gap-1.5 h-9"
+        >
+          <X className="h-4 w-4" />
+          Limpar filtros
+        </Button>
       </div>
 
       {filteredSites.length === 0 && (
@@ -806,14 +892,17 @@ export default function RdoPage() {
 
           {/* Content */}
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-lg border border-dashed">
+              <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-50" />
+              <p className="animate-pulse">Carregando dados do período...</p>
             </div>
-          ) : diarios.length === 0 ? (
+          ) : dayGroups.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Calendar className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                <p>Nenhum registro encontrado no período selecionado.</p>
+              <CardContent className="py-20 text-center text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                <p className="text-lg font-medium">Nenhum diário encontrado no período selecionado.</p>
+                <p className="text-sm">Tente ajustar as datas ou os filtros de site/projeto.</p>
+                <Button variant="link" onClick={clearFilters} className="mt-4">Limpar todos os filtros</Button>
               </CardContent>
             </Card>
           ) : (
@@ -837,7 +926,7 @@ export default function RdoPage() {
                     </Button>
                   )}
                 </div>
-                <ScrollArea className="h-[calc(100vh-420px)]">
+                <ScrollArea className="h-[calc(100vh-420px)] focus-visible:ring-1 focus-visible:ring-primary">
                   <div className="space-y-3 pr-2">
                     {dayGroups.map(group => {
                       const isDayCollapsed = collapsedDays.has(group.data);
@@ -846,7 +935,7 @@ export default function RdoPage() {
                         {/* Day header - clickable to collapse/expand */}
                         <button
                           onClick={() => toggleDayCollapse(group.data)}
-                          className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors"
+                          className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
