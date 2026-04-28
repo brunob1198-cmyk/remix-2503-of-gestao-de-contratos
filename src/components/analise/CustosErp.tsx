@@ -277,7 +277,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               <tbody className="divide-y">
                 {paginatedItems.map((item) => {
                   const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna;
+                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna && !ignoredConflicts.has(item.erp_id);
                   
                   return (
                     <tr key={item.id} className={`hover:bg-muted/10 transition-colors ${isConflict ? "bg-red-50/50 dark:bg-red-950/10" : ""}`}>
