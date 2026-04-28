@@ -186,8 +186,8 @@ export const normalizeFlashTransaction = (
       tipo_operacao: "despesa",
       conta_azul_category_id: null,
       conta_azul_category_name: null,
-      conta_azul_account_id: fixedAccountId,
-      conta_azul_account_name: fixedAccountName,
+      conta_azul_account_id: fallbackAccountId,
+      conta_azul_account_name: fallbackAccountName,
       mapping_id_usado: null,
       conta_azul_payload: null,
       requires_manual_review: true,
@@ -198,7 +198,9 @@ export const normalizeFlashTransaction = (
 
   const categoryId = mapping.conta_azul_category_id;
   const categoryName = mapping.conta_azul_category_name;
-  const hasFullMapping = !!categoryId && !!fixedAccountId;
+  const finalAccountId = mapping.conta_azul_account_id || fallbackAccountId;
+  const finalAccountName = mapping.conta_azul_account_name || fallbackAccountName;
+  const hasFullMapping = !!categoryId && !!finalAccountId;
 
   const motivo = hasFullMapping
     ? `Normalizado automaticamente via mapping inteligente ("${flash_type}" + detalhes) → ${categoryName || categoryId}.`
@@ -212,8 +214,8 @@ export const normalizeFlashTransaction = (
     tipo_operacao: mapping.tipo_operacao,
     conta_azul_category_id: categoryId,
     conta_azul_category_name: categoryName,
-    conta_azul_account_id: fixedAccountId,
-    conta_azul_account_name: fixedAccountName,
+    conta_azul_account_id: finalAccountId,
+    conta_azul_account_name: finalAccountName,
     mapping_id_usado: mapping.id ?? null,
     conta_azul_payload: hasFullMapping
       ? {
@@ -223,8 +225,8 @@ export const normalizeFlashTransaction = (
           type: mapping.tipo_operacao,
           category_id: categoryId,
           category_name: categoryName,
-          account_id: fixedAccountId,
-          account_name: fixedAccountName,
+          account_id: finalAccountId,
+          account_name: finalAccountName,
           external_id: transaction.external_id ?? null,
           flash_type,
         }
