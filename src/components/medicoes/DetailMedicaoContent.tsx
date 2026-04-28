@@ -841,7 +841,8 @@ export function DetailMedicaoContent({
                 <div style={{ width: '140px', height: '50px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', border: '1px dashed #cbd5e1', borderRadius: '4px' }}>
                   LOGO DA EMPRESA
                 </div>
-              )}
+                );
+              })()}
               <div>
                 <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
                 <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
