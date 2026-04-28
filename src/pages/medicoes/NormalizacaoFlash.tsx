@@ -1132,6 +1132,11 @@ export default function NormalizacaoFlashPage() {
                     params.delete("data");
                     params.delete("desc");
                     params.delete("val");
+                    params.delete("user");
+                    params.delete("type");
+                    params.delete("cat");
+                    params.delete("cc");
+                    params.delete("prest");
                     setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
