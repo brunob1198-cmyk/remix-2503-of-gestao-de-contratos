@@ -172,6 +172,7 @@ async function sendOne(
   let responseJson: any = null;
   let errorMsg: string | null = null;
   let contaAzulId: string | null = null;
+  let contaAzulProtocolo: string | null = null;
   let status: string = "erro";
 
   try {
@@ -202,6 +203,7 @@ async function sendOne(
     } else {
       status = "ENVIADO";
       contaAzulId = responseJson?.id || responseJson?.uuid || null;
+      contaAzulProtocolo = responseJson?.protocolo || null;
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
@@ -214,6 +216,7 @@ async function sendOne(
     empresa_id: empresaId,
     flash_transaction_id: input.flash_transaction_id,
     conta_azul_transaction_id: contaAzulId,
+    conta_azul_protocolo: contaAzulProtocolo,
     evento: "send_transaction",
     status,
     http_status: httpStatus,

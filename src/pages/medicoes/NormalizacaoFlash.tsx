@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -287,6 +288,7 @@ export default function NormalizacaoFlashPage() {
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
+  const [logDialogRow, setLogDialogRow] = useState<any | null>(null);
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
   const [confirmReopenRow, setConfirmReopenRow] = useState<FlashTransactionRow | null>(null);
 
@@ -435,6 +437,27 @@ export default function NormalizacaoFlashPage() {
       { total: 0, pendente: 0, normalizado: 0, enviado: 0 }
     );
   }, [dateFiltered]);
+
+  const handleViewLog = async (row: FlashTransactionRow) => {
+    try {
+      const { data, error } = await supabase
+        .from("flash_integration_logs")
+        .select("*")
+        .eq("flash_transaction_id", row.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.info("Nenhum log de envio encontrado para este lançamento.");
+        return;
+      }
+      setLogDialogRow(data);
+    } catch (error: any) {
+      toast.error("Erro ao buscar log", { description: error.message });
+    }
+  };
 
   const handleApplyMapping = async (row: FlashTransactionRow) => {
     // Agora usamos a lógica inteligente exportada para encontrar o melhor mapping
@@ -720,10 +743,23 @@ export default function NormalizacaoFlashPage() {
             <Button
               size="icon"
               variant="ghost"
+              className="h-7 w-7 text-blue-600"
+              onClick={() => handleViewLog(row)}
+            >
+              <Info className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Ver log de integração</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
               className="h-7 w-7"
               onClick={() => setMotivoDialogRow(row)}
             >
-              <Info className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Ver motivo da normalização</TooltipContent>
@@ -1803,7 +1839,63 @@ export default function NormalizacaoFlashPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirm reabrir enviado */}
+      {/* Dialog: Log de Integração */}
+      <Dialog open={!!logDialogRow} onOpenChange={(o) => !o && setLogDialogRow(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Log de Integração Conta Azul</DialogTitle>
+            <DialogDescription>
+              Resposta completa recebida do Conta Azul para este lançamento.
+            </DialogDescription>
+          </DialogHeader>
+          {logDialogRow && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Status Portal</p>
+                  <p className={cn("text-sm font-bold", logDialogRow.status === "ENVIADO" ? "text-emerald-600" : "text-rose-600")}>
+                    {logDialogRow.status}
+                  </p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">HTTP Status</p>
+                  <p className="text-sm font-bold">{logDialogRow.http_status || "—"}</p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Protocolo</p>
+                  <p className="text-sm font-mono">{logDialogRow.conta_azul_protocolo || "—"}</p>
+                </div>
+                <div className="p-3 bg-muted rounded-md">
+                  <p className="text-muted-foreground mb-1 uppercase font-semibold">Reconciliado</p>
+                  <p className="text-sm font-bold">{logDialogRow.reconciliado ? "Sim ✅" : "Pendente ⏳"}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">RESPOSTA COMPLETA (API):</p>
+                <ScrollArea className="h-[300px] w-full border rounded-md p-4 bg-slate-950">
+                  <pre className="text-[11px] text-slate-200 font-mono">
+                    {JSON.stringify(logDialogRow.response, null, 2)}
+                  </pre>
+                </ScrollArea>
+              </div>
+
+              {logDialogRow.erro && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-md">
+                  <p className="text-xs font-semibold text-rose-700 mb-1">ERRO DETALHADO:</p>
+                  <p className="text-xs text-rose-600 font-mono">{logDialogRow.erro}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogDialogRow(null)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!confirmReopenRow} onOpenChange={(o) => !o && setConfirmReopenRow(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
