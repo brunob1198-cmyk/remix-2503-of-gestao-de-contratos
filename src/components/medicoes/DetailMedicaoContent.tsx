@@ -748,8 +748,27 @@ export function DetailMedicaoContent({
                   alt="Logo Empresa" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
+                  data-retry-count="0"
                   onError={(e) => { 
                     const target = e.currentTarget;
+                    const maxRetries = 3;
+                    const currentRetry = parseInt(target.dataset.retryCount || "0");
+                    
+                    if (currentRetry < maxRetries) {
+                      const nextRetry = currentRetry + 1;
+                      target.dataset.retryCount = nextRetry.toString();
+                      const originalSrc = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "";
+                      const sep = originalSrc.includes('?') ? '&' : '?';
+                      
+                      addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo da empresa...`, "info");
+                      
+                      // Small delay before retry
+                      setTimeout(() => {
+                        target.src = `${originalSrc}${sep}retry=${nextRetry}&t=${Date.now()}`;
+                      }, 1000);
+                      return;
+                    }
+
                     if (target.dataset.errorHandled) return;
                     target.dataset.errorHandled = "true";
                     target.style.display = 'none';
@@ -757,7 +776,7 @@ export function DetailMedicaoContent({
                     fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
                     fallback.innerText = 'LOGO INDISPONÍVEL';
                     target.parentNode?.insertBefore(fallback, target);
-                    addLog("Falha ao carregar logo da empresa no cabeçalho.", "error");
+                    addLog(`Falha definitiva ao carregar logo da empresa após ${maxRetries} tentativas.`, "error");
                   }} 
                 />
               ) : (
@@ -785,12 +804,29 @@ export function DetailMedicaoContent({
                   alt="Logo Cliente" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
                   crossOrigin="anonymous" 
+                  data-retry-count="0"
                   onError={(e) => { 
                     const target = e.currentTarget;
+                    const maxRetries = 3;
+                    const currentRetry = parseInt(target.dataset.retryCount || "0");
+                    
+                    if (currentRetry < maxRetries) {
+                      const nextRetry = currentRetry + 1;
+                      target.dataset.retryCount = nextRetry.toString();
+                      const sep = clienteLogoUrl.includes('?') ? '&' : '?';
+                      
+                      addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo do cliente...`, "info");
+                      
+                      setTimeout(() => {
+                        target.src = `${clienteLogoUrl}${sep}retry=${nextRetry}&t=${Date.now()}`;
+                      }, 1000);
+                      return;
+                    }
+
                     if (target.dataset.errorHandled) return;
                     target.dataset.errorHandled = "true";
                     target.style.display = 'none'; 
-                    addLog("Falha ao carregar logo do cliente no cabeçalho.", "error");
+                    addLog(`Falha definitiva ao carregar logo do cliente após ${maxRetries} tentativas.`, "error");
                   }}
                 />
               )}
