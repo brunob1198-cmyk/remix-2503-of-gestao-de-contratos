@@ -126,6 +126,26 @@ export function DetailMedicaoContent({
 }: DetailMedicaoContentProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
+  const [showLogPanel, setShowLogPanel] = useState(false);
+
+  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    const newLog: PDFExportLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      type
+    };
+    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
+    console.log(`[PDF Export] ${message}`);
+  }, []);
+
+  // Update logs when exporting state changes
+  useEffect(() => {
+    if (isExporting) {
+      setShowLogPanel(true);
+    }
+  }, [isExporting]);
 
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
