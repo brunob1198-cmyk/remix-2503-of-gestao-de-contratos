@@ -596,7 +596,7 @@ export default function RdoPage() {
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between font-normal">
+              <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
                 {projetoLabel}
                 {selectedProjetoIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedProjetoIds.length}</Badge>
@@ -604,18 +604,39 @@ export default function RdoPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-3 space-y-2" align="start">
-              <div className="flex gap-2 text-xs mb-1">
-                <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline">Todos</button>
-                <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline">Limpar</button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar projeto..."
+                    className="pl-8 h-9"
+                    value={projetoSearch}
+                    onChange={(e) => setProjetoSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <button onClick={() => setSelectedProjetoIds(projetos.map(p => p.id))} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Todos</button>
+                  <button onClick={() => { setSelectedProjetoIds([]); setSelectedSiteIds([]); }} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Limpar</button>
+                </div>
               </div>
-              <ScrollArea className="h-72 pr-3">
+              <ScrollArea className="h-72 pr-3 focus-visible:ring-1 focus-visible:ring-primary">
                 <div className="space-y-1">
-                  {projetos.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
-                      <Checkbox checked={selectedProjetoIds.includes(p.id)} onCheckedChange={() => toggleProjeto(p.id)} className="h-3.5 w-3.5" />
+                  {filteredProjetosList.map(p => (
+                    <label 
+                      key={p.id} 
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1 focus-within:bg-accent focus-within:ring-1 focus-within:ring-primary transition-colors"
+                    >
+                      <Checkbox 
+                        checked={selectedProjetoIds.includes(p.id)} 
+                        onCheckedChange={() => toggleProjeto(p.id)} 
+                        className="h-3.5 w-3.5" 
+                      />
                       <span className="truncate">{p.codigo} — {p.nome}</span>
                     </label>
                   ))}
+                  {filteredProjetosList.length === 0 && (
+                    <p className="text-xs text-center text-muted-foreground py-4">Nenhum projeto encontrado</p>
+                  )}
                 </div>
               </ScrollArea>
             </PopoverContent>
@@ -625,7 +646,7 @@ export default function RdoPage() {
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between font-normal">
+              <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
                 {siteLabel}
                 {selectedSiteIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedSiteIds.length}</Badge>
@@ -633,23 +654,54 @@ export default function RdoPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-3 space-y-2" align="start">
-              <div className="flex gap-2 text-xs mb-1">
-                <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline">Todos</button>
-                <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline">Limpar</button>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar site..."
+                    className="pl-8 h-9"
+                    value={siteSearch}
+                    onChange={(e) => setSiteSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <button onClick={() => setSelectedSiteIds(filteredSites.map(s => s.id))} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Todos</button>
+                  <button onClick={() => setSelectedSiteIds([])} className="text-primary hover:underline focus:outline-none focus:ring-1 focus:ring-primary rounded px-1">Limpar</button>
+                </div>
               </div>
-              <ScrollArea className="h-72">
+              <ScrollArea className="h-72 focus-visible:ring-1 focus-visible:ring-primary">
                 <div className="space-y-1 pr-3">
                   {filteredSites.map(s => (
-                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
-                      <Checkbox checked={selectedSiteIds.includes(s.id)} onCheckedChange={() => toggleSite(s.id)} className="h-3.5 w-3.5" />
+                    <label 
+                      key={s.id} 
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1 focus-within:bg-accent focus-within:ring-1 focus-within:ring-primary transition-colors"
+                    >
+                      <Checkbox 
+                        checked={selectedSiteIds.includes(s.id)} 
+                        onCheckedChange={() => toggleSite(s.id)} 
+                        className="h-3.5 w-3.5" 
+                      />
                       <span className="truncate">{s.codigo} — {s.nome}</span>
                     </label>
                   ))}
+                  {filteredSites.length === 0 && (
+                    <p className="text-xs text-center text-muted-foreground py-4">Nenhum site encontrado</p>
+                  )}
                 </div>
               </ScrollArea>
             </PopoverContent>
           </Popover>
         </div>
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={clearFilters}
+          className="text-muted-foreground hover:text-primary gap-1.5 h-9"
+        >
+          <X className="h-4 w-4" />
+          Limpar filtros
+        </Button>
       </div>
 
       {filteredSites.length === 0 && (
