@@ -1291,8 +1291,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Centro de Custo"
                                 options={filterOptions.costCenters}
-                                selected={selectedCostCenters}
-                                onSelect={setSelectedCostCenters}
+                                selected={searchParams.get("cc")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("cc", val.join(","));
+                                  else params.delete("cc");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
