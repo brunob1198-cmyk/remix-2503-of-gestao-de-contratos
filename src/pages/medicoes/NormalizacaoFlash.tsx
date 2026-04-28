@@ -1316,8 +1316,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Prestação de Contas"
                                 options={filterOptions.prestacaoContas}
-                                selected={selectedPrestacao}
-                                onSelect={setSelectedPrestacao}
+                                selected={searchParams.get("prest")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("prest", val.join(","));
+                                  else params.delete("prest");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
