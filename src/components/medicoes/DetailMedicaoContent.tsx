@@ -499,57 +499,45 @@ export function DetailMedicaoContent({
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
-      // 1. Render the ENTIRE content as a single large canvas
-      // We use a high scale to ensure quality, but handle memory by slicing it
-      const fullCanvas = await html2canvas(content, {
-        scale,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        logging: true, // Enable logging for debugging during dev
-        width: contentWidth,
-        height: totalHeight,
-        windowWidth: contentWidth,
-        windowHeight: totalHeight,
-        onclone: (doc) => {
-          // Additional safety: ensure all images in the clone have crossOrigin
-          const images = doc.querySelectorAll('img');
-          images.forEach(img => {
-            img.setAttribute('crossOrigin', 'anonymous');
-          });
-        }
-      });
-
-      // 2. Collect safe break points and build page slices
+      // 1. Collect safe break points and build page slices
       const safeBreaks = collectSafeBreakPoints(content);
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
-      // 3. Slice the single canvas into pages
-      const scaledWidth = fullCanvas.width;
-      const pxPerUnit = scaledWidth / contentWidth;
-
+      // 2. Render each slice individually to avoid canvas size limits
+      console.log(`Iniciando geração de PDF com ${slices.length} páginas...`);
+      
       for (let i = 0; i < slices.length; i++) {
         const slice = slices[i];
-        const srcY = Math.round(slice.start * pxPerUnit);
-        const srcH = Math.round(slice.height * pxPerUnit);
-
-        // Create a canvas for this page slice
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = scaledWidth;
-        pageCanvas.height = srcH;
-        const ctx = pageCanvas.getContext("2d", { alpha: false })!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, scaledWidth, srcH);
         
-        // Draw the slice from the full canvas
-        ctx.drawImage(fullCanvas, 0, srcY, scaledWidth, srcH, 0, 0, scaledWidth, srcH);
+        // Progress log for debugging
+        if (i % 5 === 0 || i === slices.length - 1) {
+          console.log(`Renderizando página ${i + 1} de ${slices.length}...`);
+        }
+
+        const pageCanvas = await html2canvas(content, {
+          scale,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          width: contentWidth,
+          height: slice.height,
+          y: slice.start,
+          windowWidth: contentWidth,
+          windowHeight: totalHeight,
+          logging: false,
+          onclone: (doc) => {
+            const images = doc.querySelectorAll('img');
+            images.forEach(img => {
+              img.setAttribute('crossOrigin', 'anonymous');
+            });
+          }
+        });
 
         const renderedHeight = (slice.height * usableWidth) / contentWidth;
 
         if (i > 0) pdf.addPage();
 
         // Use JPEG for better compression and to avoid transparency issues
-        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.85);
+        const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Reduced quality slightly for large docs
         
         pdf.addImage(
           pageImageData,
@@ -561,6 +549,15 @@ export function DetailMedicaoContent({
           undefined,
           "FAST"
         );
+
+        // Clear canvas memory
+        pageCanvas.width = 0;
+        pageCanvas.height = 0;
+
+        // Small delay to prevent UI freezing and let garbage collector work
+        if (i % 3 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
       }
 
       // Handle cover page merge if necessary
