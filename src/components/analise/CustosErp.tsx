@@ -263,11 +263,6 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                 <tr>
                   {allCols.map(col => (
                     <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
-                      {col === "valor" && (
-                        <div className="mb-1 text-[10px] text-primary font-bold uppercase tracking-wider">
-                          Subtotal: {formatCurrency(totalValor)}
-                        </div>
-                      )}
                       <ColumnHeaderFilter
                         label={COL_LABELS[col]}
                         sortDir={sortCol === col ? sortDir : null}
