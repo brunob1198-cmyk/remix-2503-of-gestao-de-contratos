@@ -203,6 +203,7 @@ async function sendOne(
     } else {
       status = "ENVIADO";
       contaAzulId = responseJson?.id || responseJson?.uuid || null;
+      contaAzulProtocolo = responseJson?.protocolo || null;
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
