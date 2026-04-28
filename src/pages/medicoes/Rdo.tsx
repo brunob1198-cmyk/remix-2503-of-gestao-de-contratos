@@ -242,13 +242,36 @@ export default function RdoPage() {
   const { role } = useAuth();
   const isCliente = role === "cliente";
   const { projetos } = useProjetos();
-  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("rdo_projeto_ids_v2", []);
+  const [selectedProjetoIds, setSelectedProjetoIds] = usePersistedState<string[]>("rdo_projeto_ids_v5", []);
   const { sites } = useSites();
-  const filteredSites = selectedProjetoIds.length > 0
-    ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
-    : sites;
+  const [siteSearch, setSiteSearch] = useState("");
+  const [projetoSearch, setProjetoSearch] = useState("");
 
-  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v4", []);
+  const filteredSites = useMemo(() => {
+    let result = selectedProjetoIds.length > 0
+      ? sites.filter(s => selectedProjetoIds.includes(s.projeto_id))
+      : sites;
+    
+    if (siteSearch.trim()) {
+      const search = siteSearch.toLowerCase();
+      result = result.filter(s => 
+        s.codigo.toLowerCase().includes(search) || 
+        s.nome.toLowerCase().includes(search)
+      );
+    }
+    return result;
+  }, [sites, selectedProjetoIds, siteSearch]);
+
+  const filteredProjetosList = useMemo(() => {
+    if (!projetoSearch.trim()) return projetos;
+    const search = projetoSearch.toLowerCase();
+    return projetos.filter(p => 
+      p.codigo.toLowerCase().includes(search) || 
+      p.nome.toLowerCase().includes(search)
+    );
+  }, [projetos, projetoSearch]);
+
+  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v6", []);
 
   // Build sites map for the hook
   const sitesMap = useMemo(() => {
