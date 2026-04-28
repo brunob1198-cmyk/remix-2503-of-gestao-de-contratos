@@ -287,6 +287,7 @@ export default function NormalizacaoFlashPage() {
 
   // Dialogs
   const [payloadDialogRow, setPayloadDialogRow] = useState<FlashTransactionRow | null>(null);
+  const [logDialogRow, setLogDialogRow] = useState<any | null>(null);
   const [motivoDialogRow, setMotivoDialogRow] = useState<FlashTransactionRow | null>(null);
   const [confirmReopenRow, setConfirmReopenRow] = useState<FlashTransactionRow | null>(null);
 
