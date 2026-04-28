@@ -75,6 +75,7 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.querySelectorAll("img").forEach((img) => {
     img.loading = "eager";
     img.decoding = "sync";
+    img.crossOrigin = "anonymous";
   });
 
   container.appendChild(content);
