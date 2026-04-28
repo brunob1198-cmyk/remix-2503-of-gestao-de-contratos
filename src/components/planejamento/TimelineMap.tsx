@@ -3,6 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { TimelineEvento } from "@/hooks/useTimelineEventos";
 import { format, parseISO } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import "leaflet/dist/leaflet.css";
 
 // Fix leaflet default icons
@@ -80,10 +82,36 @@ interface TimelineMapProps {
   eventos: TimelineEvento[];
   activeEvento: TimelineEvento | null;
   onSelectEvento: (e: TimelineEvento) => void;
+  onUpdateEvento?: () => void;
 }
 
-export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineMapProps) {
+export function TimelineMap({ eventos, activeEvento, onSelectEvento, onUpdateEvento }: TimelineMapProps) {
   const defaultCenter: [number, number] = [-14.235, -51.9253]; // Brazil center
+
+  const handleDragEnd = async (evtId: string, tipo: string, latlng: L.LatLng) => {
+    if (tipo !== "foto") {
+      toast.info("Apenas fotos podem ter sua geolocalização ajustada manualmente por enquanto.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("foto_geolocalizacao_ajustes")
+        .upsert({
+          foto_id: evtId,
+          latitude: latlng.lat,
+          longitude: latlng.lng,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'foto_id' });
+
+      if (error) throw error;
+      toast.success("Posição salva com sucesso!");
+      onUpdateEvento?.();
+    } catch (error: any) {
+      console.error("Erro ao salvar correção:", error);
+      toast.error("Falha ao salvar a nova posição.");
+    }
+  };
 
   if (eventos.length === 0) {
     return (
@@ -114,8 +142,13 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineM
           key={evt.id}
           position={[evt.latitude!, evt.longitude!]}
           icon={createColoredIcon(evt.tipo, activeEvento?.id === evt.id)}
+          draggable={evt.tipo === "foto"}
           eventHandlers={{
             click: () => onSelectEvento(evt),
+            dragend: (e) => {
+              const marker = e.target;
+              handleDragEnd(evt.id, evt.tipo, marker.getLatLng());
+            }
           }}
         >
           <Popup>
@@ -123,6 +156,16 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento }: TimelineM
               <p className="font-bold">{evt.item || evt.tipo}</p>
               <p>{format(parseISO(evt.data), "dd/MM/yyyy")}</p>
               {evt.quantidade > 0 && <p>Qtd: {evt.quantidade}</p>}
+              {evt.coord_source && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">
+                  Fonte: {evt.coord_source}
+                </p>
+              )}
+              {evt.tipo === "foto" && (
+                <p className="text-[10px] text-primary mt-1">
+                  Arraste o ponto para corrigir a posição
+                </p>
+              )}
             </div>
           </Popup>
         </Marker>
