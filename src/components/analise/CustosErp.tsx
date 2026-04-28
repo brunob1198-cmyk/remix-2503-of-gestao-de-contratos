@@ -135,7 +135,8 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const conflicts = useMemo(() => {
     return custosErp.filter(item => {
       const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-      return mapping && mapping.categoria_interna !== item.categoria_interna && !ignoredConflicts.has(item.erp_id);
+      const isActuallyConflict = mapping && mapping.categoria_interna !== item.categoria_interna;
+      return isActuallyConflict && !ignoredConflicts.has(item.erp_id);
     });
   }, [custosErp, categoriasMapeamento, ignoredConflicts]);
 
@@ -276,7 +277,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               <tbody className="divide-y">
                 {paginatedItems.map((item) => {
                   const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna;
+                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna && !ignoredConflicts.has(item.erp_id);
                   
                   return (
                     <tr key={item.id} className={`hover:bg-muted/10 transition-colors ${isConflict ? "bg-red-50/50 dark:bg-red-950/10" : ""}`}>
@@ -321,11 +322,13 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              onClick={() => setIgnoredConflicts(prev => {
-                                const next = new Set(prev);
-                                next.add(item.erp_id);
-                                return next;
-                              })}
+                              onClick={() => {
+                                setIgnoredConflicts(prev => {
+                                  const next = new Set(prev);
+                                  next.add(item.erp_id);
+                                  return next;
+                                });
+                              }}
                               title="Ignorar divergência"
                             >
                               <X className="h-3 w-3" />
