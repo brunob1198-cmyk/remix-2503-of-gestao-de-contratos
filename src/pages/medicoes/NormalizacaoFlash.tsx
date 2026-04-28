@@ -955,7 +955,11 @@ export default function NormalizacaoFlashPage() {
               <Input
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDateTo(val);
+                  localStorage.setItem("flash_date_to", val);
+                }}
                 className="h-8 w-[150px] text-xs"
               />
             </div>
