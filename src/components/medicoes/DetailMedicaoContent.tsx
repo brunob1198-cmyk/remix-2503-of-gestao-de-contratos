@@ -458,7 +458,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 1.5; // Adaptive scale: balanced for memory and quality
+      const scale = 1.0; // Optimized scale to reduce memory footprint for large volumes of photos
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
