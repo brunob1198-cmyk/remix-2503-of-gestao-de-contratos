@@ -1712,6 +1712,30 @@ export type Database = {
           },
         ]
       }
+      foto_geolocalizacao_cache: {
+        Row: {
+          created_at: string | null
+          latitude: number
+          longitude: number
+          source: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          latitude: number
+          longitude: number
+          source: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          latitude?: number
+          longitude?: number
+          source?: string
+          url?: string
+        }
+        Relationships: []
+      }
       frentes_obra: {
         Row: {
           created_at: string
