@@ -128,6 +128,7 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento, onUpdateEve
       scrollWheelZoom={true}
       style={{ height: "100%", width: "100%", minHeight: "480px", borderRadius: "inherit" }}
       className="z-0 h-full w-full"
+      preferCanvas={true}
     >
       <InvalidateMapSize trigger={eventos.length + (activeEvento?.id || "")} />
       <TileLayer
