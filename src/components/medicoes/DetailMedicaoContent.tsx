@@ -737,9 +737,15 @@ export function DetailMedicaoContent({
               <img 
                 src={`${detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "/logo.png"}${ (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url")) ? ( (detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url"))?.includes('?') ? '&' : '?' ) + 't=' + Date.now() : ''}`} 
                 alt="Logo Empresa" 
-                style={{ maxHeight: 48, objectFit: "contain" }} 
+                style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
                 crossOrigin="anonymous"
-                onError={(e) => { e.currentTarget.outerHTML = '<div style="width:120px;height:48px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;">LOGO DA EMPRESA</div>'; }} 
+                onError={(e) => { 
+                  e.currentTarget.style.display = 'none';
+                  const fallback = document.createElement('div');
+                  fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
+                  fallback.innerText = 'LOGO DA EMPRESA';
+                  e.currentTarget.parentNode?.insertBefore(fallback, e.currentTarget);
+                }} 
               />
               <div>
                 <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
@@ -756,7 +762,13 @@ export function DetailMedicaoContent({
                 <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
               {clienteLogoUrl && (
-                <img src={`${clienteLogoUrl}${clienteLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} alt="Logo Cliente" style={{ maxHeight: 48, objectFit: "contain", marginLeft: "15px" }} crossOrigin="anonymous" />
+                <img 
+                  src={`${clienteLogoUrl}${clienteLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`} 
+                  alt="Logo Cliente" 
+                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
+                  crossOrigin="anonymous" 
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
               )}
             </div>
           </div>
