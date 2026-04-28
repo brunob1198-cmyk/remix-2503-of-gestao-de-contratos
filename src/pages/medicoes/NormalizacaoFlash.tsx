@@ -1269,8 +1269,13 @@ export default function NormalizacaoFlashPage() {
                               <ColumnHeaderFilter
                                 title="Categoria Flash"
                                 options={filterOptions.categories}
-                                selected={selectedCategories}
-                                onSelect={setSelectedCategories}
+                                selected={searchParams.get("cat")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("cat", val.join(","));
+                                  else params.delete("cat");
+                                  setSearchParams(params, { replace: true });
+                                }}
                               />
                             </div>
                           </TableHead>
