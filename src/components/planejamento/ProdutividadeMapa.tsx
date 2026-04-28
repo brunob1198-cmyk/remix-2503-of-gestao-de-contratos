@@ -111,8 +111,9 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const mun = dInfo?.municipio || sites.find((s) => s.id === dInfo?.site_id)?.municipio;
         const uf = dInfo?.uf || sites.find((s) => s.id === dInfo?.site_id)?.uf;
         if (mun && uf) {
-          // Normalizamos para evitar problemas de case sensitivity no matching
-          municipios.add(`${mun.trim().toUpperCase()}__${uf.trim().toUpperCase()}`);
+          // Normalizamos removendo acentos e convertendo para uppercase para matching robusto
+          const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+          municipios.add(`${normalize(mun)}__${normalize(uf)}`);
         }
       });
 
