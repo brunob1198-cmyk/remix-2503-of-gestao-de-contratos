@@ -1610,6 +1610,7 @@ export default function NormalizacaoFlashPage() {
                     <TableRow>
                       <TableHead>Tipo Flash</TableHead>
                       <TableHead>Categoria Flash</TableHead>
+                      <TableHead>Centro de Custo Flash</TableHead>
                       <TableHead>Operação</TableHead>
                       <TableHead>Categoria Conta Azul</TableHead>
                       <TableHead>Conta financeira CA</TableHead>
