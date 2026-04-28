@@ -892,14 +892,17 @@ export default function RdoPage() {
 
           {/* Content */}
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-lg border border-dashed">
+              <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-50" />
+              <p className="animate-pulse">Carregando dados do período...</p>
             </div>
-          ) : diarios.length === 0 ? (
+          ) : dayGroups.length === 0 ? (
             <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Calendar className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                <p>Nenhum registro encontrado no período selecionado.</p>
+              <CardContent className="py-20 text-center text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                <p className="text-lg font-medium">Nenhum diário encontrado no período selecionado.</p>
+                <p className="text-sm">Tente ajustar as datas ou os filtros de site/projeto.</p>
+                <Button variant="link" onClick={clearFilters} className="mt-4">Limpar todos os filtros</Button>
               </CardContent>
             </Card>
           ) : (
@@ -923,7 +926,7 @@ export default function RdoPage() {
                     </Button>
                   )}
                 </div>
-                <ScrollArea className="h-[calc(100vh-420px)]">
+                <ScrollArea className="h-[calc(100vh-420px)] focus-visible:ring-1 focus-visible:ring-primary">
                   <div className="space-y-3 pr-2">
                     {dayGroups.map(group => {
                       const isDayCollapsed = collapsedDays.has(group.data);
@@ -932,7 +935,7 @@ export default function RdoPage() {
                         {/* Day header - clickable to collapse/expand */}
                         <button
                           onClick={() => toggleDayCollapse(group.data)}
-                          className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors"
+                          className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
