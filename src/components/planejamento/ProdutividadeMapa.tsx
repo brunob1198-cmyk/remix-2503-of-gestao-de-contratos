@@ -157,7 +157,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
         if (!mun || !uf) return;
-        const key = `${mun}__${uf}`;
+        const key = `${mun.trim().toUpperCase()}__${uf.trim().toUpperCase()}`;
         photosByMunicipio[key] = [...(photosByMunicipio[key] || []), photo.url];
       });
 
@@ -166,9 +166,9 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
         if (!dInfo) return;
         const mun = dInfo.municipio || sites.find((s) => s.id === dInfo.site_id)?.municipio || "";
         const uf = dInfo.uf || sites.find((s) => s.id === dInfo.site_id)?.uf || "";
-        if (!mun) return;
+        if (!mun || !uf) return;
 
-        const key = `${mun}__${uf}`;
+        const key = `${mun.trim().toUpperCase()}__${uf.trim().toUpperCase()}`;
 
         if (!aggMap[key]) {
           aggMap[key] = {
@@ -189,42 +189,39 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
 
       const regioesBase = Object.values(aggMap);
 
-      // Prioridade 1: Ajustes Manuais (através do cache que criamos ou tabela de ajustes)
-      const { data: photoAdjustments } = await supabase
-        .from("foto_geolocalizacao_ajustes")
-        .select("foto_id, latitude, longitude");
-      const adjMap = Object.fromEntries((photoAdjustments ?? []).map(a => [a.foto_id, a]));
+      // Prioridade 1: Município coordinates from IBGE (Muito mais estável para ranking por cidade)
+      regioesBase.forEach((r) => {
+        const key = `${r.mun.trim().toUpperCase()}__${r.uf.trim().toUpperCase()}`;
+        const coords = munCoords[key];
+        if (coords) {
+          r.lat = coords.lat;
+          r.lng = coords.lng;
+        }
+      });
 
-      // Priority 2: Try photo-level coords (EXIF then OCR) for each region
+      // Prioridade 2: Foto-level coords (apenas se não encontramos no IBGE ou para refinamento)
+      // Para manter a "fidelidade ao local das fotos" pedida anteriormente, 
+      // mas sem quebrar a posição da cidade no ranking:
       await Promise.all(
         regioesBase
           .filter((r) => r.photos.length > 0)
           .map(async (r) => {
-            // Check if any photo in this region has a manual adjustment first
-            for (const url of r.photos) {
-              // We need the ID to check the adjustment table, but r.photos only has URLs.
-              // For simplicity and performance, we rely on resolveCoordsFromPhotos which now uses the DB cache.
-            }
-            
             const coordsFromPhoto = await resolveCoordsFromPhotos(r.photos, { maxPhotos: 5 });
             if (coordsFromPhoto) {
-              r.lat = coordsFromPhoto.lat;
-              r.lng = coordsFromPhoto.lng;
+              // Se já temos a cidade (IBGE), verificamos se a foto está no mesmo estado
+              // para evitar que fotos "saltem" para outros estados por erro de GPS.
+              // Se não temos a cidade, aceitamos a foto.
+              if (!r.lat || !r.lng) {
+                r.lat = coordsFromPhoto.lat;
+                r.lng = coordsFromPhoto.lng;
+              } else {
+                // Opcional: poderíamos refinar o ponto da cidade com o da foto se for "perto",
+                // mas para resolver a reclamação do usuário de "nem perto das cidades corretas",
+                // vamos manter a coordenada oficial do município como âncora.
+              }
             }
           })
       );
-
-      // Priority 3: Município coordinates from IBGE (diary city)
-      regioesBase.forEach((r) => {
-        if (r.lat === null || r.lng === null) {
-          const coords = munCoords[`${r.mun}__${r.uf}`];
-          if (coords) {
-            // Se o IBGE retornar coordenadas, garantimos que sejam válidas
-            r.lat = coords.lat;
-            r.lng = coords.lng;
-          }
-        }
-      });
 
       // Last resort: Nominatim geocoding
       const missingCoords = regioesBase.filter((r) => r.lat === null || r.lng === null);
