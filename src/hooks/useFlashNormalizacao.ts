@@ -167,6 +167,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     "APPROVED": "Aprovado",
     "COMPLETED": "Concluído",
     "REJECTED": "Rejeitado",
+    "FINISHED": "Finalizado",
+    "CANCELLED": "Cancelado",
   };
 
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
