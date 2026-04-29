@@ -124,12 +124,6 @@ export default function DiarioCampoPage() {
     return () => { isMounted = false; };
   }, [processQueue]);
 
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
-    
-    setIsProcessingQueue(false);
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
-  }, [queryClient, isProcessingQueue]);
 
   const handleProjetoChange = (projetoId: string) => {
     setSelectedProjetoId(projetoId);
