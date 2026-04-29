@@ -68,51 +68,30 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
   let { conta_azul_transaction_id, conta_azul_protocolo, flash_transaction_id, empresa_id } = log;
   
   try {
-    // 1. Se não tiver ID mas tiver protocolo, tenta recuperar o ID pelo protocolo
+    // 1. Tentar resolver ID via protocolo
     if (!conta_azul_transaction_id && conta_azul_protocolo) {
       console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo}...`);
       const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${conta_azul_protocolo}`, {
-        headers: { 
-          Authorization: `Bearer ${accessToken}`, 
-          Accept: "application/json" 
-        }
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
       });
       
-      const protText = await protResp.text();
-      console.log(`[Reconcile] Resposta protocolo ${conta_azul_protocolo} (HTTP ${protResp.status}): ${protText}`);
-
       if (protResp.ok) {
-        let protData;
-        try {
-          protData = JSON.parse(protText);
-        } catch {
-          return { status: "invalid_json_protocol", detail: protText };
-        }
-
+        const protData = await protResp.json();
+        console.log(`[Reconcile] Resposta protocolo ${conta_azul_protocolo}:`, JSON.stringify(protData));
         if (protData.status === "SUCCESS") {
           conta_azul_transaction_id = protData.resourceId || protData.id;
           if (conta_azul_transaction_id) {
-            console.log(`[Reconcile] Sucesso! ID encontrado: ${conta_azul_transaction_id}`);
             await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
           }
-        } else if (protData.status === "ERROR") {
-          console.warn(`[Reconcile] Protocolo com erro:`, protData.errors || protData.message);
-          return { status: "ca_protocol_error", detail: protData.errors || protData.message };
-        } else {
-          console.log(`[Reconcile] Protocolo ainda ${protData.status}`);
-          return { status: "still_pending", detail: protData.status };
         }
       } else {
-        // Se 404, talvez o protocolo expirou ou não existe mais, tentamos buscar pelo external_id no CA se possível?
-        // Conta Azul API v1 não permite buscar por external_id facilmente em eventos-financeiros.
-        return { status: "http_protocol_error", code: protResp.status, detail: protText };
+        console.warn(`[Reconcile] Erro HTTP ao buscar protocolo ${conta_azul_protocolo}: ${protResp.status}`);
       }
     }
 
+    // 2. Fallback: Busca por valor e data se ainda não temos ID
     if (!conta_azul_transaction_id) {
-      // FALLBACK: Se não temos ID nem protocolo válido (404), tentamos buscar por valor e data no CA
-      console.log(`[Reconcile] Protocolo inválido ou ID ausente. Tentando busca fallback por valor e data...`);
-      
+      console.log(`[Reconcile] Tentando busca fallback para ${flash_transaction_id}...`);
       const { data: norm } = await supabase
         .from("flash_normalizacao")
         .select("conta_azul_payload, description:conta_azul_payload->>description")
@@ -125,15 +104,13 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         
         if (date && value) {
           const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?vencimento_inicio=${date}&vencimento_fim=${date}&valor=${value}`;
-          console.log(`[Reconcile] Buscando: ${searchUrl}`);
-          
           const searchResp = await fetch(searchUrl, {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
           });
           
           if (searchResp.ok) {
             const results = await searchResp.json();
-            // Procuramos um que coincida com a descrição (parcialmente)
+            console.log(`[Reconcile] Busca CA para ${date}/${value} retornou ${results.length} resultados.`);
             const match = results.find((r: any) => 
               r.descricao?.toLowerCase().includes(norm.description?.toLowerCase() || "") ||
               norm.description?.toLowerCase().includes(r.descricao?.toLowerCase() || "")
@@ -141,7 +118,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
             
             if (match) {
               conta_azul_transaction_id = match.id || match.uuid;
-              console.log(`[Reconcile] Encontrado via busca fallback! ID: ${conta_azul_transaction_id}`);
+              console.log(`[Reconcile] Encontrado via fallback! ID: ${conta_azul_transaction_id}`);
               await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
             }
           }
@@ -151,31 +128,18 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
     if (!conta_azul_transaction_id) return { status: "no_ca_id" };
 
-    // 2. Buscar parcelas do lançamento
-    console.log(`[Reconcile] Buscando parcelas para ID ${conta_azul_transaction_id}...`);
+    // 3. Verificar status e realizar baixa
     const resp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${conta_azul_transaction_id}/parcelas`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error(`[Reconcile] Erro ao buscar parcelas para ${conta_azul_transaction_id} (HTTP ${resp.status}): ${errText}`);
-      if (resp.status === 404) return { status: "not_found_in_ca" };
-      throw new Error(`Erro API CA: ${resp.status}`);
-    }
+    if (!resp.ok) return { status: "not_found_in_ca" };
 
     const parcelas = await resp.json();
     const parcela = parcelas[0];
-    if (!parcela) {
-       console.warn(`[Reconcile] Nenhuma parcela encontrada para ${conta_azul_transaction_id}`);
-       return { status: "no_parcela" };
-    }
+    if (!parcela) return { status: "no_parcela" };
 
-    console.log(`[Reconcile] Parcela encontrada: ${parcela.id}, status: ${parcela.status}`);
-
-    // 3. Verificar status da parcela
     if (parcela.status === "PAID" || parcela.baixado) {
-       console.log(`[Reconcile] Parcela já está paga. Finalizando...`);
        await supabase.from("flash_integration_logs").update({ 
          status: "ENVIADO", 
          reconciliado: true, 
@@ -185,26 +149,23 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
        await supabase.from("flash_normalizacao").update({ 
          status: "enviado",
          enviado_at: new Date().toISOString(),
-         motivo: `Reconciliado via Job: Pago no Conta Azul (ID: ${conta_azul_transaction_id})`
+         motivo: `Reconciliado via Job: Pago no Conta Azul`
        }).eq("flash_transaction_id", flash_transaction_id);
 
        return { status: "already_paid" };
     }
 
-    // 4. Tentar realizar a baixa se não estiver pago
-    console.log(`[Reconcile] Parcela aberta. Buscando dados de normalização...`);
-    const { data: norm } = await supabase
+    const { data: normFinal } = await supabase
       .from("flash_normalizacao")
-      .select("conta_azul_account_id, conta_azul_payload, tipo_operacao")
+      .select("conta_azul_account_id, conta_azul_payload")
       .eq("flash_transaction_id", flash_transaction_id)
       .maybeSingle();
 
-    if (!norm) return { status: "norm_not_found" };
+    if (!normFinal) return { status: "norm_not_found" };
 
-    const transactionDate = norm.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
-    const transactionValue = norm.conta_azul_payload?.amount || 0;
+    const transactionDate = normFinal.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
+    const transactionValue = normFinal.conta_azul_payload?.amount || 0;
 
-    console.log(`[Reconcile] Realizando baixa para parcela ${parcela.id} (Valor: ${transactionValue}, Data: ${transactionDate})...`);
     const baixaResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcela.id}/baixa`, {
       method: "POST",
       headers: {
@@ -213,13 +174,12 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       },
       body: JSON.stringify({
         data_pagamento: transactionDate,
-        conta_financeira: norm.conta_azul_account_id,
+        conta_financeira: normFinal.conta_azul_account_id,
         composicao_valor: { valor_bruto: transactionValue }
       })
     });
 
     if (baixaResp.ok) {
-      console.log(`[Reconcile] Baixa realizada com sucesso!`);
       await supabase.from("flash_integration_logs").update({ 
         status: "ENVIADO",
         reconciliado: true, 
@@ -229,17 +189,14 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       await supabase.from("flash_normalizacao").update({ 
         status: "enviado",
         enviado_at: new Date().toISOString(),
-        motivo: `Reconciliado via Job: Baixa realizada com sucesso (ID: ${conta_azul_transaction_id})`
+        motivo: `Reconciliado via Job: Baixa realizada com sucesso`
       }).eq("flash_transaction_id", flash_transaction_id);
 
       return { status: "reconciled_with_baixa" };
     } else {
-      const err = await baixaResp.text();
-      console.error(`[Reconcile] Falha ao realizar baixa: ${err}`);
-      return { status: "baixa_failed", error: err };
+      return { status: "baixa_failed" };
     }
   } catch (e: any) {
-    console.error(`[Reconcile] Erro crítico: ${e.message}`);
     return { status: "error", error: e.message };
   }
 }
@@ -249,16 +206,15 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    // Para resolver o problema imediato do usuário, vamos ser bem permissivos no tempo
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
     
-    console.log(`[Reconcile] Iniciando job de reconciliação para logs anteriores a ${twoMinutesAgo}...`);
-
     const { data: logs, error: logsErr } = await supabase
       .from("flash_integration_logs")
       .select("*")
       .eq("evento", "send_transaction")
       .eq("reconciliado", false)
-      .lt("created_at", twoMinutesAgo)
+      .lt("created_at", oneMinuteAgo)
       .or(`status.eq.ENVIADO,status.eq.erro,status.eq.REABERTO`)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -270,13 +226,7 @@ serve(async (req) => {
       (log.erro && (log.erro.includes("processado") || log.erro.includes("Protocolo") || log.erro.includes("PENDING")))
     ) || [];
 
-    console.log(`[Reconcile] Encontrados ${logs?.length || 0} logs candidatos, ${filteredLogs.length} filtrados para processamento.`);
-
-    if (filteredLogs.length === 0) {
-      return new Response(JSON.stringify({ message: "Nada para processar", candidates: logs?.length }), { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      });
-    }
+    if (filteredLogs.length === 0) return new Response(JSON.stringify({ message: "Nada para processar" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const results = [];
     const tokenCache = new Map();
@@ -287,25 +237,16 @@ serve(async (req) => {
           const token = await getValidAccessToken(supabase, log.empresa_id);
           tokenCache.set(log.empresa_id, token);
         } catch (e) {
-          console.error(`[Reconcile] Erro ao obter token para empresa ${log.empresa_id}: ${e.message}`);
           results.push({ id: log.id, status: "token_error", error: e.message });
           continue;
         }
       }
-      
       const res = await verifyAndReconcile(supabase, log, tokenCache.get(log.empresa_id));
       results.push({ id: log.id, ...res });
     }
     
-    console.log(`[Reconcile] Job finalizado. Resultados:`, JSON.stringify(results));
-    return new Response(JSON.stringify({ processed: filteredLogs.length, results }), { 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
-    });
+    return new Response(JSON.stringify({ results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
-    console.error(`[Reconcile] Erro global: ${e.message}`);
-    return new Response(JSON.stringify({ error: e.message }), { 
-      status: 500, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
-    });
+    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
