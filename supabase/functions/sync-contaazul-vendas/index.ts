@@ -168,7 +168,6 @@ async function fetchNotasProdutoWindow(accessToken: string, dataDe: string, data
       const errBody = await resp.text();
       console.error("Erro fetch NF-e:", resp.status, errBody);
       if (resp.status === 404) return allItems;
-      // NF-e é opcional para empresas que só emitem serviço; loga mas não interrompe
       console.warn(`NF-e indisponível (${dataDe} a ${dataAte}): HTTP ${resp.status}`);
       return allItems;
     }
@@ -187,6 +186,19 @@ async function fetchNotasProdutoWindow(accessToken: string, dataDe: string, data
   }
 
   return allItems;
+}
+
+// Vendas - /v1/sales - para buscar centro de custo e detalhes financeiros
+async function fetchVendaDetalhes(accessToken: string, saleId: string): Promise<any> {
+  const url = `${CONTAAZUL_API}/v1/sales/${saleId}`;
+  const resp = await fetch(url, {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Accept": "application/json",
+    },
+  });
+  if (!resp.ok) return null;
+  return await resp.json();
 }
 
 serve(async (req) => {
@@ -218,7 +230,6 @@ serve(async (req) => {
       body = {};
     }
 
-    // Padrão: últimos 90 dias
     const today = new Date().toISOString().split("T")[0];
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 90);
@@ -227,7 +238,6 @@ serve(async (req) => {
     const dateFrom = body.date_from || defaultFrom;
     const dateTo = body.date_to || today;
 
-    // Janelas de 15 dias (limite da API NFS-e)
     const windows = splitDateRange(dateFrom, dateTo, 15);
     console.log(`Total janelas: ${windows.length} | período ${dateFrom} a ${dateTo}`);
 
@@ -245,37 +255,78 @@ serve(async (req) => {
 
     console.log(`NFS-e: ${allNFSe.length} | NF-e: ${allNFe.length}`);
 
-    // Mapeia NFS-e (serviço)
-    const upsertsNFSe = allNFSe.map((nf: any) => ({
-      erp_id: nf.id,
-      numero_nota: (nf.numero_nfse || nf.numero_rps)?.toString() || null,
-      data_emissao: (nf.data_competencia ||
-        nf.informacao_transmissao?.data_inicio_emissao || "").split("T")[0] || null,
-      cliente_nome: nf.nome_cliente || null,
-      valor_total: Number(nf.valor_total_nfse || 0),
-      centro_custo: null,
-      status: nf.status || null,
-      payload_json: nf,
-      updated_at: new Date().toISOString(),
+    const upsertsNFSe = await Promise.all(allNFSe.map(async (nf: any) => {
+      let centroCusto = null;
+      let valorAberto = 0;
+      let valorBaixado = 0;
+      let descricao = nf.observacoes || "";
+
+      if (nf.id_venda) {
+        const venda = await fetchVendaDetalhes(accessToken, nf.id_venda);
+        if (venda) {
+          if (venda.rateio_centro_custo && venda.rateio_centro_custo.length > 0) {
+            centroCusto = venda.rateio_centro_custo[0].centro_custo?.nome || null;
+          }
+          valorAberto = Number(venda.valor_total || 0) - Number(venda.valor_recebido || 0);
+          valorBaixado = Number(venda.valor_recebido || 0);
+          if (!descricao) descricao = venda.notas || "";
+        }
+      }
+
+      return {
+        erp_id: nf.id,
+        numero_nota: (nf.numero_nfse || nf.numero_rps)?.toString() || null,
+        data_emissao: (nf.data_competencia || nf.informacao_transmissao?.data_inicio_emissao || "").split("T")[0] || null,
+        cliente_nome: nf.nome_cliente || null,
+        valor_total: Number(nf.valor_total_nfse || 0),
+        valor_aberto: valorAberto,
+        valor_baixado: valorBaixado,
+        descricao: descricao,
+        centro_custo: centroCusto,
+        status: nf.status || null,
+        payload_json: nf,
+        updated_at: new Date().toISOString(),
+      };
     }));
 
-    // Mapeia NF-e (produto)
-    const upsertsNFe = allNFe.map((nf: any) => ({
-      erp_id: nf.chave_acesso || nf.id,
-      numero_nota: nf.numero_nota?.toString() || null,
-      data_emissao: (nf.data_emissao || "").split("T")[0] || null,
-      cliente_nome: nf.nome_destinatario || null,
-      valor_total: Number(nf.valor_total || 0),
-      centro_custo: null,
-      status: nf.status || null,
-      payload_json: nf,
-      updated_at: new Date().toISOString(),
+    const upsertsNFe = await Promise.all(allNFe.map(async (nf: any) => {
+      let centroCusto = null;
+      let valorAberto = 0;
+      let valorBaixado = 0;
+      let descricao = nf.informacoes_adicionais || "";
+
+      if (nf.id_venda) {
+        const venda = await fetchVendaDetalhes(accessToken, nf.id_venda);
+        if (venda) {
+          if (venda.rateio_centro_custo && venda.rateio_centro_custo.length > 0) {
+            centroCusto = venda.rateio_centro_custo[0].centro_custo?.nome || null;
+          }
+          valorAberto = Number(venda.valor_total || 0) - Number(venda.valor_recebido || 0);
+          valorBaixado = Number(venda.valor_recebido || 0);
+          if (!descricao) descricao = venda.notas || "";
+        }
+      }
+
+      return {
+        erp_id: nf.chave_acesso || nf.id,
+        numero_nota: nf.numero_nota?.toString() || null,
+        data_emissao: (nf.data_emissao || "").split("T")[0] || null,
+        cliente_nome: nf.nome_destinatario || null,
+        valor_total: Number(nf.valor_total || 0),
+        valor_aberto: valorAberto,
+        valor_baixado: valorBaixado,
+        descricao: descricao,
+        centro_custo: centroCusto,
+        status: nf.status || null,
+        payload_json: nf,
+        updated_at: new Date().toISOString(),
+      };
     }));
 
     const allUpserts = [...upsertsNFSe, ...upsertsNFe].filter((u: any) => u.erp_id);
 
     if (allUpserts.length > 0) {
-      const chunkSize = 100;
+      const chunkSize = 50; // Reduced due to more data
       for (let i = 0; i < allUpserts.length; i += chunkSize) {
         const chunk = allUpserts.slice(i, i + chunkSize);
         const { error: upsertError } = await supabase

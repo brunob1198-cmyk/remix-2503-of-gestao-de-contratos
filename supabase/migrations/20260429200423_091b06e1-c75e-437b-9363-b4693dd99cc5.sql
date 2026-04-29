@@ -1,0 +1,4 @@
+ALTER TABLE public.faturamentos_conta_azul 
+ADD COLUMN IF NOT EXISTS valor_aberto NUMERIC DEFAULT 0,
+ADD COLUMN IF NOT EXISTS valor_baixado NUMERIC DEFAULT 0,
+ADD COLUMN IF NOT EXISTS descricao TEXT;

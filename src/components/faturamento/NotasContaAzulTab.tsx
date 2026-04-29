@@ -280,7 +280,10 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                       <TableHead>Data Emissão</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Centro de Custo</TableHead>
-                      <TableHead className="text-right">Valor Total</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Em Aberto</TableHead>
+                      <TableHead className="text-right">Baixado</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
@@ -301,13 +304,22 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                         <TableCell className="max-w-[220px] truncate" title={nota.cliente_nome || ""}>
                           {nota.cliente_nome || "-"}
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={nota.centro_custo || ""}>
+                        <TableCell className="max-w-[150px] truncate" title={nota.centro_custo || ""}>
                           {nota.centro_custo || (
                             <span className="text-muted-foreground italic text-xs">Não alocado</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
+                        <TableCell className="max-w-[200px] truncate" title={nota.descricao || ""}>
+                          {nota.descricao || "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
                           {formatCurrency(nota.valor_total)}
+                        </TableCell>
+                        <TableCell className="text-right text-orange-600 font-medium">
+                          {formatCurrency(nota.valor_aberto)}
+                        </TableCell>
+                        <TableCell className="text-right text-green-600 font-medium">
+                          {formatCurrency(nota.valor_baixado)}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="capitalize">
