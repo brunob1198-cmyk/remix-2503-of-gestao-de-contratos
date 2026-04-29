@@ -168,10 +168,10 @@ export function DetailMedicaoContent({
   }, []);
 
   useEffect(() => {
-    clearPDFChunks(detailMedicao.id);
-    clearExportState(detailMedicao.id);
+    void clearPDFChunks(detailMedicao.id);
+    void clearExportState(detailMedicao.id);
     setCanResume(false);
-  }, [detailMedicao.id, addLog, isExporting]);
+  }, [detailMedicao.id]);
 
   // Update logs when exporting state changes
   useEffect(() => {
