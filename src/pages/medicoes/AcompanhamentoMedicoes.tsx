@@ -1560,10 +1560,10 @@ export default function AcompanhamentoMedicoesPage() {
                           const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                           return (
                       <div className="space-y-6 max-h-[400px] overflow-auto">
-                        {geracaoFotos.length > 2000 && (
+                        {geracaoFotos.length > 5000 && (
                           <div className="p-3 mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                             ⚠️ <strong>Grande volume de fotos detectado!</strong> ({geracaoFotos.length} fotos). 
-                            O sistema mostrará apenas as primeiras 2000 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
+                            O sistema mostrará apenas as primeiras 5000 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
                           </div>
                         )}
                                 {sorted.map(([siteName, { fotos, siteId }]) => {
