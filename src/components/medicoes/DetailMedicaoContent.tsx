@@ -585,8 +585,8 @@ export function DetailMedicaoContent({
           if (pageCanvas) {
             const renderedHeight = (slice.height * usableWidth) / contentWidth;
             if (currentPdfPages > 0) pdf.addPage();
-            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65);
-            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "FAST");
+            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.5); // Reduced quality from 0.65 to 0.5
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "MEDIUM"); // Changed from FAST to MEDIUM for better balance
             currentPdfPages++;
             pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
