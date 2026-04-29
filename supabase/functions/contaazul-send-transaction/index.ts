@@ -116,7 +116,6 @@ async function sendOne(
 ) {
   const startedAt = Date.now();
   
-  // Verificação de duplicidade
   if (!force) {
     const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
     if (alreadySent) {
@@ -196,7 +195,6 @@ async function sendOne(
 
     httpStatus = resp.status;
     const text = await resp.text();
-    
     console.log(`[DEBUG] Resposta Conta Azul (HTTP ${httpStatus}):`, text);
 
     try {
@@ -213,56 +211,50 @@ async function sendOne(
       if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
         console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento...`);
         
-        // Polling de 10 tentativas (30s total)
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 15; i++) {
           await new Promise(r => setTimeout(r, 3000));
           
-          // Endpoint correto de importação V2
-          const importPath = input.type === "receita" 
-            ? "contas-a-receber/importacao" 
-            : "contas-a-pagar/importacao";
-            
-          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
+          const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
+          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${conta_azul_protocolo}`, {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
           });
           
           if (statusResp.ok) {
             const statusData = await statusResp.json();
-            console.log(`[DEBUG] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, statusData.status);
+            console.log(`[DEBUG] Status do protocolo ${conta_azul_protocolo} (tentativa ${i+1}):`, statusData.status);
             responseJson = { ...responseJson, last_polling_status: statusData };
 
             if (statusData.status === "SUCCESS") {
               status = "ENVIADO";
               contaAzulId = statusData.resourceId || statusData.id || null;
-              
-              if (contaAzulId) {
-                // Tenta realizar a baixa
-                try {
-                  const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
-                    headers: { Authorization: `Bearer ${accessToken}` }
-                  });
-                  if (parcelasResp.ok) {
-                    const parcelas = await parcelasResp.json();
-                    const parcelaId = parcelas[0]?.id;
-                    if (parcelaId) {
-                      await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          data_pagamento: transactionDate,
-                          conta_financeira: input.financial_account_id,
-                          composicao_valor: { valor_bruto: transactionValue }
-                        })
-                      });
-                    }
-                  }
-                } catch (baixaE) { console.error(`Erro na baixa:`, baixaE); }
-              }
               break;
             } else if (statusData.status === "ERROR") {
               status = "erro";
-              errorMsg = `Erro Conta Azul: ${JSON.stringify(statusData.errors || statusData.message)}`;
+              errorMsg = `Erro Conta Azul: ${JSON.stringify(statusData.errors || statusData.message || statusData)}`;
               break;
+            }
+          } else if (statusResp.status === 404) {
+            console.log(`[DEBUG] Protocolo ${conta_azul_protocolo} retornou 404. Tentando busca fallback imediato...`);
+            const path = input.type === "receita" ? "contas-a-receber" : "contas-a-pagar";
+            const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${transactionDate}&data_vencimento_ate=${transactionDate}`;
+            const searchResp = await fetch(searchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+            
+            if (searchResp.ok) {
+              const sData = await searchResp.json();
+              const itens = sData.itens || sData;
+              if (Array.isArray(itens)) {
+                const match = itens.find((r: any) => 
+                  Math.abs((r.valor || r.total) - transactionValue) < 0.01 && 
+                  (r.descricao?.toLowerCase().includes(input.description.toLowerCase()) || input.description.toLowerCase().includes(r.descricao?.toLowerCase()))
+                );
+                
+                if (match) {
+                  status = "ENVIADO";
+                  contaAzulId = match.id || match.uuid;
+                  console.log(`[DEBUG] Encontrado via fallback imediato! ID: ${contaAzulId}`);
+                  break;
+                }
+              }
             }
           }
         }
@@ -270,8 +262,6 @@ async function sendOne(
         if (status === "erro") {
           const lastStatus = responseJson?.last_polling_status?.status || "PENDING";
           if (lastStatus === "PENDING") {
-            // SE AINDA PENDENTE: Marcamos como ENVIADO para o usuário não ficar travado,
-            // mas o job de reconciliação resolverá o ID depois.
             status = "ENVIADO"; 
             errorMsg = "Lançamento em processamento assíncrono. Será confirmado automaticamente em instantes.";
           }
@@ -280,6 +270,30 @@ async function sendOne(
         status = "ENVIADO";
         contaAzulId = responseJson?.id || responseJson?.uuid || null;
       }
+    }
+
+    if (status === "ENVIADO" && contaAzulId) {
+      try {
+        const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (parcelasResp.ok) {
+          const parcelas = await parcelasResp.json();
+          const parcelaId = parcelas[0]?.id;
+          if (parcelaId && !parcelas[0]?.baixado) {
+            console.log(`[DEBUG] Realizando baixa para parcela ${parcelaId}...`);
+            await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                data_pagamento: transactionDate,
+                conta_financeira: input.financial_account_id,
+                composicao_valor: { valor_bruto: transactionValue }
+              })
+            });
+          }
+        }
+      } catch (baixaE) { console.error(`Erro na baixa:`, baixaE); }
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
@@ -358,7 +372,7 @@ serve(async (req) => {
         financial_account_id: n.conta_azul_account_id,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
-      }, true); // Força envio se chamado explicitamente
+      }, true); 
       results.push(r);
     }
 
