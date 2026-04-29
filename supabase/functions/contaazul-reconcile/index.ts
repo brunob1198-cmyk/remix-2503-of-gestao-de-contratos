@@ -116,24 +116,37 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         const value = norm.conta_azul_payload?.amount;
         
         if (date && value) {
-          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?vencimento_inicio=${date}&vencimento_fim=${date}&valor=${value}`;
+          const path = (norm.tipo_operacao === "receita") ? "contas-a-receber" : "contas-a-pagar";
+          // Usando /buscar conforme documentação V2
+          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?vencimento_inicio=${date}&vencimento_fim=${date}&valor=${value}`;
+          
+          console.log(`[Reconcile] Tentando busca fallback em ${searchUrl}`);
           const searchResp = await fetch(searchUrl, {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
           });
           
           if (searchResp.ok) {
             const results = await searchResp.json();
-            console.log(`[Reconcile] Busca CA para ${date}/${value} retornou ${results.length} resultados.`);
-            const match = results.find((r: any) => 
-              r.descricao?.toLowerCase().includes(norm.description?.toLowerCase() || "") ||
-              norm.description?.toLowerCase().includes(r.descricao?.toLowerCase() || "")
-            );
+            // A resposta do buscar do CA V2 costuma ser uma lista de parcelas
+            console.log(`[Reconcile] Busca CA retornou ${results?.length || 0} resultados.`);
             
-            if (match) {
-              conta_azul_transaction_id = match.id || match.uuid;
-              console.log(`[Reconcile] Encontrado via fallback! ID: ${conta_azul_transaction_id}`);
-              await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
+            if (Array.isArray(results)) {
+              const match = results.find((r: any) => {
+                const descMatch = r.descricao?.toLowerCase().includes(norm.description?.toLowerCase() || "") ||
+                                 norm.description?.toLowerCase().includes(r.descricao?.toLowerCase() || "");
+                return descMatch;
+              });
+              
+              if (match) {
+                // No buscar, o id retornado costuma ser o id do EVENTO (ou tem o evento_id)
+                conta_azul_transaction_id = match.evento_id || match.id || match.uuid;
+                console.log(`[Reconcile] Encontrado via fallback! ID: ${conta_azul_transaction_id}`);
+                await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
+              }
             }
+          } else {
+            const errText = await searchResp.text();
+            console.error(`[Reconcile] Erro na busca fallback (HTTP ${searchResp.status}): ${errText}`);
           }
         }
       }
