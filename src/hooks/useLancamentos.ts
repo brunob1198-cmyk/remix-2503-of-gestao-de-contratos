@@ -264,7 +264,8 @@ export function useLancamentosFaturamento(siteId?: string) {
       let query = supabase
         .from("lancamentos_faturamento")
         .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_faturamento", { ascending: false });
+        .order("data_faturamento", { ascending: false })
+        .limit(100000);
       
       if (siteId) {
         query = query.eq("site_id", siteId);
