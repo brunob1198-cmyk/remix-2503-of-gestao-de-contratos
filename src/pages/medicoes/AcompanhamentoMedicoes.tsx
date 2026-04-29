@@ -605,11 +605,19 @@ export default function AcompanhamentoMedicoesPage() {
           const diarioIds = diarios.map(d => d.id);
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-          const { data: fotos } = await supabase
+          // Definitivo: Buscamos todas as fotos sem limite restritivo e com log de depuração
+          const { data: fotos, error: fErr } = await supabase
             .from("diario_fotos")
             .select("*")
             .in("diario_id", diarioIds)
-            .limit(10000);
+            .limit(100000); 
+          
+          console.log(`[Acompanhamento] Carregadas ${fotos?.length || 0} fotos para ${diarioIds.length} diários.`);
+          
+          if (fErr) {
+            console.error("Erro ao buscar fotos:", fErr);
+            throw fErr;
+          }
 
           const producaoIds = (fotos || []).map(f => (f as any).diario_producao_id).filter(Boolean);
           let producaoMap = new Map<string, any>();
