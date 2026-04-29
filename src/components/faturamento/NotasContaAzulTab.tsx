@@ -277,6 +277,7 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nº Nota</TableHead>
+                      <TableHead>Nº Venda</TableHead>
                       <TableHead>Data Emissão</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Centro de Custo</TableHead>
@@ -296,6 +297,7 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                         onClick={() => setSelectedNota(nota)}
                       >
                         <TableCell className="font-medium">{nota.numero_nota || "S/N"}</TableCell>
+                        <TableCell className="font-medium">{nota.numero_venda || "-"}</TableCell>
                         <TableCell>
                           {nota.data_emissao
                             ? format(parseISO(nota.data_emissao + "T12:00:00"), "dd/MM/yyyy")
