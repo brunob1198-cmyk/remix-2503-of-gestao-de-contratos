@@ -459,7 +459,7 @@ export function DetailMedicaoContent({
     addLog(resume ? "Retomando exportação..." : "Iniciando processo de exportação...", "info");
     
     let exportContainer: HTMLDivElement | null = null;
-    const CHUNK_SIZE = 8; // Number of pages per PDF chunk for memory efficiency
+    const CHUNK_SIZE = 12; // Increased chunk size for faster processing of large projects
 
     try {
       addLog("Preparando contêiner de exportação...", "info");
