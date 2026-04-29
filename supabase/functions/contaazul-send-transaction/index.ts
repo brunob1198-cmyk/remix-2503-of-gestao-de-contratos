@@ -199,6 +199,9 @@ async function sendOne(
 
     httpStatus = resp.status;
     const text = await resp.text();
+    
+    console.log(`[DEBUG] Resposta Conta Azul (HTTP ${httpStatus}):`, text);
+
     try {
       responseJson = text ? JSON.parse(text) : null;
     } catch {
