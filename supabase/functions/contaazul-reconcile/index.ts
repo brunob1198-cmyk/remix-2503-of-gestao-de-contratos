@@ -217,7 +217,7 @@ serve(async (req) => {
       .lt("created_at", oneMinuteAgo)
       .or(`status.eq.ENVIADO,status.eq.erro,status.eq.REABERTO`)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(5);
 
     if (logsErr) throw logsErr;
 
