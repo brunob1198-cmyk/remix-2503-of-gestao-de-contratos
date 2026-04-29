@@ -124,7 +124,10 @@ async function sendOne(
       error: "Transação já integrada anteriormente (controle de duplicidade)",
     };
   }
-...
+
+  const transactionValue = Math.abs(Number(input.value) || 0);
+  const transactionDate = input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0];
+
   // Payload conforme Conta Azul API v1 (eventos-financeiros)
   const payload = {
     data_competencia: transactionDate,
@@ -355,7 +358,7 @@ serve(async (req) => {
       results.push(r);
     }
 
-    const sucesso = results.filter((r) => r.status === "sucesso").length;
+    const sucesso = results.filter((r) => r.status === "ENVIADO").length;
     const erro = results.filter((r) => r.status === "erro").length;
     const skipped = results.filter((r) => r.status === "skipped").length;
 
