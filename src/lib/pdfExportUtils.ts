@@ -50,7 +50,17 @@ export async function getPdfSafeImageDataUrl(
   const maxWidth = options.maxWidth ?? 1200;
   const maxHeight = options.maxHeight ?? 900;
   const quality = options.quality ?? 0.84;
-  const cleanUrl = url.replace(/([?&])(width|height|quality|t|pdf_export)=[^&]*/g, "$1").replace(/[?&]$/, "");
+  const cleanUrl = (() => {
+    try {
+      const parsed = new URL(url, window.location.href);
+      ["width", "height", "quality", "t", "pdf_export", "retry"].forEach((param) => parsed.searchParams.delete(param));
+      return parsed.toString();
+    } catch {
+      return url
+        .replace(/([?&])(width|height|quality|t|pdf_export|retry)=[^&]*/g, "$1")
+        .replace(/[?&]+$/, "");
+    }
+  })();
 
   const response = await fetch(cleanUrl, { mode: "cors", cache: "force-cache" });
   if (!response.ok) throw new Error(`Falha ao carregar imagem: HTTP ${response.status}`);
