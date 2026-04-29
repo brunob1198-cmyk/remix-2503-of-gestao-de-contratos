@@ -536,7 +536,7 @@ export default function DiarioCampoPage() {
                         <Button
                           variant="outline"
                           onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
-                          disabled={uploading}
+                          disabled={isProcessingQueue}
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           Câmera
