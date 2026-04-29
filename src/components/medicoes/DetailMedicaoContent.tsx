@@ -536,17 +536,16 @@ export function DetailMedicaoContent({
             });
 
             await ensureImagesLoaded(content, (msg) => {
-              // Only log meaningful progress to avoid freezing UI with thousands of logs
               if (msg.includes("processadas") || msg.includes("Iniciando")) {
                 addLog(msg, "info");
               }
             }, {
               images: imagesInSlice,
-              concurrency: 4,
-              timeoutMs: 15000, // Reduced from 25000 to fail faster and retry
+              concurrency: 8, // Increased for speed
+              timeoutMs: 8000, // Faster timeout
               label: `Página ${pageNum}`,
             });
-            await waitForNextPaint(50);
+            await waitForNextPaint(20); // Faster wait
           }
           
           const renderPage = async () => {
