@@ -81,6 +81,33 @@ async function getValidAccessToken(supabase: any, empresaId: string): Promise<st
   return await refreshAccessToken(supabase, empresaId, data);
 }
 
+async function realizarBaixa(accessToken: string, contaAzulId: string, input: TransactionInput, transactionDate: string) {
+  try {
+    const transactionValue = Math.abs(Number(input.value) || 0);
+    const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (parcelasResp.ok) {
+      const parcelas = await parcelasResp.json();
+      const parcelaId = parcelas[0]?.id;
+      if (parcelaId && !parcelas[0]?.baixado) {
+        console.log(`[DEBUG] Realizando baixa para parcela ${parcelaId}...`);
+        await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data_pagamento: transactionDate,
+            conta_financeira: input.financial_account_id,
+            composicao_valor: { valor_bruto: transactionValue }
+          })
+        });
+      }
+    }
+  } catch (e) {
+    console.error(`Erro na baixa:`, e);
+  }
+}
+
 async function isAlreadyIntegrated(supabase: any, flashTransactionId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("flash_integration_logs")
