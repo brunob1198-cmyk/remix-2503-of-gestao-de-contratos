@@ -530,6 +530,7 @@ export default function RdoPage() {
         const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
         const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
         dayFolder.file(`RDO_${dataLabel}.pdf`, pdfBlob);
+        await new Promise(resolve => setTimeout(resolve, 300)); // Pause to let GC work
 
         if (diario.fotos.length > 0) {
           const fotosFolder = dayFolder.folder("fotos");
