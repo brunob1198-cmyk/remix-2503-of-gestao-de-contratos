@@ -525,53 +525,53 @@ export default function DiarioCampoPage() {
                       <Upload className="h-4 w-4 mr-2" />
                       {isProcessingQueue ? "Enviando..." : "Selecionar Fotos"}
                     </Button>
-                        <input
-                          id="campo-foto-input"
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
-                          disabled={isProcessingQueue}
-                        >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Câmera
-                        </Button>
-                        <input
-                          id="campo-foto-input-camera"
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
-                        />
-                      </div>
+                    <input
+                      id="campo-foto-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
+                      disabled={isProcessingQueue}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Câmera
+                    </Button>
+                    <input
+                      id="campo-foto-input-camera"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
+                    />
+                  </div>
 
-                      {fotos.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {fotos.map(foto => (
-                            <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                              <img
-                                src={foto.url}
-                                alt={foto.legenda || "Foto de campo"}
-                                className="w-full h-32 object-cover"
-                              />
-                              <button
-                                onClick={() => handleRemoveFoto(foto.id)}
-                                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
+                  {fotos.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {fotos.map(foto => (
+                        <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
+                          <img
+                            src={foto.url}
+                            alt={foto.legenda || "Foto de campo"}
+                            className="w-full h-32 object-cover"
+                          />
+                          <button
+                            onClick={() => handleRemoveFoto(foto.id)}
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
-                      )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
+                  )}
                 </CardContent>
               </Card>
 
