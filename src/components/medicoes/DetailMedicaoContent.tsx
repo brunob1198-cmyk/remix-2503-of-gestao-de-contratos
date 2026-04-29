@@ -473,6 +473,7 @@ export function DetailMedicaoContent({
     setExportLogs([]);
     await clearPDFChunks(detailMedicao.id);
     await clearExportState(detailMedicao.id);
+    setCanResume(false);
     addLog("Iniciando exportação otimizada por seções...", "info");
     
     let exportContainer: HTMLDivElement | null = null;
