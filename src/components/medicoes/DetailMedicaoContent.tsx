@@ -596,8 +596,10 @@ export function DetailMedicaoContent({
           if (pageCanvas) {
             const renderedHeight = (slice.height * usableWidth) / contentWidth;
             if (currentPdfPages > 0) pdf.addPage();
-            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.5); // Reduced quality from 0.65 to 0.5
-            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "MEDIUM"); // Changed from FAST to MEDIUM for better balance
+            // Use lower quality and FAST compression for very large projects to prevent memory exhaustion
+            const quality = slices.length > 50 ? 0.3 : 0.45;
+            const pageImageData = pageCanvas.toDataURL("image/jpeg", quality);
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, slices.length > 50 ? "FAST" : "MEDIUM");
             currentPdfPages++;
             pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
@@ -669,8 +671,12 @@ export function DetailMedicaoContent({
         copiedPages.forEach(page => finalPdf.addPage(page));
       }
 
-      const finalBytes = await finalPdf.save();
-      const blob = new Blob([finalBytes as any], { type: "application/pdf" });
+      addLog("Comprimindo e finalizando arquivo...", "info");
+      const finalBytes = await finalPdf.save({ 
+        useObjectStreams: true,
+        addDefaultPage: false
+      });
+      const blob = new Blob([finalBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
