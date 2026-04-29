@@ -758,30 +758,60 @@ export function useFlashNormalizacao() {
 
   /**
    * Reabre um lançamento "enviado" para correção, voltando-o para "normalizado".
+   * Também "invalida" logs anteriores de sucesso para permitir um re-envio (forçar).
    */
   const reopenEnviado = useCallback(
     async (row: FlashTransactionRow) => {
       if (row.status !== "enviado") return;
-      await saveNormalization(
-        row,
-        {
-          status: "normalizado",
-          motivo: `Reaberto para correção em ${new Date().toLocaleString("pt-BR")} (estava enviado).`,
-        },
-        { allowEditEnviado: true }
-      );
-      // Limpa enviado_at
-      if (empresaId) {
-        await supabase
+      
+      setSavingId(row.id);
+      try {
+        // 1. Atualiza o status na tabela de normalização
+        const { error: normError } = await supabase
           .from("flash_normalizacao")
-          .update({ enviado_at: null })
+          .update({ 
+            status: "normalizado",
+            enviado_at: null,
+            motivo: `Reaberto para correção/re-envio em ${new Date().toLocaleString("pt-BR")} (estava enviado).`,
+          })
           .eq("flash_transaction_id", row.id)
           .eq("empresa_id", empresaId);
+
+        if (normError) throw normError;
+
+        // 2. "Invalida" logs de sucesso anteriores para permitir que a edge function envie de novo
+        // Isso é o que permite o "forçar lançamento"
+        const { error: logError } = await supabase
+          .from("flash_integration_logs")
+          .update({ status: "REABERTO" })
+          .eq("flash_transaction_id", row.id)
+          .eq("status", "ENVIADO")
+          .eq("empresa_id", empresaId);
+
+        if (logError) {
+          console.error("Erro ao invalidar logs antigos:", logError);
+          // Não travamos o processo se falhar o log, mas avisamos no console
+        }
+
+        // 3. Atualiza estado local
         setTransactions((prev) =>
-          prev.map((t) => (t.id === row.id ? { ...t, enviado_at: null } : t))
+          prev.map((t) => (t.id === row.id ? { 
+            ...t, 
+            status: "normalizado", 
+            enviado_at: null,
+            motivo: `Reaberto para correção/re-envio em ${new Date().toLocaleString("pt-BR")} (estava enviado).`
+          } : t))
         );
+
+        toast.success("Lançamento reaberto", {
+          description: "Agora você pode editá-lo ou enviá-lo novamente ao Conta Azul."
+        });
+      } catch (e: any) {
+        console.error(e);
+        toast.error("Erro ao reabrir lançamento", { description: e.message });
+      } finally {
+        setSavingId(null);
       }
-      toast.success("Lançamento reaberto para correção");
     },
     [empresaId, saveNormalization]
   );
