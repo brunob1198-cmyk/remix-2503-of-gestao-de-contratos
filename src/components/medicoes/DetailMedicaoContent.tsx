@@ -12,7 +12,7 @@ import { PDFDocument } from "pdf-lib";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { savePDFChunk, getPDFChunks, clearPDFChunks } from "@/lib/db";
+import { savePDFChunk, getPDFChunks, clearPDFChunks, saveExportState, getExportState, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
   getImagesForSlice,
@@ -22,10 +22,10 @@ import {
   PDFExportLog 
 } from "@/lib/pdfExportUtils";
 
-function chunkPairs<T>(arr: T[]): T[][] {
+function chunkGroups<T>(arr: T[], size: number = 3): T[][] {
   const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += 2) {
-    result.push(arr.slice(i, i + 2));
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
   }
   return result;
 }
@@ -155,16 +155,6 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [canResume, setCanResume] = useState(false);
 
-  useEffect(() => {
-    const checkResume = async () => {
-      const chunks = await getPDFChunks(detailMedicao.id);
-      if (chunks.length > 0) {
-        setCanResume(true);
-      }
-    };
-    checkResume();
-  }, [detailMedicao.id]);
-
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     const newLog: PDFExportLog = {
       timestamp: new Date().toLocaleTimeString(),
@@ -174,6 +164,22 @@ export function DetailMedicaoContent({
     setExportLogs(prev => [newLog, ...prev].slice(0, 50));
     console.log(`[PDF Export] ${message}`);
   }, []);
+
+  useEffect(() => {
+    const checkResume = async () => {
+      const chunks = await getPDFChunks(detailMedicao.id);
+      const state = await getExportState(detailMedicao.id);
+      
+      if (chunks.length > 0 || state) {
+        setCanResume(true);
+        if (state && state.state?.status === 'exporting' && !isExporting) {
+          addLog("Detectada exportação pendente. Clique em 'Retomar' para continuar.", "info");
+          setShowLogPanel(true);
+        }
+      }
+    };
+    checkResume();
+  }, [detailMedicao.id, addLog, isExporting]);
 
   // Update logs when exporting state changes
   useEffect(() => {
@@ -400,10 +406,10 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '320px' }}>
-        <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '280px' }}>
+        <div className="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=640&t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=400&quality=60&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -411,35 +417,28 @@ export function DetailMedicaoContent({
             crossOrigin="anonymous"
           />
         </div>
-        <div className="p-3 bg-muted/20 space-y-1.5 flex-1">
+        <div className="p-2 bg-muted/20 space-y-1 flex-1">
           {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-xs text-foreground break-words">
+            <p className="font-semibold text-[9px] text-foreground leading-tight line-clamp-2">
               {foto.item_codigo} — {foto.item_descricao}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-            {options?.showSiteName && foto.site_nome && <span>{foto.site_nome}</span>}
-            {foto.municipio && (
-              <span className="flex items-center gap-0.5">
-                <MapPin className="h-2.5 w-2.5" />
-                {foto.municipio}
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground">
+            {options?.showSiteName && foto.site_nome && <span className="truncate max-w-[80px]">{foto.site_nome}</span>}
             {foto.diario_data && (
               <span className="flex items-center gap-0.5">
-                <Calendar className="h-2.5 w-2.5" />
+                <Calendar className="h-2 w-2" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
+            <Badge className="text-[7px] px-1 py-0 h-3 text-white" style={{ backgroundColor: classColor(foto.classificacao) }}>
+              {classLabel(foto.classificacao)}
+            </Badge>
           </div>
 
-          <Badge className="text-[9px] text-white w-fit" style={{ backgroundColor: classColor(foto.classificacao) }}>
-            {classLabel(foto.classificacao)}
-          </Badge>
-
           {foto.legenda && (
-            <p className="text-[10px] text-muted-foreground italic leading-relaxed break-words">“{foto.legenda}”</p>
+            <p className="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“{foto.legenda}”</p>
           )}
         </div>
       </div>
@@ -536,13 +535,18 @@ export function DetailMedicaoContent({
               if (img.dataset.src && !img.src) img.src = img.dataset.src;
             });
 
-            await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+            await ensureImagesLoaded(content, (msg) => {
+              // Only log meaningful progress to avoid freezing UI with thousands of logs
+              if (msg.includes("processadas") || msg.includes("Iniciando")) {
+                addLog(msg, "info");
+              }
+            }, {
               images: imagesInSlice,
               concurrency: 4,
-              timeoutMs: 25000,
+              timeoutMs: 15000, // Reduced from 25000 to fail faster and retry
               label: `Página ${pageNum}`,
             });
-            await waitForNextPaint(100);
+            await waitForNextPaint(50);
           }
           
           const renderPage = async () => {
@@ -592,8 +596,8 @@ export function DetailMedicaoContent({
           if (pageCanvas) {
             const renderedHeight = (slice.height * usableWidth) / contentWidth;
             if (currentPdfPages > 0) pdf.addPage();
-            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65);
-            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "FAST");
+            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.5); // Reduced quality from 0.65 to 0.5
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "MEDIUM"); // Changed from FAST to MEDIUM for better balance
             currentPdfPages++;
             pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
@@ -609,6 +613,15 @@ export function DetailMedicaoContent({
               data: chunkData,
               timestamp: Date.now()
             });
+            
+            // Save state for background resumption
+            await saveExportState(detailMedicao.id, {
+              lastPageIndex: i,
+              totalSlices: slices.length,
+              status: i === slices.length - 1 ? 'completed' : 'exporting',
+              filename
+            });
+
             addLog(`Bloco ${chunkIndex + 1} salvo (Páginas ${i - currentPdfPages + 2} a ${i + 1})`, "success");
             
             // Start fresh instance for next chunk
@@ -666,6 +679,7 @@ export function DetailMedicaoContent({
       URL.revokeObjectURL(url);
       
       await clearPDFChunks(detailMedicao.id);
+      await clearExportState(detailMedicao.id);
       setCanResume(false);
       addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
@@ -1102,7 +1116,7 @@ export function DetailMedicaoContent({
                       {/* Photo groups by classification */}
                       <div className="divide-y">
                         {classes.map(([className, fotos]) => {
-                          const photoPairs = chunkPairs(fotos);
+                          const photoPairs = chunkGroups(fotos, 3);
                           return (
                             <div key={className} className="p-3 space-y-3">
                               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
@@ -1112,7 +1126,7 @@ export function DetailMedicaoContent({
                                 <div
                                   key={`${className}-${pi}`}
                                   data-pdf-section="site-medicao-foto-row"
-                                  className="grid grid-cols-2 gap-4 items-stretch"
+                                  className="grid grid-cols-3 gap-3 items-stretch"
                                   style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                                 >
                                   {pair.map((foto) => renderPhotoCard(foto))}
@@ -1130,7 +1144,7 @@ export function DetailMedicaoContent({
               /* SEPARADA / AGRUPADA: Photos grouped by item */
               <div className="space-y-6">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
-                  const itemPairs = chunkPairs(itemFotos);
+                  const itemPairs = chunkGroups(itemFotos, 3);
 
                   return (
                     <div key={itemLabel}>
@@ -1142,7 +1156,7 @@ export function DetailMedicaoContent({
                           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                         >
                           {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
-                          <div className="grid grid-cols-2 gap-4 items-stretch" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <div className="grid grid-cols-3 gap-3 items-stretch" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                             {pair.map((foto) => renderPhotoCard(foto))}
                           </div>
                         </div>
@@ -1153,7 +1167,7 @@ export function DetailMedicaoContent({
 
                 {fotosByItem.gerais.length > 0 && (
                   <div>
-                    {chunkPairs(fotosByItem.gerais).map((pair, pi) => (
+                    {chunkGroups(fotosByItem.gerais, 3).map((pair, pi) => (
                       <div
                         key={`gerais-${pi}`}
                         data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
@@ -1161,7 +1175,7 @@ export function DetailMedicaoContent({
                         style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                       >
                         {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-muted-foreground">Fotos Gerais</h3>}
-                        <div className="foto-card grid grid-cols-2 gap-4 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                        <div className="foto-card grid grid-cols-3 gap-3 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                           {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
                       </div>
