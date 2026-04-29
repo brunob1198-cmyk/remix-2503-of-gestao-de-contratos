@@ -230,9 +230,7 @@ export default function DiarioCampoPage() {
 
   const handleUploadFotos = async (files: FileList, input?: HTMLInputElement | null) => {
     if (!files.length) return;
-    setUploading(true);
 
-    // If activity not yet saved, auto-create it first
     let diarioId = currentAtividade?.id;
     if (!diarioId) {
       try {
@@ -250,53 +248,30 @@ export default function DiarioCampoPage() {
         diarioId = result?.id;
         if (!diarioId) {
           toast({ title: "Erro ao criar atividade", variant: "destructive" });
-          setUploading(false);
           return;
         }
         setSaved(true);
         setDirty(false);
       } catch {
         toast({ title: "Erro ao criar atividade", variant: "destructive" });
-        setUploading(false);
         return;
       }
     }
 
-    let uploadedCount = 0;
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const path = `campo/${diarioId}/${Date.now()}_${i}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
-      if (uploadError) {
-        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-        continue;
-      }
-      const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      // Insert directly with the correct diarioId to avoid stale hook reference
-      const { error: insertError } = await supabase
-        .from("diario_campo_fotos")
-        .insert([{ diario_campo_id: diarioId, url: urlData.publicUrl }]);
-      if (insertError) {
-        toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
-        await supabase.storage.from("diario-fotos").remove([path]);
-        continue;
-      }
-
-      uploadedCount += 1;
-    }
-    // Refresh fotos and atividades queries
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
-    setUploading(false);
-
-    if (input) {
-      input.value = "";
+      const id = crypto.randomUUID();
+      await addToUploadQueue({
+        id,
+        diarioId,
+        file,
+        status: 'pending'
+      });
     }
 
-    if (uploadedCount > 0) {
-      toast({ title: `${uploadedCount} foto(s) enviada(s)!` });
-    }
+    setUploadQueue(await getUploadQueue());
+    if (input) input.value = "";
+    processQueue();
   };
 
   const handleRemoveFoto = async (fotoId: string) => {
@@ -305,6 +280,11 @@ export default function DiarioCampoPage() {
   };
 
   const markDirty = () => { setDirty(true); setSaved(false); };
+
+  const pendingCount = uploadQueue.filter(i => i.status === 'pending' || i.status === 'uploading').length;
+  const failedCount = uploadQueue.filter(i => i.status === 'failed').length;
+  const completedCount = uploadQueue.filter(i => i.status === 'completed').length;
+  const totalInQueue = uploadQueue.length;
 
   return (
     <div className="space-y-6">
