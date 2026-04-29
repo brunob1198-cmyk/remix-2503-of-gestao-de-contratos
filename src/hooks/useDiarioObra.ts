@@ -403,9 +403,24 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_fotos", diario?.id],
     queryFn: async () => {
       if (!diario?.id) return [];
-      const { data: d, error } = await supabase.from("diario_fotos").select("*").eq("diario_id", diario.id).limit(2000);
-      if (error) throw error;
-      return d as DiarioFoto[];
+      
+      let all: any[] = [];
+      let from = 0;
+      let to = 999;
+      while (true) {
+        const { data: d, error } = await supabase
+          .from("diario_fotos")
+          .select("*")
+          .eq("diario_id", diario.id)
+          .range(from, to);
+        if (error) throw error;
+        if (!d || d.length === 0) break;
+        all = [...all, ...d];
+        if (d.length < 1000) break;
+        from += 1000;
+        to += 1000;
+      }
+      return all as DiarioFoto[];
     },
     enabled: !!diario?.id,
   });
