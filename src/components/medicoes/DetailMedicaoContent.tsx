@@ -607,6 +607,15 @@ export function DetailMedicaoContent({
               data: chunkData,
               timestamp: Date.now()
             });
+            
+            // Save state for background resumption
+            await saveExportState(detailMedicao.id, {
+              lastPageIndex: i,
+              totalSlices: slices.length,
+              status: i === slices.length - 1 ? 'completed' : 'exporting',
+              filename
+            });
+
             addLog(`Bloco ${chunkIndex + 1} salvo (Páginas ${i - currentPdfPages + 2} a ${i + 1})`, "success");
             
             // Start fresh instance for next chunk
