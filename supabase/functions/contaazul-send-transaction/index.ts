@@ -112,7 +112,8 @@ async function sendOne(
   empresaId: string,
   accessToken: string,
   input: TransactionInput,
-  force: boolean = false
+  force: boolean = false,
+  contatoId?: string
 ) {
   const startedAt = Date.now();
   
@@ -147,17 +148,18 @@ async function sendOne(
     };
   }
 
-  const payload = {
+  const payload: any = {
     data_competencia: transactionDate,
     valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
     conta_financeira: input.financial_account_id,
     id_categoria: input.category_id,
+    id_contato: contatoId, // Adicionando o contato obrigatório
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: transactionValue, // Garantindo que categoriesRatio[0].value (valor do rateio) esteja preenchido
+        valor: transactionValue,
         detalhe_valor: {
           valor_bruto: transactionValue,
           valor_liquido: transactionValue
@@ -376,6 +378,18 @@ serve(async (req) => {
     const rawsById = new Map((raws || []).map((r) => [r.id, r]));
 
     const accessToken = await getValidAccessToken(admin, empresaId);
+    
+    // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
+    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+    });
+    let defaultContactId: string | undefined;
+    if (contactsResp.ok) {
+      const contactsData = await contactsResp.json();
+      const firstContact = Array.isArray(contactsData) ? contactsData[0] : (contactsData.itens?.[0]);
+      defaultContactId = firstContact?.id;
+    }
+
     const results = [];
     for (const n of norms) {
       const raw = rawsById.get(n.flash_transaction_id);
@@ -388,7 +402,7 @@ serve(async (req) => {
         financial_account_id: n.conta_azul_account_id,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
-      }, true); 
+      }, true, defaultContactId); 
       results.push(r);
     }
 
