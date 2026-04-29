@@ -1595,7 +1595,7 @@ export default function AcompanhamentoMedicoesPage() {
                                     )}
                                     <div className="p-3">
                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        {fotos.map((foto) => {
+                                        {displayFotos.map((foto) => {
                                           const idx = geracaoFotos.findIndex(f => f.id === foto.id);
                                           return (
                                             <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
