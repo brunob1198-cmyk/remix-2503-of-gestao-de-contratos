@@ -111,18 +111,21 @@ async function sendOne(
   supabase: any,
   empresaId: string,
   accessToken: string,
-  input: TransactionInput
+  input: TransactionInput,
+  force: boolean = false
 ) {
   const startedAt = Date.now();
   
-  // Verificação obrigatória de duplicidade
-  const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
-  if (alreadySent) {
-    return {
-      flash_transaction_id: input.flash_transaction_id,
-      status: "skipped",
-      error: "Transação já integrada anteriormente (controle de duplicidade)",
-    };
+  // Verificação de duplicidade (pode ser ignorada se force=true, ex: reaberto)
+  if (!force) {
+    const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
+    if (alreadySent) {
+      return {
+        flash_transaction_id: input.flash_transaction_id,
+        status: "skipped",
+        error: "Transação já integrada anteriormente (controle de duplicidade)",
+      };
+    }
   }
 
   const transactionValue = Math.abs(Number(input.value) || 0);
@@ -138,6 +141,7 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
+        valor: transactionValue,
         detalhe_valor: {
           valor_bruto: transactionValue,
           valor_liquido: transactionValue
@@ -149,6 +153,7 @@ async function sendOne(
         {
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
+          valor: transactionValue,
           descricao: `Parcela única - ${input.description}`,
           detalhe_valor: {
             valor_bruto: transactionValue,
@@ -338,7 +343,7 @@ serve(async (req) => {
         financial_account_id: n.conta_azul_account_id,
         date,
         type: (n.tipo_operacao as any) || "despesa",
-      });
+      }, n.status === "normalizado"); // Force send if status is "normalizado" (reopened or new)
       results.push(r);
     }
 
