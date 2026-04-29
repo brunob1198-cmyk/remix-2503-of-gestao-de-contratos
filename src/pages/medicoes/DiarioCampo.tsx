@@ -49,6 +49,74 @@ export default function DiarioCampoPage() {
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+
+  // Load pending uploads on mount
+  useEffect(() => {
+    const loadQueue = async () => {
+      const queue = await getUploadQueue();
+      if (queue.length > 0) {
+        setUploadQueue(queue);
+        const hasPending = queue.some(i => i.status === 'pending' || i.status === 'uploading');
+        if (hasPending) {
+          processQueue();
+        }
+      }
+    };
+    loadQueue();
+  }, []);
+
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueue) return;
+    setIsProcessingQueue(true);
+
+    const queue = await getUploadQueue();
+    const pending = queue.filter(i => i.status === 'pending' || i.status === 'uploading' || i.status === 'failed');
+    
+    if (pending.length === 0) {
+      setIsProcessingQueue(false);
+      return;
+    }
+
+    const CONCURRENCY = 4;
+    let index = 0;
+
+    const worker = async () => {
+      while (index < pending.length) {
+        const item = pending[index++];
+        try {
+          await updateUploadStatus(item.id, 'uploading');
+          setUploadQueue(await getUploadQueue());
+
+          const path = item.path || `campo/${item.diarioId}/${Date.now()}_${item.id}_${item.file.name}`;
+          
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { upsert: true });
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          
+          const { error: insertError } = await supabase
+            .from("diario_campo_fotos")
+            .insert([{ diario_campo_id: item.diarioId, url: urlData.publicUrl }]);
+          
+          if (insertError) throw insertError;
+
+          await updateUploadStatus(item.id, 'completed', { url: urlData.publicUrl, path });
+        } catch (error: any) {
+          console.error("Upload error:", error);
+          await updateUploadStatus(item.id, 'failed', { error: error.message });
+        }
+        setUploadQueue(await getUploadQueue());
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+    
+    setIsProcessingQueue(false);
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
+  }, [queryClient, isProcessingQueue]);
 
   const handleProjetoChange = (projetoId: string) => {
     setSelectedProjetoId(projetoId);
