@@ -1533,7 +1533,7 @@ export default function AcompanhamentoMedicoesPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold flex items-center gap-2">
                           <Camera className="h-4 w-4" />
-                          Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos)
+                          Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos carregadas)
                           {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") && (
                             <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
                           )}
