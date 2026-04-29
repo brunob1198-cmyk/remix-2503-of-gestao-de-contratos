@@ -93,6 +93,7 @@ export default function AcompanhamentoMedicoesPage() {
       const { data: diarios, error: dErr } = await supabase
         .from("diarios_obra")
         .select("id, site_id, data")
+        .order('data', { ascending: false })
         .limit(100000);
       if (dErr) throw dErr;
       if (!diarios || diarios.length === 0) return [];
@@ -1532,7 +1533,7 @@ export default function AcompanhamentoMedicoesPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold flex items-center gap-2">
                           <Camera className="h-4 w-4" />
-                          Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos)
+                          Relatório Fotográfico ({geracaoFotos.filter(f => f.selected).length}/{geracaoFotos.length} fotos carregadas)
                           {(gerarTipoMedicao === "separada" || gerarTipoMedicao === "mista") && (
                             <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
                           )}
@@ -1559,15 +1560,15 @@ export default function AcompanhamentoMedicoesPage() {
                           const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                           return (
                       <div className="space-y-6 max-h-[400px] overflow-auto">
-                        {geracaoFotos.length > 2000 && (
+                        {geracaoFotos.length > 5000 && (
                           <div className="p-3 mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                             ⚠️ <strong>Grande volume de fotos detectado!</strong> ({geracaoFotos.length} fotos). 
-                            O sistema mostrará apenas as primeiras 2000 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
+                            O sistema mostrará apenas as primeiras 5000 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
                           </div>
                         )}
                                 {sorted.map(([siteName, { fotos, siteId }]) => {
                                   // Limit the number of photos shown in the preview list
-                                  const displayFotos = fotos.slice(0, 2000); 
+                                  const displayFotos = fotos.slice(0, 5000); 
                                   if (displayFotos.length === 0 && fotos.length > 0) return null;
                                   
                                   const siteItems = gerarTipoMedicao === "mista"
@@ -1639,7 +1640,7 @@ export default function AcompanhamentoMedicoesPage() {
                         })()
                       ) : (
                         // Agrupada: flat grid
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-auto">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[600px] overflow-auto">
                           {geracaoFotos.map((foto, idx) => (
                             <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
                               <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
