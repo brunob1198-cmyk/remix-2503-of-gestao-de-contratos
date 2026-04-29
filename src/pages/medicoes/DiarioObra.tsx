@@ -1606,7 +1606,8 @@ export default function DiarioObraPage() {
             <CardContent className="space-y-5">
               {photoGroups.map(groupName => {
                 const groupFotos = fotos.filter(
-                  f => !f.diario_producao_id && f.classificacao === groupName
+                  f => !f.diario_producao_id && 
+                  (f.classificacao?.toLowerCase() === groupName.toLowerCase())
                 );
                 const inputRef = (el: HTMLInputElement | null) => {
                   photoGroupUploadRefs.current[groupName] = el;
