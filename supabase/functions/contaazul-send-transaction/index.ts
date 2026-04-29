@@ -307,8 +307,6 @@ async function sendOne(
             }
           }
         })();
-      }
-    }
       } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
         status = "erro";
         errorMsg = "Conta Azul retornou status PENDING mas não forneceu um protocolo de rastreio.";
