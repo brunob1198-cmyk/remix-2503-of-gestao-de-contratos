@@ -12,7 +12,7 @@ import { PDFDocument } from "pdf-lib";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { savePDFChunk, getPDFChunks, clearPDFChunks, saveExportState, getExportState, clearExportState } from "@/lib/db";
+import { getPDFChunks, clearPDFChunks, getExportState, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
   getPdfSafeImageDataUrl,
