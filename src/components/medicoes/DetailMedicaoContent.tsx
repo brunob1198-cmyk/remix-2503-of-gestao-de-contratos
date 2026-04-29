@@ -1123,7 +1123,7 @@ export function DetailMedicaoContent({
               /* SEPARADA / AGRUPADA: Photos grouped by item */
               <div className="space-y-6">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
-                  const itemPairs = chunkPairs(itemFotos);
+                  const itemPairs = chunkGroups(itemFotos, 3);
 
                   return (
                     <div key={itemLabel}>
