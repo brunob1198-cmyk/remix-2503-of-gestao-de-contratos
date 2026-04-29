@@ -65,12 +65,34 @@ async function getValidAccessToken(supabase: any, empresaId: string): Promise<st
 }
 
 async function verifyAndReconcile(supabase: any, log: any, accessToken: string) {
-  const { conta_azul_transaction_id, flash_transaction_id, empresa_id } = log;
+  let { conta_azul_transaction_id, conta_azul_protocolo, flash_transaction_id, empresa_id } = log;
   
-  if (!conta_azul_transaction_id) return { status: "no_ca_id" };
-
   try {
-    // 1. Verificar se o lançamento existe e buscar parcelas
+    // 1. Se não tiver ID mas tiver protocolo, tenta recuperar o ID pelo protocolo
+    if (!conta_azul_transaction_id && conta_azul_protocolo) {
+      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo}...`);
+      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${conta_azul_protocolo}`, {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+      });
+      
+      if (protResp.ok) {
+        const protData = await protResp.json();
+        if (protData.status === "SUCCESS") {
+          conta_azul_transaction_id = protData.resourceId || protData.id;
+          if (conta_azul_transaction_id) {
+            await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
+          }
+        } else if (protData.status === "ERROR") {
+          return { status: "ca_protocol_error", detail: protData.errors };
+        } else {
+          return { status: "still_pending" };
+        }
+      }
+    }
+
+    if (!conta_azul_transaction_id) return { status: "no_ca_id" };
+
+    // 2. Buscar parcelas do lançamento
     const resp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${conta_azul_transaction_id}/parcelas`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
@@ -84,19 +106,28 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     const parcela = parcelas[0];
     if (!parcela) return { status: "no_parcela" };
 
-    // 2. Verificar se já está baixado (pago)
+    // 3. Verificar status da parcela
     if (parcela.status === "PAID" || parcela.baixado) {
        await supabase.from("flash_integration_logs").update({ 
+         status: "ENVIADO", // Garante que o status final está correto
          reconciliado: true, 
          reconciliado_at: new Date().toISOString() 
        }).eq("id", log.id);
+       
+       // Atualiza a normalização se necessário
+       await supabase.from("flash_normalizacao").update({ 
+         status: "enviado",
+         enviado_at: new Date().toISOString(),
+         motivo: `Reconciliado via Job: Pago no Conta Azul (ID: ${conta_azul_transaction_id})`
+       }).eq("flash_transaction_id", flash_transaction_id);
+
        return { status: "already_paid" };
     }
 
-    // 3. Se não estiver baixado, tentar realizar a baixa (Re-tentativa de baixa)
+    // 4. Tentar realizar a baixa se não estiver pago
     const { data: norm } = await supabase
       .from("flash_normalizacao")
-      .select("conta_azul_account_id, conta_azul_payload")
+      .select("conta_azul_account_id, conta_azul_payload, tipo_operacao")
       .eq("flash_transaction_id", flash_transaction_id)
       .maybeSingle();
 
@@ -120,10 +151,17 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
     if (baixaResp.ok) {
       await supabase.from("flash_integration_logs").update({ 
+        status: "ENVIADO",
         reconciliado: true, 
-        reconciliado_at: new Date().toISOString(),
-        response: { ...log.response, reconciliation_baixa: "success" }
+        reconciliado_at: new Date().toISOString()
       }).eq("id", log.id);
+
+      await supabase.from("flash_normalizacao").update({ 
+        status: "enviado",
+        enviado_at: new Date().toISOString(),
+        motivo: `Reconciliado via Job: Baixa realizada com sucesso (ID: ${conta_azul_transaction_id})`
+      }).eq("flash_transaction_id", flash_transaction_id);
+
       return { status: "reconciled_with_baixa" };
     } else {
       const err = await baixaResp.text();
@@ -139,17 +177,19 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // 1. Buscar transações marcadas como "ENVIADO" mas não reconciliadas há mais de 5 minutos
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
+    // Busca logs que: 
+    // - Deram erro de processamento assíncrono (protocolo pendente)
+    // - Ou estão como ENVIADO mas sem flag de reconciliado
     const { data: logs, error: logsErr } = await supabase
       .from("flash_integration_logs")
       .select("*")
-      .eq("status", "ENVIADO")
       .eq("evento", "send_transaction")
       .is("reconciliado", null)
       .lt("created_at", fiveMinutesAgo)
+      .or(`status.eq.ENVIADO,erro.ilike.%processado%,erro.ilike.%Protocolo%`)
+      .order('created_at', { ascending: false })
       .limit(20);
 
     if (logsErr) throw logsErr;
@@ -172,9 +212,6 @@ serve(async (req) => {
       const res = await verifyAndReconcile(supabase, log, tokenCache.get(log.empresa_id));
       results.push({ id: log.id, ...res });
     }
-
-    // 2. Tentar re-enviar transações que deram erro mas estão "enviado" na normalização (inconsistência)
-    // Ou simplesmente transações que ficaram presas.
     
     return new Response(JSON.stringify({ processed: logs.length, results }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
