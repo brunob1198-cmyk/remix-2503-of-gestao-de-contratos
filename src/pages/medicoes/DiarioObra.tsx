@@ -368,22 +368,42 @@ export default function DiarioObraPage() {
       return;
     }
     // Upload pending files
-    for (let i = 0; i < pendingProdFiles.length; i++) {
-      const file = pendingProdFiles[i];
-      const path = `${diarioId}/${Date.now()}_${i}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
-      if (uploadError) {
-        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-        continue;
-      }
-      const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      await addFoto.mutateAsync({
-        diario_id: diarioId,
-        url: urlData.publicUrl,
-        classificacao: "execucao",
-        diario_producao_id: prodData.id,
-      });
+    // Upload pending files in parallel with compression
+    const totalFiles = pendingProdFiles.length;
+    setUploadProgress({ current: 0, total: totalFiles });
+    
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < pendingProdFiles.length; i += CHUNK_SIZE) {
+      const chunk = pendingProdFiles.slice(i, i + CHUNK_SIZE);
+      
+      await Promise.all(chunk.map(async (file, index) => {
+        const fileIndex = i + index;
+        try {
+          let fileToUpload = file;
+          if (isFileImage(file.name)) {
+            fileToUpload = await compressImage(file);
+          }
+
+          const path = `${diarioId}/${Date.now()}_${fileIndex}_${file.name}`;
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          if (uploadError) {
+            toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
+            return;
+          }
+          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          await addFoto.mutateAsync({
+            diario_id: diarioId,
+            url: urlData.publicUrl,
+            classificacao: "execucao",
+            diario_producao_id: prodData.id,
+          });
+          setUploadProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
+        } catch (err) {
+          console.error(`Erro ao processar arquivo:`, err);
+        }
+      }));
     }
+    setUploadProgress(null);
     setProdItemId("");
     setProdQtd("");
     setPendingProdFiles([]);
