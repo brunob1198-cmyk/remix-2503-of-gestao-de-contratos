@@ -261,9 +261,12 @@ serve(async (req) => {
       let valorBaixado = 0;
       let descricao = nf.observacoes || "";
 
+      let numeroVenda = null;
+
       if (nf.id_venda) {
         const venda = await fetchVendaDetalhes(accessToken, nf.id_venda);
         if (venda) {
+          numeroVenda = venda.number || venda.numero || null;
           if (venda.rateio_centro_custo && venda.rateio_centro_custo.length > 0) {
             centroCusto = venda.rateio_centro_custo[0].centro_custo?.nome || null;
           }
@@ -282,6 +285,7 @@ serve(async (req) => {
         valor_aberto: valorAberto,
         valor_baixado: valorBaixado,
         descricao: descricao,
+        numero_venda: numeroVenda,
         centro_custo: centroCusto,
         status: nf.status || null,
         payload_json: nf,
@@ -295,9 +299,12 @@ serve(async (req) => {
       let valorBaixado = 0;
       let descricao = nf.informacoes_adicionais || "";
 
+      let numeroVenda = null;
+
       if (nf.id_venda) {
         const venda = await fetchVendaDetalhes(accessToken, nf.id_venda);
         if (venda) {
+          numeroVenda = venda.number || venda.numero || null;
           if (venda.rateio_centro_custo && venda.rateio_centro_custo.length > 0) {
             centroCusto = venda.rateio_centro_custo[0].centro_custo?.nome || null;
           }
@@ -316,6 +323,7 @@ serve(async (req) => {
         valor_aberto: valorAberto,
         valor_baixado: valorBaixado,
         descricao: descricao,
+        numero_venda: numeroVenda,
         centro_custo: centroCusto,
         status: nf.status || null,
         payload_json: nf,
