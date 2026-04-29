@@ -1694,7 +1694,8 @@ export default function DiarioObraPage() {
               {/* Fotos sem grupo (classificacao = "execucao" antigo ou null) */}
               {(() => {
                 const semGrupo = fotos.filter(
-                  f => !f.diario_producao_id && !photoGroups.includes(f.classificacao)
+                  f => !f.diario_producao_id && 
+                  !photoGroups.some(gn => gn.toLowerCase() === f.classificacao?.toLowerCase())
                 );
                 if (semGrupo.length === 0) return null;
                 return (
