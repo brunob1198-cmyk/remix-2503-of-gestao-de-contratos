@@ -403,7 +403,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_fotos", diario?.id],
     queryFn: async () => {
       if (!diario?.id) return [];
-      const { data: d, error } = await supabase.from("diario_fotos").select("*").eq("diario_id", diario.id);
+      const { data: d, error } = await supabase.from("diario_fotos").select("*").eq("diario_id", diario.id).limit(2000);
       if (error) throw error;
       return d as DiarioFoto[];
     },
