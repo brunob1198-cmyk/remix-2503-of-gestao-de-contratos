@@ -273,3 +273,37 @@ export const buildPageSlices = (
 
   return slices;
 };
+
+export const getDirectChildPdfSections = (content: HTMLElement): HTMLElement[] =>
+  Array.from(content.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
+    (el) => !el.parentElement?.closest("[data-pdf-section]")
+  );
+
+export const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+  let timeoutId: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
+};
+
+export const unloadImagesOutsideSection = (content: HTMLElement, activeSection: HTMLElement, keepLoadedWindow = 18) => {
+  const sections = getDirectChildPdfSections(content);
+  const activeIndex = sections.indexOf(activeSection);
+  if (activeIndex === -1) return;
+
+  sections.forEach((section, index) => {
+    if (Math.abs(index - activeIndex) <= keepLoadedWindow) return;
+    section.querySelectorAll<HTMLImageElement>('img[data-original-src], img[data-src]').forEach((img) => {
+      if (img.src?.startsWith("data:")) {
+        img.dataset.src = img.src;
+      }
+      img.removeAttribute("src");
+    });
+  });
+};
