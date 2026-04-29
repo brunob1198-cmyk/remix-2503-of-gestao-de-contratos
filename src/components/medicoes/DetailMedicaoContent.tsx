@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { savePDFChunk, getPDFChunks, clearPDFChunks, saveExportState, getExportState, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
+  getPdfSafeImageDataUrl,
   getImagesForSlice,
   collectSafeBreakPoints, 
   buildPageSlices,
@@ -76,8 +77,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.style.overflow = "visible";
 
   content.querySelectorAll("img").forEach((img) => {
-    img.loading = "lazy";
-    img.decoding = "async";
+    img.loading = "eager";
+    img.decoding = "sync";
     img.crossOrigin = "anonymous";
     if (isLogoImage(img)) {
       img.loading = "eager";
@@ -87,6 +88,7 @@ const createPdfExportContainer = (source: HTMLElement) => {
       img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
     } else if (!isLogoImage(img)) {
       // Store src in a data attribute and remove it to save memory until needed
+      img.dataset.originalSrc = img.src;
       img.dataset.src = img.src;
       img.src = "";
       img.style.display = "block"; // Keep layout
@@ -326,13 +328,30 @@ export function DetailMedicaoContent({
       const diarioIds = diarios.map(d => d.id);
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-      // Improved query to handle large amounts of photos if necessary
-      const { data: fotos, error: fErr } = await supabase
-        .from("diario_fotos")
-        .select("*")
-        .in("diario_id", diarioIds)
-        .order('created_at', { ascending: true }); // Ensure consistent order
-      if (fErr) return [];
+      const fetchAllFotos = async () => {
+        const all: any[] = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from("diario_fotos")
+            .select("*")
+            .in("diario_id", diarioIds)
+            .order("created_at", { ascending: true })
+            .range(from, from + 999);
+          if (error) throw error;
+          if (!data?.length) break;
+          all.push(...data);
+          if (data.length < 1000) break;
+          from += 1000;
+        }
+        return all;
+      };
+      let fotos: any[] = [];
+      try {
+        fotos = await fetchAllFotos();
+      } catch {
+        return [];
+      }
 
       const producaoIds = (fotos || [])
         .map(f => (f as any).diario_producao_id)
@@ -471,6 +490,27 @@ export function DetailMedicaoContent({
       const logoImages = allImages.filter(isLogoImage);
       const photoImages = allImages.filter((img) => !isLogoImage(img));
       addLog(`Documento com ${photoImages.length} fotos e ${logoImages.length} logo(s).`, "info");
+
+      addLog("Preparando fotos em alta qualidade para o PDF...", "info");
+      let preparedPhotos = 0;
+      const preparePhoto = async (img: HTMLImageElement) => {
+        const originalSrc = img.dataset.originalSrc || img.dataset.src || img.src;
+        if (!originalSrc || originalSrc.startsWith("data:")) return;
+        try {
+          img.src = await getPdfSafeImageDataUrl(originalSrc, { maxWidth: 1400, maxHeight: 1050, quality: 0.86 });
+          img.dataset.src = img.src;
+          preparedPhotos += 1;
+          if (preparedPhotos % 25 === 0 || preparedPhotos === photoImages.length) {
+            addLog(`Fotos preparadas: ${preparedPhotos}/${photoImages.length}`, "info");
+          }
+        } catch {
+          img.src = originalSrc;
+        }
+      };
+      for (let i = 0; i < photoImages.length; i += 6) {
+        await Promise.all(photoImages.slice(i, i + 6).map(preparePhoto));
+        await waitForNextPaint(10);
+      }
       
       const logoLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
         images: logoImages,
@@ -502,7 +542,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 0.8; // Reduced scale to significantly accelerate rendering and reduce memory usage
+      const scale = photoImages.length > 250 ? 1.15 : 1.45;
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -595,10 +635,9 @@ export function DetailMedicaoContent({
           if (pageCanvas) {
             const renderedHeight = (slice.height * usableWidth) / contentWidth;
             if (currentPdfPages > 0) pdf.addPage();
-            // Use lower quality and FAST compression for very large projects to prevent memory exhaustion
-            const quality = slices.length > 50 ? 0.3 : 0.45;
+            const quality = slices.length > 80 ? 0.72 : 0.84;
             const pageImageData = pageCanvas.toDataURL("image/jpeg", quality);
-            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, slices.length > 50 ? "FAST" : "MEDIUM");
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, slices.length > 80 ? "MEDIUM" : "SLOW");
             currentPdfPages++;
             pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
@@ -634,7 +673,7 @@ export function DetailMedicaoContent({
           }
 
           setExportProgress(15 + Math.floor(((i + 1) / slices.length) * 70));
-          imagesInSlice.forEach(img => { if (!isLogoImage(img)) { img.removeAttribute("src"); img.src = ""; } });
+          imagesInSlice.forEach(img => { if (!isLogoImage(img) && img.dataset.src) img.src = img.dataset.src; });
           await new Promise(resolve => setTimeout(resolve, pageNum % 5 === 0 ? 500 : 100));
         }
 
@@ -675,7 +714,9 @@ export function DetailMedicaoContent({
         useObjectStreams: true,
         addDefaultPage: false
       });
-      const blob = new Blob([finalBytes as any], { type: "application/pdf" });
+      const pdfBuffer = new ArrayBuffer(finalBytes.byteLength);
+      new Uint8Array(pdfBuffer).set(finalBytes);
+      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

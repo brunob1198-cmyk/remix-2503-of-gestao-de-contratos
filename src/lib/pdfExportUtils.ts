@@ -41,6 +41,48 @@ export async function getSafeImageUrl(url: string): Promise<string> {
   }
 }
 
+export async function getPdfSafeImageDataUrl(
+  url: string,
+  options: { maxWidth?: number; maxHeight?: number; quality?: number } = {},
+): Promise<string> {
+  if (!url || url.startsWith("data:")) return url;
+
+  const maxWidth = options.maxWidth ?? 1200;
+  const maxHeight = options.maxHeight ?? 900;
+  const quality = options.quality ?? 0.84;
+  const cleanUrl = url.replace(/([?&])(width|height|quality|t|pdf_export)=[^&]*/g, "$1").replace(/[?&]$/, "");
+
+  const response = await fetch(cleanUrl, { mode: "cors", cache: "force-cache" });
+  if (!response.ok) throw new Error(`Falha ao carregar imagem: HTTP ${response.status}`);
+  const blob = await response.blob();
+  if (!blob.type.startsWith("image/")) return cleanUrl;
+
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
+    const ratio = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+    const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+    const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return cleanUrl;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 /**
  * Validates if a canvas has actual content (not just a blank white/transparent page)
  */
