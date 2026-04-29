@@ -138,6 +138,7 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
+        valor: transactionValue,
         detalhe_valor: {
           valor_bruto: transactionValue,
           valor_liquido: transactionValue
@@ -149,6 +150,7 @@ async function sendOne(
         {
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
+          valor: transactionValue,
           descricao: `Parcela única - ${input.description}`,
           detalhe_valor: {
             valor_bruto: transactionValue,
