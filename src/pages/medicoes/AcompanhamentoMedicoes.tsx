@@ -608,7 +608,8 @@ export default function AcompanhamentoMedicoesPage() {
           const { data: fotos } = await supabase
             .from("diario_fotos")
             .select("*")
-            .in("diario_id", diarioIds);
+            .in("diario_id", diarioIds)
+            .limit(10000);
 
           const producaoIds = (fotos || []).map(f => (f as any).diario_producao_id).filter(Boolean);
           let producaoMap = new Map<string, any>();
