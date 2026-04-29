@@ -153,6 +153,17 @@ export function DetailMedicaoContent({
   const [exportProgress, setExportProgress] = useState(0);
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
+  const [canResume, setCanResume] = useState(false);
+
+  useEffect(() => {
+    const checkResume = async () => {
+      const chunks = await getPDFChunks(detailMedicao.id);
+      if (chunks.length > 0) {
+        setCanResume(true);
+      }
+    };
+    checkResume();
+  }, [detailMedicao.id]);
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     const newLog: PDFExportLog = {
