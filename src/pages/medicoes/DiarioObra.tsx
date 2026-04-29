@@ -794,6 +794,19 @@ export default function DiarioObraPage() {
             </TabsTrigger>
         </TabsList>
 
+        {uploadProgress && (
+          <div className="bg-muted/30 border rounded-lg p-3 flex flex-col gap-2">
+            <div className="flex justify-between items-center text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Processando e enviando fotos...
+              </span>
+              <span>{uploadProgress.current} de {uploadProgress.total}</span>
+            </div>
+            <Progress value={(uploadProgress.current / uploadProgress.total) * 100} className="h-2" />
+          </div>
+        )}
+
         {/* ===== CALENDAR VIEW ===== */}
         <TabsContent value="calendario">
             <DiarioCalendario
