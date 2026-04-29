@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { savePDFChunk, getPDFChunks, clearPDFChunks, saveExportState, getExportState, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
+  getPdfSafeImageDataUrl,
   getImagesForSlice,
   collectSafeBreakPoints, 
   buildPageSlices,
@@ -76,8 +77,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
   content.style.overflow = "visible";
 
   content.querySelectorAll("img").forEach((img) => {
-    img.loading = "lazy";
-    img.decoding = "async";
+    img.loading = "eager";
+    img.decoding = "sync";
     img.crossOrigin = "anonymous";
     if (isLogoImage(img)) {
       img.loading = "eager";
@@ -88,7 +89,6 @@ const createPdfExportContainer = (source: HTMLElement) => {
     } else if (!isLogoImage(img)) {
       // Store src in a data attribute and remove it to save memory until needed
       img.dataset.src = img.src;
-      img.src = "";
       img.style.display = "block"; // Keep layout
       img.style.minHeight = "200px";
     }
