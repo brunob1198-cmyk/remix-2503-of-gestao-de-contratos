@@ -1,0 +1,1 @@
+ALTER TABLE public.faturamentos_conta_azul ADD COLUMN IF NOT EXISTS numero_venda TEXT;
