@@ -572,7 +572,6 @@ export default function DiarioCampoPage() {
                       ) : (
                         <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
                       )}
-                    </>
                 </CardContent>
               </Card>
 
