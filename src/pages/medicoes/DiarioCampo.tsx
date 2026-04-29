@@ -52,20 +52,27 @@ export default function DiarioCampoPage() {
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
 
-  // Load pending uploads on mount
+  // Load pending uploads on mount and auto-process
   useEffect(() => {
-    const loadQueue = async () => {
+    let isMounted = true;
+    const loadAndProcess = async () => {
       const queue = await getUploadQueue();
+      if (!isMounted) return;
+      
       if (queue.length > 0) {
         setUploadQueue(queue);
-        const hasPending = queue.some(i => i.status === 'pending' || i.status === 'uploading');
-        if (hasPending) {
-          processQueue();
+        const hasWork = queue.some(i => i.status === 'pending' || i.status === 'uploading' || i.status === 'failed');
+        if (hasWork) {
+          // Small delay to ensure everything is ready
+          setTimeout(() => {
+            if (isMounted) processQueue();
+          }, 1000);
         }
       }
     };
-    loadQueue();
-  }, []);
+    loadAndProcess();
+    return () => { isMounted = false; };
+  }, [processQueue]);
 
   const processQueue = useCallback(async () => {
     if (isProcessingQueue) return;
