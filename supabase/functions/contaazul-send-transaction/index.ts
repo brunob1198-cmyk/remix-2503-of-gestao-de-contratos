@@ -215,13 +215,13 @@ async function sendOne(
           await new Promise(r => setTimeout(r, 3000));
           
           const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
-          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${conta_azul_protocolo}`, {
+          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
           });
           
           if (statusResp.ok) {
             const statusData = await statusResp.json();
-            console.log(`[DEBUG] Status do protocolo ${conta_azul_protocolo} (tentativa ${i+1}):`, statusData.status);
+            console.log(`[DEBUG] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, statusData.status);
             responseJson = { ...responseJson, last_polling_status: statusData };
 
             if (statusData.status === "SUCCESS") {
@@ -234,7 +234,7 @@ async function sendOne(
               break;
             }
           } else if (statusResp.status === 404) {
-            console.log(`[DEBUG] Protocolo ${conta_azul_protocolo} retornou 404. Tentando busca fallback imediato...`);
+            console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} retornou 404. Tentando busca fallback imediato...`);
             const path = input.type === "receita" ? "contas-a-receber" : "contas-a-pagar";
             const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${transactionDate}&data_vencimento_ate=${transactionDate}`;
             const searchResp = await fetch(searchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
