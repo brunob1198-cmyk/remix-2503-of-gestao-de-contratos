@@ -1559,7 +1559,7 @@ export default function AcompanhamentoMedicoesPage() {
                         )}
                                 {sorted.map(([siteName, { fotos, siteId }]) => {
                                   // Limit the number of photos shown in the preview list
-                                  const displayFotos = fotos.slice(0, 500); 
+                                  const displayFotos = fotos.slice(0, 2000); 
                                   if (displayFotos.length === 0 && fotos.length > 0) return null;
                                   
                                   const siteItems = gerarTipoMedicao === "mista"
