@@ -158,12 +158,18 @@ export function DetailMedicaoContent({
   useEffect(() => {
     const checkResume = async () => {
       const chunks = await getPDFChunks(detailMedicao.id);
-      if (chunks.length > 0) {
+      const state = await getExportState(detailMedicao.id);
+      
+      if (chunks.length > 0 || state) {
         setCanResume(true);
+        if (state && state.state?.status === 'exporting' && !isExporting) {
+          addLog("Detectada exportação pendente. Clique em 'Retomar' para continuar.", "info");
+          setShowLogPanel(true);
+        }
       }
     };
     checkResume();
-  }, [detailMedicao.id]);
+  }, [detailMedicao.id, addLog]);
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     const newLog: PDFExportLog = {
