@@ -1325,6 +1325,7 @@ export type Database = {
           cliente_nome: string | null
           created_at: string | null
           data_emissao: string
+          descricao: string | null
           erp_id: string
           id: string
           numero_nota: string | null
@@ -1332,6 +1333,8 @@ export type Database = {
           projeto_id: string | null
           status: string | null
           updated_at: string | null
+          valor_aberto: number | null
+          valor_baixado: number | null
           valor_total: number
         }
         Insert: {
@@ -1339,6 +1342,7 @@ export type Database = {
           cliente_nome?: string | null
           created_at?: string | null
           data_emissao: string
+          descricao?: string | null
           erp_id: string
           id?: string
           numero_nota?: string | null
@@ -1346,6 +1350,8 @@ export type Database = {
           projeto_id?: string | null
           status?: string | null
           updated_at?: string | null
+          valor_aberto?: number | null
+          valor_baixado?: number | null
           valor_total: number
         }
         Update: {
@@ -1353,6 +1359,7 @@ export type Database = {
           cliente_nome?: string | null
           created_at?: string | null
           data_emissao?: string
+          descricao?: string | null
           erp_id?: string
           id?: string
           numero_nota?: string | null
@@ -1360,6 +1367,8 @@ export type Database = {
           projeto_id?: string | null
           status?: string | null
           updated_at?: string | null
+          valor_aberto?: number | null
+          valor_baixado?: number | null
           valor_total?: number
         }
         Relationships: [
