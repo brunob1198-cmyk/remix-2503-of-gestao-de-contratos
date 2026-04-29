@@ -1105,7 +1105,7 @@ export function DetailMedicaoContent({
                                 <div
                                   key={`${className}-${pi}`}
                                   data-pdf-section="site-medicao-foto-row"
-                                  className="grid grid-cols-2 gap-4 items-stretch"
+                                  className="grid grid-cols-3 gap-3 items-stretch"
                                   style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                                 >
                                   {pair.map((foto) => renderPhotoCard(foto))}
