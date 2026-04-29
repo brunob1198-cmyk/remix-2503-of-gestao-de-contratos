@@ -188,17 +188,22 @@ serve(async (req) => {
       .eq("evento", "send_transaction")
       .is("reconciliado", null)
       .lt("created_at", fiveMinutesAgo)
-      .or(`status.eq.ENVIADO,erro.ilike.%processado%,erro.ilike.%Protocolo%`)
+      .or(`status.eq.ENVIADO,status.eq.erro,status.eq.REABERTO`)
       .order('created_at', { ascending: false })
       .limit(20);
 
+    const filteredLogs = logs?.filter(log => 
+      log.status === "ENVIADO" || 
+      (log.erro && (log.erro.includes("processado") || log.erro.includes("Protocolo")))
+    ) || [];
+
     if (logsErr) throw logsErr;
-    if (!logs || logs.length === 0) return new Response(JSON.stringify({ message: "Nada para processar" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (filteredLogs.length === 0) return new Response(JSON.stringify({ message: "Nada para processar" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const results = [];
     const tokenCache = new Map();
 
-    for (const log of logs) {
+    for (const log of filteredLogs) {
       if (!tokenCache.has(log.empresa_id)) {
         try {
           const token = await getValidAccessToken(supabase, log.empresa_id);
