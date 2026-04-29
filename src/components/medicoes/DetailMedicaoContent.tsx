@@ -523,7 +523,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 0.8; // Reduced scale to significantly accelerate rendering and reduce memory usage
+      const scale = photoImages.length > 250 ? 1.15 : 1.45;
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -616,10 +616,9 @@ export function DetailMedicaoContent({
           if (pageCanvas) {
             const renderedHeight = (slice.height * usableWidth) / contentWidth;
             if (currentPdfPages > 0) pdf.addPage();
-            // Use lower quality and FAST compression for very large projects to prevent memory exhaustion
-            const quality = slices.length > 50 ? 0.3 : 0.45;
+            const quality = slices.length > 80 ? 0.72 : 0.84;
             const pageImageData = pageCanvas.toDataURL("image/jpeg", quality);
-            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, slices.length > 50 ? "FAST" : "MEDIUM");
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, slices.length > 80 ? "MEDIUM" : "SLOW");
             currentPdfPages++;
             pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
@@ -655,7 +654,7 @@ export function DetailMedicaoContent({
           }
 
           setExportProgress(15 + Math.floor(((i + 1) / slices.length) * 70));
-          imagesInSlice.forEach(img => { if (!isLogoImage(img)) { img.removeAttribute("src"); img.src = ""; } });
+          imagesInSlice.forEach(img => { if (!isLogoImage(img) && img.dataset.src) img.src = img.dataset.src; });
           await new Promise(resolve => setTimeout(resolve, pageNum % 5 === 0 ? 500 : 100));
         }
 
