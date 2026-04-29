@@ -1088,18 +1088,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
             </div>
           )}
           {!showSite && (
-        {/* Progress for downloads */}
-        {downloadProgress && (
-          <div className="flex-1 max-w-sm ml-auto">
-            <div className="flex justify-between text-[10px] mb-1 font-medium">
-              <span>Gerando PDFs e compactando...</span>
-              <span>{downloadProgress.current}/{downloadProgress.total}</span>
-            </div>
-            <Progress value={(downloadProgress.current / downloadProgress.total) * 100} className="h-1.5" />
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="font-semibold tabular-nums">
                 {format(parseISO(diario.data), "dd/MM", { locale: ptBR })}
               </span>
