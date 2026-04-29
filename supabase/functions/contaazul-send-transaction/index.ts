@@ -216,16 +216,25 @@ async function sendOne(
       
       if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
         console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento para realizar baixa...`);
-        for (let i = 0; i < 5; i++) { // Aumentado para 5 tentativas
-          await new Promise(r => setTimeout(r, 2000));
+        
+        // Aumentando para 10 tentativas com 3 segundos de intervalo (total 30s)
+        for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          
           const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${contaAzulProtocolo}`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
+            headers: { 
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json"
+            }
           });
           
           if (statusResp.ok) {
             const statusData = await statusResp.json();
             console.log(`[DEBUG] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, JSON.stringify(statusData));
             
+            // Atualiza o responseJson com o status mais recente
+            responseJson = { ...responseJson, last_polling_status: statusData };
+
             if (statusData.status === "SUCCESS") {
               status = "ENVIADO";
               contaAzulId = statusData.resourceId || statusData.id || null;
@@ -259,33 +268,42 @@ async function sendOne(
                         })
                       });
                       
+                      const baixaText = await baixaResp.text();
                       if (baixaResp.ok) {
                         console.log(`[DEBUG] Baixa realizada com sucesso para a parcela ${parcelaId}.`);
+                        responseJson = { ...responseJson, baixa_result: "success" };
                       } else {
-                        const baixaErr = await baixaResp.text();
-                        console.warn(`[DEBUG] Falha ao realizar baixa:`, baixaErr);
+                        console.warn(`[DEBUG] Falha ao realizar baixa:`, baixaText);
+                        responseJson = { ...responseJson, baixa_result: "error", baixa_error: baixaText };
                       }
                     }
+                  } else {
+                    const parcErr = await parcelasResp.text();
+                    console.warn(`[DEBUG] Falha ao buscar parcelas:`, parcErr);
                   }
                 } catch (baixaE) {
                   console.error(`[DEBUG] Erro no fluxo de baixa:`, baixaE);
                 }
               }
-              
-              responseJson = { ...responseJson, final_status: statusData };
               break;
             } else if (statusData.status === "ERROR") {
               status = "erro";
-              errorMsg = `Erro no processamento assíncrono do Conta Azul: ${JSON.stringify(statusData.errors || statusData.message)}`;
-              responseJson = { ...responseJson, final_status: statusData };
+              errorMsg = `Erro no processamento do Conta Azul: ${JSON.stringify(statusData.errors || statusData.message || statusData)}`;
               break;
             }
+          } else {
+            const errText = await statusResp.text();
+            console.error(`[DEBUG] Erro ao consultar protocolo ${contaAzulProtocolo}:`, errText);
           }
         }
         
         if (status === "erro" && !errorMsg) {
-          status = "ENVIADO";
-          errorMsg = "Lançamento em processamento assíncrono (Protocolo ainda pendente)";
+          // Se ainda estiver pendente após todas as tentativas
+          const lastStatus = responseJson?.last_polling_status?.status || "PENDING";
+          if (lastStatus === "PENDING") {
+            status = "erro";
+            errorMsg = "O lançamento ainda está sendo processado pelo Conta Azul. Por favor, verifique no painel do Conta Azul em alguns minutos.";
+          }
         }
       } else {
         status = "ENVIADO";
