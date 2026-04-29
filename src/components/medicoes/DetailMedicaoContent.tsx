@@ -471,6 +471,27 @@ export function DetailMedicaoContent({
       const logoImages = allImages.filter(isLogoImage);
       const photoImages = allImages.filter((img) => !isLogoImage(img));
       addLog(`Documento com ${photoImages.length} fotos e ${logoImages.length} logo(s).`, "info");
+
+      addLog("Preparando fotos em alta qualidade para o PDF...", "info");
+      let preparedPhotos = 0;
+      const preparePhoto = async (img: HTMLImageElement) => {
+        const originalSrc = img.dataset.src || img.src;
+        if (!originalSrc || originalSrc.startsWith("data:")) return;
+        try {
+          img.src = await getPdfSafeImageDataUrl(originalSrc, { maxWidth: 1400, maxHeight: 1050, quality: 0.86 });
+          img.dataset.src = img.src;
+          preparedPhotos += 1;
+          if (preparedPhotos % 25 === 0 || preparedPhotos === photoImages.length) {
+            addLog(`Fotos preparadas: ${preparedPhotos}/${photoImages.length}`, "info");
+          }
+        } catch {
+          img.src = originalSrc;
+        }
+      };
+      for (let i = 0; i < photoImages.length; i += 6) {
+        await Promise.all(photoImages.slice(i, i + 6).map(preparePhoto));
+        await waitForNextPaint(10);
+      }
       
       const logoLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
         images: logoImages,
