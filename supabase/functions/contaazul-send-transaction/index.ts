@@ -144,6 +144,7 @@ async function sendOne(
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
     conta_financeira: input.financial_account_id,
+    id_categoria: input.category_id, // Conta Azul V1 as vezes prefere no raiz
     rateio: [
       {
         id_categoria: input.category_id,
@@ -160,6 +161,7 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
+          valor: transactionValue, // Adicionado aqui tambem
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue
