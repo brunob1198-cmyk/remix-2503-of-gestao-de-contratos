@@ -319,27 +319,7 @@ async function sendOne(
     }
 
     if (status === "ENVIADO" && contaAzulId) {
-      try {
-        const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (parcelasResp.ok) {
-          const parcelas = await parcelasResp.json();
-          const parcelaId = parcelas[0]?.id;
-          if (parcelaId && !parcelas[0]?.baixado) {
-            console.log(`[DEBUG] Realizando baixa para parcela ${parcelaId}...`);
-            await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
-              method: "POST",
-              headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                data_pagamento: transactionDate,
-                conta_financeira: input.financial_account_id,
-                composicao_valor: { valor_bruto: transactionValue }
-              })
-            });
-          }
-        }
-      } catch (baixaE) { console.error(`Erro na baixa:`, baixaE); }
+      await realizarBaixa(accessToken, contaAzulId, input, transactionDate);
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
