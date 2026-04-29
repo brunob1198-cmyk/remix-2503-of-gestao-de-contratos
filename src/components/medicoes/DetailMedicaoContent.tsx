@@ -88,7 +88,9 @@ const createPdfExportContainer = (source: HTMLElement) => {
       img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
     } else if (!isLogoImage(img)) {
       // Store src in a data attribute and remove it to save memory until needed
+      img.dataset.originalSrc = img.src;
       img.dataset.src = img.src;
+      img.src = "";
       img.style.display = "block"; // Keep layout
       img.style.minHeight = "200px";
     }
