@@ -66,6 +66,7 @@ export default function DiarioObraPage() {
   );
   const [newGroupName, setNewGroupName] = useState("");
   const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Reset site when projeto changes
   const handleProjetoChange = (projetoId: string) => {
