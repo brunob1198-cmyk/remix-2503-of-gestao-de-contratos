@@ -447,15 +447,20 @@ export function DetailMedicaoContent({
     [formatDate],
   );
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (resume = false) => {
     if (!printRef.current || isExporting) return;
 
     setIsExporting(true);
     setExportProgress(0);
-    setExportLogs([]);
-    addLog("Iniciando processo de exportação...", "info");
+    if (!resume) {
+      setExportLogs([]);
+      await clearPDFChunks(detailMedicao.id);
+    }
+    
+    addLog(resume ? "Retomando exportação..." : "Iniciando processo de exportação...", "info");
     
     let exportContainer: HTMLDivElement | null = null;
+    const CHUNK_SIZE = 8; // Number of pages per PDF chunk for memory efficiency
 
     try {
       addLog("Preparando contêiner de exportação...", "info");
@@ -476,7 +481,7 @@ export function DetailMedicaoContent({
       });
       addLog(`Logos preparadas: ${logoLoadResult.loaded} carregadas, ${logoLoadResult.failed} substituídas.`, "success");
       
-      setExportProgress(12);
+      setExportProgress(10);
       addLog("Estabilizando layout para paginação...", "info");
       await waitForNextPaint(600);
       prepareImagePositions(content);
@@ -485,19 +490,20 @@ export function DetailMedicaoContent({
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
       
-      const pdf = new jsPDF({
+      const getNewPdfInstance = () => new jsPDF({
         orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
         unit: "mm",
         format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
         compress: true
       });
 
+      let pdf = getNewPdfInstance();
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 1.0; // Optimized scale to reduce memory footprint for large volumes of photos
+      const scale = 1.0; 
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -506,187 +512,164 @@ export function DetailMedicaoContent({
       const slices = buildPageSlices(totalHeight, pageHeightPx, safeBreaks);
 
       addLog(`Total de páginas a gerar: ${slices.length}`, "info");
-      setExportProgress(20);
+      
+      const existingChunks = await getPDFChunks(detailMedicao.id);
+      const lastProcessedPageIndex = existingChunks.length * CHUNK_SIZE;
+      
+      if (resume && lastProcessedPageIndex >= slices.length) {
+        addLog("Exportação já concluída anteriormente. Montando arquivo final...", "success");
+      } else {
+        const startTime = Date.now();
+        let currentPdfPages = 0;
 
-      const startTime = Date.now();
+        for (let i = resume ? lastProcessedPageIndex : 0; i < slices.length; i++) {
+          const slice = slices[i];
+          const pageNum = i + 1;
+          let retryCount = 0;
+          const maxRetries = 2;
+          let pageCanvas: HTMLCanvasElement | null = null;
+          
+          const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
+          
+          if (imagesInSlice.length > 0) {
+            imagesInSlice.forEach(img => {
+              if (img.dataset.src && !img.src) img.src = img.dataset.src;
+            });
 
-      for (let i = 0; i < slices.length; i++) {
-        const slice = slices[i];
-        const pageNum = i + 1;
-        let retryCount = 0;
-        const maxRetries = 2;
-        let pageCanvas: HTMLCanvasElement | null = null;
-        
-        // Load images for THIS slice only
-        const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
-        
-        if (imagesInSlice.length > 0) {
-          // Temporarily restore SRC for images in this slice
-          imagesInSlice.forEach(img => {
-            if (img.dataset.src && !img.src) {
-              img.src = img.dataset.src;
-            }
-          });
-
-          const sliceLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
-            images: imagesInSlice,
-            concurrency: 4,
-            timeoutMs: 25000,
-            label: `Página ${pageNum}`,
-          });
-          if (sliceLoadResult.failed > 0) {
-            addLog(`Página ${pageNum}: ${sliceLoadResult.failed} imagem(ns) indisponíveis foram substituídas.`, "info");
+            await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+              images: imagesInSlice,
+              concurrency: 4,
+              timeoutMs: 25000,
+              label: `Página ${pageNum}`,
+            });
+            await waitForNextPaint(100);
           }
-          await waitForNextPaint(150);
-        }
-        
-        const renderPage = async () => {
-          const pStart = Date.now();
-          const sliceTop = slice.start;
-          const sliceBottom = slice.start + slice.height;
-          const canvas = await html2canvas(content, {
-            scale,
-            useCORS: true,
-            allowTaint: false,
-            backgroundColor: "#ffffff",
-            width: contentWidth,
-            height: slice.height,
-            windowWidth: contentWidth,
-            windowHeight: slice.height,
-            logging: false,
-            onclone: (doc) => {
-              const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
-              const clonedContent = container?.firstElementChild as HTMLElement;
-              if (clonedContent) {
-                clonedContent.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
-                  const top = Number(img.dataset.pdfTop ?? 0);
-                  const bottom = Number(img.dataset.pdfBottom ?? 0);
-                  const isOutsideSlice = bottom < sliceTop - 800 || top > sliceBottom + 800;
-                  if (isOutsideSlice && !isLogoImage(img)) {
-                    img.style.visibility = "hidden";
-                    img.removeAttribute("src");
-                    img.removeAttribute("srcset");
-                  }
-                });
-                clonedContent.style.transform = `translateY(-${slice.start}px)`;
-                clonedContent.style.transformOrigin = "top left";
-                
-                // Hide logos if they were already rendered in a previous page
-                if (pageNum > 1) {
-                  const logos = clonedContent.querySelectorAll('.pdf-header-logo');
-                  logos.forEach((logo) => {
-                    (logo as HTMLElement).style.visibility = 'hidden';
+          
+          const renderPage = async () => {
+            const canvas = await html2canvas(content, {
+              scale,
+              useCORS: true,
+              allowTaint: false,
+              backgroundColor: "#ffffff",
+              width: contentWidth,
+              height: slice.height,
+              windowWidth: contentWidth,
+              windowHeight: slice.height,
+              logging: false,
+              onclone: (doc) => {
+                const container = doc.querySelector('[data-pdf-export="medicao-detalhe"]');
+                const clonedContent = container?.firstElementChild as HTMLElement;
+                if (clonedContent) {
+                  clonedContent.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+                    const top = Number(img.dataset.pdfTop ?? 0);
+                    const bottom = Number(img.dataset.pdfBottom ?? 0);
+                    const isOutsideSlice = bottom < slice.start - 800 || top > (slice.start + slice.height) + 800;
+                    if (isOutsideSlice && !isLogoImage(img)) {
+                      img.style.visibility = "hidden";
+                      img.removeAttribute("src");
+                    }
                   });
+                  clonedContent.style.transform = `translateY(-${slice.start}px)`;
+                  clonedContent.style.transformOrigin = "top left";
+                  
+                  if (pageNum > 1) {
+                    clonedContent.querySelectorAll('.pdf-header-logo').forEach(el => (el as HTMLElement).style.visibility = 'hidden');
+                  }
                 }
               }
-            }
-          });
-          const pEnd = Date.now();
-          const canvasSizeMB = (canvas.width * canvas.height * 4) / (1024 * 1024);
-          addLog(`Página ${pageNum}: ${canvas.width}x${canvas.height} (${canvasSizeMB.toFixed(1)}MB) em ${pEnd - pStart}ms`, "info");
-          return canvas;
-        };
+            });
+            return canvas;
+          };
 
-        while (retryCount <= maxRetries) {
-          addLog(`Renderizando página ${pageNum}/${slices.length}${retryCount > 0 ? ` (Tentativa ${retryCount + 1})` : ""}...`, "info");
-          pageCanvas = await renderPage();
-          
-          if (!isCanvasBlank(pageCanvas)) {
-            break;
+          while (retryCount <= maxRetries) {
+            addLog(`Renderizando página ${pageNum}/${slices.length}...`, "info");
+            pageCanvas = await renderPage();
+            if (!isCanvasBlank(pageCanvas)) break;
+            retryCount++;
+            await new Promise(r => setTimeout(r, 1000 * retryCount));
           }
-          
-          retryCount++;
-          if (retryCount <= maxRetries) {
-            addLog(`Página ${pageNum} saiu em branco. Re-tentando...`, "error");
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-          } else {
-            addLog(`Falha persistente na página ${pageNum}: Renderização em branco após ${maxRetries + 1} tentativas.`, "error");
+
+          if (pageCanvas) {
+            const renderedHeight = (slice.height * usableWidth) / contentWidth;
+            if (currentPdfPages > 0) pdf.addPage();
+            const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65);
+            pdf.addImage(pageImageData, "JPEG", marginLeft, marginTop, usableWidth, renderedHeight, undefined, "FAST");
+            currentPdfPages++;
+            pageCanvas.width = 0; pageCanvas.height = 0; pageCanvas = null;
           }
+
+          // Save chunk if we reached CHUNK_SIZE or end of document
+          if (currentPdfPages === CHUNK_SIZE || i === slices.length - 1) {
+            const chunkIndex = Math.floor(i / CHUNK_SIZE);
+            const chunkData = pdf.output("arraybuffer");
+            await savePDFChunk({
+              id: `${detailMedicao.id}_${chunkIndex}`,
+              medicaoId: detailMedicao.id,
+              index: chunkIndex,
+              data: chunkData,
+              timestamp: Date.now()
+            });
+            addLog(`Bloco ${chunkIndex + 1} salvo (Páginas ${i - currentPdfPages + 2} a ${i + 1})`, "success");
+            
+            // Start fresh instance for next chunk
+            pdf = getNewPdfInstance();
+            currentPdfPages = 0;
+            
+            // Trigger memory cleanup
+            if (window.gc) window.gc(); 
+          }
+
+          setExportProgress(15 + Math.floor(((i + 1) / slices.length) * 70));
+          imagesInSlice.forEach(img => { if (!isLogoImage(img)) { img.removeAttribute("src"); img.src = ""; } });
+          await new Promise(resolve => setTimeout(resolve, pageNum % 5 === 0 ? 500 : 100));
         }
 
-        if (pageCanvas) {
-          const renderedHeight = (slice.height * usableWidth) / contentWidth;
-          if (i > 0) pdf.addPage();
-
-          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65); // Lower quality for massive PDFs
-          pdf.addImage(
-            pageImageData,
-            "JPEG",
-            marginLeft,
-            marginTop,
-            usableWidth,
-            renderedHeight,
-            undefined,
-            "FAST"
-          );
-
-          // Garbage collection help
-          pageCanvas.width = 0;
-          pageCanvas.height = 0;
-          pageCanvas = null;
-        }
-
-        const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
-        setExportProgress(progress);
-        
-        // Clear SRC for images in this slice to free memory
-        imagesInSlice.forEach((img) => {
-          if (!isLogoImage(img)) {
-            img.removeAttribute("src");
-            // Also remove from browser cache if possible by setting to empty
-            img.src = "";
-          }
-        });
-
-        // Longer pause every 10 pages to let browser garbage collect
-        const pauseTime = pageNum % 10 === 0 ? 1000 : 200;
-        await new Promise(resolve => setTimeout(resolve, pauseTime));
+        const endTime = Date.now();
+        addLog(`Renderização completa em ${((endTime - startTime) / 1000).toFixed(1)}s`, "success");
       }
 
-      const endTime = Date.now();
-      addLog(`Renderização completa em ${((endTime - startTime) / 1000).toFixed(1)}s`, "success");
-
-      setExportProgress(85);
-      const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
+      setExportProgress(90);
+      addLog("Montando PDF final a partir dos blocos...", "info");
       
+      const chunks = await getPDFChunks(detailMedicao.id);
+      const finalPdf = await PDFDocument.create();
+      
+      // Add cover if exists
+      const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
       if (capaUrl) {
-        addLog("Mesclando com capa PDF...", "info");
+        addLog("Adicionando capa...", "info");
         try {
-          const measurementPdfBytes = pdf.output("arraybuffer");
           const capaResponse = await fetch(capaUrl);
           const capaBytes = await capaResponse.arrayBuffer();
-
           const capaPdf = await PDFDocument.load(capaBytes, { ignoreEncryption: true });
-          const measurementPdf = await PDFDocument.load(measurementPdfBytes);
-          const mergedPdf = await PDFDocument.create();
-
-          const capaPages = await mergedPdf.copyPages(capaPdf, capaPdf.getPageIndices());
-          capaPages.forEach(page => mergedPdf.addPage(page));
-
-          const measurementPages = await mergedPdf.copyPages(measurementPdf, measurementPdf.getPageIndices());
-          measurementPages.forEach(page => mergedPdf.addPage(page));
-
-          const mergedBytes = await mergedPdf.save();
-          const blob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: "application/pdf" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-          addLog("PDF gerado com sucesso!", "success");
-        } catch (mergeErr) {
-          addLog("Falha ao mesclar capa, salvando apenas conteúdo.", "error");
-          pdf.save(filename);
+          const copiedPages = await finalPdf.copyPages(capaPdf, capaPdf.getPageIndices());
+          copiedPages.forEach(page => finalPdf.addPage(page));
+        } catch (e) {
+          addLog("Não foi possível carregar a capa, ignorando.", "error");
         }
-      } else {
-        addLog("Salvando arquivo PDF...", "info");
-        pdf.save(filename);
-        addLog("PDF gerado com sucesso!", "success");
       }
+
+      // Add all chunks
+      for (const chunk of chunks) {
+        const chunkPdf = await PDFDocument.load(chunk.data);
+        const copiedPages = await finalPdf.copyPages(chunkPdf, chunkPdf.getPageIndices());
+        copiedPages.forEach(page => finalPdf.addPage(page));
+      }
+
+      const finalBytes = await finalPdf.save();
+      const blob = new Blob([finalBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
       
+      await clearPDFChunks(detailMedicao.id);
+      setCanResume(false);
+      addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
-      setTimeout(() => setShowLogPanel(false), 3000);
+      setTimeout(() => setShowLogPanel(false), 5000);
     } catch (e) {
       addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
       console.error("Erro ao exportar PDF:", e);
