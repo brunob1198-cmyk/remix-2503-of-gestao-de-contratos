@@ -1640,7 +1640,7 @@ export default function AcompanhamentoMedicoesPage() {
                         })()
                       ) : (
                         // Agrupada: flat grid
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-auto">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[600px] overflow-auto">
                           {geracaoFotos.map((foto, idx) => (
                             <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>
                               <img src={foto.url} alt={foto.item_descricao || "foto"} className="w-full h-32 object-cover" />
