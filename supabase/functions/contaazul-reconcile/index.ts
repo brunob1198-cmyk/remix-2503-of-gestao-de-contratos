@@ -71,7 +71,20 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     // 1. Tentar resolver ID via protocolo
     if (!conta_azul_transaction_id && conta_azul_protocolo) {
       console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo}...`);
-      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${conta_azul_protocolo}`, {
+      // Descobrir se é pagar ou receber para usar o endpoint correto do protocolo
+      const { data: normType } = await supabase
+        .from("flash_normalizacao")
+        .select("tipo_operacao")
+        .eq("flash_transaction_id", flash_transaction_id)
+        .maybeSingle();
+      
+      const protocolPath = (normType?.tipo_operacao === "receita") 
+        ? "contas-a-receber/protocolos" 
+        : "contas-a-pagar/protocolos";
+
+      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo} via ${protocolPath}...`);
+      
+      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${protocolPath}/${conta_azul_protocolo}`, {
         headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
       });
       
