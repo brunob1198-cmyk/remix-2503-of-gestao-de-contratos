@@ -131,17 +131,27 @@ async function sendOne(
   const transactionValue = Math.abs(Number(input.value) || 0);
   const transactionDate = input.date ? (input.date.includes("T") ? input.date.split("T")[0] : input.date) : new Date().toISOString().split("T")[0];
 
+  // Validação rigorosa dos valores para evitar erro de composição obrigatória
+  if (!transactionValue || transactionValue <= 0) {
+    return {
+      flash_transaction_id: input.flash_transaction_id,
+      status: "skipped",
+      error: "Valor da transação deve ser maior que zero",
+    };
+  }
+
   // Payload conforme Conta Azul API v1 (eventos-financeiros)
+  // IMPORTANTE: Para evitar erro de composição obrigatória, usamos APENAS detalhe_valor.
+  // Campos como 'valor' ou 'composicao_valor' nas parcelas/rateio podem causar conflitos.
   const payload = {
     data_competencia: transactionDate,
-    valor: transactionValue,
+    valor: transactionValue, // Valor total do lançamento no topo é obrigatório
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
     conta_financeira: input.financial_account_id,
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: transactionValue,
         detalhe_valor: {
           valor_bruto: transactionValue,
           valor_liquido: transactionValue
@@ -153,7 +163,6 @@ async function sendOne(
         {
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
-          valor: transactionValue,
           descricao: `Parcela única - ${input.description}`,
           detalhe_valor: {
             valor_bruto: transactionValue,
@@ -163,6 +172,8 @@ async function sendOne(
       ]
     }
   };
+
+  console.log(`[DEBUG] Enviando transação ${input.flash_transaction_id} para Conta Azul:`, JSON.stringify(payload, null, 2));
 
   let httpStatus: number | null = null;
   let responseJson: any = null;
