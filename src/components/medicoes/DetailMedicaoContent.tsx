@@ -504,19 +504,28 @@ export function DetailMedicaoContent({
         let retryCount = 0;
         const maxRetries = 2;
         let pageCanvas: HTMLCanvasElement | null = null;
+        
+        // Load images for THIS slice only
         const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
-
+        
         if (imagesInSlice.length > 0) {
+          // Temporarily restore SRC for images in this slice
+          imagesInSlice.forEach(img => {
+            if (img.dataset.src && !img.src) {
+              img.src = img.dataset.src;
+            }
+          });
+
           const sliceLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
             images: imagesInSlice,
             concurrency: 4,
-            timeoutMs: 20000,
+            timeoutMs: 25000,
             label: `Página ${pageNum}`,
           });
           if (sliceLoadResult.failed > 0) {
             addLog(`Página ${pageNum}: ${sliceLoadResult.failed} imagem(ns) indisponíveis foram substituídas.`, "info");
           }
-          await waitForNextPaint(100);
+          await waitForNextPaint(150);
         }
         
         const renderPage = async () => {
