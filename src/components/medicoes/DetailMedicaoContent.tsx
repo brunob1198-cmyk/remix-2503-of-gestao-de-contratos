@@ -697,7 +697,7 @@ export function DetailMedicaoContent({
         useObjectStreams: true,
         addDefaultPage: false
       });
-      const blob = new Blob([finalBytes as any], { type: "application/pdf" });
+      const blob = new Blob([finalBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
