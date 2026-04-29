@@ -839,6 +839,16 @@ export default function RdoPage() {
                 </Card>
               </div>
 
+              {downloadProgress && (
+                <div className="flex-1 max-w-sm ml-auto mr-4">
+                  <div className="flex justify-between text-[10px] mb-1 font-medium">
+                    <span>Processando exportação...</span>
+                    <span>{downloadProgress.current}/{downloadProgress.total}</span>
+                  </div>
+                  <Progress value={(downloadProgress.current / downloadProgress.total) * 100} className="h-1.5" />
+                </div>
+              )}
+
               {diarios.length > 0 && (
                 <Button
                   variant="outline"
