@@ -151,6 +151,7 @@ async function sendOne(
             valor_bruto: transactionValue,
             valor_liquido: transactionValue
           }
+        }
       ]
     }
   };
