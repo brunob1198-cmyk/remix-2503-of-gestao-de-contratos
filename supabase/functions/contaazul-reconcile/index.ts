@@ -107,7 +107,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       console.log(`[Reconcile] Tentando busca fallback para ${flash_transaction_id}...`);
       const { data: norm } = await supabase
         .from("flash_normalizacao")
-        .select("conta_azul_payload, description:conta_azul_payload->>description")
+        .select("conta_azul_payload, tipo_operacao, description:conta_azul_payload->>description")
         .eq("flash_transaction_id", flash_transaction_id)
         .maybeSingle();
 
