@@ -1556,9 +1556,12 @@ export default function AcompanhamentoMedicoesPage() {
                             O sistema mostrará apenas as primeiras 500 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
                           </div>
                         )}
-                        {sorted.map(([siteName, { fotos, siteId }]) => {
-                                // For mista, show production table per site
-                                const siteItems = gerarTipoMedicao === "mista"
+                                {sorted.map(([siteName, { fotos, siteId }]) => {
+                                  // Limit the number of photos shown in the preview list
+                                  const displayFotos = fotos.slice(0, 500); 
+                                  if (displayFotos.length === 0 && fotos.length > 0) return null;
+                                  
+                                  const siteItems = gerarTipoMedicao === "mista"
                                   ? geracaoItens.filter(i => i.site_id === siteId && i.selected)
                                   : [];
                                 return (
