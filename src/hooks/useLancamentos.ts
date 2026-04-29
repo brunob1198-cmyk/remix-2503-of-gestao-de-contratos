@@ -13,7 +13,8 @@ export function useLancamentosProducao(siteId?: string) {
       let query = supabase
         .from("lancamentos_producao")
         .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_producao", { ascending: false });
+        .order("data_producao", { ascending: false })
+        .limit(100000);
       
       if (siteId) {
         query = query.eq("site_id", siteId);
@@ -107,7 +108,8 @@ export function useLancamentosMedicao(siteId?: string) {
       let query = supabase
         .from("lancamentos_medicao")
         .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_medicao", { ascending: false });
+        .order("data_medicao", { ascending: false })
+        .limit(100000);
       
       if (siteId) {
         query = query.eq("site_id", siteId);
@@ -262,7 +264,8 @@ export function useLancamentosFaturamento(siteId?: string) {
       let query = supabase
         .from("lancamentos_faturamento")
         .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_faturamento", { ascending: false });
+        .order("data_faturamento", { ascending: false })
+        .limit(100000);
       
       if (siteId) {
         query = query.eq("site_id", siteId);
