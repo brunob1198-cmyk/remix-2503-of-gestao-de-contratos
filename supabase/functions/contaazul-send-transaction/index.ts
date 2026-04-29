@@ -221,66 +221,67 @@ async function sendOne(
     } else {
       contaAzulProtocolo = responseJson?.protocolo || responseJson?.protocolId || null;
       
-      if (responseJson?.status === "PENDING" && (contaAzulProtocolo !== null && contaAzulProtocolo !== undefined)) {
-        console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento...`);
+      // Se for síncrono ou sucesso imediato
+      if (responseJson?.id || responseJson?.uuid) {
+        status = "ENVIADO";
+        contaAzulId = responseJson.id || responseJson.uuid;
+      } else if (responseJson?.status === "PENDING" && (contaAzulProtocolo !== null && contaAzulProtocolo !== undefined)) {
+        console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Respondendo imediatamente para evitar timeout.`);
         
-        for (let i = 0; i < 30; i++) {
-          await new Promise(r => setTimeout(r, 4000));
-          
-          const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
-          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
-            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-          });
-          
-          if (statusResp.ok) {
-            const statusData = await statusResp.json();
-            console.log(`[DEBUG] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, statusData.status);
-            responseJson = { ...responseJson, last_polling_status: statusData };
-
-            if (statusData.status === "SUCCESS") {
-              status = "ENVIADO";
-              contaAzulId = statusData.resourceId || statusData.id || null;
-              break;
-            } else if (statusData.status === "ERROR") {
-              status = "erro";
-              errorMsg = `Erro Conta Azul: ${JSON.stringify(statusData.errors || statusData.message || statusData)}`;
-              break;
-            }
-          } else if (statusResp.status === 404) {
-            console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} retornou 404. Tentando busca fallback imediato...`);
-            const path = input.type === "receita" ? "contas-a-receber" : "contas-a-pagar";
-            const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${transactionDate}&data_vencimento_ate=${transactionDate}`;
-            const searchResp = await fetch(searchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+        // MARCAMOS COMO ENVIADO para evitar reenvio, mas sinalizamos que está em processamento
+        status = "ENVIADO";
+        errorMsg = "Lançamento em processamento assíncrono pelo Conta Azul (Protocolo: " + contaAzulProtocolo + "). Verifique em instantes.";
+        
+        // Disparamos o polling em background sem 'await' para liberar a requisição HTTP
+        (async () => {
+          console.log(`[BACKGROUND] Iniciando polling para protocolo ${contaAzulProtocolo}`);
+          for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 10000)); // Espera 10s entre tentativas
             
-            if (searchResp.ok) {
-              const sData = await searchResp.json();
-              const itens = sData.itens || sData;
-              if (Array.isArray(itens)) {
-                const match = itens.find((r: any) => 
-                  Math.abs((r.valor || r.total) - transactionValue) < 0.01 && 
-                  (r.descricao?.toLowerCase().includes(input.description.toLowerCase()) || input.description.toLowerCase().includes(r.descricao?.toLowerCase()))
-                );
-                
-                if (match) {
-                  status = "ENVIADO";
-                  contaAzulId = match.id || match.uuid;
-                  console.log(`[DEBUG] Encontrado via fallback imediato! ID: ${contaAzulId}`);
+            try {
+              const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
+              const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
+                headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+              });
+              
+              if (statusResp.ok) {
+                const statusData = await statusResp.json();
+                console.log(`[BACKGROUND] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, statusData.status);
+
+                if (statusData.status === "SUCCESS") {
+                  const finalId = statusData.resourceId || statusData.id;
+                  // Atualiza o log com o ID final
+                  await supabase.from("flash_integration_logs").update({
+                    conta_azul_transaction_id: finalId,
+                    reconciliado: true,
+                    response: { ...responseJson, background_status: statusData }
+                  }).eq("conta_azul_protocolo", contaAzulProtocolo);
+                  
+                  // Tenta realizar a baixa
+                  if (finalId) await realizarBaixa(accessToken, finalId, input, transactionDate);
+                  break;
+                } else if (statusData.status === "ERROR") {
+                  // Atualiza o log com o erro
+                  await supabase.from("flash_integration_logs").update({
+                    status: "erro",
+                    erro: `Erro assíncrono: ${JSON.stringify(statusData.errors || statusData.message)}`
+                  }).eq("conta_azul_protocolo", contaAzulProtocolo);
+                  
+                  // Resetamos o status na normalização para permitir reenvio em caso de erro real
+                  await supabase.from("flash_normalizacao").update({
+                    status: "normalizado",
+                    motivo: `Erro no Conta Azul: ${JSON.stringify(statusData.errors || statusData.message)}`
+                  }).eq("flash_transaction_id", input.flash_transaction_id);
                   break;
                 }
               }
+            } catch (pollErr) {
+              console.error(`[BACKGROUND] Erro no polling do protocolo ${contaAzulProtocolo}:`, pollErr);
             }
           }
-        }
-        
-        if (status === "erro") {
-          const lastStatus = responseJson?.last_polling_status?.status || "PENDING";
-          if (lastStatus === "PENDING") {
-            status = "erro"; 
-            errorMsg = "O Conta Azul recebeu o lançamento mas está demorando para processar (Status: Pendente). Verifique se o lançamento aparece no Conta Azul em alguns minutos antes de tentar novamente.";
-          } else {
-            errorMsg = `Rejeição Conta Azul: ${lastStatus}. Verifique logs do payload para detalhes.`;
-          }
-        }
+        })();
+      }
+    }
       } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
         status = "erro";
         errorMsg = "Conta Azul retornou status PENDING mas não forneceu um protocolo de rastreio.";
