@@ -138,11 +138,7 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: transactionValue,
-        composicao_valor: {
-          valor_bruto: transactionValue,
-          valor_liquido: transactionValue
-        }
+        valor: transactionValue
       }
     ],
     condicao_pagamento: {
@@ -151,26 +147,11 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          composicao_valor: {
-            valor_bruto: transactionValue,
-            valor_liquido: transactionValue
-          }
+          valor: transactionValue
         }
       ]
     }
   };
-
-  // Validação interna antes do POST
-  for (const parcela of payload.condicao_pagamento.parcelas) {
-    if (!parcela.composicao_valor || parcela.composicao_valor.valor_bruto === undefined) {
-      console.error("Falha na validação pré-envio: Parcela sem detalhe de valor correto", { flash_id: input.flash_transaction_id });
-      return {
-        flash_transaction_id: input.flash_transaction_id,
-        status: "erro",
-        error: "Erro interno: Composição de valor da parcela não gerada corretamente.",
-      };
-    }
-  }
 
   let httpStatus: number | null = null;
   let responseJson: any = null;
@@ -215,7 +196,7 @@ async function sendOne(
 
   const duracao = Date.now() - startedAt;
 
-  // Log persistente com as novas colunas
+  // Log persistente
   await supabase.from("flash_integration_logs").insert({
     empresa_id: empresaId,
     flash_transaction_id: input.flash_transaction_id,
@@ -281,7 +262,6 @@ serve(async (req) => {
     const empresaId = profile.empresa_id;
     const body = await req.json().catch(() => ({}));
 
-    // Aceita { transactions: [{flash_transaction_id}] } OU { flash_transaction_ids: [] } OU um único {flash_transaction_id}
     let ids: string[] = [];
     if (Array.isArray(body?.flash_transaction_ids)) ids = body.flash_transaction_ids;
     else if (Array.isArray(body?.transactions)) ids = body.transactions.map((t: any) => t.flash_transaction_id).filter(Boolean);
@@ -289,7 +269,6 @@ serve(async (req) => {
 
     if (!ids.length) return json({ error: "Informe flash_transaction_ids" }, 400);
 
-    // Busca registros normalizados
     const { data: norms, error: normErr } = await admin
       .from("flash_normalizacao")
       .select("*")
@@ -299,7 +278,6 @@ serve(async (req) => {
     if (normErr) return json({ error: normErr.message }, 500);
     if (!norms?.length) return json({ error: "Nenhum lançamento normalizado encontrado" }, 404);
 
-    // Busca dados brutos
     const { data: raws } = await admin
       .from("flash_transactions_raw")
       .select("id, external_id, payload_json")
