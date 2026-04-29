@@ -529,13 +529,18 @@ export function DetailMedicaoContent({
               if (img.dataset.src && !img.src) img.src = img.dataset.src;
             });
 
-            await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
+            await ensureImagesLoaded(content, (msg) => {
+              // Only log meaningful progress to avoid freezing UI with thousands of logs
+              if (msg.includes("processadas") || msg.includes("Iniciando")) {
+                addLog(msg, "info");
+              }
+            }, {
               images: imagesInSlice,
               concurrency: 4,
-              timeoutMs: 25000,
+              timeoutMs: 15000, // Reduced from 25000 to fail faster and retry
               label: `Página ${pageNum}`,
             });
-            await waitForNextPaint(100);
+            await waitForNextPaint(50);
           }
           
           const renderPage = async () => {
