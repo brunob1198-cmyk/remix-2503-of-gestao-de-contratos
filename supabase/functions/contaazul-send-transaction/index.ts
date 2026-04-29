@@ -217,7 +217,12 @@ async function sendOne(
         for (let i = 0; i < 10; i++) {
           await new Promise(r => setTimeout(r, 3000));
           
-          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${contaAzulProtocolo}`, {
+          // Tentamos o endpoint específico de contas-a-pagar/receber para o protocolo
+          const protocolPath = input.type === "receita" 
+            ? "contas-a-receber/protocolos" 
+            : "contas-a-pagar/protocolos";
+            
+          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${protocolPath}/${contaAzulProtocolo}`, {
             headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
           });
           
