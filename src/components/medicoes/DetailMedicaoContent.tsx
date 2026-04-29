@@ -22,10 +22,10 @@ import {
   PDFExportLog 
 } from "@/lib/pdfExportUtils";
 
-function chunkPairs<T>(arr: T[]): T[][] {
+function chunkGroups<T>(arr: T[], size: number = 3): T[][] {
   const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += 2) {
-    result.push(arr.slice(i, i + 2));
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
   }
   return result;
 }
