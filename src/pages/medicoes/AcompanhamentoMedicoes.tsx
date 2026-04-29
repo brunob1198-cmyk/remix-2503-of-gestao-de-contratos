@@ -606,19 +606,29 @@ export default function AcompanhamentoMedicoesPage() {
           const diarioIds = diarios.map(d => d.id);
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-          // Definitivo: Buscamos todas as fotos sem limite restritivo e com log de depuração
-          const { data: fotos, error: fErr } = await supabase
-            .from("diario_fotos")
-            .select("*")
-            .in("diario_id", diarioIds)
-            .limit(100000); 
-          
-          console.log(`[Acompanhamento] Carregadas ${fotos?.length || 0} fotos para ${diarioIds.length} diários.`);
-          
-          if (fErr) {
-            console.error("Erro ao buscar fotos:", fErr);
-            throw fErr;
-          }
+          // Definitivo: Função de paginação para carregar TODAS as fotos sem limite restritivo
+          const fetchAllGeracaoFotos = async (ids: string[]) => {
+            let all: any[] = [];
+            let from = 0;
+            let to = 999;
+            while (true) {
+              const { data, error } = await supabase
+                .from("diario_fotos")
+                .select("*")
+                .in("diario_id", ids)
+                .range(from, to);
+              if (error) throw error;
+              if (!data || data.length === 0) break;
+              all = [...all, ...data];
+              if (data.length < 1000) break;
+              from += 1000;
+              to += 1000;
+            }
+            return all;
+          };
+
+          const fotos = await fetchAllGeracaoFotos(diarioIds);
+          console.log(`[Acompanhamento] Carregadas ${fotos.length} fotos para ${diarioIds.length} diários.`);
 
           const producaoIds = (fotos || []).map(f => (f as any).diario_producao_id).filter(Boolean);
           let producaoMap = new Map<string, any>();
