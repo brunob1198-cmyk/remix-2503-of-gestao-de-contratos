@@ -93,6 +93,7 @@ export default function AcompanhamentoMedicoesPage() {
       const { data: diarios, error: dErr } = await supabase
         .from("diarios_obra")
         .select("id, site_id, data")
+        .order('data', { ascending: false })
         .limit(100000);
       if (dErr) throw dErr;
       if (!diarios || diarios.length === 0) return [];
