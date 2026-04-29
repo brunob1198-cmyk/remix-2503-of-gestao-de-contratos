@@ -138,7 +138,11 @@ async function sendOne(
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: transactionValue
+        valor: transactionValue,
+        composicao_valor: {
+          valor_bruto: transactionValue,
+          valor_liquido: transactionValue
+        }
       }
     ],
     condicao_pagamento: {
@@ -147,7 +151,7 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          detalhe_valor: {
+          composicao_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue
           }
@@ -158,12 +162,12 @@ async function sendOne(
 
   // Validação interna antes do POST
   for (const parcela of payload.condicao_pagamento.parcelas) {
-    if (!parcela.detalhe_valor || parcela.detalhe_valor.valor_bruto === undefined) {
+    if (!parcela.composicao_valor || parcela.composicao_valor.valor_bruto === undefined) {
       console.error("Falha na validação pré-envio: Parcela sem detalhe de valor correto", { flash_id: input.flash_transaction_id });
       return {
         flash_transaction_id: input.flash_transaction_id,
         status: "erro",
-        error: "Erro interno: Detalhe de valor da parcela não gerado corretamente.",
+        error: "Erro interno: Composição de valor da parcela não gerada corretamente.",
       };
     }
   }
@@ -354,7 +358,7 @@ serve(async (req) => {
       results.push(r);
     }
 
-    const sucesso = results.filter((r) => r.status === "sucesso").length;
+    const sucesso = results.filter((r) => r.status === "ENVIADO").length;
     const erro = results.filter((r) => r.status === "erro").length;
     const skipped = results.filter((r) => r.status === "skipped").length;
 
