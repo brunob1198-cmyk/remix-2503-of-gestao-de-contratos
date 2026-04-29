@@ -329,7 +329,7 @@ export function DetailMedicaoContent({
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
       const fetchAllFotos = async () => {
-        const all: unknown[] = [];
+        const all: any[] = [];
         let from = 0;
         while (true) {
           const { data, error } = await supabase
@@ -346,7 +346,7 @@ export function DetailMedicaoContent({
         }
         return all;
       };
-      let fotos: unknown[] = [];
+      let fotos: any[] = [];
       try {
         fotos = await fetchAllFotos();
       } catch {
