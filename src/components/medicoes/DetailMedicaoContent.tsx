@@ -477,7 +477,7 @@ export function DetailMedicaoContent({
       addLog("Preparando fotos em alta qualidade para o PDF...", "info");
       let preparedPhotos = 0;
       const preparePhoto = async (img: HTMLImageElement) => {
-        const originalSrc = img.dataset.src || img.src;
+        const originalSrc = img.dataset.originalSrc || img.dataset.src || img.src;
         if (!originalSrc || originalSrc.startsWith("data:")) return;
         try {
           img.src = await getPdfSafeImageDataUrl(originalSrc, { maxWidth: 1400, maxHeight: 1050, quality: 0.86 });
