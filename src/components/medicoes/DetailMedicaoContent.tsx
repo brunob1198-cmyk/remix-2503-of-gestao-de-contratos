@@ -1095,7 +1095,7 @@ export function DetailMedicaoContent({
                       {/* Photo groups by classification */}
                       <div className="divide-y">
                         {classes.map(([className, fotos]) => {
-                          const photoPairs = chunkPairs(fotos);
+                          const photoPairs = chunkGroups(fotos, 3);
                           return (
                             <div key={className} className="p-3 space-y-3">
                               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
