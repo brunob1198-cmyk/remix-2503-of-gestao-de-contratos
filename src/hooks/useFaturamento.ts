@@ -428,6 +428,7 @@ export interface FaturamentoContaAzul {
   valor_aberto: number;
   valor_baixado: number;
   descricao: string | null;
+  numero_venda: string | null;
   projeto_id: string | null;
   status: string | null;
   payload_json: any | null;
