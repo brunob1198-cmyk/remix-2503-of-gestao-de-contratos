@@ -59,21 +59,46 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
 
       const diarioIds = diarios.map(d => d.id);
 
-      // Usamos paginação para buscar todas as fotos se houver muitas, 
-      // mas como o default do Supabase é 1000, forçamos um range maior para garantir a contagem real.
-      const [prodRes, equipeRes, equipRes, veicRes, fotosRes] = await Promise.all([
+      // Usamos paginação manual para garantir que TODAS as fotos sejam carregadas,
+      // contornando o limite de 1000 registros por requisição do Supabase.
+      const fetchAllPhotos = async (ids: string[]) => {
+        let all: any[] = [];
+        let from = 0;
+        let to = 999;
+        let finished = false;
+        
+        while (!finished) {
+          const { data, error } = await supabase
+            .from("diario_fotos")
+            .select("*")
+            .in("diario_id", ids)
+            .range(from, to);
+            
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          
+          all = [...all, ...data];
+          if (data.length < 1000) finished = true;
+          else {
+            from += 1000;
+            to += 1000;
+          }
+        }
+        return all;
+      };
+
+      const [prodRes, equipeRes, equipRes, veicRes, allFotos] = await Promise.all([
         supabase.from("diario_producao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade)").in("diario_id", diarioIds),
         supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
         supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
         supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
-        supabase.from("diario_fotos").select("*").in("diario_id", diarioIds).limit(100000),
+        fetchAllPhotos(diarioIds),
       ]);
 
       const allProd = prodRes.data || [];
       const allEquipe = equipeRes.data || [];
       const allEquip = equipRes.data || [];
       const allVeic = veicRes.data || [];
-      const allFotos = fotosRes.data || [];
 
       const producaoItemMap = new Map<string, { codigo: string; descricao: string }>();
       allProd.forEach((p: any) => {
