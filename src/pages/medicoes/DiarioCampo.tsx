@@ -461,22 +461,70 @@ export default function DiarioCampoPage() {
               {/* Photos - only for saved activities */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-primary" />
-                    Fotos
+                  <CardTitle className="text-lg flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-primary" />
+                      Fotos
+                    </div>
+                    {totalInQueue > 0 && (
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        Fila: {completedCount}/{totalInQueue}
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById("campo-foto-input")?.click()}
-                          disabled={uploading}
+                  {totalInQueue > 0 && (
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="flex items-center gap-1.5">
+                          {isProcessingQueue ? <RefreshCw className="h-3 w-3 animate-spin text-primary" /> : <Check className="h-3 w-3 text-green-600" />}
+                          {isProcessingQueue ? `Enviando ${pendingCount} fotos...` : 'Envios concluídos'}
+                        </span>
+                        <span>{Math.round((completedCount / totalInQueue) * 100)}%</span>
+                      </div>
+                      <Progress value={(completedCount / totalInQueue) * 100} className="h-1.5" />
+                      
+                      {failedCount > 0 && (
+                        <div className="flex items-center justify-between bg-destructive/10 p-2 rounded border border-destructive/20 mt-2">
+                          <div className="flex items-center gap-2 text-destructive text-[11px]">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            <span>{failedCount} fotos falharam</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-[10px] text-destructive hover:bg-destructive/20"
+                            onClick={processQueue}
+                            disabled={isProcessingQueue}
+                          >
+                            Tentar Novamente
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {!isProcessingQueue && completedCount === totalInQueue && (
+                         <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full h-7 text-[10px] text-muted-foreground"
+                          onClick={() => { clearCompletedUploads(); setUploadQueue([]); }}
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {uploading ? "Enviando..." : "Enviar Fotos"}
+                          Limpar Histórico de Envios
                         </Button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById("campo-foto-input")?.click()}
+                      disabled={isProcessingQueue}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {isProcessingQueue ? "Enviando..." : "Selecionar Fotos"}
+                    </Button>
                         <input
                           id="campo-foto-input"
                           type="file"
