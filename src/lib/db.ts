@@ -3,6 +3,7 @@ import { openDB, IDBPDatabase } from 'idb';
 const DB_NAME = 'medicao_storage';
 const STORE_NAME = 'pdf_chunks';
 const UPLOAD_STORE = 'upload_queue';
+const EXPORT_STATE_STORE = 'export_state';
 
 export interface PDFChunk {
   id: string; // medicaoId_chunkIndex
