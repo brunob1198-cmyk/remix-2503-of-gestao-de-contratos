@@ -117,8 +117,8 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         
         if (date && value) {
           const path = (norm.tipo_operacao === "receita") ? "contas-a-receber" : "contas-a-pagar";
-          // Usando /buscar conforme documentação V2
-          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?vencimento_inicio=${date}&vencimento_fim=${date}&valor=${value}`;
+          // Parâmetros corretos para busca no V2: data_vencimento_de e data_vencimento_ate
+          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${date}&data_vencimento_ate=${date}&valor=${value}`;
           
           console.log(`[Reconcile] Tentando busca fallback em ${searchUrl}`);
           const searchResp = await fetch(searchUrl, {
