@@ -280,7 +280,10 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                       <TableHead>Data Emissão</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Centro de Custo</TableHead>
-                      <TableHead className="text-right">Valor Total</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Em Aberto</TableHead>
+                      <TableHead className="text-right">Baixado</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
