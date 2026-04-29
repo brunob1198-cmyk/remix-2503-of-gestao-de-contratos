@@ -117,8 +117,18 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         
         if (date && value) {
           const path = (norm.tipo_operacao === "receita") ? "contas-a-receber" : "contas-a-pagar";
-          // Parâmetros corretos para busca no V2: data_vencimento_de e data_vencimento_ate
-          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${date}&data_vencimento_ate=${date}&valor=${value}`;
+          // Parâmetros para busca no V2: data_vencimento_de e data_vencimento_ate
+          // Aumentamos o range para +/- 1 dia por precaução com fuso horário
+          const dateObj = new Date(date);
+          const dateBefore = new Date(dateObj);
+          dateBefore.setDate(dateBefore.getDate() - 1);
+          const dateAfter = new Date(dateObj);
+          dateAfter.setDate(dateAfter.getDate() + 1);
+          
+          const dFrom = dateBefore.toISOString().split('T')[0];
+          const dTo = dateAfter.toISOString().split('T')[0];
+
+          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${path}/buscar?data_vencimento_de=${dFrom}&data_vencimento_ate=${dTo}`;
           
           console.log(`[Reconcile] Tentando busca fallback em ${searchUrl}`);
           const searchResp = await fetch(searchUrl, {
@@ -126,19 +136,21 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
           });
           
           if (searchResp.ok) {
-            const results = await searchResp.json();
-            // A resposta do buscar do CA V2 costuma ser uma lista de parcelas
+            const resultsData = await searchResp.json();
+            const results = resultsData.itens || resultsData; // V2 API returns { itens: [], ... }
+            
             console.log(`[Reconcile] Busca CA retornou ${results?.length || 0} resultados.`);
             
             if (Array.isArray(results)) {
               const match = results.find((r: any) => {
+                // Comparamos valor com pequena tolerância para centavos
+                const valMatch = Math.abs((r.valor || r.total) - value) < 0.01;
                 const descMatch = r.descricao?.toLowerCase().includes(norm.description?.toLowerCase() || "") ||
                                  norm.description?.toLowerCase().includes(r.descricao?.toLowerCase() || "");
-                return descMatch;
+                return valMatch && descMatch;
               });
               
               if (match) {
-                // No buscar, o id retornado costuma ser o id do EVENTO (ou tem o evento_id)
                 conta_azul_transaction_id = match.evento_id || match.id || match.uuid;
                 console.log(`[Reconcile] Encontrado via fallback! ID: ${conta_azul_transaction_id}`);
                 await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
