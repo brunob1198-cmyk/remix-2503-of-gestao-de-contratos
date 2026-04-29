@@ -328,13 +328,30 @@ export function DetailMedicaoContent({
       const diarioIds = diarios.map(d => d.id);
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-      // Improved query to handle large amounts of photos if necessary
-      const { data: fotos, error: fErr } = await supabase
-        .from("diario_fotos")
-        .select("*")
-        .in("diario_id", diarioIds)
-        .order('created_at', { ascending: true }); // Ensure consistent order
-      if (fErr) return [];
+      const fetchAllFotos = async () => {
+        const all: unknown[] = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from("diario_fotos")
+            .select("*")
+            .in("diario_id", diarioIds)
+            .order("created_at", { ascending: true })
+            .range(from, from + 999);
+          if (error) throw error;
+          if (!data?.length) break;
+          all.push(...data);
+          if (data.length < 1000) break;
+          from += 1000;
+        }
+        return all;
+      };
+      let fotos: unknown[] = [];
+      try {
+        fotos = await fetchAllFotos();
+      } catch {
+        return [];
+      }
 
       const producaoIds = (fotos || [])
         .map(f => (f as any).diario_producao_id)
