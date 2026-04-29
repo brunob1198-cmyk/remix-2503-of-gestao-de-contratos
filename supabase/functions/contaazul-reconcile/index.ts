@@ -78,13 +78,13 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         .eq("flash_transaction_id", flash_transaction_id)
         .maybeSingle();
       
-      const protocolPath = (normType?.tipo_operacao === "receita") 
-        ? "contas-a-receber/protocolos" 
-        : "contas-a-pagar/protocolos";
+      const importPath = (normType?.tipo_operacao === "receita") 
+        ? "contas-a-receber/importacao" 
+        : "contas-a-pagar/importacao";
 
-      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo} via ${protocolPath}...`);
+      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo} via ${importPath}...`);
       
-      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${protocolPath}/${conta_azul_protocolo}`, {
+      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${conta_azul_protocolo}`, {
         headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
       });
       
