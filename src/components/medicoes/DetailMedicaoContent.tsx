@@ -657,7 +657,7 @@ export function DetailMedicaoContent({
       }
 
       const finalBytes = await finalPdf.save();
-      const blob = new Blob([finalBytes.buffer], { type: "application/pdf" });
+      const blob = new Blob([finalBytes as any], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
