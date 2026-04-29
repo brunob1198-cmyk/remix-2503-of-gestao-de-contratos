@@ -212,9 +212,44 @@ async function sendOne(
     if (!resp.ok) {
       errorMsg = `HTTP ${resp.status}: ${typeof responseJson === "object" ? JSON.stringify(responseJson) : text}`;
     } else {
-      status = "ENVIADO";
-      contaAzulId = responseJson?.id || responseJson?.uuid || null;
-      contaAzulProtocolo = responseJson?.protocolo || null;
+      contaAzulProtocolo = responseJson?.protocolo || responseJson?.protocolId || null;
+      
+      if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
+        console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento...`);
+        // Tenta verificar o status do protocolo 3 vezes com intervalo de 2s
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 2000));
+          const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolos/${contaAzulProtocolo}`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          
+          if (statusResp.ok) {
+            const statusData = await statusResp.json();
+            console.log(`[DEBUG] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, JSON.stringify(statusData));
+            
+            if (statusData.status === "SUCCESS") {
+              status = "ENVIADO";
+              contaAzulId = statusData.resourceId || statusData.id || null;
+              responseJson = { ...responseJson, final_status: statusData };
+              break;
+            } else if (statusData.status === "ERROR") {
+              status = "erro";
+              errorMsg = `Erro no processamento assíncrono do Conta Azul: ${JSON.stringify(statusData.errors || statusData.message)}`;
+              responseJson = { ...responseJson, final_status: statusData };
+              break;
+            }
+          }
+        }
+        
+        // Se ainda estiver pendente após as tentativas, marcamos como enviado mas avisamos que está em processamento
+        if (status === "erro" && !errorMsg) {
+          status = "ENVIADO";
+          errorMsg = "Lançamento em processamento assíncrono no Conta Azul (Protocolo pendente)";
+        }
+      } else {
+        status = "ENVIADO";
+        contaAzulId = responseJson?.id || responseJson?.uuid || null;
+      }
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
