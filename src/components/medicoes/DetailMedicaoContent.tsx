@@ -1146,7 +1146,7 @@ export function DetailMedicaoContent({
 
                 {fotosByItem.gerais.length > 0 && (
                   <div>
-                    {chunkPairs(fotosByItem.gerais).map((pair, pi) => (
+                    {chunkGroups(fotosByItem.gerais, 3).map((pair, pi) => (
                       <div
                         key={`gerais-${pi}`}
                         data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
