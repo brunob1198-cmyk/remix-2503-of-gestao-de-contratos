@@ -544,7 +544,10 @@ export default function RdoPage() {
             }
           }
         }
+        setDownloadProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
       }
+
+      setDownloadProgress(null);
 
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `RDO_${periodoLabel}.zip`);
