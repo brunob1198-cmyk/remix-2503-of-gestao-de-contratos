@@ -12,7 +12,7 @@ import { PDFDocument } from "pdf-lib";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getPDFChunks, clearPDFChunks, getExportState, clearExportState } from "@/lib/db";
+import { clearPDFChunks, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
   getPdfSafeImageDataUrl,
@@ -168,19 +168,9 @@ export function DetailMedicaoContent({
   }, []);
 
   useEffect(() => {
-    const checkResume = async () => {
-      const chunks = await getPDFChunks(detailMedicao.id);
-      const state = await getExportState(detailMedicao.id);
-      
-      if (chunks.length > 0 || state) {
-        setCanResume(true);
-        if (state && state.state?.status === 'exporting' && !isExporting) {
-          addLog("Detectada exportação pendente. Clique em 'Retomar' para continuar.", "info");
-          setShowLogPanel(true);
-        }
-      }
-    };
-    checkResume();
+    clearPDFChunks(detailMedicao.id);
+    clearExportState(detailMedicao.id);
+    setCanResume(false);
   }, [detailMedicao.id, addLog, isExporting]);
 
   // Update logs when exporting state changes
