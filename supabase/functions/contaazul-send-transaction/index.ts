@@ -138,17 +138,26 @@ async function sendOne(
     };
   }
 
+  // Validação explícita para evitar erro 400 no Conta Azul
+  if (!input.category_id) {
+    return {
+      flash_transaction_id: input.flash_transaction_id,
+      status: "erro",
+      error: "Categoria (category_id) é obrigatória para o envio ao Conta Azul",
+    };
+  }
+
   const payload = {
     data_competencia: transactionDate,
     valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
     conta_financeira: input.financial_account_id,
-    id_categoria: input.category_id, // Conta Azul V1 as vezes prefere no raiz
+    id_categoria: input.category_id,
     rateio: [
       {
         id_categoria: input.category_id,
-        valor: transactionValue,
+        valor: transactionValue, // Garantindo que categoriesRatio[0].value (valor do rateio) esteja preenchido
         detalhe_valor: {
           valor_bruto: transactionValue,
           valor_liquido: transactionValue
@@ -161,7 +170,7 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          valor: transactionValue, // Adicionado aqui tambem
+          valor: transactionValue,
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue
@@ -171,7 +180,7 @@ async function sendOne(
     }
   };
 
-  console.log(`[DEBUG] Enviando transação ${input.flash_transaction_id} para Conta Azul:`, JSON.stringify(payload, null, 2));
+  console.log(`[CONTA AZUL PAYLOAD] [ID: ${input.flash_transaction_id}] Payload estruturado para envio:`, JSON.stringify(payload, null, 2));
 
   let httpStatus: number | null = null;
   let responseJson: any = null;
@@ -210,7 +219,7 @@ async function sendOne(
     } else {
       contaAzulProtocolo = responseJson?.protocolo || responseJson?.protocolId || null;
       
-      if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
+      if (responseJson?.status === "PENDING" && (contaAzulProtocolo !== null && contaAzulProtocolo !== undefined)) {
         console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento...`);
         
         for (let i = 0; i < 15; i++) {
@@ -265,9 +274,14 @@ async function sendOne(
           const lastStatus = responseJson?.last_polling_status?.status || "PENDING";
           if (lastStatus === "PENDING") {
             status = "ENVIADO"; 
-            errorMsg = "Lançamento em processamento assíncrono. Será confirmado automaticamente em instantes.";
+            errorMsg = "Lançamento em processamento assíncrono. Protocolo recebido, mas confirmação via polling falhou/expirou.";
+          } else {
+            errorMsg = `Rejeição Conta Azul: ${lastStatus}. Verifique logs do payload para detalhes.`;
           }
         }
+      } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
+        status = "erro";
+        errorMsg = "Conta Azul retornou status PENDING mas não forneceu um protocolo de rastreio.";
       } else {
         status = "ENVIADO";
         contaAzulId = responseJson?.id || responseJson?.uuid || null;
