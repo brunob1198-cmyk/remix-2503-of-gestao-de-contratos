@@ -363,6 +363,7 @@ export default function RdoPage() {
 
   const [lightboxPhoto, setLightboxPhoto] = useState<RdoFoto & { data: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Group diarios by date
   const dayGroups = useMemo<DayGroup[]>(() => {
