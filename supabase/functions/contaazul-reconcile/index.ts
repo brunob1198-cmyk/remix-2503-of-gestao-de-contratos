@@ -186,7 +186,7 @@ serve(async (req) => {
       .from("flash_integration_logs")
       .select("*")
       .eq("evento", "send_transaction")
-      .is("reconciliado", null)
+      .eq("reconciliado", false) // Agora buscamos explicitamente false
       .lt("created_at", fiveMinutesAgo)
       .or(`status.eq.ENVIADO,status.eq.erro,status.eq.REABERTO`)
       .order('created_at', { ascending: false })
