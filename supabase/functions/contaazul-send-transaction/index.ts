@@ -111,18 +111,21 @@ async function sendOne(
   supabase: any,
   empresaId: string,
   accessToken: string,
-  input: TransactionInput
+  input: TransactionInput,
+  force: boolean = false
 ) {
   const startedAt = Date.now();
   
-  // Verificação obrigatória de duplicidade
-  const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
-  if (alreadySent) {
-    return {
-      flash_transaction_id: input.flash_transaction_id,
-      status: "skipped",
-      error: "Transação já integrada anteriormente (controle de duplicidade)",
-    };
+  // Verificação de duplicidade (pode ser ignorada se force=true, ex: reaberto)
+  if (!force) {
+    const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
+    if (alreadySent) {
+      return {
+        flash_transaction_id: input.flash_transaction_id,
+        status: "skipped",
+        error: "Transação já integrada anteriormente (controle de duplicidade)",
+      };
+    }
   }
 
   const transactionValue = Math.abs(Number(input.value) || 0);
