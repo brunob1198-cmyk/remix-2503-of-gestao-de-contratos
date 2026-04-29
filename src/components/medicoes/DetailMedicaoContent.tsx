@@ -596,7 +596,7 @@ export function DetailMedicaoContent({
           const renderedHeight = (slice.height * usableWidth) / contentWidth;
           if (i > 0) pdf.addPage();
 
-          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Lower quality for memory optimization during addImage
+          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65); // Lower quality for massive PDFs
           pdf.addImage(
             pageImageData,
             "JPEG",
@@ -617,13 +617,18 @@ export function DetailMedicaoContent({
         const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
         setExportProgress(progress);
         
+        // Clear SRC for images in this slice to free memory
         imagesInSlice.forEach((img) => {
           if (!isLogoImage(img)) {
             img.removeAttribute("src");
-            img.removeAttribute("srcset");
+            // Also remove from browser cache if possible by setting to empty
+            img.src = "";
           }
         });
-        await new Promise(resolve => setTimeout(resolve, 120));
+
+        // Longer pause every 10 pages to let browser garbage collect
+        const pauseTime = pageNum % 10 === 0 ? 1000 : 200;
+        await new Promise(resolve => setTimeout(resolve, pauseTime));
       }
 
       const endTime = Date.now();
