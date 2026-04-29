@@ -515,6 +515,7 @@ export default function RdoPage() {
     try {
       setDownloadProgress({ current: 0, total: diarios.length });
       const zip = new JSZip();
+      const periodoLabel = `${dataInicio}_a_${dataFim}`;
 
       for (const diario of diarios) {
         const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
