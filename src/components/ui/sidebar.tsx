@@ -27,6 +27,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  isPinned: boolean;
+  setIsPinned: (isPinned: boolean) => void;
 };
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
@@ -50,6 +52,17 @@ const SidebarProvider = React.forwardRef<
 >(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, className, style, children, ...props }, ref) => {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [isPinned, _setIsPinned] = React.useState(() => {
+    if (typeof document !== "undefined") {
+      return document.cookie.includes("sidebar:pinned=true");
+    }
+    return true;
+  });
+
+  const setIsPinned = React.useCallback((value: boolean) => {
+    _setIsPinned(value);
+    document.cookie = `sidebar:pinned=${value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+  }, []);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -90,7 +103,7 @@ const SidebarProvider = React.forwardRef<
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed";
+  const state = (isPinned || open) ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContext>(
     () => ({
@@ -101,8 +114,10 @@ const SidebarProvider = React.forwardRef<
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      isPinned,
+      setIsPinned,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, isPinned, setIsPinned],
   );
 
   return (
@@ -136,7 +151,7 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, open, setOpen, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, open, setOpen, openMobile, setOpenMobile, isPinned } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -179,12 +194,12 @@ const Sidebar = React.forwardRef<
       data-variant={variant}
       data-side={side}
       onMouseEnter={() => {
-        if (state === "collapsed") {
+        if (!isPinned && state === "collapsed") {
           setOpen(true);
         }
       }}
       onMouseLeave={() => {
-        if (open) {
+        if (!isPinned && open) {
           setOpen(false);
         }
       }}

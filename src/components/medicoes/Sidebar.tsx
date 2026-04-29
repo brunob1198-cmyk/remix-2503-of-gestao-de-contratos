@@ -9,12 +9,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, FolderKanban, MapPin, FileSpreadsheet,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, History, Zap, Wand2,
+  Pin, PinOff,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -54,7 +56,7 @@ const menuItems: MenuItem[] = [
 ];
 
 export function MedicoesSidebar() {
-  const { state } = useSidebar();
+  const { state, isPinned, setIsPinned } = useSidebar();
   const collapsed = state === "collapsed";
   const { profile, role, signOut } = useAuth();
   const { canView } = usePermissions();
@@ -75,8 +77,17 @@ export function MedicoesSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent className="flex flex-col h-full">
         <SidebarGroup className="flex-1">
-          <SidebarGroupLabel className="px-4 py-2 text-lg font-bold">
-            {!collapsed && "Gestão de Contratos"}
+          <SidebarGroupLabel className="px-4 py-2 flex items-center justify-between">
+            {!collapsed && <span className="text-lg font-bold">Gestão de Contratos</span>}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 ml-auto"
+              onClick={() => setIsPinned(!isPinned)}
+              title={isPinned ? "Desafixar menu" : "Fixar menu"}
+            >
+              {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+            </Button>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
