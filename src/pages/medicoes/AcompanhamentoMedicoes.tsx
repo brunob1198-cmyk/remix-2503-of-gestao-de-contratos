@@ -605,11 +605,14 @@ export default function AcompanhamentoMedicoesPage() {
           const diarioIds = diarios.map(d => d.id);
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
+          // Definitivo: Buscamos todas as fotos sem limite restritivo e com log de depuração
           const { data: fotos, error: fErr } = await supabase
             .from("diario_fotos")
             .select("*")
             .in("diario_id", diarioIds)
-            .limit(50000); // Definitivo: aumentado para suportar grandes projetos
+            .limit(100000); 
+          
+          console.log(`[Acompanhamento] Carregadas ${fotos?.length || 0} fotos para ${diarioIds.length} diários.`);
           
           if (fErr) {
             console.error("Erro ao buscar fotos:", fErr);
