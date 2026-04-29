@@ -16,10 +16,9 @@ import { savePDFChunk, getPDFChunks, clearPDFChunks, saveExportState, getExportS
 import { 
   ensureImagesLoaded, 
   getPdfSafeImageDataUrl,
-  getImagesForSlice,
-  collectSafeBreakPoints, 
-  buildPageSlices,
-  isCanvasBlank,
+  getDirectChildPdfSections,
+  unloadImagesOutsideSection,
+  withTimeout,
   PDFExportLog 
 } from "@/lib/pdfExportUtils";
 
