@@ -459,7 +459,7 @@ export function DetailMedicaoContent({
     addLog(resume ? "Retomando exportação..." : "Iniciando processo de exportação...", "info");
     
     let exportContainer: HTMLDivElement | null = null;
-    const CHUNK_SIZE = 8; // Number of pages per PDF chunk for memory efficiency
+    const CHUNK_SIZE = 12; // Increased chunk size for faster processing of large projects
 
     try {
       addLog("Preparando contêiner de exportação...", "info");
@@ -502,7 +502,7 @@ export function DetailMedicaoContent({
       const usableWidth = pageWidth - marginLeft - marginRight;
       const usableHeight = pageHeight - marginTop - marginBottom;
       
-      const scale = 1.0; 
+      const scale = 0.8; // Reduced scale to significantly accelerate rendering and reduce memory usage
       const totalHeight = content.scrollHeight;
       const pageHeightPx = Math.floor(contentWidth * (usableHeight / usableWidth));
 
@@ -536,17 +536,16 @@ export function DetailMedicaoContent({
             });
 
             await ensureImagesLoaded(content, (msg) => {
-              // Only log meaningful progress to avoid freezing UI with thousands of logs
               if (msg.includes("processadas") || msg.includes("Iniciando")) {
                 addLog(msg, "info");
               }
             }, {
               images: imagesInSlice,
-              concurrency: 4,
-              timeoutMs: 15000, // Reduced from 25000 to fail faster and retry
+              concurrency: 8, // Increased for speed
+              timeoutMs: 8000, // Faster timeout
               label: `Página ${pageNum}`,
             });
-            await waitForNextPaint(50);
+            await waitForNextPaint(20); // Faster wait
           }
           
           const renderPage = async () => {
