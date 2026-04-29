@@ -273,8 +273,8 @@ async function sendOne(
         if (status === "erro") {
           const lastStatus = responseJson?.last_polling_status?.status || "PENDING";
           if (lastStatus === "PENDING") {
-            status = "ENVIADO"; 
-            errorMsg = "Lançamento em processamento assíncrono. Protocolo recebido, mas confirmação via polling falhou/expirou.";
+            status = "erro"; 
+            errorMsg = "O Conta Azul recebeu o lançamento mas está demorando para processar (Status: Pendente). Verifique se o lançamento aparece no Conta Azul em alguns minutos antes de tentar novamente.";
           } else {
             errorMsg = `Rejeição Conta Azul: ${lastStatus}. Verifique logs do payload para detalhes.`;
           }
