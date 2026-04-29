@@ -24,7 +24,7 @@ export interface UploadItem {
 }
 
 export async function initDB() {
-  return openDB(DB_NAME, 2, {
+  return openDB(DB_NAME, 3, {
     upgrade(db, oldVersion, newVersion) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -32,8 +32,26 @@ export async function initDB() {
       if (!db.objectStoreNames.contains(UPLOAD_STORE)) {
         db.createObjectStore(UPLOAD_STORE, { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains(EXPORT_STATE_STORE)) {
+        db.createObjectStore(EXPORT_STATE_STORE, { keyPath: 'id' });
+      }
     },
   });
+}
+
+export async function saveExportState(medicaoId: string, state: any) {
+  const db = await initDB();
+  return db.put(EXPORT_STATE_STORE, { id: medicaoId, state, timestamp: Date.now() });
+}
+
+export async function getExportState(medicaoId: string) {
+  const db = await initDB();
+  return db.get(EXPORT_STATE_STORE, medicaoId);
+}
+
+export async function clearExportState(medicaoId: string) {
+  const db = await initDB();
+  return db.delete(EXPORT_STATE_STORE, medicaoId);
 }
 
 export async function savePDFChunk(chunk: PDFChunk) {
