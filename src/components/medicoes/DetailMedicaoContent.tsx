@@ -155,6 +155,16 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [canResume, setCanResume] = useState(false);
 
+  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    const newLog: PDFExportLog = {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      type
+    };
+    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
+    console.log(`[PDF Export] ${message}`);
+  }, []);
+
   useEffect(() => {
     const checkResume = async () => {
       const chunks = await getPDFChunks(detailMedicao.id);
@@ -169,17 +179,7 @@ export function DetailMedicaoContent({
       }
     };
     checkResume();
-  }, [detailMedicao.id, addLog]);
-
-  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
-    const newLog: PDFExportLog = {
-      timestamp: new Date().toLocaleTimeString(),
-      message,
-      type
-    };
-    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
-    console.log(`[PDF Export] ${message}`);
-  }, []);
+  }, [detailMedicao.id, addLog, isExporting]);
 
   // Update logs when exporting state changes
   useEffect(() => {
