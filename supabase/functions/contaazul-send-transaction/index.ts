@@ -222,8 +222,8 @@ async function sendOne(
       if (responseJson?.status === "PENDING" && (contaAzulProtocolo !== null && contaAzulProtocolo !== undefined)) {
         console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Aguardando processamento...`);
         
-        for (let i = 0; i < 15; i++) {
-          await new Promise(r => setTimeout(r, 3000));
+        for (let i = 0; i < 30; i++) {
+          await new Promise(r => setTimeout(r, 4000));
           
           const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
           const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
