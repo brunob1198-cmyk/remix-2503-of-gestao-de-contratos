@@ -400,10 +400,10 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '320px' }}>
-        <div className="aspect-[4/3] bg-muted/15 p-2 flex items-center justify-center overflow-hidden">
+      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '280px' }}>
+        <div className="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=640&t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=400&quality=60&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -411,35 +411,28 @@ export function DetailMedicaoContent({
             crossOrigin="anonymous"
           />
         </div>
-        <div className="p-3 bg-muted/20 space-y-1.5 flex-1">
+        <div className="p-2 bg-muted/20 space-y-1 flex-1">
           {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-xs text-foreground break-words">
+            <p className="font-semibold text-[9px] text-foreground leading-tight line-clamp-2">
               {foto.item_codigo} — {foto.item_descricao}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-            {options?.showSiteName && foto.site_nome && <span>{foto.site_nome}</span>}
-            {foto.municipio && (
-              <span className="flex items-center gap-0.5">
-                <MapPin className="h-2.5 w-2.5" />
-                {foto.municipio}
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground">
+            {options?.showSiteName && foto.site_nome && <span className="truncate max-w-[80px]">{foto.site_nome}</span>}
             {foto.diario_data && (
               <span className="flex items-center gap-0.5">
-                <Calendar className="h-2.5 w-2.5" />
+                <Calendar className="h-2 w-2" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
+            <Badge className="text-[7px] px-1 py-0 h-3 text-white" style={{ backgroundColor: classColor(foto.classificacao) }}>
+              {classLabel(foto.classificacao)}
+            </Badge>
           </div>
 
-          <Badge className="text-[9px] text-white w-fit" style={{ backgroundColor: classColor(foto.classificacao) }}>
-            {classLabel(foto.classificacao)}
-          </Badge>
-
           {foto.legenda && (
-            <p className="text-[10px] text-muted-foreground italic leading-relaxed break-words">“{foto.legenda}”</p>
+            <p className="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“{foto.legenda}”</p>
           )}
         </div>
       </div>
