@@ -110,9 +110,46 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     }
 
     if (!conta_azul_transaction_id) {
-      // Tenta forçar o status para erro se não conseguimos resolver
-      return { status: "no_ca_id" };
+      // FALLBACK: Se não temos ID nem protocolo válido (404), tentamos buscar por valor e data no CA
+      console.log(`[Reconcile] Protocolo inválido ou ID ausente. Tentando busca fallback por valor e data...`);
+      
+      const { data: norm } = await supabase
+        .from("flash_normalizacao")
+        .select("conta_azul_payload, description:conta_azul_payload->>description")
+        .eq("flash_transaction_id", flash_transaction_id)
+        .maybeSingle();
+
+      if (norm) {
+        const date = norm.conta_azul_payload?.date;
+        const value = norm.conta_azul_payload?.amount;
+        
+        if (date && value) {
+          const searchUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?vencimento_inicio=${date}&vencimento_fim=${date}&valor=${value}`;
+          console.log(`[Reconcile] Buscando: ${searchUrl}`);
+          
+          const searchResp = await fetch(searchUrl, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          
+          if (searchResp.ok) {
+            const results = await searchResp.json();
+            // Procuramos um que coincida com a descrição (parcialmente)
+            const match = results.find((r: any) => 
+              r.descricao?.toLowerCase().includes(norm.description?.toLowerCase() || "") ||
+              norm.description?.toLowerCase().includes(r.descricao?.toLowerCase() || "")
+            );
+            
+            if (match) {
+              conta_azul_transaction_id = match.id || match.uuid;
+              console.log(`[Reconcile] Encontrado via busca fallback! ID: ${conta_azul_transaction_id}`);
+              await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
+            }
+          }
+        }
+      }
     }
+
+    if (!conta_azul_transaction_id) return { status: "no_ca_id" };
 
     // 2. Buscar parcelas do lançamento
     console.log(`[Reconcile] Buscando parcelas para ID ${conta_azul_transaction_id}...`);
