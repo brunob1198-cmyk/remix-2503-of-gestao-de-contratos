@@ -679,6 +679,7 @@ export function DetailMedicaoContent({
       URL.revokeObjectURL(url);
       
       await clearPDFChunks(detailMedicao.id);
+      await clearExportState(detailMedicao.id);
       setCanResume(false);
       addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
