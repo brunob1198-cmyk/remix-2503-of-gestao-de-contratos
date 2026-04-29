@@ -15,11 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import {
-  ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus,
+  ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus, AlertCircle, RefreshCw
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
+import { addToUploadQueue, getUploadQueue, updateUploadStatus, removeFromUploadQueue, clearCompletedUploads, UploadItem } from "@/lib/db";
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
@@ -47,6 +49,74 @@ export default function DiarioCampoPage() {
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+
+  // Load pending uploads on mount
+  useEffect(() => {
+    const loadQueue = async () => {
+      const queue = await getUploadQueue();
+      if (queue.length > 0) {
+        setUploadQueue(queue);
+        const hasPending = queue.some(i => i.status === 'pending' || i.status === 'uploading');
+        if (hasPending) {
+          processQueue();
+        }
+      }
+    };
+    loadQueue();
+  }, []);
+
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueue) return;
+    setIsProcessingQueue(true);
+
+    const queue = await getUploadQueue();
+    const pending = queue.filter(i => i.status === 'pending' || i.status === 'uploading' || i.status === 'failed');
+    
+    if (pending.length === 0) {
+      setIsProcessingQueue(false);
+      return;
+    }
+
+    const CONCURRENCY = 4;
+    let index = 0;
+
+    const worker = async () => {
+      while (index < pending.length) {
+        const item = pending[index++];
+        try {
+          await updateUploadStatus(item.id, 'uploading');
+          setUploadQueue(await getUploadQueue());
+
+          const path = item.path || `campo/${item.diarioId}/${Date.now()}_${item.id}_${item.file.name}`;
+          
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { upsert: true });
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          
+          const { error: insertError } = await supabase
+            .from("diario_campo_fotos")
+            .insert([{ diario_campo_id: item.diarioId, url: urlData.publicUrl }]);
+          
+          if (insertError) throw insertError;
+
+          await updateUploadStatus(item.id, 'completed', { url: urlData.publicUrl, path });
+        } catch (error: any) {
+          console.error("Upload error:", error);
+          await updateUploadStatus(item.id, 'failed', { error: error.message });
+        }
+        setUploadQueue(await getUploadQueue());
+      }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+    
+    setIsProcessingQueue(false);
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
+    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
+  }, [queryClient, isProcessingQueue]);
 
   const handleProjetoChange = (projetoId: string) => {
     setSelectedProjetoId(projetoId);
@@ -160,9 +230,7 @@ export default function DiarioCampoPage() {
 
   const handleUploadFotos = async (files: FileList, input?: HTMLInputElement | null) => {
     if (!files.length) return;
-    setUploading(true);
 
-    // If activity not yet saved, auto-create it first
     let diarioId = currentAtividade?.id;
     if (!diarioId) {
       try {
@@ -180,53 +248,30 @@ export default function DiarioCampoPage() {
         diarioId = result?.id;
         if (!diarioId) {
           toast({ title: "Erro ao criar atividade", variant: "destructive" });
-          setUploading(false);
           return;
         }
         setSaved(true);
         setDirty(false);
       } catch {
         toast({ title: "Erro ao criar atividade", variant: "destructive" });
-        setUploading(false);
         return;
       }
     }
 
-    let uploadedCount = 0;
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const path = `campo/${diarioId}/${Date.now()}_${i}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
-      if (uploadError) {
-        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-        continue;
-      }
-      const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      // Insert directly with the correct diarioId to avoid stale hook reference
-      const { error: insertError } = await supabase
-        .from("diario_campo_fotos")
-        .insert([{ diario_campo_id: diarioId, url: urlData.publicUrl }]);
-      if (insertError) {
-        toast({ title: "Erro ao salvar foto", description: insertError.message, variant: "destructive" });
-        await supabase.storage.from("diario-fotos").remove([path]);
-        continue;
-      }
-
-      uploadedCount += 1;
-    }
-    // Refresh fotos and atividades queries
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_fotos"] });
-    queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
-    setUploading(false);
-
-    if (input) {
-      input.value = "";
+      const id = crypto.randomUUID();
+      await addToUploadQueue({
+        id,
+        diarioId,
+        file,
+        status: 'pending'
+      });
     }
 
-    if (uploadedCount > 0) {
-      toast({ title: `${uploadedCount} foto(s) enviada(s)!` });
-    }
+    setUploadQueue(await getUploadQueue());
+    if (input) input.value = "";
+    processQueue();
   };
 
   const handleRemoveFoto = async (fotoId: string) => {
@@ -235,6 +280,11 @@ export default function DiarioCampoPage() {
   };
 
   const markDirty = () => { setDirty(true); setSaved(false); };
+
+  const pendingCount = uploadQueue.filter(i => i.status === 'pending' || i.status === 'uploading').length;
+  const failedCount = uploadQueue.filter(i => i.status === 'failed').length;
+  const completedCount = uploadQueue.filter(i => i.status === 'completed').length;
+  const totalInQueue = uploadQueue.length;
 
   return (
     <div className="space-y-6">
@@ -411,70 +461,117 @@ export default function DiarioCampoPage() {
               {/* Photos - only for saved activities */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-primary" />
-                    Fotos
+                  <CardTitle className="text-lg flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-5 w-5 text-primary" />
+                      Fotos
+                    </div>
+                    {totalInQueue > 0 && (
+                      <Badge variant="outline" className="text-[10px] font-normal">
+                        Fila: {completedCount}/{totalInQueue}
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById("campo-foto-input")?.click()}
-                          disabled={uploading}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {uploading ? "Enviando..." : "Enviar Fotos"}
-                        </Button>
-                        <input
-                          id="campo-foto-input"
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
-                          disabled={uploading}
-                        >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Câmera
-                        </Button>
-                        <input
-                          id="campo-foto-input-camera"
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
-                        />
+                  {totalInQueue > 0 && (
+                    <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="flex items-center gap-1.5">
+                          {isProcessingQueue ? <RefreshCw className="h-3 w-3 animate-spin text-primary" /> : <Check className="h-3 w-3 text-green-600" />}
+                          {isProcessingQueue ? `Enviando ${pendingCount} fotos...` : 'Envios concluídos'}
+                        </span>
+                        <span>{Math.round((completedCount / totalInQueue) * 100)}%</span>
                       </div>
-
-                      {fotos.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {fotos.map(foto => (
-                            <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                              <img
-                                src={foto.url}
-                                alt={foto.legenda || "Foto de campo"}
-                                className="w-full h-32 object-cover"
-                              />
-                              <button
-                                onClick={() => handleRemoveFoto(foto.id)}
-                                className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
+                      <Progress value={(completedCount / totalInQueue) * 100} className="h-1.5" />
+                      
+                      {failedCount > 0 && (
+                        <div className="flex items-center justify-between bg-destructive/10 p-2 rounded border border-destructive/20 mt-2">
+                          <div className="flex items-center gap-2 text-destructive text-[11px]">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            <span>{failedCount} fotos falharam</span>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-[10px] text-destructive hover:bg-destructive/20"
+                            onClick={processQueue}
+                            disabled={isProcessingQueue}
+                          >
+                            Tentar Novamente
+                          </Button>
                         </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
                       )}
-                    </>
+                      
+                      {!isProcessingQueue && completedCount === totalInQueue && (
+                         <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="w-full h-7 text-[10px] text-muted-foreground"
+                          onClick={() => { clearCompletedUploads(); setUploadQueue([]); }}
+                        >
+                          Limpar Histórico de Envios
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById("campo-foto-input")?.click()}
+                      disabled={isProcessingQueue}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {isProcessingQueue ? "Enviando..." : "Selecionar Fotos"}
+                    </Button>
+                    <input
+                      id="campo-foto-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => (document.getElementById("campo-foto-input-camera") as HTMLInputElement)?.click()}
+                      disabled={isProcessingQueue}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Câmera
+                    </Button>
+                    <input
+                      id="campo-foto-input-camera"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
+                    />
+                  </div>
+
+                  {fotos.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {fotos.map(foto => (
+                        <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
+                          <img
+                            src={foto.url}
+                            alt={foto.legenda || "Foto de campo"}
+                            className="w-full h-32 object-cover"
+                          />
+                          <button
+                            onClick={() => handleRemoveFoto(foto.id)}
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhuma foto enviada para esta atividade.</p>
+                  )}
                 </CardContent>
               </Card>
 
