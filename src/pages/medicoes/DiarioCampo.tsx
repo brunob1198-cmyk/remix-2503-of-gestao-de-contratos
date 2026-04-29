@@ -15,11 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import {
-  ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus,
+  ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus, AlertCircle, RefreshCw
 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
+import { addToUploadQueue, getUploadQueue, updateUploadStatus, removeFromUploadQueue, clearCompletedUploads, UploadItem } from "@/lib/db";
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
