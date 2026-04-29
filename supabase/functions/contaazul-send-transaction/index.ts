@@ -343,7 +343,7 @@ serve(async (req) => {
         financial_account_id: n.conta_azul_account_id,
         date,
         type: (n.tipo_operacao as any) || "despesa",
-      });
+      }, n.status === "normalizado"); // Force send if status is "normalizado" (reopened or new)
       results.push(r);
     }
 
