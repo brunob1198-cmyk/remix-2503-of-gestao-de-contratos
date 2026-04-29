@@ -68,7 +68,8 @@ const createPdfExportContainer = (source: HTMLElement) => {
     pointerEvents: "none",
     boxSizing: "border-box",
     zIndex: "-1000",
-    opacity: "0",
+    opacity: "1",
+    visibility: "visible",
   });
 
   content.style.width = "100%";
