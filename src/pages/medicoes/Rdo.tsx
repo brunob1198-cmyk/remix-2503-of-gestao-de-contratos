@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSites } from "@/hooks/useSites";
@@ -363,6 +364,7 @@ export default function RdoPage() {
 
   const [lightboxPhoto, setLightboxPhoto] = useState<RdoFoto & { data: string } | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Group diarios by date
   const dayGroups = useMemo<DayGroup[]>(() => {
@@ -511,6 +513,7 @@ export default function RdoPage() {
     if (diarios.length === 0) return;
     setDownloading(true);
     try {
+      setDownloadProgress({ current: 0, total: diarios.length });
       const zip = new JSZip();
       const periodoLabel = `${dataInicio}_a_${dataFim}`;
 
@@ -527,6 +530,7 @@ export default function RdoPage() {
         const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
         const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
         dayFolder.file(`RDO_${dataLabel}.pdf`, pdfBlob);
+        await new Promise(resolve => setTimeout(resolve, 300)); // Pause to let GC work
 
         if (diario.fotos.length > 0) {
           const fotosFolder = dayFolder.folder("fotos");
@@ -541,7 +545,10 @@ export default function RdoPage() {
             }
           }
         }
+        setDownloadProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
       }
+
+      setDownloadProgress(null);
 
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `RDO_${periodoLabel}.zip`);
@@ -837,6 +844,16 @@ export default function RdoPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {downloadProgress && (
+                <div className="flex-1 max-w-sm ml-auto mr-4">
+                  <div className="flex justify-between text-[10px] mb-1 font-medium">
+                    <span>Processando exportação...</span>
+                    <span>{downloadProgress.current}/{downloadProgress.total}</span>
+                  </div>
+                  <Progress value={(downloadProgress.current / downloadProgress.total) * 100} className="h-1.5" />
+                </div>
+              )}
 
               {diarios.length > 0 && (
                 <Button

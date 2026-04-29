@@ -1549,10 +1549,19 @@ export default function AcompanhamentoMedicoesPage() {
                           });
                           const sorted = Array.from(siteGroups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
                           return (
-                            <div className="space-y-6 max-h-[400px] overflow-auto">
-                              {sorted.map(([siteName, { fotos, siteId }]) => {
-                                // For mista, show production table per site
-                                const siteItems = gerarTipoMedicao === "mista"
+                      <div className="space-y-6 max-h-[400px] overflow-auto">
+                        {geracaoFotos.length > 500 && (
+                          <div className="p-3 mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                            ⚠️ <strong>Grande volume de fotos detectado!</strong> ({geracaoFotos.length} fotos). 
+                            O sistema mostrará apenas as primeiras 500 para garantir a performance, mas <strong>todas serão incluídas no PDF final</strong>.
+                          </div>
+                        )}
+                                {sorted.map(([siteName, { fotos, siteId }]) => {
+                                  // Limit the number of photos shown in the preview list
+                                  const displayFotos = fotos.slice(0, 500); 
+                                  if (displayFotos.length === 0 && fotos.length > 0) return null;
+                                  
+                                  const siteItems = gerarTipoMedicao === "mista"
                                   ? geracaoItens.filter(i => i.site_id === siteId && i.selected)
                                   : [];
                                 return (
@@ -1586,7 +1595,7 @@ export default function AcompanhamentoMedicoesPage() {
                                     )}
                                     <div className="p-3">
                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        {fotos.map((foto) => {
+                                        {displayFotos.map((foto) => {
                                           const idx = geracaoFotos.findIndex(f => f.id === foto.id);
                                           return (
                                             <div key={foto.id} className={`relative border rounded-lg overflow-hidden transition-opacity ${!foto.selected ? "opacity-40" : ""}`}>

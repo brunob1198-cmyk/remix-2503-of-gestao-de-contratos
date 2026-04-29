@@ -30,8 +30,10 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag,
+  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag, Loader2,
 } from "lucide-react";
+import { compressImage } from "@/lib/imageCompression";
+import { Progress } from "@/components/ui/progress";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
@@ -64,6 +66,7 @@ export default function DiarioObraPage() {
   );
   const [newGroupName, setNewGroupName] = useState("");
   const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   // Reset site when projeto changes
   const handleProjetoChange = (projetoId: string) => {
@@ -365,22 +368,42 @@ export default function DiarioObraPage() {
       return;
     }
     // Upload pending files
-    for (let i = 0; i < pendingProdFiles.length; i++) {
-      const file = pendingProdFiles[i];
-      const path = `${diarioId}/${Date.now()}_${i}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
-      if (uploadError) {
-        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-        continue;
-      }
-      const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      await addFoto.mutateAsync({
-        diario_id: diarioId,
-        url: urlData.publicUrl,
-        classificacao: "execucao",
-        diario_producao_id: prodData.id,
-      });
+    // Upload pending files in parallel with compression
+    const totalFiles = pendingProdFiles.length;
+    setUploadProgress({ current: 0, total: totalFiles });
+    
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < pendingProdFiles.length; i += CHUNK_SIZE) {
+      const chunk = pendingProdFiles.slice(i, i + CHUNK_SIZE);
+      
+      await Promise.all(chunk.map(async (file, index) => {
+        const fileIndex = i + index;
+        try {
+          let fileToUpload = file;
+          if (isFileImage(file.name)) {
+            fileToUpload = await compressImage(file);
+          }
+
+          const path = `${diarioId}/${Date.now()}_${fileIndex}_${file.name}`;
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          if (uploadError) {
+            toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
+            return;
+          }
+          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          await addFoto.mutateAsync({
+            diario_id: diarioId,
+            url: urlData.publicUrl,
+            classificacao: "execucao",
+            diario_producao_id: prodData.id,
+          });
+          setUploadProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
+        } catch (err) {
+          console.error(`Erro ao processar arquivo:`, err);
+        }
+      }));
     }
+    setUploadProgress(null);
     setProdItemId("");
     setProdQtd("");
     setPendingProdFiles([]);
@@ -633,24 +656,55 @@ export default function DiarioObraPage() {
       e.target.value = "";
       return;
     }
+
+    const totalFiles = files.length;
+    setUploadProgress({ current: 0, total: totalFiles });
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const path = `${diarioId}/${Date.now()}_${i}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, file);
-      if (uploadError) {
-        toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-        continue;
-      }
-      const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-      await addFoto.mutateAsync({ 
-        diario_id: diarioId, 
-        url: urlData.publicUrl, 
-        classificacao,
-        ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
-      });
+    // Process in chunks of 5 for better performance without overwhelming the browser/network
+    const CHUNK_SIZE = 5;
+    const fileList = Array.from(files);
+    
+    for (let i = 0; i < fileList.length; i += CHUNK_SIZE) {
+      const chunk = fileList.slice(i, i + CHUNK_SIZE);
+      
+      await Promise.all(chunk.map(async (file, index) => {
+        const fileIndex = i + index;
+        try {
+          // 1. Compress image if it's an image
+          let fileToUpload = file;
+          if (isFileImage(file.name)) {
+            fileToUpload = await compressImage(file);
+          }
+
+          // 2. Upload to Storage
+          const timestamp = Date.now();
+          const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          
+          if (uploadError) {
+            console.error(`Erro no upload de ${file.name}:`, uploadError);
+            toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
+            return;
+          }
+
+          // 3. Get Public URL and save to DB
+          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          await addFoto.mutateAsync({ 
+            diario_id: diarioId, 
+            url: urlData.publicUrl, 
+            classificacao,
+            ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
+          });
+
+          setUploadProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
+        } catch (err) {
+          console.error(`Erro ao processar ${file.name}:`, err);
+        }
+      }));
     }
-    toast({ title: `${files.length} arquivo(s) enviado(s)!` });
+
+    toast({ title: `${totalFiles} arquivo(s) processado(s)!` });
+    setUploadProgress(null);
     e.target.value = "";
   };
 
@@ -759,6 +813,19 @@ export default function DiarioObraPage() {
               Lançamento — {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
             </TabsTrigger>
         </TabsList>
+
+        {uploadProgress && (
+          <div className="bg-muted/30 border rounded-lg p-3 flex flex-col gap-2">
+            <div className="flex justify-between items-center text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Processando e enviando fotos...
+              </span>
+              <span>{uploadProgress.current} de {uploadProgress.total}</span>
+            </div>
+            <Progress value={(uploadProgress.current / uploadProgress.total) * 100} className="h-2" />
+          </div>
+        )}
 
         {/* ===== CALENDAR VIEW ===== */}
         <TabsContent value="calendario">

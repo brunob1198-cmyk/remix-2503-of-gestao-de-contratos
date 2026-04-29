@@ -84,6 +84,12 @@ const createPdfExportContainer = (source: HTMLElement) => {
     if (img.src && !img.src.startsWith('data:') && isLogoImage(img)) {
       const sep = img.src.includes('?') ? '&' : '?';
       img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
+    } else if (!isLogoImage(img)) {
+      // Store src in a data attribute and remove it to save memory until needed
+      img.dataset.src = img.src;
+      img.src = "";
+      img.style.display = "block"; // Keep layout
+      img.style.minHeight = "200px";
     }
   });
 
@@ -498,19 +504,28 @@ export function DetailMedicaoContent({
         let retryCount = 0;
         const maxRetries = 2;
         let pageCanvas: HTMLCanvasElement | null = null;
+        
+        // Load images for THIS slice only
         const imagesInSlice = getImagesForSlice(content, slice.start, slice.height);
-
+        
         if (imagesInSlice.length > 0) {
+          // Temporarily restore SRC for images in this slice
+          imagesInSlice.forEach(img => {
+            if (img.dataset.src && !img.src) {
+              img.src = img.dataset.src;
+            }
+          });
+
           const sliceLoadResult = await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
             images: imagesInSlice,
             concurrency: 4,
-            timeoutMs: 20000,
+            timeoutMs: 25000,
             label: `Página ${pageNum}`,
           });
           if (sliceLoadResult.failed > 0) {
             addLog(`Página ${pageNum}: ${sliceLoadResult.failed} imagem(ns) indisponíveis foram substituídas.`, "info");
           }
-          await waitForNextPaint(100);
+          await waitForNextPaint(150);
         }
         
         const renderPage = async () => {
@@ -581,7 +596,7 @@ export function DetailMedicaoContent({
           const renderedHeight = (slice.height * usableWidth) / contentWidth;
           if (i > 0) pdf.addPage();
 
-          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.75); // Lower quality for memory optimization during addImage
+          const pageImageData = pageCanvas.toDataURL("image/jpeg", 0.65); // Lower quality for massive PDFs
           pdf.addImage(
             pageImageData,
             "JPEG",
@@ -602,13 +617,18 @@ export function DetailMedicaoContent({
         const progress = 20 + Math.floor(((i + 1) / slices.length) * 60);
         setExportProgress(progress);
         
+        // Clear SRC for images in this slice to free memory
         imagesInSlice.forEach((img) => {
           if (!isLogoImage(img)) {
             img.removeAttribute("src");
-            img.removeAttribute("srcset");
+            // Also remove from browser cache if possible by setting to empty
+            img.src = "";
           }
         });
-        await new Promise(resolve => setTimeout(resolve, 120));
+
+        // Longer pause every 10 pages to let browser garbage collect
+        const pauseTime = pageNum % 10 === 0 ? 1000 : 200;
+        await new Promise(resolve => setTimeout(resolve, pauseTime));
       }
 
       const endTime = Date.now();
