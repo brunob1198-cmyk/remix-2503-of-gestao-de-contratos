@@ -85,6 +85,13 @@ const createPdfExportContainer = (source: HTMLElement) => {
     }
     .pdf-section-heading, h1, h2, h3, p, span, td, th {
       letter-spacing: 0.01em !important;
+      line-height: 1.5 !important; /* Increase line height to avoid clipping descenders */
+    }
+    .badge-execucao {
+      padding-top: 1px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
   `;
   container.appendChild(style);
