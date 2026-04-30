@@ -431,7 +431,7 @@ export function DetailMedicaoContent({
         </div>
         <div className="p-2 bg-muted/20 space-y-1 flex-1">
           {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-[9px] text-foreground leading-tight line-clamp-2">
+            <p className="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">
               {foto.item_codigo} — {foto.item_descricao}
             </p>
           )}
