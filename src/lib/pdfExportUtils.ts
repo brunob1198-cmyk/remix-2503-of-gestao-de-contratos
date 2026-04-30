@@ -234,3 +234,75 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
+/**
+ * Checks if an element's text content overflows its container
+ */
+export function checkTextOverflow(element: HTMLElement, debug = false): string[] {
+  const overflows: string[] = [];
+  const walk = (el: HTMLElement) => {
+    if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) {
+      const text = el.innerText?.substring(0, 30) || "unnamed";
+      const info = `Overflow detected in ${el.tagName}.${el.className.replace(/\s+/g, '.')} (Text: "${text}")`;
+      overflows.push(info);
+      if (debug) {
+        console.warn(`[PDF DEBUG] ${info}`, {
+          scrollWidth: el.scrollWidth,
+          clientWidth: el.clientWidth,
+          scrollHeight: el.scrollHeight,
+          clientHeight: el.clientHeight,
+          element: el
+        });
+        el.style.outline = "2px solid red";
+      }
+    }
+    Array.from(el.children).forEach(child => walk(child as HTMLElement));
+  };
+  walk(element);
+  return overflows;
+}
+
+/**
+ * Automatically adjusts font size or applies breaking rules to fit text
+ */
+export function autoFitText(element: HTMLElement) {
+  const textElements = element.querySelectorAll("p, span, td, th, h1, h2, h3, h4, div");
+  textElements.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    // Force breaking for very long strings without spaces
+    htmlEl.style.overflowWrap = "break-word";
+    htmlEl.style.wordBreak = "break-word";
+    
+    // Check for horizontal overflow and try to shrink font
+    if (htmlEl.scrollWidth > htmlEl.clientWidth + 2) {
+      let fontSize = parseFloat(window.getComputedStyle(htmlEl).fontSize);
+      let attempts = 0;
+      while (htmlEl.scrollWidth > htmlEl.clientWidth + 2 && fontSize > 6 && attempts < 5) {
+        fontSize -= 0.5;
+        htmlEl.style.fontSize = `${fontSize}px`;
+        attempts++;
+      }
+    }
+  });
+}
+
+/**
+ * Measures an element's height in mm given a target width in mm
+ */
+export function measureHeightMm(element: HTMLElement, targetWidthMm: number): number {
+  const clone = element.cloneNode(true) as HTMLElement;
+  Object.assign(clone.style, {
+    position: "absolute",
+    left: "-9999px",
+    width: `${targetWidthMm}mm`,
+    visibility: "hidden",
+    height: "auto"
+  });
+  document.body.appendChild(clone);
+  const heightPx = clone.offsetHeight;
+  document.body.removeChild(clone);
+  
+  // 1mm is approx 3.7795275591 px (standard 96dpi)
+  return (heightPx * 25.4) / 96;
+}
+
+

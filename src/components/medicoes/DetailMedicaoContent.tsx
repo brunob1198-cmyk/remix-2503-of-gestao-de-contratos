@@ -20,8 +20,11 @@ import {
   withTimeout,
   chunkArray,
   PDFExportLog,
-  PDFQuality
+  PDFQuality,
+  autoFitText,
+  checkTextOverflow
 } from "@/lib/pdfExportUtils";
+
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
@@ -62,24 +65,43 @@ const createPdfExportContainerSkeleton = () => {
       animation: none !important; 
       text-rendering: optimizeLegibility !important;
       -webkit-font-smoothing: antialiased !important;
+      box-sizing: border-box !important;
     }
+    body { background: white !important; }
     .pdf-section-heading, h1, h2, h3, p, span, td, th {
       letter-spacing: 0.01em !important;
-      line-height: 1.6 !important;
+      line-height: 1.5 !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
     }
     .badge-execucao {
-      display: inline-block !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
       vertical-align: middle !important;
-      line-height: 16px !important;
-      height: 16px !important;
+      line-height: 1 !important;
+      height: 18px !important;
       text-align: center !important;
-      padding: 0 6px !important;
+      padding: 0 8px !important;
+      border-radius: 4px !important;
+      font-size: 7px !important;
+      font-weight: bold !important;
     }
+    .grid { display: grid !important; }
+    .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+    .gap-3 { gap: 12px !important; }
     img {
-      max-width: 100%;
-      height: auto;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+    }
+    /* Prevent page break inside cards */
+    [data-pdf-element="photo"] {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
   `;
+
   container.appendChild(style);
 
   const content = document.createElement("div");
@@ -147,6 +169,8 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [canResume, setCanResume] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [debugMode, setDebugMode] = useState(false);
+
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     const newLog: PDFExportLog = {
@@ -496,10 +520,11 @@ export function DetailMedicaoContent({
       let currentY = marginTop;
       let hasPdfContent = false;
 
-      // Helper to add canvas to PDF
+      // Helper to add canvas to PDF with smart pagination
       const addCanvasToPdf = (canvas: HTMLCanvasElement, forceNewPage = false) => {
         const heightMm = (canvas.height * usableWidth) / canvas.width;
 
+        // If it doesn't fit in current page and isn't bigger than a whole page, start new page
         if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
           pdf.addPage();
           currentY = marginTop;
@@ -507,6 +532,9 @@ export function DetailMedicaoContent({
         }
 
         const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
+        
+        // If the element is bigger than a full page, it will still overflow, 
+        // but we've minimized this by chunking elements better.
         pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
         currentY += heightMm + sectionGap;
         hasPdfContent = true;
@@ -517,8 +545,32 @@ export function DetailMedicaoContent({
       };
 
       // Helper to capture a DOM element and add to PDF
-      const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
+      const captureAndClear = async (element: HTMLElement, forceNewPage = false, minHeightMm?: number) => {
         content.appendChild(element);
+        
+        // Measure element
+        const tempCanvas = await html2canvas(element, { scale: 1, logging: false });
+        const heightMm = (tempCanvas.height * usableWidth) / tempCanvas.width;
+        tempCanvas.width = 0; tempCanvas.height = 0;
+
+        // Smart pagination: if element + lookahead doesn't fit, new page
+        const totalNeeded = heightMm + (minHeightMm || 0);
+        if (hasPdfContent && currentY + totalNeeded > pageBottom) {
+          pdf.addPage();
+          currentY = marginTop;
+          hasPdfContent = false;
+        }
+
+        
+        // Apply auto-fit for long texts
+        autoFitText(element);
+        
+        if (debugMode) {
+          const overflows = checkTextOverflow(element, true);
+          if (overflows.length > 0) {
+            addLog(`Debug: ${overflows.length} possíveis cortes de texto detectados.`, "error");
+          }
+        }
         
         // Prepare images in this specific element
         const imgs = Array.from(element.querySelectorAll("img"));
@@ -551,11 +603,13 @@ export function DetailMedicaoContent({
           backgroundColor: "#ffffff",
           windowWidth: contentWidth,
           logging: false,
+          allowTaint: true,
         });
 
         addCanvasToPdf(canvas, forceNewPage);
         content.innerHTML = ""; // Clear content
       };
+
 
       setExportProgress(5);
       addLog("Gerando cabeçalho e tabelas...", "info");
@@ -586,16 +640,18 @@ export function DetailMedicaoContent({
           siteHeader.className = "border rounded-lg overflow-hidden bg-card mb-4";
           siteHeader.innerHTML = `
             <div class="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style="background-color: #2563eb; line-height: 1.6;">
-              <span>${siteName}</span>
+              <span style="word-break: break-all;">${siteName}</span>
             </div>
           `;
-          await captureAndClear(siteHeader);
+          await captureAndClear(siteHeader, false, 40); // Need at least 40mm space for content after
+
 
           for (const [className, fotos] of classes) {
             const classHeader = document.createElement("h3");
             classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
             classHeader.innerText = className;
-            await captureAndClear(classHeader);
+            await captureAndClear(classHeader, false, 30);
+
 
             const batches = chunkArray(fotos, 12); // 4 rows of 3
             for (let j = 0; j < batches.length; j++) {
@@ -619,9 +675,10 @@ export function DetailMedicaoContent({
                       <div class="p-2 bg-muted/20 space-y-1 flex-1">
                         ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
                         <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                          <span class="max-w-[140px] leading-tight">${f.site_nome || ''}</span>
+                          <span class="max-w-[140px] leading-tight" style="word-break: break-word; overflow-wrap: anywhere;">${f.site_nome || ''}</span>
                           <span class="shrink-0">${f.diario_data || ''}</span>
-                          <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px;">${classLabel(f.classificacao)}</span>
+                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
+
                         </div>
                         ${f.legenda ? `<p class="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“${f.legenda}”</p>` : ''}
                       </div>
@@ -842,11 +899,22 @@ export function DetailMedicaoContent({
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">
+        <Button 
+          variant={debugMode ? "default" : "outline"} 
+          size="sm" 
+          onClick={() => setDebugMode(!debugMode)}
+          className={debugMode ? "bg-orange-500 hover:bg-orange-600" : ""}
+          disabled={isExporting}
+        >
+          <AlertCircle className="h-4 w-4 mr-2" />
+          Debug: {debugMode ? "ON" : "OFF"}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" disabled={isExporting}>
               <Settings2 className="h-4 w-4 mr-2" />
               Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
+
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -1114,10 +1182,11 @@ export function DetailMedicaoContent({
                       className="pdf-keep-together"
                       style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                     >
-                      <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.6', minHeight: '32px' }}>
-                        <MapPin className="h-4 w-4" />
-                        <span style={{ lineHeight: '1.6' }}>{siteName}</span>
+                      <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.4', minHeight: '32px' }}>
+                        <MapPin className="h-4 w-4 shrink-0" />
+                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{siteName}</span>
                       </div>
+
                       {siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
                           <p className="text-xs font-semibold mb-2 py-1" style={{ lineHeight: '1.6' }}>Produção do Site:</p>
