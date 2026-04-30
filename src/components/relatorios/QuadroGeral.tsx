@@ -231,7 +231,7 @@ export default function QuadroGeral() {
     });
   };
 
-  const areaGroups: AreaGroup[] = useMemo(() => {
+  const { areaGroups, allProjetoRows } = useMemo(() => {
     const siteProjetoMap = new Map(sites.map(s => [s.id, s.projeto_id]));
     const areaMap = new Map(areas.map(a => [a.id, a.nome]));
 
