@@ -125,7 +125,17 @@ function calcTotals(rows: { valor_contrato: number; valor_executado: number; val
     }),
     { valor_contrato: 0, valor_executado: 0, valor_faturado: 0, valor_nao_faturado: 0, saldo_contrato: 0 }
   );
-  return { ...t, percentual_evolucao: t.valor_contrato > 0 ? (t.valor_executado / t.valor_contrato) * 100 : 0 };
+  
+  // Round totals to avoid floating point issues
+  const rounded = {
+    valor_contrato: Math.round(t.valor_contrato * 100) / 100,
+    valor_executado: Math.round(t.valor_executado * 100) / 100,
+    valor_faturado: Math.round(t.valor_faturado * 100) / 100,
+    valor_nao_faturado: Math.round(t.valor_nao_faturado * 100) / 100,
+    saldo_contrato: Math.round(t.saldo_contrato * 100) / 100,
+  };
+
+  return { ...rounded, percentual_evolucao: rounded.valor_contrato > 0 ? (rounded.valor_executado / rounded.valor_contrato) * 100 : 0 };
 }
 
 const formatCurrency = (value: number) =>
