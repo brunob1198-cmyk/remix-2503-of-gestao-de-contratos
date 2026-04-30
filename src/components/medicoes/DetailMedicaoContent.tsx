@@ -567,11 +567,8 @@ export function DetailMedicaoContent({
         canvas.height = 0;
       };
 
-      // Helper to capture a DOM element and add to PDF
-      const captureAndClear = async (element: HTMLElement, forceNewPage = false, minHeightMm?: number) => {
+      const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
         content.appendChild(element);
-        
-        // Apply auto-fit for long texts
         autoFitText(element);
         
         if (debugMode) {
@@ -581,7 +578,6 @@ export function DetailMedicaoContent({
           }
         }
         
-        // Prepare images in this specific element
         const imgs = Array.from(element.querySelectorAll("img"));
         for (const img of imgs) {
           const src = img.getAttribute("src");
@@ -593,7 +589,7 @@ export function DetailMedicaoContent({
                   maxHeight: exportSettings.maxHeight, 
                   quality: exportSettings.imgQuality 
                 }),
-                12000,
+                15000,
                 "Timeout imagem"
               );
               img.src = safeSrc;
@@ -604,7 +600,7 @@ export function DetailMedicaoContent({
         }
 
         await ensureImagesLoaded(element);
-        await waitForNextPaint(50);
+        await waitForNextPaint(80);
 
         const canvas = await html2canvas(element, {
           scale: exportSettings.scale,
@@ -612,11 +608,10 @@ export function DetailMedicaoContent({
           backgroundColor: "#ffffff",
           windowWidth: contentWidth,
           logging: false,
-          allowTaint: true,
         });
 
         await addCanvasToPdf(canvas, forceNewPage);
-        content.innerHTML = ""; // Clear content
+        content.innerHTML = ""; 
       };
 
 
