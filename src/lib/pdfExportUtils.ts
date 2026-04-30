@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
+export type PDFQuality = 'high' | 'medium' | 'eco';
+
 export interface PDFExportLog {
   timestamp: string;
   message: string;
