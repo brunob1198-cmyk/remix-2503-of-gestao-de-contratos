@@ -955,9 +955,9 @@ export function DetailMedicaoContent({
             <div style={{ textAlign: "right", display: "flex", gap: "15px", alignItems: "flex-end" }}>
               <div>
                 {detailMedicao.numero_medicao && (
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Medição Nº {detailMedicao.numero_medicao}</p>
+                   <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a", lineHeight: '1.6' }}>Medição Nº {detailMedicao.numero_medicao}</p>
                 )}
-                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
+                <p style={{ fontSize: 11, color: "#64748b", margin: 0, lineHeight: '1.6' }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
               {clienteLogoUrl && (
                 <img 
