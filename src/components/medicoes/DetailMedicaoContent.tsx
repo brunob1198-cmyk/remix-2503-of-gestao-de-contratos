@@ -636,10 +636,9 @@ export function DetailMedicaoContent({
       // 4. Photos - Data driven chunking to avoid DOM bloat
       if (tipoMedicao === "mista") {
         for (let i = 0; i < fotosBySiteAndClass.length; i++) {
-          const { siteName, siteId, classes } = fotosBySiteAndClass[i];
+          const { siteName, classes } = fotosBySiteAndClass[i];
           addLog(`Processando site: ${siteName}`, "info");
 
-          // Create a site header element manually or clone if possible
           const siteHeader = document.createElement("div");
           siteHeader.className = "border rounded-lg overflow-hidden bg-card mb-4";
           siteHeader.innerHTML = `
@@ -647,14 +646,14 @@ export function DetailMedicaoContent({
               <span style="word-break: break-all;">${siteName}</span>
             </div>
           `;
-          await captureAndClear(siteHeader, false, 40); // Need at least 40mm space for content after
+          await captureAndClear(siteHeader);
 
 
           for (const [className, fotos] of classes) {
             const classHeader = document.createElement("h3");
             classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
             classHeader.innerText = className;
-            await captureAndClear(classHeader, false, 30);
+            await captureAndClear(classHeader);
 
 
             const batches = chunkArray(fotos, 6); // More aggressive chunking (2 rows of 3)
