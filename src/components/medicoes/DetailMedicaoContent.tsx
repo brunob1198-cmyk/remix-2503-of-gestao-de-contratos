@@ -504,40 +504,57 @@ export function DetailMedicaoContent({
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
       
-      const pdf = new jsPDF({
-        orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
-        unit: "mm",
-        format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
-        compress: true,
-      });
+      // We'll create small PDF chunks and merge them to avoid giant memory usage
+      const chunks: Uint8Array[] = [];
+      let currentPdf: jsPDF | null = null;
+      let currentPdfPages = 0;
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const usableWidth = pageWidth - marginLeft - marginRight;
-      const usableHeight = pageHeight - marginTop - marginBottom;
-      const pageBottom = pageHeight - marginBottom;
-      const sectionGap = 3;
-      let currentY = marginTop;
-      let hasPdfContent = false;
+      const createNewPdf = () => {
+        return new jsPDF({
+          orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
+          unit: "mm",
+          format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
+          compress: true,
+        });
+      };
 
-      // Helper to add canvas to PDF with smart pagination
-      const addCanvasToPdf = (canvas: HTMLCanvasElement, forceNewPage = false) => {
+      const finalizeChunk = async () => {
+        if (currentPdf) {
+          const pdfData = currentPdf.output("arraybuffer");
+          chunks.push(new Uint8Array(pdfData));
+          currentPdf = null;
+          currentPdfPages = 0;
+          // Trigger forced GC if possible
+          if (window.gc) window.gc();
+        }
+      };
+
+      const addCanvasToPdf = async (canvas: HTMLCanvasElement, forceNewPage = false) => {
+        if (!currentPdf) {
+          currentPdf = createNewPdf();
+          // Reset positioning for new chunk
+          currentY = marginTop;
+        }
+
         const heightMm = (canvas.height * usableWidth) / canvas.width;
 
-        // If it doesn't fit in current page and isn't bigger than a whole page, start new page
         if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
-          pdf.addPage();
+          currentPdf.addPage();
           currentY = marginTop;
           hasPdfContent = false;
         }
 
         const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
+        currentPdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
         
-        // If the element is bigger than a full page, it will still overflow, 
-        // but we've minimized this by chunking elements better.
-        pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
         currentY += heightMm + sectionGap;
         hasPdfContent = true;
+        currentPdfPages++;
+
+        // If chunk is large enough (e.g. 10 pages), finalize it
+        if (currentPdfPages >= 10) {
+          await finalizeChunk();
+        }
         
         // Memory cleanup
         canvas.width = 0;
