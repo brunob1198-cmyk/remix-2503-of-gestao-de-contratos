@@ -475,6 +475,7 @@ export function DetailMedicaoContent({
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
+      
       const pdf = new jsPDF({
         orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
         unit: "mm",
@@ -509,42 +510,54 @@ export function DetailMedicaoContent({
       prepareImagePositions(content);
       const sections = getDirectChildPdfSections(content);
       const exportSections = sections.length ? sections : [content];
-      addLog(`Renderizando ${exportSections.length} seções sem cortar fotos entre páginas...`, "info");
+      addLog(`Renderizando ${exportSections.length} seções...`, "info");
 
       const prepareSectionImages = async (section: HTMLElement, sectionIndex: number) => {
         const imgs = Array.from(section.querySelectorAll<HTMLImageElement>("img")).filter((img) => !isLogoImage(img));
         if (!imgs.length) return;
 
         let done = 0;
-        await Promise.all(
-          imgs.map(async (img) => {
-            const originalSrc = img.dataset.originalSrc || img.dataset.src || img.currentSrc || img.src;
-            if (!originalSrc) return;
-            try {
-              if (!img.src || !img.src.startsWith("data:")) {
-                const safeSrc = await withTimeout(
-                  getPdfSafeImageDataUrl(originalSrc, { maxWidth: 1100, maxHeight: 825, quality: 0.8 }),
-                  12000,
-                  "Tempo excedido ao preparar foto"
-                );
-                img.src = safeSrc;
-                img.dataset.src = safeSrc;
+        // Reduced concurrency and added batching to avoid overwhelming the memory/CPU
+        const BATCH_SIZE = 4;
+        const groups = [];
+        for (let i = 0; i < imgs.length; i += BATCH_SIZE) {
+          groups.push(imgs.slice(i, i + BATCH_SIZE));
+        }
+
+        for (const group of groups) {
+          await Promise.all(
+            group.map(async (img) => {
+              const originalSrc = img.dataset.originalSrc || img.dataset.src || img.currentSrc || img.src;
+              if (!originalSrc) return;
+              try {
+                if (!img.src || !img.src.startsWith("data:")) {
+                  const safeSrc = await withTimeout(
+                    getPdfSafeImageDataUrl(originalSrc, { maxWidth: 800, maxHeight: 600, quality: 0.75 }),
+                    15000,
+                    "Tempo excedido ao preparar foto"
+                  );
+                  img.src = safeSrc;
+                  img.dataset.src = safeSrc;
+                }
+              } catch (err) {
+                addLog(`Erro ao carregar imagem: ${err instanceof Error ? err.message : String(err)}`, "error");
+                img.src = originalSrc;
+              } finally {
+                done += 1;
+                if (done % 4 === 0 || done === imgs.length) {
+                  addLog(`Seção ${sectionIndex + 1}: ${done}/${imgs.length} fotos prontas`, "info");
+                }
               }
-            } catch {
-              img.src = originalSrc;
-            } finally {
-              done += 1;
-              if (done % 6 === 0 || done === imgs.length) {
-                addLog(`Seção ${sectionIndex + 1}: ${done}/${imgs.length} fotos prontas`, "info");
-              }
-            }
-          })
-        );
+            })
+          );
+          // Small pause between batches
+          await waitForNextPaint(50);
+        }
 
         await ensureImagesLoaded(section, undefined, {
           images: imgs,
-          concurrency: 6,
-          timeoutMs: 10000,
+          concurrency: 4,
+          timeoutMs: 15000,
           label: `Seção ${sectionIndex + 1}`,
         });
       };
@@ -557,7 +570,9 @@ export function DetailMedicaoContent({
             pdf.addPage();
             currentY = marginTop;
           }
-          const imageData = canvas.toDataURL("image/jpeg", exportSections.length > 90 ? 0.76 : 0.84);
+          // Lower quality for massive documents to save memory
+          const quality = exportSections.length > 50 ? 0.75 : 0.84;
+          const imageData = canvas.toDataURL("image/jpeg", quality);
           pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
           currentY += heightMm + sectionGap;
           hasPdfContent = true;
@@ -582,7 +597,7 @@ export function DetailMedicaoContent({
           if (hasPdfContent) pdf.addPage();
           currentY = marginTop;
           const sliceHeightMm = (sliceHeight * usableWidth) / canvas.width;
-          const imageData = sliceCanvas.toDataURL("image/jpeg", 0.84);
+          const imageData = sliceCanvas.toDataURL("image/jpeg", 0.8);
           pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, sliceHeightMm, undefined, "FAST");
           hasPdfContent = true;
           currentY = marginTop + sliceHeightMm + sectionGap;
@@ -595,13 +610,13 @@ export function DetailMedicaoContent({
 
       for (let i = 0; i < exportSections.length; i++) {
         const section = exportSections[i];
-        unloadImagesOutsideSection(content, section);
+        unloadImagesOutsideSection(content, section, 3); // More aggressive unloading
         await prepareSectionImages(section, i);
-        await waitForNextPaint(30);
+        await waitForNextPaint(100);
 
         addLog(`Renderizando seção ${i + 1}/${exportSections.length}...`, "info");
         const canvas = await html2canvas(section, {
-          scale: 2,
+          scale: 1.5, // Reduced scale to prevent crashes
           useCORS: true,
           allowTaint: false,
           backgroundColor: "#ffffff",
@@ -613,19 +628,19 @@ export function DetailMedicaoContent({
         addCanvasToPdf(canvas);
         canvas.width = 0;
         canvas.height = 0;
-        setExportProgress(10 + Math.floor(((i + 1) / exportSections.length) * 78));
+        setExportProgress(10 + Math.floor(((i + 1) / exportSections.length) * 75));
 
-        if ((i + 1) % 12 === 0) {
+        if ((i + 1) % 5 === 0) {
           addLog(`${renderedPages} páginas geradas até agora.`, "success");
-          await waitForNextPaint(50);
+          // Forced garbage collection hint and pause
+          await waitForNextPaint(150);
         }
       }
 
-      setExportProgress(90);
+      setExportProgress(85);
       addLog("Montando PDF final...", "info");
       const finalPdf = await PDFDocument.create();
       
-      // Add cover if exists
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
       if (capaUrl) {
         addLog("Adicionando capa...", "info");
@@ -640,18 +655,18 @@ export function DetailMedicaoContent({
         }
       }
 
-      const generatedPdf = await PDFDocument.load(pdf.output("arraybuffer"));
+      const pdfArrayBuffer = pdf.output("arraybuffer");
+      const generatedPdf = await PDFDocument.load(pdfArrayBuffer);
       const generatedPages = await finalPdf.copyPages(generatedPdf, generatedPdf.getPageIndices());
       generatedPages.forEach(page => finalPdf.addPage(page));
 
-      addLog("Comprimindo e finalizando arquivo...", "info");
+      addLog("Finalizando arquivo...", "info");
       const finalBytes = await finalPdf.save({ 
         useObjectStreams: true,
         addDefaultPage: false
       });
-      const pdfBuffer = new ArrayBuffer(finalBytes.byteLength);
-      new Uint8Array(pdfBuffer).set(finalBytes);
-      const blob = new Blob([pdfBuffer], { type: "application/pdf" });
+      
+      const blob = new Blob([finalBytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -668,8 +683,12 @@ export function DetailMedicaoContent({
     } catch (e) {
       addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
       console.error("Erro ao exportar PDF:", e);
+      // Try to recover progress if possible in the future
     } finally {
-      exportContainer?.remove();
+      if (exportContainer) {
+        exportContainer.innerHTML = '';
+        exportContainer.remove();
+      }
       setIsExporting(false);
     }
   };
