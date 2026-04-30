@@ -640,10 +640,11 @@ export function DetailMedicaoContent({
           siteHeader.className = "border rounded-lg overflow-hidden bg-card mb-4";
           siteHeader.innerHTML = `
             <div class="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style="background-color: #2563eb; line-height: 1.6;">
-              <span>${siteName}</span>
+              <span style="word-break: break-all;">${siteName}</span>
             </div>
           `;
-          await captureAndClear(siteHeader);
+          await captureAndClear(siteHeader, false, 40); // Need at least 40mm space for content after
+
 
           for (const [className, fotos] of classes) {
             const classHeader = document.createElement("h3");
