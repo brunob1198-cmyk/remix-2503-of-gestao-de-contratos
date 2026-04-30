@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, Fragment } from "react";
+import { useState, useMemo, useCallback, Fragment, useEffect } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter } from "lucide-react";
+import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter, AlertCircle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
@@ -156,11 +158,14 @@ function MiniProgressBar({ value }: { value: number }) {
 }
 
 export default function QuadroGeral() {
+  const queryClient = useQueryClient();
   const { projetos } = useProjetos();
   const { sites } = useSites();
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
+  const [divergences, setDivergences] = useState<{ projeto: string, valorEsperado: number, valorAtual: number }[]>([]);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
     queryKey: ["escopo_itens_all"],
@@ -226,7 +231,7 @@ export default function QuadroGeral() {
     });
   };
 
-  const areaGroups: AreaGroup[] = useMemo(() => {
+  const { areaGroups, allProjetoRows } = useMemo(() => {
     const siteProjetoMap = new Map(sites.map(s => [s.id, s.projeto_id]));
     const areaMap = new Map(areas.map(a => [a.id, a.nome]));
 
@@ -311,7 +316,7 @@ export default function QuadroGeral() {
       })
       .sort((a, b) => a.area.localeCompare(b.area));
 
-    return groups;
+    return { areaGroups: groups, allProjetoRows: projetoRows };
   }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
 
   // Extract unique filter options
@@ -449,6 +454,55 @@ export default function QuadroGeral() {
     );
   }
 
+  const runAutomaticVerification = useCallback(async () => {
+    setIsVerifying(true);
+    // Refresh all data
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["projetos"] }),
+      queryClient.refetchQueries({ queryKey: ["sites"] }),
+      queryClient.refetchQueries({ queryKey: ["diario_producao_quadro"] }),
+      queryClient.refetchQueries({ queryKey: ["lancamentos_producao"] }),
+    ]);
+
+    const newDivergences: { projeto: string, valorEsperado: number, valorAtual: number }[] = [];
+    
+    // We check all projects that have a defined value
+    for (const p of allProjetoRows) {
+      if (p.valor_contrato > 0) {
+        // Simple tolerance for float math
+        const diff = Math.abs(p.valor_contrato - p.valor_executado);
+        // Special strict check for P005.25 as requested
+        const isTargetProject = p.projeto_codigo === 'P005.25';
+        const isDivergent = isTargetProject ? diff > 1 : diff > 10 && p.percentual_evolucao < 99;
+
+        if (isDivergent && p.valor_executado < p.valor_contrato) {
+          newDivergences.push({
+            projeto: p.projeto_codigo,
+            valorEsperado: p.valor_contrato,
+            valorAtual: p.valor_executado
+          });
+        }
+      }
+    }
+
+    setDivergences(newDivergences);
+    setIsVerifying(false);
+    
+    if (newDivergences.length === 0) {
+      toast.success("Verificação concluída: Valores do Quadro Geral estão íntegros.");
+    } else {
+      toast.error("Aviso: Divergência de valores detectada no Quadro Geral.");
+    }
+  }, [allProjetoRows, queryClient]);
+
+  useEffect(() => {
+    // Run once on mount after data is likely loaded
+    const timer = setTimeout(() => {
+      runAutomaticVerification();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   function TotalsRow({ t, naoFaturadoHighlight = true }: { t: Totals; naoFaturadoHighlight?: boolean }) {
     return (
       <>
@@ -466,6 +520,43 @@ export default function QuadroGeral() {
 
   return (
     <div className="space-y-4">
+      {divergences.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Divergência Detectada</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <p>Os seguintes projetos apresentam valores executados divergentes do valor de contrato:</p>
+            <ul className="list-disc pl-5">
+              {divergences.map((d, i) => (
+                <li key={i}>
+                  Projeto {d.projeto}: Esperado {formatCurrency(d.valorEsperado)}, Atual {formatCurrency(d.valorAtual)}
+                </li>
+              ))}
+            </ul>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-fit gap-2" 
+              onClick={runAutomaticVerification}
+              disabled={isVerifying}
+            >
+              <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} />
+              Tentar Corrigir Manualmente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isVerifying && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertTitle>Verificando Integridade</AlertTitle>
+          <AlertDescription>
+            Sincronizando dados com o banco de dados e validando totais...
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-4 px-4">
