@@ -1105,7 +1105,7 @@ export function DetailMedicaoContent({
                       </div>
                       {siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
-                          <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                          <p className="text-xs font-semibold mb-2 py-0.5" style={{ lineHeight: '1.4' }}>Produção do Site:</p>
                           <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
                             <TableHeader>
                               <TableRow>
@@ -1117,16 +1117,16 @@ export function DetailMedicaoContent({
                             <TableBody>
                               {siteItems.map(si => (
                                 <TableRow key={si.item_codigo}>
-                                  <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
+                                  <TableCell className="text-xs py-1.5" style={{ lineHeight: '1.3' }}>{si.item_codigo} — {si.item_descricao}</TableCell>
+                                  <TableCell className="text-xs text-right py-1.5">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                  <TableCell className="text-xs text-right py-1.5">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
                           </Table>
 
                           <div className="mt-3 flex justify-end">
-                            <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
+                            <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground" style={{ lineHeight: '1.4' }}>
                               Total do site: {formatCurrency(siteTotal)}
                             </div>
                           </div>
@@ -1135,9 +1135,9 @@ export function DetailMedicaoContent({
 
                       {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
                         <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
-                          <p className="text-xs font-semibold mb-1 flex items-center gap-1">📋 Observações</p>
+                          <p className="text-xs font-semibold mb-1 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>📋 Observações</p>
                           {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
-                            <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1">{obs}</p>
+                            <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1" style={{ lineHeight: '1.4' }}>{obs}</p>
                           ))}
                         </div>
                       )}
