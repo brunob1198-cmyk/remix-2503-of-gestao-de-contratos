@@ -989,22 +989,24 @@ export function DetailMedicaoContent({
           <div className="grid grid-cols-2 gap-3 text-sm mb-4">
             {!isMultiSite && (
               <>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 py-0.5">
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 py-0.5">
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
                 </div>
               </>
             )}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 py-0.5">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">Período:</span>{" "}
-              {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
-                ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
-                : formatDate(detailMedicao.data_medicao)}
+              <span style={{ display: 'inline-block', lineHeight: '1.4' }}>
+                {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
+                  ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
+                  : formatDate(detailMedicao.data_medicao)}
+              </span>
             </div>
             <div>
               <span className="text-muted-foreground">Valor Total:</span>{" "}
