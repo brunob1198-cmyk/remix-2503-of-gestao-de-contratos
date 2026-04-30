@@ -305,4 +305,19 @@ export function measureHeightMm(element: HTMLElement, targetWidthMm: number): nu
   return (heightPx * 25.4) / 96;
 }
 
+/**
+ * Checks current memory usage if available
+ */
+export function getMemoryUsage() {
+  if (typeof window !== "undefined" && (window.performance as any)?.memory) {
+    const mem = (window.performance as any).memory;
+    return {
+      used: Math.round(mem.usedJSHeapSize / 1048576),
+      total: Math.round(mem.totalJSHeapSize / 1048576),
+      limit: Math.round(mem.jsHeapSizeLimit / 1048576),
+    };
+  }
+  return null;
+}
+
 
