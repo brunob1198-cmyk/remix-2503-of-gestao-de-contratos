@@ -437,8 +437,8 @@ export function DetailMedicaoContent({
               </span>
             )}
             <Badge 
-              className="text-[7px] px-1.5 h-[16px] flex items-center justify-center text-white font-bold badge-execucao" 
-              style={{ backgroundColor: classColor(foto.classificacao), border: 'none', lineHeight: '1' }}
+              className="badge-execucao text-[7px] text-white font-bold" 
+              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
             >
               {classLabel(foto.classificacao)}
             </Badge>
@@ -453,7 +453,7 @@ export function DetailMedicaoContent({
     [formatDate],
   );
 
-  const handleExportPdf = async (_resume = false) => {
+  const handleExportPdf = async () => {
     if (!printRef.current || isExporting) return;
 
     setIsExporting(true);
@@ -462,15 +462,14 @@ export function DetailMedicaoContent({
     await clearPDFChunks(detailMedicao.id);
     await clearExportState(detailMedicao.id);
     setCanResume(false);
-    addLog("Iniciando exportação otimizada por seções...", "info");
+    addLog("Iniciando exportação robusta para grandes volumes...", "info");
     
-    let exportContainer: HTMLDivElement | null = null;
+    let exportContext: { container: HTMLDivElement, content: HTMLDivElement, contentWidth: number } | null = null;
 
     try {
-      const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
-      exportContainer = container;
+      exportContext = createPdfExportContainerSkeleton();
+      const { container, content, contentWidth } = exportContext;
 
-      // Define resolution and quality based on the selected setting
       const exportSettings = {
         high: { scale: 2.0, imgQuality: 0.9, canvasQuality: 0.95, maxWidth: 1200, maxHeight: 900 },
         medium: { scale: 1.5, imgQuality: 0.8, canvasQuality: 0.85, maxWidth: 800, maxHeight: 600 },
@@ -496,153 +495,191 @@ export function DetailMedicaoContent({
       const sectionGap = 3;
       let currentY = marginTop;
       let hasPdfContent = false;
-      let renderedPages = 0;
 
-      setExportProgress(5);
-      const allImages = Array.from(content.querySelectorAll<HTMLImageElement>("img"));
-      const logoImages = allImages.filter(isLogoImage);
-      const photoImages = allImages.filter((img) => !isLogoImage(img));
-      addLog(`Documento com ${photoImages.length} fotos e ${logoImages.length} logo(s).`, "info");
-
-      await ensureImagesLoaded(content, (msg) => addLog(msg, "info"), {
-        images: logoImages,
-        concurrency: 2,
-        timeoutMs: 12000,
-        label: "Logos",
-      });
-
-      await waitForNextPaint(250);
-      prepareImagePositions(content);
-      const sections = getDirectChildPdfSections(content);
-      const exportSections = sections.length ? sections : [content];
-      addLog(`Renderizando ${exportSections.length} seções...`, "info");
-
-      const prepareSectionImages = async (section: HTMLElement, sectionIndex: number) => {
-        const imgs = Array.from(section.querySelectorAll<HTMLImageElement>("img")).filter((img) => !isLogoImage(img));
-        if (!imgs.length) return;
-
-        let done = 0;
-        // Increased batch size for faster loading
-        const BATCH_SIZE = 12;
-        const groups = [];
-        for (let i = 0; i < imgs.length; i += BATCH_SIZE) {
-          groups.push(imgs.slice(i, i + BATCH_SIZE));
-        }
-
-        for (const group of groups) {
-          await Promise.all(
-            group.map(async (img) => {
-              const originalSrc = img.dataset.originalSrc || img.dataset.src || img.currentSrc || img.src;
-              if (!originalSrc) return;
-              try {
-                if (!img.src || !img.src.startsWith("data:")) {
-                  const safeSrc = await withTimeout(
-                    getPdfSafeImageDataUrl(originalSrc, { 
-                      maxWidth: exportSettings.maxWidth, 
-                      maxHeight: exportSettings.maxHeight, 
-                      quality: exportSettings.imgQuality 
-                    }),
-                    15000,
-                    "Tempo excedido ao preparar foto"
-                  );
-                  img.src = safeSrc;
-                  img.dataset.src = safeSrc;
-                }
-              } catch (err) {
-                addLog(`Erro ao carregar imagem: ${err instanceof Error ? err.message : String(err)}`, "error");
-                img.src = originalSrc;
-              } finally {
-                done += 1;
-                if (done % 4 === 0 || done === imgs.length) {
-                  addLog(`Seção ${sectionIndex + 1}: ${done}/${imgs.length} fotos prontas`, "info");
-                }
-              }
-            })
-          );
-          // Minimal pause between batches
-          await waitForNextPaint(10);
-        }
-
-        await ensureImagesLoaded(section, undefined, {
-          images: imgs,
-          concurrency: 4,
-          timeoutMs: 15000,
-          label: `Seção ${sectionIndex + 1}`,
-        });
-      };
-
+      // Helper to add canvas to PDF
       const addCanvasToPdf = (canvas: HTMLCanvasElement, forceNewPage = false) => {
         const heightMm = (canvas.height * usableWidth) / canvas.width;
 
-        if (heightMm <= usableHeight) {
-          if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
-            pdf.addPage();
-            currentY = marginTop;
-          }
-          // Lower quality for massive documents to save memory
-          const quality = exportSections.length > 50 ? (exportSettings.canvasQuality * 0.9) : exportSettings.canvasQuality;
-          const imageData = canvas.toDataURL("image/jpeg", quality);
-          pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
-          currentY += heightMm + sectionGap;
-          hasPdfContent = true;
-          renderedPages = pdf.getNumberOfPages();
-          return;
-        }
-
-        const maxSliceHeightPx = Math.max(1, Math.floor(canvas.width * (usableHeight / usableWidth)));
-        let offsetY = 0;
-        while (offsetY < canvas.height) {
-          const sliceHeight = Math.min(maxSliceHeightPx, canvas.height - offsetY);
-          const sliceCanvas = document.createElement("canvas");
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceHeight;
-          const ctx = sliceCanvas.getContext("2d");
-          if (ctx) {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-          }
-
-          if (hasPdfContent) pdf.addPage();
+        if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
+          pdf.addPage();
           currentY = marginTop;
-          const sliceHeightMm = (sliceHeight * usableWidth) / canvas.width;
-          const imageData = sliceCanvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
-          pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, sliceHeightMm, undefined, "FAST");
-          hasPdfContent = true;
-          currentY = marginTop + sliceHeightMm + sectionGap;
-          offsetY += sliceHeight;
-          sliceCanvas.width = 0;
-          sliceCanvas.height = 0;
+          hasPdfContent = false;
         }
-        renderedPages = pdf.getNumberOfPages();
+
+        const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
+        pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
+        currentY += heightMm + sectionGap;
+        hasPdfContent = true;
+        
+        // Memory cleanup
+        canvas.width = 0;
+        canvas.height = 0;
       };
 
-      for (let i = 0; i < exportSections.length; i++) {
-        const section = exportSections[i];
-        unloadImagesOutsideSection(content, section, 3); // More aggressive unloading
-        await prepareSectionImages(section, i);
-        await waitForNextPaint(100);
+      // Helper to capture a DOM element and add to PDF
+      const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
+        content.appendChild(element);
+        
+        // Prepare images in this specific element
+        const imgs = Array.from(element.querySelectorAll("img"));
+        for (const img of imgs) {
+          const src = img.getAttribute("src");
+          if (src && !src.startsWith("data:")) {
+            try {
+              const safeSrc = await withTimeout(
+                getPdfSafeImageDataUrl(src, { 
+                  maxWidth: exportSettings.maxWidth, 
+                  maxHeight: exportSettings.maxHeight, 
+                  quality: exportSettings.imgQuality 
+                }),
+                10000,
+                "Timeout imagem"
+              );
+              img.src = safeSrc;
+            } catch (e) {
+              console.warn("Failed to load image for PDF", e);
+            }
+          }
+        }
 
-        addLog(`Renderizando seção ${i + 1}/${exportSections.length}...`, "info");
-        const canvas = await html2canvas(section, {
+        await ensureImagesLoaded(element);
+        await waitForNextPaint(50);
+
+        const canvas = await html2canvas(element, {
           scale: exportSettings.scale,
           useCORS: true,
-          allowTaint: false,
           backgroundColor: "#ffffff",
           windowWidth: contentWidth,
           logging: false,
-          removeContainer: true,
         });
 
-        addCanvasToPdf(canvas);
-        canvas.width = 0;
-        canvas.height = 0;
-        setExportProgress(10 + Math.floor(((i + 1) / exportSections.length) * 75));
+        addCanvasToPdf(canvas, forceNewPage);
+        content.innerHTML = ""; // Clear content
+      };
 
-        if ((i + 1) % 5 === 0) {
-          addLog(`${renderedPages} páginas geradas até agora.`, "success");
-          // Forced garbage collection hint and pause
-          await waitForNextPaint(150);
+      setExportProgress(5);
+      addLog("Gerando cabeçalho e tabelas...", "info");
+
+      // 1. Snapshot Summary Section
+      const resumoEl = printRef.current.querySelector('[data-pdf-section="medicao-resumo"]')?.cloneNode(true) as HTMLElement;
+      if (resumoEl) await captureAndClear(resumoEl);
+
+      // 2. Snapshot Items Section
+      const itensEl = printRef.current.querySelector('[data-pdf-section="itens-medicao"]')?.cloneNode(true) as HTMLElement;
+      if (itensEl) await captureAndClear(itensEl);
+
+      setExportProgress(15);
+      addLog(`Processando ${diarioFotos.length} fotos em lotes...`, "info");
+
+      // 3. Photo Report Header
+      const photoHeaderEl = printRef.current.querySelector('[data-pdf-section="relatorio-fotografico-cabecalho"]')?.cloneNode(true) as HTMLElement;
+      if (photoHeaderEl) await captureAndClear(photoHeaderEl);
+
+      // 4. Photos - Data driven chunking to avoid DOM bloat
+      if (tipoMedicao === "mista") {
+        for (let i = 0; i < fotosBySiteAndClass.length; i++) {
+          const { siteName, siteId, classes } = fotosBySiteAndClass[i];
+          addLog(`Processando site: ${siteName}`, "info");
+
+          // Create a site header element manually or clone if possible
+          const siteHeader = document.createElement("div");
+          siteHeader.className = "border rounded-lg overflow-hidden bg-card mb-4";
+          siteHeader.innerHTML = `
+            <div class="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style="background-color: #2563eb; line-height: 1.6;">
+              <span>${siteName}</span>
+            </div>
+          `;
+          await captureAndClear(siteHeader);
+
+          for (const [className, fotos] of classes) {
+            const classHeader = document.createElement("h3");
+            classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
+            classHeader.innerText = className;
+            await captureAndClear(classHeader);
+
+            const batches = chunkArray(fotos, 12); // 4 rows of 3
+            for (let j = 0; j < batches.length; j++) {
+              const batch = batches[j];
+              const rowContainer = document.createElement("div");
+              rowContainer.className = "space-y-4 mb-4";
+              
+              const photoRows = chunkArray(batch, 3);
+              photoRows.forEach(row => {
+                const grid = document.createElement("div");
+                grid.className = "grid grid-cols-3 gap-3";
+                row.forEach(f => {
+                  const cardWrapper = document.createElement("div");
+                  // Use a portal or simple render function? 
+                  // Since we are in an async function, we'll use a hack to render the React component to string or just use a helper
+                  cardWrapper.innerHTML = `
+                    <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
+                      <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
+                        <img src="${f.url}" class="h-full w-full object-contain" />
+                      </div>
+                      <div class="p-2 bg-muted/20 space-y-1 flex-1">
+                        ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
+                        <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+                          <span class="max-w-[140px] leading-tight">${f.site_nome || ''}</span>
+                          <span class="shrink-0">${f.diario_data || ''}</span>
+                          <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px;">${classLabel(f.classificacao)}</span>
+                        </div>
+                        ${f.legenda ? `<p class="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“${f.legenda}”</p>` : ''}
+                      </div>
+                    </div>
+                  `;
+                  grid.appendChild(cardWrapper.firstElementChild!);
+                });
+                rowContainer.appendChild(grid);
+              });
+
+              await captureAndClear(rowContainer);
+              const progress = 15 + Math.floor(((i + (j / batches.length)) / fotosBySiteAndClass.length) * 70);
+              setExportProgress(progress);
+              await waitForNextPaint(20);
+            }
+          }
+        }
+      } else {
+        // Handle separada / agrupada similarly
+        const itemEntries = Array.from(fotosByItem.byItem.entries());
+        for (let i = 0; i < itemEntries.length; i++) {
+          const [itemLabel, itemFotos] = itemEntries[i];
+          const itemHeader = document.createElement("h3");
+          itemHeader.className = "text-sm font-semibold text-primary mb-4 mt-6";
+          itemHeader.innerText = itemLabel;
+          await captureAndClear(itemHeader);
+
+          const batches = chunkArray(itemFotos, 12);
+          for (let j = 0; j < batches.length; j++) {
+            const batch = batches[j];
+            const rowContainer = document.createElement("div");
+            rowContainer.className = "space-y-4 mb-4";
+            
+            chunkArray(batch, 3).forEach(row => {
+              const grid = document.createElement("div");
+              grid.className = "grid grid-cols-3 gap-3";
+              row.forEach(f => {
+                const cardWrapper = document.createElement("div");
+                cardWrapper.innerHTML = `
+                  <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
+                    <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
+                      <img src="${f.url}" class="h-full w-full object-contain" />
+                    </div>
+                    <div class="p-2 bg-muted/20 space-y-1 flex-1">
+                      ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
+                      <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px;">${classLabel(f.classificacao)}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                grid.appendChild(cardWrapper.firstElementChild!);
+              });
+              rowContainer.appendChild(grid);
+            });
+            await captureAndClear(rowContainer);
+            setExportProgress(15 + Math.floor(((i + (j / batches.length)) / itemEntries.length) * 70));
+          }
         }
       }
 
@@ -660,21 +697,16 @@ export function DetailMedicaoContent({
           const copiedPages = await finalPdf.copyPages(capaPdf, capaPdf.getPageIndices());
           copiedPages.forEach(page => finalPdf.addPage(page));
         } catch (e) {
-          addLog("Não foi possível carregar a capa, ignorando.", "error");
+          addLog("Não foi possível carregar a capa.", "error");
         }
       }
 
-      const pdfArrayBuffer = pdf.output("arraybuffer");
-      const generatedPdf = await PDFDocument.load(pdfArrayBuffer);
+      const generatedPdf = await PDFDocument.load(pdf.output("arraybuffer"));
       const generatedPages = await finalPdf.copyPages(generatedPdf, generatedPdf.getPageIndices());
       generatedPages.forEach(page => finalPdf.addPage(page));
 
       addLog("Finalizando arquivo...", "info");
-      const finalBytes = await finalPdf.save({ 
-        useObjectStreams: true,
-        addDefaultPage: false
-      });
-      
+      const finalBytes = await finalPdf.save({ useObjectStreams: true, addDefaultPage: false });
       const blob = new Blob([finalBytes as any], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -683,20 +715,15 @@ export function DetailMedicaoContent({
       a.click();
       URL.revokeObjectURL(url);
       
-      await clearPDFChunks(detailMedicao.id);
-      await clearExportState(detailMedicao.id);
-      setCanResume(false);
-      addLog("PDF gerado e baixado com sucesso!", "success");
+      addLog("PDF gerado com sucesso!", "success");
       setExportProgress(100);
       setTimeout(() => setShowLogPanel(false), 5000);
     } catch (e) {
       addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
       console.error("Erro ao exportar PDF:", e);
-      // Try to recover progress if possible in the future
     } finally {
-      if (exportContainer) {
-        exportContainer.innerHTML = '';
-        exportContainer.remove();
+      if (exportContext) {
+        exportContext.container.remove();
       }
       setIsExporting(false);
     }
@@ -733,14 +760,12 @@ export function DetailMedicaoContent({
       siteGroup.get(classKey)!.push(f);
     });
 
-    // Return sorted entries
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([siteName, classMap]) => ({
         siteName,
         siteId: diarioFotos.find(f => (f.site_nome || "Sem site") === siteName)?.site_id || "",
         classes: Array.from(classMap.entries()).sort((a, b) => {
-          // Priority: Vistoria then Execução
           if (a[0] === "Vistoria") return -1;
           if (b[0] === "Vistoria") return 1;
           return a[0].localeCompare(b[0]);
@@ -763,6 +788,7 @@ export function DetailMedicaoContent({
     });
     return { byItem: map, gerais };
   }, [diarioFotos]);
+
 
   return (
     <div className="space-y-4">
