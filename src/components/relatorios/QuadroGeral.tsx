@@ -452,6 +452,8 @@ export default function QuadroGeral() {
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
   const runAutomaticVerification = useCallback(async () => {
     setIsVerifying(true);
     // Refresh all data
