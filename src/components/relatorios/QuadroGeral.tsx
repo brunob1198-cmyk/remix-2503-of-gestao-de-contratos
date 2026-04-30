@@ -125,7 +125,17 @@ function calcTotals(rows: { valor_contrato: number; valor_executado: number; val
     }),
     { valor_contrato: 0, valor_executado: 0, valor_faturado: 0, valor_nao_faturado: 0, saldo_contrato: 0 }
   );
-  return { ...t, percentual_evolucao: t.valor_contrato > 0 ? (t.valor_executado / t.valor_contrato) * 100 : 0 };
+  
+  // Round totals to avoid floating point issues
+  const rounded = {
+    valor_contrato: Math.round(t.valor_contrato * 100) / 100,
+    valor_executado: Math.round(t.valor_executado * 100) / 100,
+    valor_faturado: Math.round(t.valor_faturado * 100) / 100,
+    valor_nao_faturado: Math.round(t.valor_nao_faturado * 100) / 100,
+    saldo_contrato: Math.round(t.saldo_contrato * 100) / 100,
+  };
+
+  return { ...rounded, percentual_evolucao: rounded.valor_contrato > 0 ? (rounded.valor_executado / rounded.valor_contrato) * 100 : 0 };
 }
 
 const formatCurrency = (value: number) =>
@@ -193,7 +203,7 @@ export default function QuadroGeral() {
         site_id: (p as any).diario?.site_id || "",
         quantidade: Number(p.quantidade),
         preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
-        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))),
+        valor_total: Math.round(Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))) * 100) / 100,
       }));
     },
   });
@@ -265,24 +275,24 @@ export default function QuadroGeral() {
 
     const projetoRows: ProjetoRow[] = projetos.map(p => {
       const valor_contrato = p.valor_total || 0;
-      const valor_executado = executadoByProjeto.get(p.id) || 0;
-      const valor_faturado = faturadoByProjeto.get(p.id) || 0;
-      const valor_nao_faturado = valor_executado - valor_faturado;
-      const saldo_contrato = valor_contrato - valor_executado;
+      const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
+      const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
+      const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
+      const saldo_contrato = Math.max(0, Math.round((valor_contrato - valor_executado) * 100) / 100);
       const percentual_evolucao = valor_contrato > 0 ? (valor_executado / valor_contrato) * 100 : 0;
       const areaName = (p as any).area_id ? (areaMap.get((p as any).area_id) || "Sem área") : "Sem área";
 
       const projetoSites = sites.filter(s => s.projeto_id === p.id);
       const siteRows: SiteRow[] = projetoSites.map(s => {
-        const sExec = executadoBySite.get(s.id) || 0;
-        const sFat = faturadoBySite.get(s.id) || 0;
+        const sExec = Math.round((executadoBySite.get(s.id) || 0) * 100) / 100;
+        const sFat = Math.round((faturadoBySite.get(s.id) || 0) * 100) / 100;
         return {
           site_id: s.id,
           site_codigo: s.codigo,
           site_nome: s.nome,
           valor_executado: sExec,
           valor_faturado: sFat,
-          valor_nao_faturado: sExec - sFat,
+          valor_nao_faturado: Math.round((sExec - sFat) * 100) / 100,
           percentual_evolucao: valor_contrato > 0 ? (sExec / valor_contrato) * 100 : 0,
         };
       });
@@ -473,7 +483,7 @@ export default function QuadroGeral() {
         const diff = Math.abs(p.valor_contrato - p.valor_executado);
         // Special strict check for P005.25 as requested
         const isTargetProject = p.projeto_codigo === 'P005.25';
-        const isDivergent = isTargetProject ? diff > 1 : diff > 10 && p.percentual_evolucao < 99;
+        const isDivergent = isTargetProject ? diff > 0.05 : diff > 10 && p.percentual_evolucao < 99;
 
         if (isDivergent && p.valor_executado < p.valor_contrato) {
           newDivergences.push({
