@@ -520,10 +520,11 @@ export function DetailMedicaoContent({
       let currentY = marginTop;
       let hasPdfContent = false;
 
-      // Helper to add canvas to PDF
+      // Helper to add canvas to PDF with smart pagination
       const addCanvasToPdf = (canvas: HTMLCanvasElement, forceNewPage = false) => {
         const heightMm = (canvas.height * usableWidth) / canvas.width;
 
+        // If it doesn't fit in current page and isn't bigger than a whole page, start new page
         if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
           pdf.addPage();
           currentY = marginTop;
@@ -531,6 +532,9 @@ export function DetailMedicaoContent({
         }
 
         const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
+        
+        // If the element is bigger than a full page, it will still overflow, 
+        // but we've minimized this by chunking elements better.
         pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
         currentY += heightMm + sectionGap;
         hasPdfContent = true;
@@ -543,6 +547,16 @@ export function DetailMedicaoContent({
       // Helper to capture a DOM element and add to PDF
       const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
         content.appendChild(element);
+        
+        // Apply auto-fit for long texts
+        autoFitText(element);
+        
+        if (debugMode) {
+          const overflows = checkTextOverflow(element, true);
+          if (overflows.length > 0) {
+            addLog(`Debug: ${overflows.length} possíveis cortes de texto detectados.`, "error");
+          }
+        }
         
         // Prepare images in this specific element
         const imgs = Array.from(element.querySelectorAll("img"));
@@ -575,11 +589,13 @@ export function DetailMedicaoContent({
           backgroundColor: "#ffffff",
           windowWidth: contentWidth,
           logging: false,
+          allowTaint: true,
         });
 
         addCanvasToPdf(canvas, forceNewPage);
         content.innerHTML = ""; // Clear content
       };
+
 
       setExportProgress(5);
       addLog("Gerando cabeçalho e tabelas...", "info");
