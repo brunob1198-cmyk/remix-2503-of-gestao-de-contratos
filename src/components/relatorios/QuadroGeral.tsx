@@ -203,7 +203,7 @@ export default function QuadroGeral() {
         site_id: (p as any).diario?.site_id || "",
         quantidade: Number(p.quantidade),
         preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
-        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))),
+        valor_total: Math.round(Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))) * 100) / 100,
       }));
     },
   });
