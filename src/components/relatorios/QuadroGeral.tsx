@@ -483,7 +483,7 @@ export default function QuadroGeral() {
         const diff = Math.abs(p.valor_contrato - p.valor_executado);
         // Special strict check for P005.25 as requested
         const isTargetProject = p.projeto_codigo === 'P005.25';
-        const isDivergent = isTargetProject ? diff > 1 : diff > 10 && p.percentual_evolucao < 99;
+        const isDivergent = isTargetProject ? diff > 0.05 : diff > 10 && p.percentual_evolucao < 99;
 
         if (isDivergent && p.valor_executado < p.valor_contrato) {
           newDivergences.push({
