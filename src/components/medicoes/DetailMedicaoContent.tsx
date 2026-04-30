@@ -436,15 +436,22 @@ export function DetailMedicaoContent({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground">
-            {options?.showSiteName && foto.site_nome && <span className="truncate max-w-[80px]">{foto.site_nome}</span>}
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto">
+            {options?.showSiteName && foto.site_nome && (
+              <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap" title={foto.site_nome}>
+                {foto.site_nome}
+              </span>
+            )}
             {foto.diario_data && (
-              <span className="flex items-center gap-0.5">
+              <span className="flex items-center gap-0.5 shrink-0">
                 <Calendar className="h-2 w-2" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
-            <Badge className="text-[7px] px-1 py-0 h-3 text-white" style={{ backgroundColor: classColor(foto.classificacao) }}>
+            <Badge 
+              className="text-[7px] px-1 py-0 h-[14px] flex items-center justify-center text-white font-bold leading-none" 
+              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+            >
               {classLabel(foto.classificacao)}
             </Badge>
           </div>
