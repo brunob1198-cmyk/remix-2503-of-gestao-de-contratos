@@ -512,6 +512,7 @@ export function DetailMedicaoContent({
       let currentY = marginTop;
       let hasPdfContent = false;
 
+      // We'll create small PDF chunks and merge them to avoid giant memory usage
       const chunks: Uint8Array[] = [];
       let currentPdf: jsPDF | null = null;
       let currentPdfPages = 0;
@@ -531,7 +532,7 @@ export function DetailMedicaoContent({
           chunks.push(new Uint8Array(pdfData));
           currentPdf = null;
           currentPdfPages = 0;
-          // Clear memory references
+          // Force memory release hint if possible
           if (window.gc) try { window.gc(); } catch(e) {}
         }
       };
@@ -558,11 +559,12 @@ export function DetailMedicaoContent({
         currentY += heightMm + sectionGap;
         hasPdfContent = true;
 
-        // Finalize chunk more aggressively (8 captures per chunk)
+        // If chunk is getting large (8 captures) finalize it to keep memory low
         if (currentPdfPages >= 8) {
           await finalizeChunk();
         }
         
+        // Memory cleanup
         canvas.width = 0;
         canvas.height = 0;
       };
@@ -574,7 +576,7 @@ export function DetailMedicaoContent({
         if (debugMode) {
           const overflows = checkTextOverflow(element, true);
           if (overflows.length > 0) {
-            addLog(`Debug: ${overflows.length} possíveis cortes de texto detectados.`, "error");
+            addLog(`Debug: ${overflows.length} cortes de texto detectados.`, "error");
           }
         }
         
@@ -600,7 +602,7 @@ export function DetailMedicaoContent({
         }
 
         await ensureImagesLoaded(element);
-        await waitForNextPaint(80);
+        await waitForNextPaint(100);
 
         const canvas = await html2canvas(element, {
           scale: exportSettings.scale,
@@ -616,24 +618,20 @@ export function DetailMedicaoContent({
 
 
       setExportProgress(5);
-      addLog("Gerando cabeçalho e tabelas...", "info");
+      addLog("Gerando seções iniciais...", "info");
 
-      // 1. Snapshot Summary Section
       const resumoEl = printRef.current.querySelector('[data-pdf-section="medicao-resumo"]')?.cloneNode(true) as HTMLElement;
       if (resumoEl) await captureAndClear(resumoEl);
 
-      // 2. Snapshot Items Section
       const itensEl = printRef.current.querySelector('[data-pdf-section="itens-medicao"]')?.cloneNode(true) as HTMLElement;
       if (itensEl) await captureAndClear(itensEl);
 
       setExportProgress(15);
-      addLog(`Processando ${diarioFotos.length} fotos em lotes...`, "info");
+      addLog(`Processando ${diarioFotos.length} fotos em streaming agressivo...`, "info");
 
-      // 3. Photo Report Header
       const photoHeaderEl = printRef.current.querySelector('[data-pdf-section="relatorio-fotografico-cabecalho"]')?.cloneNode(true) as HTMLElement;
       if (photoHeaderEl) await captureAndClear(photoHeaderEl);
 
-      // 4. Photos - Data driven chunking to avoid DOM bloat
       if (tipoMedicao === "mista") {
         for (let i = 0; i < fotosBySiteAndClass.length; i++) {
           const { siteName, classes } = fotosBySiteAndClass[i];
@@ -648,77 +646,20 @@ export function DetailMedicaoContent({
           `;
           await captureAndClear(siteHeader);
 
-
           for (const [className, fotos] of classes) {
             const classHeader = document.createElement("h3");
             classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
             classHeader.innerText = className;
             await captureAndClear(classHeader);
 
-
-            const batches = chunkArray(fotos, 6); // More aggressive chunking (2 rows of 3)
+            // Process in very small batches (3 photos = 1 row) for stability
+            const batches = chunkArray(fotos, 3);
             for (let j = 0; j < batches.length; j++) {
               const batch = batches[j];
-              const rowContainer = document.createElement("div");
-              rowContainer.className = "space-y-4 mb-4";
-              
-              const photoRows = chunkArray(batch, 3);
-              photoRows.forEach(row => {
-                const grid = document.createElement("div");
-                grid.className = "grid grid-cols-3 gap-3";
-                row.forEach(f => {
-                  const cardWrapper = document.createElement("div");
-                  // Use a portal or simple render function? 
-                  // Since we are in an async function, we'll use a hack to render the React component to string or just use a helper
-                  cardWrapper.innerHTML = `
-                    <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
-                      <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
-                        <img src="${f.url}" class="h-full w-full object-contain" />
-                      </div>
-                      <div class="p-2 bg-muted/20 space-y-1 flex-1">
-                        ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
-                        <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                          <span class="max-w-[140px] leading-tight" style="word-break: break-word; overflow-wrap: anywhere;">${f.site_nome || ''}</span>
-                          <span class="shrink-0">${f.diario_data || ''}</span>
-                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
-
-                        </div>
-                        ${f.legenda ? `<p class="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“${f.legenda}”</p>` : ''}
-                      </div>
-                    </div>
-                  `;
-                  grid.appendChild(cardWrapper.firstElementChild!);
-                });
-                rowContainer.appendChild(grid);
-              });
-
-              await captureAndClear(rowContainer);
-              const progress = 15 + Math.floor(((i + (j / batches.length)) / fotosBySiteAndClass.length) * 70);
-              setExportProgress(progress);
-              await waitForNextPaint(100);
-            }
-          }
-        }
-      } else {
-        // Handle separada / agrupada similarly
-        const itemEntries = Array.from(fotosByItem.byItem.entries());
-        for (let i = 0; i < itemEntries.length; i++) {
-          const [itemLabel, itemFotos] = itemEntries[i];
-          const itemHeader = document.createElement("h3");
-          itemHeader.className = "text-sm font-semibold text-primary mb-4 mt-6";
-          itemHeader.innerText = itemLabel;
-          await captureAndClear(itemHeader);
-
-          const batches = chunkArray(itemFotos, 6);
-          for (let j = 0; j < batches.length; j++) {
-            const batch = batches[j];
-            const rowContainer = document.createElement("div");
-            rowContainer.className = "space-y-4 mb-4";
-            
-            chunkArray(batch, 3).forEach(row => {
               const grid = document.createElement("div");
-              grid.className = "grid grid-cols-3 gap-3";
-              row.forEach(f => {
+              grid.className = "grid grid-cols-3 gap-3 mb-4";
+              
+              batch.forEach(f => {
                 const cardWrapper = document.createElement("div");
                 cardWrapper.innerHTML = `
                   <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
@@ -728,28 +669,68 @@ export function DetailMedicaoContent({
                     <div class="p-2 bg-muted/20 space-y-1 flex-1">
                       ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
                       <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px;">${classLabel(f.classificacao)}</span>
+                        <span class="max-w-[140px] leading-tight" style="word-break: break-word; overflow-wrap: anywhere;">${f.site_nome || ''}</span>
+                        <span class="shrink-0">${f.diario_data || ''}</span>
+                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
                       </div>
+                      ${f.legenda ? `<p class="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“${f.legenda}”</p>` : ''}
                     </div>
                   </div>
                 `;
                 grid.appendChild(cardWrapper.firstElementChild!);
               });
-              rowContainer.appendChild(grid);
+
+              await captureAndClear(grid);
+              setExportProgress(15 + Math.floor(((i + (j / batches.length)) / fotosBySiteAndClass.length) * 70));
+              await waitForNextPaint(120);
+            }
+          }
+        }
+      } else {
+        const itemEntries = Array.from(fotosByItem.byItem.entries());
+        for (let i = 0; i < itemEntries.length; i++) {
+          const [itemLabel, itemFotos] = itemEntries[i];
+          const itemHeader = document.createElement("h3");
+          itemHeader.className = "text-sm font-semibold text-primary mb-4 mt-6";
+          itemHeader.innerText = itemLabel;
+          await captureAndClear(itemHeader);
+
+          const batches = chunkArray(itemFotos, 3);
+          for (let j = 0; j < batches.length; j++) {
+            const batch = batches[j];
+            const grid = document.createElement("div");
+            grid.className = "grid grid-cols-3 gap-3 mb-4";
+            
+            batch.forEach(f => {
+              const cardWrapper = document.createElement("div");
+              cardWrapper.innerHTML = `
+                <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
+                  <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
+                    <img src="${f.url}" class="h-full w-full object-contain" />
+                  </div>
+                  <div class="p-2 bg-muted/20 space-y-1 flex-1">
+                    ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
+                    <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+                      <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+              grid.appendChild(cardWrapper.firstElementChild!);
             });
-            await captureAndClear(rowContainer);
+            await captureAndClear(grid);
             setExportProgress(15 + Math.floor(((i + (j / batches.length)) / itemEntries.length) * 70));
+            await waitForNextPaint(120);
           }
         }
       }
 
       setExportProgress(85);
-      addLog("Montando PDF final...", "info");
+      addLog("Compilando documento final...", "info");
       const finalPdf = await PDFDocument.create();
       
       const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
       if (capaUrl) {
-        addLog("Adicionando capa...", "info");
         try {
           const capaResponse = await fetch(capaUrl);
           const capaBytes = await capaResponse.arrayBuffer();
@@ -757,20 +738,20 @@ export function DetailMedicaoContent({
           const copiedPages = await finalPdf.copyPages(capaPdf, capaPdf.getPageIndices());
           copiedPages.forEach(page => finalPdf.addPage(page));
         } catch (e) {
-          addLog("Não foi possível carregar a capa.", "error");
+          addLog("Capa ignorada.", "error");
         }
       }
 
       await finalizeChunk();
-      addLog(`Combinando ${chunks.length} partes do documento...`, "info");
+      addLog(`Combinando ${chunks.length} partes...`, "info");
       
       for (let i = 0; i < chunks.length; i++) {
         const chunkPdf = await PDFDocument.load(chunks[i]);
         const chunkPages = await finalPdf.copyPages(chunkPdf, chunkPdf.getPageIndices());
         chunkPages.forEach(page => finalPdf.addPage(page));
-        // Clear reference to help GC
+        // Help GC
         chunks[i] = new Uint8Array(0);
-        if (i % 5 === 0) await waitForNextPaint(50);
+        if (i % 5 === 0) await waitForNextPaint(60);
       }
 
       addLog("Finalizando arquivo...", "info");
@@ -787,23 +768,12 @@ export function DetailMedicaoContent({
       setExportProgress(100);
       setTimeout(() => setShowLogPanel(false), 5000);
     } catch (e) {
-      addLog(`Erro fatal: ${e instanceof Error ? e.message : String(e)}`, "error");
-      console.error("Erro ao exportar PDF:", e);
+      addLog(`Erro: ${e instanceof Error ? e.message : String(e)}`, "error");
     } finally {
-      if (exportContext) {
-        exportContext.container.remove();
-      }
+      if (exportContext) exportContext.container.remove();
       setIsExporting(false);
     }
   };
-
-  const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
-
-  // Get included sites list for agrupada/mista header
-  const includedSites = useMemo(() => {
-    if (!isMultiSite) return [];
-    const siteIdsWithProduction = [...new Set(siteProduction.map(p => p.site_id))];
-    return siteIdsWithProduction
       .map(sid => sites.find(s => s.id === sid))
       .filter(Boolean)
       .map(s => `${s.codigo} - ${s.nome}`)
