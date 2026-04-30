@@ -675,7 +675,7 @@ export function DetailMedicaoContent({
                       <div class="p-2 bg-muted/20 space-y-1 flex-1">
                         ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
                         <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                          <span class="max-w-[140px] leading-tight">${f.site_nome || ''}</span>
+                          <span class="max-w-[140px] leading-tight" style="word-break: break-word; overflow-wrap: anywhere;">${f.site_nome || ''}</span>
                           <span class="shrink-0">${f.diario_data || ''}</span>
                           <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px;">${classLabel(f.classificacao)}</span>
                         </div>
