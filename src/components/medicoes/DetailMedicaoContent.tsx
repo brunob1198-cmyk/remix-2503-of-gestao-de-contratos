@@ -1096,9 +1096,9 @@ export function DetailMedicaoContent({
               style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
             >
               <Separator className="my-4" />
-              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, paddingBottom: 2, display: 'flex', alignItems: 'center', gap: '8px' }} className="pdf-section-heading">
+              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, paddingBottom: 4, display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }} className="pdf-section-heading">
                 <Camera className="h-4 w-4" />
-                <span style={{ lineHeight: '1.2' }}>Relatório Fotográfico ({diarioFotos.length} fotos)</span>
+                <span style={{ lineHeight: '1.6' }}>Relatório Fotográfico ({diarioFotos.length} fotos)</span>
                 {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
                   <Badge variant="outline" className="text-xs ml-2">Agrupado por site</Badge>
                 )}
