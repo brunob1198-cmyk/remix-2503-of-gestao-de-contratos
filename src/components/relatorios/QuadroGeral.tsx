@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, Fragment, useEffect } from "react";
+import { useState, useMemo, useCallback, Fragment } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter, AlertCircle, RefreshCw } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
