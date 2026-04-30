@@ -12,11 +12,32 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         .select("id, codigo, nome");
       if (projError) throw projError;
 
-      // Get all production data from diário de obra
-      const { data: producao, error: prodError } = await supabase
-        .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)");
-      if (prodError) throw prodError;
+      // Get all production data from diário de obra (fetching all records in chunks to bypass the 1000-row limit)
+      let allProducao: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
+          .order("id")
+          .range(from, from + step - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allProducao = [...allProducao, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
+      }
+      const producao = allProducao;
 
       // Get all measurement data
       const { data: medicao, error: medError } = await supabase
