@@ -74,6 +74,21 @@ const createPdfExportContainer = (source: HTMLElement) => {
     visibility: "visible",
   });
 
+  // Inject styles to disable animations and improve text rendering
+  const style = document.createElement("style");
+  style.innerHTML = `
+    * { 
+      transition: none !important; 
+      animation: none !important; 
+      text-rendering: optimizeLegibility !important;
+      -webkit-font-smoothing: antialiased !important;
+    }
+    .pdf-section-heading, h1, h2, h3, p, span, td, th {
+      letter-spacing: 0.01em !important;
+    }
+  `;
+  container.appendChild(style);
+
   content.style.width = "100%";
   content.style.maxWidth = "none";
   content.style.overflow = "visible";
@@ -431,20 +446,27 @@ export function DetailMedicaoContent({
         </div>
         <div className="p-2 bg-muted/20 space-y-1 flex-1">
           {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-[9px] text-foreground leading-tight line-clamp-2">
+            <p className="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">
               {foto.item_codigo} — {foto.item_descricao}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground">
-            {options?.showSiteName && foto.site_nome && <span className="truncate max-w-[80px]">{foto.site_nome}</span>}
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto">
+            {options?.showSiteName && foto.site_nome && (
+              <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap" title={foto.site_nome}>
+                {foto.site_nome}
+              </span>
+            )}
             {foto.diario_data && (
-              <span className="flex items-center gap-0.5">
+              <span className="flex items-center gap-0.5 shrink-0">
                 <Calendar className="h-2 w-2" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
-            <Badge className="text-[7px] px-1 py-0 h-3 text-white" style={{ backgroundColor: classColor(foto.classificacao) }}>
+            <Badge 
+              className="text-[7px] px-1 py-0 h-[14px] flex items-center justify-center text-white font-bold leading-none" 
+              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+            >
               {classLabel(foto.classificacao)}
             </Badge>
           </div>
@@ -527,8 +549,8 @@ export function DetailMedicaoContent({
         if (!imgs.length) return;
 
         let done = 0;
-        // Reduced concurrency and added batching to avoid overwhelming the memory/CPU
-        const BATCH_SIZE = 4;
+        // Increased batch size for faster loading
+        const BATCH_SIZE = 12;
         const groups = [];
         for (let i = 0; i < imgs.length; i += BATCH_SIZE) {
           groups.push(imgs.slice(i, i + BATCH_SIZE));
@@ -564,8 +586,8 @@ export function DetailMedicaoContent({
               }
             })
           );
-          // Small pause between batches
-          await waitForNextPaint(50);
+          // Minimal pause between batches
+          await waitForNextPaint(10);
         }
 
         await ensureImagesLoaded(section, undefined, {
@@ -917,8 +939,8 @@ export function DetailMedicaoContent({
                 );
               })()}
               <div>
-                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
-                <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a", lineHeight: '1.3' }}>Relatório de Medição</h1>
+                <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: '1.4' }}>
                   {detailMedicao.projeto_codigo} — {detailMedicao.projeto_nome}
                 </p>
               </div>
@@ -982,22 +1004,24 @@ export function DetailMedicaoContent({
           <div className="grid grid-cols-2 gap-3 text-sm mb-4">
             {!isMultiSite && (
               <>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 py-0.5">
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-muted-foreground">Site:</span> {detailMedicao.site_codigo} — {detailMedicao.site_nome}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 py-0.5">
                   <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-muted-foreground">Município/UF:</span> {site?.municipio || "—"}/{detailMedicao.uf || "—"}
                 </div>
               </>
             )}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 py-0.5">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">Período:</span>{" "}
-              {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
-                ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
-                : formatDate(detailMedicao.data_medicao)}
+              <span style={{ display: 'inline-block', lineHeight: '1.4' }}>
+                {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
+                  ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
+                  : formatDate(detailMedicao.data_medicao)}
+              </span>
             </div>
             <div>
               <span className="text-muted-foreground">Valor Total:</span>{" "}
@@ -1065,11 +1089,11 @@ export function DetailMedicaoContent({
               style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
             >
               <Separator className="my-4" />
-              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="pdf-section-heading flex items-center gap-2">
+              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, paddingBottom: 2, display: 'flex', alignItems: 'center', gap: '8px' }} className="pdf-section-heading">
                 <Camera className="h-4 w-4" />
-                Relatório Fotográfico ({diarioFotos.length} fotos)
+                <span style={{ lineHeight: '1.2' }}>Relatório Fotográfico ({diarioFotos.length} fotos)</span>
                 {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
-                  <Badge variant="outline" className="text-xs">Agrupado por site</Badge>
+                  <Badge variant="outline" className="text-xs ml-2">Agrupado por site</Badge>
                 )}
               </h2>
             </div>
@@ -1096,7 +1120,7 @@ export function DetailMedicaoContent({
                       </div>
                       {siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
-                          <p className="text-xs font-semibold mb-2">Produção do Site:</p>
+                          <p className="text-xs font-semibold mb-2 py-0.5" style={{ lineHeight: '1.4' }}>Produção do Site:</p>
                           <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
                             <TableHeader>
                               <TableRow>
@@ -1108,16 +1132,16 @@ export function DetailMedicaoContent({
                             <TableBody>
                               {siteItems.map(si => (
                                 <TableRow key={si.item_codigo}>
-                                  <TableCell className="text-xs py-1">{si.item_codigo} — {si.item_descricao}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
-                                  <TableCell className="text-xs text-right py-1">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
+                                  <TableCell className="text-xs py-1.5" style={{ lineHeight: '1.3' }}>{si.item_codigo} — {si.item_descricao}</TableCell>
+                                  <TableCell className="text-xs text-right py-1.5">{si.quantidade.toLocaleString("pt-BR")} {si.unidade}</TableCell>
+                                  <TableCell className="text-xs text-right py-1.5">{formatCurrency(si.quantidade * si.preco_unitario)}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
                           </Table>
 
                           <div className="mt-3 flex justify-end">
-                            <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground">
+                            <div className="rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-foreground" style={{ lineHeight: '1.4' }}>
                               Total do site: {formatCurrency(siteTotal)}
                             </div>
                           </div>
@@ -1126,9 +1150,9 @@ export function DetailMedicaoContent({
 
                       {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
                         <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
-                          <p className="text-xs font-semibold mb-1 flex items-center gap-1">📋 Observações</p>
+                          <p className="text-xs font-semibold mb-1 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>📋 Observações</p>
                           {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
-                            <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1">{obs}</p>
+                            <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1" style={{ lineHeight: '1.4' }}>{obs}</p>
                           ))}
                         </div>
                       )}
