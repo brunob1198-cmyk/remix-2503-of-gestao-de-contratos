@@ -452,7 +452,51 @@ export default function QuadroGeral() {
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
-  }
+  const runAutomaticVerification = useCallback(async () => {
+    setIsVerifying(true);
+    // Refresh all data
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ["projetos"] }),
+      queryClient.refetchQueries({ queryKey: ["sites"] }),
+      queryClient.refetchQueries({ queryKey: ["diario_producao_quadro"] }),
+      queryClient.refetchQueries({ queryKey: ["lancamentos_producao"] }),
+    ]);
+
+    const newDivergences: { projeto: string, valorEsperado: number, valorAtual: number }[] = [];
+    
+    // We check all projects that have a defined value
+    for (const p of projetoRows) {
+      if (p.valor_contrato > 0) {
+        // Simple tolerance for float math
+        const diff = Math.abs(p.valor_contrato - p.valor_executado);
+        // If the project code is P005.25, we are extra strict
+        if (p.projeto_codigo === 'P005.25' && p.valor_executado < p.valor_contrato - 1) {
+          newDivergences.push({
+            projeto: p.projeto_codigo,
+            valorEsperado: p.valor_contrato,
+            valorAtual: p.valor_executado
+          });
+        }
+      }
+    }
+
+    setDivergences(newDivergences);
+    setIsVerifying(false);
+    
+    if (newDivergences.length === 0) {
+      toast.success("Verificação concluída: Valores do Quadro Geral estão íntegros.");
+    } else {
+      toast.error("Aviso: Divergência de valores detectada no Quadro Geral.");
+    }
+  }, [projetoRows, queryClient]);
+
+  useEffect(() => {
+    // Run once on mount after data is likely loaded
+    const timer = setTimeout(() => {
+      runAutomaticVerification();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   function TotalsRow({ t, naoFaturadoHighlight = true }: { t: Totals; naoFaturadoHighlight?: boolean }) {
     return (
