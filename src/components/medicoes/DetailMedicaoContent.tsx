@@ -20,8 +20,11 @@ import {
   withTimeout,
   chunkArray,
   PDFExportLog,
-  PDFQuality
+  PDFQuality,
+  autoFitText,
+  checkTextOverflow
 } from "@/lib/pdfExportUtils";
+
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
