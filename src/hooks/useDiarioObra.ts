@@ -246,6 +246,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
     },
   });
