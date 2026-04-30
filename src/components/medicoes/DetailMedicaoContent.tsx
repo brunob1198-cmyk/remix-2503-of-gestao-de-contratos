@@ -550,7 +550,6 @@ export function DetailMedicaoContent({
           currentPdf.addPage();
           currentY = marginTop;
           hasPdfContent = false;
-          currentPdfPages++;
         }
 
         const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
@@ -558,12 +557,13 @@ export function DetailMedicaoContent({
         
         currentY += heightMm + sectionGap;
         hasPdfContent = true;
+        currentPdfPages++;
 
         // If chunk is getting large (8 captures) finalize it to keep memory low
         if (currentPdfPages >= 8) {
           await finalizeChunk();
         }
-        
+
         // Memory cleanup
         canvas.width = 0;
         canvas.height = 0;
