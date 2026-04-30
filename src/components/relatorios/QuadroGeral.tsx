@@ -490,7 +490,7 @@ export default function QuadroGeral() {
     } else {
       toast.error("Aviso: Divergência de valores detectada no Quadro Geral.");
     }
-  }, [projetoRows, queryClient]);
+  }, [allProjetoRows, queryClient]);
 
   useEffect(() => {
     // Run once on mount after data is likely loaded
