@@ -241,7 +241,7 @@ export default function QuadroGeral() {
     });
   };
 
-  const { areaGroups, allProjetoRows } = useMemo(() => {
+  const memoData = useMemo(() => {
     const siteProjetoMap = new Map(sites.map(s => [s.id, s.projeto_id]));
     const areaMap = new Map(areas.map(a => [a.id, a.nome]));
 
@@ -328,6 +328,9 @@ export default function QuadroGeral() {
 
     return { areaGroups: groups, allProjetoRows: projetoRows };
   }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
+
+  const areaGroups = memoData.areaGroups;
+  const allProjetoRows = memoData.allProjetoRows;
 
   // Extract unique filter options
   const filterOptions = useMemo(() => {
