@@ -179,8 +179,8 @@ export default function QuadroGeral() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
-        .limit(100000);
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(site_id)")
+        .limit(1000000);
       
       if (error) throw error;
 
