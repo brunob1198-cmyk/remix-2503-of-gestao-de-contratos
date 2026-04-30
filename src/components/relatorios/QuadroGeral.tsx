@@ -158,11 +158,14 @@ function MiniProgressBar({ value }: { value: number }) {
 }
 
 export default function QuadroGeral() {
+  const queryClient = useQueryClient();
   const { projetos } = useProjetos();
   const { sites } = useSites();
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
+  const [divergences, setDivergences] = useState<{ projeto: string, valorEsperado: number, valorAtual: number }[]>([]);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
     queryKey: ["escopo_itens_all"],
