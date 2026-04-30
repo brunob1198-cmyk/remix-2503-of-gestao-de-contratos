@@ -56,12 +56,31 @@ export default function RelatoriosPage() {
       if (!diarios || diarios.length === 0) return [];
 
       const diarioIds = diarios.map((d: any) => d.id);
-      const { data: prods, error: pErr } = await supabase
-        .from("diario_producao")
-        .select("diario_id, item_lpu_id, quantidade, valor_total, preco_unitario_congelado, item_lpu:itens_lpu(preco_unitario)")
-        .in("diario_id", diarioIds)
-        .limit(100000);
-      if (pErr) throw pErr;
+      let allProds: any[] = [];
+      let fromProd = 0;
+      let hasMoreProd = true;
+
+      while (hasMoreProd) {
+        const { data: prods, error: pErr } = await supabase
+          .from("diario_producao")
+          .select("diario_id, item_lpu_id, quantidade, valor_total, preco_unitario_congelado, item_lpu:itens_lpu(preco_unitario)")
+          .in("diario_id", diarioIds)
+          .order("diario_id") // Ordering by FK is fine
+          .range(fromProd, fromProd + 1000 - 1);
+        
+        if (pErr) throw pErr;
+        if (!prods || prods.length === 0) {
+          hasMoreProd = false;
+        } else {
+          allProds = [...allProds, ...prods];
+          if (prods.length < 1000) {
+            hasMoreProd = false;
+          } else {
+            fromProd += 1000;
+          }
+        }
+      }
+      const prods = allProds;
 
       const diarioMap = new Map(diarios.map((d: any) => [d.id, d]));
       return (prods ?? []).map((p: any) => {

@@ -12,11 +12,32 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         .select("id, codigo, nome");
       if (projError) throw projError;
 
-      // Get all production data from diário de obra
-      const { data: producao, error: prodError } = await supabase
-        .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)");
-      if (prodError) throw prodError;
+      // Get all production data from diário de obra (fetching all records in chunks to bypass the 1000-row limit)
+      let allProducao: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
+          .order("id")
+          .range(from, from + step - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allProducao = [...allProducao, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
+      }
+      const producao = allProducao;
 
       // Get all measurement data
       const { data: medicao, error: medError } = await supabase
@@ -121,10 +142,30 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         filteredSiteIds = allSites?.filter(s => s.projeto_id === projetoId).map(s => s.id) || [];
       }
 
-      // Get all production data from diário de obra
-      let prodQuery = supabase.from("diario_producao")
-        .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)");
-      const { data: producaoRaw } = await prodQuery;
+      // Get all production data from diário de obra (chunked fetch)
+      let allProducaoRaw: any[] = [];
+      let fromProd = 0;
+      let hasMoreProd = true;
+
+      while (hasMoreProd) {
+        const { data, error } = await supabase.from("diario_producao")
+          .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
+          .order("id")
+          .range(fromProd, fromProd + 1000 - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMoreProd = false;
+        } else {
+          allProducaoRaw = [...allProducaoRaw, ...data];
+          if (data.length < 1000) {
+            hasMoreProd = false;
+          } else {
+            fromProd += 1000;
+          }
+        }
+      }
+      const producaoRaw = allProducaoRaw;
       // Map to include site_id at top level for easier processing
       const producao = (producaoRaw || []).map(p => ({
         site_id: (p.diario as any)?.site_id as string,

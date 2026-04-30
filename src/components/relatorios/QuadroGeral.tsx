@@ -189,14 +189,33 @@ export default function QuadroGeral() {
   const { data: diarioProducoes = [], isLoading: loadingDiario } = useQuery({
     queryKey: ["diario_producao_quadro"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(site_id)")
-        .limit(1000000);
-      
-      if (error) throw error;
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
 
-      return (data || []).map(p => ({
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(site_id)")
+          .order("id")
+          .range(from, from + step - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
+      }
+
+      console.log(`[QuadroGeral] Fetched ${allData.length} production records`);
+      return allData.map(p => ({
         site_id: (p as any).diario?.site_id || "",
         quantidade: Number(p.quantidade),
         preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
