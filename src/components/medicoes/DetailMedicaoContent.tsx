@@ -147,6 +147,8 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [canResume, setCanResume] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [debugMode, setDebugMode] = useState(false);
+
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
     const newLog: PDFExportLog = {
