@@ -316,7 +316,7 @@ export default function QuadroGeral() {
       })
       .sort((a, b) => a.area.localeCompare(b.area));
 
-    return groups;
+    return { areaGroups: groups, allProjetoRows: projetoRows };
   }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
 
   // Extract unique filter options
