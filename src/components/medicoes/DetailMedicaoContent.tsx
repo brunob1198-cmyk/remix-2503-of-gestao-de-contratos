@@ -1042,8 +1042,8 @@ export function DetailMedicaoContent({
           {/* Observations */}
           {detailMedicao.observacao_acompanhamento && (
             <div className="mb-4">
-              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Observações</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">{detailMedicao.observacao_acompanhamento}</p>
+              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>Observações</h2>
+              <p className="text-sm text-muted-foreground whitespace-pre-line" style={{ lineHeight: '1.6', paddingBottom: '4px' }}>{detailMedicao.observacao_acompanhamento}</p>
             </div>
           )}
         </div>
