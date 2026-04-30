@@ -274,15 +274,15 @@ export default function QuadroGeral() {
 
       const projetoSites = sites.filter(s => s.projeto_id === p.id);
       const siteRows: SiteRow[] = projetoSites.map(s => {
-        const sExec = executadoBySite.get(s.id) || 0;
-        const sFat = faturadoBySite.get(s.id) || 0;
+        const sExec = Math.round((executadoBySite.get(s.id) || 0) * 100) / 100;
+        const sFat = Math.round((faturadoBySite.get(s.id) || 0) * 100) / 100;
         return {
           site_id: s.id,
           site_codigo: s.codigo,
           site_nome: s.nome,
           valor_executado: sExec,
           valor_faturado: sFat,
-          valor_nao_faturado: sExec - sFat,
+          valor_nao_faturado: Math.round((sExec - sFat) * 100) / 100,
           percentual_evolucao: valor_contrato > 0 ? (sExec / valor_contrato) * 100 : 0,
         };
       });
