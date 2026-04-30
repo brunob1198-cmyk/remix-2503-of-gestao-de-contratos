@@ -632,51 +632,92 @@ export function DetailMedicaoContent({
       const photoHeaderEl = printRef.current.querySelector('[data-pdf-section="relatorio-fotografico-cabecalho"]')?.cloneNode(true) as HTMLElement;
       if (photoHeaderEl) await captureAndClear(photoHeaderEl);
 
+      const photoCardHtml = (f: DiarioFotoWithItem, opts?: { showSiteName?: boolean }) => `
+        <div style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; display:flex; flex-direction:column; min-height:280px;">
+          <div style="aspect-ratio:4/3; background:#f3f4f6; padding:4px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <img src="${f.url}" style="max-height:100%; max-width:100%; width:auto; height:auto; object-fit:contain; display:block;" />
+          </div>
+          <div style="padding:8px; background:#f9fafb; flex:1; display:flex; flex-direction:column; gap:4px;">
+            ${f.item_codigo ? `<p style="font-size:9px; font-weight:600; color:#111827; line-height:1.3; margin:0 0 2px 0; word-break:break-word; overflow-wrap:anywhere;">${f.item_codigo} — ${f.item_descricao || ''}</p>` : ''}
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:8px; color:#6b7280; margin-top:auto; padding-top:2px;">
+              ${opts?.showSiteName && f.site_nome ? `<span style="max-width:140px; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;">${f.site_nome}</span>` : ''}
+              ${f.diario_data ? `<span style="white-space:nowrap;">${f.diario_data}</span>` : ''}
+              <span style="background:${classColor(f.classificacao)}; color:#fff; font-weight:700; font-size:8px; line-height:1; padding:3px 7px; border-radius:4px; display:inline-block; vertical-align:middle;">${classLabel(f.classificacao)}</span>
+            </div>
+            ${f.legenda ? `<p style="font-size:8px; color:#6b7280; font-style:italic; line-height:1.2; margin:0; word-break:break-word; overflow-wrap:anywhere;">“${f.legenda}”</p>` : ''}
+          </div>
+        </div>
+      `;
+
       if (tipoMedicao === "mista") {
         for (let i = 0; i < fotosBySiteAndClass.length; i++) {
-          const { siteName, classes } = fotosBySiteAndClass[i];
+          const { siteName, siteId, classes } = fotosBySiteAndClass[i];
           addLog(`Processando site: ${siteName}`, "info");
 
+          // Build site header with production table (LPU) and observations
+          const siteItems = productionBySite.get(siteId) || [];
+          const siteTotal = getSiteItemsTotal(siteItems);
+          const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
+
           const siteHeader = document.createElement("div");
-          siteHeader.className = "border rounded-lg overflow-hidden bg-card mb-4";
+          siteHeader.style.cssText = "border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; margin-bottom:12px;";
+
+          const itemsRowsHtml = siteItems.map(si => `
+            <tr>
+              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; line-height:1.4; word-break:break-word;">${si.item_codigo} — ${si.item_descricao}</td>
+              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; text-align:right; white-space:nowrap;">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
+              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; text-align:right; white-space:nowrap;">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
+            </tr>
+          `).join("");
+
           siteHeader.innerHTML = `
-            <div class="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style="background-color: #2563eb; line-height: 1.6;">
-              <span style="word-break: break-all;">${siteName}</span>
+            <div style="padding:10px 16px; font-weight:600; font-size:13px; color:#fff; background-color:#1e3a5f; line-height:1.4; display:flex; align-items:center; gap:8px;">
+              <span style="word-break:break-word; overflow-wrap:anywhere;">📍 ${siteName}</span>
             </div>
+            ${siteItems.length > 0 ? `
+              <div style="padding:12px; border-bottom:1px solid #e5e7eb; background:#f8fafc;">
+                <p style="font-size:11px; font-weight:600; margin:0 0 8px 0; line-height:1.4;">Produção do Site:</p>
+                <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                  <thead>
+                    <tr style="background:#f1f5f9;">
+                      <th style="font-size:10px; text-align:left; padding:6px 8px; font-weight:600; width:60%;">Item</th>
+                      <th style="font-size:10px; text-align:right; padding:6px 8px; font-weight:600; width:20%;">Qtd</th>
+                      <th style="font-size:10px; text-align:right; padding:6px 8px; font-weight:600; width:20%;">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>${itemsRowsHtml}</tbody>
+                </table>
+                <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+                  <div style="border:1px solid #e5e7eb; background:#fff; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:600; line-height:1.4;">
+                    Total do site: ${formatCurrency(siteTotal)}
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+            ${siteObs.length > 0 ? `
+              <div style="padding:10px 12px; border-top:1px solid #e5e7eb; background:#fafafa;">
+                <p style="font-size:11px; font-weight:600; margin:0 0 4px 0;">📋 Observações</p>
+                ${siteObs.map(obs => `<p style="font-size:10px; color:#6b7280; white-space:pre-line; margin:0 0 4px 0; line-height:1.4; word-break:break-word;">${obs.replace(/</g, '&lt;')}</p>`).join("")}
+              </div>
+            ` : ''}
           `;
-          await captureAndClear(siteHeader);
+          await captureAndClear(siteHeader, true);
 
           for (const [className, fotos] of classes) {
-            const classHeader = document.createElement("h3");
-            classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
-            classHeader.innerText = className;
+            const classHeader = document.createElement("div");
+            classHeader.style.cssText = "padding:6px 0 8px 8px; margin:8px 0 4px 0; border-left:3px solid #1e3a5f;";
+            classHeader.innerHTML = `<h3 style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#475569; margin:0;">${className}</h3>`;
             await captureAndClear(classHeader);
 
-            // Process in very small batches (3 photos = 1 row) for stability
             const batches = chunkArray(fotos, 3);
             for (let j = 0; j < batches.length; j++) {
               const batch = batches[j];
               const grid = document.createElement("div");
-              grid.className = "grid grid-cols-3 gap-3 mb-4";
-              
+              grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
+
               batch.forEach(f => {
                 const cardWrapper = document.createElement("div");
-                cardWrapper.innerHTML = `
-                  <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
-                    <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
-                      <img src="${f.url}" class="h-full w-full object-contain" />
-                    </div>
-                    <div class="p-2 bg-muted/20 space-y-1 flex-1">
-                      ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
-                      <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                        <span class="max-w-[140px] leading-tight" style="word-break: break-word; overflow-wrap: anywhere;">${f.site_nome || ''}</span>
-                        <span class="shrink-0">${f.diario_data || ''}</span>
-                        <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
-                      </div>
-                      ${f.legenda ? `<p class="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“${f.legenda}”</p>` : ''}
-                    </div>
-                  </div>
-                `;
+                cardWrapper.innerHTML = photoCardHtml(f);
                 grid.appendChild(cardWrapper.firstElementChild!);
               });
 
