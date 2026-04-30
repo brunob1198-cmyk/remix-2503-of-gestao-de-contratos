@@ -545,8 +545,22 @@ export function DetailMedicaoContent({
       };
 
       // Helper to capture a DOM element and add to PDF
-      const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
+      const captureAndClear = async (element: HTMLElement, forceNewPage = false, minHeightMm?: number) => {
         content.appendChild(element);
+        
+        // Measure element
+        const tempCanvas = await html2canvas(element, { scale: 1, logging: false });
+        const heightMm = (tempCanvas.height * usableWidth) / tempCanvas.width;
+        tempCanvas.width = 0; tempCanvas.height = 0;
+
+        // Smart pagination: if element + lookahead doesn't fit, new page
+        const totalNeeded = heightMm + (minHeightMm || 0);
+        if (hasPdfContent && currentY + totalNeeded > pageBottom) {
+          pdf.addPage();
+          currentY = marginTop;
+          hasPdfContent = false;
+        }
+
         
         // Apply auto-fit for long texts
         autoFitText(element);
