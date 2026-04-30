@@ -1172,7 +1172,7 @@ export function DetailMedicaoContent({
                       {/* Photo groups by classification */}
                       <div className="divide-y">
                         {classes.map(([className, fotos]) => {
-                          const photoPairs = chunkGroups(fotos, 3);
+                          const photoPairs = chunkArray(fotos, 3);
                           return (
                             <div key={className} className="p-3 space-y-3">
                               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
@@ -1200,7 +1200,7 @@ export function DetailMedicaoContent({
               /* SEPARADA / AGRUPADA: Photos grouped by item */
               <div className="space-y-6">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
-                  const itemPairs = chunkGroups(itemFotos, 3);
+                  const itemPairs = chunkArray(itemFotos, 3);
 
                   return (
                     <div key={itemLabel}>
@@ -1223,7 +1223,8 @@ export function DetailMedicaoContent({
 
                 {fotosByItem.gerais.length > 0 && (
                   <div>
-                    {chunkGroups(fotosByItem.gerais, 3).map((pair, pi) => (
+                    {chunkArray(fotosByItem.gerais, 3).map((pair, pi) => (
+
                       <div
                         key={`gerais-${pi}`}
                         data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
