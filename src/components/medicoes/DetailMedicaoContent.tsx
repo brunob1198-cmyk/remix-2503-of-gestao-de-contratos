@@ -458,9 +458,9 @@ export function DetailMedicaoContent({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto">
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
             {options?.showSiteName && foto.site_nome && (
-              <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap" title={foto.site_nome}>
+              <span className="max-w-[140px] leading-tight" title={foto.site_nome}>
                 {foto.site_nome}
               </span>
             )}
@@ -471,8 +471,8 @@ export function DetailMedicaoContent({
               </span>
             )}
             <Badge 
-              className="text-[7px] px-1 py-0 h-[14px] flex items-center justify-center text-white font-bold leading-none" 
-              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+              className="text-[7px] px-1.5 h-[16px] flex items-center justify-center text-white font-bold badge-execucao" 
+              style={{ backgroundColor: classColor(foto.classificacao), border: 'none', lineHeight: '1' }}
             >
               {classLabel(foto.classificacao)}
             </Badge>
