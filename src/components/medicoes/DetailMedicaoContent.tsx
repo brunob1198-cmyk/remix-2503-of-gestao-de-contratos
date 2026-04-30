@@ -534,8 +534,8 @@ export function DetailMedicaoContent({
         if (!imgs.length) return;
 
         let done = 0;
-        // Reduced concurrency and added batching to avoid overwhelming the memory/CPU
-        const BATCH_SIZE = 4;
+        // Increased batch size for faster loading
+        const BATCH_SIZE = 12;
         const groups = [];
         for (let i = 0; i < imgs.length; i += BATCH_SIZE) {
           groups.push(imgs.slice(i, i + BATCH_SIZE));
