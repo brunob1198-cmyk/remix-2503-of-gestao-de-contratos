@@ -731,36 +731,45 @@ export function DetailMedicaoContent({
         const itemEntries = Array.from(fotosByItem.byItem.entries());
         for (let i = 0; i < itemEntries.length; i++) {
           const [itemLabel, itemFotos] = itemEntries[i];
-          const itemHeader = document.createElement("h3");
-          itemHeader.className = "text-sm font-semibold text-primary mb-4 mt-6";
-          itemHeader.innerText = itemLabel;
+          const itemHeader = document.createElement("div");
+          itemHeader.style.cssText = "padding:6px 0 8px 8px; margin:8px 0 6px 0; border-left:3px solid #1e3a5f;";
+          itemHeader.innerHTML = `<h3 style="font-size:12px; font-weight:600; color:#1e3a5f; margin:0; word-break:break-word; line-height:1.4;">${itemLabel}</h3>`;
           await captureAndClear(itemHeader);
 
           const batches = chunkArray(itemFotos, 3);
           for (let j = 0; j < batches.length; j++) {
             const batch = batches[j];
             const grid = document.createElement("div");
-            grid.className = "grid grid-cols-3 gap-3 mb-4";
-            
+            grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
+
             batch.forEach(f => {
               const cardWrapper = document.createElement("div");
-              cardWrapper.innerHTML = `
-                <div class="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" style="min-height: 280px">
-                  <div class="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
-                    <img src="${f.url}" class="h-full w-full object-contain" />
-                  </div>
-                  <div class="p-2 bg-muted/20 space-y-1 flex-1">
-                    ${f.item_codigo ? `<p class="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">${f.item_codigo} — ${f.item_descricao}</p>` : ''}
-                    <div class="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
-                      <span class="badge-execucao text-[7px] text-white font-bold" style="background-color: ${classColor(f.classificacao)}; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; height: 16px; padding: 0 6px;">${classLabel(f.classificacao)}</span>
-                    </div>
-                  </div>
-                </div>
-              `;
+              cardWrapper.innerHTML = photoCardHtml(f);
               grid.appendChild(cardWrapper.firstElementChild!);
             });
             await captureAndClear(grid);
             setExportProgress(15 + Math.floor(((i + (j / batches.length)) / itemEntries.length) * 70));
+            await waitForNextPaint(120);
+          }
+        }
+
+        // Fotos gerais (sem item) — incluir também
+        if (fotosByItem.gerais.length > 0) {
+          const geraisHeader = document.createElement("div");
+          geraisHeader.style.cssText = "padding:6px 0 8px 8px; margin:12px 0 6px 0; border-left:3px solid #6b7280;";
+          geraisHeader.innerHTML = `<h3 style="font-size:12px; font-weight:600; color:#6b7280; margin:0;">Fotos Gerais</h3>`;
+          await captureAndClear(geraisHeader);
+
+          const batches = chunkArray(fotosByItem.gerais, 3);
+          for (const batch of batches) {
+            const grid = document.createElement("div");
+            grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
+            batch.forEach(f => {
+              const cardWrapper = document.createElement("div");
+              cardWrapper.innerHTML = photoCardHtml(f, { showSiteName: true });
+              grid.appendChild(cardWrapper.firstElementChild!);
+            });
+            await captureAndClear(grid);
             await waitForNextPaint(120);
           }
         }
