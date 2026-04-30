@@ -200,6 +200,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diario_obra"] });
       queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_equipe"] });
       queryClient.invalidateQueries({ queryKey: ["diario_equipamentos"] });
       queryClient.invalidateQueries({ queryKey: ["diario_veiculos"] });
@@ -232,6 +233,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
       toast({ title: "Produção adicionada!" });
     },
@@ -245,6 +247,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
     },
   });
