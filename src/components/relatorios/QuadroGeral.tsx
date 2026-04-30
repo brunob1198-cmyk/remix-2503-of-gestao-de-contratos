@@ -198,6 +198,7 @@ export default function QuadroGeral() {
         const { data, error } = await supabase
           .from("diario_producao")
           .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(site_id)")
+          .order("id")
           .range(from, from + step - 1);
         
         if (error) throw error;
