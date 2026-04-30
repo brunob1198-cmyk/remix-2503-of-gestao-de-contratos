@@ -106,6 +106,7 @@ export default function ProducaoMensal() {
       const { data, error } = await supabase
         .from("diario_producao")
         .select("valor_total, diarios_obra!inner(data, site_id, sites:sites!inner(id, codigo, nome, projeto_id))")
+        .limit(100000)
         .order("diarios_obra(data)", { ascending: true });
       if (error) throw error;
       return (data || []) as unknown as DiarioProducaoRow[];
