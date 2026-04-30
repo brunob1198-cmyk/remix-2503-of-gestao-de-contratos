@@ -467,7 +467,7 @@ export default function QuadroGeral() {
     const newDivergences: { projeto: string, valorEsperado: number, valorAtual: number }[] = [];
     
     // We check all projects that have a defined value
-    for (const p of projetoRows) {
+    for (const p of allProjetoRows) {
       if (p.valor_contrato > 0) {
         // Simple tolerance for float math
         const diff = Math.abs(p.valor_contrato - p.valor_executado);
