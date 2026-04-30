@@ -85,6 +85,13 @@ const createPdfExportContainer = (source: HTMLElement) => {
     }
     .pdf-section-heading, h1, h2, h3, p, span, td, th {
       letter-spacing: 0.01em !important;
+      line-height: 1.5 !important; /* Increase line height to avoid clipping descenders */
+    }
+    .badge-execucao {
+      padding-top: 1px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
   `;
   container.appendChild(style);
@@ -451,9 +458,9 @@ export function DetailMedicaoContent({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto">
+          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
             {options?.showSiteName && foto.site_nome && (
-              <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap" title={foto.site_nome}>
+              <span className="max-w-[140px] leading-tight" title={foto.site_nome}>
                 {foto.site_nome}
               </span>
             )}
@@ -464,8 +471,8 @@ export function DetailMedicaoContent({
               </span>
             )}
             <Badge 
-              className="text-[7px] px-1 py-0 h-[14px] flex items-center justify-center text-white font-bold leading-none" 
-              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+              className="text-[7px] px-1.5 h-[16px] flex items-center justify-center text-white font-bold badge-execucao" 
+              style={{ backgroundColor: classColor(foto.classificacao), border: 'none', lineHeight: '1' }}
             >
               {classLabel(foto.classificacao)}
             </Badge>
@@ -939,8 +946,8 @@ export function DetailMedicaoContent({
                 );
               })()}
               <div>
-                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a", lineHeight: '1.3' }}>Relatório de Medição</h1>
-                <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: '1.4' }}>
+                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a", lineHeight: '1.6' }}>Relatório de Medição</h1>
+                <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: '1.6', paddingBottom: '4px' }}>
                   {detailMedicao.projeto_codigo} — {detailMedicao.projeto_nome}
                 </p>
               </div>
@@ -948,9 +955,9 @@ export function DetailMedicaoContent({
             <div style={{ textAlign: "right", display: "flex", gap: "15px", alignItems: "flex-end" }}>
               <div>
                 {detailMedicao.numero_medicao && (
-                  <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Medição Nº {detailMedicao.numero_medicao}</p>
+                   <p style={{ fontSize: 14, fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a", lineHeight: '1.6' }}>Medição Nº {detailMedicao.numero_medicao}</p>
                 )}
-                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
+                <p style={{ fontSize: 11, color: "#64748b", margin: 0, lineHeight: '1.6' }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
               {clienteLogoUrl && (
                 <img 
@@ -1014,10 +1021,10 @@ export function DetailMedicaoContent({
                 </div>
               </>
             )}
-            <div className="flex items-center gap-1.5 py-0.5">
+            <div className="flex items-center gap-1.5 py-1">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Período:</span>{" "}
-              <span style={{ display: 'inline-block', lineHeight: '1.4' }}>
+              <span className="text-muted-foreground" style={{ lineHeight: '1.6' }}>Período:</span>{" "}
+              <span style={{ display: 'inline-block', lineHeight: '1.6' }}>
                 {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
                   ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
                   : formatDate(detailMedicao.data_medicao)}
@@ -1035,8 +1042,8 @@ export function DetailMedicaoContent({
           {/* Observations */}
           {detailMedicao.observacao_acompanhamento && (
             <div className="mb-4">
-              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Observações</h2>
-              <p className="text-sm text-muted-foreground whitespace-pre-line">{detailMedicao.observacao_acompanhamento}</p>
+              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>Observações</h2>
+              <p className="text-sm text-muted-foreground whitespace-pre-line" style={{ lineHeight: '1.6', paddingBottom: '4px' }}>{detailMedicao.observacao_acompanhamento}</p>
             </div>
           )}
         </div>
@@ -1089,9 +1096,9 @@ export function DetailMedicaoContent({
               style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
             >
               <Separator className="my-4" />
-              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, paddingBottom: 2, display: 'flex', alignItems: 'center', gap: '8px' }} className="pdf-section-heading">
+              <h2 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, paddingBottom: 4, display: 'flex', alignItems: 'center', gap: '8px', minHeight: '24px' }} className="pdf-section-heading">
                 <Camera className="h-4 w-4" />
-                <span style={{ lineHeight: '1.2' }}>Relatório Fotográfico ({diarioFotos.length} fotos)</span>
+                <span style={{ lineHeight: '1.6' }}>Relatório Fotográfico ({diarioFotos.length} fotos)</span>
                 {(tipoMedicao === "mista" || tipoMedicao === "separada") && isMultiSite && (
                   <Badge variant="outline" className="text-xs ml-2">Agrupado por site</Badge>
                 )}
@@ -1114,13 +1121,13 @@ export function DetailMedicaoContent({
                       className="pdf-keep-together"
                       style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                     >
-                      <div className="px-4 py-2 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))" }}>
+                      <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.6', minHeight: '32px' }}>
                         <MapPin className="h-4 w-4" />
-                        {siteName}
+                        <span style={{ lineHeight: '1.6' }}>{siteName}</span>
                       </div>
                       {siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
-                          <p className="text-xs font-semibold mb-2 py-0.5" style={{ lineHeight: '1.4' }}>Produção do Site:</p>
+                          <p className="text-xs font-semibold mb-2 py-1" style={{ lineHeight: '1.6' }}>Produção do Site:</p>
                           <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
                             <TableHeader>
                               <TableRow>
