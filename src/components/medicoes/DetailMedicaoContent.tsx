@@ -1182,10 +1182,11 @@ export function DetailMedicaoContent({
                       className="pdf-keep-together"
                       style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                     >
-                      <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.6', minHeight: '32px' }}>
-                        <MapPin className="h-4 w-4" />
-                        <span style={{ lineHeight: '1.6' }}>{siteName}</span>
+                      <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.4', minHeight: '32px' }}>
+                        <MapPin className="h-4 w-4 shrink-0" />
+                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{siteName}</span>
                       </div>
+
                       {siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
                           <p className="text-xs font-semibold mb-2 py-1" style={{ lineHeight: '1.6' }}>Produção do Site:</p>
