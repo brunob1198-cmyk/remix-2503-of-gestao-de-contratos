@@ -74,6 +74,21 @@ const createPdfExportContainer = (source: HTMLElement) => {
     visibility: "visible",
   });
 
+  // Inject styles to disable animations and improve text rendering
+  const style = document.createElement("style");
+  style.innerHTML = `
+    * { 
+      transition: none !important; 
+      animation: none !important; 
+      text-rendering: optimizeLegibility !important;
+      -webkit-font-smoothing: antialiased !important;
+    }
+    .pdf-section-heading, h1, h2, h3, p, span, td, th {
+      letter-spacing: 0.01em !important;
+    }
+  `;
+  container.appendChild(style);
+
   content.style.width = "100%";
   content.style.maxWidth = "none";
   content.style.overflow = "visible";
