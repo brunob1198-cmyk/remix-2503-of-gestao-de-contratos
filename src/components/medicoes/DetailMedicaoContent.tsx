@@ -663,7 +663,7 @@ export function DetailMedicaoContent({
             await captureAndClear(classHeader, false, 30);
 
 
-            const batches = chunkArray(fotos, 12); // 4 rows of 3
+            const batches = chunkArray(fotos, 6); // More aggressive chunking (2 rows of 3)
             for (let j = 0; j < batches.length; j++) {
               const batch = batches[j];
               const rowContainer = document.createElement("div");
