@@ -213,6 +213,7 @@ export default function QuadroGeral() {
         }
       }
 
+      console.log(`[QuadroGeral] Fetched ${allData.length} production records`);
       return allData.map(p => ({
         site_id: (p as any).diario?.site_id || "",
         quantidade: Number(p.quantidade),
