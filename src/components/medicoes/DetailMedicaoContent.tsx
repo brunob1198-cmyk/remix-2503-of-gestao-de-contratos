@@ -716,7 +716,7 @@ export function DetailMedicaoContent({
           itemHeader.innerText = itemLabel;
           await captureAndClear(itemHeader);
 
-          const batches = chunkArray(itemFotos, 12);
+          const batches = chunkArray(itemFotos, 6);
           for (let j = 0; j < batches.length; j++) {
             const batch = batches[j];
             const rowContainer = document.createElement("div");
