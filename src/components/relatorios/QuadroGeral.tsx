@@ -265,10 +265,10 @@ export default function QuadroGeral() {
 
     const projetoRows: ProjetoRow[] = projetos.map(p => {
       const valor_contrato = p.valor_total || 0;
-      const valor_executado = executadoByProjeto.get(p.id) || 0;
-      const valor_faturado = faturadoByProjeto.get(p.id) || 0;
-      const valor_nao_faturado = valor_executado - valor_faturado;
-      const saldo_contrato = valor_contrato - valor_executado;
+      const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
+      const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
+      const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
+      const saldo_contrato = Math.max(0, Math.round((valor_contrato - valor_executado) * 100) / 100);
       const percentual_evolucao = valor_contrato > 0 ? (valor_executado / valor_contrato) * 100 : 0;
       const areaName = (p as any).area_id ? (areaMap.get((p as any).area_id) || "Sem área") : "Sem área";
 
