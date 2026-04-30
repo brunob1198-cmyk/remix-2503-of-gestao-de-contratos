@@ -177,23 +177,15 @@ export default function QuadroGeral() {
   const { data: diarioProducoes = [], isLoading: loadingDiario } = useQuery({
     queryKey: ["diario_producao_quadro"],
     queryFn: async () => {
-      const { data: diarios, error: dErr } = await supabase
-        .from("diarios_obra")
-        .select("id, site_id")
-        .limit(100000);
-      if (dErr) throw dErr;
-      if (!diarios || diarios.length === 0) return [];
-
-      const { data: prods, error: pErr } = await supabase
+      const { data, error } = await supabase
         .from("diario_producao")
-        .select("diario_id, item_lpu_id, quantidade, valor_total, item_lpu:itens_lpu(preco_unitario)")
-        .in("diario_id", diarios.map(d => d.id))
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra(site_id)")
         .limit(100000);
-      if (pErr) throw pErr;
+      
+      if (error) throw error;
 
-      const diarioMap = new Map(diarios.map(d => [d.id, d.site_id]));
-      return (prods || []).map(p => ({
-        site_id: diarioMap.get(p.diario_id) || "",
+      return (data || []).map(p => ({
+        site_id: (p as any).diario?.site_id || "",
         quantidade: Number(p.quantidade),
         preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
         valor_total: Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))),
