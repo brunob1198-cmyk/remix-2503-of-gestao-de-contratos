@@ -186,8 +186,9 @@ export default function QuadroGeral() {
 
       const { data: prods, error: pErr } = await supabase
         .from("diario_producao")
-        .select("diario_id, item_lpu_id, quantidade, item_lpu:itens_lpu(preco_unitario)")
-        .in("diario_id", diarios.map(d => d.id));
+        .select("diario_id, item_lpu_id, quantidade, valor_total, item_lpu:itens_lpu(preco_unitario)")
+        .in("diario_id", diarios.map(d => d.id))
+        .limit(100000);
       if (pErr) throw pErr;
 
       const diarioMap = new Map(diarios.map(d => [d.id, d.site_id]));
@@ -195,6 +196,7 @@ export default function QuadroGeral() {
         site_id: diarioMap.get(p.diario_id) || "",
         quantidade: Number(p.quantidade),
         preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
+        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))),
       }));
     },
   });
@@ -243,7 +245,7 @@ export default function QuadroGeral() {
       executadoBySite.set(p.site_id, (executadoBySite.get(p.site_id) || 0) + valor);
     }
     for (const dp of diarioProducoes) {
-      const valor = dp.quantidade * dp.preco_unitario;
+      const valor = (dp as any).valor_total || (dp.quantidade * dp.preco_unitario);
       executadoBySite.set(dp.site_id, (executadoBySite.get(dp.site_id) || 0) + valor);
     }
 
