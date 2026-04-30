@@ -702,7 +702,7 @@ export function DetailMedicaoContent({
               await captureAndClear(rowContainer);
               const progress = 15 + Math.floor(((i + (j / batches.length)) / fotosBySiteAndClass.length) * 70);
               setExportProgress(progress);
-              await waitForNextPaint(20);
+              await waitForNextPaint(100);
             }
           }
         }
