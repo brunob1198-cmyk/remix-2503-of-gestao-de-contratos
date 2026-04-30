@@ -650,7 +650,8 @@ export function DetailMedicaoContent({
             const classHeader = document.createElement("h3");
             classHeader.className = "text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-4 mt-2";
             classHeader.innerText = className;
-            await captureAndClear(classHeader);
+            await captureAndClear(classHeader, false, 30);
+
 
             const batches = chunkArray(fotos, 12); // 4 rows of 3
             for (let j = 0; j < batches.length; j++) {
