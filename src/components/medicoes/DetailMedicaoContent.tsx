@@ -862,7 +862,7 @@ export function DetailMedicaoContent({
 
         {canResume && (
           <Button 
-            onClick={() => handleExportPdf(true)} 
+            onClick={() => handleExportPdf()} 
             variant="outline" 
             size="sm" 
             disabled={isExporting}
@@ -872,10 +872,11 @@ export function DetailMedicaoContent({
             Retomar Exportação
           </Button>
         )}
-        <Button onClick={() => handleExportPdf(false)} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : (canResume ? "Reiniciar Exportação" : "Exportar PDF")}
         </Button>
+
       </div>
 
       {/* Printable content */}
