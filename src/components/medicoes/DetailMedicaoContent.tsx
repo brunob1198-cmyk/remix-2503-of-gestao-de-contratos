@@ -571,8 +571,8 @@ export function DetailMedicaoContent({
               }
             })
           );
-          // Small pause between batches
-          await waitForNextPaint(50);
+          // Minimal pause between batches
+          await waitForNextPaint(10);
         }
 
         await ensureImagesLoaded(section, undefined, {
