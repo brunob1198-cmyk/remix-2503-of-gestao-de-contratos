@@ -630,8 +630,12 @@ export function DetailMedicaoContent({
 
         addLog(`Renderizando seção ${i + 1}/${exportSections.length}...`, "info");
         const canvas = await html2canvas(section, {
-          scale: exportSettings.scale, 
-...
+          scale: exportSettings.scale,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: "#ffffff",
+          windowWidth: contentWidth,
+          logging: false,
           removeContainer: true,
         });
 
