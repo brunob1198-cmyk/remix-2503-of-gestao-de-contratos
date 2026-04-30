@@ -62,24 +62,43 @@ const createPdfExportContainerSkeleton = () => {
       animation: none !important; 
       text-rendering: optimizeLegibility !important;
       -webkit-font-smoothing: antialiased !important;
+      box-sizing: border-box !important;
     }
+    body { background: white !important; }
     .pdf-section-heading, h1, h2, h3, p, span, td, th {
       letter-spacing: 0.01em !important;
-      line-height: 1.6 !important;
+      line-height: 1.5 !important;
+      word-break: break-word !important;
+      overflow-wrap: break-word !important;
     }
     .badge-execucao {
-      display: inline-block !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
       vertical-align: middle !important;
-      line-height: 16px !important;
-      height: 16px !important;
+      line-height: 1 !important;
+      height: 18px !important;
       text-align: center !important;
-      padding: 0 6px !important;
+      padding: 0 8px !important;
+      border-radius: 4px !important;
+      font-size: 7px !important;
+      font-weight: bold !important;
     }
+    .grid { display: grid !important; }
+    .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+    .gap-3 { gap: 12px !important; }
     img {
-      max-width: 100%;
-      height: auto;
+      max-width: 100% !important;
+      height: auto !important;
+      display: block !important;
+    }
+    /* Prevent page break inside cards */
+    [data-pdf-element="photo"] {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
   `;
+
   container.appendChild(style);
 
   const content = document.createElement("div");
