@@ -572,20 +572,6 @@ export function DetailMedicaoContent({
       const captureAndClear = async (element: HTMLElement, forceNewPage = false, minHeightMm?: number) => {
         content.appendChild(element);
         
-        // Measure element
-        const tempCanvas = await html2canvas(element, { scale: 1, logging: false });
-        const heightMm = (tempCanvas.height * usableWidth) / tempCanvas.width;
-        tempCanvas.width = 0; tempCanvas.height = 0;
-
-        // Smart pagination: if element + lookahead doesn't fit, new page
-        const totalNeeded = heightMm + (minHeightMm || 0);
-        if (hasPdfContent && currentY + totalNeeded > pageBottom) {
-          pdf.addPage();
-          currentY = marginTop;
-          hasPdfContent = false;
-        }
-
-        
         // Apply auto-fit for long texts
         autoFitText(element);
         
@@ -608,7 +594,7 @@ export function DetailMedicaoContent({
                   maxHeight: exportSettings.maxHeight, 
                   quality: exportSettings.imgQuality 
                 }),
-                10000,
+                12000,
                 "Timeout imagem"
               );
               img.src = safeSrc;
@@ -630,7 +616,7 @@ export function DetailMedicaoContent({
           allowTaint: true,
         });
 
-        addCanvasToPdf(canvas, forceNewPage);
+        await addCanvasToPdf(canvas, forceNewPage);
         content.innerHTML = ""; // Clear content
       };
 
