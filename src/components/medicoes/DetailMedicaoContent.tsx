@@ -939,8 +939,8 @@ export function DetailMedicaoContent({
                 );
               })()}
               <div>
-                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a" }}>Relatório de Medição</h1>
-                <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
+                <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0", color: "#0f172a", lineHeight: '1.3' }}>Relatório de Medição</h1>
+                <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: '1.4' }}>
                   {detailMedicao.projeto_codigo} — {detailMedicao.projeto_nome}
                 </p>
               </div>
