@@ -10,19 +10,36 @@ export function useLancamentosProducao(siteId?: string) {
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ["lancamentos_producao", siteId],
     queryFn: async () => {
-      let query = supabase
-        .from("lancamentos_producao")
-        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
-        .order("data_producao", { ascending: false })
-        .limit(100000);
-      
-      if (siteId) {
-        query = query.eq("site_id", siteId);
+      let allData: LancamentoProducao[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = supabase
+          .from("lancamentos_producao")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .order("id")
+          .range(from, from + 1000 - 1);
+        
+        if (siteId) {
+          query = query.eq("site_id", siteId);
+        }
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...(data as LancamentoProducao[])];
+          if (data.length < 1000) {
+            hasMore = false;
+          } else {
+            from += 1000;
+          }
+        }
       }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as LancamentoProducao[];
+      return allData;
     },
   });
 
