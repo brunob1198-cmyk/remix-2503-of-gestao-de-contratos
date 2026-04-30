@@ -17,20 +17,11 @@ import { clearPDFChunks, clearExportState } from "@/lib/db";
 import { 
   ensureImagesLoaded, 
   getPdfSafeImageDataUrl,
-  getDirectChildPdfSections,
-  unloadImagesOutsideSection,
   withTimeout,
+  chunkArray,
   PDFExportLog,
   PDFQuality
 } from "@/lib/pdfExportUtils";
-
-function chunkGroups<T>(arr: T[], size: number = 3): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    result.push(arr.slice(i, i + size));
-  }
-  return result;
-}
 import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
@@ -44,17 +35,7 @@ const waitForNextPaint = async (ms = 100) => {
 
 const isLogoImage = (img: HTMLImageElement) => img.alt.toLowerCase().includes("logo");
 
-const prepareImagePositions = (content: HTMLElement) => {
-  const contentRect = content.getBoundingClientRect();
-  content.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
-    const rect = img.getBoundingClientRect();
-    img.dataset.pdfTop = String(Math.max(0, rect.top - contentRect.top));
-    img.dataset.pdfBottom = String(Math.max(0, rect.bottom - contentRect.top));
-  });
-};
-
-const createPdfExportContainer = (source: HTMLElement) => {
-  const content = source.cloneNode(true) as HTMLDivElement;
+const createPdfExportContainerSkeleton = () => {
   const container = document.createElement("div");
   const contentWidth = PDF_EXPORT_MIN_WIDTH;
 
@@ -74,7 +55,6 @@ const createPdfExportContainer = (source: HTMLElement) => {
     visibility: "visible",
   });
 
-  // Inject styles to disable animations and improve text rendering
   const style = document.createElement("style");
   style.innerHTML = `
     * { 
@@ -85,46 +65,32 @@ const createPdfExportContainer = (source: HTMLElement) => {
     }
     .pdf-section-heading, h1, h2, h3, p, span, td, th {
       letter-spacing: 0.01em !important;
-      line-height: 1.5 !important; /* Increase line height to avoid clipping descenders */
+      line-height: 1.6 !important;
     }
     .badge-execucao {
-      padding-top: 1px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
+      display: inline-block !important;
+      vertical-align: middle !important;
+      line-height: 16px !important;
+      height: 16px !important;
+      text-align: center !important;
+      padding: 0 6px !important;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
     }
   `;
   container.appendChild(style);
 
+  const content = document.createElement("div");
   content.style.width = "100%";
-  content.style.maxWidth = "none";
   content.style.overflow = "visible";
-
-  content.querySelectorAll("img").forEach((img) => {
-    img.loading = "eager";
-    img.decoding = "sync";
-    img.crossOrigin = "anonymous";
-    if (isLogoImage(img)) {
-      img.loading = "eager";
-    }
-    if (img.src && !img.src.startsWith('data:') && isLogoImage(img)) {
-      const sep = img.src.includes('?') ? '&' : '?';
-      img.src = `${img.src}${sep}pdf_export=${Date.now()}`;
-    } else if (!isLogoImage(img)) {
-      // Store src in a data attribute and remove it to save memory until needed
-      img.dataset.originalSrc = img.src;
-      img.dataset.src = img.src;
-      img.src = "";
-      img.style.display = "block"; // Keep layout
-      img.style.minHeight = "200px";
-    }
-  });
-
   container.appendChild(content);
-  document.body.appendChild(container);
 
+  document.body.appendChild(container);
   return { container, content, contentWidth };
 };
+
 
 interface DetailMedicaoContentProps {
   detailMedicao: {
