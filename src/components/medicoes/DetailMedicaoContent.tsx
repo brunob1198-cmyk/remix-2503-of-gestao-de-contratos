@@ -1021,10 +1021,10 @@ export function DetailMedicaoContent({
                 </div>
               </>
             )}
-            <div className="flex items-center gap-1.5 py-0.5">
+            <div className="flex items-center gap-1.5 py-1">
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Período:</span>{" "}
-              <span style={{ display: 'inline-block', lineHeight: '1.4' }}>
+              <span className="text-muted-foreground" style={{ lineHeight: '1.6' }}>Período:</span>{" "}
+              <span style={{ display: 'inline-block', lineHeight: '1.6' }}>
                 {detailMedicao.periodo_inicio && detailMedicao.periodo_fim
                   ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}`
                   : formatDate(detailMedicao.data_medicao)}
