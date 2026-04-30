@@ -504,18 +504,27 @@ export function DetailMedicaoContent({
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
       
+      const pageWidth = 210; // Default A4 mm
+      const pageHeight = 297; 
+      const usableWidth = pageWidth - marginLeft - marginRight;
+      const pageBottom = pageHeight - marginBottom;
+      const sectionGap = 3;
+      let currentY = marginTop;
+      let hasPdfContent = false;
+
       // We'll create small PDF chunks and merge them to avoid giant memory usage
       const chunks: Uint8Array[] = [];
       let currentPdf: jsPDF | null = null;
       let currentPdfPages = 0;
 
       const createNewPdf = () => {
-        return new jsPDF({
+        const p = new jsPDF({
           orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
           unit: "mm",
           format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
           compress: true,
         });
+        return p;
       };
 
       const finalizeChunk = async () => {
@@ -524,16 +533,14 @@ export function DetailMedicaoContent({
           chunks.push(new Uint8Array(pdfData));
           currentPdf = null;
           currentPdfPages = 0;
-          // Trigger forced GC if possible
-          if (window.gc) window.gc();
         }
       };
 
       const addCanvasToPdf = async (canvas: HTMLCanvasElement, forceNewPage = false) => {
         if (!currentPdf) {
           currentPdf = createNewPdf();
-          // Reset positioning for new chunk
           currentY = marginTop;
+          hasPdfContent = false;
         }
 
         const heightMm = (canvas.height * usableWidth) / canvas.width;
