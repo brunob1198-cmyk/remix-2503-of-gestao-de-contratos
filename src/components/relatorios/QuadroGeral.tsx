@@ -517,6 +517,43 @@ export default function QuadroGeral() {
 
   return (
     <div className="space-y-4">
+      {divergences.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Divergência Detectada</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <p>Os seguintes projetos apresentam valores executados divergentes do valor de contrato:</p>
+            <ul className="list-disc pl-5">
+              {divergences.map((d, i) => (
+                <li key={i}>
+                  Projeto {d.projeto}: Esperado {formatCurrency(d.valorEsperado)}, Atual {formatCurrency(d.valorAtual)}
+                </li>
+              ))}
+            </ul>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-fit gap-2" 
+              onClick={runAutomaticVerification}
+              disabled={isVerifying}
+            >
+              <RefreshCw className={cn("h-4 w-4", isVerifying && "animate-spin")} />
+              Tentar Corrigir Manualmente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isVerifying && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertTitle>Verificando Integridade</AlertTitle>
+          <AlertDescription>
+            Sincronizando dados com o banco de dados e validando totais...
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardHeader className="pb-1 pt-4 px-4">
