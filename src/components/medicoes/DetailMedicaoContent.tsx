@@ -768,9 +768,17 @@ export function DetailMedicaoContent({
         }
       }
 
-      const generatedPdf = await PDFDocument.load(pdf.output("arraybuffer"));
-      const generatedPages = await finalPdf.copyPages(generatedPdf, generatedPdf.getPageIndices());
-      generatedPages.forEach(page => finalPdf.addPage(page));
+      await finalizeChunk();
+      addLog(`Combinando ${chunks.length} partes do documento...`, "info");
+      
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPdf = await PDFDocument.load(chunks[i]);
+        const chunkPages = await finalPdf.copyPages(chunkPdf, chunkPdf.getPageIndices());
+        chunkPages.forEach(page => finalPdf.addPage(page));
+        // Clear reference to help GC
+        chunks[i] = new Uint8Array(0);
+        if (i % 5 === 0) await waitForNextPaint(50);
+      }
 
       addLog("Finalizando arquivo...", "info");
       const finalBytes = await finalPdf.save({ useObjectStreams: true, addDefaultPage: false });
