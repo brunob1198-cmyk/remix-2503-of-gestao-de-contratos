@@ -475,6 +475,13 @@ export function DetailMedicaoContent({
       const { container, content, contentWidth } = createPdfExportContainer(printRef.current);
       exportContainer = container;
 
+      // Define resolution and quality based on the selected setting
+      const exportSettings = {
+        high: { scale: 2.0, imgQuality: 0.9, canvasQuality: 0.95, maxWidth: 1200, maxHeight: 900 },
+        medium: { scale: 1.5, imgQuality: 0.8, canvasQuality: 0.85, maxWidth: 800, maxHeight: 600 },
+        eco: { scale: 1.2, imgQuality: 0.65, canvasQuality: 0.7, maxWidth: 640, maxHeight: 480 }
+      }[pdfQuality];
+
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
       const baseOptions = getPdfOptions(filename);
       const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
@@ -535,7 +542,11 @@ export function DetailMedicaoContent({
               try {
                 if (!img.src || !img.src.startsWith("data:")) {
                   const safeSrc = await withTimeout(
-                    getPdfSafeImageDataUrl(originalSrc, { maxWidth: 800, maxHeight: 600, quality: 0.75 }),
+                    getPdfSafeImageDataUrl(originalSrc, { 
+                      maxWidth: exportSettings.maxWidth, 
+                      maxHeight: exportSettings.maxHeight, 
+                      quality: exportSettings.imgQuality 
+                    }),
                     15000,
                     "Tempo excedido ao preparar foto"
                   );
@@ -574,7 +585,7 @@ export function DetailMedicaoContent({
             currentY = marginTop;
           }
           // Lower quality for massive documents to save memory
-          const quality = exportSections.length > 50 ? 0.75 : 0.84;
+          const quality = exportSections.length > 50 ? (exportSettings.canvasQuality * 0.9) : exportSettings.canvasQuality;
           const imageData = canvas.toDataURL("image/jpeg", quality);
           pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
           currentY += heightMm + sectionGap;
@@ -600,7 +611,7 @@ export function DetailMedicaoContent({
           if (hasPdfContent) pdf.addPage();
           currentY = marginTop;
           const sliceHeightMm = (sliceHeight * usableWidth) / canvas.width;
-          const imageData = sliceCanvas.toDataURL("image/jpeg", 0.8);
+          const imageData = sliceCanvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
           pdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, sliceHeightMm, undefined, "FAST");
           hasPdfContent = true;
           currentY = marginTop + sliceHeightMm + sectionGap;
@@ -619,12 +630,8 @@ export function DetailMedicaoContent({
 
         addLog(`Renderizando seção ${i + 1}/${exportSections.length}...`, "info");
         const canvas = await html2canvas(section, {
-          scale: 1.5, // Reduced scale to prevent crashes
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: "#ffffff",
-          windowWidth: contentWidth,
-          logging: false,
+          scale: exportSettings.scale, 
+...
           removeContainer: true,
         });
 
@@ -810,6 +817,24 @@ export function DetailMedicaoContent({
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={isExporting}>
+              <Settings2 className="h-4 w-4 mr-2" />
+              Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup value={pdfQuality} onValueChange={(v) => setPdfQuality(v as PDFQuality)}>
+              <DropdownMenuRadioItem value="high">Alta (Arquivos maiores)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="medium">Média (Recomendado)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="eco">Econômica (Rápido)</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         {canResume && (
           <Button 
             onClick={() => handleExportPdf(true)} 
@@ -822,7 +847,7 @@ export function DetailMedicaoContent({
             Retomar Exportação
           </Button>
         )}
-        <Button onClick={() => handleExportPdf(false)} variant="outline" size="sm" disabled={isExporting}>
+        <Button onClick={() => handleExportPdf(false)} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : (canResume ? "Reiniciar Exportação" : "Exportar PDF")}
         </Button>
