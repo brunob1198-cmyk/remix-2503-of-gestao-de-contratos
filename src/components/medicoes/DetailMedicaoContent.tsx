@@ -774,6 +774,13 @@ export function DetailMedicaoContent({
       setIsExporting(false);
     }
   };
+  const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
+
+  // Get included sites list for agrupada/mista header
+  const includedSites = useMemo(() => {
+    if (!isMultiSite) return [];
+    const siteIdsWithProduction = [...new Set(siteProduction.map(p => p.site_id))];
+    return siteIdsWithProduction
       .map(sid => sites.find(s => s.id === sid))
       .filter(Boolean)
       .map(s => `${s.codigo} - ${s.nome}`)
