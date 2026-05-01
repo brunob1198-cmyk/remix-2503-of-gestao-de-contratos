@@ -54,7 +54,6 @@ export async function getPdfSafeImageDataUrl(
     quality = Math.min(quality, 0.6);
   }
   
-  // Create a clean URL without resize params to get full quality before downsizing
   const cleanUrl = (() => {
     try {
       const parsed = new URL(url, window.location.href);
@@ -96,7 +95,6 @@ export async function getPdfSafeImageDataUrl(
       
       const dataUrl = canvas.toDataURL("image/jpeg", quality);
       
-      // Cleanup canvas immediately
       canvas.width = 0;
       canvas.height = 0;
       
@@ -108,6 +106,70 @@ export async function getPdfSafeImageDataUrl(
     console.error("Error processing image for PDF:", error);
     return cleanUrl;
   }
+}
+
+/**
+ * Ensures images in a section are loaded, compressed, and resized.
+ * Implements a sequential chunking queue with limited concurrency.
+ */
+export async function processImagesInChunk(
+  images: HTMLImageElement[],
+  onProgress: (msg: string) => void,
+  options: { 
+    maxWidth?: number; 
+    maxHeight?: number; 
+    quality?: number; 
+    concurrency?: number;
+    forceLowRes?: boolean;
+  } = {}
+): Promise<void> {
+  const concurrency = options.concurrency || 2;
+  const total = images.length;
+  let processed = 0;
+  
+  // Internal queue to control execution within the chunk
+  const processNext = async (startIndex: number) => {
+    const results = [];
+    const activePromises: Promise<void>[] = [];
+    
+    for (let i = 0; i < total; i++) {
+      // Logic to limit concurrency to max 2
+      while (activePromises.length >= concurrency) {
+        await Promise.race(activePromises);
+      }
+      
+      const img = images[i];
+      const promise = (async () => {
+        try {
+          if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
+            const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
+              maxWidth: options.maxWidth,
+              maxHeight: options.maxHeight,
+              quality: options.quality,
+              forceLowRes: options.forceLowRes
+            });
+            img.src = compressedUrl;
+            await img.decode().catch(() => {});
+          }
+        } catch (e) {
+          console.error("Failed to process image in chunk", e);
+        } finally {
+          processed++;
+          if (processed % 5 === 0 || processed === total) {
+            onProgress(`Otimizando imagens: ${processed}/${total}`);
+          }
+          const idx = activePromises.indexOf(promise);
+          if (idx > -1) activePromises.splice(idx, 1);
+        }
+      })();
+      
+      activePromises.push(promise);
+    }
+    
+    await Promise.all(activePromises);
+  };
+
+  await processNext(0);
 }
 
 const FALLBACK_IMAGE_SRC =
