@@ -653,6 +653,17 @@ export function DetailMedicaoContent({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Button 
+          onClick={() => handleExportZip()} 
+          variant="outline" 
+          size="sm" 
+          disabled={isExporting} 
+          className="bg-green-600 text-white hover:bg-green-700 hover:text-white"
+        >
+          {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
+          {isExporting ? "Processando..." : "Exportar Fotos (ZIP)"}
+        </Button>
+
         <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : "Exportar PDF"}
