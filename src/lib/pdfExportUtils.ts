@@ -499,10 +499,10 @@ export async function exportMedicaoToPdf(
       const debugHeader = document.createElement('div');
       debugHeader.innerText = "PDF DEBUG MODE - GHOST RENDERER";
       debugHeader.style.cssText = "background:red;color:white;padding:5px;font-weight:bold;position:sticky;top:0;";
-      ghostContainer.appendChild(debugHeader);
+      ghostContainer?.appendChild(debugHeader);
     }
     
-    document.body.appendChild(ghostContainer);
+    if (ghostContainer) document.body.appendChild(ghostContainer);
 
     const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
       (el) => !el.parentElement?.closest("[data-pdf-section]")
