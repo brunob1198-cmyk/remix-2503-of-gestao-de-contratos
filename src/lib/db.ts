@@ -2,6 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'medicao_storage';
 const STORE_NAME = 'pdf_chunks';
+const PARTIAL_PDF_STORE = 'partial_pdfs';
 const UPLOAD_STORE = 'upload_queue';
 const EXPORT_STATE_STORE = 'export_state';
 const PHOTO_CACHE_STORE = 'photo_cache';
