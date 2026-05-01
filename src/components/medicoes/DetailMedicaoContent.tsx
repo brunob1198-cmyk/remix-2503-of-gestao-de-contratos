@@ -429,13 +429,20 @@ export function DetailMedicaoContent({
   const handleExportPdf = async () => {
     if (isExporting) return;
     if (!printRef.current) return;
+    
+    const photoCount = diarioFotos.length;
+    if (photoCount > 200) {
+      const confirmLarge = window.confirm(
+        `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser muito lento e travar seu navegador. \n\nRecomendamos usar a opção "Exportar Medição (ZIP)" que é mais rápida e estável para grandes volumes. \n\nDeseja continuar com a geração do PDF mesmo assim?`
+      );
+      if (!confirmLarge) return;
+    }
 
     setIsExporting(true);
     setExportProgress(5);
     setExportLogs([]);
     setDownloadUrl(null);
-    addLog("Iniciando geração de PDF no navegador (Frontend)...", "info");
-    addLog("O processamento local evita custos de armazenamento em nuvem.", "info");
+    addLog(`Iniciando geração de PDF (${photoCount} fotos)...`, "info");
 
     try {
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.pdf`;
