@@ -86,13 +86,21 @@ export function DetailMedicaoContent({
 
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    // Append memory info if available for technical debugging
+    let enrichedMessage = message;
+    if (typeof window !== "undefined" && (window.performance as any)?.memory) {
+      const mem = (window.performance as any).memory;
+      const used = Math.round(mem.usedJSHeapSize / 1048576);
+      enrichedMessage = `${message} (RAM: ${used}MB)`;
+    }
+
     const newLog: PDFExportLog = {
       timestamp: new Date().toLocaleTimeString(),
-      message,
+      message: enrichedMessage,
       type
     };
-    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
-    console.log(`[PDF Export] ${message}`);
+    setExportLogs(prev => [newLog, ...prev].slice(0, 100)); // Keep more logs for large exports
+    console.log(`[Export] ${enrichedMessage}`);
   }, []);
 
   // Fetch existing export on mount or ID change
