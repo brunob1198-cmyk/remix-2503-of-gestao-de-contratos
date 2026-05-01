@@ -198,8 +198,8 @@ serve(async (req) => {
         let photoUrl = photo.url;
         // Apply transformations if it's a Supabase storage URL
         if (photoUrl.includes("/storage/v1/object/public/") || photoUrl.includes("/storage/v1/object/sign/")) {
-          // Force lower quality for massive reports to ensure it completes
-          const isLargeReport = photos.length > 500;
+          // FORCE lower quality for massive reports to ensure it completes within memory/time limits
+          const isLargeReport = photos.length > 300;
           const w = isLargeReport ? 300 : (quality === 'high' ? 800 : (quality === 'medium' ? 600 : 400));
           const q = isLargeReport ? 50 : (quality === 'high' ? 80 : (quality === 'medium' ? 70 : 60));
           const transform = `width=${w}&quality=${q}&resize=contain`;
@@ -211,10 +211,27 @@ serve(async (req) => {
           console.warn(`Erro ao baixar foto ${photo.id}: ${response.status}`);
           return;
         }
+        
+        const contentType = response.headers.get("content-type") || "";
         const buffer = await response.arrayBuffer();
         const uint8 = new Uint8Array(buffer);
         
-        doc.addImage(uint8, "JPEG", x, y, width, height, undefined, "FAST");
+        // Detect format or default to JPEG
+        let format = "JPEG";
+        if (contentType.includes("png")) format = "PNG";
+        else if (contentType.includes("webp")) format = "WEBP";
+        
+        try {
+          doc.addImage(uint8, format as any, x, y, width, height, undefined, "FAST");
+        } catch (addErr) {
+          // If detection fails, try as JPEG anyway
+          console.warn(`Erro ao adicionar imagem ${photo.id} como ${format}, tentando JPEG...`);
+          try {
+            doc.addImage(uint8, "JPEG", x, y, width, height, undefined, "FAST");
+          } catch (retryErr) {
+            console.error(`Falha final ao adicionar imagem ${photo.id}:`, retryErr);
+          }
+        }
 
         doc.setTextColor(50, 50, 50);
         doc.setFontSize(7);
