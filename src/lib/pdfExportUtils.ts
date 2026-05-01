@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { PDFDocument } from "pdf-lib";
 import { savePDFChunk, getPDFChunks, saveExportState, getExportState, clearPDFChunks, clearExportState } from "./db";
 import { supabase } from "@/integrations/supabase/client";
 
