@@ -169,6 +169,15 @@ export function DetailMedicaoContent({
   useEffect(() => {
     if (isExporting) {
       setShowLogPanel(true);
+      
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "Exportação em andamento. Se você sair, o processo será interrompido.";
+        return e.returnValue;
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }
   }, [isExporting]);
 
@@ -460,9 +469,12 @@ export function DetailMedicaoContent({
     
     const photoCount = diarioFotos.length;
     if (photoCount > 150 && !resume) {
-      const confirmLarge = window.confirm(
-        `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser instável e consumir muita memória. \n\nPara grandes volumes, recomendamos a opção "Exportar Medição (ZIP)" que é muito mais rápida e segura. \n\nDeseja prosseguir com o PDF mesmo assim?`
-      );
+      const isUltraLarge = photoCount > 1000;
+      const message = isUltraLarge 
+        ? `Atenção: Esta medição possui ${photoCount} fotos (VOLUME EXTREMO). \n\nO PDF será gerado em Modo de Ultra-Otimização para evitar que o navegador trave, o que reduzirá a qualidade das fotos. \n\nIMPORTANTE: Não feche a aba ou saia do site durante o processo. Se falhar, você poderá retomar de onde parou. \n\nDeseja prosseguir?`
+        : `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser instável. \n\nPara grandes volumes, recomendamos a opção "Exportar Medição (ZIP)" que é muito mais rápida e segura. \n\nDeseja prosseguir com o PDF mesmo assim?`;
+      
+      const confirmLarge = window.confirm(message);
       if (!confirmLarge) return;
     }
 
