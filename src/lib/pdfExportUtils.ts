@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { savePDFChunk, getPDFChunks, saveExportState, getExportState, clearPDFChunks, clearExportState } from "./db";
 
 export type PDFQuality = 'high' | 'medium' | 'eco';
 
@@ -329,7 +330,7 @@ export async function exportMedicaoToPdf(
   medicaoId: string,
   onProgress: (progress: number) => void,
   addLog: (msg: string, type?: 'info' | 'error' | 'success') => void,
-  options: { quality: PDFQuality; filename: string }
+  options: { quality: PDFQuality; filename: string; resume?: boolean }
 ) {
   const quality = options.quality;
   const pdfWidthMm = 210; // A4
