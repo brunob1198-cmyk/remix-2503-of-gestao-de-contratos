@@ -95,77 +95,123 @@ export async function exportMedicaoCompletePackage(
     }
   };
 
-  // Helper to process one photo with memory safety
-  const processPhoto = async (photo: PhotoToZip, index: number) => {
-    let uint8Array: Uint8Array | null = null;
+/**
+ * Validates if a URL is accessible before attempting to download.
+ */
+async function validateImageUrl(url: string, timeout = 10000): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, { 
+      method: 'HEAD', 
+      mode: 'cors', 
+      signal: controller.signal 
+    });
+    
+    clearTimeout(id);
+    return response.ok;
+  } catch (e) {
     try {
-      let blob: Blob | null = null;
-      const cacheId = medicaoId ? `${medicaoId}_${photo.filename}` : photo.url;
-      
-      if (resume) {
-        blob = await getPhotoFromCache(cacheId);
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      const response = await fetch(url, { 
+        method: 'GET', 
+        mode: 'cors', 
+        signal: controller.signal,
+        headers: { 'Range': 'bytes=0-0' }
+      });
+      clearTimeout(id);
+      return response.ok;
+    } catch (err) {
+      return false;
+    }
+  }
+}
+
+/**
+ * Helper to process one photo with memory safety
+ */
+const processPhoto = async (
+  photo: PhotoToZip, 
+  index: number, 
+  medicaoId: string, 
+  resume: boolean, 
+  zipStream: fflate.Zip,
+  mainFolderName: string,
+  onLog?: (msg: string, type: 'info' | 'success' | 'error') => void, 
+  onProgress?: (p: number, t: number) => void, 
+  total?: number, 
+  processedRef?: { val: number }
+) => {
+  let uint8Array: Uint8Array | null = null;
+  try {
+    const cacheId = medicaoId ? `${medicaoId}_${photo.filename}` : photo.url;
+    let blob: Blob | null = null;
+    
+    if (resume) {
+      blob = await getPhotoFromCache(cacheId);
+    }
+
+    if (!blob) {
+      const isValid = await validateImageUrl(photo.url);
+      if (!isValid) {
+        onLog?.(`Aviso: Foto ${photo.filename} está inacessível. Pulando...`, 'error');
+        if (processedRef) processedRef.val++;
+        if (onProgress && processedRef && total) onProgress(processedRef.val, total);
+        return;
       }
 
-      if (!blob) {
-        // Robust fetch with retry and mode fallback
-        const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
-          try {
-            const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
-            if (res.ok) return res;
-            throw new Error(`Status ${res.status}`);
-          } catch (err) {
-            if (retries > 0) {
-              await new Promise(r => setTimeout(r, 1000));
-              // Try adding a timestamp to bypass potential caching/CORS issues
-              const separator = url.includes('?') ? '&' : '?';
-              const retryUrl = `${url}${separator}retry=${retries}`;
-              return fetchWithRetry(retryUrl, retries - 1);
-            }
-            throw err;
+      const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
+        try {
+          const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+          if (res.ok) return res;
+          throw new Error(`Status ${res.status}`);
+        } catch (err) {
+          if (retries > 0) {
+            await new Promise(r => setTimeout(r, 1500));
+            const separator = url.includes('?') ? '&' : '?';
+            return fetchWithRetry(`${url}${separator}retry=${retries}`, retries - 1);
           }
-        };
+          throw err;
+        }
+      };
 
-        const response = await fetchWithRetry(photo.url);
-        blob = await response.blob();
-        blob = await response.blob();
-        
-        // Save to cache for checkpointing
-        await savePhotoToCache(cacheId, blob);
-      } else {
-        if (index % 50 === 0) onLog?.(`Lendo ${photo.filename} do cache...`, 'info');
-      }
-      
-      const arrayBuffer = await blob.arrayBuffer();
-      uint8Array = new Uint8Array(arrayBuffer);
-      blob = null; // Release blob reference early
+      const response = await fetchWithRetry(photo.url);
+      blob = await response.blob();
+      await savePhotoToCache(cacheId, blob);
+    } else {
+      if (index % 50 === 0) onLog?.(`Recuperando ${photo.filename} do cache local...`, 'info');
+    }
+    
+    const arrayBuffer = await blob.arrayBuffer();
+    uint8Array = new Uint8Array(arrayBuffer);
+    blob = null; 
 
-      // Add main folder and then subfolders
-      let fullPath = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
-      if (mainFolderName) {
-        fullPath = `${mainFolderName}/${fullPath}`;
-      }
-      
-      const zipFile = new fflate.ZipPassThrough(fullPath);
-      zipStream.add(zipFile);
-      zipFile.push(uint8Array, true);
+    let fullPath = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
+    if (mainFolderName) {
+      fullPath = `${mainFolderName}/${fullPath}`;
+    }
+    
+    const zipFile = new fflate.ZipPassThrough(fullPath);
+    zipStream.add(zipFile);
+    zipFile.push(uint8Array, true);
 
-      processed++;
-      onProgress?.(processed, total);
+    if (processedRef) {
+      processedRef.val++;
+      if (onProgress && total) onProgress(processedRef.val, total);
       
-      // Explicitly nullify large objects
-      uint8Array = null;
-      
-      if (processed % 10 === 0 || processed === total) {
-        onLog?.(`Processados ${processed}/${total} arquivos...`, 'info');
-        // Aggressive yield to allow GC
+      if (processedRef.val % 20 === 0 || processedRef.val === total) {
+        onLog?.(`Processados ${processedRef.val}/${total} arquivos...`, 'info');
         await new Promise(resolve => setTimeout(resolve, 50));
       }
-    } catch (error) {
-      onLog?.(`Erro ao processar foto ${photo.filename}: ${error instanceof Error ? error.message : String(error)}`, 'error');
-    } finally {
-      uint8Array = null;
     }
-  };
+  } catch (error) {
+    onLog?.(`Erro ao processar foto ${photo.filename}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+  } finally {
+    uint8Array = null;
+  }
+};
 
   try {
     // 1. Add small files first (JSON, HTML)
@@ -173,13 +219,25 @@ export async function exportMedicaoCompletePackage(
 
     // 2. Process photos with concurrency control
     const queue = [...photos];
+    const processedRef = { val: processed };
+    
     const workers = Array.from({ length: Math.min(concurrency, photos.length || 1) }, async () => {
       let localIndex = 0;
       while (queue.length > 0) {
         const photo = queue.shift();
         if (photo) {
-          await processPhoto(photo, localIndex++);
-          // Every 20 photos per worker, take a longer breath
+          await processPhoto(
+            photo, 
+            localIndex++, 
+            medicaoId, 
+            resume, 
+            zipStream, 
+            mainFolderName,
+            onLog, 
+            onProgress, 
+            total, 
+            processedRef
+          );
           if (localIndex % 20 === 0) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
@@ -189,7 +247,6 @@ export async function exportMedicaoCompletePackage(
 
     await Promise.all(workers);
     
-    // Final yield before ending
     await new Promise(resolve => setTimeout(resolve, 200));
     zipStream.end();
     
