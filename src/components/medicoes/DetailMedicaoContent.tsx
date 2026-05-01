@@ -92,6 +92,43 @@ export function DetailMedicaoContent({
     console.log(`[PDF Export] ${message}`);
   }, []);
 
+  // Fetch existing export on mount or ID change
+  const { data: existingExport, refetch: refetchExport } = useQuery({
+    queryKey: ["medicao_last_export", detailMedicao.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("medicao_exports")
+        .select("*")
+        .eq("medicao_id", detailMedicao.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) throw error;
+      if (!data) return null;
+
+      // Get signed URL for the existing storage path
+      const { data: signedData, error: sErr } = await supabase.storage
+        .from("medicoes-pdf")
+        .createSignedUrl(data.storage_path, 3600);
+      
+      if (sErr) throw sErr;
+      return { ...data, signedUrl: signedData.signedUrl };
+    },
+    enabled: !!detailMedicao.id
+  });
+
+  // Set download URL if existing export found
+  useEffect(() => {
+    if (existingExport?.signedUrl) {
+      setDownloadUrl(existingExport.signedUrl);
+      setShowLogPanel(true);
+      addLog("Exportação anterior encontrada e recuperada.", "success");
+      setExportProgress(100);
+    }
+  }, [existingExport, addLog]);
+
+
   useEffect(() => {
     void clearPDFChunks(detailMedicao.id);
     void clearExportState(detailMedicao.id);
@@ -432,8 +469,10 @@ export function DetailMedicaoContent({
 
       setExportProgress(100);
       setIsExporting(false);
-      // Não fechamos mais o painel automaticamente para que o usuário veja o botão de download
+      // Atualizar dados de exportação no cache
+      refetchExport();
     } catch (e) {
+
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
       setIsExporting(false);
     }

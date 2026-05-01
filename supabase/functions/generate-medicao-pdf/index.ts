@@ -334,9 +334,31 @@ serve(async (req) => {
 
     console.log(`PDF gerado com sucesso: ${filePath}`);
 
+    // 9. Registrar na tabela de histórico para persistência ao atualizar a página
+    try {
+      await supabase
+        .from("medicao_exports")
+        .insert({
+          medicao_id: medicaoId,
+          storage_path: filePath,
+          filename: fileName,
+          file_size: pdfOutput.byteLength,
+          quality: quality,
+          metadata: {
+            lancamento_ids: lancamentoIds,
+            tipo_medicao: tipoMedicao,
+            gerado_em: new Date().toISOString()
+          }
+        });
+      console.log(`Registro histórico criado para a medição ${medicaoId}`);
+    } catch (dbErr) {
+      console.error("Erro ao salvar registro histórico (não impede o download):", dbErr);
+    }
+
     return new Response(JSON.stringify({ url: signedData.signedUrl }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
 
   } catch (error: any) {
     console.error("Erro crítico na geração do PDF:", error);
