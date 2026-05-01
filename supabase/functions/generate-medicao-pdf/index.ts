@@ -180,12 +180,22 @@ serve(async (req) => {
     // Process photos in batches to avoid memory issues and handle large volume
     const addPhotoToPdf = async (photo: any, x: number, y: number, width: number, height: number) => {
       try {
-        const response = await fetch(photo.url);
+        // Optimize image size using Supabase transformation if it's a storage URL
+        let photoUrl = photo.url;
+        if (photoUrl.includes("/storage/v1/object/public/") || photoUrl.includes("/storage/v1/object/sign/")) {
+          const transform = `width=${quality === 'high' ? 800 : quality === 'medium' ? 600 : 400}&quality=${quality === 'high' ? 80 : 70 : 60}`;
+          photoUrl += (photoUrl.includes("?") ? "&" : "?") + transform;
+        }
+
+        const response = await fetch(photoUrl);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const buffer = await response.arrayBuffer();
         const uint8 = new Uint8Array(buffer);
-        // Determine image type from URL or buffer
-        const type = photo.url.toLowerCase().includes(".png") ? "PNG" : "JPEG";
+        
+        // Determine image type - default to JPEG for safety and size
+        const type = "JPEG";
         doc.addImage(uint8, type, x, y, width, height, undefined, "FAST");
+
         
         // Add caption/info below image
         doc.setTextColor(50, 50, 50);
