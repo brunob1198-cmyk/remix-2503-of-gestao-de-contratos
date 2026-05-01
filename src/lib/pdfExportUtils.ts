@@ -535,7 +535,7 @@ export async function exportMedicaoToPdf(
       const photosInSection = section.querySelectorAll("[data-pdf-element='photo']").length;
 
       // Check if we need to start a new batch
-      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0) {
+      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0 && pdf) {
         addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Liberando memória...`, 'debug');
         const batchBlob = pdf.output('arraybuffer');
         await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, batchBlob);
