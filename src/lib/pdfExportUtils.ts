@@ -424,29 +424,34 @@ export async function exportMedicaoToPdf(
     onPreviewGenerated?: (previewUrl: string) => void;
   }
 ) {
-  const quality = options.quality;
-  const config: PDFTemplateConfig = options.config || {
-    marginMm: 12,
-    baseFontSize: 12,
-    sectionSpacingMm: 2,
-    debugMode: false
-  };
-
-  const PHOTO_BATCH_SIZE = 50; // Granular chunking every 50 photos for stability
-
-  const heartbeat = setInterval(async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await supabase.auth.refreshSession();
-        addLog("Sessão mantida ativa (Heartbeat)", "debug");
-      }
-    } catch (e) {
-      console.warn("Heartbeat session refresh failed", e);
-    }
-  }, 1000 * 60 * 5);
+  // Declare variables at top to avoid TDZ (Temporal Dead Zone) issues in minified builds
+  let heartbeat: any = null;
+  let pdf: jsPDF | null = null;
+  let ghostContainer: HTMLDivElement | null = null;
 
   try {
+    const quality = options?.quality || 'medium';
+    const config: PDFTemplateConfig = options?.config || {
+      marginMm: 12,
+      baseFontSize: 12,
+      sectionSpacingMm: 2,
+      debugMode: false
+    };
+
+    const PHOTO_BATCH_SIZE = 50; 
+
+    heartbeat = setInterval(async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          await supabase.auth.refreshSession();
+          addLog("Sessão mantida ativa (Heartbeat)", "debug");
+        }
+      } catch (e) {
+        console.warn("Heartbeat session refresh failed", e);
+      }
+    }, 1000 * 60 * 5);
+
     const pdfWidthMm = 210;
     const pdfHeightMm = 297;
     const marginMm = config.marginMm;
