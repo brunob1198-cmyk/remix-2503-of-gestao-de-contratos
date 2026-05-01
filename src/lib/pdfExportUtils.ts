@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { savePDFChunk, getPDFChunks, saveExportState, getExportState, clearPDFChunks, clearExportState } from "./db";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PDFQuality = 'high' | 'medium' | 'eco';
 
@@ -38,13 +39,19 @@ export async function getSafeImageUrl(url: string): Promise<string> {
 
 export async function getPdfSafeImageDataUrl(
   url: string,
-  options: { maxWidth?: number; maxHeight?: number; quality?: number } = {},
+  options: { maxWidth?: number; maxHeight?: number; quality?: number; forceLowRes?: boolean } = {},
 ): Promise<string> {
   if (!url || url.startsWith("data:")) return url;
 
-  const maxWidth = options.maxWidth ?? 1200;
-  const maxHeight = options.maxHeight ?? 900;
-  const quality = options.quality ?? 0.84;
+  let maxWidth = options.maxWidth ?? 1200;
+  let maxHeight = options.maxHeight ?? 900;
+  let quality = options.quality ?? 0.84;
+  
+  if (options.forceLowRes) {
+    maxWidth = Math.min(maxWidth, 800);
+    maxHeight = Math.min(maxHeight, 600);
+    quality = Math.min(quality, 0.6);
+  }
   
   // Create a clean URL without resize params to get full quality before downsizing
   const cleanUrl = (() => {
@@ -362,17 +369,46 @@ export async function exportMedicaoToPdf(
     debugMode: false
   };
 
-  const pdfWidthMm = 210; // A4
-  const pdfHeightMm = 297;
-  const marginMm = config.marginMm;
-  const contentWidthMm = pdfWidthMm - (marginMm * 2);
-  const maxContentHeightMm = pdfHeightMm - (marginMm * 2);
-  
-  const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
-  const isMassive = photoElements.length > 400;
-  
-  const scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
-  const imageCompression = quality === 'high' ? 0.95 : 0.85;
+  // Session Heartbeat to prevent logout during long exports
+  const heartbeatInterval = setInterval(async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await supabase.auth.refreshSession();
+        addLog("Sessão renovada (Heartbeat)", "debug");
+      }
+    } catch (err) {
+      console.warn("Falha ao renovar sessão:", err);
+    }
+  }, 1000 * 60 * 5); // Every 5 minutes
+
+  try {
+    const pdfWidthMm = 210; // A4
+    const pdfHeightMm = 297;
+    const marginMm = config.marginMm;
+    const contentWidthMm = pdfWidthMm - (marginMm * 2);
+    const maxContentHeightMm = pdfHeightMm - (marginMm * 2);
+    
+    const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
+    const photoCount = photoElements.length;
+    const isMassive = photoCount > 400;
+    const isUltraMassive = photoCount > 1000;
+    
+    if (isUltraMassive) {
+      addLog(`Modo de Ultra-Exportação ativado (${photoCount} fotos). Otimizando memória agressivamente...`, 'info');
+    }
+    
+    let scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
+    let imageCompression = quality === 'high' ? 0.95 : 0.85;
+    
+    // Auto-downgrade quality for ultra massive exports to prevent crashes
+    if (isUltraMassive) {
+      scale = 1.2;
+      imageCompression = 0.6;
+    } else if (isMassive) {
+      scale = Math.min(scale, 1.8);
+      imageCompression = Math.min(imageCompression, 0.75);
+    }
   
   const pdf = new jsPDF({
     orientation: "portrait",
