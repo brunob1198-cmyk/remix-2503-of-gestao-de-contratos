@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache } from "@/lib/db";
+import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
 import { 
   chunkArray,
   PDFExportLog,
@@ -849,6 +849,7 @@ export function DetailMedicaoContent({
                     onClick={() => {
                       setHasCheckpoint(null);
                       void clearPDFChunks(detailMedicao.id);
+                      void clearPartialPDFs(detailMedicao.id);
                       void clearExportState(detailMedicao.id);
                     }}
                   >

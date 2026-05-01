@@ -2,6 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 
 const DB_NAME = 'medicao_storage';
 const STORE_NAME = 'pdf_chunks';
+const PARTIAL_PDF_STORE = 'partial_pdfs';
 const UPLOAD_STORE = 'upload_queue';
 const EXPORT_STATE_STORE = 'export_state';
 const PHOTO_CACHE_STORE = 'photo_cache';
@@ -25,10 +26,13 @@ export interface UploadItem {
 }
 
 export async function initDB() {
-  return openDB(DB_NAME, 4, {
+  return openDB(DB_NAME, 5, { // Incremented version to 5
     upgrade(db, oldVersion, newVersion) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(PARTIAL_PDF_STORE)) {
+        db.createObjectStore(PARTIAL_PDF_STORE, { keyPath: 'id' });
       }
       if (!db.objectStoreNames.contains(UPLOAD_STORE)) {
         db.createObjectStore(UPLOAD_STORE, { keyPath: 'id' });
@@ -41,6 +45,29 @@ export async function initDB() {
       }
     },
   });
+}
+
+export async function savePartialPDF(id: string, medicaoId: string, index: number, data: ArrayBuffer) {
+  const db = await initDB();
+  return db.put(PARTIAL_PDF_STORE, { id, medicaoId, index, data, timestamp: Date.now() });
+}
+
+export async function getPartialPDFs(medicaoId: string) {
+  const db = await initDB();
+  const all = await db.getAll(PARTIAL_PDF_STORE);
+  return all
+    .filter((c: any) => c.medicaoId === medicaoId)
+    .sort((a, b) => a.index - b.index);
+}
+
+export async function clearPartialPDFs(medicaoId: string) {
+  const db = await initDB();
+  const chunks = await getPartialPDFs(medicaoId);
+  const tx = db.transaction(PARTIAL_PDF_STORE, 'readwrite');
+  for (const chunk of chunks) {
+    await tx.store.delete(chunk.id);
+  }
+  await tx.done;
 }
 
 export async function savePhotoToCache(id: string, data: Blob) {
