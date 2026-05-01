@@ -54,7 +54,6 @@ export async function getPdfSafeImageDataUrl(
     quality = Math.min(quality, 0.6);
   }
   
-  // Create a clean URL without resize params to get full quality before downsizing
   const cleanUrl = (() => {
     try {
       const parsed = new URL(url, window.location.href);
@@ -96,7 +95,6 @@ export async function getPdfSafeImageDataUrl(
       
       const dataUrl = canvas.toDataURL("image/jpeg", quality);
       
-      // Cleanup canvas immediately
       canvas.width = 0;
       canvas.height = 0;
       
@@ -108,6 +106,70 @@ export async function getPdfSafeImageDataUrl(
     console.error("Error processing image for PDF:", error);
     return cleanUrl;
   }
+}
+
+/**
+ * Ensures images in a section are loaded, compressed, and resized.
+ * Implements a sequential chunking queue with limited concurrency.
+ */
+export async function processImagesInChunk(
+  images: HTMLImageElement[],
+  onProgress: (msg: string) => void,
+  options: { 
+    maxWidth?: number; 
+    maxHeight?: number; 
+    quality?: number; 
+    concurrency?: number;
+    forceLowRes?: boolean;
+  } = {}
+): Promise<void> {
+  const concurrency = options.concurrency || 2;
+  const total = images.length;
+  let processed = 0;
+  
+  // Internal queue to control execution within the chunk
+  const processNext = async (startIndex: number) => {
+    const results = [];
+    const activePromises: Promise<void>[] = [];
+    
+    for (let i = 0; i < total; i++) {
+      // Logic to limit concurrency to max 2
+      while (activePromises.length >= concurrency) {
+        await Promise.race(activePromises);
+      }
+      
+      const img = images[i];
+      const promise = (async () => {
+        try {
+          if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
+            const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
+              maxWidth: options.maxWidth,
+              maxHeight: options.maxHeight,
+              quality: options.quality,
+              forceLowRes: options.forceLowRes
+            });
+            img.src = compressedUrl;
+            await img.decode().catch(() => {});
+          }
+        } catch (e) {
+          console.error("Failed to process image in chunk", e);
+        } finally {
+          processed++;
+          if (processed % 5 === 0 || processed === total) {
+            onProgress(`Otimizando imagens: ${processed}/${total}`);
+          }
+          const idx = activePromises.indexOf(promise);
+          if (idx > -1) activePromises.splice(idx, 1);
+        }
+      })();
+      
+      activePromises.push(promise);
+    }
+    
+    await Promise.all(activePromises);
+  };
+
+  await processNext(0);
 }
 
 const FALLBACK_IMAGE_SRC =
@@ -515,9 +577,23 @@ export async function exportMedicaoToPdf(
         
         autoFitText(ghostSection);
         
-        await ensureImagesLoaded(ghostSection, (msg) => {
-          if (i % 5 === 0) addLog(msg, 'info');
-        }, { concurrency: isMassive ? 3 : 6 });
+        // Split section images into smaller chunks for granular processing
+        const sectionImages = Array.from(ghostSection.querySelectorAll("img"));
+        const imgChunks = chunkArray(sectionImages, 50);
+        
+        for (let j = 0; j < imgChunks.length; j++) {
+          await processImagesInChunk(imgChunks[j], (msg) => {
+            if (i % 5 === 0) addLog(`[Seção ${i+1}] ${msg}`, 'info');
+          }, { 
+            concurrency: 2, // Maximum 2 concurrent downloads
+            maxWidth: isUltraMassive ? 800 : 1200,
+            quality: isUltraMassive ? 0.6 : 0.8,
+            forceLowRes: isUltraMassive 
+          });
+        }
+
+        // Final safety check to ensure all are complete
+        await ensureImagesLoaded(ghostSection, undefined, { concurrency: 2 });
 
         try {
           const canvas = await html2canvas(ghostSection, {
