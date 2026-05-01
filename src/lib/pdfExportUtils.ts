@@ -607,7 +607,7 @@ export async function exportMedicaoToPdf(
     }
 
     const finalPdfBytes = await finalPdf.save();
-    const finalBlob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+    const finalBlob = new Blob([finalPdfBytes.buffer], { type: 'application/pdf' });
 
     if (options.onPreviewGenerated) {
       const previewUrl = URL.createObjectURL(finalBlob);
