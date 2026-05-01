@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
-import "https://esm.sh/jspdf-autotable@3.5.25";
+import autoTable from "https://esm.sh/jspdf-autotable@3.5.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
