@@ -378,16 +378,38 @@ export async function exportMedicaoToPdf(
     }
 
     try {
-      const canvas = await html2canvas(section, {
+      // Isolate the section in a temporary container to prevent O(N^2) DOM parsing performance issues
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '1200px'; // Matching windowWidth
+      container.style.backgroundColor = '#ffffff';
+      
+      // We need to clone to keep styles that might depend on parents
+      const clone = section.cloneNode(true) as HTMLElement;
+      container.appendChild(clone);
+      document.body.appendChild(container);
+
+      // Ensure images in the clone are also "loaded" (they should be in cache)
+      const clonedImages = Array.from(container.querySelectorAll('img'));
+      for (const img of clonedImages) {
+        if (img.dataset.src) img.src = img.dataset.src;
+      }
+
+      const canvas = await html2canvas(container, {
         scale: scale,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: 1200 // Consistent width for layout
+        windowWidth: 1200
       });
 
       const imgData = canvas.toDataURL("image/jpeg", quality === 'high' ? 0.95 : 0.85);
       pdf.addImage(imgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
+      
+      // Cleanup isolated container
+      document.body.removeChild(container);
       
       currentYMm += sectionHeightMm + 2; // Small gap between sections
       
