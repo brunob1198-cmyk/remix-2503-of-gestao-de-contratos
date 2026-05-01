@@ -127,52 +127,52 @@ export async function processImagesInChunk(
   const total = images.length;
   let processed = 0;
   
-  // Internal queue to control execution within the chunk
-  const processNext = async (startIndex: number) => {
-    const results = [];
-    const activePromises: Promise<void>[] = [];
-    
-    for (let i = 0; i < total; i++) {
-      // Logic to limit concurrency to max 2
-      while (activePromises.length >= concurrency) {
-        await Promise.race(activePromises);
-      }
+  if (total === 0) return;
+
+  // Create a copy of the array to use as a queue
+  const queue = [...images];
+  
+  const worker = async () => {
+    while (queue.length > 0) {
+      const img = queue.shift();
+      if (!img) continue;
       
-      const img = images[i];
-      const promise = (async () => {
-        try {
-          if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
-            const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
-              maxWidth: options.maxWidth,
-              maxHeight: options.maxHeight,
-              quality: options.quality,
-              forceLowRes: options.forceLowRes
-            });
-            img.src = compressedUrl;
-            await img.decode().catch(() => {});
-          }
-        } catch (e) {
-          console.error("Failed to process image in chunk", e);
-        } finally {
-          processed++;
-          if (processed % 5 === 0 || processed === total) {
-            onProgress(`Otimizando imagens: ${processed}/${total}`);
+      try {
+        if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
+          const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
+            maxWidth: options.maxWidth,
+            maxHeight: options.maxHeight,
+            quality: options.quality,
+            forceLowRes: options.forceLowRes
+          });
+          img.src = compressedUrl;
+          
+          // Decode to ensure it's ready for rendering
+          try {
+            await img.decode();
+          } catch (decodeError) {
+            console.warn("Decode failed for image, continuing anyway", decodeError);
           }
         }
-      })();
-      
-      activePromises.push(promise);
-      // Clean up the promise from active list when done
-      promise.finally(() => {
-        const idx = activePromises.indexOf(promise);
-        if (idx > -1) activePromises.splice(idx, 1);
-      });
+      } catch (e) {
+        console.error("Failed to process image in chunk", e);
+      } finally {
+        processed++;
+        // Update progress in steps
+        if (processed % 5 === 0 || processed === total) {
+          onProgress(`Otimizando imagens: ${processed}/${total}`);
+        }
+      }
     }
-    
-    await Promise.all(activePromises);
   };
 
-  await processNext(0);
+  // Run workers in parallel up to the concurrency limit
+  const workers = Array.from(
+    { length: Math.min(concurrency, total) }, 
+    () => worker()
+  );
+  
+  await Promise.all(workers);
 }
 
 const FALLBACK_IMAGE_SRC =
