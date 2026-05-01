@@ -480,7 +480,18 @@ export function DetailMedicaoContent({
         detailMedicao.id,
         (progress) => setExportProgress(progress),
         addLog,
-        { quality: pdfQuality, filename, resume }
+        { 
+          quality: pdfQuality, 
+          filename, 
+          resume,
+          config: {
+            marginMm: 12,
+            baseFontSize: 12,
+            sectionSpacingMm: 3,
+            debugMode: debugMode
+          },
+          onPreviewGenerated: (url) => setPreviewUrl(url)
+        }
       );
 
       addLog("Exportação PDF concluída com sucesso!", "success");
