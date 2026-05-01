@@ -645,12 +645,12 @@ export async function exportMedicaoToPdf(
         }
 
         if (currentYMm + drawHeight > pdfHeightMm - marginMm && currentYMm > marginMm) {
-          pdf.addPage();
+          pdf?.addPage();
           currentYMm = marginMm;
         }
 
         const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
-        pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
+        pdf?.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
         currentYMm += drawHeight + config.sectionSpacingMm;
         
         photosInCurrentBatch += photosInSection;
