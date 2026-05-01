@@ -158,12 +158,15 @@ export async function processImagesInChunk(
           if (processed % 5 === 0 || processed === total) {
             onProgress(`Otimizando imagens: ${processed}/${total}`);
           }
-          const idx = activePromises.indexOf(promise);
-          if (idx > -1) activePromises.splice(idx, 1);
         }
       })();
       
       activePromises.push(promise);
+      // Clean up the promise from active list when done
+      promise.finally(() => {
+        const idx = activePromises.indexOf(promise);
+        if (idx > -1) activePromises.splice(idx, 1);
+      });
     }
     
     await Promise.all(activePromises);
