@@ -29,7 +29,7 @@ export async function getSafeImageUrl(url: string): Promise<string> {
   const timestampedUrl = `${url}${separator}t=${Date.now()}`;
   
   try {
-    const response = await fetch(timestampedUrl, { mode: 'cors' });
+    const response = await fetch(timestampedUrl, { mode: 'no-cors' }); // Using no-cors as a last resort check or just trust the URL
     if (!response.ok) throw new Error('Network response was not ok');
     return timestampedUrl;
   } catch (error) {
