@@ -541,7 +541,7 @@ export async function exportMedicaoToPdf(
 
     let photosInCurrentBatch = 0;
     let batchIndex = 0;
-    const TOTAL_PHOTO_BATCH_LIMIT = 80; // Increased slightly for better consistency
+    const TOTAL_PHOTO_BATCH_LIMIT = 50; // Respect user request for 50 photos per chunk
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
