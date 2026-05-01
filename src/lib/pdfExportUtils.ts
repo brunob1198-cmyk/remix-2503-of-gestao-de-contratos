@@ -277,9 +277,6 @@ export function checkTextOverflow(element: HTMLElement, debug = false): string[]
 }
 
 /**
- * Automatically adjusts font size or applies breaking rules to fit text
- */
-/**
  * Automatically adjusts font size or applies breaking rules to fit text perfectly
  */
 export function autoFitText(element: HTMLElement, maxShrink = 0.6) {
@@ -369,16 +366,16 @@ export async function exportMedicaoToPdf(
     debugMode: false
   };
 
-  // Session Heartbeat to prevent logout during long exports
-  const heartbeatInterval = setInterval(async () => {
+  // Heartbeat to keep session alive during long exports
+  const heartbeat = setInterval(async () => {
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         await supabase.auth.refreshSession();
-        addLog("Sessão renovada (Heartbeat)", "debug");
+        addLog("Sessão mantida ativa (Heartbeat)", "debug");
       }
-    } catch (err) {
-      console.warn("Falha ao renovar sessão:", err);
+    } catch (e) {
+      console.warn("Heartbeat session refresh failed", e);
     }
   }, 1000 * 60 * 5); // Every 5 minutes
 
@@ -390,212 +387,231 @@ export async function exportMedicaoToPdf(
     const maxContentHeightMm = pdfHeightMm - (marginMm * 2);
     
     const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
-    const photoCount = photoElements.length;
-    const isMassive = photoCount > 400;
-    const isUltraMassive = photoCount > 1000;
-    
-    if (isUltraMassive) {
-      addLog(`Modo de Ultra-Exportação ativado (${photoCount} fotos). Otimizando memória agressivamente...`, 'info');
-    }
+    const isMassive = photoElements.length > 400;
+    const isUltraMassive = photoElements.length > 1000;
     
     let scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
     let imageCompression = quality === 'high' ? 0.95 : 0.85;
     
-    // Auto-downgrade quality for ultra massive exports to prevent crashes
+    // Aggressive optimization for massive reports
     if (isUltraMassive) {
+      addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Aplicando economia extrema de recursos.`, 'info');
       scale = 1.2;
       imageCompression = 0.6;
     } else if (isMassive) {
+      addLog(`Relatório Massivo (${photoElements.length} fotos). Otimizando renderização.`, 'info');
       scale = Math.min(scale, 1.8);
       imageCompression = Math.min(imageCompression, 0.75);
     }
-  
-  const pdf = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-    compress: true
-  });
-
-  // Ghost Container for batch rendering
-  const ghostContainer = document.createElement('div');
-  ghostContainer.id = 'pdf-ghost-renderer';
-  Object.assign(ghostContainer.style, {
-    position: 'absolute',
-    left: config.debugMode ? '20px' : '-10000px',
-    top: config.debugMode ? '100px' : '0',
-    width: '1120px', 
-    backgroundColor: '#ffffff',
-    zIndex: config.debugMode ? '9999' : '-1000',
-    border: config.debugMode ? '2px dashed red' : 'none',
-    pointerEvents: config.debugMode ? 'auto' : 'none'
-  });
-  
-  if (config.debugMode) {
-    const debugHeader = document.createElement('div');
-    debugHeader.innerText = "PDF DEBUG MODE - GHOST RENDERER";
-    debugHeader.style.cssText = "background:red;color:white;padding:5px;font-weight:bold;position:sticky;top:0;";
-    ghostContainer.appendChild(debugHeader);
-  }
-  
-  document.body.appendChild(ghostContainer);
-
-  const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
-    (el) => !el.parentElement?.closest("[data-pdf-section]")
-  );
-
-  if (sections.length === 0) {
-    document.body.removeChild(ghostContainer);
-    throw new Error("Nenhuma seção de conteúdo encontrada.");
-  }
-
-  addLog(`Iniciando Ghost Rendering para ${sections.length} seções...`, 'info');
-  
-  let currentYMm = marginMm;
-  const existingChunks = options.resume ? await getPDFChunks(medicaoId) : [];
-  
-  if (!options.resume) {
-    await clearPDFChunks(medicaoId);
-    await clearExportState(medicaoId);
-  }
-
-  for (let i = 0; i < sections.length; i++) {
-    const section = sections[i];
-    let sectionImgData: string | null = null;
-    const chunkId = `${medicaoId}_${i}`;
     
-    if (i < existingChunks.length) {
-      const chunk = existingChunks[i];
-      const blob = new Blob([chunk.data], { type: 'image/jpeg' });
-      sectionImgData = await new Promise<string>(r => {
-        const reader = new FileReader();
-        reader.onloadend = () => r(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true
+    });
+
+    const ghostContainer = document.createElement('div');
+    ghostContainer.id = 'pdf-ghost-renderer';
+    Object.assign(ghostContainer.style, {
+      position: 'absolute',
+      left: config.debugMode ? '20px' : '-10000px',
+      top: config.debugMode ? '100px' : '0',
+      width: '1120px', 
+      backgroundColor: '#ffffff',
+      zIndex: config.debugMode ? '9999' : '-1000',
+      border: config.debugMode ? '2px dashed red' : 'none',
+      pointerEvents: config.debugMode ? 'auto' : 'none'
+    });
+    
+    if (config.debugMode) {
+      const debugHeader = document.createElement('div');
+      debugHeader.innerText = "PDF DEBUG MODE - GHOST RENDERER";
+      debugHeader.style.cssText = "background:red;color:white;padding:5px;font-weight:bold;position:sticky;top:0;";
+      ghostContainer.appendChild(debugHeader);
+    }
+    
+    document.body.appendChild(ghostContainer);
+
+    const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
+      (el) => !el.parentElement?.closest("[data-pdf-section]")
+    );
+
+    if (sections.length === 0) {
+      if (ghostContainer.parentNode) document.body.removeChild(ghostContainer);
+      throw new Error("Nenhuma seção de conteúdo encontrada.");
     }
 
-    if (!sectionImgData) {
-      unloadImagesOutsideSection(element, section, 1);
-      
-      const ghostSection = section.cloneNode(true) as HTMLElement;
-      // Apply base font size from config
-      ghostSection.style.fontSize = `${config.baseFontSize}px`;
-      
-      const contentWrapper = document.createElement('div');
-      contentWrapper.id = `ghost-section-${i}`;
-      if (config.debugMode) {
-        contentWrapper.style.border = "1px solid blue";
-        contentWrapper.setAttribute('data-debug-info', `Section ${i}`);
-      }
-      contentWrapper.appendChild(ghostSection);
-      
-      if (config.debugMode) {
-        ghostContainer.appendChild(contentWrapper);
-      } else {
-        ghostContainer.innerHTML = '';
-        ghostContainer.appendChild(contentWrapper);
-      }
-      
-      autoFitText(ghostSection);
-      
-      await ensureImagesLoaded(ghostSection, (msg) => {
-        if (i % 5 === 0) addLog(msg, 'info');
-      }, { concurrency: 4 });
+    addLog(`Iniciando renderização de ${sections.length} seções...`, 'info');
+    
+    let currentYMm = marginMm;
+    const existingChunks = options.resume ? await getPDFChunks(medicaoId) : [];
+    
+    if (!options.resume) {
+      await clearPDFChunks(medicaoId);
+      await clearExportState(medicaoId);
+    }
 
-      try {
-        const canvas = await html2canvas(ghostSection, {
-          scale: scale,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-          width: ghostSection.offsetWidth,
-          height: ghostSection.offsetHeight
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+      let sectionImgData: string | null = null;
+      const chunkId = `${medicaoId}_${i}`;
+      
+      // Try to recover from local DB if resuming
+      if (i < existingChunks.length) {
+        const chunk = existingChunks[i];
+        const blob = new Blob([chunk.data], { type: 'image/jpeg' });
+        sectionImgData = await new Promise<string>(r => {
+          const reader = new FileReader();
+          reader.onloadend = () => r(reader.result as string);
+          reader.readAsDataURL(blob);
         });
+      }
 
-        sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
+      if (!sectionImgData) {
+        // Performance optimization: only load images for the current section and neighbors
+        unloadImagesOutsideSection(element, section, 1);
+        
+        const ghostSection = section.cloneNode(true) as HTMLElement;
+        ghostSection.style.fontSize = `${config.baseFontSize}px`;
+        
+        const contentWrapper = document.createElement('div');
+        contentWrapper.id = `ghost-section-${i}`;
+        contentWrapper.appendChild(ghostSection);
         
         if (config.debugMode) {
-          addLog(`[DEBUG] Seção ${i}: ${ghostSection.offsetWidth}x${ghostSection.offsetHeight}px`, 'debug');
+          ghostContainer.appendChild(contentWrapper);
+        } else {
+          ghostContainer.innerHTML = '';
+          ghostContainer.appendChild(contentWrapper);
+        }
+        
+        autoFitText(ghostSection);
+        
+        await ensureImagesLoaded(ghostSection, (msg) => {
+          if (i % 5 === 0) addLog(msg, 'info');
+        }, { concurrency: isMassive ? 3 : 6 });
+
+        try {
+          const canvas = await html2canvas(ghostSection, {
+            scale: scale,
+            useCORS: true,
+            logging: false,
+            backgroundColor: "#ffffff",
+            width: ghostSection.offsetWidth,
+            height: ghostSection.offsetHeight
+          });
+
+          sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
+          
+          if (config.debugMode) {
+            addLog(`[DEBUG] Seção ${i}: ${ghostSection.offsetWidth}x${ghostSection.offsetHeight}px`, 'debug');
+          }
+
+          // Persistence for recovery
+          const res = await fetch(sectionImgData);
+          const b = await res.blob();
+          await savePDFChunk({
+            id: chunkId,
+            medicaoId,
+            index: i,
+            data: await b.arrayBuffer(),
+            timestamp: Date.now()
+          });
+          await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
+          
+          canvas.width = 0;
+          canvas.height = 0;
+        } catch (err) {
+          addLog(`Falha na renderização Ghost da seção ${i+1}`, 'error');
+        }
+      }
+
+      if (sectionImgData) {
+        let sectionHeightMm = measureHeightMm(section, contentWidthMm);
+        let drawHeight = sectionHeightMm;
+        let drawWidth = contentWidthMm;
+        
+        // Intelligent pagination (Fit-to-page)
+        if (drawHeight > maxContentHeightMm) {
+          const ratio = maxContentHeightMm / drawHeight;
+          drawHeight = maxContentHeightMm;
+          drawWidth = contentWidthMm * ratio;
+          if (config.debugMode) addLog(`[DEBUG] Seção ${i} redimensionada (Fit-to-page)`, 'debug');
         }
 
-        const res = await fetch(sectionImgData);
-        const b = await res.blob();
-        await savePDFChunk({
-          id: chunkId,
-          medicaoId,
-          index: i,
-          data: await b.arrayBuffer(),
-          timestamp: Date.now()
-        });
-        await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
+        if (currentYMm + drawHeight > pdfHeightMm - marginMm && i > 0) {
+          pdf.addPage();
+          currentYMm = marginMm;
+          if (config.debugMode) addLog(`[DEBUG] Quebra de página antes da seção ${i}`, 'debug');
+        }
+
+        const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
+        pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
+        currentYMm += drawHeight + config.sectionSpacingMm;
         
-        canvas.width = 0;
-        canvas.height = 0;
-      } catch (err) {
-        addLog(`Falha na renderização Ghost da seção ${i+1}`, 'error');
+        // Clear reference to free memory
+        sectionImgData = null;
+      }
+
+      onProgress(Math.round(((i + 1) / sections.length) * 95));
+      
+      // Breathe for GC and UI responsiveness
+      if (i % (isMassive ? 2 : 5) === 0) {
+        await new Promise(r => setTimeout(r, isMassive ? 100 : 20));
+        
+        // Optional memory-based pause
+        const mem = getMemoryUsage();
+        if (mem && mem.used > mem.limit * 0.8) {
+          addLog(`RAM atingindo limite (${mem.used}MB). Pausando para limpeza...`, 'debug');
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
     }
 
-    if (sectionImgData) {
-      let sectionHeightMm = measureHeightMm(section, contentWidthMm);
-      let drawHeight = sectionHeightMm;
-      let drawWidth = contentWidthMm;
-      
-      if (drawHeight > maxContentHeightMm) {
-        const ratio = maxContentHeightMm / drawHeight;
-        drawHeight = maxContentHeightMm;
-        drawWidth = contentWidthMm * ratio;
-        if (config.debugMode) addLog(`[DEBUG] Seção ${i} redimensionada (Fit-to-page)`, 'debug');
-      }
-
-      if (currentYMm + drawHeight > pdfHeightMm - marginMm && i > 0) {
-        pdf.addPage();
-        currentYMm = marginMm;
-        if (config.debugMode) addLog(`[DEBUG] Quebra de página antes da seção ${i}`, 'debug');
-      }
-
-      const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
-      pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
-      currentYMm += drawHeight + config.sectionSpacingMm;
-      
-      sectionImgData = null;
+    if (options.onPreviewGenerated) {
+      const previewUrl = pdf.output('bloburl').toString();
+      options.onPreviewGenerated(previewUrl);
     }
 
-    onProgress(Math.round(((i + 1) / sections.length) * 95));
-    await new Promise(r => setTimeout(r, isMassive ? 100 : 30));
-  }
+    if (!config.debugMode && ghostContainer.parentNode) {
+      document.body.removeChild(ghostContainer);
+    }
 
-  if (options.onPreviewGenerated) {
-    const previewUrl = pdf.output('bloburl').toString();
-    options.onPreviewGenerated(previewUrl);
-  }
+    addLog("Finalizando PDF e salvando cópia de segurança...", 'info');
+    
+    try {
+      const pdfBlob = pdf.output('blob');
+      
+      // Store in Supabase as well
+      const storagePath = `${medicaoId}/${options.filename}`;
+      await supabase.storage
+        .from("medicoes-pdf")
+        .upload(storagePath, pdfBlob, { upsert: true });
 
-  if (!config.debugMode) {
-    document.body.removeChild(ghostContainer);
-  } else {
-    addLog("DEBUG: Ghost Container mantido no DOM para inspeção.", 'debug');
-  }
-  
-  unloadImagesOutsideSection(element, sections[0], sections.length + 1);
+      await supabase.from("medicao_exports").insert({
+        medicao_id: medicaoId,
+        filename: options.filename,
+        storage_path: storagePath,
+        quality: options.quality
+      });
 
-  addLog("Finalizando PDF...", 'info');
-  
-  try {
-    const pdfBlob = pdf.output('blob');
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = options.filename;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = options.filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    addLog("Relatório exportado!", "success");
-    await clearPDFChunks(medicaoId);
-    await clearExportState(medicaoId);
-  } catch (saveErr) {
-    addLog("Erro ao salvar arquivo.", 'error');
+      addLog("Exportação concluída com sucesso!", "success");
+      await clearPDFChunks(medicaoId);
+      await clearExportState(medicaoId);
+    } catch (saveErr) {
+      addLog("Erro na etapa final de salvamento.", 'error');
+    }
+    
+    onProgress(100);
+  } finally {
+    clearInterval(heartbeat);
   }
-  
-  onProgress(100);
 }
-
