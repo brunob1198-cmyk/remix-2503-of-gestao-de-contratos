@@ -404,11 +404,17 @@ export function DetailMedicaoContent({
           tipoMedicao: tipoMedicao,
           quality: pdfQuality
         }
-
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (error) {
+        console.error("Erro na Edge Function:", error);
+        throw error;
+      }
+      
+      if (data?.error) {
+        console.error("Erro retornado pela função:", data.error);
+        throw new Error(data.error);
+      }
 
       setExportProgress(90);
       addLog("PDF gerado com sucesso! Iniciando download...", "success");
