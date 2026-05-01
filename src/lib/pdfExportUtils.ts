@@ -364,6 +364,9 @@ export async function exportMedicaoToPdf(
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     
+    // Memory management: Unload images far from current section
+    unloadImagesOutsideSection(element, section, 3);
+    
     // Ensure images in this section are loaded
     await ensureImagesLoaded(section, (msg) => addLog(msg, 'info'), { label: `Seção ${i+1}` });
     
