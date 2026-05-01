@@ -401,8 +401,10 @@ export function DetailMedicaoContent({
         body: {
           medicaoId: detailMedicao.id,
           lancamentoIds: detailMedicao.lancamentoIds,
-          tipoMedicao: tipoMedicao
+          tipoMedicao: tipoMedicao,
+          quality: pdfQuality
         }
+
       });
 
       if (error) throw error;
