@@ -728,6 +728,9 @@ export async function exportMedicaoToPdf(
     
     onProgress(100);
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat) clearInterval(heartbeat);
+    if (ghostContainer && ghostContainer.parentNode) {
+      ghostContainer.parentNode.removeChild(ghostContainer);
+    }
   }
 }
