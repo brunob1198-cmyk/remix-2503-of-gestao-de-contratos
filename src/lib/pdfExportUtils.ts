@@ -374,21 +374,35 @@ export function autoFitText(element: HTMLElement, maxShrink = 0.6) {
 /**
  * Measures an element's height in mm given a target width in mm
  */
+/**
+ * Measures an element's height in mm given a target width in mm
+ * This version is more accurate by using the same styles as the renderer
+ */
 export function measureHeightMm(element: HTMLElement, targetWidthMm: number): number {
   const clone = element.cloneNode(true) as HTMLElement;
+  
+  // Apply essential styles to the clone to match rendering environment
   Object.assign(clone.style, {
     position: "absolute",
     left: "-9999px",
     width: `${targetWidthMm}mm`,
     visibility: "hidden",
-    height: "auto"
+    height: "auto",
+    fontSize: window.getComputedStyle(element).fontSize,
+    fontFamily: window.getComputedStyle(element).fontFamily,
+    lineHeight: window.getComputedStyle(element).lineHeight
   });
+  
   document.body.appendChild(clone);
-  const heightPx = clone.offsetHeight;
+  
+  // Force a layout reflow
+  const heightPx = clone.getBoundingClientRect().height || clone.offsetHeight;
+  
   document.body.removeChild(clone);
   
-  // 1mm is approx 3.7795275591 px (standard 96dpi)
-  return (heightPx * 25.4) / 96;
+  // Standard A4 is 210mm x 297mm. At 96dpi, 210mm is 793.7px.
+  // So 1mm = 793.7 / 210 = 3.7795 px.
+  return (heightPx * 210) / 793.7;
 }
 
 /**
@@ -462,17 +476,18 @@ export async function exportMedicaoToPdf(
     const isMassive = photoElements.length > 400;
     const isUltraMassive = photoElements.length > 1000;
     
+    // Improved scaling logic for better quality
     let scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
     let imageCompression = quality === 'high' ? 0.95 : 0.85;
     
     if (isUltraMassive) {
-      addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Aplicando economia extrema de recursos.`, 'info');
-      scale = 1.1; // Reduced from 1.2
-      imageCompression = 0.55; // Reduced from 0.6
+      addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Otimizando memória.`, 'info');
+      scale = 1.6; // Increased from 1.1 for better quality
+      imageCompression = 0.7; // Increased from 0.55
     } else if (isMassive) {
       addLog(`Relatório Massivo (${photoElements.length} fotos). Otimizando renderização.`, 'info');
-      scale = Math.min(scale, 1.8);
-      imageCompression = Math.min(imageCompression, 0.75);
+      scale = 1.8; // Increased from 1.5
+      imageCompression = 0.8;
     }
     
     pdf = new jsPDF({
@@ -526,6 +541,7 @@ export async function exportMedicaoToPdf(
 
     let photosInCurrentBatch = 0;
     let batchIndex = 0;
+    const TOTAL_PHOTO_BATCH_LIMIT = 50; // Respect user request for 50 photos per chunk
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
@@ -534,9 +550,9 @@ export async function exportMedicaoToPdf(
       
       const photosInSection = section.querySelectorAll("[data-pdf-element='photo']").length;
 
-      // Check if we need to start a new batch
-      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0 && pdf) {
-        addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Liberando memória...`, 'debug');
+      // Check if we need to start a new batch BEFORE processing to avoid orphaned sections
+      if (photosInCurrentBatch + photosInSection > TOTAL_PHOTO_BATCH_LIMIT && i > 0 && pdf) {
+        addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Gerando arquivo parcial...`, 'debug');
         const batchBlob = pdf.output('arraybuffer');
         await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, batchBlob);
         
@@ -551,8 +567,8 @@ export async function exportMedicaoToPdf(
         photosInCurrentBatch = 0;
         batchIndex++;
         
-        // Brief pause for GC
-        await new Promise(r => setTimeout(r, 200));
+        // Brief pause for garbage collection
+        await new Promise(r => setTimeout(r, 300));
       }
 
       // Try to recover from local DB if resuming
@@ -567,69 +583,84 @@ export async function exportMedicaoToPdf(
       }
 
       if (!sectionImgData) {
-        unloadImagesOutsideSection(element, section, 1);
+        // Unload images in other sections to free up memory
+        unloadImagesOutsideSection(element, section, 2);
         
         const ghostSection = section.cloneNode(true) as HTMLElement;
-        ghostSection.style.fontSize = `${config.baseFontSize}px`;
+        ghostSection.style.cssText = `
+          width: 1120px; 
+          background-color: white; 
+          font-size: ${config.baseFontSize}px; 
+          padding: 0; 
+          margin: 0;
+          overflow: hidden;
+        `;
         
         const contentWrapper = document.createElement('div');
         contentWrapper.id = `ghost-section-${i}`;
+        contentWrapper.style.backgroundColor = 'white';
         contentWrapper.appendChild(ghostSection);
         
-        if (config.debugMode && ghostContainer) {
-          ghostContainer.appendChild(contentWrapper);
-        } else if (ghostContainer) {
+        if (ghostContainer) {
           ghostContainer.innerHTML = '';
           ghostContainer.appendChild(contentWrapper);
         }
         
         autoFitText(ghostSection);
         
-        // Split section images into smaller chunks for granular processing
         const sectionImages = Array.from(ghostSection.querySelectorAll("img"));
+        // Process images in small chunks to avoid memory spikes
         const imgChunks = chunkArray(sectionImages, 50);
         
         for (let j = 0; j < imgChunks.length; j++) {
           await processImagesInChunk(imgChunks[j], (msg) => {
             if (i % 5 === 0) addLog(`[Seção ${i+1}] ${msg}`, 'info');
           }, { 
-            concurrency: 2, // Maximum 2 concurrent downloads
-            maxWidth: isUltraMassive ? 800 : 1200,
-            quality: isUltraMassive ? 0.6 : 0.8,
+            concurrency: 2,
+            maxWidth: isUltraMassive ? 900 : 1200,
+            quality: isUltraMassive ? 0.75 : 0.85,
             forceLowRes: isUltraMassive 
           });
         }
-
-        // Final safety check to ensure all are complete
+    
         await ensureImagesLoaded(ghostSection, undefined, { concurrency: 2 });
-
-        try {
-          const canvas = await html2canvas(ghostSection, {
-            scale: scale,
-            useCORS: true,
-            logging: false,
-            backgroundColor: "#ffffff",
-            width: ghostSection.offsetWidth,
-            height: ghostSection.offsetHeight
-          });
-
-          sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
-          
-          const res = await fetch(sectionImgData);
-          const b = await res.blob();
-          await savePDFChunk({
-            id: chunkId,
-            medicaoId,
-            index: i,
-            data: await b.arrayBuffer(),
-            timestamp: Date.now()
-          });
-          await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
-          
-          canvas.width = 0;
-          canvas.height = 0;
-        } catch (err) {
-          addLog(`Falha na renderização Ghost da seção ${i+1}`, 'error');
+        await new Promise(r => setTimeout(r, 400));
+    
+        // Retry mechanism for html2canvas
+        let attempts = 0;
+        while (attempts < 2) {
+          try {
+            const canvas = await html2canvas(ghostSection, {
+              scale: scale,
+              useCORS: true,
+              logging: false,
+              backgroundColor: "#ffffff",
+              width: 1120, // Explicit width
+              removeContainer: true,
+              imageTimeout: 15000
+            });
+    
+            sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
+            
+            const b = await (await fetch(sectionImgData)).blob();
+            await savePDFChunk({
+              id: chunkId,
+              medicaoId,
+              index: i,
+              data: await b.arrayBuffer(),
+              timestamp: Date.now()
+            });
+            await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
+            
+            canvas.width = 0;
+            canvas.height = 0;
+            break; // Success
+          } catch (err) {
+            attempts++;
+            addLog(`Tentativa ${attempts} de renderização falhou para seção ${i+1}`, 'debug');
+            if (attempts >= 2) addLog(`Falha definitiva na renderização da seção ${i+1}`, 'error');
+            await new Promise(r => setTimeout(r, 500));
+          }
         }
       }
 
@@ -669,8 +700,9 @@ export async function exportMedicaoToPdf(
       }
     }
 
-    // Save final batch
+    // Save the very last batch
     if (pdf) {
+      addLog(`Salvando lote final ${batchIndex + 1}...`, 'debug');
       const lastBatchBlob = pdf.output('arraybuffer');
       await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
     }
@@ -679,13 +711,24 @@ export async function exportMedicaoToPdf(
     
     // Final recombination using pdf-lib
     const partials = await getPartialPDFs(medicaoId);
+    if (partials.length === 0) {
+      throw new Error("Nenhuma parte do PDF foi encontrada para combinar.");
+    }
+    
+    addLog(`Combinando ${partials.length} lotes de PDF...`, 'info');
     const finalPdf = await PDFDocument.create();
     
-    for (const partial of partials) {
-      const partialDoc = await PDFDocument.load(partial.data);
-      const copiedPages = await finalPdf.copyPages(partialDoc, partialDoc.getPageIndices());
-      copiedPages.forEach((page) => finalPdf.addPage(page));
-      addLog(`Parte ${partial.index + 1}/${partials.length} combinada.`, 'debug');
+    for (let pIdx = 0; pIdx < partials.length; pIdx++) {
+      const partial = partials[pIdx];
+      try {
+        const partialDoc = await PDFDocument.load(partial.data);
+        const copiedPages = await finalPdf.copyPages(partialDoc, partialDoc.getPageIndices());
+        copiedPages.forEach((page) => finalPdf.addPage(page));
+        addLog(`Lote ${pIdx + 1}/${partials.length} combinado com sucesso.`, 'debug');
+      } catch (mergeErr) {
+        addLog(`Erro ao combinar lote ${pIdx + 1}: ${mergeErr instanceof Error ? mergeErr.message : 'Erro desconhecido'}`, 'error');
+        // Continue with other batches if possible, but this is a serious error
+      }
     }
 
     const finalPdfBytes = await finalPdf.save();
