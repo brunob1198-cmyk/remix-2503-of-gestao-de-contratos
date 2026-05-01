@@ -367,7 +367,7 @@ export async function exportMedicaoToPdf(
     debugMode: false
   };
 
-  const PHOTO_BATCH_SIZE = 200; // Chunking every 200 photos
+  const PHOTO_BATCH_SIZE = 50; // Granular chunking every 50 photos for stability
 
   const heartbeat = setInterval(async () => {
     try {
