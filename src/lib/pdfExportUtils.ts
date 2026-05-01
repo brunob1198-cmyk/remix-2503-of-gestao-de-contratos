@@ -4,10 +4,17 @@ import { savePDFChunk, getPDFChunks, saveExportState, getExportState, clearPDFCh
 
 export type PDFQuality = 'high' | 'medium' | 'eco';
 
+export interface PDFTemplateConfig {
+  marginMm: number;
+  baseFontSize: number;
+  sectionSpacingMm: number;
+  debugMode?: boolean;
+}
+
 export interface PDFExportLog {
   timestamp: string;
   message: string;
-  type: 'info' | 'error' | 'success';
+  type: 'info' | 'error' | 'success' | 'debug';
 }
 
 /**
