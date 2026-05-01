@@ -14,11 +14,14 @@ serve(async (req) => {
   }
 
   try {
-    const { medicaoId, lancamentoIds, tipoMedicao } = await req.json();
+    const { medicaoId, lancamentoIds, tipoMedicao, quality = 'medium' } = await req.json();
 
     if (!medicaoId && (!lancamentoIds || lancamentoIds.length === 0)) {
       throw new Error("ID da medição ou lançamentos não fornecidos.");
     }
+
+    const qualityScale = quality === 'high' ? 1.0 : quality === 'medium' ? 0.7 : 0.4;
+
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
