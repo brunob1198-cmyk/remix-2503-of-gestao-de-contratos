@@ -7,10 +7,17 @@ export interface PhotoToZip {
   folder?: string;
 }
 
+export interface ExtraFile {
+  filename: string;
+  content: string | Blob;
+}
+
 export interface ZipExportOptions {
   concurrency?: number;
   onProgress?: (processed: number, total: number) => void;
   onLog?: (message: string, type: 'info' | 'success' | 'error') => void;
+  extraFiles?: ExtraFile[];
+  mainFolderName?: string;
 }
 
 /**
