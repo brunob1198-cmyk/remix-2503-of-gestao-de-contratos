@@ -265,23 +265,31 @@ export function checkTextOverflow(element: HTMLElement, debug = false): string[]
 /**
  * Automatically adjusts font size or applies breaking rules to fit text
  */
-export function autoFitText(element: HTMLElement) {
-  const textElements = element.querySelectorAll("p, span, td, th, h1, h2, h3, h4, div");
+/**
+ * Automatically adjusts font size or applies breaking rules to fit text perfectly
+ */
+export function autoFitText(element: HTMLElement, maxShrink = 0.6) {
+  const textElements = element.querySelectorAll("p, span, td, th, h1, h2, h3, h4, div:not([data-pdf-section])");
   textElements.forEach((el) => {
     const htmlEl = el as HTMLElement;
-    // Force breaking for very long strings without spaces
+    if (htmlEl.children.length > 0 && htmlEl.tagName === 'DIV') return;
+
     htmlEl.style.overflowWrap = "break-word";
     htmlEl.style.wordBreak = "break-word";
     
-    // Check for horizontal overflow and try to shrink font
-    if (htmlEl.scrollWidth > htmlEl.clientWidth + 2) {
-      let fontSize = parseFloat(window.getComputedStyle(htmlEl).fontSize);
-      let attempts = 0;
-      while (htmlEl.scrollWidth > htmlEl.clientWidth + 2 && fontSize > 6 && attempts < 5) {
-        fontSize -= 0.5;
-        htmlEl.style.fontSize = `${fontSize}px`;
-        attempts++;
-      }
+    const containerWidth = htmlEl.clientWidth;
+    if (containerWidth === 0) return;
+
+    let fontSize = parseFloat(window.getComputedStyle(htmlEl).fontSize);
+    const originalSize = fontSize;
+    const minSize = originalSize * maxShrink;
+    
+    let attempts = 0;
+    while ((htmlEl.scrollWidth > containerWidth + 1) && fontSize > minSize && attempts < 8) {
+      fontSize -= 0.5;
+      htmlEl.style.fontSize = `${fontSize}px`;
+      htmlEl.style.lineHeight = "1.1";
+      attempts++;
     }
   });
 }
@@ -323,7 +331,8 @@ export function getMemoryUsage() {
 
 
 /**
- * Export a measurement report to PDF using the frontend's jsPDF and html2canvas.
+ * Export a measurement report to PDF using Ghost Rendering (rendering sections in hidden DOM chunks)
+ * and intelligent pagination to ensure elements fit pages correctly.
  */
 export async function exportMedicaoToPdf(
   element: HTMLElement,
@@ -335,48 +344,52 @@ export async function exportMedicaoToPdf(
   const quality = options.quality;
   const pdfWidthMm = 210; // A4
   const pdfHeightMm = 297;
-  const marginMm = 10;
+  const marginMm = 12; // Professional margin
   const contentWidthMm = pdfWidthMm - (marginMm * 2);
+  const maxContentHeightMm = pdfHeightMm - (marginMm * 2);
   
-  // High quality settings - reduced for massive volumes
   const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
   const isMassive = photoElements.length > 400;
   const isGiant = photoElements.length > 800;
   
-  if (isMassive) {
-    addLog(`Relatório grande detectado (${photoElements.length} fotos). Otimizando para memória...`, 'info');
-  }
-
-  const scale = isGiant ? 1 : (isMassive ? 1.2 : (quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1));
-  const imageCompression = isMassive ? 0.75 : (quality === 'high' ? 0.92 : 0.82);
+  const scale = isGiant ? 1.2 : (isMassive ? 1.5 : (quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5));
+  const imageCompression = isMassive ? 0.75 : (quality === 'high' ? 0.95 : 0.85);
   
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",
-    compress: true // Enable jsPDF's internal compression
+    compress: true
   });
 
-  // Find all major sections
+  // Ghost Container for batch rendering
+  const ghostContainer = document.createElement('div');
+  ghostContainer.id = 'pdf-ghost-renderer';
+  Object.assign(ghostContainer.style, {
+    position: 'absolute',
+    left: '-10000px',
+    top: '0',
+    width: '1120px', // Matches 210mm at ~135dpi approx
+    backgroundColor: '#ffffff',
+    zIndex: '-1000'
+  });
+  document.body.appendChild(ghostContainer);
+
   const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
     (el) => !el.parentElement?.closest("[data-pdf-section]")
   );
 
   if (sections.length === 0) {
-    throw new Error("Nenhuma seção de conteúdo encontrada para exportação.");
+    document.body.removeChild(ghostContainer);
+    throw new Error("Nenhuma seção de conteúdo encontrada.");
   }
 
-  addLog(`Iniciando renderização de ${sections.length} seções...`, 'info');
+  addLog(`Iniciando Ghost Rendering para ${sections.length} seções...`, 'info');
   
   let currentYMm = marginMm;
-  let pageCount = 1;
-
-  // Load existing progress if resuming
   const existingChunks = options.resume ? await getPDFChunks(medicaoId) : [];
   
-  if (options.resume && existingChunks.length > 0) {
-    addLog(`Retomando exportação a partir da seção ${existingChunks.length + 1}...`, 'info');
-  } else if (!options.resume) {
+  if (!options.resume) {
     await clearPDFChunks(medicaoId);
     await clearExportState(medicaoId);
   }
@@ -386,142 +399,124 @@ export async function exportMedicaoToPdf(
     let sectionImgData: string | null = null;
     const chunkId = `${medicaoId}_${i}`;
     
-    // 1. Try to recover from IndexedDB
+    // 1. Recover or Ghost Render
     if (i < existingChunks.length) {
       const chunk = existingChunks[i];
       const blob = new Blob([chunk.data], { type: 'image/jpeg' });
-      sectionImgData = await new Promise<string>((resolve) => {
+      sectionImgData = await new Promise<string>(r => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => r(reader.result as string);
         reader.readAsDataURL(blob);
       });
-      addLog(`Seção ${i+1} carregada do cache.`, 'info');
     }
 
-    // 2. Render if not in cache
     if (!sectionImgData) {
-      unloadImagesOutsideSection(element, section, isMassive ? 1 : 2); // More aggressive unloading for massive
-      await ensureImagesLoaded(section, (msg) => {
-        if (i % 2 === 0) addLog(msg, 'info'); // Reduce log noise
-      }, { 
-        label: `Seção ${i+1}`,
-        concurrency: isMassive ? 4 : 6
-      });
+      // Memory: Keep only what we need in the real DOM
+      unloadImagesOutsideSection(element, section, 1);
       
-      const sectionHeightMm = measureHeightMm(section, contentWidthMm);
+      // Clone to Ghost Container
+      const ghostSection = section.cloneNode(true) as HTMLElement;
+      ghostContainer.innerHTML = '';
+      ghostContainer.appendChild(ghostSection);
       
-      // Isolate section for rendering
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-10000px';
-      container.style.top = '0';
-      container.style.width = '1200px';
-      container.style.backgroundColor = '#ffffff';
+      // Professional adjustments
+      autoFitText(ghostSection);
       
-      const clone = section.cloneNode(true) as HTMLElement;
-      container.appendChild(clone);
-      document.body.appendChild(container);
-
-      // Re-link images in clone
-      const clonedImages = Array.from(container.querySelectorAll('img'));
-      for (const img of clonedImages) {
-        if (img.dataset.src) img.src = img.dataset.src;
-      }
+      // Ensure specific elements like badges or tables are aligned
+      ghostSection.querySelectorAll('.badge').forEach(b => (b as HTMLElement).style.verticalAlign = 'middle');
+      
+      await ensureImagesLoaded(ghostSection, (msg) => {
+        if (i % 5 === 0) addLog(msg, 'info');
+      }, { concurrency: 4 });
 
       try {
-        const canvas = await html2canvas(container, {
+        const canvas = await html2canvas(ghostSection, {
           scale: scale,
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
-          windowWidth: 1200,
-          imageTimeout: 15000,
-          removeContainer: true
+          width: ghostSection.offsetWidth,
+          height: ghostSection.offsetHeight,
+          onclone: (doc) => {
+             const el = doc.getElementById('pdf-ghost-renderer');
+             if (el) el.style.left = '0';
+          }
         });
 
         sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
         
-        // Cleanup canvas & container immediately
-        canvas.width = 0;
-        canvas.height = 0;
-        document.body.removeChild(container);
-
-        // Save to DB
+        // Checkpoint
         const res = await fetch(sectionImgData);
         const b = await res.blob();
-        const ab = await b.arrayBuffer();
-        
         await savePDFChunk({
           id: chunkId,
           medicaoId,
           index: i,
-          data: ab,
+          data: await b.arrayBuffer(),
           timestamp: Date.now()
         });
         await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
-      } catch (renderErr) {
-        addLog(`Erro ao renderizar seção ${i+1}: ${renderErr instanceof Error ? renderErr.message : 'Erro desconhecido'}`, 'error');
-        if (container.parentNode) document.body.removeChild(container);
+        
+        canvas.width = 0;
+        canvas.height = 0;
+      } catch (err) {
+        addLog(`Falha na renderização Ghost da seção ${i+1}`, 'error');
       }
     }
 
-    // 3. Add to PDF
+    // 2. Intelligent Pagination (Fit-to-page logic)
     if (sectionImgData) {
       const sectionHeightMm = measureHeightMm(section, contentWidthMm);
       
-      if (currentYMm + sectionHeightMm > pdfHeightMm - marginMm && i > 0) {
+      // If a single section is larger than a page, we must scale it to fit or it will overflow
+      let drawHeight = sectionHeightMm;
+      let drawWidth = contentWidthMm;
+      
+      if (drawHeight > maxContentHeightMm) {
+        addLog(`Ajustando seção ${i+1} para caber na página...`, 'info');
+        const ratio = maxContentHeightMm / drawHeight;
+        drawHeight = maxContentHeightMm;
+        drawWidth = contentWidthMm * ratio;
+      }
+
+      // Break page if it doesn't fit the remaining space
+      if (currentYMm + drawHeight > pdfHeightMm - marginMm && i > 0) {
         pdf.addPage();
-        pageCount++;
         currentYMm = marginMm;
       }
 
-      pdf.addImage(sectionImgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
-      
-      currentYMm += sectionHeightMm + 2;
-      sectionImgData = null; // Important: Clear the large string
+      // Horizontal Centering if narrowed
+      const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
+
+      pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
+      currentYMm += drawHeight + 2;
+      sectionImgData = null;
     }
 
-    const progress = Math.round(((i + 1) / sections.length) * 95);
-    onProgress(progress);
-    
-    // Yield control
-    await new Promise(resolve => setTimeout(resolve, isMassive ? 150 : 50));
-    
-    // Periodic memory check/cleanup hint
-    if (i % 10 === 0 && (window.performance as any)?.memory) {
-      const mem = (window.performance as any).memory;
-      if (mem.usedJSHeapSize > mem.jsHeapSizeLimit * 0.8) {
-        addLog("Aviso: Memória do navegador baixa. Tentando estabilizar...", 'error');
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
+    onProgress(Math.round(((i + 1) / sections.length) * 95));
+    await new Promise(r => setTimeout(r, isMassive ? 100 : 30));
   }
 
-  addLog("Finalizando PDF (pode levar alguns segundos)...", 'info');
-  
-  // Unload all from UI
+  // Cleanup
+  document.body.removeChild(ghostContainer);
   unloadImagesOutsideSection(element, sections[0], sections.length + 1);
 
+  addLog("Finalizando PDF profissional...", 'info');
+  
   try {
-    // Generate the blob directly to avoid long string issues with .save()
     const pdfBlob = pdf.output('blob');
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = url;
     link.download = options.filename;
     link.click();
-    
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 100);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 
-    addLog("PDF exportado com sucesso!", "success");
+    addLog("Relatório exportado com sucesso!", "success");
     await clearPDFChunks(medicaoId);
     await clearExportState(medicaoId);
   } catch (saveErr) {
-    console.error("Error saving PDF:", saveErr);
-    addLog("Erro ao salvar o arquivo final. O PDF pode ser grande demais para o navegador.", 'error');
-    // Offer to download chunks as images? No, keep it simple.
+    addLog("Erro ao salvar arquivo final.", 'error');
   }
   
   onProgress(100);
