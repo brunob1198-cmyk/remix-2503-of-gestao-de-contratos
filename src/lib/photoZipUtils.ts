@@ -7,16 +7,24 @@ export interface PhotoToZip {
   folder?: string;
 }
 
+export interface ExtraFile {
+  filename: string;
+  content: string | Blob;
+}
+
 export interface ZipExportOptions {
   concurrency?: number;
   onProgress?: (processed: number, total: number) => void;
   onLog?: (message: string, type: 'info' | 'success' | 'error') => void;
+  extraFiles?: ExtraFile[];
+  mainFolderName?: string;
 }
 
 /**
- * Exports a list of photos to a ZIP file using streaming to minimize memory usage.
+ * Exports a measurement package to a ZIP file using streaming.
+ * Includes photos, JSON data, and HTML report.
  */
-export async function exportPhotosToZip(
+export async function exportMedicaoCompletePackage(
   photos: PhotoToZip[],
   zipFilename: string,
   options: ZipExportOptions = {}
@@ -24,13 +32,15 @@ export async function exportPhotosToZip(
   const {
     concurrency = 3,
     onProgress,
-    onLog
+    onLog,
+    extraFiles = [],
+    mainFolderName = ''
   } = options;
 
-  const total = photos.length;
+  const total = photos.length + extraFiles.length;
   let processed = 0;
   
-  onLog?.(`Iniciando exportação de ${total} fotos para ZIP...`, 'info');
+  onLog?.(`Iniciando exportação completa: ${photos.length} fotos e ${extraFiles.length} arquivos extras...`, 'info');
 
   // Create a writable stream for the ZIP file
   const fileStream = streamSaver.createWriteStream(zipFilename);
@@ -45,14 +55,39 @@ export async function exportPhotosToZip(
     writer.write(data);
     if (final) {
       writer.close();
-      onLog?.('Exportação concluída com sucesso!', 'success');
+      onLog?.('Pacote de medição concluído com sucesso!', 'success');
     }
   });
+
+  // Helper to add extra files first (small files, fast)
+  const addExtraFiles = async () => {
+    for (const file of extraFiles) {
+      try {
+        let uint8Array: Uint8Array;
+        if (typeof file.content === 'string') {
+          uint8Array = new TextEncoder().encode(file.content);
+        } else {
+          const arrayBuffer = await file.content.arrayBuffer();
+          uint8Array = new Uint8Array(arrayBuffer);
+        }
+
+        const path = mainFolderName ? `${mainFolderName}/${file.filename}` : file.filename;
+        const zipFile = new fflate.ZipPassThrough(path);
+        zipStream.add(zipFile);
+        zipFile.push(uint8Array, true);
+        
+        processed++;
+        onProgress?.(processed, total);
+        onLog?.(`Arquivo adicionado: ${file.filename}`, 'info');
+      } catch (error) {
+        onLog?.(`Erro ao adicionar arquivo extra ${file.filename}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      }
+    }
+  };
 
   // Helper to process one photo
   const processPhoto = async (photo: PhotoToZip) => {
     try {
-      // 1. Fetch the image as a blob (direct to blob, no base64)
       const response = await fetch(photo.url, { mode: 'cors', cache: 'force-cache' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
@@ -60,42 +95,42 @@ export async function exportPhotosToZip(
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
-      // 2. Add to ZIP
-      const path = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
+      // Add main folder and then subfolders
+      let fullPath = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
+      if (mainFolderName) {
+        fullPath = `${mainFolderName}/${fullPath}`;
+      }
       
-      // fflate.ZipFile for streaming
-      const zipFile = new fflate.ZipPassThrough(path);
+      const zipFile = new fflate.ZipPassThrough(fullPath);
       zipStream.add(zipFile);
       zipFile.push(uint8Array, true);
 
-      // 3. Memory Cleanup
-      // ArrayBuffer and Uint8Array will be GCed. 
-      // Blob is not an ObjectURL here, so no revoke needed unless we used one.
-      
       processed++;
       onProgress?.(processed, total);
       
       if (processed % 10 === 0 || processed === total) {
-        onLog?.(`Processadas ${processed}/${total} fotos...`, 'info');
+        onLog?.(`Processados ${processed}/${total} arquivos...`, 'info');
       }
     } catch (error) {
       onLog?.(`Erro ao processar foto ${photo.filename}: ${error instanceof Error ? error.message : String(error)}`, 'error');
-      // We continue with other photos even if one fails
     }
   };
 
-  // Queue implementation for concurrency control
-  const queue = [...photos];
-  const workers = Array.from({ length: Math.min(concurrency, total) }, async () => {
-    while (queue.length > 0) {
-      const photo = queue.shift();
-      if (photo) {
-        await processPhoto(photo);
-      }
-    }
-  });
-
   try {
+    // 1. Add small files first (JSON, HTML)
+    await addExtraFiles();
+
+    // 2. Process photos with concurrency control
+    const queue = [...photos];
+    const workers = Array.from({ length: Math.min(concurrency, photos.length || 1) }, async () => {
+      while (queue.length > 0) {
+        const photo = queue.shift();
+        if (photo) {
+          await processPhoto(photo);
+        }
+      }
+    });
+
     await Promise.all(workers);
     zipStream.end();
   } catch (error) {

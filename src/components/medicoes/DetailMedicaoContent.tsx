@@ -17,7 +17,7 @@ import {
   PDFQuality,
   exportMedicaoToPdf,
 } from "@/lib/pdfExportUtils";
-import { exportPhotosToZip, PhotoToZip } from "@/lib/photoZipUtils";
+import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
@@ -465,16 +465,17 @@ export function DetailMedicaoContent({
     setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
-    addLog("Iniciando exportação de fotos para ZIP (Frontend)...", "info");
-    addLog("Este processo é otimizado para grandes volumes de imagens.", "info");
+    addLog("Iniciando exportação completa da medição (ZIP)...", "info");
+    addLog("Preparando dados e relatório...", "info");
 
     try {
+      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
+      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}`;
+      
+      // 1. Prepare Photos
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-        
-        const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
-        
         const siteName = sanitize(foto.site_nome || "Geral");
         const classification = sanitize(foto.classificacao || "Outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
@@ -482,19 +483,153 @@ export function DetailMedicaoContent({
         return {
           url: foto.url,
           filename: `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`,
-          folder: `${siteName}/${classification}`
+          folder: `fotos/${siteName}/${classification}`
         };
       });
 
-      const zipFilename = `Fotos_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
+      // 2. Prepare JSON Data
+      const measurementData = {
+        id: detailMedicao.id,
+        numero: detailMedicao.numero_medicao,
+        projeto: {
+          codigo: detailMedicao.projeto_codigo,
+          nome: detailMedicao.projeto_nome,
+        },
+        site: {
+          codigo: detailMedicao.site_codigo,
+          nome: detailMedicao.site_nome,
+          uf: detailMedicao.uf,
+        },
+        data_medicao: detailMedicao.data_medicao,
+        periodo: {
+          inicio: detailMedicao.periodo_inicio,
+          fim: detailMedicao.periodo_fim,
+        },
+        responsavel: "Gerado pelo Sistema",
+        itens: detailLancamentos.map(l => ({
+          codigo: l.item_lpu?.codigo,
+          descricao: l.item_lpu?.descricao,
+          unidade: l.item_lpu?.unidade,
+          quantidade: l.quantidade,
+          preco_unitario: l.item_lpu?.preco_unitario,
+          total: Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0),
+          data: l.data
+        })),
+        valor_total: detailMedicao.total_valor,
+        fotos_count: diarioFotos.length
+      };
+
+      // 3. Prepare HTML Report
+      const htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; color: #333; line-height: 1.6; }
+        header { border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { color: #2563eb; margin: 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .info-item b { color: #666; font-size: 0.9em; text-transform: uppercase; display: block; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; }
+        .total-row { font-weight: bold; background-color: #f1f5f9; }
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .photo-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
+        .photo-card img { width: 100%; height: 200px; object-fit: cover; }
+        .photo-info { padding: 10px; font-size: 0.85em; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Medição #${detailMedicao.numero_medicao || detailMedicao.id}</h1>
+        <p>${detailMedicao.projeto_nome} - ${detailMedicao.site_nome}</p>
+    </header>
+
+    <div class="info-grid">
+        <div class="info-item"><b>Projeto</b> ${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</div>
+        <div class="info-item"><b>Site/Obra</b> ${detailMedicao.site_codigo} - ${detailMedicao.site_nome} (${detailMedicao.uf})</div>
+        <div class="info-item"><b>Data da Medição</b> ${formatDate(detailMedicao.data_medicao)}</div>
+        <div class="info-item"><b>Período</b> ${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : '-'} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : '-'}</div>
+    </div>
+
+    <h2>Itens Medidos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Unid.</th>
+                <th>Quant.</th>
+                <th>Unitário</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${measurementData.itens.map(item => `
+                <tr>
+                    <td>${item.codigo || '-'}</td>
+                    <td>${item.descricao || '-'}</td>
+                    <td>${item.unidade || '-'}</td>
+                    <td>${item.quantidade}</td>
+                    <td>${formatCurrency(Number(item.preco_unitario || 0))}</td>
+                    <td>${formatCurrency(item.total)}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="5" style="text-align: right">TOTAL</td>
+                <td>${formatCurrency(detailMedicao.total_valor)}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <h2>Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
+    <div class="photo-grid">
+        ${diarioFotos.map((foto, idx) => {
+          const siteName = sanitize(foto.site_nome || "Geral");
+          const classification = sanitize(foto.classificacao || "Outros");
+          const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+          const itemDesc = sanitize(foto.item_descricao || "foto");
+          const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+          const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+          
+          return `
+            <div class="photo-card">
+                <img src="${localPath}" alt="${foto.item_descricao}">
+                <div class="photo-info">
+                    <strong>${foto.item_codigo || ''} ${foto.item_descricao || ''}</strong><br>
+                    <span>${foto.diario_data ? formatDate(foto.diario_data) : ''}</span> | 
+                    <span>${foto.classificacao}</span>
+                    ${foto.legenda ? `<p><i>"${foto.legenda}"</i></p>` : ''}
+                </div>
+            </div>
+          `;
+        }).join('')}
+    </div>
+</body>
+</html>`;
+
+      const extraFiles: ExtraFile[] = [
+        { filename: 'dados.json', content: JSON.stringify(measurementData, null, 2) },
+        { filename: 'relatorio.html', content: htmlContent }
+      ];
+
+      const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
-      await exportPhotosToZip(photosToZip, zipFilename, {
-        concurrency: 3,
+      await exportMedicaoCompletePackage(photosToZip, zipFilename, {
+        concurrency: 5, // A bit higher for efficiency
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
-        onLog: (msg, type) => addLog(msg, type)
+        onLog: (msg, type) => addLog(msg, type),
+        extraFiles,
+        mainFolderName
       });
 
-      addLog("Exportação ZIP concluída!", "success");
+      addLog("Exportação completa concluída!", "success");
       setExportProgress(100);
       setIsExporting(false);
     } catch (e) {
@@ -661,7 +796,7 @@ export function DetailMedicaoContent({
           className="bg-green-600 text-white hover:bg-green-700 hover:text-white"
         >
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
-          {isExporting ? "Processando..." : "Exportar Fotos (ZIP)"}
+          {isExporting ? "Processando..." : "Exportar Medição (ZIP)"}
         </Button>
 
         <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
