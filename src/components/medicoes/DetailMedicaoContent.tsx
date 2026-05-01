@@ -10,9 +10,15 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { clearPDFChunks, clearExportState } from "@/lib/db";
 import { 
+  chunkArray,
   PDFExportLog,
+  PDFQuality,
 } from "@/lib/pdfExportUtils";
+
+const PDF_EXPORT_MIN_WIDTH = 1120;
+
 
 
 const createPdfExportContainerSkeleton = () => {
