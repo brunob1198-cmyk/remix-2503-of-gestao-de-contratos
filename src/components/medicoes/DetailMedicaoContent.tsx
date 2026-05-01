@@ -80,6 +80,8 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
   const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
 
 
