@@ -1,5 +1,6 @@
 import * as fflate from 'fflate';
 import streamSaver from 'streamsaver';
+import { savePhotoToCache, getPhotoFromCache, clearPhotoCache } from './db';
 
 export interface PhotoToZip {
   url: string;
@@ -18,6 +19,8 @@ export interface ZipExportOptions {
   onLog?: (message: string, type: 'info' | 'success' | 'error') => void;
   extraFiles?: ExtraFile[];
   mainFolderName?: string;
+  medicaoId?: string;
+  resume?: boolean;
 }
 
 /**
@@ -34,8 +37,14 @@ export async function exportMedicaoCompletePackage(
     onProgress,
     onLog,
     extraFiles = [],
-    mainFolderName = ''
+    mainFolderName = '',
+    medicaoId = '',
+    resume = false
   } = options;
+
+  if (!resume) {
+    await clearPhotoCache();
+  }
 
   const total = photos.length + extraFiles.length;
   let processed = 0;
@@ -88,10 +97,24 @@ export async function exportMedicaoCompletePackage(
   // Helper to process one photo
   const processPhoto = async (photo: PhotoToZip) => {
     try {
-      const response = await fetch(photo.url, { mode: 'cors', cache: 'force-cache' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      let blob: Blob | null = null;
+      const cacheId = medicaoId ? `${medicaoId}_${photo.filename}` : photo.url;
       
-      const blob = await response.blob();
+      if (resume) {
+        blob = await getPhotoFromCache(cacheId);
+      }
+
+      if (!blob) {
+        const response = await fetch(photo.url, { mode: 'cors', cache: 'force-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        blob = await response.blob();
+        
+        // Save to cache for checkpointing
+        await savePhotoToCache(cacheId, blob);
+      } else {
+        onLog?.(`Carregando ${photo.filename} do cache...`, 'info');
+      }
+      
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
@@ -133,6 +156,11 @@ export async function exportMedicaoCompletePackage(
 
     await Promise.all(workers);
     zipStream.end();
+    
+    // Cleanup cache on success
+    if (medicaoId) {
+      await clearPhotoCache();
+    }
   } catch (error) {
     onLog?.(`Erro fatal na exportação: ${error instanceof Error ? error.message : String(error)}`, 'error');
     writer.abort();
