@@ -859,9 +859,22 @@ export function DetailMedicaoContent({
               Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Configurações de Exportação</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <div className="p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Modo Depuração</span>
+                <input 
+                  type="checkbox" 
+                  checked={debugMode} 
+                  onChange={(e) => setDebugMode(e.target.checked)}
+                  className="h-3 w-3"
+                />
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={pdfQuality} onValueChange={(v) => setPdfQuality(v as PDFQuality)}>
               <DropdownMenuRadioItem value="high">Alta (Arquivos maiores)</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="medium">Média (Recomendado)</DropdownMenuRadioItem>
