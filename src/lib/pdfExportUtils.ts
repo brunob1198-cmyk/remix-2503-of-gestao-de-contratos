@@ -127,52 +127,52 @@ export async function processImagesInChunk(
   const total = images.length;
   let processed = 0;
   
-  // Internal queue to control execution within the chunk
-  const processNext = async (startIndex: number) => {
-    const results = [];
-    const activePromises: Promise<void>[] = [];
-    
-    for (let i = 0; i < total; i++) {
-      // Logic to limit concurrency to max 2
-      while (activePromises.length >= concurrency) {
-        await Promise.race(activePromises);
-      }
+  if (total === 0) return;
+
+  // Create a copy of the array to use as a queue
+  const queue = [...images];
+  
+  const worker = async () => {
+    while (queue.length > 0) {
+      const img = queue.shift();
+      if (!img) continue;
       
-      const img = images[i];
-      const promise = (async () => {
-        try {
-          if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
-            const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
-              maxWidth: options.maxWidth,
-              maxHeight: options.maxHeight,
-              quality: options.quality,
-              forceLowRes: options.forceLowRes
-            });
-            img.src = compressedUrl;
-            await img.decode().catch(() => {});
-          }
-        } catch (e) {
-          console.error("Failed to process image in chunk", e);
-        } finally {
-          processed++;
-          if (processed % 5 === 0 || processed === total) {
-            onProgress(`Otimizando imagens: ${processed}/${total}`);
+      try {
+        if (img.src && !img.src.startsWith('data:') && img.src !== 'about:blank') {
+          const compressedUrl = await getPdfSafeImageDataUrl(img.src, {
+            maxWidth: options.maxWidth,
+            maxHeight: options.maxHeight,
+            quality: options.quality,
+            forceLowRes: options.forceLowRes
+          });
+          img.src = compressedUrl;
+          
+          // Decode to ensure it's ready for rendering
+          try {
+            await img.decode();
+          } catch (decodeError) {
+            console.warn("Decode failed for image, continuing anyway", decodeError);
           }
         }
-      })();
-      
-      activePromises.push(promise);
-      // Clean up the promise from active list when done
-      promise.finally(() => {
-        const idx = activePromises.indexOf(promise);
-        if (idx > -1) activePromises.splice(idx, 1);
-      });
+      } catch (e) {
+        console.error("Failed to process image in chunk", e);
+      } finally {
+        processed++;
+        // Update progress in steps
+        if (processed % 5 === 0 || processed === total) {
+          onProgress(`Otimizando imagens: ${processed}/${total}`);
+        }
+      }
     }
-    
-    await Promise.all(activePromises);
   };
 
-  await processNext(0);
+  // Run workers in parallel up to the concurrency limit
+  const workers = Array.from(
+    { length: Math.min(concurrency, total) }, 
+    () => worker()
+  );
+  
+  await Promise.all(workers);
 }
 
 const FALLBACK_IMAGE_SRC =
@@ -424,29 +424,34 @@ export async function exportMedicaoToPdf(
     onPreviewGenerated?: (previewUrl: string) => void;
   }
 ) {
-  const quality = options.quality;
-  const config: PDFTemplateConfig = options.config || {
-    marginMm: 12,
-    baseFontSize: 12,
-    sectionSpacingMm: 2,
-    debugMode: false
-  };
-
-  const PHOTO_BATCH_SIZE = 50; // Granular chunking every 50 photos for stability
-
-  const heartbeat = setInterval(async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await supabase.auth.refreshSession();
-        addLog("Sessão mantida ativa (Heartbeat)", "debug");
-      }
-    } catch (e) {
-      console.warn("Heartbeat session refresh failed", e);
-    }
-  }, 1000 * 60 * 5);
+  // Declare variables at top to avoid TDZ (Temporal Dead Zone) issues in minified builds
+  let heartbeat: any = null;
+  let pdf: jsPDF | null = null;
+  let ghostContainer: HTMLDivElement | null = null;
 
   try {
+    const quality = options?.quality || 'medium';
+    const config: PDFTemplateConfig = options?.config || {
+      marginMm: 12,
+      baseFontSize: 12,
+      sectionSpacingMm: 2,
+      debugMode: false
+    };
+
+    const PHOTO_BATCH_SIZE = 50; 
+
+    heartbeat = setInterval(async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          await supabase.auth.refreshSession();
+          addLog("Sessão mantida ativa (Heartbeat)", "debug");
+        }
+      } catch (e) {
+        console.warn("Heartbeat session refresh failed", e);
+      }
+    }, 1000 * 60 * 5);
+
     const pdfWidthMm = 210;
     const pdfHeightMm = 297;
     const marginMm = config.marginMm;
@@ -470,14 +475,14 @@ export async function exportMedicaoToPdf(
       imageCompression = Math.min(imageCompression, 0.75);
     }
     
-    let pdf = new jsPDF({
+    pdf = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4",
       compress: true
     });
 
-    const ghostContainer = document.createElement('div');
+    ghostContainer = document.createElement('div');
     ghostContainer.id = 'pdf-ghost-renderer';
     Object.assign(ghostContainer.style, {
       position: 'absolute',
@@ -494,10 +499,10 @@ export async function exportMedicaoToPdf(
       const debugHeader = document.createElement('div');
       debugHeader.innerText = "PDF DEBUG MODE - GHOST RENDERER";
       debugHeader.style.cssText = "background:red;color:white;padding:5px;font-weight:bold;position:sticky;top:0;";
-      ghostContainer.appendChild(debugHeader);
+      ghostContainer?.appendChild(debugHeader);
     }
     
-    document.body.appendChild(ghostContainer);
+    if (ghostContainer) document.body.appendChild(ghostContainer);
 
     const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
       (el) => !el.parentElement?.closest("[data-pdf-section]")
@@ -530,7 +535,7 @@ export async function exportMedicaoToPdf(
       const photosInSection = section.querySelectorAll("[data-pdf-element='photo']").length;
 
       // Check if we need to start a new batch
-      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0) {
+      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0 && pdf) {
         addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Liberando memória...`, 'debug');
         const batchBlob = pdf.output('arraybuffer');
         await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, batchBlob);
@@ -571,9 +576,9 @@ export async function exportMedicaoToPdf(
         contentWrapper.id = `ghost-section-${i}`;
         contentWrapper.appendChild(ghostSection);
         
-        if (config.debugMode) {
+        if (config.debugMode && ghostContainer) {
           ghostContainer.appendChild(contentWrapper);
-        } else {
+        } else if (ghostContainer) {
           ghostContainer.innerHTML = '';
           ghostContainer.appendChild(contentWrapper);
         }
@@ -640,12 +645,12 @@ export async function exportMedicaoToPdf(
         }
 
         if (currentYMm + drawHeight > pdfHeightMm - marginMm && currentYMm > marginMm) {
-          pdf.addPage();
+          pdf?.addPage();
           currentYMm = marginMm;
         }
 
         const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
-        pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
+        pdf?.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
         currentYMm += drawHeight + config.sectionSpacingMm;
         
         photosInCurrentBatch += photosInSection;
@@ -665,11 +670,9 @@ export async function exportMedicaoToPdf(
     }
 
     // Save final batch
-    const lastBatchBlob = pdf.output('arraybuffer');
-    await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
-
-    if (!config.debugMode && ghostContainer.parentNode) {
-      document.body.removeChild(ghostContainer);
+    if (pdf) {
+      const lastBatchBlob = pdf.output('arraybuffer');
+      await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
     }
 
     addLog("Combinando partes do PDF (Recombinação Granular)...", 'info');
@@ -725,6 +728,9 @@ export async function exportMedicaoToPdf(
     
     onProgress(100);
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat) clearInterval(heartbeat);
+    if (ghostContainer && ghostContainer.parentNode) {
+      ghostContainer.parentNode.removeChild(ghostContainer);
+    }
   }
 }
