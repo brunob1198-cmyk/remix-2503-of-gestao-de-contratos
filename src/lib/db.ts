@@ -4,6 +4,7 @@ const DB_NAME = 'medicao_storage';
 const STORE_NAME = 'pdf_chunks';
 const UPLOAD_STORE = 'upload_queue';
 const EXPORT_STATE_STORE = 'export_state';
+const PHOTO_CACHE_STORE = 'photo_cache';
 
 export interface PDFChunk {
   id: string; // medicaoId_chunkIndex
@@ -24,7 +25,7 @@ export interface UploadItem {
 }
 
 export async function initDB() {
-  return openDB(DB_NAME, 3, {
+  return openDB(DB_NAME, 4, {
     upgrade(db, oldVersion, newVersion) {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -35,8 +36,27 @@ export async function initDB() {
       if (!db.objectStoreNames.contains(EXPORT_STATE_STORE)) {
         db.createObjectStore(EXPORT_STATE_STORE, { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains(PHOTO_CACHE_STORE)) {
+        db.createObjectStore(PHOTO_CACHE_STORE, { keyPath: 'id' });
+      }
     },
   });
+}
+
+export async function savePhotoToCache(id: string, data: Blob) {
+  const db = await initDB();
+  return db.put(PHOTO_CACHE_STORE, { id, data, timestamp: Date.now() });
+}
+
+export async function getPhotoFromCache(id: string): Promise<Blob | null> {
+  const db = await initDB();
+  const entry = await db.get(PHOTO_CACHE_STORE, id);
+  return entry ? entry.data : null;
+}
+
+export async function clearPhotoCache() {
+  const db = await initDB();
+  return db.clear(PHOTO_CACHE_STORE);
 }
 
 export async function saveExportState(medicaoId: string, state: any) {

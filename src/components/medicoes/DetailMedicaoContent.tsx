@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState } from "@/lib/db";
+import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache } from "@/lib/db";
 import { 
   chunkArray,
   PDFExportLog,
@@ -80,6 +80,7 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
 
 
 
@@ -132,9 +133,26 @@ export function DetailMedicaoContent({
 
 
   useEffect(() => {
-    void clearPDFChunks(detailMedicao.id);
-    void clearExportState(detailMedicao.id);
-  }, [detailMedicao.id]);
+    const checkCheckpoint = async () => {
+      // Check for PDF checkpoint
+      const pdfState = await getExportState(detailMedicao.id);
+      if (pdfState && pdfState.state) {
+        setHasCheckpoint({
+          type: 'pdf',
+          lastIndex: pdfState.state.lastIndex,
+          total: pdfState.state.total
+        });
+        setShowLogPanel(true);
+        addLog(`Checkpoint de PDF encontrado: parou na seção ${pdfState.state.lastIndex + 1} de ${pdfState.state.total}.`, 'info');
+        return;
+      }
+      
+      // Check for ZIP progress (indirectly by checking cache)
+      // This is simplified: if we have any photos cached for this medicao, offer to resume
+      // But actually, handleExportZip(true) will automatically use the cache.
+    };
+    void checkCheckpoint();
+  }, [detailMedicao.id, addLog]);
 
 
   // Update logs when exporting state changes
@@ -426,12 +444,12 @@ export function DetailMedicaoContent({
     [formatDate],
   );
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (resume = false) => {
     if (isExporting) return;
     if (!printRef.current) return;
     
     const photoCount = diarioFotos.length;
-    if (photoCount > 200) {
+    if (photoCount > 200 && !resume) {
       const confirmLarge = window.confirm(
         `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser muito lento e travar seu navegador. \n\nRecomendamos usar a opção "Exportar Medição (ZIP)" que é mais rápida e estável para grandes volumes. \n\nDeseja continuar com a geração do PDF mesmo assim?`
       );
@@ -439,10 +457,10 @@ export function DetailMedicaoContent({
     }
 
     setIsExporting(true);
-    setExportProgress(5);
-    setExportLogs([]);
+    setExportProgress(resume ? Math.round(((hasCheckpoint?.lastIndex || 0) / (hasCheckpoint?.total || 1)) * 90) : 5);
+    if (!resume) setExportLogs([]);
     setDownloadUrl(null);
-    addLog(`Iniciando geração de PDF (${photoCount} fotos)...`, "info");
+    addLog(resume ? "Retomando geração de PDF..." : `Iniciando geração de PDF (${photoCount} fotos)...`, "info");
 
     try {
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.pdf`;
@@ -452,12 +470,13 @@ export function DetailMedicaoContent({
         detailMedicao.id,
         (progress) => setExportProgress(progress),
         addLog,
-        { quality: pdfQuality, filename }
+        { quality: pdfQuality, filename, resume }
       );
 
       addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
       setIsExporting(false);
+      setHasCheckpoint(null);
     } catch (e) {
       console.error("Erro na exportação local:", e);
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
@@ -465,14 +484,14 @@ export function DetailMedicaoContent({
     }
   };
 
-  const handleExportZip = async () => {
+  const handleExportZip = async (resume = false) => {
     if (isExporting) return;
     setIsExporting(true);
     setExportProgress(0);
-    setExportLogs([]);
+    if (!resume) setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
-    addLog("Iniciando exportação completa da medição (ZIP)...", "info");
+    addLog(resume ? "Retomando exportação ZIP..." : "Iniciando exportação completa da medição (ZIP)...", "info");
     addLog("Preparando dados e relatório...", "info");
 
     try {
@@ -629,11 +648,13 @@ export function DetailMedicaoContent({
       const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
       await exportMedicaoCompletePackage(photosToZip, zipFilename, {
-        concurrency: 5, // A bit higher for efficiency
+        concurrency: 5,
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
-        mainFolderName
+        mainFolderName,
+        medicaoId: detailMedicao.id,
+        resume
       });
 
       addLog("Exportação completa concluída!", "success");
@@ -770,6 +791,39 @@ export function DetailMedicaoContent({
                 </p>
               </div>
             )}
+            
+            {hasCheckpoint && !isExporting && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <RotateCcw className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">Exportação interrompida</span>
+                </div>
+                <p className="text-xs text-yellow-700 mb-3">
+                  Deseja retomar a geração do PDF a partir da seção {hasCheckpoint.lastIndex + 1}?
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+                    onClick={() => handleExportPdf(true)}
+                  >
+                    Retomar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => {
+                      setHasCheckpoint(null);
+                      void clearPDFChunks(detailMedicao.id);
+                      void clearExportState(detailMedicao.id);
+                    }}
+                  >
+                    Recomeçar
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -806,7 +860,13 @@ export function DetailMedicaoContent({
           {isExporting ? "Processando..." : "Exportar Medição (ZIP)"}
         </Button>
 
-        <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button 
+          onClick={() => handleExportPdf(false)} 
+          variant="outline" 
+          size="sm" 
+          disabled={isExporting} 
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+        >
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando PDF..." : "Exportar PDF"}
         </Button>

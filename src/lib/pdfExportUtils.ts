@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { savePDFChunk, getPDFChunks, saveExportState, getExportState, clearPDFChunks, clearExportState } from "./db";
 
 export type PDFQuality = 'high' | 'medium' | 'eco';
 
@@ -329,7 +330,7 @@ export async function exportMedicaoToPdf(
   medicaoId: string,
   onProgress: (progress: number) => void,
   addLog: (msg: string, type?: 'info' | 'error' | 'success') => void,
-  options: { quality: PDFQuality; filename: string }
+  options: { quality: PDFQuality; filename: string; resume?: boolean }
 ) {
   const quality = options.quality;
   const pdfWidthMm = 210; // A4
@@ -361,14 +362,43 @@ export async function exportMedicaoToPdf(
   let currentYMm = marginMm;
   let pageCount = 1;
 
+  // Load existing progress if resuming
+  let startAt = 0;
+  const existingChunks = options.resume ? await getPDFChunks(medicaoId) : [];
+  
+  if (options.resume && existingChunks.length > 0) {
+    addLog(`Retomando exportação a partir da seção ${existingChunks.length + 1}...`, 'info');
+  } else if (!options.resume) {
+    // Clear any stale state if starting fresh
+    await clearPDFChunks(medicaoId);
+    await clearExportState(medicaoId);
+  }
+
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     
-    // Memory management: Unload images far from current section
-    unloadImagesOutsideSection(element, section, 3);
+    // Check if we already have this section's image in DB (from a previous interrupted run)
+    let sectionImgData: string | null = null;
+    const chunkId = `${medicaoId}_${i}`;
     
-    // Ensure images in this section are loaded
-    await ensureImagesLoaded(section, (msg) => addLog(msg, 'info'), { label: `Seção ${i+1}` });
+    if (i < existingChunks.length) {
+      const chunk = existingChunks[i];
+      // Convert ArrayBuffer back to dataURL
+      const blob = new Blob([chunk.data], { type: 'image/jpeg' });
+      sectionImgData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      addLog(`Seção ${i+1} carregada do cache.`, 'info');
+    }
+
+    // Memory management: Unload images far from current section
+    if (!sectionImgData) {
+      unloadImagesOutsideSection(element, section, 3);
+      // Ensure images in this section are loaded
+      await ensureImagesLoaded(section, (msg) => addLog(msg, 'info'), { label: `Seção ${i+1}` });
+    }
     
     // Measure height
     const sectionHeightMm = measureHeightMm(section, contentWidthMm);
@@ -381,38 +411,59 @@ export async function exportMedicaoToPdf(
     }
 
     try {
-      // Isolate the section in a temporary container to prevent O(N^2) DOM parsing performance issues
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '1200px'; // Matching windowWidth
-      container.style.backgroundColor = '#ffffff';
-      
-      // We need to clone to keep styles that might depend on parents
-      const clone = section.cloneNode(true) as HTMLElement;
-      container.appendChild(clone);
-      document.body.appendChild(container);
+      if (!sectionImgData) {
+        // Isolate the section in a temporary container to prevent O(N^2) DOM parsing performance issues
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = '1200px'; // Matching windowWidth
+        container.style.backgroundColor = '#ffffff';
+        
+        // We need to clone to keep styles that might depend on parents
+        const clone = section.cloneNode(true) as HTMLElement;
+        container.appendChild(clone);
+        document.body.appendChild(container);
 
-      // Ensure images in the clone are also "loaded" (they should be in cache)
-      const clonedImages = Array.from(container.querySelectorAll('img'));
-      for (const img of clonedImages) {
-        if (img.dataset.src) img.src = img.dataset.src;
+        // Ensure images in the clone are also "loaded" (they should be in cache)
+        const clonedImages = Array.from(container.querySelectorAll('img'));
+        for (const img of clonedImages) {
+          if (img.dataset.src) img.src = img.dataset.src;
+        }
+
+        const canvas = await html2canvas(container, {
+          scale: scale,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+          windowWidth: 1200
+        });
+
+        sectionImgData = canvas.toDataURL("image/jpeg", quality === 'high' ? 0.95 : 0.85);
+        
+        // Save to DB for checkpointing
+        const response = await fetch(sectionImgData);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        
+        await savePDFChunk({
+          id: chunkId,
+          medicaoId,
+          index: i,
+          data: arrayBuffer,
+          timestamp: Date.now()
+        });
+        
+        await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
+        
+        // Cleanup isolated container
+        document.body.removeChild(container);
+        // Cleanup canvas to free memory
+        canvas.width = 0;
+        canvas.height = 0;
       }
 
-      const canvas = await html2canvas(container, {
-        scale: scale,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: 1200
-      });
-
-      const imgData = canvas.toDataURL("image/jpeg", quality === 'high' ? 0.95 : 0.85);
-      pdf.addImage(imgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
-      
-      // Cleanup isolated container
-      document.body.removeChild(container);
+      pdf.addImage(sectionImgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
       
       currentYMm += sectionHeightMm + 2; // Small gap between sections
       
@@ -421,10 +472,6 @@ export async function exportMedicaoToPdf(
       
       // Crucial: Yield control back to the browser to prevent UI freeze and session timeout
       await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Cleanup to free memory
-      canvas.width = 0;
-      canvas.height = 0;
     } catch (err) {
       console.error(`Error rendering section ${i}:`, err);
       addLog(`Erro ao renderizar seção ${i+1}, pulando...`, 'error');
@@ -436,6 +483,11 @@ export async function exportMedicaoToPdf(
 
   addLog("Finalizando arquivo...", 'info');
   pdf.save(options.filename);
+  
+  // Cleanup DB on success
+  await clearPDFChunks(medicaoId);
+  await clearExportState(medicaoId);
+  
   onProgress(100);
 }
 
