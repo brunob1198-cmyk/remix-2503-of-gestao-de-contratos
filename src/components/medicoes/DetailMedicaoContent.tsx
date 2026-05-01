@@ -542,22 +542,11 @@ export function DetailMedicaoContent({
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">
-        <Button 
-          variant={debugMode ? "default" : "outline"} 
-          size="sm" 
-          onClick={() => setDebugMode(!debugMode)}
-          className={debugMode ? "bg-orange-500 hover:bg-orange-600" : ""}
-          disabled={isExporting}
-        >
-          <AlertCircle className="h-4 w-4 mr-2" />
-          Debug: {debugMode ? "ON" : "OFF"}
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" disabled={isExporting}>
               <Settings2 className="h-4 w-4 mr-2" />
               Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
-
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -571,24 +560,12 @@ export function DetailMedicaoContent({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {canResume && (
-          <Button 
-            onClick={() => handleExportPdf()} 
-            variant="outline" 
-            size="sm" 
-            disabled={isExporting}
-            className="text-orange-600 border-orange-200 hover:bg-orange-50"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Retomar Exportação
-          </Button>
-        )}
         <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-          {isExporting ? "Gerando PDF..." : (canResume ? "Reiniciar Exportação" : "Exportar PDF")}
+          {isExporting ? "Gerando PDF..." : "Exportar PDF"}
         </Button>
-
       </div>
+
 
       {/* Printable content */}
       <div ref={printRef}>
