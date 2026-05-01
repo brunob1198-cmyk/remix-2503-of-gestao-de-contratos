@@ -699,8 +699,9 @@ export async function exportMedicaoToPdf(
       }
     }
 
-    // Save final batch
+    // Save the very last batch
     if (pdf) {
+      addLog(`Salvando lote final ${batchIndex + 1}...`, 'debug');
       const lastBatchBlob = pdf.output('arraybuffer');
       await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
     }
@@ -709,13 +710,24 @@ export async function exportMedicaoToPdf(
     
     // Final recombination using pdf-lib
     const partials = await getPartialPDFs(medicaoId);
+    if (partials.length === 0) {
+      throw new Error("Nenhuma parte do PDF foi encontrada para combinar.");
+    }
+    
+    addLog(`Combinando ${partials.length} lotes de PDF...`, 'info');
     const finalPdf = await PDFDocument.create();
     
-    for (const partial of partials) {
-      const partialDoc = await PDFDocument.load(partial.data);
-      const copiedPages = await finalPdf.copyPages(partialDoc, partialDoc.getPageIndices());
-      copiedPages.forEach((page) => finalPdf.addPage(page));
-      addLog(`Parte ${partial.index + 1}/${partials.length} combinada.`, 'debug');
+    for (let pIdx = 0; pIdx < partials.length; pIdx++) {
+      const partial = partials[pIdx];
+      try {
+        const partialDoc = await PDFDocument.load(partial.data);
+        const copiedPages = await finalPdf.copyPages(partialDoc, partialDoc.getPageIndices());
+        copiedPages.forEach((page) => finalPdf.addPage(page));
+        addLog(`Lote ${pIdx + 1}/${partials.length} combinado com sucesso.`, 'debug');
+      } catch (mergeErr) {
+        addLog(`Erro ao combinar lote ${pIdx + 1}: ${mergeErr instanceof Error ? mergeErr.message : 'Erro desconhecido'}`, 'error');
+        // Continue with other batches if possible, but this is a serious error
+      }
     }
 
     const finalPdfBytes = await finalPdf.save();
