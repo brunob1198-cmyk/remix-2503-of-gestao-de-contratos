@@ -595,202 +595,311 @@ export function DetailMedicaoContent({
         fotos_count: diarioFotos.length
       };
 
-      // 3. Prepare HTML Report with Print Optimization
-      const htmlContent = `
-<!DOCTYPE html>
+      // 3. Build photo HTML helper (mirrors portal layout)
+      const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
+        const idx = diarioFotos.findIndex(df => df.id === foto.id);
+        const siteName = sanitize(foto.site_nome || "Geral");
+        const classification = sanitize(foto.classificacao || "Outros");
+        const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+        const itemDesc = sanitize(foto.item_descricao || "foto");
+        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+
+        const clsLower = foto.classificacao?.toLowerCase();
+        const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
+                      (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
+                      (clsLower === "problema") ? "#dc2626" : "#64748b";
+
+        const showItem = opts?.showItem !== false;
+        const showSiteName = !!opts?.showSiteName;
+
+        return `
+          <div class="photo-card">
+            <div class="photo-img-wrap">
+              <img src="${localPath}" alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" loading="lazy" onerror="this.style.opacity='0.3';this.alt='Imagem não encontrada';">
+            </div>
+            <div class="photo-info">
+              ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
+              <div class="photo-meta">
+                ${showSiteName && foto.site_nome ? `<span class="photo-site">${foto.site_nome}</span>` : ''}
+                ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
+                <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
+              </div>
+              ${foto.legenda ? `<p class="photo-legenda">"${foto.legenda}"</p>` : ''}
+            </div>
+          </div>
+        `;
+      };
+
+      // Build per-site production blocks for mista/agrupada
+      const buildSiteBlocksHtml = () => {
+        if (!isMultiSite) return '';
+        return fotosBySiteAndClass.map(({ siteName, siteId, classes }) => {
+          const siteItems = productionBySite.get(siteId) || [];
+          const siteTotal = getSiteItemsTotal(siteItems);
+          const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
+
+          const itemsTableHtml = siteItems.length > 0 ? `
+            <div class="site-production">
+              <p class="site-production-title">Produção do Site:</p>
+              <table class="site-table">
+                <thead>
+                  <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
+                </thead>
+                <tbody>
+                  ${siteItems.map(si => `
+                    <tr>
+                      <td>${si.item_codigo} — ${si.item_descricao}</td>
+                      <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
+                      <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+            </div>
+          ` : '';
+
+          const obsHtml = siteObs.length > 0 ? `
+            <div class="site-obs">
+              <p class="site-obs-title">📋 Observações</p>
+              ${siteObs.map(o => `<p class="site-obs-text">${o.replace(/\n/g, '<br>')}</p>`).join('')}
+            </div>
+          ` : '';
+
+          const photosHtml = classes.map(([className, photos]) => `
+            <div class="class-group">
+              <h3 class="class-header">${className} (${photos.length})</h3>
+              <div class="photo-grid">
+                ${photos.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
+              </div>
+            </div>
+          `).join('');
+
+          return `
+            <section class="site-block">
+              <div class="site-header">📍 ${siteName}</div>
+              ${itemsTableHtml}
+              ${obsHtml}
+              ${photosHtml}
+            </section>
+          `;
+        }).join('');
+      };
+
+      // Build photo section for separada (single site - grouped by item)
+      const buildPhotosByItemHtml = () => {
+        if (isMultiSite) return '';
+        const items = Array.from(fotosByItem.byItem.entries());
+        const blocks = items.map(([key, photos]) => `
+          <div class="item-group">
+            <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
+            <div class="photo-grid">
+              ${photos.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            </div>
+          </div>
+        `).join('');
+        const geraisBlock = fotosByItem.gerais.length > 0 ? `
+          <div class="item-group">
+            <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
+            <div class="photo-grid">
+              ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            </div>
+          </div>
+        ` : '';
+        return blocks + geraisBlock;
+      };
+
+      // Items table consolidated
+      const itemsTableRows = detailLancamentos.map(l => {
+        const preco = Number(l.item_lpu?.preco_unitario || 0);
+        const qtd = Number(l.quantidade);
+        return `
+          <tr>
+            <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
+            <td>${l.item_lpu?.unidade || '-'}</td>
+            <td class="num">${qtd.toLocaleString("pt-BR")}</td>
+            <td class="num">${formatCurrency(preco)}</td>
+            <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const includedSitesHtml = (isMultiSite && includedSites.length > 0) ? `
+        <div class="sites-included">
+          <p class="sites-included-title">Sites incluídos na medição:</p>
+          <p class="sites-included-list">${includedSites.join(" | ")}</p>
+        </div>
+      ` : '';
+
+      const htmlContent = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
-    <style>
-        :root { --primary: #2563eb; --secondary: #64748b; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; color: #1e293b; background: #f8fafc; }
-        .page { background: white; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; }
-        
-        @media print {
-            body { background: white; }
-            .page { margin: 0; box-shadow: none; width: 100%; padding: 10mm; }
-            .no-print { display: none !important; }
-            .page-break { page-break-before: always; break-before: always; }
-            @page { size: A4; margin: 0; }
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
+  <style>
+    :root { --primary: #1e3a5f; --accent: #10b981; --muted: #64748b; --border: #e2e8f0; --bg-soft: #f8fafc; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; background: #e5e7eb; font-size: 12px; line-height: 1.5; }
 
-        header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--primary); padding-bottom: 15px; margin-bottom: 30px; }
-        .logos { display: flex; gap: 20px; align-items: center; }
-        .logos img { max-height: 60px; max-width: 180px; object-fit: contain; }
-        
-        h1 { color: var(--primary); margin: 0; font-size: 24px; text-transform: uppercase; }
-        h2 { border-left: 5px solid var(--primary); padding-left: 10px; color: #334155; font-size: 18px; margin: 30px 0 15px 0; }
-        
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
-        .info-item { font-size: 13px; }
-        .info-item b { color: var(--secondary); display: block; font-size: 10px; text-transform: uppercase; }
-        
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
-        th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
-        th { background-color: #f8fafc; color: #475569; font-weight: bold; }
-        .total-row { font-weight: bold; background-color: #f1f5f9; font-size: 14px; }
-        
-        .photo-section { margin-top: 40px; }
-        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .photo-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; break-inside: avoid; display: flex; flex-direction: column; background: white; }
-        .photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #f1f5f9; }
-        .photo-info { padding: 10px; font-size: 11px; flex: 1; }
-        .photo-info strong { color: #0f172a; display: block; margin-bottom: 4px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: bold; color: white; margin-top: 5px; }
-        
-        .print-btn { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; border: none; padding: 15px 25px; border-radius: 50px; cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); display: flex; align-items: center; gap: 10px; transition: transform 0.2s; }
-        .print-btn:hover { transform: scale(1.05); }
-        
-        .footer-note { margin-top: 50px; font-size: 10px; color: var(--secondary); text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-    </style>
+    .page { background: white; width: 210mm; min-height: 297mm; padding: 18mm 16mm; margin: 16px auto; box-shadow: 0 0 12px rgba(0,0,0,0.12); }
+
+    /* Header */
+    .doc-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 18px; gap: 16px; }
+    .doc-header-left { display: flex; gap: 16px; align-items: center; }
+    .doc-header-right { text-align: right; display: flex; gap: 16px; align-items: flex-end; }
+    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; }
+    .doc-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
+    .doc-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
+    .doc-num { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
+    .doc-date { font-size: 11px; color: var(--muted); margin: 0; }
+
+    /* Info grid */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 16px; font-size: 12px; }
+    .info-item .label { color: var(--muted); margin-right: 4px; }
+    .info-item .value { font-weight: 600; }
+
+    .sites-included { background: var(--bg-soft); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; }
+    .sites-included-title { font-weight: 600; margin: 0 0 4px 0; font-size: 12px; }
+    .sites-included-list { margin: 0; color: var(--muted); font-size: 11px; }
+
+    /* Section headings */
+    h2.sec { font-size: 13px; margin: 22px 0 10px; padding: 8px 14px; background: #f1f5f9; border-left: 4px solid var(--primary); color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; break-after: avoid; }
+
+    /* Tables */
+    table.main { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+    table.main th { text-align: left; padding: 9px 10px; background: var(--primary); color: #fff; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--primary); }
+    table.main td { padding: 7px 10px; border: 1px solid var(--border); color: #334155; vertical-align: middle; }
+    table.main tbody tr:nth-child(even) { background: var(--bg-soft); }
+    table.main tfoot td { background: #f1f5f9; font-weight: 700; color: var(--primary); border-top: 2px solid var(--primary); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bold { font-weight: 700; }
+
+    /* Observations */
+    .obs-box { padding: 12px 16px; background: var(--bg-soft); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 4px; white-space: pre-wrap; margin-bottom: 16px; font-size: 12px; }
+
+    /* Site block (mista/agrupada) */
+    .site-block { margin-top: 24px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; page-break-inside: auto; }
+    .site-header { background: var(--primary); color: #fff; padding: 10px 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .site-production { padding: 12px 14px; border-bottom: 1px solid var(--border); background: #fafbfc; }
+    .site-production-title { font-size: 11px; font-weight: 700; margin: 0 0 6px 0; color: var(--primary); }
+    table.site-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    table.site-table th { text-align: left; padding: 6px 8px; background: #e2e8f0; color: #334155; font-weight: 600; border: 1px solid #cbd5e1; }
+    table.site-table td { padding: 5px 8px; border: 1px solid var(--border); }
+    .site-total-bar { margin-top: 8px; text-align: right; font-size: 11px; padding: 6px 10px; background: #fff; border: 1px solid var(--border); border-radius: 4px; display: inline-block; float: right; }
+    .site-obs { padding: 10px 14px; background: #fffbeb; border-bottom: 1px solid var(--border); }
+    .site-obs-title { font-size: 11px; font-weight: 700; margin: 0 0 4px 0; }
+    .site-obs-text { font-size: 11px; margin: 0 0 4px 0; color: #475569; }
+
+    /* Class groupings */
+    .class-group { padding: 10px 14px 14px; }
+    .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
+    .item-group { margin-top: 18px; }
+    .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
+
+    /* Photos */
+    .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
+    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-info { padding: 8px 10px; background: #fff; }
+    .photo-title { font-size: 10px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3; }
+    .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+    .photo-site { background: #f1f5f9; padding: 1px 6px; border-radius: 3px; }
+    .photo-date { }
+    .photo-legenda { font-size: 9.5px; font-style: italic; color: #64748b; margin: 4px 0 0; line-height: 1.3; }
+    .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 8.5px; font-weight: 700; color: #fff; }
+
+    /* Print button */
+    .print-btn { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; padding: 14px 22px; border-radius: 50px; cursor: pointer; font-size: 14px; font-weight: 700; box-shadow: 0 4px 18px rgba(30,58,95,0.4); display: flex; align-items: center; gap: 8px; z-index: 999; }
+    .print-btn:hover { transform: scale(1.04); }
+
+    .footer-note { margin-top: 30px; font-size: 9px; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 8px; }
+
+    /* Print rules */
+    @page { size: A4; margin: 12mm; }
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; width: 100%; min-height: auto; padding: 0; page-break-after: always; }
+      .page:last-child { page-break-after: auto; }
+      .no-print { display: none !important; }
+      .photo-card, table, tr, thead, tfoot { page-break-inside: avoid; break-inside: avoid; }
+      h2.sec, .site-header, .class-header, .item-group-header { page-break-after: avoid; break-after: avoid; }
+      .site-block { page-break-inside: auto; }
+    }
+  </style>
 </head>
 <body>
-    <button class="print-btn no-print" onclick="window.print()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-        GERAR PDF / IMPRIMIR
-    </button>
+  <button class="print-btn no-print" onclick="window.print()">
+    🖨️ GERAR PDF / IMPRIMIR
+  </button>
 
-    <div class="page">
-        <header>
-            <div>
-                <h1>Medição #${detailMedicao.numero_medicao || detailMedicao.id}</h1>
-                <p style="margin: 5px 0 0 0; color: var(--secondary); font-size: 14px;">Relatório de Medição de Serviços</p>
-            </div>
-            <div class="logos">
-                ${empresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa">` : ''}
-                ${clienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente">` : ''}
-            </div>
-        </header>
-
-        <div class="info-grid">
-            <div class="info-item"><b>Projeto / Contrato</b> ${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</div>
-            <div class="info-item"><b>Unidade / Site</b> ${detailMedicao.site_codigo} - ${detailMedicao.site_nome} (${detailMedicao.uf})</div>
-            <div class="info-item"><b>Data do Relatório</b> ${formatDate(new Date().toISOString())}</div>
-            <div class="info-item"><b>Período da Medição</b> ${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : '-'} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : '-'}</div>
-            <div class="info-item"><b>Número da PO</b> ${detailMedicao.numero_po || '-'}</div>
-            <div class="info-item"><b>Valor Total</b> ${formatCurrency(detailMedicao.total_valor)}</div>
+  <div class="page">
+    <div class="doc-header">
+      <div class="doc-header-left">
+        ${empresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
+        <div>
+          <h1 class="doc-title">Relatório de Medição</h1>
+          <p class="doc-subtitle">${detailMedicao.projeto_codigo} — ${detailMedicao.projeto_nome}</p>
         </div>
-
-        <h2>Itens de Produção</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Descrição dos Serviços</th>
-                    <th>Unid.</th>
-                    <th>Quant.</th>
-                    <th>Unitário</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${measurementData.itens.map(item => `
-                    <tr>
-                        <td>${item.codigo || '-'}</td>
-                        <td>${item.descricao || '-'}</td>
-                        <td>${item.unidade || '-'}</td>
-                        <td>${item.quantidade}</td>
-                        <td>${formatCurrency(Number(item.preco_unitario || 0))}</td>
-                        <td>${formatCurrency(item.total)}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-            <tfoot>
-                <tr class="total-row">
-                    <td colspan="5" style="text-align: right">TOTAL GERAL DA MEDIÇÃO</td>
-                    <td>${formatCurrency(detailMedicao.total_valor)}</td>
-                </tr>
-            </tfoot>
-        </table>
-
-        ${detailMedicao.observacao_acompanhamento ? `
-            <h2>Observações</h2>
-            <p style="font-size: 13px; background: #fffbeb; padding: 15px; border-radius: 8px; border: 1px solid #fef3c7;">${detailMedicao.observacao_acompanhamento}</p>
-        ` : ''}
-
-        <div class="footer-note">
-            Este documento foi gerado automaticamente pelo Sistema de Gestão de Medições.
+      </div>
+      <div class="doc-header-right">
+        <div>
+          ${detailMedicao.numero_medicao ? `<p class="doc-num">Medição Nº ${detailMedicao.numero_medicao}</p>` : ''}
+          <p class="doc-date">Emissão: ${formatDate(detailMedicao.data_medicao)}</p>
         </div>
+        ${clienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
+      </div>
     </div>
 
-    ${isMultiSite 
-        ? fotosBySiteAndClass.map(siteGroup => `
-            <div class="page-break"></div>
-            <div class="page">
-                <h2>Relatório Fotográfico: ${siteGroup.siteName}</h2>
-                ${siteGroup.classes.map(([className, photos]) => `
-                    <h3 style="color: var(--secondary); margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">${className}</h3>
-                    <div class="photo-grid">
-                        ${photos.map(foto => {
-                            const idx = diarioFotos.findIndex(df => df.id === foto.id);
-                            const siteName = sanitize(foto.site_nome || "Geral");
-                            const classification = sanitize(foto.classificacao || "Outros");
-                            const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-                            const itemDesc = sanitize(foto.item_descricao || "foto");
-                            const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
-                            const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
-                            
-                            const clsLower = foto.classificacao?.toLowerCase();
-                            const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
-                                          (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
-                                          (clsLower === "problema") ? "#dc2626" : "#64748b";
+    ${includedSitesHtml}
 
-                            return `
-                                <div class="photo-card">
-                                    <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
-                                    <div class="photo-info">
-                                        <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
-                                        <div style="margin-top: 5px; color: #64748b;">
-                                            <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span>
-                                        </div>
-                                        <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
-                                        ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `).join('')}
-            </div>
-        `).join('')
-        : `
-            <div class="page-break"></div>
-            <div class="page">
-                <h2>Relatório Fotográfico</h2>
-                <div class="photo-grid">
-                    ${diarioFotos.map((foto, idx) => {
-                        const siteName = sanitize(foto.site_nome || "Geral");
-                        const classification = sanitize(foto.classificacao || "Outros");
-                        const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-                        const itemDesc = sanitize(foto.item_descricao || "foto");
-                        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
-                        const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
-                        
-                        const clsLower = foto.classificacao?.toLowerCase();
-                        const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
-                                      (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
-                                      (clsLower === "problema") ? "#dc2626" : "#64748b";
+    <div class="info-grid">
+      ${!isMultiSite ? `
+        <div class="info-item">📍 <span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} — ${detailMedicao.site_nome}</span></div>
+        <div class="info-item">📍 <span class="label">Município/UF:</span> <span class="value">${site?.municipio || "—"}/${detailMedicao.uf || "—"}</span></div>
+      ` : ''}
+      <div class="info-item">📅 <span class="label">Período:</span> <span class="value">${detailMedicao.periodo_inicio && detailMedicao.periodo_fim ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}` : formatDate(detailMedicao.data_medicao)}</span></div>
+      <div class="info-item"><span class="label">Valor Total:</span> <span class="value">${formatCurrency(totalValor)}</span></div>
+      ${detailMedicao.numero_po ? `<div class="info-item"><span class="label">Nº PO:</span> <span class="value">${detailMedicao.numero_po}</span></div>` : ''}
+    </div>
 
-                        return `
-                            <div class="photo-card">
-                                <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
-                                <div class="photo-info">
-                                    <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
-                                    <div style="margin-top: 5px; color: #64748b;">
-                                        <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span>
-                                    </div>
-                                    <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
-                                    ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-        `}
+    ${detailMedicao.observacao_acompanhamento ? `
+      <h2 class="sec">Observações</h2>
+      <div class="obs-box">${detailMedicao.observacao_acompanhamento}</div>
+    ` : ''}
+
+    <h2 class="sec">Itens da Medição</h2>
+    <table class="main">
+      <thead>
+        <tr>
+          <th>Item LPU</th>
+          <th>Unidade</th>
+          <th class="num">Qtd Total</th>
+          <th class="num">Preço Unit.</th>
+          <th class="num">Valor Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemsTableRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num bold">Total:</td>
+          <td class="num bold">${formatCurrency(totalValor)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="footer-note">Documento gerado automaticamente pelo Sistema de Gestão de Medições.</div>
+  </div>
+
+  ${diarioFotos.length > 0 ? `
+    <div class="page">
+      <h2 class="sec">📷 Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
+      ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
+    </div>
+  ` : ''}
 </body>
 </html>`;
 
