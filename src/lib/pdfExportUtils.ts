@@ -670,11 +670,9 @@ export async function exportMedicaoToPdf(
     }
 
     // Save final batch
-    const lastBatchBlob = pdf.output('arraybuffer');
-    await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
-
-    if (!config.debugMode && ghostContainer.parentNode) {
-      document.body.removeChild(ghostContainer);
+    if (pdf) {
+      const lastBatchBlob = pdf.output('arraybuffer');
+      await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
     }
 
     addLog("Combinando partes do PDF (Recombinação Granular)...", 'info');
