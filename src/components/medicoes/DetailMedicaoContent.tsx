@@ -457,6 +457,53 @@ export function DetailMedicaoContent({
       setIsExporting(false);
     }
   };
+
+  const handleExportZip = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportProgress(0);
+    setExportLogs([]);
+    setShowLogPanel(true);
+    setDownloadUrl(null);
+    addLog("Iniciando exportação de fotos para ZIP (Frontend)...", "info");
+    addLog("Este processo é otimizado para grandes volumes de imagens.", "info");
+
+    try {
+      const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
+        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+        
+        const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
+        
+        const siteName = sanitize(foto.site_nome || "Geral");
+        const classification = sanitize(foto.classificacao || "Outros");
+        const itemDesc = sanitize(foto.item_descricao || "foto");
+        
+        return {
+          url: foto.url,
+          filename: `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`,
+          folder: `${siteName}/${classification}`
+        };
+      });
+
+      const zipFilename = `Fotos_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
+      
+      await exportPhotosToZip(photosToZip, zipFilename, {
+        concurrency: 3,
+        onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
+        onLog: (msg, type) => addLog(msg, type)
+      });
+
+      addLog("Exportação ZIP concluída!", "success");
+      setExportProgress(100);
+      setIsExporting(false);
+    } catch (e) {
+      console.error("Erro na exportação ZIP:", e);
+      addLog(`Erro no ZIP: ${e instanceof Error ? e.message : String(e)}`, "error");
+      setIsExporting(false);
+    }
+  };
+
   const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
 
   // Get included sites list for agrupada/mista header
