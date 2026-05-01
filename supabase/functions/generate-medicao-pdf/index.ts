@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
-import "https://esm.sh/jspdf-autotable@3.5.25";
+import autoTable from "https://esm.sh/jspdf-autotable@3.5.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -128,7 +128,6 @@ serve(async (req) => {
       currentY = 50;
     };
 
-    // Table Helper
     const addTable = (headers: string[][], body: any[][], title?: string) => {
       if (title) {
         doc.setTextColor(30, 58, 95);
@@ -137,19 +136,23 @@ serve(async (req) => {
         doc.text(title, margin, currentY);
         currentY += 8;
       }
-      (doc as any).autoTable({
-        head: headers,
+      
+      autoTable(doc, {
+        head: headers.length > 0 ? headers : undefined,
         body: body,
         startY: currentY,
         margin: { left: margin, right: margin },
         theme: "striped",
         headStyles: { fillColor: [30, 58, 95], textColor: 255 },
         styles: { fontSize: 9 },
-        didDrawPage: (data: any) => {
-          currentY = data.cursor.y + 10;
-        }
       });
-      currentY = (doc as any).lastAutoTable.cursor.y + 10;
+      
+      const lastTable = (doc as any).lastAutoTable;
+      if (lastTable && lastTable.cursor) {
+        currentY = lastTable.cursor.y + 10;
+      } else {
+        currentY += (body.length * 7) + 10; // Fallback estimate
+      }
     };
 
     // 4. Content - Summary
