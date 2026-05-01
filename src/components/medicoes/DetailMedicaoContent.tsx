@@ -15,6 +15,7 @@ import {
   chunkArray,
   PDFExportLog,
   PDFQuality,
+  exportMedicaoToPdf,
 } from "@/lib/pdfExportUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
@@ -426,60 +427,34 @@ export function DetailMedicaoContent({
 
   const handleExportPdf = async () => {
     if (isExporting) return;
+    if (!printRef.current) return;
 
     setIsExporting(true);
-    setExportProgress(10);
+    setExportProgress(5);
     setExportLogs([]);
     setDownloadUrl(null);
-    addLog("Iniciando geração de PDF no servidor (Backend)...", "info");
-    addLog("Isso permite processar grandes volumes de fotos com segurança.", "info");
+    addLog("Iniciando geração de PDF no navegador (Frontend)...", "info");
+    addLog("O processamento local evita custos de armazenamento em nuvem.", "info");
 
     try {
-      addLog("Solicitando geração do documento... O processo pode levar alguns minutos devido ao volume de fotos.", "info");
+      const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.pdf`;
       
-      const { data, error } = await supabase.functions.invoke("generate-medicao-pdf", {
-        body: {
-          medicaoId: detailMedicao.id,
-          lancamentoIds: detailMedicao.lancamentoIds,
-          tipoMedicao: tipoMedicao,
-          quality: pdfQuality
-        },
-        headers: {
-          "x-client-timeout": "600000" // 10 minutes hint for the client
-        }
-      });
+      await exportMedicaoToPdf(
+        printRef.current,
+        detailMedicao.id,
+        (progress) => setExportProgress(progress),
+        addLog,
+        { quality: pdfQuality, filename }
+      );
 
-      if (error) {
-        console.error("Erro na Edge Function:", error);
-        throw error;
-      }
-      
-      if (data?.error) {
-        console.error("Erro retornado pela função:", data.error);
-        throw new Error(data.error);
-      }
-
-      setExportProgress(90);
-      addLog("PDF gerado com sucesso! Link de download disponível.", "success");
-
-      if (data.url) {
-        setDownloadUrl(data.url);
-        // Tentar abrir automaticamente, mas o botão garantirá o acesso se o pop-up for bloqueado
-        window.open(data.url, "_blank");
-      } else {
-        throw new Error("URL de download não recebida.");
-      }
-
+      addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
       setIsExporting(false);
-      // Atualizar dados de exportação no cache
-      refetchExport();
     } catch (e) {
-
+      console.error("Erro na exportação local:", e);
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
       setIsExporting(false);
     }
-
   };
   const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
 
