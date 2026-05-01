@@ -219,13 +219,25 @@ const processPhoto = async (
 
     // 2. Process photos with concurrency control
     const queue = [...photos];
+    const processedRef = { val: processed };
+    
     const workers = Array.from({ length: Math.min(concurrency, photos.length || 1) }, async () => {
       let localIndex = 0;
       while (queue.length > 0) {
         const photo = queue.shift();
         if (photo) {
-          await processPhoto(photo, localIndex++);
-          // Every 20 photos per worker, take a longer breath
+          await processPhoto(
+            photo, 
+            localIndex++, 
+            medicaoId, 
+            resume, 
+            zipStream, 
+            mainFolderName,
+            onLog, 
+            onProgress, 
+            total, 
+            processedRef
+          );
           if (localIndex % 20 === 0) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
@@ -235,7 +247,6 @@ const processPhoto = async (
 
     await Promise.all(workers);
     
-    // Final yield before ending
     await new Promise(resolve => setTimeout(resolve, 200));
     zipStream.end();
     
