@@ -577,9 +577,23 @@ export async function exportMedicaoToPdf(
         
         autoFitText(ghostSection);
         
-        await ensureImagesLoaded(ghostSection, (msg) => {
-          if (i % 5 === 0) addLog(msg, 'info');
-        }, { concurrency: isMassive ? 3 : 6 });
+        // Split section images into smaller chunks for granular processing
+        const sectionImages = Array.from(ghostSection.querySelectorAll("img"));
+        const imgChunks = chunkArray(sectionImages, 50);
+        
+        for (let j = 0; j < imgChunks.length; j++) {
+          await processImagesInChunk(imgChunks[j], (msg) => {
+            if (i % 5 === 0) addLog(`[Seção ${i+1}] ${msg}`, 'info');
+          }, { 
+            concurrency: 2, // Maximum 2 concurrent downloads
+            maxWidth: isUltraMassive ? 800 : 1200,
+            quality: isUltraMassive ? 0.6 : 0.8,
+            forceLowRes: isUltraMassive 
+          });
+        }
+
+        // Final safety check to ensure all are complete
+        await ensureImagesLoaded(ghostSection, undefined, { concurrency: 2 });
 
         try {
           const canvas = await html2canvas(ghostSection, {
