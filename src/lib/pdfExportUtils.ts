@@ -367,7 +367,8 @@ export async function exportMedicaoToPdf(
     debugMode: false
   };
 
-  // Heartbeat to keep session alive during long exports
+  const PHOTO_BATCH_SIZE = 200; // Chunking every 200 photos
+
   const heartbeat = setInterval(async () => {
     try {
       const { data } = await supabase.auth.getSession();
@@ -378,10 +379,10 @@ export async function exportMedicaoToPdf(
     } catch (e) {
       console.warn("Heartbeat session refresh failed", e);
     }
-  }, 1000 * 60 * 5); // Every 5 minutes
+  }, 1000 * 60 * 5);
 
   try {
-    const pdfWidthMm = 210; // A4
+    const pdfWidthMm = 210;
     const pdfHeightMm = 297;
     const marginMm = config.marginMm;
     const contentWidthMm = pdfWidthMm - (marginMm * 2);
@@ -394,18 +395,17 @@ export async function exportMedicaoToPdf(
     let scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
     let imageCompression = quality === 'high' ? 0.95 : 0.85;
     
-    // Aggressive optimization for massive reports
     if (isUltraMassive) {
       addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Aplicando economia extrema de recursos.`, 'info');
-      scale = 1.2;
-      imageCompression = 0.6;
+      scale = 1.1; // Reduced from 1.2
+      imageCompression = 0.55; // Reduced from 0.6
     } else if (isMassive) {
       addLog(`Relatório Massivo (${photoElements.length} fotos). Otimizando renderização.`, 'info');
       scale = Math.min(scale, 1.8);
       imageCompression = Math.min(imageCompression, 0.75);
     }
     
-    const pdf = new jsPDF({
+    let pdf = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4",
@@ -450,14 +450,41 @@ export async function exportMedicaoToPdf(
     
     if (!options.resume) {
       await clearPDFChunks(medicaoId);
+      await clearPartialPDFs(medicaoId);
       await clearExportState(medicaoId);
     }
+
+    let photosInCurrentBatch = 0;
+    let batchIndex = 0;
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
       let sectionImgData: string | null = null;
       const chunkId = `${medicaoId}_${i}`;
       
+      const photosInSection = section.querySelectorAll("[data-pdf-element='photo']").length;
+
+      // Check if we need to start a new batch
+      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0) {
+        addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Liberando memória...`, 'debug');
+        const batchBlob = pdf.output('arraybuffer');
+        await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, batchBlob);
+        
+        // Start fresh PDF for next batch
+        pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+          compress: true
+        });
+        currentYMm = marginMm;
+        photosInCurrentBatch = 0;
+        batchIndex++;
+        
+        // Brief pause for GC
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       // Try to recover from local DB if resuming
       if (i < existingChunks.length) {
         const chunk = existingChunks[i];
@@ -470,7 +497,6 @@ export async function exportMedicaoToPdf(
       }
 
       if (!sectionImgData) {
-        // Performance optimization: only load images for the current section and neighbors
         unloadImagesOutsideSection(element, section, 1);
         
         const ghostSection = section.cloneNode(true) as HTMLElement;
@@ -505,11 +531,6 @@ export async function exportMedicaoToPdf(
 
           sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
           
-          if (config.debugMode) {
-            addLog(`[DEBUG] Seção ${i}: ${ghostSection.offsetWidth}x${ghostSection.offsetHeight}px`, 'debug');
-          }
-
-          // Persistence for recovery
           const res = await fetch(sectionImgData);
           const b = await res.blob();
           await savePDFChunk({
@@ -533,62 +554,73 @@ export async function exportMedicaoToPdf(
         let drawHeight = sectionHeightMm;
         let drawWidth = contentWidthMm;
         
-        // Intelligent pagination (Fit-to-page)
         if (drawHeight > maxContentHeightMm) {
           const ratio = maxContentHeightMm / drawHeight;
           drawHeight = maxContentHeightMm;
           drawWidth = contentWidthMm * ratio;
-          if (config.debugMode) addLog(`[DEBUG] Seção ${i} redimensionada (Fit-to-page)`, 'debug');
         }
 
-        if (currentYMm + drawHeight > pdfHeightMm - marginMm && i > 0) {
+        if (currentYMm + drawHeight > pdfHeightMm - marginMm && currentYMm > marginMm) {
           pdf.addPage();
           currentYMm = marginMm;
-          if (config.debugMode) addLog(`[DEBUG] Quebra de página antes da seção ${i}`, 'debug');
         }
 
         const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
         pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
         currentYMm += drawHeight + config.sectionSpacingMm;
         
-        // Clear reference to free memory
+        photosInCurrentBatch += photosInSection;
         sectionImgData = null;
       }
 
-      onProgress(Math.round(((i + 1) / sections.length) * 95));
+      onProgress(Math.round(((i + 1) / sections.length) * 85));
       
-      // Breathe for GC and UI responsiveness
       if (i % (isMassive ? 2 : 5) === 0) {
-        await new Promise(r => setTimeout(r, isMassive ? 100 : 20));
-        
-        // Optional memory-based pause
+        await new Promise(r => setTimeout(r, isMassive ? 50 : 10));
         const mem = getMemoryUsage();
-        if (mem && mem.used > mem.limit * 0.8) {
+        if (mem && mem.used > mem.limit * 0.75) {
           addLog(`RAM atingindo limite (${mem.used}MB). Pausando para limpeza...`, 'debug');
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, 1500));
         }
       }
     }
 
-    if (options.onPreviewGenerated) {
-      const previewUrl = pdf.output('bloburl').toString();
-      options.onPreviewGenerated(previewUrl);
-    }
+    // Save final batch
+    const lastBatchBlob = pdf.output('arraybuffer');
+    await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, lastBatchBlob);
 
     if (!config.debugMode && ghostContainer.parentNode) {
       document.body.removeChild(ghostContainer);
     }
 
-    addLog("Finalizando PDF e salvando cópia de segurança...", 'info');
+    addLog("Combinando partes do PDF (Recombinação Granular)...", 'info');
+    
+    // Final recombination using pdf-lib
+    const partials = await getPartialPDFs(medicaoId);
+    const finalPdf = await PDFDocument.create();
+    
+    for (const partial of partials) {
+      const partialDoc = await PDFDocument.load(partial.data);
+      const copiedPages = await finalPdf.copyPages(partialDoc, partialDoc.getPageIndices());
+      copiedPages.forEach((page) => finalPdf.addPage(page));
+      addLog(`Parte ${partial.index + 1}/${partials.length} combinada.`, 'debug');
+    }
+
+    const finalPdfBytes = await finalPdf.save();
+    const finalBlob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+
+    if (options.onPreviewGenerated) {
+      const previewUrl = URL.createObjectURL(finalBlob);
+      options.onPreviewGenerated(previewUrl);
+    }
+
+    addLog("Finalizando e enviando cópia para o servidor...", 'info');
     
     try {
-      const pdfBlob = pdf.output('blob');
-      
-      // Store in Supabase as well
       const storagePath = `${medicaoId}/${options.filename}`;
       await supabase.storage
         .from("medicoes-pdf")
-        .upload(storagePath, pdfBlob, { upsert: true });
+        .upload(storagePath, finalBlob, { upsert: true });
 
       await supabase.from("medicao_exports").insert({
         medicao_id: medicaoId,
@@ -597,7 +629,7 @@ export async function exportMedicaoToPdf(
         quality: options.quality
       });
 
-      const url = URL.createObjectURL(pdfBlob);
+      const url = URL.createObjectURL(finalBlob);
       const link = document.createElement('a');
       link.href = url;
       link.download = options.filename;
@@ -606,6 +638,7 @@ export async function exportMedicaoToPdf(
 
       addLog("Exportação concluída com sucesso!", "success");
       await clearPDFChunks(medicaoId);
+      await clearPartialPDFs(medicaoId);
       await clearExportState(medicaoId);
     } catch (saveErr) {
       addLog("Erro na etapa final de salvamento.", 'error');
