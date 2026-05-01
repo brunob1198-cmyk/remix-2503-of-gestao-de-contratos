@@ -202,9 +202,9 @@ serve(async (req) => {
         // Apply transformations if it's a Supabase storage URL
         if (photoUrl.includes("/storage/v1/object/public/") || photoUrl.includes("/storage/v1/object/sign/")) {
           // FORCE lower quality for massive reports to ensure it completes within memory/time limits
-          const isLargeReport = photos.length > 300;
+          const isLargeReport = photos.length > 200;
           const w = isLargeReport ? 300 : (quality === 'high' ? 800 : (quality === 'medium' ? 600 : 400));
-          const q = isLargeReport ? 50 : (quality === 'high' ? 80 : (quality === 'medium' ? 70 : 60));
+          const q = isLargeReport ? 40 : (quality === 'high' ? 80 : (quality === 'medium' ? 70 : 60));
           const transform = `width=${w}&quality=${q}&resize=contain`;
           photoUrl += (photoUrl.includes("?") ? "&" : "?") + transform;
         }
