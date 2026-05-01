@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState } from "@/lib/db";
+import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache } from "@/lib/db";
 import { 
   chunkArray,
   PDFExportLog,
@@ -80,6 +80,7 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
 
 
 
@@ -132,9 +133,20 @@ export function DetailMedicaoContent({
 
 
   useEffect(() => {
-    void clearPDFChunks(detailMedicao.id);
-    void clearExportState(detailMedicao.id);
-  }, [detailMedicao.id]);
+    const checkCheckpoint = async () => {
+      const state = await getExportState(detailMedicao.id);
+      if (state && state.state) {
+        setHasCheckpoint({
+          type: 'pdf', // We mainly checkpoint PDF for now as it's the heaviest
+          lastIndex: state.state.lastIndex,
+          total: state.state.total
+        });
+        setShowLogPanel(true);
+        addLog(`Checkpoint encontrado: a exportação anterior parou na seção ${state.state.lastIndex + 1} de ${state.state.total}.`, 'info');
+      }
+    };
+    void checkCheckpoint();
+  }, [detailMedicao.id, addLog]);
 
 
   // Update logs when exporting state changes
