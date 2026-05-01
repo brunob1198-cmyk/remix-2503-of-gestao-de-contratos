@@ -888,42 +888,64 @@ export function DetailMedicaoContent({
                 const hasValidEmpresaLogo = empresaLogoSrc && empresaLogoSrc !== "/logo.png";
                 return hasValidEmpresaLogo ? (
                 <img 
-                  src={empresaLogoSrc} 
+                  src={empresaLogoSrc.startsWith('http') ? `${empresaLogoSrc}${empresaLogoSrc.includes('?') ? '&' : '?'}pdf_export=1` : empresaLogoSrc} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
                   data-retry-count="0"
+                  onLoad={(e) => {
+                    const target = e.currentTarget;
+                    if (target.dataset.errorHandled) return;
+                    // Reset opacity if it was hidden or marked as failed before
+                    target.style.display = 'block';
+                  }}
                   onError={(e) => { 
                     const target = e.currentTarget;
-                    const maxRetries = 3;
+                    const maxRetries = 5;
                     const currentRetry = parseInt(target.dataset.retryCount || "0");
                     
                     if (currentRetry < maxRetries) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
-                      const sep = empresaLogoSrc.includes('?') ? '&' : '?';
                       
                       addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo da empresa...`, "info");
                       
-                      // On second retry, drop crossOrigin to bypass CORS preflight failures
-                      if (nextRetry >= 2) {
+                      // Strategy variation: Try without CORS if first attempt fails
+                      if (nextRetry === 1) {
                         target.removeAttribute('crossorigin');
                       }
                       
+                      // Strategy variation: Try with a fresh cache-busting timestamp
+                      const baseSrc = empresaLogoSrc.split('?')[0];
+                      const sep = baseSrc.includes('?') ? '&' : '?';
+                      
                       setTimeout(() => {
-                        target.src = `${empresaLogoSrc}${sep}retry=${nextRetry}`;
-                      }, 800);
+                        target.src = `${baseSrc}${sep}t=${Date.now()}&retry=${nextRetry}`;
+                      }, 1000 * nextRetry); // Increasing backoff
                       return;
                     }
 
                     if (target.dataset.errorHandled) return;
                     target.dataset.errorHandled = "true";
-                    target.style.display = 'none';
-                    const fallback = document.createElement('div');
-                    fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
-                    fallback.innerText = 'LOGO INDISPONÍVEL';
-                    target.parentNode?.insertBefore(fallback, target);
-                    addLog(`Falha definitiva ao carregar logo da empresa após ${maxRetries} tentativas.`, "error");
+                    
+                    // Final attempt: Try a simplified proxy-like approach by fetching as blob if CORS is the issue
+                    addLog(`Logo não carregou via tag IMG, tentando recuperação via Fetch...`, "info");
+                    
+                    fetch(empresaLogoSrc, { mode: 'no-cors' })
+                      .then(() => {
+                        // If we can at least fetch it, we might be able to show it without CORS
+                        // But since we need CORS for PDF, this is mostly for visual fallback
+                        target.removeAttribute('crossorigin');
+                        target.src = empresaLogoSrc;
+                      })
+                      .catch(() => {
+                        target.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
+                        fallback.innerText = 'LOGO INDISPONÍVEL';
+                        target.parentNode?.insertBefore(fallback, target);
+                        addLog(`Falha definitiva ao carregar logo da empresa.`, "error");
+                      });
                   }} 
                 />
               ) : (
