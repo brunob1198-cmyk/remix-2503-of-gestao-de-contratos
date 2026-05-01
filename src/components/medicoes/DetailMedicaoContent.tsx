@@ -435,7 +435,7 @@ export function DetailMedicaoContent({
     addLog("Isso permite processar grandes volumes de fotos com segurança.", "info");
 
     try {
-      addLog("Solicitando geração do documento...", "info");
+      addLog("Solicitando geração do documento... O processo pode levar alguns minutos devido ao volume de fotos.", "info");
       
       const { data, error } = await supabase.functions.invoke("generate-medicao-pdf", {
         body: {
@@ -443,6 +443,9 @@ export function DetailMedicaoContent({
           lancamentoIds: detailMedicao.lancamentoIds,
           tipoMedicao: tipoMedicao,
           quality: pdfQuality
+        },
+        headers: {
+          "x-client-timeout": "600000" // 10 minutes hint for the client
         }
       });
 
