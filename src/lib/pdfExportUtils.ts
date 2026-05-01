@@ -338,14 +338,23 @@ export async function exportMedicaoToPdf(
   const marginMm = 10;
   const contentWidthMm = pdfWidthMm - (marginMm * 2);
   
-  // High quality settings
-  const scale = quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1;
+  // High quality settings - reduced for massive volumes
+  const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
+  const isMassive = photoElements.length > 400;
+  const isGiant = photoElements.length > 800;
+  
+  if (isMassive) {
+    addLog(`Relatório grande detectado (${photoElements.length} fotos). Otimizando para memória...`, 'info');
+  }
+
+  const scale = isGiant ? 1 : (isMassive ? 1.2 : (quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1));
+  const imageCompression = isMassive ? 0.75 : (quality === 'high' ? 0.92 : 0.82);
   
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",
-    compress: true
+    compress: true // Enable jsPDF's internal compression
   });
 
   // Find all major sections
@@ -363,27 +372,23 @@ export async function exportMedicaoToPdf(
   let pageCount = 1;
 
   // Load existing progress if resuming
-  let startAt = 0;
   const existingChunks = options.resume ? await getPDFChunks(medicaoId) : [];
   
   if (options.resume && existingChunks.length > 0) {
     addLog(`Retomando exportação a partir da seção ${existingChunks.length + 1}...`, 'info');
   } else if (!options.resume) {
-    // Clear any stale state if starting fresh
     await clearPDFChunks(medicaoId);
     await clearExportState(medicaoId);
   }
 
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
-    
-    // Check if we already have this section's image in DB (from a previous interrupted run)
     let sectionImgData: string | null = null;
     const chunkId = `${medicaoId}_${i}`;
     
+    // 1. Try to recover from IndexedDB
     if (i < existingChunks.length) {
       const chunk = existingChunks[i];
-      // Convert ArrayBuffer back to dataURL
       const blob = new Blob([chunk.data], { type: 'image/jpeg' });
       sectionImgData = await new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -393,100 +398,131 @@ export async function exportMedicaoToPdf(
       addLog(`Seção ${i+1} carregada do cache.`, 'info');
     }
 
-    // Memory management: Unload images far from current section
+    // 2. Render if not in cache
     if (!sectionImgData) {
-      unloadImagesOutsideSection(element, section, 3);
-      // Ensure images in this section are loaded
-      await ensureImagesLoaded(section, (msg) => addLog(msg, 'info'), { label: `Seção ${i+1}` });
-    }
-    
-    // Measure height
-    const sectionHeightMm = measureHeightMm(section, contentWidthMm);
-    
-    // Check for page break
-    if (currentYMm + sectionHeightMm > pdfHeightMm - marginMm && i > 0) {
-      pdf.addPage();
-      pageCount++;
-      currentYMm = marginMm;
-    }
+      unloadImagesOutsideSection(element, section, isMassive ? 1 : 2); // More aggressive unloading for massive
+      await ensureImagesLoaded(section, (msg) => {
+        if (i % 2 === 0) addLog(msg, 'info'); // Reduce log noise
+      }, { 
+        label: `Seção ${i+1}`,
+        concurrency: isMassive ? 4 : 6
+      });
+      
+      const sectionHeightMm = measureHeightMm(section, contentWidthMm);
+      
+      // Isolate section for rendering
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-10000px';
+      container.style.top = '0';
+      container.style.width = '1200px';
+      container.style.backgroundColor = '#ffffff';
+      
+      const clone = section.cloneNode(true) as HTMLElement;
+      container.appendChild(clone);
+      document.body.appendChild(container);
 
-    try {
-      if (!sectionImgData) {
-        // Isolate the section in a temporary container to prevent O(N^2) DOM parsing performance issues
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.left = '-9999px';
-        container.style.top = '0';
-        container.style.width = '1200px'; // Matching windowWidth
-        container.style.backgroundColor = '#ffffff';
-        
-        // We need to clone to keep styles that might depend on parents
-        const clone = section.cloneNode(true) as HTMLElement;
-        container.appendChild(clone);
-        document.body.appendChild(container);
+      // Re-link images in clone
+      const clonedImages = Array.from(container.querySelectorAll('img'));
+      for (const img of clonedImages) {
+        if (img.dataset.src) img.src = img.dataset.src;
+      }
 
-        // Ensure images in the clone are also "loaded" (they should be in cache)
-        const clonedImages = Array.from(container.querySelectorAll('img'));
-        for (const img of clonedImages) {
-          if (img.dataset.src) img.src = img.dataset.src;
-        }
-
+      try {
         const canvas = await html2canvas(container, {
           scale: scale,
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
-          windowWidth: 1200
+          windowWidth: 1200,
+          imageTimeout: 15000,
+          removeContainer: true
         });
 
-        sectionImgData = canvas.toDataURL("image/jpeg", quality === 'high' ? 0.95 : 0.85);
+        sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
         
-        // Save to DB for checkpointing
-        const response = await fetch(sectionImgData);
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
+        // Cleanup canvas & container immediately
+        canvas.width = 0;
+        canvas.height = 0;
+        document.body.removeChild(container);
+
+        // Save to DB
+        const res = await fetch(sectionImgData);
+        const b = await res.blob();
+        const ab = await b.arrayBuffer();
         
         await savePDFChunk({
           id: chunkId,
           medicaoId,
           index: i,
-          data: arrayBuffer,
+          data: ab,
           timestamp: Date.now()
         });
-        
         await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
-        
-        // Cleanup isolated container
-        document.body.removeChild(container);
-        // Cleanup canvas to free memory
-        canvas.width = 0;
-        canvas.height = 0;
+      } catch (renderErr) {
+        addLog(`Erro ao renderizar seção ${i+1}: ${renderErr instanceof Error ? renderErr.message : 'Erro desconhecido'}`, 'error');
+        if (container.parentNode) document.body.removeChild(container);
+      }
+    }
+
+    // 3. Add to PDF
+    if (sectionImgData) {
+      const sectionHeightMm = measureHeightMm(section, contentWidthMm);
+      
+      if (currentYMm + sectionHeightMm > pdfHeightMm - marginMm && i > 0) {
+        pdf.addPage();
+        pageCount++;
+        currentYMm = marginMm;
       }
 
       pdf.addImage(sectionImgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
       
-      currentYMm += sectionHeightMm + 2; // Small gap between sections
-      
-      const progress = Math.round(((i + 1) / sections.length) * 90);
-      onProgress(progress);
-      
-      // Crucial: Yield control back to the browser to prevent UI freeze and session timeout
-      await new Promise(resolve => setTimeout(resolve, 50));
-    } catch (err) {
-      console.error(`Error rendering section ${i}:`, err);
-      addLog(`Erro ao renderizar seção ${i+1}, pulando...`, 'error');
+      currentYMm += sectionHeightMm + 2;
+      sectionImgData = null; // Important: Clear the large string
+    }
+
+    const progress = Math.round(((i + 1) / sections.length) * 95);
+    onProgress(progress);
+    
+    // Yield control
+    await new Promise(resolve => setTimeout(resolve, isMassive ? 150 : 50));
+    
+    // Periodic memory check/cleanup hint
+    if (i % 10 === 0 && (window.performance as any)?.memory) {
+      const mem = (window.performance as any).memory;
+      if (mem.usedJSHeapSize > mem.jsHeapSizeLimit * 0.8) {
+        addLog("Aviso: Memória do navegador baixa. Tentando estabilizar...", 'error');
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
   }
 
-  // Restore all images after export to leave UI in original state
+  addLog("Finalizando PDF (pode levar alguns segundos)...", 'info');
+  
+  // Unload all from UI
   unloadImagesOutsideSection(element, sections[0], sections.length + 1);
 
-  addLog("Finalizando arquivo...", 'info');
-  pdf.save(options.filename);
-  
-  // Cleanup DB on success
-  await clearPDFChunks(medicaoId);
-  await clearExportState(medicaoId);
+  try {
+    // Generate the blob directly to avoid long string issues with .save()
+    const pdfBlob = pdf.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = options.filename;
+    link.click();
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+
+    addLog("PDF exportado com sucesso!", "success");
+    await clearPDFChunks(medicaoId);
+    await clearExportState(medicaoId);
+  } catch (saveErr) {
+    console.error("Error saving PDF:", saveErr);
+    addLog("Erro ao salvar o arquivo final. O PDF pode ser grande demais para o navegador.", 'error');
+    // Offer to download chunks as images? No, keep it simple.
+  }
   
   onProgress(100);
 }
