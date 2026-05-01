@@ -77,6 +77,8 @@ export function DetailMedicaoContent({
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
 
 
 
@@ -391,6 +393,7 @@ export function DetailMedicaoContent({
     setIsExporting(true);
     setExportProgress(10);
     setExportLogs([]);
+    setDownloadUrl(null);
     addLog("Iniciando geração de PDF no servidor (Backend)...", "info");
     addLog("Isso permite processar grandes volumes de fotos com segurança.", "info");
 
@@ -417,25 +420,24 @@ export function DetailMedicaoContent({
       }
 
       setExportProgress(90);
-      addLog("PDF gerado com sucesso! Iniciando download...", "success");
+      addLog("PDF gerado com sucesso! Link de download disponível.", "success");
 
-      // Abrir a URL assinada para download
       if (data.url) {
+        setDownloadUrl(data.url);
+        // Tentar abrir automaticamente, mas o botão garantirá o acesso se o pop-up for bloqueado
         window.open(data.url, "_blank");
       } else {
         throw new Error("URL de download não recebida.");
       }
 
       setExportProgress(100);
-      setTimeout(() => {
-        setIsExporting(false);
-        setShowLogPanel(false);
-      }, 3000);
-
+      setIsExporting(false);
+      // Não fechamos mais o painel automaticamente para que o usuário veja o botão de download
     } catch (e) {
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
       setIsExporting(false);
     }
+
   };
   const totalValor = detailLancamentos.reduce((s, l) => s + Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0), 0);
 
@@ -544,8 +546,26 @@ export function DetailMedicaoContent({
                 ))}
               </div>
             </ScrollArea>
+            
+            {downloadUrl && (
+              <div className="pt-2 border-t border-primary/20 animate-in fade-in zoom-in duration-300">
+                <Button 
+                  asChild 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 h-11"
+                >
+                  <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                    <FileText className="h-5 w-5" />
+                    BAIXAR PDF DA MEDIÇÃO
+                  </a>
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground mt-2">
+                  Se o download não iniciou automaticamente, clique no botão acima.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
       )}
 
       {/* Action buttons */}
