@@ -431,6 +431,9 @@ export async function exportMedicaoToPdf(
     }
   }
 
+  // Restore all images after export to leave UI in original state
+  unloadImagesOutsideSection(element, sections[0], sections.length + 1);
+
   addLog("Finalizando arquivo...", 'info');
   pdf.save(options.filename);
   onProgress(100);
