@@ -624,6 +624,7 @@ export async function exportMedicaoToPdf(
         }
     
         await ensureImagesLoaded(ghostSection, undefined, { concurrency: 2 });
+        await new Promise(r => setTimeout(r, 400));
     
         // Retry mechanism for html2canvas
         let attempts = 0;
