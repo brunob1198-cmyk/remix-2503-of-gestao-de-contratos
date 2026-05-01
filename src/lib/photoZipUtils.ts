@@ -33,7 +33,7 @@ export async function exportMedicaoCompletePackage(
   options: ZipExportOptions = {}
 ) {
   const {
-    concurrency = 3,
+    concurrency = photos.length > 500 ? 2 : 3, // Lower concurrency for large sets
     onProgress,
     onLog,
     extraFiles = [],
@@ -55,12 +55,13 @@ export async function exportMedicaoCompletePackage(
   const fileStream = streamSaver.createWriteStream(zipFilename);
   const writer = fileStream.getWriter();
 
-  // Create fflate ZIP stream
+  // Create fflate ZIP stream with optimal compression for photos (none/low as they are already compressed)
   const zipStream = new fflate.Zip((err, data, final) => {
     if (err) {
       onLog?.(`Erro no stream do ZIP: ${err.message}`, 'error');
       return;
     }
+    // Writing chunks to disk via StreamSaver
     writer.write(data);
     if (final) {
       writer.close();
@@ -94,8 +95,9 @@ export async function exportMedicaoCompletePackage(
     }
   };
 
-  // Helper to process one photo
-  const processPhoto = async (photo: PhotoToZip) => {
+  // Helper to process one photo with memory safety
+  const processPhoto = async (photo: PhotoToZip, index: number) => {
+    let uint8Array: Uint8Array | null = null;
     try {
       let blob: Blob | null = null;
       const cacheId = medicaoId ? `${medicaoId}_${photo.filename}` : photo.url;
@@ -112,11 +114,12 @@ export async function exportMedicaoCompletePackage(
         // Save to cache for checkpointing
         await savePhotoToCache(cacheId, blob);
       } else {
-        onLog?.(`Carregando ${photo.filename} do cache...`, 'info');
+        if (index % 50 === 0) onLog?.(`Lendo ${photo.filename} do cache...`, 'info');
       }
       
       const arrayBuffer = await blob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      uint8Array = new Uint8Array(arrayBuffer);
+      blob = null; // Release blob reference early
 
       // Add main folder and then subfolders
       let fullPath = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
@@ -131,11 +134,18 @@ export async function exportMedicaoCompletePackage(
       processed++;
       onProgress?.(processed, total);
       
+      // Explicitly nullify large objects
+      uint8Array = null;
+      
       if (processed % 10 === 0 || processed === total) {
         onLog?.(`Processados ${processed}/${total} arquivos...`, 'info');
+        // Aggressive yield to allow GC
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     } catch (error) {
       onLog?.(`Erro ao processar foto ${photo.filename}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    } finally {
+      uint8Array = null;
     }
   };
 
@@ -146,20 +156,35 @@ export async function exportMedicaoCompletePackage(
     // 2. Process photos with concurrency control
     const queue = [...photos];
     const workers = Array.from({ length: Math.min(concurrency, photos.length || 1) }, async () => {
+      let localIndex = 0;
       while (queue.length > 0) {
         const photo = queue.shift();
         if (photo) {
-          await processPhoto(photo);
+          await processPhoto(photo, localIndex++);
+          // Every 20 photos per worker, take a longer breath
+          if (localIndex % 20 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
       }
     });
 
     await Promise.all(workers);
+    
+    // Final yield before ending
+    await new Promise(resolve => setTimeout(resolve, 200));
     zipStream.end();
     
     // Cleanup cache on success
     if (medicaoId) {
-      await clearPhotoCache();
+      // Small delay to ensure disk write is fully flushed
+      setTimeout(async () => {
+        try {
+          await clearPhotoCache();
+        } catch (e) {
+          console.warn("Could not clear photo cache:", e);
+        }
+      }, 5000);
     }
   } catch (error) {
     onLog?.(`Erro fatal na exportação: ${error instanceof Error ? error.message : String(error)}`, 'error');

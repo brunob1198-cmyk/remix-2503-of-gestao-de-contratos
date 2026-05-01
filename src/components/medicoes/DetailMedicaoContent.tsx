@@ -86,13 +86,21 @@ export function DetailMedicaoContent({
 
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    // Append memory info if available for technical debugging
+    let enrichedMessage = message;
+    if (typeof window !== "undefined" && (window.performance as any)?.memory) {
+      const mem = (window.performance as any).memory;
+      const used = Math.round(mem.usedJSHeapSize / 1048576);
+      enrichedMessage = `${message} (RAM: ${used}MB)`;
+    }
+
     const newLog: PDFExportLog = {
       timestamp: new Date().toLocaleTimeString(),
-      message,
+      message: enrichedMessage,
       type
     };
-    setExportLogs(prev => [newLog, ...prev].slice(0, 50));
-    console.log(`[PDF Export] ${message}`);
+    setExportLogs(prev => [newLog, ...prev].slice(0, 100)); // Keep more logs for large exports
+    console.log(`[Export] ${enrichedMessage}`);
   }, []);
 
   // Fetch existing export on mount or ID change
@@ -449,18 +457,18 @@ export function DetailMedicaoContent({
     if (!printRef.current) return;
     
     const photoCount = diarioFotos.length;
-    if (photoCount > 200 && !resume) {
+    if (photoCount > 150 && !resume) {
       const confirmLarge = window.confirm(
-        `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser muito lento e travar seu navegador. \n\nRecomendamos usar a opção "Exportar Medição (ZIP)" que é mais rápida e estável para grandes volumes. \n\nDeseja continuar com a geração do PDF mesmo assim?`
+        `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser instável e consumir muita memória. \n\nPara grandes volumes, recomendamos a opção "Exportar Medição (ZIP)" que é muito mais rápida e segura. \n\nDeseja prosseguir com o PDF mesmo assim?`
       );
       if (!confirmLarge) return;
     }
 
     setIsExporting(true);
-    setExportProgress(resume ? Math.round(((hasCheckpoint?.lastIndex || 0) / (hasCheckpoint?.total || 1)) * 90) : 5);
+    setExportProgress(resume ? Math.round(((hasCheckpoint?.lastIndex || 0) / (hasCheckpoint?.total || 1)) * 95) : 5);
     if (!resume) setExportLogs([]);
     setDownloadUrl(null);
-    addLog(resume ? "Retomando geração de PDF..." : `Iniciando geração de PDF (${photoCount} fotos)...`, "info");
+    addLog(resume ? "Retomando geração de PDF (modo chunking agressivo)..." : `Iniciando geração de PDF (${photoCount} fotos, modo seguro)...`, "info");
 
     try {
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.pdf`;
@@ -473,7 +481,7 @@ export function DetailMedicaoContent({
         { quality: pdfQuality, filename, resume }
       );
 
-      addLog("PDF gerado e baixado com sucesso!", "success");
+      addLog("Exportação PDF concluída com sucesso!", "success");
       setExportProgress(100);
       setIsExporting(false);
       setHasCheckpoint(null);
@@ -491,8 +499,8 @@ export function DetailMedicaoContent({
     if (!resume) setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
-    addLog(resume ? "Retomando exportação ZIP..." : "Iniciando exportação completa da medição (ZIP)...", "info");
-    addLog("Preparando dados e relatório...", "info");
+    addLog(resume ? "Retomando exportação ZIP via stream..." : "Iniciando exportação completa via StreamSaver...", "info");
+    addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
 
     try {
       const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
@@ -648,7 +656,7 @@ export function DetailMedicaoContent({
       const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
       await exportMedicaoCompletePackage(photosToZip, zipFilename, {
-        concurrency: 5,
+        concurrency: diarioFotos.length > 800 ? 1 : (diarioFotos.length > 300 ? 2 : 3),
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
