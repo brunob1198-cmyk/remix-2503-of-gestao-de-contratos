@@ -15,6 +15,7 @@ import {
   chunkArray,
   PDFExportLog,
   PDFQuality,
+  exportMedicaoToPdf,
 } from "@/lib/pdfExportUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
