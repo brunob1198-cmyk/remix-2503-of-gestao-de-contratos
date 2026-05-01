@@ -583,69 +583,83 @@ export async function exportMedicaoToPdf(
       }
 
       if (!sectionImgData) {
-        unloadImagesOutsideSection(element, section, 1);
+        // Unload images in other sections to free up memory
+        unloadImagesOutsideSection(element, section, 2);
         
         const ghostSection = section.cloneNode(true) as HTMLElement;
-        ghostSection.style.fontSize = `${config.baseFontSize}px`;
+        ghostSection.style.cssText = `
+          width: 1120px; 
+          background-color: white; 
+          font-size: ${config.baseFontSize}px; 
+          padding: 0; 
+          margin: 0;
+          overflow: hidden;
+        `;
         
         const contentWrapper = document.createElement('div');
         contentWrapper.id = `ghost-section-${i}`;
+        contentWrapper.style.backgroundColor = 'white';
         contentWrapper.appendChild(ghostSection);
         
-        if (config.debugMode && ghostContainer) {
-          ghostContainer.appendChild(contentWrapper);
-        } else if (ghostContainer) {
+        if (ghostContainer) {
           ghostContainer.innerHTML = '';
           ghostContainer.appendChild(contentWrapper);
         }
         
         autoFitText(ghostSection);
         
-        // Split section images into smaller chunks for granular processing
         const sectionImages = Array.from(ghostSection.querySelectorAll("img"));
+        // Process images in small chunks to avoid memory spikes
         const imgChunks = chunkArray(sectionImages, 50);
         
         for (let j = 0; j < imgChunks.length; j++) {
           await processImagesInChunk(imgChunks[j], (msg) => {
             if (i % 5 === 0) addLog(`[Seção ${i+1}] ${msg}`, 'info');
           }, { 
-            concurrency: 2, // Maximum 2 concurrent downloads
-            maxWidth: isUltraMassive ? 800 : 1200,
-            quality: isUltraMassive ? 0.6 : 0.8,
+            concurrency: 2,
+            maxWidth: isUltraMassive ? 900 : 1200,
+            quality: isUltraMassive ? 0.75 : 0.85,
             forceLowRes: isUltraMassive 
           });
         }
-
-        // Final safety check to ensure all are complete
+    
         await ensureImagesLoaded(ghostSection, undefined, { concurrency: 2 });
-
-        try {
-          const canvas = await html2canvas(ghostSection, {
-            scale: scale,
-            useCORS: true,
-            logging: false,
-            backgroundColor: "#ffffff",
-            width: ghostSection.offsetWidth,
-            height: ghostSection.offsetHeight
-          });
-
-          sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
-          
-          const res = await fetch(sectionImgData);
-          const b = await res.blob();
-          await savePDFChunk({
-            id: chunkId,
-            medicaoId,
-            index: i,
-            data: await b.arrayBuffer(),
-            timestamp: Date.now()
-          });
-          await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
-          
-          canvas.width = 0;
-          canvas.height = 0;
-        } catch (err) {
-          addLog(`Falha na renderização Ghost da seção ${i+1}`, 'error');
+    
+        // Retry mechanism for html2canvas
+        let attempts = 0;
+        while (attempts < 2) {
+          try {
+            const canvas = await html2canvas(ghostSection, {
+              scale: scale,
+              useCORS: true,
+              logging: false,
+              backgroundColor: "#ffffff",
+              width: 1120, // Explicit width
+              removeContainer: true,
+              imageTimeout: 15000
+            });
+    
+            sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
+            
+            const b = await (await fetch(sectionImgData)).blob();
+            await savePDFChunk({
+              id: chunkId,
+              medicaoId,
+              index: i,
+              data: await b.arrayBuffer(),
+              timestamp: Date.now()
+            });
+            await saveExportState(medicaoId, { lastIndex: i, total: sections.length });
+            
+            canvas.width = 0;
+            canvas.height = 0;
+            break; // Success
+          } catch (err) {
+            attempts++;
+            addLog(`Tentativa ${attempts} de renderização falhou para seção ${i+1}`, 'debug');
+            if (attempts >= 2) addLog(`Falha definitiva na renderização da seção ${i+1}`, 'error');
+            await new Promise(r => setTimeout(r, 500));
+          }
         }
       }
 
