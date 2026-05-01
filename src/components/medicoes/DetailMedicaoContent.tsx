@@ -849,6 +849,7 @@ export function DetailMedicaoContent({
                     onClick={() => {
                       setHasCheckpoint(null);
                       void clearPDFChunks(detailMedicao.id);
+                      void clearPartialPDFs(detailMedicao.id);
                       void clearExportState(detailMedicao.id);
                     }}
                   >
