@@ -128,7 +128,6 @@ serve(async (req) => {
       currentY = 50;
     };
 
-    // Table Helper
     const addTable = (headers: string[][], body: any[][], title?: string) => {
       if (title) {
         doc.setTextColor(30, 58, 95);
@@ -137,7 +136,7 @@ serve(async (req) => {
         doc.text(title, margin, currentY);
         currentY += 8;
       }
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: headers,
         body: body,
         startY: currentY,
