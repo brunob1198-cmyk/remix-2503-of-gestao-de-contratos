@@ -374,21 +374,35 @@ export function autoFitText(element: HTMLElement, maxShrink = 0.6) {
 /**
  * Measures an element's height in mm given a target width in mm
  */
+/**
+ * Measures an element's height in mm given a target width in mm
+ * This version is more accurate by using the same styles as the renderer
+ */
 export function measureHeightMm(element: HTMLElement, targetWidthMm: number): number {
   const clone = element.cloneNode(true) as HTMLElement;
+  
+  // Apply essential styles to the clone to match rendering environment
   Object.assign(clone.style, {
     position: "absolute",
     left: "-9999px",
     width: `${targetWidthMm}mm`,
     visibility: "hidden",
-    height: "auto"
+    height: "auto",
+    fontSize: window.getComputedStyle(element).fontSize,
+    fontFamily: window.getComputedStyle(element).fontFamily,
+    lineHeight: window.getComputedStyle(element).lineHeight
   });
+  
   document.body.appendChild(clone);
-  const heightPx = clone.offsetHeight;
+  
+  // Force a layout reflow
+  const heightPx = clone.getBoundingClientRect().height || clone.offsetHeight;
+  
   document.body.removeChild(clone);
   
-  // 1mm is approx 3.7795275591 px (standard 96dpi)
-  return (heightPx * 25.4) / 96;
+  // Standard A4 is 210mm x 297mm. At 96dpi, 210mm is 793.7px.
+  // So 1mm = 793.7 / 210 = 3.7795 px.
+  return (heightPx * 210) / 793.7;
 }
 
 /**
