@@ -716,43 +716,81 @@ export function DetailMedicaoContent({
         </div>
     </div>
 
-    <div class="page-break"></div>
-    
-    <div class="page">
-        <h2>Relatório Fotográfico</h2>
-        <p style="color: var(--secondary); font-size: 13px; margin-bottom: 25px;">Total de registros: ${diarioFotos.length} fotos organizadas por local e classificação.</p>
+    ${isMultiSite 
+        ? fotosBySiteAndClass.map(siteGroup => `
+            <div class="page-break"></div>
+            <div class="page">
+                <h2>Relatório Fotográfico: ${siteGroup.siteName}</h2>
+                ${siteGroup.classes.map(([className, photos]) => `
+                    <h3 style="color: var(--secondary); margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">${className}</h3>
+                    <div class="photo-grid">
+                        ${photos.map(foto => {
+                            const idx = diarioFotos.findIndex(df => df.id === foto.id);
+                            const siteName = sanitize(foto.site_nome || "Geral");
+                            const classification = sanitize(foto.classificacao || "Outros");
+                            const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+                            const itemDesc = sanitize(foto.item_descricao || "foto");
+                            const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+                            const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+                            
+                            const clsLower = foto.classificacao?.toLowerCase();
+                            const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
+                                          (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
+                                          (clsLower === "problema") ? "#dc2626" : "#64748b";
 
-        <div class="photo-grid">
-            ${diarioFotos.map((foto, idx) => {
-              const siteName = sanitize(foto.site_nome || "Geral");
-              const classification = sanitize(foto.classificacao || "Outros");
-              const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-              const itemDesc = sanitize(foto.item_descricao || "foto");
-              const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
-              const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
-              
-              const clsLower = foto.classificacao?.toLowerCase();
-              const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
-                            (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
-                            (clsLower === "problema") ? "#dc2626" : "#64748b";
-
-              return `
-                <div class="photo-card">
-                    <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
-                    <div class="photo-info">
-                        <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
-                        <div style="margin-top: 5px; color: #64748b;">
-                            <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span><br>
-                            ${foto.site_nome ? `<span>Local: ${foto.site_nome}</span><br>` : ''}
-                        </div>
-                        <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
-                        ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
+                            return `
+                                <div class="photo-card">
+                                    <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
+                                    <div class="photo-info">
+                                        <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
+                                        <div style="margin-top: 5px; color: #64748b;">
+                                            <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span>
+                                        </div>
+                                        <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
+                                        ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
+                `).join('')}
+            </div>
+        `).join('')
+        : `
+            <div class="page-break"></div>
+            <div class="page">
+                <h2>Relatório Fotográfico</h2>
+                <div class="photo-grid">
+                    ${diarioFotos.map((foto, idx) => {
+                        const siteName = sanitize(foto.site_nome || "Geral");
+                        const classification = sanitize(foto.classificacao || "Outros");
+                        const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+                        const itemDesc = sanitize(foto.item_descricao || "foto");
+                        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+                        const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+                        
+                        const clsLower = foto.classificacao?.toLowerCase();
+                        const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
+                                      (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
+                                      (clsLower === "problema") ? "#dc2626" : "#64748b";
+
+                        return `
+                            <div class="photo-card">
+                                <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
+                                <div class="photo-info">
+                                    <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
+                                    <div style="margin-top: 5px; color: #64748b;">
+                                        <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span>
+                                    </div>
+                                    <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
+                                    ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
-              `;
-            }).join('')}
-        </div>
-    </div>
+            </div>
+        `}
 </body>
 </html>`;
 
