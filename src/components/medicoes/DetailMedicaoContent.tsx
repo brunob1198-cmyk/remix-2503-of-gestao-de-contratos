@@ -10,30 +10,10 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState } from "@/lib/db";
 import { 
-  ensureImagesLoaded, 
-  getPdfSafeImageDataUrl,
-  withTimeout,
-  chunkArray,
   PDFExportLog,
-  PDFQuality,
-  autoFitText,
-  checkTextOverflow
 } from "@/lib/pdfExportUtils";
 
-import { getPdfOptions } from "@/lib/pdfTemplates";
-
-const PDF_EXPORT_MIN_WIDTH = 1120;
-
-const waitForNextPaint = async (ms = 100) => {
-  await new Promise<void>((resolve) => setTimeout(resolve, ms));
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
-};
-
-const isLogoImage = (img: HTMLImageElement) => img.alt.toLowerCase().includes("logo");
 
 const createPdfExportContainerSkeleton = () => {
   const container = document.createElement("div");
