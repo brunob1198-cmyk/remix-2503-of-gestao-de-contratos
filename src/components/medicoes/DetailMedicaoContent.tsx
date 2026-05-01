@@ -642,11 +642,13 @@ export function DetailMedicaoContent({
       const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
       await exportMedicaoCompletePackage(photosToZip, zipFilename, {
-        concurrency: 5, // A bit higher for efficiency
+        concurrency: 5,
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
-        mainFolderName
+        mainFolderName,
+        medicaoId: detailMedicao.id,
+        resume
       });
 
       addLog("Exportação completa concluída!", "success");
