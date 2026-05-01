@@ -65,8 +65,22 @@ export async function getPdfSafeImageDataUrl(
   })();
 
   try {
-    const response = await fetch(cleanUrl, { mode: "cors", cache: "force-cache" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
+      try {
+        const res = await fetch(url, { mode: "cors", cache: "force-cache" });
+        if (res.ok) return res;
+        throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, 1000));
+          const separator = url.includes('?') ? '&' : '?';
+          return fetchWithRetry(`${url}${separator}retry=${retries}`, retries - 1);
+        }
+        throw err;
+      }
+    };
+
+    const response = await fetchWithRetry(cleanUrl);
     const blob = await response.blob();
     if (!blob.type.startsWith("image/")) return cleanUrl;
 
