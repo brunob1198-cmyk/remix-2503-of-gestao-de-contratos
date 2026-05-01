@@ -183,9 +183,12 @@ serve(async (req) => {
         // Optimize image size using Supabase transformation if it's a storage URL
         let photoUrl = photo.url;
         if (photoUrl.includes("/storage/v1/object/public/") || photoUrl.includes("/storage/v1/object/sign/")) {
-          const transform = `width=${quality === 'high' ? 800 : quality === 'medium' ? 600 : 400}&quality=${quality === 'high' ? 80 : 70 : 60}`;
+          const w = quality === 'high' ? 800 : (quality === 'medium' ? 600 : 400);
+          const q = quality === 'high' ? 80 : (quality === 'medium' ? 70 : 60);
+          const transform = `width=${w}&quality=${q}`;
           photoUrl += (photoUrl.includes("?") ? "&" : "?") + transform;
         }
+
 
         const response = await fetch(photoUrl);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
