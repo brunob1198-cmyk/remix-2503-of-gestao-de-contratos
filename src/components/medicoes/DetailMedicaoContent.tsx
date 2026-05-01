@@ -77,6 +77,8 @@ export function DetailMedicaoContent({
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
 
 
 
