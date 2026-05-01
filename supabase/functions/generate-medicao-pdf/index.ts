@@ -159,18 +159,35 @@ serve(async (req) => {
     ];
     addTable([], summaryBody, "Resumo da Medição");
 
-    // 5. Items Table
-    const itemsHeaders = [["Item", "Qtd", "V. Unit", "Total"]];
-    const itemsBody = lancamentos.map(l => [
-      `${l.item_lpu?.codigo} - ${l.item_lpu?.descricao}`,
-      l.quantidade.toLocaleString("pt-BR"),
-      (l.item_lpu?.preco_unitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-      (l.quantidade * (l.item_lpu?.preco_unitario || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-    ]);
-    const total = lancamentos.reduce((acc, l) => acc + (l.quantidade * (l.item_lpu?.preco_unitario || 0)), 0);
-    itemsBody.push(["", "", "TOTAL", total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })]);
-    
-    addTable(itemsHeaders, itemsBody, "Itens Medidos");
+    // 5. Items Tables (Grouped by Site if Mista)
+    const groupedBySite = new Map();
+    lancamentos.forEach(l => {
+      const siteKey = `${l.site?.codigo} - ${l.site?.nome}`;
+      if (!groupedBySite.has(siteKey)) groupedBySite.set(siteKey, []);
+      groupedBySite.get(siteKey).push(l);
+    });
+
+    for (const [siteName, siteLancamentos] of groupedBySite.entries()) {
+      const itemsHeaders = [["Item", "Qtd", "V. Unit", "Total"]];
+      const itemsBody = siteLancamentos.map(l => [
+        `${l.item_lpu?.codigo} - ${l.item_lpu?.descricao}`,
+        l.quantidade.toLocaleString("pt-BR"),
+        (l.item_lpu?.preco_unitario || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+        (l.quantidade * (l.item_lpu?.preco_unitario || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      ]);
+      const siteTotal = siteLancamentos.reduce((acc, l) => acc + (l.quantidade * (l.item_lpu?.preco_unitario || 0)), 0);
+      itemsBody.push(["", "", "TOTAL DO SITE", siteTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })]);
+      
+      addTable(itemsHeaders, itemsBody, `Site: ${siteName}`);
+    }
+
+    // Grand Total
+    const grandTotal = lancamentos.reduce((acc, l) => acc + (l.quantidade * (l.item_lpu?.preco_unitario || 0)), 0);
+    doc.setFontSize(14);
+    doc.setTextColor(30, 58, 95);
+    doc.text(`VALOR TOTAL GERAL: ${grandTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, margin, currentY);
+    currentY += 15;
+
 
     // 6. Photographic Report
     doc.addPage();
