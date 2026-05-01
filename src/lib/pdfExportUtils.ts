@@ -541,6 +541,7 @@ export async function exportMedicaoToPdf(
 
     let photosInCurrentBatch = 0;
     let batchIndex = 0;
+    const TOTAL_PHOTO_BATCH_LIMIT = 80; // Increased slightly for better consistency
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
@@ -549,9 +550,9 @@ export async function exportMedicaoToPdf(
       
       const photosInSection = section.querySelectorAll("[data-pdf-element='photo']").length;
 
-      // Check if we need to start a new batch
-      if (photosInCurrentBatch + photosInSection > PHOTO_BATCH_SIZE && i > 0 && pdf) {
-        addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Liberando memória...`, 'debug');
+      // Check if we need to start a new batch BEFORE processing to avoid orphaned sections
+      if (photosInCurrentBatch + photosInSection > TOTAL_PHOTO_BATCH_LIMIT && i > 0 && pdf) {
+        addLog(`Finalizando lote ${batchIndex + 1} (${photosInCurrentBatch} fotos). Gerando arquivo parcial...`, 'debug');
         const batchBlob = pdf.output('arraybuffer');
         await savePartialPDF(`${medicaoId}_batch_${batchIndex}`, medicaoId, batchIndex, batchBlob);
         
@@ -566,8 +567,8 @@ export async function exportMedicaoToPdf(
         photosInCurrentBatch = 0;
         batchIndex++;
         
-        // Brief pause for GC
-        await new Promise(r => setTimeout(r, 200));
+        // Brief pause for garbage collection
+        await new Promise(r => setTimeout(r, 300));
       }
 
       // Try to recover from local DB if resuming
