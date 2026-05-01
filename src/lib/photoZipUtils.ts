@@ -107,8 +107,26 @@ export async function exportMedicaoCompletePackage(
       }
 
       if (!blob) {
-        const response = await fetch(photo.url, { mode: 'cors', cache: 'force-cache' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        // Robust fetch with retry and mode fallback
+        const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
+          try {
+            const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+            if (res.ok) return res;
+            throw new Error(`Status ${res.status}`);
+          } catch (err) {
+            if (retries > 0) {
+              await new Promise(r => setTimeout(r, 1000));
+              // Try adding a timestamp to bypass potential caching/CORS issues
+              const separator = url.includes('?') ? '&' : '?';
+              const retryUrl = `${url}${separator}retry=${retries}`;
+              return fetchWithRetry(retryUrl, retries - 1);
+            }
+            throw err;
+          }
+        };
+
+        const response = await fetchWithRetry(photo.url);
+        blob = await response.blob();
         blob = await response.blob();
         
         // Save to cache for checkpointing
