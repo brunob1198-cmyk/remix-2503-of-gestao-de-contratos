@@ -136,19 +136,23 @@ serve(async (req) => {
         doc.text(title, margin, currentY);
         currentY += 8;
       }
+      
       autoTable(doc, {
-        head: headers,
+        head: headers.length > 0 ? headers : undefined,
         body: body,
         startY: currentY,
         margin: { left: margin, right: margin },
         theme: "striped",
         headStyles: { fillColor: [30, 58, 95], textColor: 255 },
         styles: { fontSize: 9 },
-        didDrawPage: (data: any) => {
-          currentY = data.cursor.y + 10;
-        }
       });
-      currentY = (doc as any).lastAutoTable.cursor.y + 10;
+      
+      const lastTable = (doc as any).lastAutoTable;
+      if (lastTable && lastTable.cursor) {
+        currentY = lastTable.cursor.y + 10;
+      } else {
+        currentY += (body.length * 7) + 10; // Fallback estimate
+      }
     };
 
     // 4. Content - Summary
