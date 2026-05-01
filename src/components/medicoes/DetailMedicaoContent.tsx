@@ -469,8 +469,10 @@ export function DetailMedicaoContent({
 
       setExportProgress(100);
       setIsExporting(false);
-      // Não fechamos mais o painel automaticamente para que o usuário veja o botão de download
+      // Atualizar dados de exportação no cache
+      refetchExport();
     } catch (e) {
+
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
       setIsExporting(false);
     }
