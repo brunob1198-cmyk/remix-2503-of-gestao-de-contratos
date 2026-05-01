@@ -6,112 +6,21 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2 } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
-import { PDFDocument } from "pdf-lib";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { clearPDFChunks, clearExportState } from "@/lib/db";
 import { 
-  ensureImagesLoaded, 
-  getPdfSafeImageDataUrl,
-  withTimeout,
   chunkArray,
   PDFExportLog,
   PDFQuality,
-  autoFitText,
-  checkTextOverflow
 } from "@/lib/pdfExportUtils";
-
-import { getPdfOptions } from "@/lib/pdfTemplates";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
-const waitForNextPaint = async (ms = 100) => {
-  await new Promise<void>((resolve) => setTimeout(resolve, ms));
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  });
-};
 
-const isLogoImage = (img: HTMLImageElement) => img.alt.toLowerCase().includes("logo");
 
-const createPdfExportContainerSkeleton = () => {
-  const container = document.createElement("div");
-  const contentWidth = PDF_EXPORT_MIN_WIDTH;
-
-  container.setAttribute("data-pdf-export", "medicao-detalhe");
-  Object.assign(container.style, {
-    position: "absolute",
-    left: "-9999px",
-    top: "0",
-    width: `${contentWidth}px`,
-    padding: "40px",
-    background: "#ffffff",
-    overflow: "visible",
-    pointerEvents: "none",
-    boxSizing: "border-box",
-    zIndex: "-1000",
-    opacity: "1",
-    visibility: "visible",
-  });
-
-  const style = document.createElement("style");
-  style.innerHTML = `
-    * { 
-      transition: none !important; 
-      animation: none !important; 
-      text-rendering: optimizeLegibility !important;
-      -webkit-font-smoothing: antialiased !important;
-      box-sizing: border-box !important;
-    }
-    body { background: white !important; }
-    .pdf-section-heading, h1, h2, h3, p, span, td, th {
-      letter-spacing: 0.01em !important;
-      line-height: 1.5 !important;
-      word-break: break-word !important;
-      overflow-wrap: break-word !important;
-    }
-    .badge-execucao {
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      vertical-align: middle !important;
-      line-height: 1 !important;
-      height: 18px !important;
-      text-align: center !important;
-      padding: 0 8px !important;
-      border-radius: 4px !important;
-      font-size: 7px !important;
-      font-weight: bold !important;
-    }
-    .grid { display: grid !important; }
-    .grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
-    .gap-3 { gap: 12px !important; }
-    img {
-      max-width: 100% !important;
-      height: auto !important;
-      display: block !important;
-    }
-    /* Prevent page break inside cards */
-    [data-pdf-element="photo"] {
-      break-inside: avoid !important;
-      page-break-inside: avoid !important;
-    }
-  `;
-
-  container.appendChild(style);
-
-  const content = document.createElement("div");
-  content.style.width = "100%";
-  content.style.overflow = "visible";
-  container.appendChild(content);
-
-  document.body.appendChild(container);
-  return { container, content, contentWidth };
-};
 
 
 interface DetailMedicaoContentProps {
@@ -167,9 +76,8 @@ export function DetailMedicaoContent({
   const [exportProgress, setExportProgress] = useState(0);
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
-  const [canResume, setCanResume] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
-  const [debugMode, setDebugMode] = useState(false);
+
 
 
   const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
@@ -185,8 +93,8 @@ export function DetailMedicaoContent({
   useEffect(() => {
     void clearPDFChunks(detailMedicao.id);
     void clearExportState(detailMedicao.id);
-    setCanResume(false);
   }, [detailMedicao.id]);
+
 
   // Update logs when exporting state changes
   useEffect(() => {
@@ -478,349 +386,48 @@ export function DetailMedicaoContent({
   );
 
   const handleExportPdf = async () => {
-    if (!printRef.current || isExporting) return;
+    if (isExporting) return;
 
     setIsExporting(true);
-    setExportProgress(0);
+    setExportProgress(10);
     setExportLogs([]);
-    await clearPDFChunks(detailMedicao.id);
-    await clearExportState(detailMedicao.id);
-    setCanResume(false);
-    addLog("Iniciando exportação em streaming agressivo para grandes volumes...", "info");
-    
-    let exportContext: { container: HTMLDivElement, content: HTMLDivElement, contentWidth: number } | null = null;
+    addLog("Iniciando geração de PDF no servidor (Backend)...", "info");
+    addLog("Isso permite processar grandes volumes de fotos com segurança.", "info");
 
     try {
-      exportContext = createPdfExportContainerSkeleton();
-      const { container, content, contentWidth } = exportContext;
-
-      const exportSettings = {
-        high: { scale: 2.0, imgQuality: 0.9, canvasQuality: 0.95, maxWidth: 1200, maxHeight: 900 },
-        medium: { scale: 1.5, imgQuality: 0.8, canvasQuality: 0.85, maxWidth: 800, maxHeight: 600 },
-        eco: { scale: 1.2, imgQuality: 0.65, canvasQuality: 0.7, maxWidth: 640, maxHeight: 480 }
-      }[pdfQuality];
-
-      const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.site_codigo}.pdf`;
-      const baseOptions = getPdfOptions(filename);
-      const [marginTop, marginLeft, marginBottom, marginRight] = baseOptions.margin as [number, number, number, number];
+      addLog("Solicitando geração do documento...", "info");
       
-      const pageWidth = 210; 
-      const pageHeight = 297; 
-      const usableWidth = pageWidth - marginLeft - marginRight;
-      const pageBottom = pageHeight - marginBottom;
-      const sectionGap = 3;
-      let currentY = marginTop;
-      let hasPdfContent = false;
-
-      // We'll create small PDF chunks and merge them to avoid giant memory usage
-      const chunks: Uint8Array[] = [];
-      let currentPdf: jsPDF | null = null;
-      let currentPdfPages = 0;
-
-      const createNewPdf = () => {
-        return new jsPDF({
-          orientation: (baseOptions.jsPDF?.orientation ?? "portrait") as "portrait" | "landscape",
-          unit: "mm",
-          format: (baseOptions.jsPDF?.format ?? "a4") as string | number[],
-          compress: true,
-        });
-      };
-
-      const finalizeChunk = async () => {
-        if (currentPdf) {
-          const pdfData = currentPdf.output("arraybuffer");
-          chunks.push(new Uint8Array(pdfData));
-          currentPdf = null;
-          currentPdfPages = 0;
-          // Force memory release hint if possible
-          if (window.gc) try { window.gc(); } catch(e) {}
-        }
-      };
-
-      const addCanvasToPdf = async (canvas: HTMLCanvasElement, forceNewPage = false) => {
-        if (!currentPdf) {
-          currentPdf = createNewPdf();
-          currentY = marginTop;
-          hasPdfContent = false;
+      const { data, error } = await supabase.functions.invoke("generate-medicao-pdf", {
+        body: {
+          medicaoId: detailMedicao.id,
+          lancamentoIds: detailMedicao.lancamentoIds,
+          tipoMedicao: tipoMedicao,
+          quality: pdfQuality
         }
 
-        const heightMm = (canvas.height * usableWidth) / canvas.width;
+      });
 
-        if (forceNewPage || (hasPdfContent && currentY + heightMm > pageBottom)) {
-          currentPdf.addPage();
-          currentY = marginTop;
-          hasPdfContent = false;
-        }
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
-        const imageData = canvas.toDataURL("image/jpeg", exportSettings.canvasQuality);
-        currentPdf.addImage(imageData, "JPEG", marginLeft, currentY, usableWidth, heightMm, undefined, "FAST");
-        
-        currentY += heightMm + sectionGap;
-        hasPdfContent = true;
-        currentPdfPages++;
+      setExportProgress(90);
+      addLog("PDF gerado com sucesso! Iniciando download...", "success");
 
-        // If chunk is getting large (8 captures) finalize it to keep memory low
-        if (currentPdfPages >= 8) {
-          await finalizeChunk();
-        }
-
-        // Memory cleanup
-        canvas.width = 0;
-        canvas.height = 0;
-      };
-
-      const captureAndClear = async (element: HTMLElement, forceNewPage = false) => {
-        content.appendChild(element);
-        autoFitText(element);
-        
-        if (debugMode) {
-          const overflows = checkTextOverflow(element, true);
-          if (overflows.length > 0) {
-            addLog(`Debug: ${overflows.length} cortes de texto detectados.`, "error");
-          }
-        }
-        
-        const imgs = Array.from(element.querySelectorAll("img"));
-        for (const img of imgs) {
-          const src = img.getAttribute("src");
-          if (src && !src.startsWith("data:")) {
-            try {
-              const safeSrc = await withTimeout(
-                getPdfSafeImageDataUrl(src, { 
-                  maxWidth: exportSettings.maxWidth, 
-                  maxHeight: exportSettings.maxHeight, 
-                  quality: exportSettings.imgQuality 
-                }),
-                15000,
-                "Timeout imagem"
-              );
-              img.src = safeSrc;
-            } catch (e) {
-              console.warn("Failed to load image for PDF", e);
-            }
-          }
-        }
-
-        await ensureImagesLoaded(element);
-        await waitForNextPaint(100);
-
-        const canvas = await html2canvas(element, {
-          scale: exportSettings.scale,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          windowWidth: contentWidth,
-          logging: false,
-        });
-
-        await addCanvasToPdf(canvas, forceNewPage);
-        content.innerHTML = ""; 
-      };
-
-
-      setExportProgress(5);
-      addLog("Gerando seções iniciais...", "info");
-
-      const resumoEl = printRef.current.querySelector('[data-pdf-section="medicao-resumo"]')?.cloneNode(true) as HTMLElement;
-      if (resumoEl) await captureAndClear(resumoEl);
-
-      const itensEl = printRef.current.querySelector('[data-pdf-section="itens-medicao"]')?.cloneNode(true) as HTMLElement;
-      if (itensEl) await captureAndClear(itensEl);
-
-      setExportProgress(15);
-      addLog(`Processando ${diarioFotos.length} fotos em streaming agressivo...`, "info");
-
-      const photoHeaderEl = printRef.current.querySelector('[data-pdf-section="relatorio-fotografico-cabecalho"]')?.cloneNode(true) as HTMLElement;
-      if (photoHeaderEl) await captureAndClear(photoHeaderEl);
-
-      const photoCardHtml = (f: DiarioFotoWithItem, opts?: { showSiteName?: boolean }) => `
-        <div style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; display:flex; flex-direction:column; min-height:280px;">
-          <div style="aspect-ratio:4/3; background:#f3f4f6; padding:4px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-            <img src="${f.url}" style="max-height:100%; max-width:100%; width:auto; height:auto; object-fit:contain; display:block;" />
-          </div>
-          <div style="padding:8px; background:#f9fafb; flex:1; display:flex; flex-direction:column; gap:4px;">
-            ${f.item_codigo ? `<p style="font-size:9px; font-weight:600; color:#111827; line-height:1.3; margin:0 0 2px 0; word-break:break-word; overflow-wrap:anywhere;">${f.item_codigo} — ${f.item_descricao || ''}</p>` : ''}
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:8px; color:#6b7280; margin-top:auto; padding-top:2px;">
-              ${opts?.showSiteName && f.site_nome ? `<span style="max-width:140px; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;">${f.site_nome}</span>` : ''}
-              ${f.diario_data ? `<span style="white-space:nowrap;">${f.diario_data}</span>` : ''}
-              <span style="background:${classColor(f.classificacao)}; color:#fff; font-weight:700; font-size:8px; line-height:1; padding:3px 7px; border-radius:4px; display:inline-block; vertical-align:middle;">${classLabel(f.classificacao)}</span>
-            </div>
-            ${f.legenda ? `<p style="font-size:8px; color:#6b7280; font-style:italic; line-height:1.2; margin:0; word-break:break-word; overflow-wrap:anywhere;">“${f.legenda}”</p>` : ''}
-          </div>
-        </div>
-      `;
-
-      if (tipoMedicao === "mista") {
-        for (let i = 0; i < fotosBySiteAndClass.length; i++) {
-          const { siteName, siteId, classes } = fotosBySiteAndClass[i];
-          addLog(`Processando site: ${siteName}`, "info");
-
-          // Build site header with production table (LPU) and observations
-          const siteItems = productionBySite.get(siteId) || [];
-          const siteTotal = getSiteItemsTotal(siteItems);
-          const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
-
-          const siteHeader = document.createElement("div");
-          siteHeader.style.cssText = "border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; margin-bottom:12px;";
-
-          const itemsRowsHtml = siteItems.map(si => `
-            <tr>
-              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; line-height:1.4; word-break:break-word;">${si.item_codigo} — ${si.item_descricao}</td>
-              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; text-align:right; white-space:nowrap;">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
-              <td style="font-size:10px; padding:6px 8px; border-bottom:1px solid #f1f5f9; text-align:right; white-space:nowrap;">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
-            </tr>
-          `).join("");
-
-          siteHeader.innerHTML = `
-            <div style="padding:10px 16px; font-weight:600; font-size:13px; color:#fff; background-color:#1e3a5f; line-height:1.4; display:flex; align-items:center; gap:8px;">
-              <span style="word-break:break-word; overflow-wrap:anywhere;">📍 ${siteName}</span>
-            </div>
-            ${siteItems.length > 0 ? `
-              <div style="padding:12px; border-bottom:1px solid #e5e7eb; background:#f8fafc;">
-                <p style="font-size:11px; font-weight:600; margin:0 0 8px 0; line-height:1.4;">Produção do Site:</p>
-                <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-                  <thead>
-                    <tr style="background:#f1f5f9;">
-                      <th style="font-size:10px; text-align:left; padding:6px 8px; font-weight:600; width:60%;">Item</th>
-                      <th style="font-size:10px; text-align:right; padding:6px 8px; font-weight:600; width:20%;">Qtd</th>
-                      <th style="font-size:10px; text-align:right; padding:6px 8px; font-weight:600; width:20%;">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody>${itemsRowsHtml}</tbody>
-                </table>
-                <div style="margin-top:10px; display:flex; justify-content:flex-end;">
-                  <div style="border:1px solid #e5e7eb; background:#fff; padding:6px 12px; border-radius:6px; font-size:11px; font-weight:600; line-height:1.4;">
-                    Total do site: ${formatCurrency(siteTotal)}
-                  </div>
-                </div>
-              </div>
-            ` : ''}
-            ${siteObs.length > 0 ? `
-              <div style="padding:10px 12px; border-top:1px solid #e5e7eb; background:#fafafa;">
-                <p style="font-size:11px; font-weight:600; margin:0 0 4px 0;">📋 Observações</p>
-                ${siteObs.map(obs => `<p style="font-size:10px; color:#6b7280; white-space:pre-line; margin:0 0 4px 0; line-height:1.4; word-break:break-word;">${obs.replace(/</g, '&lt;')}</p>`).join("")}
-              </div>
-            ` : ''}
-          `;
-          await captureAndClear(siteHeader, true);
-
-          for (const [className, fotos] of classes) {
-            const classHeader = document.createElement("div");
-            classHeader.style.cssText = "padding:6px 0 8px 8px; margin:8px 0 4px 0; border-left:3px solid #1e3a5f;";
-            classHeader.innerHTML = `<h3 style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#475569; margin:0;">${className}</h3>`;
-            await captureAndClear(classHeader);
-
-            const batches = chunkArray(fotos, 3);
-            for (let j = 0; j < batches.length; j++) {
-              const batch = batches[j];
-              const grid = document.createElement("div");
-              grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
-
-              batch.forEach(f => {
-                const cardWrapper = document.createElement("div");
-                cardWrapper.innerHTML = photoCardHtml(f);
-                grid.appendChild(cardWrapper.firstElementChild!);
-              });
-
-              await captureAndClear(grid);
-              setExportProgress(15 + Math.floor(((i + (j / batches.length)) / fotosBySiteAndClass.length) * 70));
-              await waitForNextPaint(120);
-            }
-          }
-        }
+      // Abrir a URL assinada para download
+      if (data.url) {
+        window.open(data.url, "_blank");
       } else {
-        const itemEntries = Array.from(fotosByItem.byItem.entries());
-        for (let i = 0; i < itemEntries.length; i++) {
-          const [itemLabel, itemFotos] = itemEntries[i];
-          const itemHeader = document.createElement("div");
-          itemHeader.style.cssText = "padding:6px 0 8px 8px; margin:8px 0 6px 0; border-left:3px solid #1e3a5f;";
-          itemHeader.innerHTML = `<h3 style="font-size:12px; font-weight:600; color:#1e3a5f; margin:0; word-break:break-word; line-height:1.4;">${itemLabel}</h3>`;
-          await captureAndClear(itemHeader);
-
-          const batches = chunkArray(itemFotos, 3);
-          for (let j = 0; j < batches.length; j++) {
-            const batch = batches[j];
-            const grid = document.createElement("div");
-            grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
-
-            batch.forEach(f => {
-              const cardWrapper = document.createElement("div");
-              cardWrapper.innerHTML = photoCardHtml(f);
-              grid.appendChild(cardWrapper.firstElementChild!);
-            });
-            await captureAndClear(grid);
-            setExportProgress(15 + Math.floor(((i + (j / batches.length)) / itemEntries.length) * 70));
-            await waitForNextPaint(120);
-          }
-        }
-
-        // Fotos gerais (sem item) — incluir também
-        if (fotosByItem.gerais.length > 0) {
-          const geraisHeader = document.createElement("div");
-          geraisHeader.style.cssText = "padding:6px 0 8px 8px; margin:12px 0 6px 0; border-left:3px solid #6b7280;";
-          geraisHeader.innerHTML = `<h3 style="font-size:12px; font-weight:600; color:#6b7280; margin:0;">Fotos Gerais</h3>`;
-          await captureAndClear(geraisHeader);
-
-          const batches = chunkArray(fotosByItem.gerais, 3);
-          for (const batch of batches) {
-            const grid = document.createElement("div");
-            grid.style.cssText = "display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px;";
-            batch.forEach(f => {
-              const cardWrapper = document.createElement("div");
-              cardWrapper.innerHTML = photoCardHtml(f, { showSiteName: true });
-              grid.appendChild(cardWrapper.firstElementChild!);
-            });
-            await captureAndClear(grid);
-            await waitForNextPaint(120);
-          }
-        }
+        throw new Error("URL de download não recebida.");
       }
 
-      setExportProgress(85);
-      addLog("Compilando documento final...", "info");
-      const finalPdf = await PDFDocument.create();
-      
-      const capaUrl = detailLancamentos[0]?.capa_url || detailMedicao.capa_url;
-      if (capaUrl) {
-        try {
-          const capaResponse = await fetch(capaUrl);
-          const capaBytes = await capaResponse.arrayBuffer();
-          const capaPdf = await PDFDocument.load(capaBytes, { ignoreEncryption: true });
-          const copiedPages = await finalPdf.copyPages(capaPdf, capaPdf.getPageIndices());
-          copiedPages.forEach(page => finalPdf.addPage(page));
-        } catch (e) {
-          addLog("Capa ignorada.", "error");
-        }
-      }
-
-      await finalizeChunk();
-      addLog(`Combinando ${chunks.length} partes...`, "info");
-      
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkPdf = await PDFDocument.load(chunks[i]);
-        const chunkPages = await finalPdf.copyPages(chunkPdf, chunkPdf.getPageIndices());
-        chunkPages.forEach(page => finalPdf.addPage(page));
-        // Help GC
-        chunks[i] = new Uint8Array(0);
-        if (i % 5 === 0) await waitForNextPaint(60);
-      }
-
-      addLog("Finalizando arquivo...", "info");
-      const finalBytes = await finalPdf.save({ useObjectStreams: true, addDefaultPage: false });
-      const blob = new Blob([finalBytes as any], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      addLog("PDF gerado com sucesso!", "success");
       setExportProgress(100);
-      setTimeout(() => setShowLogPanel(false), 5000);
+      setTimeout(() => {
+        setIsExporting(false);
+        setShowLogPanel(false);
+      }, 3000);
+
     } catch (e) {
-      addLog(`Erro: ${e instanceof Error ? e.message : String(e)}`, "error");
-    } finally {
-      if (exportContext) exportContext.container.remove();
+      addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
       setIsExporting(false);
     }
   };
@@ -937,22 +544,11 @@ export function DetailMedicaoContent({
 
       {/* Action buttons */}
       <div className="flex justify-end gap-2">
-        <Button 
-          variant={debugMode ? "default" : "outline"} 
-          size="sm" 
-          onClick={() => setDebugMode(!debugMode)}
-          className={debugMode ? "bg-orange-500 hover:bg-orange-600" : ""}
-          disabled={isExporting}
-        >
-          <AlertCircle className="h-4 w-4 mr-2" />
-          Debug: {debugMode ? "ON" : "OFF"}
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" disabled={isExporting}>
               <Settings2 className="h-4 w-4 mr-2" />
               Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
-
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -966,24 +562,12 @@ export function DetailMedicaoContent({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {canResume && (
-          <Button 
-            onClick={() => handleExportPdf()} 
-            variant="outline" 
-            size="sm" 
-            disabled={isExporting}
-            className="text-orange-600 border-orange-200 hover:bg-orange-50"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Retomar Exportação
-          </Button>
-        )}
         <Button onClick={() => handleExportPdf()} variant="outline" size="sm" disabled={isExporting} className="bg-primary text-primary-foreground hover:bg-primary/90">
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-          {isExporting ? "Gerando PDF..." : (canResume ? "Reiniciar Exportação" : "Exportar PDF")}
+          {isExporting ? "Gerando PDF..." : "Exportar PDF"}
         </Button>
-
       </div>
+
 
       {/* Printable content */}
       <div ref={printRef}>
