@@ -265,23 +265,31 @@ export function checkTextOverflow(element: HTMLElement, debug = false): string[]
 /**
  * Automatically adjusts font size or applies breaking rules to fit text
  */
-export function autoFitText(element: HTMLElement) {
-  const textElements = element.querySelectorAll("p, span, td, th, h1, h2, h3, h4, div");
+/**
+ * Automatically adjusts font size or applies breaking rules to fit text perfectly
+ */
+export function autoFitText(element: HTMLElement, maxShrink = 0.6) {
+  const textElements = element.querySelectorAll("p, span, td, th, h1, h2, h3, h4, div:not([data-pdf-section])");
   textElements.forEach((el) => {
     const htmlEl = el as HTMLElement;
-    // Force breaking for very long strings without spaces
+    if (htmlEl.children.length > 0 && htmlEl.tagName === 'DIV') return;
+
     htmlEl.style.overflowWrap = "break-word";
     htmlEl.style.wordBreak = "break-word";
     
-    // Check for horizontal overflow and try to shrink font
-    if (htmlEl.scrollWidth > htmlEl.clientWidth + 2) {
-      let fontSize = parseFloat(window.getComputedStyle(htmlEl).fontSize);
-      let attempts = 0;
-      while (htmlEl.scrollWidth > htmlEl.clientWidth + 2 && fontSize > 6 && attempts < 5) {
-        fontSize -= 0.5;
-        htmlEl.style.fontSize = `${fontSize}px`;
-        attempts++;
-      }
+    const containerWidth = htmlEl.clientWidth;
+    if (containerWidth === 0) return;
+
+    let fontSize = parseFloat(window.getComputedStyle(htmlEl).fontSize);
+    const originalSize = fontSize;
+    const minSize = originalSize * maxShrink;
+    
+    let attempts = 0;
+    while ((htmlEl.scrollWidth > containerWidth + 1) && fontSize > minSize && attempts < 8) {
+      fontSize -= 0.5;
+      htmlEl.style.fontSize = `${fontSize}px`;
+      htmlEl.style.lineHeight = "1.1";
+      attempts++;
     }
   });
 }
