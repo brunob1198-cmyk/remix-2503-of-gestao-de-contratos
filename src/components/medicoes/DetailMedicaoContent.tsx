@@ -438,12 +438,12 @@ export function DetailMedicaoContent({
     [formatDate],
   );
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (resume = false) => {
     if (isExporting) return;
     if (!printRef.current) return;
     
     const photoCount = diarioFotos.length;
-    if (photoCount > 200) {
+    if (photoCount > 200 && !resume) {
       const confirmLarge = window.confirm(
         `Atenção: Esta medição possui ${photoCount} fotos. Gerar um PDF com esse volume pode ser muito lento e travar seu navegador. \n\nRecomendamos usar a opção "Exportar Medição (ZIP)" que é mais rápida e estável para grandes volumes. \n\nDeseja continuar com a geração do PDF mesmo assim?`
       );
@@ -451,10 +451,10 @@ export function DetailMedicaoContent({
     }
 
     setIsExporting(true);
-    setExportProgress(5);
-    setExportLogs([]);
+    setExportProgress(resume ? Math.round(((hasCheckpoint?.lastIndex || 0) / (hasCheckpoint?.total || 1)) * 90) : 5);
+    if (!resume) setExportLogs([]);
     setDownloadUrl(null);
-    addLog(`Iniciando geração de PDF (${photoCount} fotos)...`, "info");
+    addLog(resume ? "Retomando geração de PDF..." : `Iniciando geração de PDF (${photoCount} fotos)...`, "info");
 
     try {
       const filename = `Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.pdf`;
@@ -464,12 +464,13 @@ export function DetailMedicaoContent({
         detailMedicao.id,
         (progress) => setExportProgress(progress),
         addLog,
-        { quality: pdfQuality, filename }
+        { quality: pdfQuality, filename, resume }
       );
 
       addLog("PDF gerado e baixado com sucesso!", "success");
       setExportProgress(100);
       setIsExporting(false);
+      setHasCheckpoint(null);
     } catch (e) {
       console.error("Erro na exportação local:", e);
       addLog(`Erro na geração: ${e instanceof Error ? e.message : String(e)}`, "error");
@@ -477,14 +478,14 @@ export function DetailMedicaoContent({
     }
   };
 
-  const handleExportZip = async () => {
+  const handleExportZip = async (resume = false) => {
     if (isExporting) return;
     setIsExporting(true);
     setExportProgress(0);
-    setExportLogs([]);
+    if (!resume) setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
-    addLog("Iniciando exportação completa da medição (ZIP)...", "info");
+    addLog(resume ? "Retomando exportação ZIP..." : "Iniciando exportação completa da medição (ZIP)...", "info");
     addLog("Preparando dados e relatório...", "info");
 
     try {
