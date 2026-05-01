@@ -531,7 +531,7 @@ export function DetailMedicaoContent({
       const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}`;
       
-      // 1. Prepare Photos
+      // 1. Prepare Photos and Logos
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
@@ -545,6 +545,23 @@ export function DetailMedicaoContent({
           folder: `fotos/${siteName}/${classification}`
         };
       });
+
+      // Add Logos to Zip for local loading
+      const empresaLogoUrl = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url");
+      if (empresaLogoUrl && empresaLogoUrl.startsWith('http')) {
+        photosToZip.push({
+          url: empresaLogoUrl,
+          filename: 'logo_empresa.png',
+          folder: 'logos'
+        });
+      }
+      if (clienteLogoUrl && clienteLogoUrl.startsWith('http')) {
+        photosToZip.push({
+          url: clienteLogoUrl,
+          filename: 'logo_cliente.png',
+          folder: 'logos'
+        });
+      }
 
       // 2. Prepare JSON Data
       const measurementData = {
@@ -578,97 +595,163 @@ export function DetailMedicaoContent({
         fotos_count: diarioFotos.length
       };
 
-      // 3. Prepare HTML Report
+      // 3. Prepare HTML Report with Print Optimization
       const htmlContent = `
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
     <style>
-        body { font-family: sans-serif; margin: 40px; color: #333; line-height: 1.6; }
-        header { border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-        h1 { color: #2563eb; margin: 0; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .info-item b { color: #666; font-size: 0.9em; text-transform: uppercase; display: block; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f8fafc; color: #475569; }
-        .total-row { font-weight: bold; background-color: #f1f5f9; }
-        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .photo-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; page-break-inside: avoid; }
-        .photo-card img { width: 100%; height: 200px; object-fit: cover; }
-        .photo-info { padding: 10px; font-size: 0.85em; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; color: white; }
+        :root { --primary: #2563eb; --secondary: #64748b; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; color: #1e293b; background: #f8fafc; }
+        .page { background: white; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative; }
+        
+        @media print {
+            body { background: white; }
+            .page { margin: 0; box-shadow: none; width: 100%; padding: 10mm; }
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; break-before: always; }
+            @page { size: A4; margin: 0; }
+        }
+
+        header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--primary); padding-bottom: 15px; margin-bottom: 30px; }
+        .logos { display: flex; gap: 20px; align-items: center; }
+        .logos img { max-height: 60px; max-width: 180px; object-fit: contain; }
+        
+        h1 { color: var(--primary); margin: 0; font-size: 24px; text-transform: uppercase; }
+        h2 { border-left: 5px solid var(--primary); padding-left: 10px; color: #334155; font-size: 18px; margin: 30px 0 15px 0; }
+        
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: #f1f5f9; padding: 15px; border-radius: 8px; }
+        .info-item { font-size: 13px; }
+        .info-item b { color: var(--secondary); display: block; font-size: 10px; text-transform: uppercase; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+        th { background-color: #f8fafc; color: #475569; font-weight: bold; }
+        .total-row { font-weight: bold; background-color: #f1f5f9; font-size: 14px; }
+        
+        .photo-section { margin-top: 40px; }
+        .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .photo-card { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; break-inside: avoid; display: flex; flex-direction: column; background: white; }
+        .photo-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #f1f5f9; }
+        .photo-info { padding: 10px; font-size: 11px; flex: 1; }
+        .photo-info strong { color: #0f172a; display: block; margin-bottom: 4px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: bold; color: white; margin-top: 5px; }
+        
+        .print-btn { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; border: none; padding: 15px 25px; border-radius: 50px; cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); display: flex; align-items: center; gap: 10px; transition: transform 0.2s; }
+        .print-btn:hover { transform: scale(1.05); }
+        
+        .footer-note { margin-top: 50px; font-size: 10px; color: var(--secondary); text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Medição #${detailMedicao.numero_medicao || detailMedicao.id}</h1>
-        <p>${detailMedicao.projeto_nome} - ${detailMedicao.site_nome}</p>
-    </header>
+    <button class="print-btn no-print" onclick="window.print()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        GERAR PDF / IMPRIMIR
+    </button>
 
-    <div class="info-grid">
-        <div class="info-item"><b>Projeto</b> ${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</div>
-        <div class="info-item"><b>Site/Obra</b> ${detailMedicao.site_codigo} - ${detailMedicao.site_nome} (${detailMedicao.uf})</div>
-        <div class="info-item"><b>Data da Medição</b> ${formatDate(detailMedicao.data_medicao)}</div>
-        <div class="info-item"><b>Período</b> ${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : '-'} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : '-'}</div>
+    <div class="page">
+        <header>
+            <div>
+                <h1>Medição #${detailMedicao.numero_medicao || detailMedicao.id}</h1>
+                <p style="margin: 5px 0 0 0; color: var(--secondary); font-size: 14px;">Relatório de Medição de Serviços</p>
+            </div>
+            <div class="logos">
+                ${empresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa">` : ''}
+                ${clienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente">` : ''}
+            </div>
+        </header>
+
+        <div class="info-grid">
+            <div class="info-item"><b>Projeto / Contrato</b> ${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</div>
+            <div class="info-item"><b>Unidade / Site</b> ${detailMedicao.site_codigo} - ${detailMedicao.site_nome} (${detailMedicao.uf})</div>
+            <div class="info-item"><b>Data do Relatório</b> ${formatDate(new Date().toISOString())}</div>
+            <div class="info-item"><b>Período da Medição</b> ${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : '-'} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : '-'}</div>
+            <div class="info-item"><b>Número da PO</b> ${detailMedicao.numero_po || '-'}</div>
+            <div class="info-item"><b>Valor Total</b> ${formatCurrency(detailMedicao.total_valor)}</div>
+        </div>
+
+        <h2>Itens de Produção</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descrição dos Serviços</th>
+                    <th>Unid.</th>
+                    <th>Quant.</th>
+                    <th>Unitário</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${measurementData.itens.map(item => `
+                    <tr>
+                        <td>${item.codigo || '-'}</td>
+                        <td>${item.descricao || '-'}</td>
+                        <td>${item.unidade || '-'}</td>
+                        <td>${item.quantidade}</td>
+                        <td>${formatCurrency(Number(item.preco_unitario || 0))}</td>
+                        <td>${formatCurrency(item.total)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right">TOTAL GERAL DA MEDIÇÃO</td>
+                    <td>${formatCurrency(detailMedicao.total_valor)}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        ${detailMedicao.observacao_acompanhamento ? `
+            <h2>Observações</h2>
+            <p style="font-size: 13px; background: #fffbeb; padding: 15px; border-radius: 8px; border: 1px solid #fef3c7;">${detailMedicao.observacao_acompanhamento}</p>
+        ` : ''}
+
+        <div class="footer-note">
+            Este documento foi gerado automaticamente pelo Sistema de Gestão de Medições.
+        </div>
     </div>
 
-    <h2>Itens Medidos</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Descrição</th>
-                <th>Unid.</th>
-                <th>Quant.</th>
-                <th>Unitário</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${measurementData.itens.map(item => `
-                <tr>
-                    <td>${item.codigo || '-'}</td>
-                    <td>${item.descricao || '-'}</td>
-                    <td>${item.unidade || '-'}</td>
-                    <td>${item.quantidade}</td>
-                    <td>${formatCurrency(Number(item.preco_unitario || 0))}</td>
-                    <td>${formatCurrency(item.total)}</td>
-                </tr>
-            `).join('')}
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td colspan="5" style="text-align: right">TOTAL</td>
-                <td>${formatCurrency(detailMedicao.total_valor)}</td>
-            </tr>
-        </tfoot>
-    </table>
+    <div class="page-break"></div>
+    
+    <div class="page">
+        <h2>Relatório Fotográfico</h2>
+        <p style="color: var(--secondary); font-size: 13px; margin-bottom: 25px;">Total de registros: ${diarioFotos.length} fotos organizadas por local e classificação.</p>
 
-    <h2>Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
-    <div class="photo-grid">
-        ${diarioFotos.map((foto, idx) => {
-          const siteName = sanitize(foto.site_nome || "Geral");
-          const classification = sanitize(foto.classificacao || "Outros");
-          const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-          const itemDesc = sanitize(foto.item_descricao || "foto");
-          const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
-          const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
-          
-          return `
-            <div class="photo-card">
-                <img src="${localPath}" alt="${foto.item_descricao}">
-                <div class="photo-info">
-                    <strong>${foto.item_codigo || ''} ${foto.item_descricao || ''}</strong><br>
-                    <span>${foto.diario_data ? formatDate(foto.diario_data) : ''}</span> | 
-                    <span>${foto.classificacao}</span>
-                    ${foto.legenda ? `<p><i>"${foto.legenda}"</i></p>` : ''}
+        <div class="photo-grid">
+            ${diarioFotos.map((foto, idx) => {
+              const siteName = sanitize(foto.site_nome || "Geral");
+              const classification = sanitize(foto.classificacao || "Outros");
+              const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+              const itemDesc = sanitize(foto.item_descricao || "foto");
+              const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+              const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+              
+              const clsLower = foto.classificacao?.toLowerCase();
+              const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" : 
+                            (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" : 
+                            (clsLower === "problema") ? "#dc2626" : "#64748b";
+
+              return `
+                <div class="photo-card">
+                    <img src="${localPath}" alt="${foto.item_descricao || 'foto'}">
+                    <div class="photo-info">
+                        <strong>${foto.item_codigo || ''} ${foto.item_descricao || 'Registro Fotográfico'}</strong>
+                        <div style="margin-top: 5px; color: #64748b;">
+                            <span>Data: ${foto.diario_data ? formatDate(foto.diario_data) : '-'}</span><br>
+                            ${foto.site_nome ? `<span>Local: ${foto.site_nome}</span><br>` : ''}
+                        </div>
+                        <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
+                        ${foto.legenda ? `<p style="margin: 8px 0 0 0; font-style: italic; color: #475569;">"${foto.legenda}"</p>` : ''}
+                    </div>
                 </div>
-            </div>
-          `;
-        }).join('')}
+              `;
+            }).join('')}
+        </div>
     </div>
 </body>
 </html>`;
@@ -678,7 +761,7 @@ export function DetailMedicaoContent({
         { filename: 'relatorio.html', content: htmlContent }
       ];
 
-      const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
+      const zipFilename = `Relatorio_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
       await exportMedicaoCompletePackage(photosToZip, zipFilename, {
         concurrency: diarioFotos.length > 800 ? 1 : (diarioFotos.length > 300 ? 2 : 3),
@@ -690,7 +773,7 @@ export function DetailMedicaoContent({
         resume
       });
 
-      addLog("Exportação completa concluída!", "success");
+      addLog("Relatório ZIP gerado com sucesso! Abra o arquivo 'relatorio.html' para imprimir como PDF.", "success");
       setExportProgress(100);
       setIsExporting(false);
     } catch (e) {
