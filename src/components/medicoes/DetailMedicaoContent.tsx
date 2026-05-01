@@ -648,7 +648,7 @@ export function DetailMedicaoContent({
       const zipFilename = `Medicao_Completa_${detailMedicao.numero_medicao || detailMedicao.id}.zip`;
       
       await exportMedicaoCompletePackage(photosToZip, zipFilename, {
-        concurrency: 5,
+        concurrency: diarioFotos.length > 800 ? 1 : (diarioFotos.length > 300 ? 2 : 3),
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
