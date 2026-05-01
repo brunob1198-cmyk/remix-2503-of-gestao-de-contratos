@@ -576,9 +576,9 @@ export async function exportMedicaoToPdf(
         contentWrapper.id = `ghost-section-${i}`;
         contentWrapper.appendChild(ghostSection);
         
-        if (config.debugMode) {
+        if (config.debugMode && ghostContainer) {
           ghostContainer.appendChild(contentWrapper);
-        } else {
+        } else if (ghostContainer) {
           ghostContainer.innerHTML = '';
           ghostContainer.appendChild(contentWrapper);
         }
