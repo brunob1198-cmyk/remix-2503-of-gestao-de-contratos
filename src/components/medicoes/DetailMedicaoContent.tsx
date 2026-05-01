@@ -984,21 +984,21 @@ export function DetailMedicaoContent({
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
-          className="bg-green-600 text-white hover:bg-green-700 hover:text-white"
+          className="bg-green-600 text-white hover:bg-green-700 hover:text-white font-bold"
         >
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
-          {isExporting ? "Processando..." : "Exportar Medição (ZIP)"}
+          {isExporting ? "Gerando Relatório..." : "Gerar Relatório (ZIP/PDF)"}
         </Button>
 
         <Button 
           onClick={() => handleExportPdf(false)} 
-          variant="outline" 
+          variant="ghost" 
           size="sm" 
           disabled={isExporting} 
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          className="text-muted-foreground hover:text-primary"
         >
-          {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
-          {isExporting ? "Gerando PDF..." : "Exportar PDF"}
+          {isExporting ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <FileText className="h-3 w-3 mr-2" />}
+          {isExporting ? "Processando..." : "PDF Direto (Legado)"}
         </Button>
       </div>
 
