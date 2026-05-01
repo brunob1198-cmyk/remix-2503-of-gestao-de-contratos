@@ -199,7 +199,7 @@ export function unloadImagesOutsideSection(content: HTMLElement, activeSection: 
     const isVisible = Math.abs(index - activeIndex) <= keepLoadedWindow;
     section.querySelectorAll<HTMLImageElement>('img').forEach((img) => {
       if (!isVisible) {
-        if (img.src && img.src.startsWith("data:")) {
+        if (img.src && img.src !== "about:blank" && !img.src.startsWith("blob:")) {
           img.dataset.src = img.src;
         }
         img.src = "about:blank"; // More memory efficient than empty string
