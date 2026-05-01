@@ -321,3 +321,90 @@ export function getMemoryUsage() {
 }
 
 
+/**
+ * Export a measurement report to PDF using the frontend's jsPDF and html2canvas.
+ */
+export async function exportMedicaoToPdf(
+  element: HTMLElement,
+  medicaoId: string,
+  onProgress: (progress: number) => void,
+  addLog: (msg: string, type?: 'info' | 'error' | 'success') => void,
+  options: { quality: PDFQuality; filename: string }
+) {
+  const quality = options.quality;
+  const pdfWidthMm = 210; // A4
+  const pdfHeightMm = 297;
+  const marginMm = 10;
+  const contentWidthMm = pdfWidthMm - (marginMm * 2);
+  
+  // High quality settings
+  const scale = quality === 'high' ? 2 : quality === 'medium' ? 1.5 : 1;
+  
+  const pdf = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+    compress: true
+  });
+
+  // Find all major sections
+  const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
+    (el) => !el.parentElement?.closest("[data-pdf-section]")
+  );
+
+  if (sections.length === 0) {
+    throw new Error("Nenhuma seção de conteúdo encontrada para exportação.");
+  }
+
+  addLog(`Iniciando renderização de ${sections.length} seções...`, 'info');
+  
+  let currentYMm = marginMm;
+  let pageCount = 1;
+
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    
+    // Ensure images in this section are loaded
+    await ensureImagesLoaded(section, (msg) => addLog(msg, 'info'), { label: `Seção ${i+1}` });
+    
+    // Measure height
+    const sectionHeightMm = measureHeightMm(section, contentWidthMm);
+    
+    // Check for page break
+    if (currentYMm + sectionHeightMm > pdfHeightMm - marginMm && i > 0) {
+      pdf.addPage();
+      pageCount++;
+      currentYMm = marginMm;
+    }
+
+    try {
+      const canvas = await html2canvas(section, {
+        scale: scale,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 1200 // Consistent width for layout
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", quality === 'high' ? 0.95 : 0.85);
+      pdf.addImage(imgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
+      
+      currentYMm += sectionHeightMm + 2; // Small gap between sections
+      
+      const progress = Math.round(((i + 1) / sections.length) * 90);
+      onProgress(progress);
+      
+      // Cleanup to free memory
+      canvas.width = 0;
+      canvas.height = 0;
+    } catch (err) {
+      console.error(`Error rendering section ${i}:`, err);
+      addLog(`Erro ao renderizar seção ${i+1}, pulando...`, 'error');
+    }
+  }
+
+  addLog("Finalizando arquivo...", 'info');
+  pdf.save(options.filename);
+  onProgress(100);
+}
+
