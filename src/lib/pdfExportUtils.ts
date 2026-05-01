@@ -475,14 +475,14 @@ export async function exportMedicaoToPdf(
       imageCompression = Math.min(imageCompression, 0.75);
     }
     
-    let pdf = new jsPDF({
+    pdf = new jsPDF({
       orientation: "portrait",
       unit: "mm",
       format: "a4",
       compress: true
     });
 
-    const ghostContainer = document.createElement('div');
+    ghostContainer = document.createElement('div');
     ghostContainer.id = 'pdf-ghost-renderer';
     Object.assign(ghostContainer.style, {
       position: 'absolute',
