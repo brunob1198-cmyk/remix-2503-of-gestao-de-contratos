@@ -17,7 +17,7 @@ import {
   PDFQuality,
   exportMedicaoToPdf,
 } from "@/lib/pdfExportUtils";
-import { exportPhotosToZip, PhotoToZip } from "@/lib/photoZipUtils";
+import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
