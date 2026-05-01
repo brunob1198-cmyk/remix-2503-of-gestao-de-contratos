@@ -80,6 +80,8 @@ export function DetailMedicaoContent({
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
   const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
 
 
@@ -478,7 +480,18 @@ export function DetailMedicaoContent({
         detailMedicao.id,
         (progress) => setExportProgress(progress),
         addLog,
-        { quality: pdfQuality, filename, resume }
+        { 
+          quality: pdfQuality, 
+          filename, 
+          resume,
+          config: {
+            marginMm: 12,
+            baseFontSize: 12,
+            sectionSpacingMm: 3,
+            debugMode: debugMode
+          },
+          onPreviewGenerated: (url) => setPreviewUrl(url)
+        }
       );
 
       addLog("Exportação PDF concluída com sucesso!", "success");
@@ -846,9 +859,22 @@ export function DetailMedicaoContent({
               Qualidade: {pdfQuality === 'high' ? 'Alta' : pdfQuality === 'medium' ? 'Média' : 'Econômica'}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Configurações de Exportação</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <div className="p-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Modo Depuração</span>
+                <input 
+                  type="checkbox" 
+                  checked={debugMode} 
+                  onChange={(e) => setDebugMode(e.target.checked)}
+                  className="h-3 w-3"
+                />
+              </div>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={pdfQuality} onValueChange={(v) => setPdfQuality(v as PDFQuality)}>
               <DropdownMenuRadioItem value="high">Alta (Arquivos maiores)</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="medium">Média (Recomendado)</DropdownMenuRadioItem>
@@ -1269,6 +1295,80 @@ export function DetailMedicaoContent({
           </>
         )}
       </div>
+
+      {/* PDF Preview Modal/Overlay */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4">
+          <Card className="w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
+              <div>
+                <CardTitle className="text-lg">Pré-visualização do Relatório</CardTitle>
+                <p className="text-xs text-muted-foreground">Verifique o Auto-fit e a paginação antes de baixar.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPreviewUrl(null)}>
+                  <X className="h-4 w-4 mr-1" /> Fechar
+                </Button>
+                <Button size="sm" asChild>
+                  <a href={previewUrl} download={`Medicao_${detailMedicao.numero_medicao || 'Relatorio'}.pdf`}>
+                    <Download className="h-4 w-4 mr-1" /> Baixar Agora
+                  </a>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 overflow-hidden bg-muted/30">
+              <iframe 
+                src={previewUrl} 
+                className="w-full h-full border-none" 
+                title="PDF Preview"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Logs Panel */}
+      {showLogPanel && (
+        <Card className="mt-8 border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-5 w-5 text-primary" />
+              <CardTitle className="text-sm font-medium">Log de Processamento</CardTitle>
+            </div>
+            {isExporting ? (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground animate-pulse">
+                  Processando... {exportProgress}%
+                </span>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setShowLogPanel(false)} className="h-8 w-8 p-0">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <Progress value={exportProgress} className="mb-4 h-2" />
+            
+            <ScrollArea className="h-48 rounded-md border bg-background p-2">
+              <div className="space-y-1">
+                {exportLogs.map((log, i) => (
+                  <div key={i} className={`text-[10px] font-mono leading-tight flex gap-2 ${
+                    log.type === 'error' ? 'text-red-500' : 
+                    log.type === 'success' ? 'text-green-600' : 
+                    log.type === 'debug' ? 'text-blue-500 italic' :
+                    'text-muted-foreground'
+                  }`}>
+                    <span className="shrink-0 opacity-50">[{log.timestamp}]</span>
+                    <span>{log.message}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
