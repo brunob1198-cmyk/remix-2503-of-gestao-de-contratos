@@ -345,22 +345,34 @@ export async function exportMedicaoToPdf(
   element: HTMLElement,
   medicaoId: string,
   onProgress: (progress: number) => void,
-  addLog: (msg: string, type?: 'info' | 'error' | 'success') => void,
-  options: { quality: PDFQuality; filename: string; resume?: boolean }
+  addLog: (msg: string, type?: 'info' | 'error' | 'success' | 'debug') => void,
+  options: { 
+    quality: PDFQuality; 
+    filename: string; 
+    resume?: boolean;
+    config?: PDFTemplateConfig;
+    onPreviewGenerated?: (previewUrl: string) => void;
+  }
 ) {
   const quality = options.quality;
+  const config: PDFTemplateConfig = options.config || {
+    marginMm: 12,
+    baseFontSize: 12,
+    sectionSpacingMm: 2,
+    debugMode: false
+  };
+
   const pdfWidthMm = 210; // A4
   const pdfHeightMm = 297;
-  const marginMm = 12; // Professional margin
+  const marginMm = config.marginMm;
   const contentWidthMm = pdfWidthMm - (marginMm * 2);
   const maxContentHeightMm = pdfHeightMm - (marginMm * 2);
   
   const photoElements = element.querySelectorAll("[data-pdf-element='photo']");
   const isMassive = photoElements.length > 400;
-  const isGiant = photoElements.length > 800;
   
-  const scale = isGiant ? 1.2 : (isMassive ? 1.5 : (quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5));
-  const imageCompression = isMassive ? 0.75 : (quality === 'high' ? 0.95 : 0.85);
+  const scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
+  const imageCompression = quality === 'high' ? 0.95 : 0.85;
   
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -374,12 +386,22 @@ export async function exportMedicaoToPdf(
   ghostContainer.id = 'pdf-ghost-renderer';
   Object.assign(ghostContainer.style, {
     position: 'absolute',
-    left: '-10000px',
-    top: '0',
-    width: '1120px', // Matches 210mm at ~135dpi approx
+    left: config.debugMode ? '20px' : '-10000px',
+    top: config.debugMode ? '100px' : '0',
+    width: '1120px', 
     backgroundColor: '#ffffff',
-    zIndex: '-1000'
+    zIndex: config.debugMode ? '9999' : '-1000',
+    border: config.debugMode ? '2px dashed red' : 'none',
+    pointerEvents: config.debugMode ? 'auto' : 'none'
   });
+  
+  if (config.debugMode) {
+    const debugHeader = document.createElement('div');
+    debugHeader.innerText = "PDF DEBUG MODE - GHOST RENDERER";
+    debugHeader.style.cssText = "background:red;color:white;padding:5px;font-weight:bold;position:sticky;top:0;";
+    ghostContainer.appendChild(debugHeader);
+  }
+  
   document.body.appendChild(ghostContainer);
 
   const sections = Array.from(element.querySelectorAll<HTMLElement>("[data-pdf-section]")).filter(
@@ -406,7 +428,6 @@ export async function exportMedicaoToPdf(
     let sectionImgData: string | null = null;
     const chunkId = `${medicaoId}_${i}`;
     
-    // 1. Recover or Ghost Render
     if (i < existingChunks.length) {
       const chunk = existingChunks[i];
       const blob = new Blob([chunk.data], { type: 'image/jpeg' });
@@ -418,19 +439,28 @@ export async function exportMedicaoToPdf(
     }
 
     if (!sectionImgData) {
-      // Memory: Keep only what we need in the real DOM
       unloadImagesOutsideSection(element, section, 1);
       
-      // Clone to Ghost Container
       const ghostSection = section.cloneNode(true) as HTMLElement;
-      ghostContainer.innerHTML = '';
-      ghostContainer.appendChild(ghostSection);
+      // Apply base font size from config
+      ghostSection.style.fontSize = `${config.baseFontSize}px`;
       
-      // Professional adjustments
+      const contentWrapper = document.createElement('div');
+      contentWrapper.id = `ghost-section-${i}`;
+      if (config.debugMode) {
+        contentWrapper.style.border = "1px solid blue";
+        contentWrapper.setAttribute('data-debug-info', `Section ${i}`);
+      }
+      contentWrapper.appendChild(ghostSection);
+      
+      if (config.debugMode) {
+        ghostContainer.appendChild(contentWrapper);
+      } else {
+        ghostContainer.innerHTML = '';
+        ghostContainer.appendChild(contentWrapper);
+      }
+      
       autoFitText(ghostSection);
-      
-      // Ensure specific elements like badges or tables are aligned
-      ghostSection.querySelectorAll('.badge').forEach(b => (b as HTMLElement).style.verticalAlign = 'middle');
       
       await ensureImagesLoaded(ghostSection, (msg) => {
         if (i % 5 === 0) addLog(msg, 'info');
@@ -443,16 +473,15 @@ export async function exportMedicaoToPdf(
           logging: false,
           backgroundColor: "#ffffff",
           width: ghostSection.offsetWidth,
-          height: ghostSection.offsetHeight,
-          onclone: (doc) => {
-             const el = doc.getElementById('pdf-ghost-renderer');
-             if (el) el.style.left = '0';
-          }
+          height: ghostSection.offsetHeight
         });
 
         sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
         
-        // Checkpoint
+        if (config.debugMode) {
+          addLog(`[DEBUG] Seção ${i}: ${ghostSection.offsetWidth}x${ghostSection.offsetHeight}px`, 'debug');
+        }
+
         const res = await fetch(sectionImgData);
         const b = await res.blob();
         await savePDFChunk({
@@ -471,32 +500,28 @@ export async function exportMedicaoToPdf(
       }
     }
 
-    // 2. Intelligent Pagination (Fit-to-page logic)
     if (sectionImgData) {
-      const sectionHeightMm = measureHeightMm(section, contentWidthMm);
-      
-      // If a single section is larger than a page, we must scale it to fit or it will overflow
+      let sectionHeightMm = measureHeightMm(section, contentWidthMm);
       let drawHeight = sectionHeightMm;
       let drawWidth = contentWidthMm;
       
       if (drawHeight > maxContentHeightMm) {
-        addLog(`Ajustando seção ${i+1} para caber na página...`, 'info');
         const ratio = maxContentHeightMm / drawHeight;
         drawHeight = maxContentHeightMm;
         drawWidth = contentWidthMm * ratio;
+        if (config.debugMode) addLog(`[DEBUG] Seção ${i} redimensionada (Fit-to-page)`, 'debug');
       }
 
-      // Break page if it doesn't fit the remaining space
       if (currentYMm + drawHeight > pdfHeightMm - marginMm && i > 0) {
         pdf.addPage();
         currentYMm = marginMm;
+        if (config.debugMode) addLog(`[DEBUG] Quebra de página antes da seção ${i}`, 'debug');
       }
 
-      // Horizontal Centering if narrowed
       const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
-
       pdf.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
-      currentYMm += drawHeight + 2;
+      currentYMm += drawHeight + config.sectionSpacingMm;
+      
       sectionImgData = null;
     }
 
@@ -504,11 +529,20 @@ export async function exportMedicaoToPdf(
     await new Promise(r => setTimeout(r, isMassive ? 100 : 30));
   }
 
-  // Cleanup
-  document.body.removeChild(ghostContainer);
+  if (options.onPreviewGenerated) {
+    const previewUrl = pdf.output('bloburl').toString();
+    options.onPreviewGenerated(previewUrl);
+  }
+
+  if (!config.debugMode) {
+    document.body.removeChild(ghostContainer);
+  } else {
+    addLog("DEBUG: Ghost Container mantido no DOM para inspeção.", 'debug');
+  }
+  
   unloadImagesOutsideSection(element, sections[0], sections.length + 1);
 
-  addLog("Finalizando PDF profissional...", 'info');
+  addLog("Finalizando PDF...", 'info');
   
   try {
     const pdfBlob = pdf.output('blob');
@@ -519,11 +553,11 @@ export async function exportMedicaoToPdf(
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 100);
 
-    addLog("Relatório exportado com sucesso!", "success");
+    addLog("Relatório exportado!", "success");
     await clearPDFChunks(medicaoId);
     await clearExportState(medicaoId);
   } catch (saveErr) {
-    addLog("Erro ao salvar arquivo final.", 'error');
+    addLog("Erro ao salvar arquivo.", 'error');
   }
   
   onProgress(100);
