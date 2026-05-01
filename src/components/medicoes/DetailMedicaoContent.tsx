@@ -134,16 +134,22 @@ export function DetailMedicaoContent({
 
   useEffect(() => {
     const checkCheckpoint = async () => {
-      const state = await getExportState(detailMedicao.id);
-      if (state && state.state) {
+      // Check for PDF checkpoint
+      const pdfState = await getExportState(detailMedicao.id);
+      if (pdfState && pdfState.state) {
         setHasCheckpoint({
-          type: 'pdf', // We mainly checkpoint PDF for now as it's the heaviest
-          lastIndex: state.state.lastIndex,
-          total: state.state.total
+          type: 'pdf',
+          lastIndex: pdfState.state.lastIndex,
+          total: pdfState.state.total
         });
         setShowLogPanel(true);
-        addLog(`Checkpoint encontrado: a exportação anterior parou na seção ${state.state.lastIndex + 1} de ${state.state.total}.`, 'info');
+        addLog(`Checkpoint de PDF encontrado: parou na seção ${pdfState.state.lastIndex + 1} de ${pdfState.state.total}.`, 'info');
+        return;
       }
+      
+      // Check for ZIP progress (indirectly by checking cache)
+      // This is simplified: if we have any photos cached for this medicao, offer to resume
+      // But actually, handleExportZip(true) will automatically use the cache.
     };
     void checkCheckpoint();
   }, [detailMedicao.id, addLog]);
