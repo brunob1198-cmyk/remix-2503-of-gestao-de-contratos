@@ -238,20 +238,41 @@ serve(async (req) => {
     const photoHeight = photoWidth * 0.75;
     const verticalGap = 25;
 
-    for (let i = 0; i < photos.length; i++) {
-      const row = Math.floor(i / photosPerRow) % 3; // 3 rows per page
-      const col = i % photosPerRow;
+    // Group photos by site for the report
+    const photosBySite = new Map();
+    photos.forEach(p => {
+      const site = lancamentos.find(l => l.site_id === p.site_id)?.site;
+      const siteKey = site ? `${site.codigo} - ${site.nome}` : "Outras Fotos";
+      if (!photosBySite.has(siteKey)) photosBySite.set(siteKey, []);
+      photosBySite.get(siteKey).push(p);
+    });
 
-      if (i > 0 && i % (photosPerRow * 3) === 0) {
-        doc.addPage();
-        currentY = 20;
+    for (const [siteName, sitePhotos] of photosBySite.entries()) {
+      doc.addPage();
+      addHeader("RELATÓRIO FOTOGRÁFICO", `Site: ${siteName}`);
+      currentY = 50;
+
+      const photosPerRow = 2;
+      const photoWidth = (pageWidth - (margin * 3)) / photosPerRow;
+      const photoHeight = photoWidth * 0.75;
+      const verticalGap = 25;
+
+      for (let i = 0; i < sitePhotos.length; i++) {
+        const row = Math.floor(i / photosPerRow) % 3; // 3 rows per page
+        const col = i % photosPerRow;
+
+        if (i > 0 && i % (photosPerRow * 3) === 0) {
+          doc.addPage();
+          currentY = 20;
+        }
+
+        const x = margin + (col * (photoWidth + margin));
+        const y = currentY + (row * (photoHeight + verticalGap));
+
+        await addPhotoToPdf(sitePhotos[i], x, y, photoWidth, photoHeight);
       }
-
-      const x = margin + (col * (photoWidth + margin));
-      const y = currentY + (row * (photoHeight + verticalGap));
-
-      await addPhotoToPdf(photos[i], x, y, photoWidth, photoHeight);
     }
+
 
     // 7. Save and Upload
     const pdfOutput = doc.output("arraybuffer");
