@@ -2268,6 +2268,50 @@ export type Database = {
         }
         Relationships: []
       }
+      medicao_exports: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          file_size: number | null
+          filename: string
+          id: string
+          medicao_id: string
+          metadata: Json | null
+          quality: string | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          file_size?: number | null
+          filename: string
+          id?: string
+          medicao_id: string
+          metadata?: Json | null
+          quality?: string | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          file_size?: number | null
+          filename?: string
+          id?: string
+          medicao_id?: string
+          metadata?: Json | null
+          quality?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicao_exports_medicao_id_fkey"
+            columns: ["medicao_id"]
+            isOneToOne: false
+            referencedRelation: "lancamentos_medicao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medicao_status_historico: {
         Row: {
           data_mudanca: string | null
