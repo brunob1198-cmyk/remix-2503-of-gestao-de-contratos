@@ -476,17 +476,18 @@ export async function exportMedicaoToPdf(
     const isMassive = photoElements.length > 400;
     const isUltraMassive = photoElements.length > 1000;
     
+    // Improved scaling logic for better quality
     let scale = quality === 'high' ? 2.5 : quality === 'medium' ? 2 : 1.5;
     let imageCompression = quality === 'high' ? 0.95 : 0.85;
     
     if (isUltraMassive) {
-      addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Aplicando economia extrema de recursos.`, 'info');
-      scale = 1.1; // Reduced from 1.2
-      imageCompression = 0.55; // Reduced from 0.6
+      addLog(`Relatório Ultra-Massivo (${photoElements.length} fotos). Otimizando memória.`, 'info');
+      scale = 1.6; // Increased from 1.1 for better quality
+      imageCompression = 0.7; // Increased from 0.55
     } else if (isMassive) {
       addLog(`Relatório Massivo (${photoElements.length} fotos). Otimizando renderização.`, 'info');
-      scale = Math.min(scale, 1.8);
-      imageCompression = Math.min(imageCompression, 0.75);
+      scale = 1.8; // Increased from 1.5
+      imageCompression = 0.8;
     }
     
     pdf = new jsPDF({
