@@ -394,6 +394,9 @@ export async function exportMedicaoToPdf(
       const progress = Math.round(((i + 1) / sections.length) * 90);
       onProgress(progress);
       
+      // Crucial: Yield control back to the browser to prevent UI freeze and session timeout
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       // Cleanup to free memory
       canvas.width = 0;
       canvas.height = 0;
