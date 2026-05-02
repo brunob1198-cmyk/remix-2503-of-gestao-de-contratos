@@ -540,6 +540,11 @@ export function DetailMedicaoContent({
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
       // 1. Prepare Photos and Logos
+      addLog(`Encontradas ${diarioFotos.length} fotos para exportação.`, "info");
+      
+      if (diarioFotos.length === 0) {
+        addLog("Aviso: Nenhuma foto encontrada para o período selecionado.", "error");
+      }
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
