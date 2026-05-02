@@ -577,18 +577,7 @@ export function DetailMedicaoContent({
         };
       });
 
-      // Add Logos to Zip for local loading
-      const getLogoUrl = (url: string | null | undefined, bucket: string = 'empresa_logos') => {
-        if (!url) return null;
-        if (url.startsWith('http') || url.startsWith('data:')) return url;
-        // If it looks like a Supabase storage path or filename
-        const { data } = supabase.storage.from(bucket).getPublicUrl(url);
-        return data?.publicUrl || null;
-      };
-
-      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos');
-      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl, 'clientes_logos');
-
+      // Add Logos to Zip for local loading (already computed at component level)
       if (finalEmpresaLogoUrl) {
         photosToZip.push({
           url: finalEmpresaLogoUrl,
