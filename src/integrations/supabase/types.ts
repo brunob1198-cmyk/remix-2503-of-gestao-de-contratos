@@ -3088,10 +3088,6 @@ export type Database = {
           cliente_cnpj: string | null
           cliente_id: string | null
           cliente_razao_social: string | null
-          custo_diario_equipamentos: number | null
-          custo_diario_equipe: number | null
-          custo_diario_total: number | null
-          custo_diario_veiculos: number | null
           custo_equipamentos: number | null
           custo_erp_total: number | null
           custo_financeiros: number | null
@@ -3099,7 +3095,6 @@ export type Database = {
           custo_mao_de_obra: number | null
           custo_materiais: number | null
           custo_outros: number | null
-          custo_real_consolidado: number | null
           custo_transporte: number | null
           dias_com_diario: number | null
           empresa_id: string | null
@@ -3118,8 +3113,6 @@ export type Database = {
           projeto_status: string | null
           projeto_valor_total: number | null
           qtd_faturas: number | null
-          qtd_medicoes: number | null
-          valor_medido: number | null
         }
         Relationships: [
           {
