@@ -840,7 +840,7 @@ export function DetailMedicaoContent({
     .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .err-msg { padding: 20px; text-align: center; color: #ef4444; font-size: 10px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+    .err-msg { padding: 10px; text-align: center; color: #ef4444; font-size: 9px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; word-break: break-all; }
     .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; background: #f8fafc; color: var(--primary); font-weight: 600; }
     .non-image-file a { font-size: 10px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; }
     .photo-info { padding: 8px 10px; background: #fff; flex: 1; display: flex; flex-direction: column; }
