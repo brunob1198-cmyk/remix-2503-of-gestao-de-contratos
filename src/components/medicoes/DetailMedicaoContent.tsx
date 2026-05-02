@@ -1211,6 +1211,26 @@ export function DetailMedicaoContent({
         </Button>
 
         <Button 
+          onClick={() => {
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Relatorio_Online_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog("Relatório HTML Online (leve) gerado. As imagens serão carregadas via internet ao abrir o arquivo.", "success");
+          }} 
+          variant="outline" 
+          size="sm" 
+          disabled={isExporting} 
+          className="border-blue-600 text-blue-600 hover:bg-blue-50"
+        >
+          <ScrollText className="h-4 w-4 mr-2" />
+          HTML Online
+        </Button>
+
+        <Button 
           onClick={() => handleExportPdf(false)} 
           variant="ghost" 
           size="sm" 
