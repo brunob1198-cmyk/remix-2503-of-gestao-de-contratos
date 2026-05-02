@@ -533,10 +533,10 @@ export function DetailMedicaoContent({
         return (s || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-          .replace(/[/\\?%*:|"<>]/g, '-') // Caracteres proibidos em arquivos
-          .replace(/\s+/g, '_') // Substituir espaços por underscore para máxima compatibilidade
-          .trim()
-          .toLowerCase(); // Tudo minúsculo para evitar problemas de case em diferentes sistemas
+          .replace(/[^a-z0-9\.\-]/gi, '_') // Substituir QUALQUER caractere especial por underscore
+          .replace(/_+/g, '_') // Evitar múltiplos underscores
+          .replace(/^_+|_+$/g, '') // Remover underscores no início e fim
+          .toLowerCase(); // Tudo minúsculo
       };
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
