@@ -659,8 +659,10 @@ export async function exportMedicaoToPdf(
                 // Ensure all elements in the clone have print-color-adjust
                 const all = clonedDoc.getElementsByTagName('*');
                 for (let j = 0; j < all.length; j++) {
-                  (all[j] as HTMLElement).style.printColorAdjust = 'exact';
-                  (all[j] as HTMLElement).style.webkitPrintColorAdjust = 'exact';
+                  const el = all[j] as HTMLElement;
+                  el.style.printColorAdjust = 'exact';
+                  // @ts-ignore - legacy/vendor property
+                  el.style.webkitPrintColorAdjust = 'exact';
                 }
               }
             });
