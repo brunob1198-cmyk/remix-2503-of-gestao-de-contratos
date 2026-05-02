@@ -623,7 +623,8 @@ export function DetailMedicaoContent({
         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
         // Match exactly the zip folder/filename logic
-        const fileName = `foto_${idx + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
+        const photoIndex = idx >= 0 ? idx : diarioFotos.length; // Fallback se não encontrar por ID
+        const fileName = `foto_${photoIndex + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         const relativeDir = `fotos/${siteName}/${classification}`;
         const localPath = `${relativeDir}/${fileName}`;
         
