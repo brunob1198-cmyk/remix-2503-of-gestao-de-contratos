@@ -1203,18 +1203,29 @@ export function DetailMedicaoContent({
       <div ref={printRef} className="print-container">
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
-            .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            .pdf-header-logo { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
-            .bg-muted\\/20, .bg-muted\\/40, .bg-muted\\/10, .bg-card { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
-            .badge-execucao { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
+            .pdf-header-logo { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; background-color: transparent !important; }
+            .bg-muted\\/20, .bg-muted\\/40, .bg-muted\\/10, .bg-card, .bg-primary, .bg-green-600 { 
+              print-color-adjust: exact !important; 
+              -webkit-print-color-adjust: exact !important; 
+            }
+            .badge-execucao, .badge { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            table th { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            .site-header { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
           }
           .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-          .photo-grid-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
+          .photo-grid-row { 
+            display: grid !important; 
+            grid-template-columns: repeat(3, 1fr) !important; 
+            gap: 12px !important; 
+            width: 100% !important;
+            margin-bottom: 12px !important;
+          }
         `}} />
         <div
           className="pdf-keep-together"
           data-pdf-section="medicao-resumo"
-          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+          style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
         >
           {/* Header */}
           <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
