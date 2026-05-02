@@ -954,7 +954,7 @@ export function DetailMedicaoContent({
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
-        mainFolderName,
+        mainFolderName: '', // Removido o aninhamento para simplificar caminhos e evitar erros de extração
         medicaoId: detailMedicao.id,
         resume
       });
