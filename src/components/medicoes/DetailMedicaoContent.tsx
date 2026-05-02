@@ -564,19 +564,16 @@ export function DetailMedicaoContent({
       });
 
       // Add Logos to Zip for local loading
-      const getLogoUrl = (url: string | null | undefined) => {
+      const getLogoUrl = (url: string | null | undefined, bucket: string = 'empresa_logos') => {
         if (!url) return null;
-        if (url.startsWith('http')) return url;
-        // If it looks like a Supabase storage path (no http and has a slash)
-        if (url.includes('/')) {
-          const { data } = supabase.storage.from('empresa_logos').getPublicUrl(url);
-          if (data?.publicUrl) return data.publicUrl;
-        }
-        return null;
+        if (url.startsWith('http') || url.startsWith('data:')) return url;
+        // If it looks like a Supabase storage path or filename
+        const { data } = supabase.storage.from(bucket).getPublicUrl(url);
+        return data?.publicUrl || null;
       };
 
-      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url"));
-      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl);
+      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos');
+      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl, 'clientes_logos');
 
       if (finalEmpresaLogoUrl) {
         photosToZip.push({
