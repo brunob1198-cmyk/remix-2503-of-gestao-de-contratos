@@ -534,7 +534,7 @@ export function DetailMedicaoContent({
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "") // Remove acentos
           .replace(/[/\\?%*:|"<>]/g, '-') // Caracteres proibidos em arquivos
-          .replace(/\s+/g, ' ')
+          .replace(/\s+/g, '_') // Substituir espaços por underscore para máxima compatibilidade
           .trim()
           .toLowerCase(); // Tudo minúsculo para evitar problemas de case em diferentes sistemas
       };
