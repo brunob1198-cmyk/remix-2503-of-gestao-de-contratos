@@ -540,9 +540,12 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "Outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
+        // Match the buildPhotoCardHtml naming logic exactly
+        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        
         return {
           url: foto.url,
-          filename: `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`,
+          filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
       });
