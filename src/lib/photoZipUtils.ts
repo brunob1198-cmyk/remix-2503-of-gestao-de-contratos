@@ -195,8 +195,6 @@ const processPhoto = async (
       }
       
       await savePhotoToCache(cacheId, blob);
-    } else {
-      if (index % 50 === 0) onLog?.(`Recuperando ${photo.filename} do cache local...`, 'info');
     }
     
     const arrayBuffer = await blob.arrayBuffer();
