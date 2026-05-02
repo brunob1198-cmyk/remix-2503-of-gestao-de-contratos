@@ -959,7 +959,7 @@ export function DetailMedicaoContent({
         resume
       });
 
-      addLog("Relatório ZIP gerado com sucesso! Abra o arquivo 'relatorio.html' para imprimir como PDF.", "success");
+      addLog("Relatório ZIP gerado com sucesso! IMPORTANTE: Você precisa EXTRAIR TODOS OS ARQUIVOS do ZIP para uma pasta antes de abrir o 'relatorio.html', senão as fotos não carregarão.", "success");
       setExportProgress(100);
       setIsExporting(false);
     } catch (e) {
