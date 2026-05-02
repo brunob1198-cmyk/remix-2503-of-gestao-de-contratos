@@ -97,35 +97,33 @@ export async function exportMedicaoCompletePackage(
 
 /**
  * Validates if a URL is accessible before attempting to download.
+ * Simplified to avoid issues with HEAD requests and CORS.
  */
-async function validateImageUrl(url: string, timeout = 10000): Promise<boolean> {
+async function validateImageUrl(url: string, timeout = 15000): Promise<boolean> {
+  if (!url) return false;
+  if (url.startsWith('data:')) return true;
+
   try {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     
+    // Try a simple GET with a range header to minimize data transfer if possible
+    // Some servers might not support Range, so we fall back to a full GET if needed
     const response = await fetch(url, { 
-      method: 'HEAD', 
+      method: 'GET', 
       mode: 'cors', 
-      signal: controller.signal 
-    });
+      signal: controller.signal,
+      headers: { 'Range': 'bytes=0-10' } 
+    }).catch(() => fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal }));
     
     clearTimeout(id);
-    return response.ok;
+    return response.ok || response.status === 206; // 206 is Partial Content
   } catch (e) {
-    try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      const response = await fetch(url, { 
-        method: 'GET', 
-        mode: 'cors', 
-        signal: controller.signal,
-        headers: { 'Range': 'bytes=0-0' }
-      });
-      clearTimeout(id);
-      return response.ok;
-    } catch (err) {
-      return false;
-    }
+    console.warn(`Validation failed for ${url}:`, e);
+    // If validation fails due to CORS on GET, we might still want to try downloading 
+    // because some browsers/environments behave differently for different fetch calls.
+    // But for now, let's return false if we really can't reach it.
+    return false;
   }
 }
 
