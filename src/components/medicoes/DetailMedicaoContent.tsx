@@ -1200,26 +1200,42 @@ export function DetailMedicaoContent({
 
 
       {/* Printable content */}
-      <div ref={printRef}>
+      <div ref={printRef} className="print-container">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
+            .pdf-header-logo { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; background-color: transparent !important; }
+            .bg-muted\\/20, .bg-muted\\/40, .bg-muted\\/10, .bg-card, .bg-primary, .bg-green-600 { 
+              print-color-adjust: exact !important; 
+              -webkit-print-color-adjust: exact !important; 
+            }
+            .badge-execucao, .badge { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            table th { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            .site-header { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+          }
+          .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          .photo-grid-row { 
+            display: grid !important; 
+            grid-template-columns: repeat(3, 1fr) !important; 
+            gap: 12px !important; 
+            width: 100% !important;
+            margin-bottom: 12px !important;
+          }
+        `}} />
         <div
           className="pdf-keep-together"
           data-pdf-section="medicao-resumo"
-          style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+          style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
         >
           {/* Header */}
-          <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
+          <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
-                const empresaLogoSrc = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "";
-                const hasValidEmpresaLogo = empresaLogoSrc && empresaLogoSrc !== "/logo.png";
+                const hasValidEmpresaLogo = !!finalEmpresaLogoUrl;
                 
-                const finalLogoSrc = (empresaLogoSrc && empresaLogoSrc.startsWith('http')) 
-                  ? `${empresaLogoSrc}${empresaLogoSrc.includes('?') ? '&' : '?'}pdf_export=1&t=${Date.now()}`
-                  : empresaLogoSrc;
-
                 return hasValidEmpresaLogo ? (
                 <img 
-                  src={finalLogoSrc} 
+                  src={finalEmpresaLogoUrl!} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
@@ -1241,7 +1257,7 @@ export function DetailMedicaoContent({
                         target.removeAttribute('crossorigin');
                       }
                       
-                      const baseSrc = empresaLogoSrc.split('?')[0];
+                      const baseSrc = finalEmpresaLogoUrl!.split('?')[0];
                       const sep = baseSrc.includes('?') ? '&' : '?';
                       
                       setTimeout(() => {
@@ -1512,7 +1528,7 @@ export function DetailMedicaoContent({
                                 <div
                                   key={`${className}-${pi}`}
                                   data-pdf-section="site-medicao-foto-row"
-                                  className="grid grid-cols-3 gap-3 items-stretch"
+                                  className="photo-grid-row"
                                   style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                                 >
                                   {pair.map((foto) => renderPhotoCard(foto))}
@@ -1542,7 +1558,7 @@ export function DetailMedicaoContent({
                           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                         >
                           {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
-                          <div className="grid grid-cols-3 gap-3 items-stretch" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                             {pair.map((foto) => renderPhotoCard(foto))}
                           </div>
                         </div>
@@ -1562,7 +1578,7 @@ export function DetailMedicaoContent({
                         style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                       >
                         {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-muted-foreground">Fotos Gerais</h3>}
-                        <div className="foto-card grid grid-cols-3 gap-3 items-start" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                        <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                           {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
                       </div>

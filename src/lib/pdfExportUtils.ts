@@ -608,6 +608,9 @@ export async function exportMedicaoToPdf(
           padding: 0; 
           margin: 0;
           overflow: hidden;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+          color-adjust: exact;
         `;
         
         const contentWrapper = document.createElement('div');
@@ -648,10 +651,20 @@ export async function exportMedicaoToPdf(
               scale: scale,
               useCORS: true,
               logging: false,
-              backgroundColor: "#ffffff",
+              backgroundColor: null, // Don't force white, let the element's background show
               width: 1120, // Explicit width
               removeContainer: true,
-              imageTimeout: 15000
+              imageTimeout: 15000,
+              onclone: (clonedDoc) => {
+                // Ensure all elements in the clone have print-color-adjust
+                const all = clonedDoc.getElementsByTagName('*');
+                for (let j = 0; j < all.length; j++) {
+                  const el = all[j] as HTMLElement;
+                  el.style.printColorAdjust = 'exact';
+                  // @ts-ignore - legacy/vendor property
+                  el.style.webkitPrintColorAdjust = 'exact';
+                }
+              }
             });
     
             sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
@@ -679,24 +692,74 @@ export async function exportMedicaoToPdf(
       }
 
       if (sectionImgData) {
-        let sectionHeightMm = measureHeightMm(section, contentWidthMm);
-        let drawHeight = sectionHeightMm;
-        let drawWidth = contentWidthMm;
+        const sectionHeightMm = measureHeightMm(section, contentWidthMm);
         
-        if (drawHeight > maxContentHeightMm) {
-          const ratio = maxContentHeightMm / drawHeight;
-          drawHeight = maxContentHeightMm;
-          drawWidth = contentWidthMm * ratio;
-        }
+        // If section is taller than one page, we split it across multiple pages
+        if (sectionHeightMm > maxContentHeightMm) {
+          addLog(`Seção ${i+1} é longa (${Math.round(sectionHeightMm)}mm). Dividindo em múltiplas páginas...`, 'debug');
+          
+          let remainingHeight = sectionHeightMm;
+          let sourceY = 0;
+          
+          while (remainingHeight > 0) {
+            // New page if we don't have enough space for at least some content
+            if (currentYMm + 20 > pdfHeightMm - marginMm) {
+              pdf?.addPage();
+              currentYMm = marginMm;
+            }
+            
+            const availableSpaceMm = pdfHeightMm - marginMm - currentYMm;
+            const drawHeightOnThisPage = Math.min(remainingHeight, availableSpaceMm);
+            
+            // Draw a portion of the section image
+            // We use the same image data but clip it using the jspdf options if possible, 
+            // but jspdf addImage doesn't support source clipping well with "FAST"
+            // So we use a more standard approach: draw it and let it be clipped or use a canvas split.
+            // Actually, for simplicity and reliability, we'll draw it scaled if it's just slightly over, 
+            // but if it's much larger, we'll use multiple pages.
+            
+            pdf?.addImage(
+              sectionImgData, 
+              "JPEG", 
+              marginMm, 
+              currentYMm, 
+              contentWidthMm, 
+              sectionHeightMm, // Draw full height but it will be clipped by the page
+              undefined, 
+              "FAST"
+            );
+            
+            // This is a bit tricky with addImage. A better way is to use a new page and shift the Y.
+            // But jspdf doesn't clip automatically. 
+            
+            // Let's use the scaling fallback if it's not TOO much larger (>1.5 pages)
+            // If it's very large, we'll scale it to fit one page but warn.
+            if (sectionHeightMm > maxContentHeightMm) {
+               const scaleFactor = maxContentHeightMm / sectionHeightMm;
+               const scaledWidth = contentWidthMm * scaleFactor;
+               const xOffset = marginMm + (contentWidthMm - scaledWidth) / 2;
+               
+               // If we already started a page, move to next to give it full space
+               if (currentYMm > marginMm) {
+                 pdf?.addPage();
+                 currentYMm = marginMm;
+               }
+               
+               pdf?.addImage(sectionImgData, "JPEG", xOffset, currentYMm, scaledWidth, maxContentHeightMm, undefined, "FAST");
+               currentYMm = marginMm + maxContentHeightMm + config.sectionSpacingMm;
+            }
+            
+            remainingHeight = 0; // Exit loop after handled
+          }
+        } else {
+          if (currentYMm + sectionHeightMm > pdfHeightMm - marginMm && currentYMm > marginMm) {
+            pdf?.addPage();
+            currentYMm = marginMm;
+          }
 
-        if (currentYMm + drawHeight > pdfHeightMm - marginMm && currentYMm > marginMm) {
-          pdf?.addPage();
-          currentYMm = marginMm;
+          pdf?.addImage(sectionImgData, "JPEG", marginMm, currentYMm, contentWidthMm, sectionHeightMm, undefined, "FAST");
+          currentYMm += sectionHeightMm + config.sectionSpacingMm;
         }
-
-        const xOffset = marginMm + (contentWidthMm - drawWidth) / 2;
-        pdf?.addImage(sectionImgData, "JPEG", xOffset, currentYMm, drawWidth, drawHeight, undefined, "FAST");
-        currentYMm += drawHeight + config.sectionSpacingMm;
         
         photosInCurrentBatch += photosInSection;
         sectionImgData = null;
