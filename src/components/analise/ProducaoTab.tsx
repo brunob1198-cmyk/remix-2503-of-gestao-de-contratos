@@ -77,7 +77,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="w-full">
-            <div className="min-w-[900px]">
+            <div className="min-w-[1000px]">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr>
@@ -87,6 +87,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                     <th className="text-right px-3 py-2.5 font-semibold">Executado</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Saldo</th>
                     <th className="text-right px-3 py-2.5 font-semibold">%</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Dias</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
