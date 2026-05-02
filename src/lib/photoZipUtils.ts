@@ -150,33 +150,29 @@ const processPhoto = async (
     }
 
     if (!blob) {
-      // Use a slightly more relaxed validation or just try the fetch directly
-      const isValid = await validateImageUrl(photo.url).catch(() => true); 
-      
-      if (!isValid) {
-        onLog?.(`Aviso: Foto ${photo.filename} parece inacessível. Tentando baixar mesmo assim...`, 'info');
-      }
-
-      const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
+      // Tenta baixar diretamente com tratamento de erro robusto
+      const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
         try {
-          // Use 'cors' but also try 'no-cache' to avoid stale errors
           const res = await fetch(url, { 
             mode: 'cors', 
-            cache: 'no-cache',
-            credentials: 'omit' // Often helps with CORS on public CDNs
+            cache: 'default',
           });
           if (res.ok) return res;
+          
+          // Se falhar por 403/401, pode ser que o URL precise de renovação ou o CORS esteja bloqueando
+          if (res.status === 403 || res.status === 401) {
+             throw new Error(`Acesso negado (Status ${res.status}). Verifique as permissões do bucket.`);
+          }
+          
           throw new Error(`Status ${res.status}`);
         } catch (err) {
           if (retries > 0) {
-            const delay = 2000 + (3 - retries) * 1000;
-            onLog?.(`Retentando download de ${photo.filename} em ${delay}ms...`, 'info');
+            const delay = 1500;
             await new Promise(r => setTimeout(r, delay));
             
-            // Try adding a cache-buster if it failed
-            const separator = url.includes('?') ? '&' : '?';
-            const retryUrl = `${url}${separator}retry=${retries}&t=${Date.now()}`;
-            return fetchWithRetry(retryUrl, retries - 1);
+            // Adiciona um cache-buster apenas no último retry
+            const finalUrl = retries === 1 ? `${url}${url.includes('?') ? '&' : '?'}retry=${Date.now()}` : url;
+            return fetchWithRetry(finalUrl, retries - 1);
           }
           throw err;
         }
@@ -185,8 +181,14 @@ const processPhoto = async (
       const response = await fetchWithRetry(photo.url);
       blob = await response.blob();
       
-      if (blob.size < 100) {
-        throw new Error("Arquivo baixado parece corrompido ou vazio.");
+      if (!blob || blob.size < 100) {
+        throw new Error("Arquivo baixado inválido ou muito pequeno.");
+      }
+
+      // Verifica se é uma imagem ou se é algo que não deve estar no relatório fotográfico
+      const contentType = blob.type || '';
+      if (contentType.includes('pdf') || photo.filename.toLowerCase().endsWith('.pdf')) {
+        onLog?.(`Aviso: ${photo.filename} é um PDF e não será exibido como imagem no relatório.`, 'info');
       }
       
       await savePhotoToCache(cacheId, blob);
