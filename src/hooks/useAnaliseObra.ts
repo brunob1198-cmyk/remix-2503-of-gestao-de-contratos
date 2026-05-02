@@ -213,9 +213,10 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         const itemLpuId = dp.item_lpu_id;
         const dt = diarioMap.get(dp.diario_id) || "";
         const existing = prodByItem.get(itemLpuId) || { receita: 0, quantidade: 0, diasSet: new Set<string>(), primeiraData: null, ultimaData: null };
+        const qtd = Number(dp.quantidade);
         existing.receita += Number(dp.valor_total);
-        existing.quantidade += Number(dp.quantidade);
-        if (dt) {
+        existing.quantidade += qtd;
+        if (dt && qtd > 0) {
           existing.diasSet.add(dt);
           if (!existing.primeiraData || dt < existing.primeiraData) existing.primeiraData = dt;
           if (!existing.ultimaData || dt > existing.ultimaData) existing.ultimaData = dt;
