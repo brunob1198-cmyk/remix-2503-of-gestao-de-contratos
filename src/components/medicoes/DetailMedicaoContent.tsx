@@ -532,10 +532,11 @@ export function DetailMedicaoContent({
       const sanitize = (s: string) => {
         return (s || "")
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "") // Remove accents
-          .replace(/[/\\?%*:|"<>]/g, '-')
+          .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+          .replace(/[/\\?%*:|"<>]/g, '-') // Caracteres proibidos em arquivos
           .replace(/\s+/g, ' ')
-          .trim();
+          .trim()
+          .toLowerCase(); // Tudo minúsculo para evitar problemas de case em diferentes sistemas
       };
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
