@@ -532,10 +532,11 @@ export function DetailMedicaoContent({
       const sanitize = (s: string) => {
         return (s || "")
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "") // Remove accents
-          .replace(/[/\\?%*:|"<>]/g, '-')
+          .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+          .replace(/[/\\?%*:|"<>]/g, '-') // Caracteres proibidos em arquivos
           .replace(/\s+/g, ' ')
-          .trim();
+          .trim()
+          .toLowerCase(); // Tudo minúsculo para evitar problemas de case em diferentes sistemas
       };
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
@@ -546,14 +547,14 @@ export function DetailMedicaoContent({
         addLog("Aviso: Nenhuma foto encontrada para o período selecionado.", "error");
       }
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
-        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-        const siteName = sanitize(foto.site_nome || "Geral");
-        const classification = sanitize(foto.classificacao || "Outros");
+        const siteName = sanitize(foto.site_nome || "geral");
+        const classification = sanitize(foto.classificacao || "outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
-        // Match the buildPhotoCardHtml naming logic exactly
-        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        // Nome de arquivo totalmente sanitizado e em minúsculo
+        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
         
         return {
           url: foto.url,
@@ -614,19 +615,19 @@ export function DetailMedicaoContent({
       // 3. Build photo HTML helper (mirrors portal layout)
       const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
         const idx = diarioFotos.findIndex(df => df.id === foto.id);
-        const siteName = sanitize(foto.site_nome || "Geral");
-        const classification = sanitize(foto.classificacao || "Outros");
+        const siteName = sanitize(foto.site_nome || "geral");
+        const classification = sanitize(foto.classificacao || "outros");
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
         const itemDesc = sanitize(foto.item_descricao || "foto");
-        const extension = foto.url.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+        const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
-        // Relative path within the ZIP
-        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        // Match exactly the zip folder/filename logic
+        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
         const relativeDir = `fotos/${siteName}/${classification}`;
         const localPath = `${relativeDir}/${fileName}`;
         
-        // Encode URI to handle spaces and special chars in the HTML src
+        // Encode URI segments for local file path compatibility
         const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
         const clsLower = foto.classificacao?.toLowerCase();
@@ -645,7 +646,7 @@ export function DetailMedicaoContent({
                   src="${safePath}" 
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                   loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;>Erro ao carregar arquivo local:<br><small>${fileName}</small></div>';">
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><small>${localPath}</small><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>
@@ -839,7 +840,7 @@ export function DetailMedicaoContent({
     .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .err-msg { padding: 20px; text-align: center; color: #ef4444; font-size: 10px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+    .err-msg { padding: 10px; text-align: center; color: #ef4444; font-size: 9px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; word-break: break-all; }
     .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; background: #f8fafc; color: var(--primary); font-weight: 600; }
     .non-image-file a { font-size: 10px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; }
     .photo-info { padding: 8px 10px; background: #fff; flex: 1; display: flex; flex-direction: column; }
@@ -953,12 +954,12 @@ export function DetailMedicaoContent({
         onProgress: (p, total) => setExportProgress(Math.round((p / total) * 100)),
         onLog: (msg, type) => addLog(msg, type),
         extraFiles,
-        mainFolderName,
+        mainFolderName: '', // Removido o aninhamento para simplificar caminhos e evitar erros de extração
         medicaoId: detailMedicao.id,
         resume
       });
 
-      addLog("Relatório ZIP gerado com sucesso! Abra o arquivo 'relatorio.html' para imprimir como PDF.", "success");
+      addLog("Relatório ZIP gerado com sucesso! IMPORTANTE: Você precisa EXTRAIR TODOS OS ARQUIVOS do ZIP para uma pasta antes de abrir o 'relatorio.html', senão as fotos não carregarão.", "success");
       setExportProgress(100);
       setIsExporting(false);
     } catch (e) {

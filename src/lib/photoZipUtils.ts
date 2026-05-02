@@ -81,7 +81,7 @@ export async function exportMedicaoCompletePackage(
           uint8Array = new Uint8Array(arrayBuffer);
         }
 
-        const path = mainFolderName ? `${mainFolderName}/${file.filename}` : file.filename;
+        const path = file.filename;
         const zipFile = new fflate.ZipPassThrough(path);
         zipStream.add(zipFile);
         zipFile.push(uint8Array, true);
@@ -185,10 +185,15 @@ const processPhoto = async (
         throw new Error("Arquivo baixado inválido ou muito pequeno.");
       }
 
+      // Força a extensão para minúsculas para consistência com o HTML
+      const ext = (photo.filename.split('.').pop() || 'jpg').toLowerCase();
+      const baseName = photo.filename.substring(0, photo.filename.lastIndexOf('.'));
+      const finalFileName = `${baseName}.${ext}`;
+
       // Verifica se é uma imagem ou se é algo que não deve estar no relatório fotográfico
       const contentType = blob.type || '';
-      if (contentType.includes('pdf') || photo.filename.toLowerCase().endsWith('.pdf')) {
-        onLog?.(`Aviso: ${photo.filename} é um PDF e não será exibido como imagem no relatório.`, 'info');
+      if (contentType.includes('pdf') || finalFileName.endsWith('.pdf')) {
+        onLog?.(`Aviso: ${finalFileName} é um PDF e não será exibido como imagem no relatório.`, 'info');
       }
       
       await savePhotoToCache(cacheId, blob);
@@ -200,10 +205,9 @@ const processPhoto = async (
     uint8Array = new Uint8Array(arrayBuffer);
     blob = null; 
 
-    let fullPath = photo.folder ? `${photo.folder}/${photo.filename}` : photo.filename;
-    if (mainFolderName) {
-      fullPath = `${mainFolderName}/${fullPath}`;
-    }
+    // Simplificando estrutura: Fotos ficam em uma pasta flat se possível ou conforme definido
+    // Mas sem o mainFolderName para evitar caminhos muito longos ou erros de aninhamento
+    const fullPath = photo.folder ? `${photo.folder}/${photo.filename.toLowerCase()}` : photo.filename.toLowerCase();
     
     const zipFile = new fflate.ZipPassThrough(fullPath);
     zipStream.add(zipFile);
