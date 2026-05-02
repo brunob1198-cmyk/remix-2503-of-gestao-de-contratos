@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
+import { clearPDFChunks, clearExportState, getExportState, saveExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
 import { 
   chunkArray,
   PDFExportLog,
@@ -79,6 +79,7 @@ export function DetailMedicaoContent({
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [reducedSize, setReducedSize] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
@@ -183,6 +184,21 @@ export function DetailMedicaoContent({
 
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
+
+  const getLogoUrl = useCallback((url: string | null | undefined, bucket: string = 'empresa_logos') => {
+    if (!url) return null;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(url);
+    return data?.publicUrl || null;
+  }, []);
+
+  const finalEmpresaLogoUrl = useMemo(() => 
+    getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos'),
+  [detailMedicao.logo_empresa_url, getLogoUrl]);
+
+  const finalClienteLogoUrl = useMemo(() => 
+    getLogoUrl(clienteLogoUrl, 'clientes_logos'),
+  [clienteLogoUrl, getLogoUrl]);
 
   // Detect measurement type from lancamentos' observacao field
   const tipoMedicao = useMemo(() => {
@@ -524,22 +540,15 @@ export function DetailMedicaoContent({
     if (!resume) setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
+    
+    // Persistência de progresso: salvar estado inicial
+    await saveExportState(detailMedicao.id, { type: 'zip', timestamp: Date.now(), status: 'started' });
+
     addLog(resume ? "Retomando exportação ZIP via stream..." : "Iniciando exportação completa via StreamSaver...", "info");
+    if (reducedSize) addLog("Modo de tamanho reduzido ativado (thumbnails).", "info");
     addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
-
+    
     try {
-      // Optimized sanitize to handle filesystem and HTML path compatibility
-      const sanitize = (s: string) => {
-        return (s || "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-          .replace(/[^a-z0-9\.\-]/gi, '_') // Substituir QUALQUER caractere especial por underscore
-          .replace(/_+/g, '_') // Evitar múltiplos underscores
-          .replace(/^_+|_+$/g, '') // Remover underscores no início e fim
-          .toLowerCase(); // Tudo minúsculo
-      };
-      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
-
       // 1. Prepare Photos and Logos
       addLog(`Encontradas ${diarioFotos.length} fotos para exportação.`, "info");
       
@@ -556,25 +565,19 @@ export function DetailMedicaoContent({
         // Nome de arquivo extremamente limpo
         const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
+        // Se o modo reduzido estiver ativo, usamos a transformação do Supabase Storage para economizar banda
+        const finalUrl = reducedSize 
+          ? `${foto.url}${foto.url.includes('?') ? '&' : '?'}width=1200&quality=75` 
+          : foto.url;
+
         return {
-          url: foto.url,
+          url: finalUrl,
           filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
       });
 
-      // Add Logos to Zip for local loading
-      const getLogoUrl = (url: string | null | undefined, bucket: string = 'empresa_logos') => {
-        if (!url) return null;
-        if (url.startsWith('http') || url.startsWith('data:')) return url;
-        // If it looks like a Supabase storage path or filename
-        const { data } = supabase.storage.from(bucket).getPublicUrl(url);
-        return data?.publicUrl || null;
-      };
-
-      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos');
-      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl, 'clientes_logos');
-
+      // Add Logos to Zip for local loading (already computed at component level)
       if (finalEmpresaLogoUrl) {
         photosToZip.push({
           url: finalEmpresaLogoUrl,
@@ -590,7 +593,8 @@ export function DetailMedicaoContent({
         });
       }
 
-      // 2. Prepare JSON Data
+      // 2. Prepare JSON Data and HTML Content
+      const htmlContent = generateHtmlReport();
       const measurementData = {
         id: detailMedicao.id,
         numero: detailMedicao.numero_medicao,
@@ -622,337 +626,6 @@ export function DetailMedicaoContent({
         fotos_count: diarioFotos.length
       };
 
-      // 3. Build photo HTML helper (mirrors portal layout)
-      const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
-        const idx = diarioFotos.findIndex(df => df.id === foto.id);
-        const siteName = sanitize(foto.site_nome || "geral");
-        const classification = sanitize(foto.classificacao || "outros");
-        const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-        const itemDesc = sanitize(foto.item_descricao || "foto");
-        const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
-        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
-        
-        // Match exactly the zip folder/filename logic
-        const photoIndex = idx >= 0 ? idx : diarioFotos.length; // Fallback se não encontrar por ID
-        const fileName = `foto_${photoIndex + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
-        const relativeDir = `fotos/${siteName}/${classification}`;
-        const localPath = `${relativeDir}/${fileName}`;
-        
-        // Encode URI segments for local file path compatibility
-        const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
-
-        const clsLower = foto.classificacao?.toLowerCase();
-        const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
-                      (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
-                      (clsLower === "problema") ? "#dc2626" : "#64748b";
-
-        const showItem = opts?.showItem !== false;
-        const showSiteName = !!opts?.showSiteName;
-
-        return `
-          <div class="photo-card">
-            <div class="photo-img-wrap">
-              ${isImage ? `
-                <img 
-                  src="${safePath}" 
-                  alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
-                  loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
-              ` : `
-                <div class="non-image-file">
-                  <span>📄 Arquivo ${extension.toUpperCase()}</span>
-                  <a href="${safePath}" target="_blank">Abrir arquivo</a>
-                </div>
-              `}
-            </div>
-            <div class="photo-info">
-              ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
-              <div class="photo-meta">
-                ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
-                ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
-                <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
-              </div>
-              ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
-            </div>
-          </div>
-        `;
-      };
-
-      // Build per-site production blocks for mista/agrupada
-      const buildSiteBlocksHtml = () => {
-        if (!isMultiSite) return '';
-        return fotosBySiteAndClass.map(({ siteName, siteId, classes }) => {
-          const siteItems = productionBySite.get(siteId) || [];
-          const siteTotal = getSiteItemsTotal(siteItems);
-          const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
-
-          const itemsTableHtml = siteItems.length > 0 ? `
-            <div class="site-production">
-              <p class="site-production-title">Produção do Site:</p>
-              <table class="site-table">
-                <thead>
-                  <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
-                </thead>
-                <tbody>
-                  ${siteItems.map(si => `
-                    <tr>
-                      <td>${si.item_codigo} — ${si.item_descricao}</td>
-                      <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
-                      <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-              <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
-            </div>
-          ` : '';
-
-          const obsHtml = siteObs.length > 0 ? `
-            <div class="site-obs">
-              <p class="site-obs-title">📋 Observações</p>
-              ${siteObs.map(o => `<p class="site-obs-text">${o.replace(/\n/g, '<br>')}</p>`).join('')}
-            </div>
-          ` : '';
-
-          const photosHtml = classes.map(([className, photos]) => `
-            <div class="class-group">
-              <h3 class="class-header">${className} (${photos.length})</h3>
-              <div class="photo-grid">
-                ${photos.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
-              </div>
-            </div>
-          `).join('');
-
-          return `
-            <section class="site-block">
-              <div class="site-header">📍 ${siteName}</div>
-              ${itemsTableHtml}
-              ${obsHtml}
-              ${photosHtml}
-            </section>
-          `;
-        }).join('');
-      };
-
-      // Build photo section for separada (single site - grouped by item)
-      const buildPhotosByItemHtml = () => {
-        if (isMultiSite) return '';
-        const items = Array.from(fotosByItem.byItem.entries());
-        const blocks = items.map(([key, photos]) => `
-          <div class="item-group">
-            <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
-            <div class="photo-grid">
-              ${photos.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-            </div>
-          </div>
-        `).join('');
-        const geraisBlock = fotosByItem.gerais.length > 0 ? `
-          <div class="item-group">
-            <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
-            <div class="photo-grid">
-              ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-            </div>
-          </div>
-        ` : '';
-        return blocks + geraisBlock;
-      };
-
-      // Items table consolidated
-      const itemsTableRows = detailLancamentos.map(l => {
-        const preco = Number(l.item_lpu?.preco_unitario || 0);
-        const qtd = Number(l.quantidade);
-        return `
-          <tr>
-            <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
-            <td>${l.item_lpu?.unidade || '-'}</td>
-            <td class="num">${qtd.toLocaleString("pt-BR")}</td>
-            <td class="num">${formatCurrency(preco)}</td>
-            <td class="num bold">${formatCurrency(qtd * preco)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const includedSitesHtml = (isMultiSite && includedSites.length > 0) ? `
-        <div class="sites-included">
-          <p class="sites-included-title">Sites incluídos na medição:</p>
-          <p class="sites-included-list">${includedSites.join(" | ")}</p>
-        </div>
-      ` : '';
-
-      const htmlContent = `<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
-  <style>
-    :root { --primary: #1e3a5f; --accent: #10b981; --muted: #64748b; --border: #e2e8f0; --bg-soft: #f8fafc; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; background: #e5e7eb; font-size: 12px; line-height: 1.5; }
-
-    .page { background: white; width: 210mm; min-height: 297mm; padding: 18mm 16mm; margin: 16px auto; box-shadow: 0 0 12px rgba(0,0,0,0.12); }
-
-    /* Header */
-    .doc-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 18px; gap: 16px; }
-    .doc-header-left { display: flex; gap: 16px; align-items: center; }
-    .doc-header-right { text-align: right; display: flex; gap: 16px; align-items: flex-end; }
-    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; }
-    .doc-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
-    .doc-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
-    .doc-num { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
-    .doc-date { font-size: 11px; color: var(--muted); margin: 0; }
-
-    /* Info grid */
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 16px; font-size: 12px; }
-    .info-item .label { color: var(--muted); margin-right: 4px; }
-    .info-item .value { font-weight: 600; }
-
-    .sites-included { background: var(--bg-soft); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; }
-    .sites-included-title { font-weight: 600; margin: 0 0 4px 0; font-size: 12px; }
-    .sites-included-list { margin: 0; color: var(--muted); font-size: 11px; }
-
-    /* Section headings */
-    h2.sec { font-size: 13px; margin: 22px 0 10px; padding: 8px 14px; background: #f1f5f9; border-left: 4px solid var(--primary); color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; break-after: avoid; }
-
-    /* Tables */
-    table.main { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
-    table.main th { text-align: left; padding: 9px 10px; background: var(--primary); color: #fff; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--primary); }
-    table.main td { padding: 7px 10px; border: 1px solid var(--border); color: #334155; vertical-align: middle; }
-    table.main tbody tr:nth-child(even) { background: var(--bg-soft); }
-    table.main tfoot td { background: #f1f5f9; font-weight: 700; color: var(--primary); border-top: 2px solid var(--primary); }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .bold { font-weight: 700; }
-
-    /* Observations */
-    .obs-box { padding: 12px 16px; background: var(--bg-soft); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 4px; white-space: pre-wrap; margin-bottom: 16px; font-size: 12px; }
-
-    /* Site block (mista/agrupada) */
-    .site-block { margin-top: 24px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; page-break-inside: auto; }
-    .site-header { background: var(--primary); color: #fff; padding: 10px 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .site-production { padding: 12px 14px; border-bottom: 1px solid var(--border); background: #fafbfc; }
-    .site-production-title { font-size: 11px; font-weight: 700; margin: 0 0 6px 0; color: var(--primary); }
-    table.site-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-    table.site-table th { text-align: left; padding: 6px 8px; background: #e2e8f0; color: #334155; font-weight: 600; border: 1px solid #cbd5e1; }
-    table.site-table td { padding: 5px 8px; border: 1px solid var(--border); }
-    .site-total-bar { margin-top: 8px; text-align: right; font-size: 11px; padding: 6px 10px; background: #fff; border: 1px solid var(--border); border-radius: 4px; display: inline-block; float: right; }
-    .site-obs { padding: 10px 14px; background: #fffbeb; border-bottom: 1px solid var(--border); }
-    .site-obs-title { font-size: 11px; font-weight: 700; margin: 0 0 4px 0; }
-    .site-obs-text { font-size: 11px; margin: 0 0 4px 0; color: #475569; }
-
-    /* Class groupings */
-    .class-group { padding: 10px 14px 14px; }
-    .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-    .item-group { margin-top: 18px; }
-    .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-
-    /* Photos - 3 columns to save space */
-    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
-    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
-    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .err-msg { padding: 8px; text-align: center; color: #94a3b8; font-size: 8px; background: #f8fafc; height: 100%; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
-    .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 6px; background: #f8fafc; color: var(--primary); font-weight: 600; font-size: 9px; }
-    .non-image-file a { font-size: 8px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 2px 6px; border-radius: 3px; }
-    .photo-info { padding: 6px 8px; background: #fff; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .photo-title { font-size: 8.5px; font-weight: 700; color: #0f172a; margin: 0 0 3px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .photo-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 7.5px; color: var(--muted); margin-bottom: 2px; }
-    .photo-site { background: #f1f5f9; padding: 1px 4px; border-radius: 2px; }
-    .photo-date { }
-    .photo-legenda { font-size: 8px; font-style: italic; color: #64748b; margin: 2px 0 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .badge { display: inline-block; padding: 1px 4px; border-radius: 2px; font-size: 7.5px; font-weight: 700; color: #fff; }
-
-    /* Print button */
-    .print-btn { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; padding: 14px 22px; border-radius: 50px; cursor: pointer; font-size: 14px; font-weight: 700; box-shadow: 0 4px 18px rgba(30,58,95,0.4); display: flex; align-items: center; gap: 8px; z-index: 999; }
-    .print-btn:hover { transform: scale(1.04); }
-
-    .footer-note { margin-top: 30px; font-size: 9px; color: var(--muted); text-align: center; border-top: 1px solid var(--border); padding-top: 8px; }
-
-    /* Print rules */
-    @page { size: A4; margin: 12mm; }
-    @media print {
-      body { background: #fff; }
-      .page { box-shadow: none; margin: 0; width: 100%; min-height: auto; padding: 0; page-break-after: always; }
-      .page:last-child { page-break-after: auto; }
-      .no-print { display: none !important; }
-      .photo-card, table, tr, thead, tfoot { page-break-inside: avoid; break-inside: avoid; }
-      h2.sec, .site-header, .class-header, .item-group-header { page-break-after: avoid; break-after: avoid; }
-      .site-block { page-break-inside: auto; }
-    }
-  </style>
-</head>
-<body>
-  <button class="print-btn no-print" onclick="window.print()">
-    🖨️ GERAR PDF / IMPRIMIR
-  </button>
-
-  <div class="page">
-    <div class="doc-header">
-      <div class="doc-header-left">
-        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
-        <div>
-          <h1 class="doc-title">Relatório de Medição</h1>
-          <p class="doc-subtitle">${detailMedicao.projeto_codigo} — ${detailMedicao.projeto_nome}</p>
-        </div>
-      </div>
-      <div class="doc-header-right">
-        <div>
-          ${detailMedicao.numero_medicao ? `<p class="doc-num">Medição Nº ${detailMedicao.numero_medicao}</p>` : ''}
-          <p class="doc-date">Emissão: ${formatDate(detailMedicao.data_medicao)}</p>
-        </div>
-        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
-      </div>
-    </div>
-
-    ${includedSitesHtml}
-
-    <div class="info-grid">
-      ${!isMultiSite ? `
-        <div class="info-item">📍 <span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} — ${detailMedicao.site_nome}</span></div>
-        <div class="info-item">📍 <span class="label">Município/UF:</span> <span class="value">${site?.municipio || "—"}/${detailMedicao.uf || "—"}</span></div>
-      ` : ''}
-      <div class="info-item">📅 <span class="label">Período:</span> <span class="value">${detailMedicao.periodo_inicio && detailMedicao.periodo_fim ? `${formatDate(detailMedicao.periodo_inicio)} a ${formatDate(detailMedicao.periodo_fim)}` : formatDate(detailMedicao.data_medicao)}</span></div>
-      <div class="info-item"><span class="label">Valor Total:</span> <span class="value">${formatCurrency(totalValor)}</span></div>
-      ${detailMedicao.numero_po ? `<div class="info-item"><span class="label">Nº PO:</span> <span class="value">${detailMedicao.numero_po}</span></div>` : ''}
-    </div>
-
-    ${detailMedicao.observacao_acompanhamento ? `
-      <h2 class="sec">Observações</h2>
-      <div class="obs-box">${detailMedicao.observacao_acompanhamento}</div>
-    ` : ''}
-
-    <h2 class="sec">Itens da Medição</h2>
-    <table class="main">
-      <thead>
-        <tr>
-          <th>Item LPU</th>
-          <th>Unidade</th>
-          <th class="num">Qtd Total</th>
-          <th class="num">Preço Unit.</th>
-          <th class="num">Valor Total</th>
-        </tr>
-      </thead>
-      <tbody>${itemsTableRows}</tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" class="num bold">Total:</td>
-          <td class="num bold">${formatCurrency(totalValor)}</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <div class="footer-note">Documento gerado automaticamente pelo Sistema de Gestão de Medições.</div>
-  </div>
-
-  ${diarioFotos.length > 0 ? `
-    <div class="page">
-      <h2 class="sec">📷 Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
-      ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
-    </div>
-  ` : ''}
-</body>
-</html>`;
-
       const extraFiles: ExtraFile[] = [
         { filename: 'dados.json', content: JSON.stringify(measurementData, null, 2) },
         { filename: 'relatorio.html', content: htmlContent }
@@ -973,6 +646,8 @@ export function DetailMedicaoContent({
       addLog("Relatório ZIP gerado com sucesso! IMPORTANTE: Você precisa EXTRAIR TODOS OS ARQUIVOS do ZIP para uma pasta antes de abrir o 'relatorio.html', senão as fotos não carregarão.", "success");
       setExportProgress(100);
       setIsExporting(false);
+      setHasCheckpoint(null);
+      await clearExportState(detailMedicao.id);
     } catch (e) {
       console.error("Erro na exportação ZIP:", e);
       addLog(`Erro no ZIP: ${e instanceof Error ? e.message : String(e)}`, "error");
@@ -1040,7 +715,301 @@ export function DetailMedicaoContent({
     return { byItem: map, gerais };
   }, [diarioFotos]);
 
+  // Helper to sanitize strings for files/paths
+  const sanitize = useCallback((s: string) => {
+    return (s || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") 
+      .replace(/[^a-z0-9\.\-]/gi, '_') 
+      .replace(/_+/g, '_') 
+      .replace(/^_+|_+$/g, '') 
+      .toLowerCase(); 
+  }, []);
 
+  const generateHtmlReport = useCallback(() => {
+    const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
+      const idx = diarioFotos.findIndex(df => df.id === foto.id);
+      const siteName = sanitize(foto.site_nome || "geral");
+      const classification = sanitize(foto.classificacao || "outros");
+      const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
+      const itemDesc = sanitize(foto.item_descricao || "foto");
+      const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
+      
+      const photoIndex = idx >= 0 ? idx : diarioFotos.length;
+      const fileName = `foto_${photoIndex + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
+      const relativeDir = `fotos/${siteName}/${classification}`;
+      const localPath = `${relativeDir}/${fileName}`;
+      const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+
+      const clsLower = foto.classificacao?.toLowerCase();
+      const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
+                    (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
+                    (clsLower === "problema") ? "#dc2626" : "#64748b";
+
+      const showItem = opts?.showItem !== false;
+      const showSiteName = !!opts?.showSiteName;
+
+      return `
+        <div class="photo-card">
+          <div class="photo-img-wrap">
+            ${isImage ? `
+              <img 
+                src="${safePath}" 
+                data-original-src="${foto.url}"
+                alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
+                loading="lazy" 
+                onerror="if(!this.dataset.triedUrl){ this.dataset.triedUrl=true; this.src=this.dataset.originalSrc; } else { this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; }">
+            ` : `
+              <div class="non-image-file">
+                <span>📄 Arquivo ${extension.toUpperCase()}</span>
+                <a href="${safePath}" target="_blank">Abrir arquivo</a>
+              </div>
+            `}
+          </div>
+          <div class="photo-info">
+            ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
+            <div class="photo-meta">
+              ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
+              ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
+              <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
+            </div>
+            ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
+          </div>
+        </div>
+      `;
+    };
+
+    const buildSiteBlocksHtml = () => {
+      if (!isMultiSite) return '';
+      return fotosBySiteAndClass.map(({ siteName, siteId, classes }) => {
+        const siteItems = productionBySite.get(siteId) || [];
+        const siteTotal = getSiteItemsTotal(siteItems);
+        const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
+
+        const itemsTableHtml = siteItems.length > 0 ? `
+          <div class="site-production">
+            <p class="site-production-title">Produção do Site:</p>
+            <table class="site-table">
+              <thead>
+                <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
+              </thead>
+              <tbody>
+                ${siteItems.map(si => `
+                  <tr>
+                    <td>${si.item_codigo} — ${si.item_descricao}</td>
+                    <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
+                    <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+          </div>
+        ` : '';
+
+        const obsHtml = siteObs.length > 0 ? `
+          <div class="site-obs">
+            <p class="site-obs-title">📋 Observações</p>
+            ${siteObs.map(o => `<p class="site-obs-text">${o.replace(/\n/g, '<br>')}</p>`).join('')}
+          </div>
+        ` : '';
+
+        const photosHtml = classes.map(([className, photos]) => `
+          <div class="class-group">
+            <h3 class="class-header">${className} (${photos.length})</h3>
+            <div class="photo-grid">
+              ${photos.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
+            </div>
+          </div>
+        `).join('');
+
+        return `
+          <section class="site-block">
+            <div class="site-header">📍 ${siteName}</div>
+            ${itemsTableHtml}
+            ${obsHtml}
+            ${photosHtml}
+          </section>
+        `;
+      }).join('');
+    };
+
+    const buildPhotosByItemHtml = () => {
+      if (isMultiSite) return '';
+      const items = Array.from(fotosByItem.byItem.entries());
+      const blocks = items.map(([key, photos]) => `
+        <div class="item-group">
+          <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
+          <div class="photo-grid">
+            ${photos.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+          </div>
+        </div>
+      `).join('');
+      const geraisBlock = fotosByItem.gerais.length > 0 ? `
+        <div class="item-group">
+          <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
+          <div class="photo-grid">
+            ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+          </div>
+        </div>
+      ` : '';
+      return blocks + geraisBlock;
+    };
+
+    const itemsTableRows = detailLancamentos.map(l => {
+      const preco = Number(l.item_lpu?.preco_unitario || 0);
+      const qtd = Number(l.quantidade);
+      return `
+        <tr>
+          <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
+          <td>${l.item_lpu?.unidade || '-'}</td>
+          <td class="num">${qtd.toLocaleString("pt-BR")}</td>
+          <td class="num">${formatCurrency(preco)}</td>
+          <td class="num bold">${formatCurrency(qtd * preco)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const includedSitesHtml = (isMultiSite && includedSites.length > 0) ? `
+      <div class="sites-included">
+        <p class="sites-included-title">Sites incluídos na medição:</p>
+        <p class="sites-included-list">${includedSites.join(" | ")}</p>
+      </div>
+    ` : '';
+
+    return `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
+  <style>
+    :root { --primary: #1e3a5f; --accent: #10b981; --muted: #64748b; --border: #e2e8f0; --bg-soft: #f8fafc; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; background: #e5e7eb; font-size: 12px; line-height: 1.5; }
+    .page { background: white; width: 210mm; min-height: 297mm; padding: 18mm 16mm; margin: 16px auto; box-shadow: 0 0 12px rgba(0,0,0,0.12); }
+    .doc-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 18px; gap: 16px; }
+    .doc-header-left { display: flex; gap: 16px; align-items: center; }
+    .doc-header-right { text-align: right; display: flex; gap: 16px; align-items: flex-end; }
+    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; }
+    .doc-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
+    .doc-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
+    .doc-num { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
+    .doc-date { font-size: 11px; color: var(--muted); margin: 0; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 16px; font-size: 12px; }
+    .info-item .label { color: var(--muted); margin-right: 4px; }
+    .info-item .value { font-weight: 600; }
+    .sites-included { background: var(--bg-soft); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; padding: 10px 14px; margin-bottom: 14px; }
+    .sites-included-title { font-weight: 600; margin: 0 0 4px 0; font-size: 12px; }
+    .sites-included-list { margin: 0; color: var(--muted); font-size: 11px; }
+    h2.sec { font-size: 13px; margin: 22px 0 10px; padding: 8px 14px; background: #f1f5f9; border-left: 4px solid var(--primary); color: var(--primary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; break-after: avoid; }
+    table.main { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+    table.main th { text-align: left; padding: 9px 10px; background: var(--primary); color: #fff; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--primary); }
+    table.main td { padding: 7px 10px; border: 1px solid var(--border); color: #334155; vertical-align: middle; }
+    table.main tbody tr:nth-child(even) { background: var(--bg-soft); }
+    table.main tfoot td { background: #f1f5f9; font-weight: 700; color: var(--primary); border-top: 2px solid var(--primary); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .bold { font-weight: 700; }
+    .obs-box { padding: 12px 16px; background: var(--bg-soft); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 4px; white-space: pre-wrap; margin-bottom: 16px; font-size: 12px; }
+    .site-block { margin-top: 24px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; page-break-inside: auto; }
+    .site-header { background: var(--primary); color: #fff; padding: 10px 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .site-production { padding: 12px 14px; border-bottom: 1px solid var(--border); background: #fafbfc; }
+    .site-production-title { font-size: 11px; font-weight: 700; margin: 0 0 6px 0; color: var(--primary); }
+    table.site-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    table.site-table th { text-align: left; padding: 6px 8px; background: #e2e8f0; color: #334155; font-weight: 600; border: 1px solid #cbd5e1; }
+    table.site-table td { padding: 5px 8px; border: 1px solid var(--border); }
+    .site-total-bar { margin-top: 8px; text-align: right; font-size: 11px; padding: 6px 10px; background: #fff; border: 1px solid var(--border); border-radius: 4px; display: inline-block; float: right; }
+    .site-obs { padding: 10px 14px; background: #fffbeb; border-bottom: 1px solid var(--border); }
+    .site-obs-title { font-size: 11px; font-weight: 700; margin: 0 0 4px 0; }
+    .site-obs-text { font-size: 11px; margin: 0 0 4px 0; color: #475569; }
+    .class-group { padding: 10px 14px 14px; }
+    .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
+    .item-group { margin-top: 18px; }
+    .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
+    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
+    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
+    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
+    .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; padding-top: 4px; font-size: 9px; }
+    .photo-site { color: var(--muted); }
+    .photo-date { color: var(--muted); }
+    .photo-legenda { font-size: 9px; font-style: italic; color: var(--muted); margin: 4px 0 0 0; line-height: 1.2; }
+    .badge { padding: 2px 6px; border-radius: 99px; color: #fff; font-weight: 700; font-size: 8px; text-transform: uppercase; }
+    .err-msg { padding: 12px; font-size: 10px; color: #991b1b; text-align: center; }
+    .non-image-file { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 11px; }
+    .non-image-file a { color: var(--primary); text-decoration: none; font-weight: 600; border: 1px solid var(--primary); padding: 4px 8px; border-radius: 4px; }
+    @media print { body { background: none; } .page { margin: 0; box-shadow: none; width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="doc-header">
+      <div class="doc-header-left">
+        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Empresa">` : ''}
+        <div>
+          <h1 class="doc-title">Relatório de Medição</h1>
+          <p class="doc-subtitle">${detailMedicao.projeto_nome || ''}</p>
+        </div>
+      </div>
+      <div class="doc-header-right">
+        <div>
+          <p class="doc-num">Nº ${detailMedicao.numero_medicao || detailMedicao.id}</p>
+          <p class="doc-date">Data: ${detailMedicao.data_medicao ? formatDate(detailMedicao.data_medicao) : ''}</p>
+        </div>
+        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Cliente">` : ''}
+      </div>
+    </header>
+
+    <div class="info-grid">
+      <div class="info-item"><span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} - ${detailMedicao.site_nome}</span></div>
+      <div class="info-item"><span class="label">UF:</span> <span class="value">${detailMedicao.uf}</span></div>
+      <div class="info-item"><span class="label">Projeto:</span> <span class="value">${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</span></div>
+      <div class="info-item"><span class="label">Período:</span> <span class="value">${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : ''} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : ''}</span></div>
+    </div>
+
+    ${includedSitesHtml}
+
+    <h2 class="sec">📝 Resumo da Produção</h2>
+    <table class="main">
+      <thead>
+        <tr>
+          <th>Item / Descrição</th>
+          <th>Unid.</th>
+          <th class="num">Qtd.</th>
+          <th class="num">Preço Unit.</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsTableRows}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num bold">VALOR TOTAL DA MEDIÇÃO:</td>
+          <td class="num bold">${formatCurrency(detailMedicao.total_valor)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    ${detailMedicao.observacao_acompanhamento ? `
+      <h2 class="sec">📋 Observações Gerais</h2>
+      <div class="obs-box">${detailMedicao.observacao_acompanhamento}</div>
+    ` : ''}
+  </div>
+
+  ${diarioFotos.length > 0 ? `
+    <div class="page">
+      <h2 class="sec">📷 Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
+      ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
+    </div>
+  ` : ''}
+</body>
+</html>`;
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1165,6 +1134,15 @@ export function DetailMedicaoContent({
                   className="h-3 w-3"
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Reduzir Tamanho (ZIP)</span>
+                <input 
+                  type="checkbox" 
+                  checked={reducedSize} 
+                  onChange={(e) => setReducedSize(e.target.checked)}
+                  className="h-3 w-3"
+                />
+              </div>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
@@ -1185,6 +1163,27 @@ export function DetailMedicaoContent({
         >
           {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
           {isExporting ? "Gerando Relatório..." : "Gerar Relatório (ZIP/PDF)"}
+        </Button>
+
+        <Button 
+          onClick={() => {
+            const htmlContent = generateHtmlReport();
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Relatorio_Online_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog("Relatório HTML Online (leve) gerado. As imagens serão carregadas via internet ao abrir o arquivo.", "success");
+          }} 
+          variant="outline" 
+          size="sm" 
+          disabled={isExporting} 
+          className="border-blue-600 text-blue-600 hover:bg-blue-50"
+        >
+          <ScrollText className="h-4 w-4 mr-2" />
+          HTML Online
         </Button>
 
         <Button 
