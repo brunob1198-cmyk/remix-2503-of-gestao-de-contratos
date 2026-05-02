@@ -528,9 +528,10 @@ export function DetailMedicaoContent({
     addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
 
     try {
-      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
-      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}`;
-      
+      // Optimized sanitize to handle filesystem and HTML path compatibility
+      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, ' ').trim();
+      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
+
       // 1. Prepare Photos and Logos
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
@@ -539,9 +540,12 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "Outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
+        // Match the buildPhotoCardHtml naming logic exactly
+        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        
         return {
           url: foto.url,
-          filename: `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`,
+          filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
       });
@@ -603,7 +607,14 @@ export function DetailMedicaoContent({
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
         const itemDesc = sanitize(foto.item_descricao || "foto");
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
-        const localPath = `fotos/${siteName}/${classification}/${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        
+        // Relative path within the ZIP
+        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        const relativeDir = `fotos/${siteName}/${classification}`;
+        const localPath = `${relativeDir}/${fileName}`;
+        
+        // Encode URI to handle spaces and special chars in the HTML src
+        const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
         const clsLower = foto.classificacao?.toLowerCase();
         const color = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
@@ -616,16 +627,20 @@ export function DetailMedicaoContent({
         return `
           <div class="photo-card">
             <div class="photo-img-wrap">
-              <img src="${localPath}" alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" loading="lazy" onerror="this.style.opacity='0.3';this.alt='Imagem não encontrada';">
+              <img 
+                src="${safePath}" 
+                alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
+                loading="eager" 
+                onerror="this.src='data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#94a3b8" font-size="12">Imagem não encontrada</text></svg>')}';this.onerror=null;">
             </div>
             <div class="photo-info">
               ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
               <div class="photo-meta">
-                ${showSiteName && foto.site_nome ? `<span class="photo-site">${foto.site_nome}</span>` : ''}
+                ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
                 ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
                 <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
               </div>
-              ${foto.legenda ? `<p class="photo-legenda">"${foto.legenda}"</p>` : ''}
+              ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
             </div>
           </div>
         `;
