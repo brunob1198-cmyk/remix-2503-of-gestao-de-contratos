@@ -103,16 +103,18 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
 
                     return (
                       <tr key={item.itemLpuId} className="border-t hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{item.codigo}</span>
-                            <span className="text-muted-foreground truncate max-w-[200px]">{item.descricao}</span>
-                            {isOver && (
-                              <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1 py-0 shrink-0">Excedido</Badge>
-                            )}
-                            {isExtraPlan && (
-                              <Badge variant="outline" className="border-blue-500 text-blue-700 text-[10px] px-1 py-0 shrink-0">Fora escopo</Badge>
-                            )}
+                        <td className="px-3 py-2 min-w-[250px] max-w-[400px]">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-primary">{item.codigo}</span>
+                            <span className="text-muted-foreground leading-snug">{item.descricao}</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {isOver && (
+                                <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1 py-0 shrink-0">Excedido</Badge>
+                              )}
+                              {isExtraPlan && (
+                                <Badge variant="outline" className="border-blue-500 text-blue-700 text-[10px] px-1 py-0 shrink-0">Fora escopo</Badge>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">{item.unidade}</td>
