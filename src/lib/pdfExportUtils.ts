@@ -651,10 +651,18 @@ export async function exportMedicaoToPdf(
               scale: scale,
               useCORS: true,
               logging: false,
-              backgroundColor: "#ffffff",
+              backgroundColor: null, // Don't force white, let the element's background show
               width: 1120, // Explicit width
               removeContainer: true,
-              imageTimeout: 15000
+              imageTimeout: 15000,
+              onclone: (clonedDoc) => {
+                // Ensure all elements in the clone have print-color-adjust
+                const all = clonedDoc.getElementsByTagName('*');
+                for (let j = 0; j < all.length; j++) {
+                  (all[j] as HTMLElement).style.printColorAdjust = 'exact';
+                  (all[j] as HTMLElement).style.webkitPrintColorAdjust = 'exact';
+                }
+              }
             });
     
             sectionImgData = canvas.toDataURL("image/jpeg", imageCompression);
