@@ -1200,7 +1200,17 @@ export function DetailMedicaoContent({
 
 
       {/* Printable content */}
-      <div ref={printRef}>
+      <div ref={printRef} className="print-container">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+            .pdf-header-logo { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            .bg-muted\\/20, .bg-muted\\/40, .bg-muted\\/10, .bg-card { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+            .badge-execucao { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+          }
+          .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          .photo-grid-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
+        `}} />
         <div
           className="pdf-keep-together"
           data-pdf-section="medicao-resumo"
