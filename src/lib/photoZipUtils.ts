@@ -81,7 +81,7 @@ export async function exportMedicaoCompletePackage(
           uint8Array = new Uint8Array(arrayBuffer);
         }
 
-        const path = mainFolderName ? `${mainFolderName}/${file.filename}` : file.filename;
+        const path = file.filename;
         const zipFile = new fflate.ZipPassThrough(path);
         zipStream.add(zipFile);
         zipFile.push(uint8Array, true);
