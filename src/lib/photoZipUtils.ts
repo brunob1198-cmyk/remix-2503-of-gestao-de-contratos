@@ -33,7 +33,7 @@ export async function exportMedicaoCompletePackage(
   options: ZipExportOptions = {}
 ) {
   const {
-    concurrency = photos.length > 500 ? 2 : 3, // Lower concurrency for large sets
+    concurrency = photos.length > 500 ? 2 : 3,
     onProgress,
     onLog,
     extraFiles = [],
@@ -42,9 +42,8 @@ export async function exportMedicaoCompletePackage(
     resume = false
   } = options;
 
-  if (!resume) {
-    await clearPhotoCache();
-  }
+  // REMOVIDO: clearPhotoCache() automático para permitir persistência global
+  // Só limpamos se explicitamente solicitado ou se houver erro crítico no futuro
 
   const total = photos.length + extraFiles.length;
   let processed = 0;
@@ -142,14 +141,13 @@ const processPhoto = async (
 ) => {
   let uint8Array: Uint8Array | null = null;
   try {
-    const cacheId = medicaoId ? `${medicaoId}_${photo.filename}` : photo.url;
-    let blob: Blob | null = null;
+    // Cache key baseada na URL para permitir reutilização entre diferentes medições
+    const cacheId = photo.url; 
+    let blob: Blob | null = await getPhotoFromCache(cacheId);
     
-    if (resume) {
-      blob = await getPhotoFromCache(cacheId);
-    }
-
-    if (!blob) {
+    if (blob) {
+      if (index % 50 === 0) onLog?.(`Recuperando ${photo.filename} do cache local...`, 'info');
+    } else {
       // Tenta baixar diretamente com tratamento de erro robusto
       const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
         try {
@@ -268,17 +266,9 @@ const processPhoto = async (
     await new Promise(resolve => setTimeout(resolve, 200));
     zipStream.end();
     
-    // Cleanup cache on success
-    if (medicaoId) {
-      // Small delay to ensure disk write is fully flushed
-      setTimeout(async () => {
-        try {
-          await clearPhotoCache();
-        } catch (e) {
-          console.warn("Could not clear photo cache:", e);
-        }
-      }, 5000);
-    }
+    // Cleanup cache REMOVIDO. Mantemos as fotos para futuras medições/re-gerações.
+    // A limpeza deve ser manual pelo usuário se necessário.
+    onLog?.(`Exportação finalizada. Cache mantido para otimizar futuras gerações.`, 'success');
   } catch (error) {
     onLog?.(`Erro fatal na exportação: ${error instanceof Error ? error.message : String(error)}`, 'error');
     writer.abort();
