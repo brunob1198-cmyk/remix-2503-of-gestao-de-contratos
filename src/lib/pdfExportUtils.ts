@@ -608,6 +608,9 @@ export async function exportMedicaoToPdf(
           padding: 0; 
           margin: 0;
           overflow: hidden;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+          color-adjust: exact;
         `;
         
         const contentWrapper = document.createElement('div');
