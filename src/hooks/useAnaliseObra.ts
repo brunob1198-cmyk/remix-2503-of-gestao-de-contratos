@@ -429,12 +429,8 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         let mediaSemanal = 0;
         let mediaMensal = 0;
 
-        if (prod && prod.primeiraData && prod.ultimaData && diasComProducao > 0) {
-          const first = new Date(prod.primeiraData + "T12:00:00");
-          const last = new Date(prod.ultimaData + "T12:00:00");
-          const spanDays = Math.max(1, Math.ceil((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-          mediaDiaria = executado / spanDays;
+        if (prod && diasComProducao > 0) {
+          mediaDiaria = executado / diasComProducao;
           mediaSemanal = mediaDiaria * 7;
           mediaMensal = mediaDiaria * 30;
         }
