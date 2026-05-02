@@ -162,10 +162,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                   <tr>
                     <td className="px-3 py-2.5" colSpan={2}>Total</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalPlanejado)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalExecutado)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{totalExecutado > 0 ? fmtQty(totalExecutado) : "—"}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalSaldo)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{pctGeral.toFixed(1)}%</td>
-                    <td colSpan={3}></td>
+                    <td colSpan={4}></td>
                   </tr>
                 </tfoot>
               </table>
