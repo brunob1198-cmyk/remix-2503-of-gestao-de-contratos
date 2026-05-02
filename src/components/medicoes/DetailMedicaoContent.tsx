@@ -646,7 +646,7 @@ export function DetailMedicaoContent({
                   src="${safePath}" 
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                   loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Erro ao carregar arquivo local:</b><br><small>${fileName}</small><br><br><span style=&quot;font-size: 8px; color: #666;&quot;>Caminho esperado: ${localPath}</span><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Erro ao carregar arquivo local:</b><br><small>${fileName}</small><br><br><span style=&quot;font-size: 8px; color: #666; word-break: break-all;&quot;>Tentando acessar: ${localPath}</span><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>
