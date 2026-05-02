@@ -529,10 +529,22 @@ export function DetailMedicaoContent({
 
     try {
       // Optimized sanitize to handle filesystem and HTML path compatibility
-      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, ' ').trim();
+      const sanitize = (s: string) => {
+        return (s || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") // Remove accents
+          .replace(/[/\\?%*:|"<>]/g, '-')
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
       // 1. Prepare Photos and Logos
+      addLog(`Encontradas ${diarioFotos.length} fotos para exportação.`, "info");
+      
+      if (diarioFotos.length === 0) {
+        addLog("Aviso: Nenhuma foto encontrada para o período selecionado.", "error");
+      }
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
@@ -606,7 +618,8 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "Outros");
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
         const itemDesc = sanitize(foto.item_descricao || "foto");
-        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const extension = foto.url.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
         // Relative path within the ZIP
         const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
@@ -627,11 +640,18 @@ export function DetailMedicaoContent({
         return `
           <div class="photo-card">
             <div class="photo-img-wrap">
-              <img 
-                src="${safePath}" 
-                alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
-                loading="eager" 
-                onerror="this.src='data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#94a3b8" font-size="12">Imagem não encontrada</text></svg>')}';this.onerror=null;">
+              ${isImage ? `
+                <img 
+                  src="${safePath}" 
+                  alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
+                  loading="eager" 
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;>Erro ao carregar arquivo local:<br><small>${fileName}</small></div>';">
+              ` : `
+                <div class="non-image-file">
+                  <span>📄 Arquivo ${extension.toUpperCase()}</span>
+                  <a href="${safePath}" target="_blank">Abrir arquivo</a>
+                </div>
+              `}
             </div>
             <div class="photo-info">
               ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
@@ -819,9 +839,12 @@ export function DetailMedicaoContent({
     .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .photo-info { padding: 8px 10px; background: #fff; }
+    .err-msg { padding: 20px; text-align: center; color: #ef4444; font-size: 10px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+    .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; background: #f8fafc; color: var(--primary); font-weight: 600; }
+    .non-image-file a { font-size: 10px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; }
+    .photo-info { padding: 8px 10px; background: #fff; flex: 1; display: flex; flex-direction: column; }
     .photo-title { font-size: 10px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3; }
-    .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+    .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 9px; color: var(--muted); margin-bottom: 4px; margin-top: auto; }
     .photo-site { background: #f1f5f9; padding: 1px 6px; border-radius: 3px; }
     .photo-date { }
     .photo-legenda { font-size: 9.5px; font-style: italic; color: #64748b; margin: 4px 0 0; line-height: 1.3; }
