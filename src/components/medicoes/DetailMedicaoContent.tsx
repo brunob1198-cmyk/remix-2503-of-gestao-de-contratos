@@ -79,6 +79,7 @@ export function DetailMedicaoContent({
   const [exportLogs, setExportLogs] = useState<PDFExportLog[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [pdfQuality, setPdfQuality] = useState<PDFQuality>('medium');
+  const [reducedSize, setReducedSize] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
@@ -524,7 +525,12 @@ export function DetailMedicaoContent({
     if (!resume) setExportLogs([]);
     setShowLogPanel(true);
     setDownloadUrl(null);
+    
+    // Persistência de progresso: salvar estado inicial
+    await saveExportState(detailMedicao.id, { type: 'zip', timestamp: Date.now(), status: 'started' });
+
     addLog(resume ? "Retomando exportação ZIP via stream..." : "Iniciando exportação completa via StreamSaver...", "info");
+    if (reducedSize) addLog("Modo de tamanho reduzido ativado (thumbnails).", "info");
     addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
 
     try {
@@ -556,8 +562,13 @@ export function DetailMedicaoContent({
         // Nome de arquivo extremamente limpo
         const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
+        // Se o modo reduzido estiver ativo, usamos a transformação do Supabase Storage para economizar banda
+        const finalUrl = reducedSize 
+          ? `${foto.url}${foto.url.includes('?') ? '&' : '?'}width=1200&quality=75` 
+          : foto.url;
+
         return {
-          url: foto.url,
+          url: finalUrl,
           filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
@@ -655,9 +666,10 @@ export function DetailMedicaoContent({
               ${isImage ? `
                 <img 
                   src="${safePath}" 
+                  data-original-src="${foto.url}"
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
-                  loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
+                  loading="lazy" 
+                  onerror="if(!this.dataset.triedUrl){ this.dataset.triedUrl=true; this.src=this.dataset.originalSrc; } else { this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; }">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>
@@ -1162,6 +1174,15 @@ export function DetailMedicaoContent({
                   type="checkbox" 
                   checked={debugMode} 
                   onChange={(e) => setDebugMode(e.target.checked)}
+                  className="h-3 w-3"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Reduzir Tamanho (ZIP)</span>
+                <input 
+                  type="checkbox" 
+                  checked={reducedSize} 
+                  onChange={(e) => setReducedSize(e.target.checked)}
                   className="h-3 w-3"
                 />
               </div>
