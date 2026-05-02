@@ -466,11 +466,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         const item = dpSample?.item_lpu as any;
 
         let mediaDiaria = 0;
-        if (prod.primeiraData && prod.ultimaData) {
-          const first = new Date(prod.primeiraData + "T12:00:00");
-          const last = new Date(prod.ultimaData + "T12:00:00");
-          const spanDays = Math.max(1, Math.ceil((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-          mediaDiaria = prod.quantidade / spanDays;
+        const diasComProducao = prod.diasSet.size;
+        if (diasComProducao > 0) {
+          mediaDiaria = prod.quantidade / diasComProducao;
         }
 
         producaoItems.push({
