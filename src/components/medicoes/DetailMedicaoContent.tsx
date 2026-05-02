@@ -553,8 +553,8 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
-        // Nome de arquivo totalmente sanitizado e em minúsculo
-        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
+        // Nome de arquivo extremamente limpo
+        const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
         return {
           url: foto.url,
