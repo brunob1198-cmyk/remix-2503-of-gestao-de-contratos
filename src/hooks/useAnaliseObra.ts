@@ -213,9 +213,10 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         const itemLpuId = dp.item_lpu_id;
         const dt = diarioMap.get(dp.diario_id) || "";
         const existing = prodByItem.get(itemLpuId) || { receita: 0, quantidade: 0, diasSet: new Set<string>(), primeiraData: null, ultimaData: null };
+        const qtd = Number(dp.quantidade);
         existing.receita += Number(dp.valor_total);
-        existing.quantidade += Number(dp.quantidade);
-        if (dt) {
+        existing.quantidade += qtd;
+        if (dt && qtd > 0) {
           existing.diasSet.add(dt);
           if (!existing.primeiraData || dt < existing.primeiraData) existing.primeiraData = dt;
           if (!existing.ultimaData || dt > existing.ultimaData) existing.ultimaData = dt;
@@ -428,12 +429,8 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         let mediaSemanal = 0;
         let mediaMensal = 0;
 
-        if (prod && prod.primeiraData && prod.ultimaData && diasComProducao > 0) {
-          const first = new Date(prod.primeiraData + "T12:00:00");
-          const last = new Date(prod.ultimaData + "T12:00:00");
-          const spanDays = Math.max(1, Math.ceil((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-          mediaDiaria = executado / spanDays;
+        if (prod && diasComProducao > 0) {
+          mediaDiaria = executado / diasComProducao;
           mediaSemanal = mediaDiaria * 7;
           mediaMensal = mediaDiaria * 30;
         }
@@ -469,11 +466,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         const item = dpSample?.item_lpu as any;
 
         let mediaDiaria = 0;
-        if (prod.primeiraData && prod.ultimaData) {
-          const first = new Date(prod.primeiraData + "T12:00:00");
-          const last = new Date(prod.ultimaData + "T12:00:00");
-          const spanDays = Math.max(1, Math.ceil((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-          mediaDiaria = prod.quantidade / spanDays;
+        const diasComProducao = prod.diasSet.size;
+        if (diasComProducao > 0) {
+          mediaDiaria = prod.quantidade / diasComProducao;
         }
 
         producaoItems.push({

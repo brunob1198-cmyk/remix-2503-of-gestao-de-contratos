@@ -77,7 +77,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="w-full">
-            <div className="min-w-[900px]">
+            <div className="min-w-[1000px]">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr>
@@ -87,6 +87,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                     <th className="text-right px-3 py-2.5 font-semibold">Executado</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Saldo</th>
                     <th className="text-right px-3 py-2.5 font-semibold">%</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Dias</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
@@ -102,16 +103,18 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
 
                     return (
                       <tr key={item.itemLpuId} className="border-t hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{item.codigo}</span>
-                            <span className="text-muted-foreground truncate max-w-[200px]">{item.descricao}</span>
-                            {isOver && (
-                              <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1 py-0 shrink-0">Excedido</Badge>
-                            )}
-                            {isExtraPlan && (
-                              <Badge variant="outline" className="border-blue-500 text-blue-700 text-[10px] px-1 py-0 shrink-0">Fora escopo</Badge>
-                            )}
+                        <td className="px-3 py-2 min-w-[250px] max-w-[400px]">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-primary">{item.codigo}</span>
+                            <span className="text-muted-foreground leading-snug">{item.descricao}</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {isOver && (
+                                <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px] px-1 py-0 shrink-0">Excedido</Badge>
+                              )}
+                              {isExtraPlan && (
+                                <Badge variant="outline" className="border-blue-500 text-blue-700 text-[10px] px-1 py-0 shrink-0">Fora escopo</Badge>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-2 py-2 text-muted-foreground">{item.unidade}</td>
@@ -130,6 +133,9 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
+                        </td>
+                        <td className="px-2 py-2 text-center tabular-nums text-muted-foreground">
+                          {item.diasComProducao > 0 ? item.diasComProducao : "—"}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaDiaria)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaSemanal)}</td>
@@ -156,10 +162,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                   <tr>
                     <td className="px-3 py-2.5" colSpan={2}>Total</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalPlanejado)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalExecutado)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{totalExecutado > 0 ? fmtQty(totalExecutado) : "—"}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{fmtQty(totalSaldo)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">{pctGeral.toFixed(1)}%</td>
-                    <td colSpan={3}></td>
+                    <td colSpan={4}></td>
                   </tr>
                 </tfoot>
               </table>
