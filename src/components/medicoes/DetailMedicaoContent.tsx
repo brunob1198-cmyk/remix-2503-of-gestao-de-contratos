@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { clearPDFChunks, clearExportState, getExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
+import { clearPDFChunks, clearExportState, getExportState, saveExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
 import { 
   chunkArray,
   PDFExportLog,
@@ -985,6 +985,8 @@ export function DetailMedicaoContent({
       addLog("Relatório ZIP gerado com sucesso! IMPORTANTE: Você precisa EXTRAIR TODOS OS ARQUIVOS do ZIP para uma pasta antes de abrir o 'relatorio.html', senão as fotos não carregarão.", "success");
       setExportProgress(100);
       setIsExporting(false);
+      setHasCheckpoint(null);
+      await clearExportState(detailMedicao.id);
     } catch (e) {
       console.error("Erro na exportação ZIP:", e);
       addLog(`Erro no ZIP: ${e instanceof Error ? e.message : String(e)}`, "error");
