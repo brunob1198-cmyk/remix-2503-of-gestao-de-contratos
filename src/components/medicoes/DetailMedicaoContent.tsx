@@ -1207,19 +1207,14 @@ export function DetailMedicaoContent({
           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
         >
           {/* Header */}
-          <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16 }}>
+          <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
-                const empresaLogoSrc = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url") || "";
-                const hasValidEmpresaLogo = empresaLogoSrc && empresaLogoSrc !== "/logo.png";
+                const hasValidEmpresaLogo = !!finalEmpresaLogoUrl;
                 
-                const finalLogoSrc = (empresaLogoSrc && empresaLogoSrc.startsWith('http')) 
-                  ? `${empresaLogoSrc}${empresaLogoSrc.includes('?') ? '&' : '?'}pdf_export=1&t=${Date.now()}`
-                  : empresaLogoSrc;
-
                 return hasValidEmpresaLogo ? (
                 <img 
-                  src={finalLogoSrc} 
+                  src={finalEmpresaLogoUrl!} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
@@ -1241,7 +1236,7 @@ export function DetailMedicaoContent({
                         target.removeAttribute('crossorigin');
                       }
                       
-                      const baseSrc = empresaLogoSrc.split('?')[0];
+                      const baseSrc = finalEmpresaLogoUrl!.split('?')[0];
                       const sep = baseSrc.includes('?') ? '&' : '?';
                       
                       setTimeout(() => {
