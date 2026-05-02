@@ -17,6 +17,8 @@ const ALLOWED_VIEWS = [
   "view_bi_analise_obras",
 ];
 
+const PAGE_SIZE = 1000;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,17 +42,36 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const limit = parseInt(url.searchParams.get("limit") || "10000");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    const hasManualRange = url.searchParams.has("limit") || url.searchParams.has("offset");
+    const rows: unknown[] = [];
 
-    const { data, error } = await supabase
-      .from(view)
-      .select("*")
-      .range(offset, offset + limit - 1);
+    if (hasManualRange) {
+      const limit = parseInt(url.searchParams.get("limit") || String(PAGE_SIZE));
+      const offset = parseInt(url.searchParams.get("offset") || "0");
+      const { data, error } = await supabase
+        .from(view)
+        .select("*")
+        .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+      if (error) throw error;
+      rows.push(...(data || []));
+    } else {
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from(view)
+          .select("*")
+          .range(from, from + PAGE_SIZE - 1);
 
-    return new Response(JSON.stringify(data), {
+        if (error) throw error;
+
+        const page = data || [];
+        rows.push(...page);
+
+        if (page.length < PAGE_SIZE) break;
+      }
+    }
+
+    return new Response(JSON.stringify(rows), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
