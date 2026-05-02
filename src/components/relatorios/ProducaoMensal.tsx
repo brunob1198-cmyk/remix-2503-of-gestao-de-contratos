@@ -68,6 +68,29 @@ const COL_LABELS: Record<ColKey, string> = {
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+const PAGE_SIZE = 1000;
+
+async function fetchAllProducaoRows(): Promise<DiarioProducaoRow[]> {
+  const rows: DiarioProducaoRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("view_bi_producao")
+      .select("id, data_producao, projeto_id, projeto_codigo, projeto_nome, valor_total, area_nome, origem")
+      .order("data_producao", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = (data || []) as DiarioProducaoRow[];
+    rows.push(...page);
+
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
 const getColValue = (row: MonthlyRow, col: ColKey): string => {
   const v = row[col];
   if (typeof v === "number") return formatCurrency(v);
@@ -99,15 +122,7 @@ export default function ProducaoMensal() {
 
   const { data: producaoData = [], isLoading } = useQuery({
     queryKey: ["producao_mensal_report"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("view_bi_producao")
-        .select("id, data_producao, projeto_id, projeto_codigo, projeto_nome, valor_total, area_nome, origem")
-        .limit(100000)
-        .order("data_producao", { ascending: true });
-      if (error) throw error;
-      return (data || []) as DiarioProducaoRow[];
-    },
+    queryFn: fetchAllProducaoRows,
   });
 
   const rows = useMemo(() => {
