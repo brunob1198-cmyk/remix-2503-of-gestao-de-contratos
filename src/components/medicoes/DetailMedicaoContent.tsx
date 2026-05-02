@@ -547,14 +547,14 @@ export function DetailMedicaoContent({
         addLog("Aviso: Nenhuma foto encontrada para o período selecionado.", "error");
       }
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
-        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
-        const siteName = sanitize(foto.site_nome || "Geral");
-        const classification = sanitize(foto.classificacao || "Outros");
+        const siteName = sanitize(foto.site_nome || "geral");
+        const classification = sanitize(foto.classificacao || "outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
-        // Match the buildPhotoCardHtml naming logic exactly
-        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        // Nome de arquivo totalmente sanitizado e em minúsculo
+        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
         
         return {
           url: foto.url,
