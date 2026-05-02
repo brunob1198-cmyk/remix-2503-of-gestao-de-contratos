@@ -613,7 +613,8 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "Outros");
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
         const itemDesc = sanitize(foto.item_descricao || "foto");
-        const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
+        const extension = foto.url.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
         // Relative path within the ZIP
         const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
@@ -634,11 +635,18 @@ export function DetailMedicaoContent({
         return `
           <div class="photo-card">
             <div class="photo-img-wrap">
-              <img 
-                src="${safePath}" 
-                alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
-                loading="eager" 
-                onerror="this.src='data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#94a3b8" font-size="12">Imagem não encontrada</text></svg>')}';this.onerror=null;">
+              ${isImage ? `
+                <img 
+                  src="${safePath}" 
+                  alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
+                  loading="eager" 
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;>Erro ao carregar arquivo local:<br><small>${fileName}</small></div>';">
+              ` : `
+                <div class="non-image-file">
+                  <span>📄 Arquivo ${extension.toUpperCase()}</span>
+                  <a href="${safePath}" target="_blank">Abrir arquivo</a>
+                </div>
+              `}
             </div>
             <div class="photo-info">
               ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
