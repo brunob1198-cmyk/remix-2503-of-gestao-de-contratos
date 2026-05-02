@@ -533,10 +533,10 @@ export function DetailMedicaoContent({
         return (s || "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-          .replace(/[/\\?%*:|"<>]/g, '-') // Caracteres proibidos em arquivos
-          .replace(/\s+/g, ' ')
-          .trim()
-          .toLowerCase(); // Tudo minúsculo para evitar problemas de case em diferentes sistemas
+          .replace(/[^a-z0-9\.\-]/gi, '_') // Substituir QUALQUER caractere especial por underscore
+          .replace(/_+/g, '_') // Evitar múltiplos underscores
+          .replace(/^_+|_+$/g, '') // Remover underscores no início e fim
+          .toLowerCase(); // Tudo minúsculo
       };
       const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
 
@@ -553,8 +553,8 @@ export function DetailMedicaoContent({
         const classification = sanitize(foto.classificacao || "outros");
         const itemDesc = sanitize(foto.item_descricao || "foto");
         
-        // Nome de arquivo totalmente sanitizado e em minúsculo
-        const fileName = `${index + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
+        // Nome de arquivo extremamente limpo
+        const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
         return {
           url: foto.url,
@@ -623,7 +623,8 @@ export function DetailMedicaoContent({
         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
         // Match exactly the zip folder/filename logic
-        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
+        const photoIndex = idx >= 0 ? idx : diarioFotos.length; // Fallback se não encontrar por ID
+        const fileName = `foto_${photoIndex + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         const relativeDir = `fotos/${siteName}/${classification}`;
         const localPath = `${relativeDir}/${fileName}`;
         
@@ -646,7 +647,7 @@ export function DetailMedicaoContent({
                   src="${safePath}" 
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                   loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><small>${localPath}</small><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Erro ao carregar arquivo local:</b><br><small>${fileName}</small><br><br><span style=&quot;font-size: 8px; color: #666; word-break: break-all;&quot;>Tentando acessar: ${localPath}</span><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>

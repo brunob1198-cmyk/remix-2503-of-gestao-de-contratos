@@ -207,7 +207,9 @@ const processPhoto = async (
 
     // Simplificando estrutura: Fotos ficam em uma pasta flat se possível ou conforme definido
     // Mas sem o mainFolderName para evitar caminhos muito longos ou erros de aninhamento
-    const fullPath = photo.folder ? `${photo.folder}/${photo.filename.toLowerCase()}` : photo.filename.toLowerCase();
+    // Garante que o caminho não tenha barras duplas ou iniciais e que tudo esteja em minúsculo
+    const folderPath = photo.folder ? photo.folder.toLowerCase().replace(/\/+$/, '') : '';
+    const fullPath = folderPath ? `${folderPath}/${photo.filename.toLowerCase()}` : photo.filename.toLowerCase();
     
     const zipFile = new fflate.ZipPassThrough(fullPath);
     zipStream.add(zipFile);
