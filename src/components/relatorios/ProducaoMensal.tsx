@@ -111,16 +111,16 @@ export default function ProducaoMensal() {
   });
 
   const rows = useMemo(() => {
+    // 1. Agrupar produção por projeto e mês
     const projetoMonthMap = new Map<string, number>();
-    const projetoMonths = new Map<string, Set<string>>();
+    const projetoSet = new Set<string>();
 
     producaoData.forEach((p) => {
       const projetoId = p.projeto_id;
-      const month = p.data_producao.substring(0, 7);
+      const month = p.data_producao.substring(0, 7); // "YYYY-MM"
       const key = `${projetoId}|${month}`;
       projetoMonthMap.set(key, (projetoMonthMap.get(key) || 0) + Number(p.valor_total));
-      if (!projetoMonths.has(projetoId)) projetoMonths.set(projetoId, new Set());
-      projetoMonths.get(projetoId)!.add(month);
+      projetoSet.add(projetoId);
     });
 
     const result: MonthlyRow[] = [];
@@ -129,25 +129,33 @@ export default function ProducaoMensal() {
       : projetos;
 
     projetosToShow.forEach((projeto) => {
-      const months = projetoMonths.get(projeto.id);
-      if (!months || months.size === 0) return;
+      // Se não tem nenhuma produção histórica na view, não mostramos nada para esse projeto
+      if (!projetoSet.has(projeto.id)) return;
 
-      const sortedMonths = Array.from(months).sort();
-        const areaObj = areas.find((a) => a.id === (projeto as any).area_id);
-        const areaName = areaObj?.nome || producaoData.find(p => p.projeto_id === projeto.id)?.area_nome || "-";
-        const clienteObj = projeto.clienteObj || clientes.find((c) => c.id === projeto.cliente_id);
-        const contratoObj = projeto.contratoObj || contratos.find((c) => c.id === projeto.contrato_id);
+      // Pegar todos os meses que tiveram produção para este projeto
+      const monthsForThisProject = Array.from(projetoMonthMap.keys())
+        .filter(k => k.startsWith(projeto.id + "|"))
+        .map(k => k.split("|")[1])
+        .sort();
 
-      let acumulado = 0;
+      const areaObj = areas.find((a) => a.id === (projeto as any).area_id);
+      const areaName = areaObj?.nome || producaoData.find(p => p.projeto_id === projeto.id)?.area_nome || "-";
+      const clienteObj = projeto.clienteObj || clientes.find((c) => c.id === projeto.cliente_id);
+      const contratoObj = projeto.contratoObj || contratos.find((c) => c.id === projeto.contrato_id);
 
-      sortedMonths.forEach((month) => {
+      let acumuladoAnterior = 0;
+
+      monthsForThisProject.forEach((month) => {
         const key = `${projeto.id}|${month}`;
         const producaoMes = projetoMonthMap.get(key) || 0;
 
+        // Se o mês for anterior ao início do filtro, soma no acumulado e continua
         if (month < periodoInicioKey) {
-          acumulado += producaoMes;
+          acumuladoAnterior += producaoMes;
           return;
         }
+
+        // Se o mês for posterior ao fim do filtro, para de processar esse projeto
         if (month > periodoFimKey) return;
 
         const [year, m] = month.split("-");
@@ -160,14 +168,15 @@ export default function ProducaoMensal() {
           projeto_descricao: projeto.nome,
           coordenador: projeto.coordenador || "-",
           valor_contrato: Number(contratoObj?.valor_total || projeto.valor_total || 0),
-          producao_acum_anterior: acumulado,
+          producao_acum_anterior: acumuladoAnterior,
           producao_mes: producaoMes,
-          producao_total_atual: acumulado + producaoMes,
+          producao_total_atual: acumuladoAnterior + producaoMes,
           mes_producao: month,
           mes_label: mesLabel,
         });
 
-        acumulado += producaoMes;
+        // Atualiza o acumulado para o próximo mês do loop
+        acumuladoAnterior += producaoMes;
       });
     });
 
