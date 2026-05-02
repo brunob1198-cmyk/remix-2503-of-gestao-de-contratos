@@ -564,17 +564,30 @@ export function DetailMedicaoContent({
       });
 
       // Add Logos to Zip for local loading
-      const empresaLogoUrl = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url");
-      if (empresaLogoUrl && empresaLogoUrl.startsWith('http')) {
+      const getLogoUrl = (url: string | null | undefined) => {
+        if (!url) return null;
+        if (url.startsWith('http')) return url;
+        // If it looks like a Supabase storage path (no http and has a slash)
+        if (url.includes('/')) {
+          const { data } = supabase.storage.from('empresa_logos').getPublicUrl(url);
+          if (data?.publicUrl) return data.publicUrl;
+        }
+        return null;
+      };
+
+      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url"));
+      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl);
+
+      if (finalEmpresaLogoUrl) {
         photosToZip.push({
-          url: empresaLogoUrl,
+          url: finalEmpresaLogoUrl,
           filename: 'logo_empresa.png',
           folder: 'logos'
         });
       }
-      if (clienteLogoUrl && clienteLogoUrl.startsWith('http')) {
+      if (finalClienteLogoUrl) {
         photosToZip.push({
-          url: clienteLogoUrl,
+          url: finalClienteLogoUrl,
           filename: 'logo_cliente.png',
           folder: 'logos'
         });
