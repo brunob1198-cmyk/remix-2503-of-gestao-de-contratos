@@ -1558,7 +1558,7 @@ export function DetailMedicaoContent({
                           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                         >
                           {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
-                          <div className="grid grid-cols-3 gap-3 items-stretch" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                             {pair.map((foto) => renderPhotoCard(foto))}
                           </div>
                         </div>
