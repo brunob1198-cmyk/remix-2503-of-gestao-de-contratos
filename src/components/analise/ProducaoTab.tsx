@@ -134,6 +134,9 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
+                        <td className="px-2 py-2 text-center tabular-nums text-muted-foreground">
+                          {item.diasComProducao > 0 ? item.diasComProducao : "—"}
+                        </td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaDiaria)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaSemanal)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaMensal)}</td>
