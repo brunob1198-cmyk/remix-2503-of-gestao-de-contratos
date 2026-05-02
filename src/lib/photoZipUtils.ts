@@ -152,24 +152,33 @@ const processPhoto = async (
     }
 
     if (!blob) {
-      const isValid = await validateImageUrl(photo.url);
+      // Use a slightly more relaxed validation or just try the fetch directly
+      const isValid = await validateImageUrl(photo.url).catch(() => true); 
+      
       if (!isValid) {
-        onLog?.(`Aviso: Foto ${photo.filename} está inacessível. Pulando...`, 'error');
-        if (processedRef) processedRef.val++;
-        if (onProgress && processedRef && total) onProgress(processedRef.val, total);
-        return;
+        onLog?.(`Aviso: Foto ${photo.filename} parece inacessível. Tentando baixar mesmo assim...`, 'info');
       }
 
       const fetchWithRetry = async (url: string, retries = 3): Promise<Response> => {
         try {
-          const res = await fetch(url, { mode: 'cors', cache: 'force-cache' });
+          // Use 'cors' but also try 'no-cache' to avoid stale errors
+          const res = await fetch(url, { 
+            mode: 'cors', 
+            cache: 'no-cache',
+            credentials: 'omit' // Often helps with CORS on public CDNs
+          });
           if (res.ok) return res;
           throw new Error(`Status ${res.status}`);
         } catch (err) {
           if (retries > 0) {
-            await new Promise(r => setTimeout(r, 1500));
+            const delay = 2000 + (3 - retries) * 1000;
+            onLog?.(`Retentando download de ${photo.filename} em ${delay}ms...`, 'info');
+            await new Promise(r => setTimeout(r, delay));
+            
+            // Try adding a cache-buster if it failed
             const separator = url.includes('?') ? '&' : '?';
-            return fetchWithRetry(`${url}${separator}retry=${retries}`, retries - 1);
+            const retryUrl = `${url}${separator}retry=${retries}&t=${Date.now()}`;
+            return fetchWithRetry(retryUrl, retries - 1);
           }
           throw err;
         }
@@ -177,6 +186,11 @@ const processPhoto = async (
 
       const response = await fetchWithRetry(photo.url);
       blob = await response.blob();
+      
+      if (blob.size < 100) {
+        throw new Error("Arquivo baixado parece corrompido ou vazio.");
+      }
+      
       await savePhotoToCache(cacheId, blob);
     } else {
       if (index % 50 === 0) onLog?.(`Recuperando ${photo.filename} do cache local...`, 'info');
