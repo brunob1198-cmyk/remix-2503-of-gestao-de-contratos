@@ -564,17 +564,27 @@ export function DetailMedicaoContent({
       });
 
       // Add Logos to Zip for local loading
-      const empresaLogoUrl = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url");
-      if (empresaLogoUrl && empresaLogoUrl.startsWith('http')) {
+      const getLogoUrl = (url: string | null | undefined, bucket: string = 'empresa_logos') => {
+        if (!url) return null;
+        if (url.startsWith('http') || url.startsWith('data:')) return url;
+        // If it looks like a Supabase storage path or filename
+        const { data } = supabase.storage.from(bucket).getPublicUrl(url);
+        return data?.publicUrl || null;
+      };
+
+      const finalEmpresaLogoUrl = getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos');
+      const finalClienteLogoUrl = getLogoUrl(clienteLogoUrl, 'clientes_logos');
+
+      if (finalEmpresaLogoUrl) {
         photosToZip.push({
-          url: empresaLogoUrl,
+          url: finalEmpresaLogoUrl,
           filename: 'logo_empresa.png',
           folder: 'logos'
         });
       }
-      if (clienteLogoUrl && clienteLogoUrl.startsWith('http')) {
+      if (finalClienteLogoUrl) {
         photosToZip.push({
-          url: clienteLogoUrl,
+          url: finalClienteLogoUrl,
           filename: 'logo_cliente.png',
           folder: 'logos'
         });
@@ -647,7 +657,7 @@ export function DetailMedicaoContent({
                   src="${safePath}" 
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                   loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Erro ao carregar arquivo local:</b><br><small>${fileName}</small><br><br><span style=&quot;font-size: 8px; color: #666; word-break: break-all;&quot;>Tentando acessar: ${localPath}</span><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>
@@ -836,21 +846,21 @@ export function DetailMedicaoContent({
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
 
-    /* Photos */
-    .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
-    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f1f5f9; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    /* Photos - 3 columns to save space */
+    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
+    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .err-msg { padding: 10px; text-align: center; color: #ef4444; font-size: 9px; background: #fee2e2; height: 100%; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; word-break: break-all; }
-    .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; background: #f8fafc; color: var(--primary); font-weight: 600; }
-    .non-image-file a { font-size: 10px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 4px 10px; border-radius: 4px; }
-    .photo-info { padding: 8px 10px; background: #fff; flex: 1; display: flex; flex-direction: column; }
-    .photo-title { font-size: 10px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; line-height: 1.3; }
-    .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 9px; color: var(--muted); margin-bottom: 4px; margin-top: auto; }
-    .photo-site { background: #f1f5f9; padding: 1px 6px; border-radius: 3px; }
+    .err-msg { padding: 8px; text-align: center; color: #94a3b8; font-size: 8px; background: #f8fafc; height: 100%; display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+    .non-image-file { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 6px; background: #f8fafc; color: var(--primary); font-weight: 600; font-size: 9px; }
+    .non-image-file a { font-size: 8px; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 2px 6px; border-radius: 3px; }
+    .photo-info { padding: 6px 8px; background: #fff; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .photo-title { font-size: 8.5px; font-weight: 700; color: #0f172a; margin: 0 0 3px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .photo-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 7.5px; color: var(--muted); margin-bottom: 2px; }
+    .photo-site { background: #f1f5f9; padding: 1px 4px; border-radius: 2px; }
     .photo-date { }
-    .photo-legenda { font-size: 9.5px; font-style: italic; color: #64748b; margin: 4px 0 0; line-height: 1.3; }
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 8.5px; font-weight: 700; color: #fff; }
+    .photo-legenda { font-size: 8px; font-style: italic; color: #64748b; margin: 2px 0 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .badge { display: inline-block; padding: 1px 4px; border-radius: 2px; font-size: 7.5px; font-weight: 700; color: #fff; }
 
     /* Print button */
     .print-btn { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; border: none; padding: 14px 22px; border-radius: 50px; cursor: pointer; font-size: 14px; font-weight: 700; box-shadow: 0 4px 18px rgba(30,58,95,0.4); display: flex; align-items: center; gap: 8px; z-index: 999; }
@@ -879,7 +889,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <div class="doc-header">
       <div class="doc-header-left">
-        ${empresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
+        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_codigo} — ${detailMedicao.projeto_nome}</p>
@@ -890,7 +900,7 @@ export function DetailMedicaoContent({
           ${detailMedicao.numero_medicao ? `<p class="doc-num">Medição Nº ${detailMedicao.numero_medicao}</p>` : ''}
           <p class="doc-date">Emissão: ${formatDate(detailMedicao.data_medicao)}</p>
         </div>
-        ${clienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
+        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
       </div>
     </div>
 
