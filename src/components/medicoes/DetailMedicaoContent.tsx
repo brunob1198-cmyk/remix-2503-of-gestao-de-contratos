@@ -615,19 +615,19 @@ export function DetailMedicaoContent({
       // 3. Build photo HTML helper (mirrors portal layout)
       const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
         const idx = diarioFotos.findIndex(df => df.id === foto.id);
-        const siteName = sanitize(foto.site_nome || "Geral");
-        const classification = sanitize(foto.classificacao || "Outros");
+        const siteName = sanitize(foto.site_nome || "geral");
+        const classification = sanitize(foto.classificacao || "outros");
         const dateStr = foto.diario_data ? formatDate(foto.diario_data).replace(/\//g, '-') : 'sem-data';
         const itemDesc = sanitize(foto.item_descricao || "foto");
-        const extension = foto.url.split('.').pop()?.split('?')[0]?.toLowerCase() || 'jpg';
+        const extension = (foto.url.split('.').pop()?.split('?')[0] || 'jpg').toLowerCase();
         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(extension);
         
-        // Relative path within the ZIP
-        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`;
+        // Match exactly the zip folder/filename logic
+        const fileName = `${idx + 1}_${dateStr}_${itemDesc.substring(0, 30)}.${extension}`.toLowerCase();
         const relativeDir = `fotos/${siteName}/${classification}`;
         const localPath = `${relativeDir}/${fileName}`;
         
-        // Encode URI to handle spaces and special chars in the HTML src
+        // Encode URI segments for local file path compatibility
         const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
         const clsLower = foto.classificacao?.toLowerCase();
@@ -646,7 +646,7 @@ export function DetailMedicaoContent({
                   src="${safePath}" 
                   alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                   loading="eager" 
-                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;>Erro ao carregar arquivo local:<br><small>${fileName}</small></div>';">
+                  onerror="this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><small>${localPath}</small><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório.</i></div>';">
               ` : `
                 <div class="non-image-file">
                   <span>📄 Arquivo ${extension.toUpperCase()}</span>
