@@ -532,7 +532,8 @@ export function DetailMedicaoContent({
     addLog(resume ? "Retomando exportação ZIP via stream..." : "Iniciando exportação completa via StreamSaver...", "info");
     if (reducedSize) addLog("Modo de tamanho reduzido ativado (thumbnails).", "info");
     addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
-
+    
+    try {
       // 1. Prepare Photos and Logos
       addLog(`Encontradas ${diarioFotos.length} fotos para exportação.`, "info");
       
