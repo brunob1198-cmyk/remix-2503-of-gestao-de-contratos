@@ -185,6 +185,21 @@ export function DetailMedicaoContent({
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
+  const getLogoUrl = useCallback((url: string | null | undefined, bucket: string = 'empresa_logos') => {
+    if (!url) return null;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(url);
+    return data?.publicUrl || null;
+  }, []);
+
+  const finalEmpresaLogoUrl = useMemo(() => 
+    getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos'),
+  [detailMedicao.logo_empresa_url, getLogoUrl]);
+
+  const finalClienteLogoUrl = useMemo(() => 
+    getLogoUrl(clienteLogoUrl, 'clientes_logos'),
+  [clienteLogoUrl, getLogoUrl]);
+
   // Detect measurement type from lancamentos' observacao field
   const tipoMedicao = useMemo(() => {
     const obs = detailLancamentos.find(l => l.observacao)?.observacao || "";
