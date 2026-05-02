@@ -528,9 +528,10 @@ export function DetailMedicaoContent({
     addLog("O arquivo será gravado diretamente no seu disco para economizar memória.", "info");
 
     try {
-      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').trim();
-      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}`;
-      
+      // Optimized sanitize to handle filesystem and HTML path compatibility
+      const sanitize = (s: string) => (s || "").replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, ' ').trim();
+      const mainFolderName = `medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id).replace(/\s+/g, '_')}`;
+
       // 1. Prepare Photos and Logos
       const photosToZip: PhotoToZip[] = diarioFotos.map((foto, index) => {
         const extension = foto.url.split('.').pop()?.split('?')[0] || 'jpg';
