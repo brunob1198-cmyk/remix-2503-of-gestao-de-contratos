@@ -20,17 +20,14 @@ import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 
 interface DiarioProducaoRow {
+  id: string;
+  data_producao: string;
+  projeto_id: string;
+  projeto_codigo: string;
+  projeto_nome: string;
   valor_total: number;
-  diarios_obra: {
-    data: string;
-    site_id: string;
-    sites: {
-      id: string;
-      codigo: string;
-      nome: string;
-      projeto_id: string;
-    };
-  };
+  area_nome: string;
+  origem: string;
 }
 
 interface MonthlyRow {
@@ -104,12 +101,12 @@ export default function ProducaoMensal() {
     queryKey: ["producao_mensal_report"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("diario_producao")
-        .select("valor_total, diarios_obra!inner(data, site_id, sites:sites!inner(id, codigo, nome, projeto_id))")
+        .from("view_bi_producao")
+        .select("id, data_producao, projeto_id, projeto_codigo, projeto_nome, valor_total, area_nome, origem")
         .limit(100000)
-        .order("diarios_obra(data)", { ascending: true });
+        .order("data_producao", { ascending: true });
       if (error) throw error;
-      return (data || []) as unknown as DiarioProducaoRow[];
+      return (data || []) as DiarioProducaoRow[];
     },
   });
 
@@ -118,10 +115,8 @@ export default function ProducaoMensal() {
     const projetoMonths = new Map<string, Set<string>>();
 
     producaoData.forEach((p) => {
-      const diario = p.diarios_obra;
-      if (!diario?.sites) return;
-      const projetoId = diario.sites.projeto_id;
-      const month = diario.data.substring(0, 7);
+      const projetoId = p.projeto_id;
+      const month = p.data_producao.substring(0, 7);
       const key = `${projetoId}|${month}`;
       projetoMonthMap.set(key, (projetoMonthMap.get(key) || 0) + Number(p.valor_total));
       if (!projetoMonths.has(projetoId)) projetoMonths.set(projetoId, new Set());
@@ -138,9 +133,10 @@ export default function ProducaoMensal() {
       if (!months || months.size === 0) return;
 
       const sortedMonths = Array.from(months).sort();
-      const areaObj = areas.find((a) => a.id === (projeto as any).area_id);
-      const clienteObj = projeto.clienteObj || clientes.find((c) => c.id === projeto.cliente_id);
-      const contratoObj = projeto.contratoObj || contratos.find((c) => c.id === projeto.contrato_id);
+        const areaObj = areas.find((a) => a.id === (projeto as any).area_id);
+        const areaName = areaObj?.nome || producaoData.find(p => p.projeto_id === projeto.id)?.area_nome || "-";
+        const clienteObj = projeto.clienteObj || clientes.find((c) => c.id === projeto.cliente_id);
+        const contratoObj = projeto.contratoObj || contratos.find((c) => c.id === projeto.contrato_id);
 
       let acumulado = 0;
 
@@ -158,7 +154,7 @@ export default function ProducaoMensal() {
         const mesLabel = `${monthNames[parseInt(m, 10) - 1]}-${year.substring(2)}`;
 
         result.push({
-          area: areaObj?.nome || "-",
+          area: areaName,
           cliente: clienteObj?.razao_social || projeto.cliente || "-",
           projeto_codigo: projeto.codigo,
           projeto_descricao: projeto.nome,
