@@ -892,7 +892,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <div class="doc-header">
       <div class="doc-header-left">
-        ${empresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
+        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Logo Empresa" onerror="this.style.display='none'">` : ''}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_codigo} — ${detailMedicao.projeto_nome}</p>
@@ -903,7 +903,7 @@ export function DetailMedicaoContent({
           ${detailMedicao.numero_medicao ? `<p class="doc-num">Medição Nº ${detailMedicao.numero_medicao}</p>` : ''}
           <p class="doc-date">Emissão: ${formatDate(detailMedicao.data_medicao)}</p>
         </div>
-        ${clienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
+        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Logo Cliente" onerror="this.style.display='none'">` : ''}
       </div>
     </div>
 
