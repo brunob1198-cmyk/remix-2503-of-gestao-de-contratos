@@ -16,6 +16,7 @@ import {
   PDFExportLog,
   PDFQuality,
   exportMedicaoToPdf,
+  getPdfSafeImageDataUrl,
 } from "@/lib/pdfExportUtils";
 import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
 
@@ -84,11 +85,10 @@ export function DetailMedicaoContent({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
   const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
+  const [base64EmpresaLogo, setBase64EmpresaLogo] = useState<string | null>(null);
+  const [base64ClienteLogo, setBase64ClienteLogo] = useState<string | null>(null);
 
-
-
-
-  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' | 'debug' = 'info') => {
     // Append memory info if available for technical debugging
     let enrichedMessage = message;
     if (typeof window !== "undefined" && (window.performance as any)?.memory) {
@@ -100,7 +100,7 @@ export function DetailMedicaoContent({
     const newLog: PDFExportLog = {
       timestamp: new Date().toLocaleTimeString(),
       message: enrichedMessage,
-      type
+      type: type as any
     };
     setExportLogs(prev => [newLog, ...prev].slice(0, 100)); // Keep more logs for large exports
     console.log(`[Export] ${enrichedMessage}`);
@@ -199,6 +199,29 @@ export function DetailMedicaoContent({
   const finalClienteLogoUrl = useMemo(() => 
     getLogoUrl(clienteLogoUrl, 'clientes_logos'),
   [clienteLogoUrl, getLogoUrl]);
+
+  // Pre-load logos into base64 to avoid CORS issues during PDF generation
+  useEffect(() => {
+    const loadLogos = async () => {
+      if (finalEmpresaLogoUrl && !finalEmpresaLogoUrl.startsWith('data:')) {
+        try {
+          const b64 = await getPdfSafeImageDataUrl(finalEmpresaLogoUrl, { maxWidth: 400, quality: 0.9 });
+          if (b64 && b64.startsWith('data:')) setBase64EmpresaLogo(b64);
+        } catch (e) {
+          console.warn("Failed to pre-load empresa logo to base64", e);
+        }
+      }
+      if (finalClienteLogoUrl && !finalClienteLogoUrl.startsWith('data:')) {
+        try {
+          const b64 = await getPdfSafeImageDataUrl(finalClienteLogoUrl, { maxWidth: 400, quality: 0.9 });
+          if (b64 && b64.startsWith('data:')) setBase64ClienteLogo(b64);
+        } catch (e) {
+          console.warn("Failed to pre-load cliente logo to base64", e);
+        }
+      }
+    };
+    void loadLogos();
+  }, [finalEmpresaLogoUrl, finalClienteLogoUrl]);
 
   // Detect measurement type from lancamentos' observacao field
   const tipoMedicao = useMemo(() => {
@@ -594,7 +617,7 @@ export function DetailMedicaoContent({
       }
 
       // 2. Prepare JSON Data and HTML Content
-      const htmlContent = generateHtmlReport();
+      const htmlContent = generateHtmlReport(true);
       const measurementData = {
         id: detailMedicao.id,
         numero: detailMedicao.numero_medicao,
@@ -726,7 +749,7 @@ export function DetailMedicaoContent({
       .toLowerCase(); 
   }, []);
 
-  const generateHtmlReport = useCallback(() => {
+  const generateHtmlReport = useCallback((forZip = false) => {
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -949,7 +972,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <header class="doc-header">
       <div class="doc-header-left">
-        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Empresa">` : ''}
+        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_nome || ''}</p>
@@ -960,7 +983,7 @@ export function DetailMedicaoContent({
           <p class="doc-num">Nº ${detailMedicao.numero_medicao || detailMedicao.id}</p>
           <p class="doc-date">Data: ${detailMedicao.data_medicao ? formatDate(detailMedicao.data_medicao) : ''}</p>
         </div>
-        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Cliente">` : ''}
+        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
       </div>
     </header>
 
@@ -1231,11 +1254,12 @@ export function DetailMedicaoContent({
           <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
-                const hasValidEmpresaLogo = !!finalEmpresaLogoUrl;
+                const logoToUse = base64EmpresaLogo || finalEmpresaLogoUrl;
+                const hasValidEmpresaLogo = !!logoToUse;
                 
                 return hasValidEmpresaLogo ? (
                 <img 
-                  src={finalEmpresaLogoUrl!} 
+                  src={logoToUse!} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
@@ -1249,7 +1273,7 @@ export function DetailMedicaoContent({
                     const maxRetries = 3;
                     const currentRetry = parseInt(target.dataset.retryCount || "0");
                     
-                    if (currentRetry < maxRetries) {
+                    if (currentRetry < maxRetries && !logoToUse!.startsWith('data:')) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
                       
@@ -1257,7 +1281,7 @@ export function DetailMedicaoContent({
                         target.removeAttribute('crossorigin');
                       }
                       
-                      const baseSrc = finalEmpresaLogoUrl!.split('?')[0];
+                      const baseSrc = logoToUse!.split('?')[0];
                       const sep = baseSrc.includes('?') ? '&' : '?';
                       
                       setTimeout(() => {
@@ -1297,9 +1321,13 @@ export function DetailMedicaoContent({
                 )}
                 <p style={{ fontSize: 11, color: "#64748b", margin: 0, lineHeight: '1.6' }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
-              {clienteLogoUrl && (
+              {(() => {
+                const logoToUse = base64ClienteLogo || finalClienteLogoUrl;
+                if (!logoToUse) return null;
+                
+                return (
                 <img 
-                  src={clienteLogoUrl} 
+                  src={logoToUse} 
                   alt="Logo Cliente" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
                   crossOrigin="anonymous" 
@@ -1309,20 +1337,19 @@ export function DetailMedicaoContent({
                     const maxRetries = 3;
                     const currentRetry = parseInt(target.dataset.retryCount || "0");
                     
-                    if (currentRetry < maxRetries) {
+                    if (currentRetry < maxRetries && !logoToUse.startsWith('data:')) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
-                      const sep = clienteLogoUrl.includes('?') ? '&' : '?';
+                      const sep = logoToUse.includes('?') ? '&' : '?';
                       
                       addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo do cliente...`, "info");
                       
-                      // On second retry, drop crossOrigin to bypass CORS preflight failures
                       if (nextRetry >= 2) {
                         target.removeAttribute('crossorigin');
                       }
                       
                       setTimeout(() => {
-                        target.src = `${clienteLogoUrl}${sep}retry=${nextRetry}`;
+                        target.src = `${logoToUse}${sep}retry=${nextRetry}`;
                       }, 800);
                       return;
                     }
@@ -1333,7 +1360,8 @@ export function DetailMedicaoContent({
                     addLog(`Falha definitiva ao carregar logo do cliente após ${maxRetries} tentativas.`, "error");
                   }}
                 />
-              )}
+              );
+              })()}
             </div>
           </div>
 
