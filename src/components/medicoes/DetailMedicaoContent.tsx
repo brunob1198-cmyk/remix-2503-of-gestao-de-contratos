@@ -447,10 +447,15 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '280px' }}>
-        <div className="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
+      <div 
+        key={foto.id} 
+        className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" 
+        data-pdf-element="photo" 
+        style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
+      >
+        <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=400&quality=60&t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=800&quality=80&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -458,40 +463,42 @@ export function DetailMedicaoContent({
             crossOrigin="anonymous"
           />
         </div>
-        <div className="p-2 bg-muted/20 space-y-1 flex-1">
-          {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">
-              {foto.item_codigo} — {foto.item_descricao}
+        <div className="p-3 bg-muted/5 space-y-2 flex-1 flex flex-col">
+          {options?.showItem !== false && (foto.item_codigo || foto.item_descricao) && (
+            <p className="font-bold text-[11px] text-foreground leading-tight line-clamp-2 mb-1">
+              {foto.item_codigo ? `${foto.item_codigo} — ` : ''}{foto.item_descricao}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground mt-auto pt-2 border-t border-muted/20">
             {options?.showSiteName && foto.site_nome && (
-              <span className="max-w-[140px] leading-tight" title={foto.site_nome}>
+              <span className="font-medium text-primary/80 line-clamp-1" title={foto.site_nome}>
                 {foto.site_nome}
               </span>
             )}
             {foto.diario_data && (
-              <span className="flex items-center gap-0.5 shrink-0">
-                <Calendar className="h-2 w-2" />
+              <span className="flex items-center gap-1 shrink-0">
+                <Calendar className="h-2.5 w-2.5" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
             <Badge 
-              className="badge-execucao text-[7px] text-white font-bold" 
-              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+              className="badge-execucao text-[8px] px-1.5 h-4 text-white font-bold border-none" 
+              style={{ backgroundColor: classColor(foto.classificacao) }}
             >
               {classLabel(foto.classificacao)}
             </Badge>
           </div>
 
           {foto.legenda && (
-            <p className="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“{foto.legenda}”</p>
+            <p className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2 mt-1.5 bg-muted/20 p-1.5 rounded">
+              “{foto.legenda}”
+            </p>
           )}
         </div>
       </div>
     ),
-    [formatDate],
+    [formatDate, classColor, classLabel],
   );
 
   const handleExportPdf = async (resume = false) => {
@@ -1228,13 +1235,19 @@ export function DetailMedicaoContent({
             table th { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
             .site-header { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
           }
+          .print-container {
+            max-width: 1120px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+          }
           .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
           .photo-grid-row { 
             display: grid !important; 
             grid-template-columns: repeat(3, 1fr) !important; 
-            gap: 12px !important; 
+            gap: 16px !important; 
             width: 100% !important;
-            margin-bottom: 12px !important;
+            margin-bottom: 16px !important;
           }
         `}} />
         <div
@@ -1538,20 +1551,20 @@ export function DetailMedicaoContent({
                       {/* Photo groups by classification */}
                       <div className="divide-y">
                         {classes.map(([className, fotos]) => {
-                          const photoPairs = chunkArray(fotos, 3);
+                          const photoGroups = chunkArray(fotos, 3);
                           return (
-                            <div key={className} className="p-3 space-y-3">
-                              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
+                            <div key={className} className="p-3 space-y-4">
+                              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-l-4 border-primary pl-3 mb-3">
                                 {className}
                               </h3>
-                              {photoPairs.map((pair, pi) => (
+                              {photoGroups.map((group, pi) => (
                                 <div
                                   key={`${className}-${pi}`}
                                   data-pdf-section="site-medicao-foto-row"
                                   className="photo-grid-row"
                                   style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                                 >
-                                  {pair.map((foto) => renderPhotoCard(foto))}
+                                  {group.map((foto) => renderPhotoCard(foto))}
                                 </div>
                               ))}
                             </div>
@@ -1564,22 +1577,26 @@ export function DetailMedicaoContent({
               </div>
             ) : (
               /* SEPARADA / AGRUPADA: Photos grouped by item */
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
-                  const itemPairs = chunkArray(itemFotos, 3);
+                  const itemGroups = chunkArray(itemFotos, 3);
 
                   return (
-                    <div key={itemLabel}>
-                      {itemPairs.map((pair, pi) => (
+                    <div key={itemLabel} className="space-y-4">
+                      {itemGroups.map((group, pi) => (
                         <div
                           key={`${itemLabel}-${pi}`}
                           data-pdf-section={pi === 0 ? "grupo-fotos-item" : "grupo-fotos-item-row"}
-                          className="space-y-3"
+                          className="space-y-4"
                           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                         >
-                          {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
+                          {pi === 0 && (
+                            <h3 className="pdf-section-heading text-base font-bold text-primary border-b pb-2 mb-4">
+                              {itemLabel}
+                            </h3>
+                          )}
                           <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                            {pair.map((foto) => renderPhotoCard(foto))}
+                            {group.map((foto) => renderPhotoCard(foto))}
                           </div>
                         </div>
                       ))}
@@ -1588,18 +1605,21 @@ export function DetailMedicaoContent({
                 })}
 
                 {fotosByItem.gerais.length > 0 && (
-                  <div>
-                    {chunkArray(fotosByItem.gerais, 3).map((pair, pi) => (
-
+                  <div className="space-y-6">
+                    {chunkArray(fotosByItem.gerais, 3).map((group, pi) => (
                       <div
                         key={`gerais-${pi}`}
                         data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
-                        className="space-y-3"
+                        className="space-y-4"
                         style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                       >
-                        {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-muted-foreground">Fotos Gerais</h3>}
+                        {pi === 0 && (
+                          <h3 className="pdf-section-heading text-base font-bold text-muted-foreground border-b pb-2 mb-4">
+                            Fotos Gerais
+                          </h3>
+                        )}
                         <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
+                          {group.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
                       </div>
                     ))}
