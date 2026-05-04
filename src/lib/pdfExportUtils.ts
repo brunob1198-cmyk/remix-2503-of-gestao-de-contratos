@@ -560,6 +560,13 @@ export async function exportMedicaoToPdf(
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i];
+      
+      // Skip rendering the 'capa' section if we're going to merge it as a PDF later
+      if (section.getAttribute('data-pdf-section') === 'capa' && options.capaUrl?.toLowerCase().endsWith('.pdf')) {
+        addLog("Pulando renderização da seção de capa (será anexada como PDF real)...", 'debug');
+        continue;
+      }
+      
       let sectionImgData: string | null = null;
       const chunkId = `${medicaoId}_${i}`;
       
