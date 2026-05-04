@@ -1321,9 +1321,13 @@ export function DetailMedicaoContent({
                 )}
                 <p style={{ fontSize: 11, color: "#64748b", margin: 0, lineHeight: '1.6' }}>Emissão: {formatDate(detailMedicao.data_medicao)}</p>
               </div>
-              {clienteLogoUrl && (
+              {(() => {
+                const logoToUse = base64ClienteLogo || finalClienteLogoUrl;
+                if (!logoToUse) return null;
+                
+                return (
                 <img 
-                  src={clienteLogoUrl} 
+                  src={logoToUse} 
                   alt="Logo Cliente" 
                   style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
                   crossOrigin="anonymous" 
@@ -1333,20 +1337,19 @@ export function DetailMedicaoContent({
                     const maxRetries = 3;
                     const currentRetry = parseInt(target.dataset.retryCount || "0");
                     
-                    if (currentRetry < maxRetries) {
+                    if (currentRetry < maxRetries && !logoToUse.startsWith('data:')) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
-                      const sep = clienteLogoUrl.includes('?') ? '&' : '?';
+                      const sep = logoToUse.includes('?') ? '&' : '?';
                       
                       addLog(`Tentativa ${nextRetry}/${maxRetries} de carregar logo do cliente...`, "info");
                       
-                      // On second retry, drop crossOrigin to bypass CORS preflight failures
                       if (nextRetry >= 2) {
                         target.removeAttribute('crossorigin');
                       }
                       
                       setTimeout(() => {
-                        target.src = `${clienteLogoUrl}${sep}retry=${nextRetry}`;
+                        target.src = `${logoToUse}${sep}retry=${nextRetry}`;
                       }, 800);
                       return;
                     }
@@ -1357,7 +1360,8 @@ export function DetailMedicaoContent({
                     addLog(`Falha definitiva ao carregar logo do cliente após ${maxRetries} tentativas.`, "error");
                   }}
                 />
-              )}
+              );
+              })()}
             </div>
           </div>
 
