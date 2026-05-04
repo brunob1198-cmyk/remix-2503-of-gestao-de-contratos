@@ -307,9 +307,8 @@ export default function QuadroGeral() {
       
       // If project has multiple contracts linked via contrato_ids, sum their values
       if (p.contrato_ids && p.contrato_ids.length > 0) {
-        valor_contrato = p.contrato_ids.reduce((sum, cid) => {
-          return sum + (allContratosMap.get(cid) || 0);
-        }, 0);
+        const sum = p.contrato_ids.reduce((acc, cid) => acc + (allContratosMap.get(cid) || 0), 0);
+        valor_contrato = Math.round(sum * 100) / 100;
       }
 
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
