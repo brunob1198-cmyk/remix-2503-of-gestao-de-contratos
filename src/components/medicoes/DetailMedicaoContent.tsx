@@ -972,7 +972,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <header class="doc-header">
       <div class="doc-header-left">
-        ${finalEmpresaLogoUrl ? `<img src="logos/logo_empresa.png" alt="Empresa">` : ''}
+        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_nome || ''}</p>
