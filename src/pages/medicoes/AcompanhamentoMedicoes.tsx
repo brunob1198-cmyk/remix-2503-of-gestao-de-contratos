@@ -508,6 +508,7 @@ export default function AcompanhamentoMedicoesPage() {
         data_producao: p.data_producao,
         quantidade: Number(p.quantidade),
         item_lpu: p.item_lpu,
+        valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
       })),
       ...diarioProducoes.map(dp => ({
         site_id: dp.site_id,
@@ -515,6 +516,7 @@ export default function AcompanhamentoMedicoesPage() {
         data_producao: dp.data_producao,
         quantidade: dp.quantidade,
         item_lpu: dp.item_lpu,
+        valor_total: dp.valor_total,
       })),
     ];
 
