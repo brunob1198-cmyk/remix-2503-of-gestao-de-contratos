@@ -1551,20 +1551,20 @@ export function DetailMedicaoContent({
                       {/* Photo groups by classification */}
                       <div className="divide-y">
                         {classes.map(([className, fotos]) => {
-                          const photoPairs = chunkArray(fotos, 3);
+                          const photoGroups = chunkArray(fotos, 3);
                           return (
-                            <div key={className} className="p-3 space-y-3">
-                              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-l-2 border-primary pl-2 mb-2">
+                            <div key={className} className="p-3 space-y-4">
+                              <h3 className="text-sm font-bold uppercase tracking-wider text-primary border-l-4 border-primary pl-3 mb-3">
                                 {className}
                               </h3>
-                              {photoPairs.map((pair, pi) => (
+                              {photoGroups.map((group, pi) => (
                                 <div
                                   key={`${className}-${pi}`}
                                   data-pdf-section="site-medicao-foto-row"
                                   className="photo-grid-row"
                                   style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                                 >
-                                  {pair.map((foto) => renderPhotoCard(foto))}
+                                  {group.map((foto) => renderPhotoCard(foto))}
                                 </div>
                               ))}
                             </div>
@@ -1577,22 +1577,26 @@ export function DetailMedicaoContent({
               </div>
             ) : (
               /* SEPARADA / AGRUPADA: Photos grouped by item */
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {Array.from(fotosByItem.byItem.entries()).map(([itemLabel, itemFotos]) => {
-                  const itemPairs = chunkArray(itemFotos, 3);
+                  const itemGroups = chunkArray(itemFotos, 3);
 
                   return (
-                    <div key={itemLabel}>
-                      {itemPairs.map((pair, pi) => (
+                    <div key={itemLabel} className="space-y-4">
+                      {itemGroups.map((group, pi) => (
                         <div
                           key={`${itemLabel}-${pi}`}
                           data-pdf-section={pi === 0 ? "grupo-fotos-item" : "grupo-fotos-item-row"}
-                          className="space-y-3"
+                          className="space-y-4"
                           style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                         >
-                          {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-primary">{itemLabel}</h3>}
+                          {pi === 0 && (
+                            <h3 className="pdf-section-heading text-base font-bold text-primary border-b pb-2 mb-4">
+                              {itemLabel}
+                            </h3>
+                          )}
                           <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                            {pair.map((foto) => renderPhotoCard(foto))}
+                            {group.map((foto) => renderPhotoCard(foto))}
                           </div>
                         </div>
                       ))}
@@ -1601,18 +1605,21 @@ export function DetailMedicaoContent({
                 })}
 
                 {fotosByItem.gerais.length > 0 && (
-                  <div>
-                    {chunkArray(fotosByItem.gerais, 3).map((pair, pi) => (
-
+                  <div className="space-y-6">
+                    {chunkArray(fotosByItem.gerais, 3).map((group, pi) => (
                       <div
                         key={`gerais-${pi}`}
                         data-pdf-section={pi === 0 ? "grupo-fotos-gerais" : "grupo-fotos-gerais-row"}
-                        className="space-y-3"
+                        className="space-y-4"
                         style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
                       >
-                        {pi === 0 && <h3 className="pdf-section-heading text-sm font-semibold text-muted-foreground">Fotos Gerais</h3>}
+                        {pi === 0 && (
+                          <h3 className="pdf-section-heading text-base font-bold text-muted-foreground border-b pb-2 mb-4">
+                            Fotos Gerais
+                          </h3>
+                        )}
                         <div className="photo-grid-row" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          {pair.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
+                          {group.map((foto) => renderPhotoCard(foto, { showItem: false, showSiteName: true }))}
                         </div>
                       </div>
                     ))}
