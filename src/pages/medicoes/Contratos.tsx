@@ -227,7 +227,10 @@ export default function ContratosPage() {
                         </TableCell>
                         <TableCell className="text-xs max-w-[200px]">
                           {(() => {
-                            const vinculados = projetos.filter(p => p.contrato_id === c.id);
+                            const vinculados = projetos.filter(p => 
+                              p.contrato_id === c.id || 
+                              (p.contrato_ids && p.contrato_ids.includes(c.id))
+                            );
                             if (vinculados.length === 0) return <span className="text-muted-foreground">-</span>;
                             return (
                               <div className="space-y-0.5">
