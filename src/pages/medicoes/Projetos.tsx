@@ -449,7 +449,20 @@ export default function ProjetosPage() {
                         onDropdownChange={(v) => setDropdownFilter(col.field, v)}
                         options={
                           col.field === "contrato_id" 
-                            ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
+                            ? (() => {
+                                const allNums = new Set<string>();
+                                projetos.forEach((p: any) => {
+                                  if (p.contratoObj?.numero_contrato) allNums.add(p.contratoObj.numero_contrato);
+                                  if (p.contrato_ids) {
+                                    p.contrato_ids.forEach((cid: string) => {
+                                      const c = contratos.find(x => x.id === cid);
+                                      if (c?.numero_contrato) allNums.add(c.numero_contrato);
+                                    });
+                                  }
+                                  if (allNums.size === 0) allNums.add("-");
+                                });
+                                return Array.from(allNums).sort();
+                              })()
                             : col.field === "area_id"
                             ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
                             : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
