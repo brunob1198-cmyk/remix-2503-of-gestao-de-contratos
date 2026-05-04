@@ -16,6 +16,7 @@ import {
   PDFExportLog,
   PDFQuality,
   exportMedicaoToPdf,
+  getPdfSafeImageDataUrl,
 } from "@/lib/pdfExportUtils";
 import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
 
