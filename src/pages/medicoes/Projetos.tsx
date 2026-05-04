@@ -469,7 +469,18 @@ export default function ProjetosPage() {
                         <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                         <TableCell>{p.coordenador || "-"}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
-                          {p.contratoObj ? (
+                          {p.contrato_ids && p.contrato_ids.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {p.contrato_ids.map((cid: string) => {
+                                const c = contratos.find(x => x.id === cid);
+                                return c ? (
+                                  <span key={cid} className="text-[10px] leading-tight font-mono bg-muted px-1 rounded block" title={c.escopo || ''}>
+                                    {c.numero_contrato || "-"}
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          ) : p.contratoObj ? (
                             <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
                               {p.contratoObj.numero_contrato || "-"}
                             </span>
