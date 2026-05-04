@@ -240,7 +240,7 @@ export default function ProjetosPage() {
     }
 
     return result;
-  }, [projetos, filters, dropdownFilters, sortField, sortDir]);
+  }, [projetos, contratos, filters, dropdownFilters, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSorted.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
