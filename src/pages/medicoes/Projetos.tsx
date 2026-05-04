@@ -126,6 +126,8 @@ export default function ProjetosPage() {
     }
 
     const clienteObj = clientes.find(c => c.id === clienteId);
+    const validContratoIds = contratoIds.filter(id => id !== "none");
+    
     const data = { 
       codigo, 
       nome, 
@@ -133,7 +135,8 @@ export default function ProjetosPage() {
       coordenador, 
       cliente: clienteObj ? clienteObj.razao_social : "", 
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
-      contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
+      contrato_id: primaryContratoId,
+      contrato_ids: validContratoIds,
       area_id: areaId,
       valor_total: parsedValorTotal,
       status: status,
