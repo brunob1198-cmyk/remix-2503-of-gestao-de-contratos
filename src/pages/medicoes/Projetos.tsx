@@ -68,7 +68,7 @@ export default function ProjetosPage() {
     setDescricao("");
     setCoordenador("");
     setClienteId("");
-    setContratoId("none");
+    setContratoIds(["none"]);
     setAreaId("");
     setValorTotal("");
     setStatus("A Iniciar");
@@ -82,7 +82,13 @@ export default function ProjetosPage() {
     setDescricao(projeto.descricao || "");
     setCoordenador(projeto.coordenador || "");
     setClienteId(projeto.cliente_id || "");
-    setContratoId(projeto.contrato_id || "none");
+    
+    // Suporte a múltiplos contratos
+    const ids = projeto.contrato_ids && projeto.contrato_ids.length > 0 
+      ? projeto.contrato_ids 
+      : (projeto.contrato_id ? [projeto.contrato_id] : ["none"]);
+    
+    setContratoIds(ids);
     setAreaId(projeto.area_id || "");
     setValorTotal(projeto.valor_total?.toString() || "");
     setStatus(projeto.status || "A Iniciar");
@@ -93,9 +99,11 @@ export default function ProjetosPage() {
     e.preventDefault();
     const parsedValorTotal = valorTotal ? parseFloat(valorTotal.replace(",", ".")) : 0;
     
-    // Validação do Contrato Vinculado
-    if (contratoId && contratoId !== "none") {
-      const selectedContrato = contratos.find(c => c.id === contratoId);
+    // Validação do Contrato Vinculado (usando o primeiro como principal)
+    const primaryContratoId = contratoIds[0] && contratoIds[0] !== "none" ? contratoIds[0] : null;
+    
+    if (primaryContratoId) {
+      const selectedContrato = contratos.find(c => c.id === primaryContratoId);
       if (selectedContrato) {
         // Soma dos aditivos
         const aditivosVal = selectedContrato.aditivos?.reduce((acc, ad) => acc + (ad.valor_total || 0), 0) || 0;
@@ -103,13 +111,13 @@ export default function ProjetosPage() {
         
         // Soma dos projetos vinculados, excluindo o atual se for edição
         const existingSum = projetos
-          .filter(p => p.contrato_id === contratoId && p.id !== editingId)
+          .filter(p => p.contrato_id === primaryContratoId && p.id !== editingId)
           .reduce((sum, p) => sum + (p.valor_total || 0), 0);
           
         if (limitContrato > 0 && existingSum + parsedValorTotal > limitContrato) {
           toast({
             title: "Limite Excedido",
-            description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
+            description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato principal associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
             variant: "destructive",
           });
           return; // Block
