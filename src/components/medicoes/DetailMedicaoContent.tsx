@@ -749,7 +749,7 @@ export function DetailMedicaoContent({
       .toLowerCase(); 
   }, []);
 
-  const generateHtmlReport = useCallback(() => {
+  const generateHtmlReport = useCallback((forZip = false) => {
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
