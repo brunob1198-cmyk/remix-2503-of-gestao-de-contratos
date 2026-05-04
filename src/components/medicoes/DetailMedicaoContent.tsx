@@ -1252,6 +1252,40 @@ export function DetailMedicaoContent({
         `}} />
         <div
           className="pdf-keep-together"
+          data-pdf-section="capa"
+          style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+        >
+          {detailMedicao.capa_url && (
+            <div className="mb-6 border-b-2 border-primary pb-4">
+              {detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
+                  <FileText className="h-16 w-16 text-primary mb-4" />
+                  <h3 className="text-lg font-bold text-primary">Capa da Medição (PDF)</h3>
+                  <p className="text-sm text-muted-foreground text-center max-w-md mt-2">
+                    Este documento será anexado como as primeiras páginas do relatório final gerado.
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" asChild>
+                    <a href={detailMedicao.capa_url} target="_blank" rel="noopener noreferrer">
+                      Visualizar Capa em Nova Aba
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full flex justify-center">
+                  <img 
+                    src={detailMedicao.capa_url} 
+                    alt="Capa da Medição" 
+                    className="max-w-full h-auto rounded-lg shadow-sm"
+                    style={{ maxHeight: '800px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="pdf-keep-together"
           data-pdf-section="medicao-resumo"
           style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
         >
