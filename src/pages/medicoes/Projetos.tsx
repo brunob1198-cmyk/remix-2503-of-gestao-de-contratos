@@ -206,8 +206,18 @@ export default function ProjetosPage() {
       if (value) {
         result = result.filter((p: any) => {
           if (field === "contrato_id") {
-            const cellVal = p.contratoObj?.numero_contrato || "-";
-            return cellVal === value;
+            // Check primary contract
+            const primaryNum = p.contratoObj?.numero_contrato || "-";
+            if (primaryNum === value) return true;
+            
+            // Check other contracts in contrato_ids
+            if (p.contrato_ids && p.contrato_ids.length > 0) {
+              return p.contrato_ids.some((cid: string) => {
+                const c = contratos.find(x => x.id === cid);
+                return (c?.numero_contrato || "-") === value;
+              });
+            }
+            return false;
           }
           if (field === "area_id") {
             const cellVal = p.areaObj?.nome || "-";
@@ -230,7 +240,7 @@ export default function ProjetosPage() {
     }
 
     return result;
-  }, [projetos, filters, dropdownFilters, sortField, sortDir]);
+  }, [projetos, contratos, filters, dropdownFilters, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSorted.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
@@ -439,7 +449,20 @@ export default function ProjetosPage() {
                         onDropdownChange={(v) => setDropdownFilter(col.field, v)}
                         options={
                           col.field === "contrato_id" 
-                            ? [...new Set(projetos.map((p: any) => p.contratoObj?.numero_contrato || "-"))].sort()
+                            ? (() => {
+                                const allNums = new Set<string>();
+                                projetos.forEach((p: any) => {
+                                  if (p.contratoObj?.numero_contrato) allNums.add(p.contratoObj.numero_contrato);
+                                  if (p.contrato_ids) {
+                                    p.contrato_ids.forEach((cid: string) => {
+                                      const c = contratos.find(x => x.id === cid);
+                                      if (c?.numero_contrato) allNums.add(c.numero_contrato);
+                                    });
+                                  }
+                                  if (allNums.size === 0) allNums.add("-");
+                                });
+                                return Array.from(allNums).sort();
+                              })()
                             : col.field === "area_id"
                             ? [...new Set(projetos.map((p: any) => p.areaObj?.nome || "-"))].sort()
                             : [...new Set(projetos.map((p: any) => (p[col.field] || "-").toString()))].sort()
