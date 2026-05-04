@@ -364,7 +364,7 @@ export default function QuadroGeral() {
       .sort((a, b) => a.area.localeCompare(b.area));
 
     return { areaGroups: groups, allProjetoRows: projetoRows };
-  }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
+  }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes, parentsContratos]);
 
   const areaGroups = memoData.areaGroups;
   const allProjetoRows = memoData.allProjetoRows;
