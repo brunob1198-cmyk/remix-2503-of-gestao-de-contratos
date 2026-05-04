@@ -450,6 +450,7 @@ export async function exportMedicaoToPdf(
     resume?: boolean;
     config?: PDFTemplateConfig;
     onPreviewGenerated?: (previewUrl: string) => void;
+    capaUrl?: string | null;
   }
 ) {
   // Declare variables at top to avoid TDZ (Temporal Dead Zone) issues in minified builds
