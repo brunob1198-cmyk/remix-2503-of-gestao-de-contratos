@@ -99,21 +99,39 @@ export default function AcompanhamentoMedicoesPage() {
       if (!diarios || diarios.length === 0) return [];
 
       const diarioIds = diarios.map(d => d.id);
-      const { data: prods, error: pErr } = await supabase
-        .from("diario_producao")
-        .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-        .in("diario_id", diarioIds);
-      if (pErr) throw pErr;
+      
+      // Use pagination to fetch all production items, overcoming the 1000 items limit
+      let prods: any[] = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+          .in("diario_id", diarioIds)
+          .range(from, from + 999);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          prods = [...prods, ...data];
+          if (data.length < 1000) hasMore = false;
+          else from += 1000;
+        }
+      }
 
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-      return (prods || []).map(p => {
+      return prods.map(p => {
         const diario = diarioMap.get(p.diario_id);
         return {
           site_id: diario?.site_id || "",
           item_lpu_id: p.item_lpu_id,
           data_producao: diario?.data || "",
           quantidade: Number(p.quantidade),
+          valor_total: Number(p.valor_total || 0),
           item_lpu: (p as any).item_lpu,
           source: "diario" as const,
         };
