@@ -318,19 +318,58 @@ export default function ProjetosPage() {
                   <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 50000.00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Contrato Gerador</Label>
-                  <Select value={contratoId || "none"} onValueChange={(v) => setContratoId(v === "none" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Contratos Vinculados</Label>
+                {contratoIds.map((cid, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Select 
+                      value={cid || "none"} 
+                      onValueChange={(v) => {
+                        const newIds = [...contratoIds];
+                        newIds[index] = v;
+                        setContratoIds(newIds);
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um contrato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {contratos.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {index === contratoIds.length - 1 ? (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => setContratoIds([...contratoIds, "none"])}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => {
+                          const newIds = contratoIds.filter((_, i) => i !== index);
+                          setContratoIds(newIds.length ? newIds : ["none"]);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
