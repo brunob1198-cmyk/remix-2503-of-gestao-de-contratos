@@ -6,6 +6,7 @@ import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
 import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
+import { useContratos } from "@/hooks/useContratos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
