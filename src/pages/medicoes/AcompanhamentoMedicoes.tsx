@@ -569,7 +569,7 @@ export default function AcompanhamentoMedicoesPage() {
       }
       const g = grouped.get(key)!;
       g.quantidade += p.quantidade;
-      g.valor_total = (g.quantidade + g.quantidade_pendente) * g.preco_unitario;
+      g.valor_total += p.valor_total;
     });
 
     // Also add items that only have pending (no new production)
