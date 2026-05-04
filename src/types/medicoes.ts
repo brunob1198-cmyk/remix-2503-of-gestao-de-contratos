@@ -30,6 +30,7 @@ export interface Projeto {
   empresa_id?: string;
   cliente_id?: string;
   contrato_id?: string;
+  contrato_ids?: string[];
   area_id?: string;
   valor_total?: number;
   clienteObj?: Cliente;
