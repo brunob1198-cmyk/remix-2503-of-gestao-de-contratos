@@ -37,7 +37,7 @@ export default function ProjetosPage() {
   const [descricao, setDescricao] = useState("");
   const [coordenador, setCoordenador] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [contratoId, setContratoId] = useState("none");
+  const [contratoIds, setContratoIds] = useState<string[]>(["none"]);
   const [areaId, setAreaId] = useState("");
   const [valorTotal, setValorTotal] = useState("");
   const [status, setStatus] = useState("A Iniciar");
@@ -68,7 +68,7 @@ export default function ProjetosPage() {
     setDescricao("");
     setCoordenador("");
     setClienteId("");
-    setContratoId("none");
+    setContratoIds(["none"]);
     setAreaId("");
     setValorTotal("");
     setStatus("A Iniciar");
@@ -82,7 +82,13 @@ export default function ProjetosPage() {
     setDescricao(projeto.descricao || "");
     setCoordenador(projeto.coordenador || "");
     setClienteId(projeto.cliente_id || "");
-    setContratoId(projeto.contrato_id || "none");
+    
+    // Suporte a múltiplos contratos
+    const ids = projeto.contrato_ids && projeto.contrato_ids.length > 0 
+      ? projeto.contrato_ids 
+      : (projeto.contrato_id ? [projeto.contrato_id] : ["none"]);
+    
+    setContratoIds(ids);
     setAreaId(projeto.area_id || "");
     setValorTotal(projeto.valor_total?.toString() || "");
     setStatus(projeto.status || "A Iniciar");
@@ -93,9 +99,11 @@ export default function ProjetosPage() {
     e.preventDefault();
     const parsedValorTotal = valorTotal ? parseFloat(valorTotal.replace(",", ".")) : 0;
     
-    // Validação do Contrato Vinculado
-    if (contratoId && contratoId !== "none") {
-      const selectedContrato = contratos.find(c => c.id === contratoId);
+    // Validação do Contrato Vinculado (usando o primeiro como principal)
+    const primaryContratoId = contratoIds[0] && contratoIds[0] !== "none" ? contratoIds[0] : null;
+    
+    if (primaryContratoId) {
+      const selectedContrato = contratos.find(c => c.id === primaryContratoId);
       if (selectedContrato) {
         // Soma dos aditivos
         const aditivosVal = selectedContrato.aditivos?.reduce((acc, ad) => acc + (ad.valor_total || 0), 0) || 0;
@@ -103,13 +111,13 @@ export default function ProjetosPage() {
         
         // Soma dos projetos vinculados, excluindo o atual se for edição
         const existingSum = projetos
-          .filter(p => p.contrato_id === contratoId && p.id !== editingId)
+          .filter(p => p.contrato_id === primaryContratoId && p.id !== editingId)
           .reduce((sum, p) => sum + (p.valor_total || 0), 0);
           
         if (limitContrato > 0 && existingSum + parsedValorTotal > limitContrato) {
           toast({
             title: "Limite Excedido",
-            description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
+            description: `A soma orçada para os projetos (${existingSum + parsedValorTotal}) ultrapassa o limite do contrato principal associado (${limitContrato}). Atualize o contrato com um Aditivo ou mude o valor deste projeto.`,
             variant: "destructive",
           });
           return; // Block
@@ -118,6 +126,8 @@ export default function ProjetosPage() {
     }
 
     const clienteObj = clientes.find(c => c.id === clienteId);
+    const validContratoIds = contratoIds.filter(id => id !== "none");
+    
     const data = { 
       codigo, 
       nome, 
@@ -125,7 +135,8 @@ export default function ProjetosPage() {
       coordenador, 
       cliente: clienteObj ? clienteObj.razao_social : "", 
       cliente_id: clienteId === "none" || !clienteId ? undefined : clienteId,
-      contrato_id: contratoId === "none" || !contratoId ? null : contratoId,
+      contrato_id: primaryContratoId,
+      contrato_ids: validContratoIds,
       area_id: areaId,
       valor_total: parsedValorTotal,
       status: status,
@@ -307,19 +318,58 @@ export default function ProjetosPage() {
                   <Input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} placeholder="Ex: 50000.00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Contrato Gerador</Label>
-                  <Select value={contratoId || "none"} onValueChange={(v) => setContratoId(v === "none" ? "" : v)}>
-                    <SelectTrigger><SelectValue placeholder="Sem contrato vinculado" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {contratos.map(c => <SelectItem key={c.id} value={c.id}>{c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição do projeto" />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Contratos Vinculados</Label>
+                {contratoIds.map((cid, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Select 
+                      value={cid || "none"} 
+                      onValueChange={(v) => {
+                        const newIds = [...contratoIds];
+                        newIds[index] = v;
+                        setContratoIds(newIds);
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um contrato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {contratos.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.numero_contrato || c.escopo?.slice(0, 40) || `ID: ${c.id.slice(0, 8)}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {index === contratoIds.length - 1 ? (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => setContratoIds([...contratoIds, "none"])}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => {
+                          const newIds = contratoIds.filter((_, i) => i !== index);
+                          setContratoIds(newIds.length ? newIds : ["none"]);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -419,7 +469,18 @@ export default function ProjetosPage() {
                         <TableCell>{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                         <TableCell>{p.coordenador || "-"}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
-                          {p.contratoObj ? (
+                          {p.contrato_ids && p.contrato_ids.length > 0 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {p.contrato_ids.map((cid: string) => {
+                                const c = contratos.find(x => x.id === cid);
+                                return c ? (
+                                  <span key={cid} className="text-[10px] leading-tight font-mono bg-muted px-1 rounded block" title={c.escopo || ''}>
+                                    {c.numero_contrato || "-"}
+                                  </span>
+                                ) : null;
+                              })}
+                            </div>
+                          ) : p.contratoObj ? (
                             <span className="text-xs font-mono" title={p.contratoObj.escopo || ''}>
                               {p.contratoObj.numero_contrato || "-"}
                             </span>

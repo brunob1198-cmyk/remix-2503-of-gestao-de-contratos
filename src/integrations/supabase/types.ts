@@ -2678,6 +2678,7 @@ export type Database = {
           cliente_id: string | null
           codigo: string
           contrato_id: string | null
+          contrato_ids: string[] | null
           coordenador: string | null
           created_at: string
           descricao: string | null
@@ -2694,6 +2695,7 @@ export type Database = {
           cliente_id?: string | null
           codigo: string
           contrato_id?: string | null
+          contrato_ids?: string[] | null
           coordenador?: string | null
           created_at?: string
           descricao?: string | null
@@ -2710,6 +2712,7 @@ export type Database = {
           cliente_id?: string | null
           codigo?: string
           contrato_id?: string | null
+          contrato_ids?: string[] | null
           coordenador?: string | null
           created_at?: string
           descricao?: string | null
