@@ -540,7 +540,8 @@ export function DetailMedicaoContent({
             sectionSpacingMm: 3,
             debugMode: debugMode
           },
-          onPreviewGenerated: (url) => setPreviewUrl(url)
+          onPreviewGenerated: (url) => setPreviewUrl(url),
+          capaUrl: detailMedicao.capa_url
         }
       );
 
