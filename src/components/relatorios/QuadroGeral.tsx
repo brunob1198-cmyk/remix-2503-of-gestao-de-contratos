@@ -6,6 +6,7 @@ import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
 import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
+import { useContratos } from "@/hooks/useContratos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -173,6 +174,7 @@ export default function QuadroGeral() {
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
+  const { contratos: parentsContratos } = useContratos();
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
     queryKey: ["escopo_itens_all"],
@@ -289,8 +291,26 @@ export default function QuadroGeral() {
       faturadoByProjeto.set(s.projeto_id, (faturadoByProjeto.get(s.projeto_id) || 0) + fat);
     }
 
+    // Contracts Map for summing multiple contracts per project
+    const allContratosMap = new Map<string, number>();
+    parentsContratos.forEach(c => {
+      allContratosMap.set(c.id, Number(c.valor_total) || 0);
+      if (c.aditivos) {
+        c.aditivos.forEach(a => {
+          allContratosMap.set(a.id, Number(a.valor_total) || 0);
+        });
+      }
+    });
+
     const projetoRows: ProjetoRow[] = projetos.map(p => {
-      const valor_contrato = p.valor_total || 0;
+      let valor_contrato = p.valor_total || 0;
+      
+      // If project has multiple contracts linked via contrato_ids, sum their values
+      if (p.contrato_ids && p.contrato_ids.length > 0) {
+        const sum = p.contrato_ids.reduce((acc, cid) => acc + (allContratosMap.get(cid) || 0), 0);
+        valor_contrato = Math.round(sum * 100) / 100;
+      }
+
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
@@ -343,7 +363,7 @@ export default function QuadroGeral() {
       .sort((a, b) => a.area.localeCompare(b.area));
 
     return { areaGroups: groups, allProjetoRows: projetoRows };
-  }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes]);
+  }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes, parentsContratos]);
 
   const areaGroups = memoData.areaGroups;
   const allProjetoRows = memoData.allProjetoRows;
