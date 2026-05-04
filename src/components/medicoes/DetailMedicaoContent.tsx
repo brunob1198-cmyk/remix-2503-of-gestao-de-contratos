@@ -540,7 +540,8 @@ export function DetailMedicaoContent({
             sectionSpacingMm: 3,
             debugMode: debugMode
           },
-          onPreviewGenerated: (url) => setPreviewUrl(url)
+          onPreviewGenerated: (url) => setPreviewUrl(url),
+          capaUrl: detailMedicao.capa_url
         }
       );
 
@@ -612,6 +613,14 @@ export function DetailMedicaoContent({
           url: finalClienteLogoUrl,
           filename: 'logo_cliente.png',
           folder: 'logos'
+        });
+      }
+      if (detailMedicao.capa_url) {
+        const extension = detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'pdf';
+        photosToZip.push({
+          url: detailMedicao.capa_url,
+          filename: `capa_medicao.${extension}`,
+          folder: 'capa'
         });
       }
 
@@ -968,6 +977,27 @@ export function DetailMedicaoContent({
   </style>
 </head>
 <body>
+  ${detailMedicao.capa_url ? `
+    <div class="page">
+      <h2 class="sec">📄 Capa da Medição</h2>
+      <div style="display: flex; justify-content: center; align-items: center; min-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; overflow: hidden;">
+        ${detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? `
+          <div style="text-align: center; padding: 40px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h3 style="margin: 0; font-size: 18px; color: #1e3a5f;">Documento de Capa (PDF)</h3>
+            <p style="color: #64748b; margin: 10px 0 20px;">Este documento foi anexado como as primeiras páginas do relatório.</p>
+            ${forZip ? 
+              `<a href="capa/capa_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Local</a>` :
+              `<a href="${detailMedicao.capa_url}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Online</a>`
+            }
+          </div>
+        ` : `
+          <img src="${forZip ? `capa/capa_medicao.${detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'jpg'}` : detailMedicao.capa_url}" alt="Capa da Medição" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+        `}
+      </div>
+    </div>
+  ` : ''}
+
   <div class="page">
     <header class="doc-header">
       <div class="doc-header-left">
@@ -1023,7 +1053,8 @@ export function DetailMedicaoContent({
     ` : ''}
   </div>
 
-  ${diarioFotos.length > 0 ? `
+
+    ${diarioFotos.length > 0 ? `
     <div class="page">
       <h2 class="sec">📷 Relatório Fotográfico (${diarioFotos.length} fotos)</h2>
       ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
@@ -1250,6 +1281,40 @@ export function DetailMedicaoContent({
             margin-bottom: 16px !important;
           }
         `}} />
+        <div
+          className="pdf-keep-together"
+          data-pdf-section="capa"
+          style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+        >
+          {detailMedicao.capa_url && (
+            <div className="mb-6 border-b-2 border-primary pb-4">
+              {detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
+                  <FileText className="h-16 w-16 text-primary mb-4" />
+                  <h3 className="text-lg font-bold text-primary">Capa da Medição (PDF)</h3>
+                  <p className="text-sm text-muted-foreground text-center max-w-md mt-2">
+                    Este documento será anexado como as primeiras páginas do relatório final gerado.
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" asChild>
+                    <a href={detailMedicao.capa_url} target="_blank" rel="noopener noreferrer">
+                      Visualizar Capa em Nova Aba
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                <div className="w-full flex justify-center">
+                  <img 
+                    src={detailMedicao.capa_url} 
+                    alt="Capa da Medição" 
+                    className="max-w-full h-auto rounded-lg shadow-sm"
+                    style={{ maxHeight: '800px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div
           className="pdf-keep-together"
           data-pdf-section="medicao-resumo"
