@@ -44,7 +44,10 @@ export default function ContratosPage() {
   }, [clientes]);
 
   const getProjetosNomes = useCallback((contratoId: string) => {
-    const vinculados = projetos.filter(p => p.contrato_id === contratoId);
+    const vinculados = projetos.filter(p => 
+      p.contrato_id === contratoId || 
+      (p.contrato_ids && p.contrato_ids.includes(contratoId))
+    );
     if (vinculados.length === 0) return "-";
     return vinculados.map(p => `${p.codigo} - ${p.nome}`).join(", ");
   }, [projetos]);
