@@ -83,6 +83,7 @@ export function DetailMedicaoContent({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
   const [base64EmpresaLogo, setBase64EmpresaLogo] = useState<string | null>(null);
   const [base64ClienteLogo, setBase64ClienteLogo] = useState<string | null>(null);
 
