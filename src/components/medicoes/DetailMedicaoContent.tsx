@@ -1254,11 +1254,12 @@ export function DetailMedicaoContent({
           <div className="header pdf-header-logo" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #2563eb", paddingBottom: 12, marginBottom: 16, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
-                const hasValidEmpresaLogo = !!finalEmpresaLogoUrl;
+                const logoToUse = base64EmpresaLogo || finalEmpresaLogoUrl;
+                const hasValidEmpresaLogo = !!logoToUse;
                 
                 return hasValidEmpresaLogo ? (
                 <img 
-                  src={finalEmpresaLogoUrl!} 
+                  src={logoToUse!} 
                   alt="Logo Empresa" 
                   style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
@@ -1272,7 +1273,7 @@ export function DetailMedicaoContent({
                     const maxRetries = 3;
                     const currentRetry = parseInt(target.dataset.retryCount || "0");
                     
-                    if (currentRetry < maxRetries) {
+                    if (currentRetry < maxRetries && !logoToUse!.startsWith('data:')) {
                       const nextRetry = currentRetry + 1;
                       target.dataset.retryCount = nextRetry.toString();
                       
@@ -1280,7 +1281,7 @@ export function DetailMedicaoContent({
                         target.removeAttribute('crossorigin');
                       }
                       
-                      const baseSrc = finalEmpresaLogoUrl!.split('?')[0];
+                      const baseSrc = logoToUse!.split('?')[0];
                       const sep = baseSrc.includes('?') ? '&' : '?';
                       
                       setTimeout(() => {
