@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BarChart3, Calculator, ClipboardList, Brain, ChevronDown, X, RefreshCw } from "lucide-react";
+import { BarChart3, Calculator, ClipboardList, ChevronDown, X, RefreshCw } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
-import { AnaliseIA } from "@/components/analise/AnaliseIA";
 import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { Input } from "@/components/ui/input";
@@ -172,10 +171,6 @@ export default function AnaliseObraPage() {
               <ClipboardList className="h-4 w-4" />
               Auditoria ERP
             </TabsTrigger>
-            <TabsTrigger value="ia" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Análise IA
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="custos-erp" className="mt-0">
@@ -186,7 +181,7 @@ export default function AnaliseObraPage() {
             <CustosErp projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
           </TabsContent>
 
-          {(activeTab === "executiva" || activeTab === "ia") && selectedIds.map(pid => {
+          {activeTab === "executiva" && selectedIds.map(pid => {
             const proj = projetos.find(x => x.id === pid);
             if (!proj) return null;
             return (
@@ -196,9 +191,6 @@ export default function AnaliseObraPage() {
                 )}
                 <TabsContent value="executiva" className="mt-0">
                   <VisaoExecutiva projetoId={pid} projetoName={proj.nome} periodoInicio={periodoInicio} periodoFim={periodoFim} />
-                </TabsContent>
-                <TabsContent value="ia" className="mt-0">
-                  <AnaliseIA projetoId={pid} projetoName={proj.nome} />
                 </TabsContent>
               </div>
             );
