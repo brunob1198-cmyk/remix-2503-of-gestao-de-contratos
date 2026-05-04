@@ -1235,13 +1235,19 @@ export function DetailMedicaoContent({
             table th { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
             .site-header { background-color: #1e3a8a !important; color: white !important; print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
           }
+          .print-container {
+            max-width: 1120px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+          }
           .pdf-keep-together { page-break-inside: avoid; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
           .photo-grid-row { 
             display: grid !important; 
             grid-template-columns: repeat(3, 1fr) !important; 
-            gap: 12px !important; 
+            gap: 16px !important; 
             width: 100% !important;
-            margin-bottom: 12px !important;
+            margin-bottom: 16px !important;
           }
         `}} />
         <div
