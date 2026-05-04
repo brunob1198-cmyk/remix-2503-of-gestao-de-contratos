@@ -617,7 +617,7 @@ export function DetailMedicaoContent({
       }
 
       // 2. Prepare JSON Data and HTML Content
-      const htmlContent = generateHtmlReport();
+      const htmlContent = generateHtmlReport(true);
       const measurementData = {
         id: detailMedicao.id,
         numero: detailMedicao.numero_medicao,
