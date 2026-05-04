@@ -796,6 +796,22 @@ export async function exportMedicaoToPdf(
     addLog(`Combinando ${partials.length} lotes de PDF...`, 'info');
     const finalPdf = await PDFDocument.create();
     
+    // Check if we have a PDF cover to prepend
+    if (options.capaUrl && options.capaUrl.toLowerCase().endsWith('.pdf')) {
+      try {
+        addLog("Baixando e processando capa PDF...", 'info');
+        const capaRes = await fetch(options.capaUrl);
+        const capaBytes = await capaRes.arrayBuffer();
+        const capaDoc = await PDFDocument.load(capaBytes);
+        const copiedCapaPages = await finalPdf.copyPages(capaDoc, capaDoc.getPageIndices());
+        copiedCapaPages.forEach((page) => finalPdf.addPage(page));
+        addLog("Capa PDF anexada com sucesso.", 'success');
+      } catch (capaErr) {
+        addLog("Não foi possível anexar a capa PDF. O relatório continuará sem ela.", 'error');
+        console.error("Capa PDF Merge Error:", capaErr);
+      }
+    }
+
     for (let pIdx = 0; pIdx < partials.length; pIdx++) {
       const partial = partials[pIdx];
       try {
@@ -805,7 +821,6 @@ export async function exportMedicaoToPdf(
         addLog(`Lote ${pIdx + 1}/${partials.length} combinado com sucesso.`, 'debug');
       } catch (mergeErr) {
         addLog(`Erro ao combinar lote ${pIdx + 1}: ${mergeErr instanceof Error ? mergeErr.message : 'Erro desconhecido'}`, 'error');
-        // Continue with other batches if possible, but this is a serious error
       }
     }
 
