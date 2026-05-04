@@ -608,11 +608,12 @@ export function DetailMedicaoContent({
           folder: 'logos'
         });
       }
-      if (finalClienteLogoUrl) {
+      if (detailMedicao.capa_url) {
+        const extension = detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'pdf';
         photosToZip.push({
-          url: finalClienteLogoUrl,
-          filename: 'logo_cliente.png',
-          folder: 'logos'
+          url: detailMedicao.capa_url,
+          filename: `capa_medicao.${extension}`,
+          folder: 'capa'
         });
       }
 
