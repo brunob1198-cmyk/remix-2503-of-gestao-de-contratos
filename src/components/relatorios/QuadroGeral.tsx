@@ -174,6 +174,7 @@ export default function QuadroGeral() {
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
+  const { contratos: parentsContratos } = useContratos();
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
     queryKey: ["escopo_itens_all"],
