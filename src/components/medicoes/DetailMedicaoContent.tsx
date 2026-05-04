@@ -1255,7 +1255,7 @@ export function DetailMedicaoContent({
                   alt="Logo Empresa" 
                   style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
                   crossOrigin="anonymous"
-                  data-retry-count=\"0\"
+                  data-retry-count="0"
                   onLoad={(e) => {
                     const target = e.currentTarget;
                     target.style.display = 'block';
