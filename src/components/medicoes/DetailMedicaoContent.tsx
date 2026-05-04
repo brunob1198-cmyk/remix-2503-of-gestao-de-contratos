@@ -465,15 +465,15 @@ export function DetailMedicaoContent({
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+          <div className=\"flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1\">
             {options?.showSiteName && foto.site_nome && (
-              <span className="max-w-[140px] leading-tight" title={foto.site_nome}>
+              <span className=\"max-w-[140px] leading-tight\" title={foto.site_nome}>
                 {foto.site_nome}
               </span>
             )}
             {foto.diario_data && (
-              <span className="flex items-center gap-0.5 shrink-0">
-                <Calendar className="h-2 w-2" />
+              <span className=\"flex items-center gap-0.5 shrink-0\">
+                <Calendar className=\"h-2 w-2\" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
