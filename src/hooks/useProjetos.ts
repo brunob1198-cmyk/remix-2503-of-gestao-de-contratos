@@ -33,7 +33,7 @@ export function useProjetos() {
   });
 
   const createProjeto = useMutation({
-    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string | null; area_id?: string; valor_total?: number; status?: string }) => {
+    mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string | null; contrato_ids?: string[]; area_id?: string; valor_total?: number; status?: string }) => {
       const empresaId = await getEmpresaId();
       const { error } = await supabase
         .from("projetos")
