@@ -171,10 +171,6 @@ export default function AnaliseObraPage() {
               <ClipboardList className="h-4 w-4" />
               Auditoria ERP
             </TabsTrigger>
-            <TabsTrigger value="ia" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Análise IA
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="custos-erp" className="mt-0">
@@ -185,7 +181,7 @@ export default function AnaliseObraPage() {
             <CustosErp projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
           </TabsContent>
 
-          {(activeTab === "executiva" || activeTab === "ia") && selectedIds.map(pid => {
+          {activeTab === "executiva" && selectedIds.map(pid => {
             const proj = projetos.find(x => x.id === pid);
             if (!proj) return null;
             return (
@@ -195,9 +191,6 @@ export default function AnaliseObraPage() {
                 )}
                 <TabsContent value="executiva" className="mt-0">
                   <VisaoExecutiva projetoId={pid} projetoName={proj.nome} periodoInicio={periodoInicio} periodoFim={periodoFim} />
-                </TabsContent>
-                <TabsContent value="ia" className="mt-0">
-                  <AnaliseIA projetoId={pid} projetoName={proj.nome} />
                 </TabsContent>
               </div>
             );
