@@ -447,10 +447,15 @@ export function DetailMedicaoContent({
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
-      <div key={foto.id} className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" data-pdf-element="photo" style={{ minHeight: '280px' }}>
-        <div className="aspect-[4/3] bg-muted/15 p-1 flex items-center justify-center overflow-hidden">
+      <div 
+        key={foto.id} 
+        className="border rounded-lg overflow-hidden shadow-sm bg-card h-full flex flex-col" 
+        data-pdf-element="photo" 
+        style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
+      >
+        <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=400&quality=60&t=${Date.now()}`}
+            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=800&quality=80&t=${Date.now()}`}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
@@ -458,40 +463,42 @@ export function DetailMedicaoContent({
             crossOrigin="anonymous"
           />
         </div>
-        <div className="p-2 bg-muted/20 space-y-1 flex-1">
-          {options?.showItem !== false && foto.item_codigo && (
-            <p className="font-semibold text-[9px] text-foreground leading-[1.3] line-clamp-2 mb-1 py-0.5">
-              {foto.item_codigo} — {foto.item_descricao}
+        <div className="p-3 bg-muted/5 space-y-2 flex-1 flex flex-col">
+          {options?.showItem !== false && (foto.item_codigo || foto.item_descricao) && (
+            <p className="font-bold text-[11px] text-foreground leading-tight line-clamp-2 mb-1">
+              {foto.item_codigo ? `${foto.item_codigo} — ` : ''}{foto.item_descricao}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 text-[8px] text-muted-foreground mt-auto pt-1">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground mt-auto pt-2 border-t border-muted/20">
             {options?.showSiteName && foto.site_nome && (
-              <span className="max-w-[140px] leading-tight" title={foto.site_nome}>
+              <span className="font-medium text-primary/80 line-clamp-1" title={foto.site_nome}>
                 {foto.site_nome}
               </span>
             )}
             {foto.diario_data && (
-              <span className="flex items-center gap-0.5 shrink-0">
-                <Calendar className="h-2 w-2" />
+              <span className="flex items-center gap-1 shrink-0">
+                <Calendar className="h-2.5 w-2.5" />
                 {formatDate(foto.diario_data)}
               </span>
             )}
             <Badge 
-              className="badge-execucao text-[7px] text-white font-bold" 
-              style={{ backgroundColor: classColor(foto.classificacao), border: 'none' }}
+              className="badge-execucao text-[8px] px-1.5 h-4 text-white font-bold border-none" 
+              style={{ backgroundColor: classColor(foto.classificacao) }}
             >
               {classLabel(foto.classificacao)}
             </Badge>
           </div>
 
           {foto.legenda && (
-            <p className="text-[8px] text-muted-foreground italic leading-tight line-clamp-2">“{foto.legenda}”</p>
+            <p className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2 mt-1.5 bg-muted/20 p-1.5 rounded">
+              “{foto.legenda}”
+            </p>
           )}
         </div>
       </div>
     ),
-    [formatDate],
+    [formatDate, classColor, classLabel],
   );
 
   const handleExportPdf = async (resume = false) => {
