@@ -983,7 +983,7 @@ export function DetailMedicaoContent({
           <p class="doc-num">Nº ${detailMedicao.numero_medicao || detailMedicao.id}</p>
           <p class="doc-date">Data: ${detailMedicao.data_medicao ? formatDate(detailMedicao.data_medicao) : ''}</p>
         </div>
-        ${finalClienteLogoUrl ? `<img src="logos/logo_cliente.png" alt="Cliente">` : ''}
+        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
       </div>
     </header>
 
