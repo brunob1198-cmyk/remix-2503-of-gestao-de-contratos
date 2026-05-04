@@ -200,6 +200,29 @@ export function DetailMedicaoContent({
     getLogoUrl(clienteLogoUrl, 'clientes_logos'),
   [clienteLogoUrl, getLogoUrl]);
 
+  // Pre-load logos into base64 to avoid CORS issues during PDF generation
+  useEffect(() => {
+    const loadLogos = async () => {
+      if (finalEmpresaLogoUrl && !finalEmpresaLogoUrl.startsWith('data:')) {
+        try {
+          const b64 = await getPdfSafeImageDataUrl(finalEmpresaLogoUrl, { maxWidth: 400, quality: 0.9 });
+          if (b64 && b64.startsWith('data:')) setBase64EmpresaLogo(b64);
+        } catch (e) {
+          console.warn("Failed to pre-load empresa logo to base64", e);
+        }
+      }
+      if (finalClienteLogoUrl && !finalClienteLogoUrl.startsWith('data:')) {
+        try {
+          const b64 = await getPdfSafeImageDataUrl(finalClienteLogoUrl, { maxWidth: 400, quality: 0.9 });
+          if (b64 && b64.startsWith('data:')) setBase64ClienteLogo(b64);
+        } catch (e) {
+          console.warn("Failed to pre-load cliente logo to base64", e);
+        }
+      }
+    };
+    void loadLogos();
+  }, [finalEmpresaLogoUrl, finalClienteLogoUrl]);
+
   // Detect measurement type from lancamentos' observacao field
   const tipoMedicao = useMemo(() => {
     const obs = detailLancamentos.find(l => l.observacao)?.observacao || "";
