@@ -83,12 +83,10 @@ export function DetailMedicaoContent({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [debugMode, setDebugMode] = useState(false);
-  const [hasCheckpoint, setHasCheckpoint] = useState<{ type: 'pdf' | 'zip', lastIndex: number, total: number } | null>(null);
+  const [base64EmpresaLogo, setBase64EmpresaLogo] = useState<string | null>(null);
+  const [base64ClienteLogo, setBase64ClienteLogo] = useState<string | null>(null);
 
-
-
-
-  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' = 'info') => {
+  const addLog = useCallback((message: string, type: 'info' | 'error' | 'success' | 'debug' = 'info') => {
     // Append memory info if available for technical debugging
     let enrichedMessage = message;
     if (typeof window !== "undefined" && (window.performance as any)?.memory) {
@@ -100,7 +98,7 @@ export function DetailMedicaoContent({
     const newLog: PDFExportLog = {
       timestamp: new Date().toLocaleTimeString(),
       message: enrichedMessage,
-      type
+      type: type as any
     };
     setExportLogs(prev => [newLog, ...prev].slice(0, 100)); // Keep more logs for large exports
     console.log(`[Export] ${enrichedMessage}`);
