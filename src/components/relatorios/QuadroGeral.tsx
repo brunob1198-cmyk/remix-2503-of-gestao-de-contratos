@@ -291,8 +291,27 @@ export default function QuadroGeral() {
       faturadoByProjeto.set(s.projeto_id, (faturadoByProjeto.get(s.projeto_id) || 0) + fat);
     }
 
+    // Contracts Map for summing multiple contracts per project
+    const allContratosMap = new Map<string, number>();
+    parentsContratos.forEach(c => {
+      allContratosMap.set(c.id, Number(c.valor_total) || 0);
+      if (c.aditivos) {
+        c.aditivos.forEach(a => {
+          allContratosMap.set(a.id, Number(a.valor_total) || 0);
+        });
+      }
+    });
+
     const projetoRows: ProjetoRow[] = projetos.map(p => {
-      const valor_contrato = p.valor_total || 0;
+      let valor_contrato = p.valor_total || 0;
+      
+      // If project has multiple contracts linked via contrato_ids, sum their values
+      if (p.contrato_ids && p.contrato_ids.length > 0) {
+        valor_contrato = p.contrato_ids.reduce((sum, cid) => {
+          return sum + (allContratosMap.get(cid) || 0);
+        }, 0);
+      }
+
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
