@@ -206,8 +206,18 @@ export default function ProjetosPage() {
       if (value) {
         result = result.filter((p: any) => {
           if (field === "contrato_id") {
-            const cellVal = p.contratoObj?.numero_contrato || "-";
-            return cellVal === value;
+            // Check primary contract
+            const primaryNum = p.contratoObj?.numero_contrato || "-";
+            if (primaryNum === value) return true;
+            
+            // Check other contracts in contrato_ids
+            if (p.contrato_ids && p.contrato_ids.length > 0) {
+              return p.contrato_ids.some((cid: string) => {
+                const c = contratos.find(x => x.id === cid);
+                return (c?.numero_contrato || "-") === value;
+              });
+            }
+            return false;
           }
           if (field === "area_id") {
             const cellVal = p.areaObj?.nome || "-";
