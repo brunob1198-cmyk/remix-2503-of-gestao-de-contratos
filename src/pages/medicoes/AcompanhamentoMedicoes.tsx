@@ -563,7 +563,7 @@ export default function AcompanhamentoMedicoesPage() {
           preco_unitario: Number(item.preco_unitario),
           quantidade: 0,
           quantidade_pendente: pendente,
-          valor_total: 0,
+          valor_total: pendente * Number(item.preco_unitario),
           selected: true,
         });
       }
