@@ -70,6 +70,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Fetch or create diary for a given site+date
   const { data: diario, isLoading: loadingDiario } = useQuery({
     queryKey: ["diario_obra", siteId, data],
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 20, // 20 minutes
     queryFn: async () => {
       if (!siteId || !data) return null;
       const { data: existing, error } = await supabase
@@ -216,6 +218,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Production
   const { data: producoes = [], isLoading: loadingProducao } = useQuery({
     queryKey: ["diario_producao", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase
@@ -273,6 +277,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Equipe
   const { data: equipe = [], isLoading: isLoadingEquipe } = useQuery({
     queryKey: ["diario_equipe", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_equipe").select("*").eq("diario_id", diario.id);
@@ -321,6 +327,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Equipamentos
   const { data: equipamentos = [], isLoading: isLoadingEquipamentos } = useQuery({
     queryKey: ["diario_equipamentos", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_equipamentos").select("*").eq("diario_id", diario.id);
@@ -369,6 +377,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Veículos
   const { data: veiculos = [], isLoading: isLoadingVeiculos } = useQuery({
     queryKey: ["diario_veiculos", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_veiculos").select("*").eq("diario_id", diario.id);
@@ -422,6 +432,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Fotos
   const { data: fotos = [] } = useQuery({
     queryKey: ["diario_fotos", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       

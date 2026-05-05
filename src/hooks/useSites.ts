@@ -9,12 +9,13 @@ export function useSites(projetoId?: string) {
 
   const { data: sites = [], isLoading } = useQuery({
     queryKey: ["sites", projetoId],
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
     queryFn: async () => {
       let query = supabase
         .from("sites")
         .select("*, projeto:projetos(*, clienteObj:clientes(*))")
-        .order("codigo")
-        .limit(100000);
+        .order("codigo");
       
       if (projetoId) {
         query = query.eq("projeto_id", projetoId);

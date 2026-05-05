@@ -32,6 +32,8 @@ export function useDiarioCampoAtividades(projetoId: string, siteId: string, sele
 
   const { data: atividades = [], isLoading: loadingAtividades } = useQuery({
     queryKey: ["diario_campo_atividades", projetoId, siteId, selectedDate],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!projetoId || !selectedDate) return [];
       let query = supabase
@@ -121,6 +123,8 @@ export function useDiarioCampoFotos(diarioCampoId: string | undefined) {
 
   const { data: fotos = [] } = useQuery({
     queryKey: ["diario_campo_fotos", diarioCampoId],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diarioCampoId) return [];
       const { data, error } = await supabase
