@@ -457,12 +457,13 @@ export function DetailMedicaoContent({
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
-          <img
-            src={foto.thumb_url || foto.url}
+          <ResponsiveImage
+            src={foto.url}
+            thumb300={foto.thumb_url}
+            thumb600={foto.thumb_600_url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
-            loading="lazy"
-            decoding="async"
+            containerClassName="w-full h-full"
             crossOrigin="anonymous"
           />
         </div>
