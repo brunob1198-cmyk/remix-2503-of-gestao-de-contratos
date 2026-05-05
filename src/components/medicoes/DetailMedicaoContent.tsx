@@ -1554,6 +1554,71 @@ export function DetailMedicaoContent({
             )}
           </div>
 
+          {/* Recursos Utilizados */}
+          {(recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+            <div className="mb-6 pdf-keep-together" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+              <h2 className="pdf-section-heading flex items-center gap-2" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>
+                <HardHat className="h-4 w-4" /> Recursos Utilizados no Período
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recursosAgregados.equipe.length > 0 && (
+                  <div className="border rounded-md p-3">
+                    <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
+                      <Users className="h-3 w-3" /> Mão de Obra
+                    </h3>
+                    <Table className="text-[11px]">
+                      <TableHeader>
+                        <TableRow className="h-7 hover:bg-transparent">
+                          <TableHead className="h-7 py-0">Nome</TableHead>
+                          <TableHead className="h-7 py-0">Função</TableHead>
+                          <TableHead className="h-7 py-0 text-right">Horas</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recursosAgregados.equipe.map((e, i) => (
+                          <TableRow key={i} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{e.nome}</TableCell>
+                            <TableCell className="h-7 py-1">{e.funcao}</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{e.horas}h</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                {(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+                  <div className="border rounded-md p-3">
+                    <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
+                      <Settings2 className="h-3 w-3" /> Equipamentos e Veículos
+                    </h3>
+                    <Table className="text-[11px]">
+                      <TableHeader>
+                        <TableRow className="h-7 hover:bg-transparent">
+                          <TableHead className="h-7 py-0">Descrição</TableHead>
+                          <TableHead className="h-7 py-0 text-right">Uso/KM</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recursosAgregados.equipamentos.map((e, i) => (
+                          <TableRow key={`eq-${i}`} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{e.descricao}</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{e.horas}h</TableCell>
+                          </TableRow>
+                        ))}
+                        {recursosAgregados.veiculos.map((v, i) => (
+                          <TableRow key={`ve-${i}`} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{v.descricao} ({v.placa})</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{v.km} km</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Observations */}
           {detailMedicao.observacao_acompanhamento && (
             <div className="mb-4">
