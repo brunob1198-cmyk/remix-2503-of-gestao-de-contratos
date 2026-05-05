@@ -1371,11 +1371,12 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           onClick={() => onPhotoClick(f)}
                           className="block w-full relative group"
                         >
-                          <img
-                            src={f.thumb_url || f.url}
+                          <ResponsiveImage
+                            src={f.url}
+                            thumb300={f.thumb_url}
+                            thumb600={f.thumb_600_url}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
-                            loading="lazy"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                             <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
