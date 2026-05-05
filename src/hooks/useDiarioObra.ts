@@ -58,6 +58,7 @@ export interface DiarioFoto {
   diario_producao_id: string | null;
   url: string;
   thumb_url: string | null;
+  thumb_600_url: string | null;
   classificacao: string;
   legenda: string | null;
 }
