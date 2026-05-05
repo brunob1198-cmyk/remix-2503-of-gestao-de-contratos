@@ -212,6 +212,9 @@ export default function DiarioObraPage() {
   const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
   const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
+216: 
+217:   const [editingProducaoId, setEditingProducaoId] = useState<string | null>(null);
+218:   const [editProducaoQtd, setEditProducaoQtd] = useState("");
 
   // Filtered resources — only those allocated to the selected project
   const recursosAlocadosProjeto = (() => {
