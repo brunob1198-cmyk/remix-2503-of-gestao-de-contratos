@@ -70,6 +70,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Fetch or create diary for a given site+date
   const { data: diario, isLoading: loadingDiario } = useQuery({
     queryKey: ["diario_obra", siteId, data],
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 20, // 20 minutes
     queryFn: async () => {
       if (!siteId || !data) return null;
       const { data: existing, error } = await supabase
