@@ -828,7 +828,7 @@ export default function DiarioObraPage() {
           </TabsTrigger>
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
-              Lançamento — {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
+              Lançamento — {safeFormat(selectedDate, "dd/MM/yyyy")}
             </TabsTrigger>
         </TabsList>
 
