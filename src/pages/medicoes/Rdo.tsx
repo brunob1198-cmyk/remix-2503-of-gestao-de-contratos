@@ -194,7 +194,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
             : (first.classificacao && first.classificacao !== '__geral__' ? first.classificacao : 'Geral');
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
-                <img src="${f.url}" alt="foto" />
+                <img src="${f.url}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
                   <span class="foto-label-badge">${title}</span>
                 </div>
