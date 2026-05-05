@@ -1837,7 +1837,13 @@ export default function DiarioObraPage() {
                       {semGrupo.map(f => (
                         <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                           {isFileImage(f.url) ? (
-                            <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
+                          <ResponsiveImage 
+                            src={f.url} 
+                            thumb300={f.thumb_url}
+                            thumb600={f.thumb_600_url}
+                            alt={f.legenda || "foto"} 
+                            className="w-full h-32 object-cover" 
+                          />
                           ) : (
                             <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                               <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
