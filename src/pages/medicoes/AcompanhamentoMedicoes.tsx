@@ -1147,7 +1147,22 @@ function AcompanhamentoMedicoesPage() {
                           <Input value={currentPo} onChange={(e) => handleFieldChange(m.id, "numero_po", e.target.value)} placeholder="Nº PO" className="w-24" />
                         </TableCell>
                         <TableCell>
-                          <Input value={currentObs} onChange={(e) => handleFieldChange(m.id, "observacao_acompanhamento", e.target.value)} placeholder="Observações" className="w-40" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="w-40">
+                                <Input 
+                                  value={currentObs} 
+                                  onChange={(e) => handleFieldChange(m.id, "observacao_acompanhamento", e.target.value)} 
+                                  placeholder="Observações" 
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            {currentObs && (
+                              <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap break-words">
+                                {currentObs}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
