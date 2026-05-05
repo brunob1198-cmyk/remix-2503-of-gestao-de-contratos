@@ -179,9 +179,11 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).slice(2);
         const fileName = `${projetoId}/${timestamp}-${randomStr}.${ext}`;
-        const thumbName = `${projetoId}/thumbs/${timestamp}-${randomStr}.${ext}`;
+        const thumb300Name = `${projetoId}/thumbs/300/${timestamp}-${randomStr}.${ext}`;
+        const thumb600Name = `${projetoId}/thumbs/600/${timestamp}-${randomStr}.${ext}`;
 
-        const thumbFile = await compressImage(upload.file, 400, 0.7);
+        const thumb300File = await compressImage(upload.file, 300, 0.7);
+        const thumb600File = await compressImage(upload.file, 600, 0.7);
 
         const { error: uploadError } = await supabase.storage
           .from("timeline-evidencias")
@@ -191,19 +193,30 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
         if (uploadError) throw uploadError;
 
-        await supabase.storage
-          .from("timeline-evidencias")
-          .upload(thumbName, thumbFile, {
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
+        await Promise.all([
+          supabase.storage
+            .from("timeline-evidencias")
+            .upload(thumb300Name, thumb300File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+          supabase.storage
+            .from("timeline-evidencias")
+            .upload(thumb600Name, thumb600File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+        ]);
 
         const { data: urlData } = supabase.storage
           .from("timeline-evidencias")
           .getPublicUrl(fileName);
 
-        const { data: thumbData } = supabase.storage
+        const { data: thumb300Data } = supabase.storage
           .from("timeline-evidencias")
-          .getPublicUrl(thumbName);
+          .getPublicUrl(thumb300Name);
+
+        const { data: thumb600Data } = supabase.storage
+          .from("timeline-evidencias")
+          .getPublicUrl(thumb600Name);
 
         // Create timeline event
         const { error: insertError } = await supabase
