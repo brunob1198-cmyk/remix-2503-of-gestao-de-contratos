@@ -56,6 +56,7 @@ interface DetailMedicaoContentProps {
 interface DiarioFotoWithItem {
   id: string;
   url: string;
+  thumb_url?: string | null;
   classificacao: string;
   legenda: string | null;
   diario_producao_id: string | null;
@@ -455,7 +456,7 @@ export function DetailMedicaoContent({
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <img
-            src={foto.url}
+            src={foto.thumb_url || foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="lazy"
