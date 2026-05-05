@@ -389,12 +389,18 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
               {selectedEvento.imagem_url && (
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Imagem</p>
-                  <img
-                    src={selectedEvento.imagem_url}
-                    alt="Evidência"
-                    className="rounded-lg w-full max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  <div 
+                    className="rounded-lg w-full max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => setFullScreenImage(selectedEvento.imagem_url)}
-                  />
+                  >
+                    <ResponsiveImage
+                      src={selectedEvento.imagem_url!}
+                      thumb300={selectedEvento.imagem_thumb_url}
+                      thumb600={selectedEvento.imagem_thumb_600_url}
+                      alt="Evidência"
+                      className="w-full max-h-64 object-cover"
+                    />
+                  </div>
                 </div>
               )}
             </div>
