@@ -1355,7 +1355,7 @@ export function DetailMedicaoContent({
                       const sep = baseSrc.includes('?') ? '&' : '?';
                       
                       setTimeout(() => {
-                        target.src = `${baseSrc}${sep}t=${Date.now()}&retry=${nextRetry}`;
+                        target.src = `${baseSrc}${sep}retry=${nextRetry}`;
                       }, 500);
                       return;
                     }
