@@ -15,7 +15,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -61,7 +61,7 @@ const classificacaoColors: Record<string, string> = {
 
 // Generate HTML report for a single day
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
-  const dataFormatada = format(parseISO(diario.data), "dd/MM/yyyy (EEEE)", { locale: ptBR });
+  const dataFormatada = safeFormat(diario.data, "dd/MM/yyyy (EEEE)", { locale: ptBR });
   const localidade = [diario.municipio, diario.uf].filter(Boolean).join("/");
   const siteLabel = siteName || (diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined);
 
@@ -956,10 +956,10 @@ export default function RdoPage() {
                         >
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
-                            {format(parseISO(group.data), "dd/MM", { locale: ptBR })}
+                            {safeFormat(group.data, "dd/MM", { locale: ptBR })}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {format(parseISO(group.data), "EEEE", { locale: ptBR })}
+                            {safeFormat(group.data, "EEEE", { locale: ptBR })}
                           </span>
                           {group.diarios.length > 1 && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
@@ -1050,7 +1050,7 @@ export default function RdoPage() {
                     {classificacaoLabel[lightboxPhoto.classificacao] || lightboxPhoto.classificacao}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    {format(parseISO(lightboxPhoto.data), "dd/MM/yyyy", { locale: ptBR })}
+                    {safeFormat(lightboxPhoto.data, "dd/MM/yyyy", { locale: ptBR })}
                   </span>
                 </div>
                 {lightboxPhoto.item_evidencia && (
@@ -1106,10 +1106,10 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           {!showSite && (
             <div className="flex items-center gap-2">
               <span className="font-semibold tabular-nums">
-                {format(parseISO(diario.data), "dd/MM", { locale: ptBR })}
+                {safeFormat(diario.data, "dd/MM", { locale: ptBR })}
               </span>
               <span className="text-xs text-muted-foreground">
-                {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
+                {safeFormat(diario.data, "EEEE", { locale: ptBR })}
               </span>
               {hasProblema && (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -1197,10 +1197,10 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold tabular-nums">
-              {format(parseISO(diario.data), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              {safeFormat(diario.data, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </h2>
             <p className="text-sm text-muted-foreground capitalize">
-              {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
+              {safeFormat(diario.data, "EEEE", { locale: ptBR })}
             </p>
             {showSite && diario.site_codigo && (
               <div className="flex items-center gap-1.5 mt-1">

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, ArrowRight, Image, Check } from "lucide-react";
 import { format } from "date-fns";
+import { safeFormat } from "@/lib/utils";
 import type { DiarioCampo, DiarioCampoFoto } from "@/hooks/useDiarioCampo";
 
 interface AnotacoesCampoDialogProps {
@@ -117,7 +118,7 @@ export function AnotacoesCampoDialog({
             <FileText className="h-5 w-5 text-primary" />
             Anotações de Campo
             <Badge variant="outline" className="ml-2 text-xs">
-              {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
+              {safeFormat(selectedDate, "dd/MM/yyyy")}
             </Badge>
           </DialogTitle>
         </DialogHeader>

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Layers, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { safeFormat } from "@/lib/utils";
 
 export default function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
@@ -123,7 +124,7 @@ export default function AreasPage() {
                     <TableCell className="font-semibold">{a.nome}</TableCell>
                     <TableCell>{a.descricao || "-"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {a.created_at ? format(parseISO(a.created_at), "dd/MM/yyyy") : "-"}
+                      {safeFormat(a.created_at, "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

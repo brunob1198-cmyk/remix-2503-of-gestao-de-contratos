@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -105,16 +105,13 @@ export default function DiarioObraPage() {
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior,
+    previsoes = {}
   } = useDiarioObra(selectedSiteId, selectedDate);
 
   // Diário de Campo data — fetch ALL activities for the project+date (ignore site filter)
   const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
 
-
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, "2000-01-01", "2099-12-31");
-
-  // Build previsoes map (daily production targets from planejamento)
-  const previsoes: Record<string, number> = {};
 
   // Sync uf/municipio and observacoes from diario when loaded
   useEffect(() => {
@@ -831,7 +828,7 @@ export default function DiarioObraPage() {
           </TabsTrigger>
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
-              Lançamento — {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
+              Lançamento — {safeFormat(selectedDate, "dd/MM/yyyy")}
             </TabsTrigger>
         </TabsList>
 
