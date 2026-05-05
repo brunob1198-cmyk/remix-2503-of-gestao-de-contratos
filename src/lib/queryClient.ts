@@ -10,7 +10,7 @@ export const QUERY_DEFAULTS = {
   gcTime: 30 * 60 * 1000,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
-  refetchInterval: false,
+  refetchInterval: false as const,
   refetchIntervalInBackground: false,
   retry: 1,
 };
