@@ -422,6 +422,83 @@ export function DetailMedicaoContent({
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
+  // Fetch all RDO data for resources used
+  const { data: rdoData = [] } = useQuery({
+    queryKey: ["medicao_rdo_resources", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+
+      const { data: diarios, error: dErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio)
+        .lte("data", detailMedicao.periodo_fim);
+
+      if (dErr || !diarios?.length) return [];
+
+      const diarioIds = diarios.map(d => d.id);
+
+      const [equipeRes, equipRes, veicRes] = await Promise.all([
+        supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
+      ]);
+
+      return {
+        equipe: equipeRes.data || [],
+        equipamentos: equipRes.data || [],
+        veiculos: veicRes.data || [],
+      };
+    },
+    enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
+  const recursosAgregados = useMemo(() => {
+    if (!rdoData || Array.isArray(rdoData)) return { equipe: [], equipamentos: [], veiculos: [] };
+    
+    // Aggregate by unique key (name/description)
+    const equipeMap = new Map<string, { nome: string; funcao: string; horas: number }>();
+    rdoData.equipe.forEach((e: any) => {
+      const key = `${e.nome}-${e.funcao || ''}`;
+      const existing = equipeMap.get(key);
+      if (existing) {
+        existing.horas += Number(e.horas);
+      } else {
+        equipeMap.set(key, { nome: e.nome, funcao: e.funcao || '—', horas: Number(e.horas) });
+      }
+    });
+
+    const equipMap = new Map<string, { descricao: string; horas: number }>();
+    rdoData.equipamentos.forEach((e: any) => {
+      const key = e.descricao;
+      const existing = equipMap.get(key);
+      if (existing) {
+        existing.horas += Number(e.horas);
+      } else {
+        equipMap.set(key, { descricao: e.descricao, horas: Number(e.horas) });
+      }
+    });
+
+    const veicMap = new Map<string, { descricao: string; placa: string; km: number }>();
+    rdoData.veiculos.forEach((v: any) => {
+      const key = `${v.descricao}-${v.placa || ''}`;
+      const existing = veicMap.get(key);
+      if (existing) {
+        existing.km += Number(v.km_rodados || 0);
+      } else {
+        veicMap.set(key, { descricao: v.descricao, placa: v.placa || '—', km: Number(v.km_rodados || 0) });
+      }
+    });
+
+    return {
+      equipe: Array.from(equipeMap.values()),
+      equipamentos: Array.from(equipMap.values()),
+      veiculos: Array.from(veicMap.values()),
+    };
+  }, [rdoData]);
+
+
   const classLabel = (cls: string) => {
     switch (cls?.toLowerCase()) {
       case "execucao":
