@@ -1164,6 +1164,7 @@ export default function DiarioObraPage() {
                     <TableBody>
                       {producoes.map(p => {
                         const itemFotos = fotos.filter(f => f.diario_producao_id === p.id);
+                        const isEditing = editingProducaoId === p.id;
                         return (
                           <TableRow key={p.id} className="align-top">
                             <TableCell className="font-medium text-xs">{p.item_lpu?.codigo} — {p.item_lpu?.descricao}</TableCell>
@@ -1171,17 +1172,31 @@ export default function DiarioObraPage() {
                               {previsoes[p.item_lpu_id] ? previsoes[p.item_lpu_id] : "—"}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              <div className="flex items-center justify-end gap-1">
-                                <span className={previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
-                                  {Number(p.quantidade)}
-                                </span>
-                                {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
-                                  <AlertTriangle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
+                              {isEditing ? (
+                                <Input 
+                                  type="number" 
+                                  value={editProducaoQtd} 
+                                  onChange={ev => setEditProducaoQtd(ev.target.value)} 
+                                  className="w-[80px] ml-auto h-8 text-right" 
+                                />
+                              ) : (
+                                <div className="flex items-center justify-end gap-1">
+                                  <span className={previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
+                                    {Number(p.quantidade)}
+                                  </span>
+                                  {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
+                                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                                  )}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{formatCurrency(Number(p.preco_unitario_congelado))}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{formatCurrency(Number(p.valor_total))}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">
+                              {isEditing 
+                                ? formatCurrency(Number(editProducaoQtd) * Number(p.preco_unitario_congelado))
+                                : formatCurrency(Number(p.valor_total))
+                              }
+                            </TableCell>
                             <TableCell>
                               <div className="space-y-2">
                                <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 hover:bg-accent transition-colors">
