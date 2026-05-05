@@ -252,6 +252,22 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
   });
 
+  const updateProducao = useMutation({
+    mutationFn: async (item: { id: string; quantidade: number; valor_total: number }) => {
+      const { error } = await supabase
+        .from("diario_producao")
+        .update({ quantidade: item.quantidade, valor_total: item.valor_total })
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao atualizar produção", description: e.message, variant: "destructive" }),
+  });
+
   // Equipe
   const { data: equipe = [], isLoading: isLoadingEquipe } = useQuery({
     queryKey: ["diario_equipe", diario?.id],
