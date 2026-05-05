@@ -458,8 +458,8 @@ export function DetailMedicaoContent({
             src={foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
-            loading="eager"
-            decoding="sync"
+            loading="lazy"
+            decoding="async"
             crossOrigin="anonymous"
           />
         </div>
