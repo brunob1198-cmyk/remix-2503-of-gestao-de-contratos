@@ -648,6 +648,25 @@ export default function DiarioObraPage() {
     setEditingVeicId(null);
   };
 
+  const startEditProducao = (p: any) => {
+    setEditingProducaoId(p.id);
+    setEditProducaoQtd(String(p.quantidade));
+  };
+
+  const saveEditProducao = async () => {
+    if (!editingProducaoId) return;
+    const qtd = Number(editProducaoQtd);
+    const producao = producoes.find(p => p.id === editingProducaoId);
+    if (!producao) return;
+    const preco = Number(producao.preco_unitario_congelado);
+    await updateProducao.mutateAsync({ 
+      id: editingProducaoId, 
+      quantidade: qtd, 
+      valor_total: qtd * preco 
+    });
+    setEditingProducaoId(null);
+  };
+
   const ACCEPTED_FILE_TYPES = "image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx";
 
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => {
