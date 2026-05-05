@@ -1021,7 +1021,7 @@ export function DetailMedicaoContent({
                     <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
                     <tbody>
                       ${siteRecursos.equipamentos.map(e => `<tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>`).join('')}
-                      ${siteRecursos.veiculos.map(v => `<tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km_total}km</td></tr>`).join('')}
+                      ${siteRecursos.veiculos.map(v => `<tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km_ini > 0 ? `Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total}km</td></tr>`).join('')}
                     </tbody>
                   </table>
                 </div>
