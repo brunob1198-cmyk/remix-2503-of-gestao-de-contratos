@@ -424,12 +424,11 @@ export default function DiarioObraPage() {
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
           const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
           const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
-          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
-
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: urlData.publicUrl,
-            thumb_url: thumbData.publicUrl,
+            thumb_url: thumb300Data.publicUrl,
+            thumb_600_url: thumb600Data.publicUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
