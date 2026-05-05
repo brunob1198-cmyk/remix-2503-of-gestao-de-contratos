@@ -152,7 +152,13 @@ export default function DiarioCampoPage() {
   }));
 
   // When atividades load or activeAtividadeIdx changes, sync form
+  const lastSyncKey = useRef<string | null>(null);
   useEffect(() => {
+    const syncKey = `${activeAtividadeIdx}_${atividades.length}`;
+    if (syncKey === lastSyncKey.current) return;
+    lastSyncKey.current = syncKey;
+
+    console.count("DiarioCampo syncForm executado");
     if (typeof activeAtividadeIdx === "number" && atividades[activeAtividadeIdx]) {
       const a = atividades[activeAtividadeIdx];
       setDescricao(a.descricao_servico || "");
@@ -175,7 +181,7 @@ export default function DiarioCampoPage() {
       setSaved(false);
       setDirty(false);
     }
-  }, [activeAtividadeIdx, atividades.length]);
+  }, [activeAtividadeIdx, atividades, selectedSiteId]);
 
   // When date changes, reset to "new" or first activity
   useEffect(() => {
@@ -184,6 +190,7 @@ export default function DiarioCampoPage() {
     } else {
       setActiveAtividadeIdx("new");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, atividades.length === 0]);
 
   const handleCalendarDayClick = (dateStr: string) => {
