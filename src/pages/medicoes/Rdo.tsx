@@ -1050,7 +1050,7 @@ export default function RdoPage() {
                     {classificacaoLabel[lightboxPhoto.classificacao] || lightboxPhoto.classificacao}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    {format(parseISO(lightboxPhoto.data), "dd/MM/yyyy", { locale: ptBR })}
+                    {safeFormat(lightboxPhoto.data, "dd/MM/yyyy", { locale: ptBR })}
                   </span>
                 </div>
                 {lightboxPhoto.item_evidencia && (
