@@ -277,6 +277,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Equipe
   const { data: equipe = [], isLoading: isLoadingEquipe } = useQuery({
     queryKey: ["diario_equipe", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_equipe").select("*").eq("diario_id", diario.id);
