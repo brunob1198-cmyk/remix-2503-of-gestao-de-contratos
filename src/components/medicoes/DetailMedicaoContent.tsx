@@ -455,7 +455,7 @@ export function DetailMedicaoContent({
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <img
-            src={`${foto.url}${foto.url.includes('?') ? '&' : '?'}width=800&quality=80&t=${Date.now()}`}
+            src={foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             loading="eager"
