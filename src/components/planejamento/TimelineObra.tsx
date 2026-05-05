@@ -440,12 +440,18 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
                       <tr key={e.id} className="border-b hover:bg-muted/20 transition-colors">
                         <td className="p-2">
                           {e.imagem_url ? (
-                            <img 
-                              src={e.imagem_url} 
-                              alt="" 
-                              className="w-12 h-12 object-cover rounded cursor-pointer" 
+                            <div 
+                              className="w-12 h-12 cursor-pointer" 
                               onClick={() => setFullScreenImage(e.imagem_url)}
-                            />
+                            >
+                              <ResponsiveImage 
+                                src={e.imagem_url!} 
+                                thumb300={e.imagem_thumb_url}
+                                thumb600={e.imagem_thumb_600_url}
+                                alt="" 
+                                className="w-12 h-12 object-cover rounded" 
+                              />
+                            </div>
                           ) : (
                             <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
                               <ImageIcon className="h-4 w-4 text-muted-foreground" />
