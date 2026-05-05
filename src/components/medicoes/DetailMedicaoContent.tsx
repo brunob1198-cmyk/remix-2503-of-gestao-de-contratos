@@ -1121,7 +1121,7 @@ export function DetailMedicaoContent({
                 `).join('')}
                 ${recursosAgregadosGerais.veiculos.map(v => `
                   <tr><td>${v.descricao} (${v.placa})</td><td class="num">
-                    ${v.km_ini > 0 ? `Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total} km
+                    ${v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total} km
                   </td></tr>
                 `).join('')}
               </tbody>
@@ -1762,8 +1762,8 @@ export function DetailMedicaoContent({
                         {recursosAgregadosGerais.veiculos.map((v, i) => (
                           <TableRow key={`ve-${i}`} className="h-7 hover:bg-transparent">
                             <TableCell className="h-7 py-1">{v.descricao} ({v.placa})</TableCell>
-                            <TableCell className="h-7 py-1 text-right">
-                              {v.km_ini > 0 ? `I: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `F: ${v.km_fin} | ` : ''}T: {v.km_total}km
+                            <TableCell className="h-7 py-1 text-right whitespace-nowrap">
+                              {v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: {v.km_total} km
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1924,7 +1924,7 @@ export function DetailMedicaoContent({
                                     <p key={idx} className="text-[10px] leading-tight">• {e.descricao}: {e.horas}h</p>
                                   ))}
                                   {siteRecursos.veiculos.map((v, idx) => (
-                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_total}km</p>
+                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: {v.km_total}km</p>
                                   ))}
                                 </div>
                               )}
