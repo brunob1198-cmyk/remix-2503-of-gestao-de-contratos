@@ -1762,8 +1762,8 @@ export function DetailMedicaoContent({
                         {recursosAgregadosGerais.veiculos.map((v, i) => (
                           <TableRow key={`ve-${i}`} className="h-7 hover:bg-transparent">
                             <TableCell className="h-7 py-1">{v.descricao} ({v.placa})</TableCell>
-                            <TableCell className="h-7 py-1 text-right">
-                              {v.km_ini > 0 ? `I: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `F: ${v.km_fin} | ` : ''}T: {v.km_total}km
+                            <TableCell className="h-7 py-1 text-right whitespace-nowrap">
+                              {v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: {v.km_total} km
                             </TableCell>
                           </TableRow>
                         ))}
