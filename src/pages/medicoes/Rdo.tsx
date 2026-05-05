@@ -1197,10 +1197,10 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold tabular-nums">
-              {format(parseISO(diario.data), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              {safeFormat(diario.data, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
             </h2>
             <p className="text-sm text-muted-foreground capitalize">
-              {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
+              {safeFormat(diario.data, "EEEE", { locale: ptBR })}
             </p>
             {showSite && diario.site_codigo && (
               <div className="flex items-center gap-1.5 mt-1">
