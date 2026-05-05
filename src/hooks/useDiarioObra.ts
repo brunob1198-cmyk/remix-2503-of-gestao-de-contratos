@@ -432,6 +432,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
   // Fotos
   const { data: fotos = [] } = useQuery({
     queryKey: ["diario_fotos", diario?.id],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
     queryFn: async () => {
       if (!diario?.id) return [];
       
