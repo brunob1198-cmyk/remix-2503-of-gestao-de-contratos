@@ -1305,8 +1305,8 @@ export function DetailMedicaoContent({
                 </div>
               ) : (
                 <div className="w-full flex justify-center">
-                  <img 
-                    src={detailMedicao.capa_url} 
+                  <ResponsiveImage 
+                    src={detailMedicao.capa_url!} 
                     alt="Capa da Medição" 
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     style={{ maxHeight: '800px', objectFit: 'contain' }}
