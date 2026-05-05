@@ -674,6 +674,7 @@ export type Database = {
           diario_campo_id: string
           id: string
           legenda: string | null
+          thumb_600_url: string | null
           thumb_url: string | null
           url: string
         }
@@ -682,6 +683,7 @@ export type Database = {
           diario_campo_id: string
           id?: string
           legenda?: string | null
+          thumb_600_url?: string | null
           thumb_url?: string | null
           url: string
         }
@@ -690,6 +692,7 @@ export type Database = {
           diario_campo_id?: string
           id?: string
           legenda?: string | null
+          thumb_600_url?: string | null
           thumb_url?: string | null
           url?: string
         }
@@ -790,6 +793,7 @@ export type Database = {
           diario_producao_id: string | null
           id: string
           legenda: string | null
+          thumb_600_url: string | null
           thumb_url: string | null
           url: string
         }
@@ -800,6 +804,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          thumb_600_url?: string | null
           thumb_url?: string | null
           url: string
         }
@@ -810,6 +815,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          thumb_600_url?: string | null
           thumb_url?: string | null
           url?: string
         }
@@ -3312,6 +3318,7 @@ export type Database = {
           geo_metodo: string | null
           geo_validado: boolean
           id: string
+          imagem_thumb_600_url: string | null
           imagem_thumb_url: string | null
           imagem_url: string | null
           item: string | null
@@ -3333,6 +3340,7 @@ export type Database = {
           geo_metodo?: string | null
           geo_validado?: boolean
           id?: string
+          imagem_thumb_600_url?: string | null
           imagem_thumb_url?: string | null
           imagem_url?: string | null
           item?: string | null
@@ -3354,6 +3362,7 @@ export type Database = {
           geo_metodo?: string | null
           geo_validado?: boolean
           id?: string
+          imagem_thumb_600_url?: string | null
           imagem_thumb_url?: string | null
           imagem_url?: string | null
           item?: string | null
