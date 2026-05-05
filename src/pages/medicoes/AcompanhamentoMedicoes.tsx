@@ -78,7 +78,7 @@ interface GeracaoFoto {
   selected: boolean;
 }
 
-export default memo(AcompanhamentoMedicoesPage);
+function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { lancamentos: producoes } = useLancamentosProducao();
@@ -1916,4 +1916,6 @@ export default memo(AcompanhamentoMedicoesPage);
        </Dialog>
      </div>
    );
- }
+}
+
+export default memo(AcompanhamentoMedicoesPage);

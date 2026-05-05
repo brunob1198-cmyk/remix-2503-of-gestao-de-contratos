@@ -370,4 +370,4 @@ export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate,
       </CardContent>
     </Card>
   );
-}
+});

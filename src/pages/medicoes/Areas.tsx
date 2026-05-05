@@ -11,7 +11,7 @@ import { Plus, Pencil, Trash2, Layers, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { safeFormat } from "@/lib/utils";
 
-export default memo(AreasPage);
+function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,3 +146,5 @@ export default memo(AreasPage);
     </div>
   );
 }
+
+export default memo(AreasPage);
