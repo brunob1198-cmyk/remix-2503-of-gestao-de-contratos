@@ -1121,7 +1121,7 @@ export function DetailMedicaoContent({
                 `).join('')}
                 ${recursosAgregadosGerais.veiculos.map(v => `
                   <tr><td>${v.descricao} (${v.placa})</td><td class="num">
-                    ${v.km_ini > 0 ? `Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total} km
+                    ${v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total} km
                   </td></tr>
                 `).join('')}
               </tbody>
