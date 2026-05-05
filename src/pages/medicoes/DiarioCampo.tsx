@@ -76,7 +76,10 @@ export default function DiarioCampoPage() {
 
           const path = item.path || `campo/${item.diarioId}/${Date.now()}_${item.id}_${item.file.name}`;
           
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { upsert: true });
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { 
+            upsert: true,
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
           if (uploadError) throw uploadError;
 
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);

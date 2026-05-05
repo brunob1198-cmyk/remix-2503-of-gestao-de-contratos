@@ -123,7 +123,9 @@ export default function ClientesPage() {
       const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
       
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
+        cacheControl: 'public, max-age=31536000, immutable'
+      });
       
       if (uploadError) throw uploadError;
 

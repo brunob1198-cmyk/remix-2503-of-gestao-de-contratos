@@ -739,7 +739,9 @@ function AcompanhamentoMedicoesPage() {
         const path = `capas/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("medicao-capas")
-          .upload(path, capaFile);
+          .upload(path, capaFile, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("medicao-capas").getPublicUrl(uploadData.path);
         capaUrl = urlData.publicUrl;
