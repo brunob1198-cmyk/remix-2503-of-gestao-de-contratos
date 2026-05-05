@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive } from "lucide-react";
+import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -421,6 +421,83 @@ export function DetailMedicaoContent({
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
+
+  // Fetch all RDO data for resources used
+  const { data: rdoData = [] } = useQuery({
+    queryKey: ["medicao_rdo_resources", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+
+      const { data: diarios, error: dErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio)
+        .lte("data", detailMedicao.periodo_fim);
+
+      if (dErr || !diarios?.length) return [];
+
+      const diarioIds = diarios.map(d => d.id);
+
+      const [equipeRes, equipRes, veicRes] = await Promise.all([
+        supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
+      ]);
+
+      return {
+        equipe: equipeRes.data || [],
+        equipamentos: equipRes.data || [],
+        veiculos: veicRes.data || [],
+      };
+    },
+    enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
+  const recursosAgregados = useMemo(() => {
+    if (!rdoData || Array.isArray(rdoData)) return { equipe: [], equipamentos: [], veiculos: [] };
+    
+    // Aggregate by unique key (name/description)
+    const equipeMap = new Map<string, { nome: string; funcao: string; horas: number }>();
+    rdoData.equipe.forEach((e: any) => {
+      const key = `${e.nome}-${e.funcao || ''}`;
+      const existing = equipeMap.get(key);
+      if (existing) {
+        existing.horas += Number(e.horas);
+      } else {
+        equipeMap.set(key, { nome: e.nome, funcao: e.funcao || '—', horas: Number(e.horas) });
+      }
+    });
+
+    const equipMap = new Map<string, { descricao: string; horas: number }>();
+    rdoData.equipamentos.forEach((e: any) => {
+      const key = e.descricao;
+      const existing = equipMap.get(key);
+      if (existing) {
+        existing.horas += Number(e.horas);
+      } else {
+        equipMap.set(key, { descricao: e.descricao, horas: Number(e.horas) });
+      }
+    });
+
+    const veicMap = new Map<string, { descricao: string; placa: string; km: number }>();
+    rdoData.veiculos.forEach((v: any) => {
+      const key = `${v.descricao}-${v.placa || ''}`;
+      const existing = veicMap.get(key);
+      if (existing) {
+        existing.km += Number(v.km_rodados || 0);
+      } else {
+        veicMap.set(key, { descricao: v.descricao, placa: v.placa || '—', km: Number(v.km_rodados || 0) });
+      }
+    });
+
+    return {
+      equipe: Array.from(equipeMap.values()),
+      equipamentos: Array.from(equipMap.values()),
+      veiculos: Array.from(veicMap.values()),
+    };
+  }, [rdoData]);
+
 
   const classLabel = (cls: string) => {
     switch (cls?.toLowerCase()) {
@@ -903,6 +980,42 @@ export function DetailMedicaoContent({
         </tr>
       `;
     }).join('');
+    
+    const recursosHtml = (recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+      <h2 class="sec">👷 Recursos Utilizados no Período</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        ${recursosAgregados.equipe.length > 0 ? `
+          <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
+            <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Mão de Obra</p>
+            <table class="main" style="margin-bottom: 0;">
+              <thead><tr><th>Nome</th><th>Função</th><th class="num">Horas</th></tr></thead>
+              <tbody>
+                ${recursosAgregados.equipe.map(e => `
+                  <tr><td>${e.nome}</td><td>${e.funcao}</td><td class="num">${e.horas}h</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+        ${(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+          <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
+            <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Equipamentos e Veículos</p>
+            <table class="main" style="margin-bottom: 0;">
+              <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
+              <tbody>
+                ${recursosAgregados.equipamentos.map(e => `
+                  <tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>
+                `).join('')}
+                ${recursosAgregados.veiculos.map(v => `
+                  <tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km} km</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
 
     const includedSitesHtml = (isMultiSite && includedSites.length > 0) ? `
       <div class="sites-included">
@@ -1048,6 +1161,9 @@ export function DetailMedicaoContent({
         </tr>
       </tfoot>
     </table>
+    
+    ${recursosHtml}
+
 
     ${detailMedicao.observacao_acompanhamento ? `
       <h2 class="sec">📋 Observações Gerais</h2>
@@ -1064,7 +1180,7 @@ export function DetailMedicaoContent({
   ` : ''}
 </body>
 </html>`;
-  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl]);
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregados]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1476,6 +1592,71 @@ export function DetailMedicaoContent({
               <div><span className="text-muted-foreground">Nº PO:</span> {detailMedicao.numero_po}</div>
             )}
           </div>
+
+          {/* Recursos Utilizados */}
+          {(recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+            <div className="mb-6 pdf-keep-together" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+              <h2 className="pdf-section-heading flex items-center gap-2" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>
+                <HardHat className="h-4 w-4" /> Recursos Utilizados no Período
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recursosAgregados.equipe.length > 0 && (
+                  <div className="border rounded-md p-3">
+                    <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
+                      <Users className="h-3 w-3" /> Mão de Obra
+                    </h3>
+                    <Table className="text-[11px]">
+                      <TableHeader>
+                        <TableRow className="h-7 hover:bg-transparent">
+                          <TableHead className="h-7 py-0">Nome</TableHead>
+                          <TableHead className="h-7 py-0">Função</TableHead>
+                          <TableHead className="h-7 py-0 text-right">Horas</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recursosAgregados.equipe.map((e, i) => (
+                          <TableRow key={i} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{e.nome}</TableCell>
+                            <TableCell className="h-7 py-1">{e.funcao}</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{e.horas}h</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                {(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+                  <div className="border rounded-md p-3">
+                    <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
+                      <Settings2 className="h-3 w-3" /> Equipamentos e Veículos
+                    </h3>
+                    <Table className="text-[11px]">
+                      <TableHeader>
+                        <TableRow className="h-7 hover:bg-transparent">
+                          <TableHead className="h-7 py-0">Descrição</TableHead>
+                          <TableHead className="h-7 py-0 text-right">Uso/KM</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recursosAgregados.equipamentos.map((e, i) => (
+                          <TableRow key={`eq-${i}`} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{e.descricao}</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{e.horas}h</TableCell>
+                          </TableRow>
+                        ))}
+                        {recursosAgregados.veiculos.map((v, i) => (
+                          <TableRow key={`ve-${i}`} className="h-7 hover:bg-transparent">
+                            <TableCell className="h-7 py-1">{v.descricao} ({v.placa})</TableCell>
+                            <TableCell className="h-7 py-1 text-right">{v.km} km</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Observations */}
           {detailMedicao.observacao_acompanhamento && (
