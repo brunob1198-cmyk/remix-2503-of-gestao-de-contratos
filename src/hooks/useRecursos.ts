@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_DEFAULTS } from "@/lib/queryClient";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -59,8 +60,9 @@ export function useRecursos() {
 
   const recursosQuery = useQuery({
     queryKey: ["recursos"],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+    ...QUERY_DEFAULTS,
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recursos")
@@ -73,8 +75,9 @@ export function useRecursos() {
 
   const custosQuery = useQuery({
     queryKey: ["recurso_custos"],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+    ...QUERY_DEFAULTS,
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recurso_custos")
@@ -87,8 +90,9 @@ export function useRecursos() {
 
   const alocacoesQuery = useQuery({
     queryKey: ["recurso_alocacoes"],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+    ...QUERY_DEFAULTS,
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recurso_alocacoes")
