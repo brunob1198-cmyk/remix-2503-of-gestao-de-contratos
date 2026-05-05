@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { QUERY_DEFAULTS } from "@/lib/queryClient";
 
 export interface UserPermission {
   tela: string;
@@ -35,35 +36,32 @@ export const TELAS = [
 
 export function usePermissions() {
   const { user, role } = useAuth();
-  const [permissions, setPermissions] = useState<UserPermission[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
-      setPermissions([]);
-      setLoading(false);
-      return;
-    }
+  const { data: permissions = [], isLoading: loading } = useQuery({
+    queryKey: ["user_permissions", user?.id],
+    ...QUERY_DEFAULTS,
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return [];
 
-    // Admin has all permissions
-    if (role === "admin") {
-      setPermissions(
-        TELAS.map((t) => ({ tela: t.id, pode_visualizar: true, pode_editar: true }))
-      );
-      setLoading(false);
-      return;
-    }
+      // Admin has all permissions
+      if (role === "admin") {
+        return TELAS.map((t) => ({ 
+          tela: t.id, 
+          pode_visualizar: true, 
+          pode_editar: true 
+        }));
+      }
 
-    const fetch = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_permissions")
         .select("tela, pode_visualizar, pode_editar")
         .eq("user_id", user.id);
-      setPermissions((data as UserPermission[]) || []);
-      setLoading(false);
-    };
-    fetch();
-  }, [user, role]);
+      
+      if (error) throw error;
+      return (data as UserPermission[]) || [];
+    },
+  });
 
   const canView = (tela: string) => {
     if (role === "admin") return true;
@@ -77,3 +75,4 @@ export function usePermissions() {
 
   return { permissions, loading, canView, canEdit };
 }
+
