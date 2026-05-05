@@ -159,12 +159,18 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento, onUpdateEve
               
               {evt.imagem_url && (
                 <div className="rounded overflow-hidden border bg-muted aspect-video flex items-center justify-center">
-                  <img 
-                    src={evt.imagem_thumb_url || evt.imagem_url} 
-                    alt="evidência" 
-                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  <div 
+                    className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => window.open(evt.imagem_url!, '_blank')}
-                  />
+                  >
+                    <ResponsiveImage 
+                      src={evt.imagem_url!} 
+                      thumb300={evt.imagem_thumb_url}
+                      thumb600={evt.imagem_thumb_600_url}
+                      alt="evidência" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 </div>
               )}
 
