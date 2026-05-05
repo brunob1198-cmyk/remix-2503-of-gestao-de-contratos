@@ -423,21 +423,22 @@ export function DetailMedicaoContent({
   });
 
   // Fetch all RDO data for resources used
-  const { data: rdoData = [] } = useQuery({
-    queryKey: ["medicao_rdo_resources", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+  const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
+    queryKey: ["medicao_rdo_resources_by_site", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
-      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return new Map();
 
       const { data: diarios, error: dErr } = await supabase
         .from("diarios_obra")
-        .select("id")
+        .select("id, site_id")
         .in("site_id", allSiteIds)
         .gte("data", detailMedicao.periodo_inicio)
         .lte("data", detailMedicao.periodo_fim);
 
-      if (dErr || !diarios?.length) return [];
+      if (dErr || !diarios?.length) return new Map();
 
       const diarioIds = diarios.map(d => d.id);
+      const diarioSiteMap = new Map(diarios.map(d => [d.id, d.site_id]));
 
       const [equipeRes, equipRes, veicRes] = await Promise.all([
         supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
@@ -445,50 +446,129 @@ export function DetailMedicaoContent({
         supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
       ]);
 
-      return {
-        equipe: equipeRes.data || [],
-        equipamentos: equipRes.data || [],
-        veiculos: veicRes.data || [],
-      };
+      const map = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>();
+      
+      equipeRes.data?.forEach(e => {
+        const siteId = diarioSiteMap.get(e.diario_id);
+        if (siteId) {
+          if (!map.has(siteId)) map.set(siteId, { equipe: [], equipamentos: [], veiculos: [] });
+          map.get(siteId)!.equipe.push(e);
+        }
+      });
+      
+      equipRes.data?.forEach(e => {
+        const siteId = diarioSiteMap.get(e.diario_id);
+        if (siteId) {
+          if (!map.has(siteId)) map.set(siteId, { equipe: [], equipamentos: [], veiculos: [] });
+          map.get(siteId)!.equipamentos.push(e);
+        }
+      });
+
+      veicRes.data?.forEach(v => {
+        const siteId = diarioSiteMap.get(v.diario_id);
+        if (siteId) {
+          if (!map.has(siteId)) map.set(siteId, { equipe: [], equipamentos: [], veiculos: [] });
+          map.get(siteId)!.veiculos.push(v);
+        }
+      });
+
+      return map;
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
-  const recursosAgregados = useMemo(() => {
-    if (!rdoData || Array.isArray(rdoData)) return { equipe: [], equipamentos: [], veiculos: [] };
-    
-    // Aggregate by unique key (name/description)
+  const recursosAgregadosPorSite = useMemo(() => {
+    const finalMap = new Map<string, { 
+      equipe: { nome: string; funcao: string; horas: number }[], 
+      equipamentos: { descricao: string; horas: number }[], 
+      veiculos: { descricao: string; placa: string; km_ini: number; km_fin: number; km_total: number }[] 
+    }>();
+
+    rdoDataBySite.forEach((data, siteId) => {
+      const equipeMap = new Map<string, { nome: string; funcao: string; horas: number }>();
+      data.equipe.forEach((e: any) => {
+        const key = `${e.nome}-${e.funcao || ''}`;
+        const existing = equipeMap.get(key);
+        if (existing) {
+          existing.horas += Number(e.horas);
+        } else {
+          equipeMap.set(key, { nome: e.nome, funcao: e.funcao || '—', horas: Number(e.horas) });
+        }
+      });
+
+      const equipMap = new Map<string, { descricao: string; horas: number }>();
+      data.equipamentos.forEach((e: any) => {
+        const key = e.descricao;
+        const existing = equipMap.get(key);
+        if (existing) {
+          existing.horas += Number(e.horas);
+        } else {
+          equipMap.set(key, { descricao: e.descricao, horas: Number(e.horas) });
+        }
+      });
+
+      const veicMap = new Map<string, { descricao: string; placa: string; km_ini: number; km_fin: number; km_total: number }>();
+      data.veiculos.forEach((v: any) => {
+        const key = `${v.descricao}-${v.placa || ''}`;
+        const existing = veicMap.get(key);
+        const kmIni = Number(v.km_inicial || 0);
+        const kmFin = Number(v.km_final || 0);
+        const kmTotal = Number(v.km_rodados || 0);
+
+        if (existing) {
+          if (kmIni > 0 && (existing.km_ini === 0 || kmIni < existing.km_ini)) existing.km_ini = kmIni;
+          if (kmFin > existing.km_fin) existing.km_fin = kmFin;
+          existing.km_total += kmTotal;
+        } else {
+          veicMap.set(key, { 
+            descricao: v.descricao, 
+            placa: v.placa || '—', 
+            km_ini: kmIni, 
+            km_fin: kmFin, 
+            km_total: kmTotal 
+          });
+        }
+      });
+
+      finalMap.set(siteId, {
+        equipe: Array.from(equipeMap.values()),
+        equipamentos: Array.from(equipMap.values()),
+        veiculos: Array.from(veicMap.values()),
+      });
+    });
+
+    return finalMap;
+  }, [rdoDataBySite]);
+
+  const recursosAgregadosGerais = useMemo(() => {
     const equipeMap = new Map<string, { nome: string; funcao: string; horas: number }>();
-    rdoData.equipe.forEach((e: any) => {
-      const key = `${e.nome}-${e.funcao || ''}`;
-      const existing = equipeMap.get(key);
-      if (existing) {
-        existing.horas += Number(e.horas);
-      } else {
-        equipeMap.set(key, { nome: e.nome, funcao: e.funcao || '—', horas: Number(e.horas) });
-      }
-    });
-
     const equipMap = new Map<string, { descricao: string; horas: number }>();
-    rdoData.equipamentos.forEach((e: any) => {
-      const key = e.descricao;
-      const existing = equipMap.get(key);
-      if (existing) {
-        existing.horas += Number(e.horas);
-      } else {
-        equipMap.set(key, { descricao: e.descricao, horas: Number(e.horas) });
-      }
-    });
+    const veicMap = new Map<string, { descricao: string; placa: string; km_ini: number; km_fin: number; km_total: number }>();
 
-    const veicMap = new Map<string, { descricao: string; placa: string; km: number }>();
-    rdoData.veiculos.forEach((v: any) => {
-      const key = `${v.descricao}-${v.placa || ''}`;
-      const existing = veicMap.get(key);
-      if (existing) {
-        existing.km += Number(v.km_rodados || 0);
-      } else {
-        veicMap.set(key, { descricao: v.descricao, placa: v.placa || '—', km: Number(v.km_rodados || 0) });
-      }
+    recursosAgregadosPorSite.forEach((res) => {
+      res.equipe.forEach(e => {
+        const key = `${e.nome}-${e.funcao}`;
+        const existing = equipeMap.get(key);
+        if (existing) existing.horas += e.horas;
+        else equipeMap.set(key, { ...e });
+      });
+      res.equipamentos.forEach(e => {
+        const key = e.descricao;
+        const existing = equipMap.get(key);
+        if (existing) existing.horas += e.horas;
+        else equipMap.set(key, { ...e });
+      });
+      res.veiculos.forEach(v => {
+        const key = `${v.descricao}-${v.placa}`;
+        const existing = veicMap.get(key);
+        if (existing) {
+          if (v.km_ini > 0 && (existing.km_ini === 0 || v.km_ini < existing.km_ini)) existing.km_ini = v.km_ini;
+          if (v.km_fin > existing.km_fin) existing.km_fin = v.km_fin;
+          existing.km_total += v.km_total;
+        } else {
+          veicMap.set(key, { ...v });
+        }
+      });
     });
 
     return {
@@ -496,7 +576,7 @@ export function DetailMedicaoContent({
       equipamentos: Array.from(equipMap.values()),
       veiculos: Array.from(veicMap.values()),
     };
-  }, [rdoData]);
+  }, [recursosAgregadosPorSite]);
 
 
   const classLabel = (cls: string) => {
@@ -896,6 +976,7 @@ export function DetailMedicaoContent({
         const siteItems = productionBySite.get(siteId) || [];
         const siteTotal = getSiteItemsTotal(siteItems);
         const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
+        const siteRecursos = recursosAgregadosPorSite.get(siteId);
 
         const itemsTableHtml = siteItems.length > 0 ? `
           <div class="site-production">
@@ -915,6 +996,37 @@ export function DetailMedicaoContent({
               </tbody>
             </table>
             <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+          </div>
+        ` : '';
+
+        const recursosHtml = siteRecursos && (siteRecursos.equipe.length > 0 || siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) ? `
+          <div class="site-production" style="margin-top: 12px;">
+            <p class="site-production-title">👷 Recursos Utilizados:</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              ${siteRecursos.equipe.length > 0 ? `
+                <div style="border: 1px solid var(--border); padding: 8px; border-radius: 4px;">
+                  <p style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Mão de Obra</p>
+                  <table class="site-table" style="margin-bottom: 0; font-size: 10px;">
+                    <thead><tr><th>Nome</th><th class="num">Horas</th></tr></thead>
+                    <tbody>
+                      ${siteRecursos.equipe.map(e => `<tr><td>${e.nome} (${e.funcao})</td><td class="num">${e.horas}h</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
+              ${(siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) ? `
+                <div style="border: 1px solid var(--border); padding: 8px; border-radius: 4px;">
+                  <p style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Equip./Veículos</p>
+                  <table class="site-table" style="margin-bottom: 0; font-size: 10px;">
+                    <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
+                    <tbody>
+                      ${siteRecursos.equipamentos.map(e => `<tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>`).join('')}
+                      ${siteRecursos.veiculos.map(v => `<tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km_total}km</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
+            </div>
           </div>
         ` : '';
 
@@ -938,6 +1050,7 @@ export function DetailMedicaoContent({
           <section class="site-block">
             <div class="site-header">📍 ${siteName}</div>
             ${itemsTableHtml}
+            ${recursosHtml}
             ${obsHtml}
             ${photosHtml}
           </section>
@@ -981,33 +1094,35 @@ export function DetailMedicaoContent({
       `;
     }).join('');
     
-    const recursosHtml = (recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+    const recursosHtml = (recursosAgregadosGerais.equipe.length > 0 || recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) ? `
       <h2 class="sec">👷 Recursos Utilizados no Período</h2>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-        ${recursosAgregados.equipe.length > 0 ? `
+        ${recursosAgregadosGerais.equipe.length > 0 ? `
           <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
             <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Mão de Obra</p>
             <table class="main" style="margin-bottom: 0;">
               <thead><tr><th>Nome</th><th>Função</th><th class="num">Horas</th></tr></thead>
               <tbody>
-                ${recursosAgregados.equipe.map(e => `
+                ${recursosAgregadosGerais.equipe.map(e => `
                   <tr><td>${e.nome}</td><td>${e.funcao}</td><td class="num">${e.horas}h</td></tr>
                 `).join('')}
               </tbody>
             </table>
           </div>
         ` : ''}
-        ${(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+        ${(recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) ? `
           <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
             <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Equipamentos e Veículos</p>
             <table class="main" style="margin-bottom: 0;">
               <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
               <tbody>
-                ${recursosAgregados.equipamentos.map(e => `
+                ${recursosAgregadosGerais.equipamentos.map(e => `
                   <tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>
                 `).join('')}
-                ${recursosAgregados.veiculos.map(v => `
-                  <tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km} km</td></tr>
+                ${recursosAgregadosGerais.veiculos.map(v => `
+                  <tr><td>${v.descricao} (${v.placa})</td><td class="num">
+                    ${v.km_ini > 0 ? `Ini: ${v.km_ini} | ` : ''}${v.km_fin > 0 ? `Fin: ${v.km_fin} | ` : ''}Total: ${v.km_total} km
+                  </td></tr>
                 `).join('')}
               </tbody>
             </table>
@@ -1180,7 +1295,7 @@ export function DetailMedicaoContent({
   ` : ''}
 </body>
 </html>`;
-  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregados]);
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1594,13 +1709,13 @@ export function DetailMedicaoContent({
           </div>
 
           {/* Recursos Utilizados */}
-          {(recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+          {(recursosAgregadosGerais.equipe.length > 0 || recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) && (
             <div className="mb-6 pdf-keep-together" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
               <h2 className="pdf-section-heading flex items-center gap-2" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>
                 <HardHat className="h-4 w-4" /> Recursos Utilizados no Período
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recursosAgregados.equipe.length > 0 && (
+                {recursosAgregadosGerais.equipe.length > 0 && (
                   <div className="border rounded-md p-3">
                     <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
                       <Users className="h-3 w-3" /> Mão de Obra
@@ -1614,7 +1729,7 @@ export function DetailMedicaoContent({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {recursosAgregados.equipe.map((e, i) => (
+                        {recursosAgregadosGerais.equipe.map((e, i) => (
                           <TableRow key={i} className="h-7 hover:bg-transparent">
                             <TableCell className="h-7 py-1">{e.nome}</TableCell>
                             <TableCell className="h-7 py-1">{e.funcao}</TableCell>
@@ -1625,7 +1740,7 @@ export function DetailMedicaoContent({
                     </Table>
                   </div>
                 )}
-                {(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) && (
+                {(recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) && (
                   <div className="border rounded-md p-3">
                     <h3 className="text-xs font-bold mb-2 uppercase text-muted-foreground flex items-center gap-1">
                       <Settings2 className="h-3 w-3" /> Equipamentos e Veículos
@@ -1638,16 +1753,18 @@ export function DetailMedicaoContent({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {recursosAgregados.equipamentos.map((e, i) => (
+                        {recursosAgregadosGerais.equipamentos.map((e, i) => (
                           <TableRow key={`eq-${i}`} className="h-7 hover:bg-transparent">
                             <TableCell className="h-7 py-1">{e.descricao}</TableCell>
                             <TableCell className="h-7 py-1 text-right">{e.horas}h</TableCell>
                           </TableRow>
                         ))}
-                        {recursosAgregados.veiculos.map((v, i) => (
+                        {recursosAgregadosGerais.veiculos.map((v, i) => (
                           <TableRow key={`ve-${i}`} className="h-7 hover:bg-transparent">
                             <TableCell className="h-7 py-1">{v.descricao} ({v.placa})</TableCell>
-                            <TableCell className="h-7 py-1 text-right">{v.km} km</TableCell>
+                            <TableCell className="h-7 py-1 text-right">
+                              {v.km_ini > 0 ? `I: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `F: ${v.km_fin} | ` : ''}T: {v.km_total}km
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1783,6 +1900,51 @@ export function DetailMedicaoContent({
                           ))}
                         </div>
                       )}
+
+                      {(() => {
+                        const siteRecursos = recursosAgregadosPorSite.get(siteId);
+                        if (!siteRecursos || (siteRecursos.equipe.length === 0 && siteRecursos.equipamentos.length === 0 && siteRecursos.veiculos.length === 0)) return null;
+                        
+                        return (
+                          <div className="p-3 border-t bg-muted/5" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+                            <p className="text-xs font-semibold mb-2 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>👷 Recursos Utilizados</p>
+                            <div className="grid grid-cols-2 gap-4">
+                              {siteRecursos.equipe.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Equipe</p>
+                                  {siteRecursos.equipe.map((e, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {e.nome}: {e.horas}h</p>
+                                  ))}
+                                </div>
+                              )}
+                              {(siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Equip./Veículos</p>
+                                  {siteRecursos.equipamentos.map((e, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {e.descricao}: {e.horas}h</p>
+                                  ))}
+                                  {siteRecursos.veiculos.map((v, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_total}km</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+
+                  return (
+                    <div
+                      key={siteName}
+                      className="border rounded-lg overflow-hidden bg-card"
+                    >
+                      {/* Header for the site */}
+                      <div data-pdf-section="site-medicao-intro">
+                        {siteSummary}
+                      </div>
+...
                     </div>
                   );
 
