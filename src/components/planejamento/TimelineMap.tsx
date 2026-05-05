@@ -153,20 +153,34 @@ export function TimelineMap({ eventos, activeEvento, onSelectEvento, onUpdateEve
           }}
         >
           <Popup>
-            <div className="text-xs">
-              <p className="font-bold">{evt.item || evt.tipo}</p>
-              <p>{format(parseISO(evt.data), "dd/MM/yyyy")}</p>
-              {evt.quantidade > 0 && <p>Qtd: {evt.quantidade}</p>}
-              {evt.coord_source && (
-                <p className="text-[10px] text-muted-foreground mt-1 italic">
-                  Fonte: {evt.coord_source}
-                </p>
+            <div className="text-xs space-y-2 max-w-[200px]">
+              <p className="font-bold border-b pb-1">{evt.item || evt.tipo}</p>
+              
+              {evt.imagem_url && (
+                <div className="rounded overflow-hidden border bg-muted aspect-video flex items-center justify-center">
+                  <img 
+                    src={evt.imagem_thumb_url || evt.imagem_url} 
+                    alt="evidência" 
+                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(evt.imagem_url!, '_blank')}
+                  />
+                </div>
               )}
-              {evt.tipo === "foto" && (
-                <p className="text-[10px] text-primary mt-1">
-                  Arraste o ponto para corrigir a posição
-                </p>
-              )}
+
+              <div className="space-y-0.5">
+                <p><span className="text-muted-foreground">Data:</span> {format(parseISO(evt.data), "dd/MM/yyyy")}</p>
+                {evt.quantidade > 0 && <p><span className="text-muted-foreground">Qtd:</span> {evt.quantidade}</p>}
+                {evt.coord_source && (
+                  <p className="text-[10px] text-muted-foreground mt-1 italic">
+                    Fonte: {evt.coord_source}
+                  </p>
+                )}
+                {evt.tipo === "foto" && (
+                  <p className="text-[10px] text-primary mt-1 font-medium">
+                    Arraste o ponto para corrigir a posição
+                  </p>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>
