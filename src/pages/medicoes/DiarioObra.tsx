@@ -388,18 +388,37 @@ export default function DiarioObraPage() {
             fileToUpload = await compressImage(file);
           }
 
-          const path = `${diarioId}/${Date.now()}_${fileIndex}_${file.name}`;
+          const timestamp = Date.now();
+          const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
+          const thumbPath = `${diarioId}/thumbs/${timestamp}_${fileIndex}_${file.name}`;
+          
+          let thumbFile = fileToUpload;
+          if (isFileImage(file.name)) {
+            thumbFile = await compressImage(file, 400, 0.7);
+          }
+
+          // Upload Original
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
             cacheControl: 'public, max-age=31536000, immutable'
           });
+          
           if (uploadError) {
             toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
             return;
           }
+
+          // Upload Thumbnail
+          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
+
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
+
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: urlData.publicUrl,
+            thumb_url: thumbData.publicUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
