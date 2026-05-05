@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_DEFAULTS } from "@/lib/queryClient";
 import { supabase } from "@/integrations/supabase/client";
 import { Projeto } from "@/types/medicoes";
 import { useToast } from "@/hooks/use-toast";
@@ -22,8 +23,9 @@ export function useProjetos() {
 
   const { data: projetos = [], isLoading } = useQuery({
     queryKey: ["projetos"],
-    staleTime: 1000 * 60 * 30, // 30 minutes
-    gcTime: 1000 * 60 * 60, // 1 hour
+    ...QUERY_DEFAULTS,
+    staleTime: 1000 * 60 * 30, // Mantendo 30 min por ser um cadastro lento
+    gcTime: 1000 * 60 * 60, // 1 hora
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projetos")
