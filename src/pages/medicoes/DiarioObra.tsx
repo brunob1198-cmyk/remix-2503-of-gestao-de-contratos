@@ -389,7 +389,9 @@ export default function DiarioObraPage() {
           }
 
           const path = `${diarioId}/${Date.now()}_${fileIndex}_${file.name}`;
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
           if (uploadError) {
             toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
             return;

@@ -179,7 +179,9 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
         const { error: uploadError } = await supabase.storage
           .from("timeline-evidencias")
-          .upload(fileName, upload.file);
+          .upload(fileName, upload.file, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
 
         if (uploadError) throw uploadError;
 

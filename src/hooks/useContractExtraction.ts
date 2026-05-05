@@ -50,7 +50,9 @@ export function useContractExtraction() {
       console.log('Uploading file to storage:', filePath);
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('contratos')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: 'public, max-age=31536000, immutable'
+        });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);

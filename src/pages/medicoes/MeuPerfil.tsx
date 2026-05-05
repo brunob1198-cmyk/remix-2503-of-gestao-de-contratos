@@ -56,11 +56,14 @@ export default function MeuPerfilPage() {
     setUploading(true);
     try {
       const ext = file.name.split(".").pop();
-      const path = `${user.id}/avatar.${ext}`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+      const path = `${user.id}/avatar_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { 
+        upsert: true,
+        cacheControl: 'public, max-age=31536000, immutable'
+      });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-      const url = urlData.publicUrl + "?t=" + Date.now();
+      const url = urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
       setAvatarUrl(url);
       toast({ title: "Foto atualizada!" });

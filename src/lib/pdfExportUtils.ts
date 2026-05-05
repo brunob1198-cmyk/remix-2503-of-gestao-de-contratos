@@ -25,16 +25,13 @@ export interface PDFExportLog {
 export async function getSafeImageUrl(url: string): Promise<string> {
   if (url.startsWith('data:')) return url;
   
-  const separator = url.includes('?') ? '&' : '?';
-  const timestampedUrl = `${url}${separator}t=${Date.now()}`;
-  
   try {
-    const response = await fetch(timestampedUrl, { mode: 'no-cors' }); // Using no-cors as a last resort check or just trust the URL
+    const response = await fetch(url, { mode: 'no-cors' }); 
     if (!response.ok) throw new Error('Network response was not ok');
-    return timestampedUrl;
+    return url;
   } catch (error) {
     console.warn(`CORS failure for image: ${url}.`, error);
-    return timestampedUrl;
+    return url;
   }
 }
 
