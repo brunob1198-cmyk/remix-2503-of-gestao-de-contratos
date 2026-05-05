@@ -980,6 +980,42 @@ export function DetailMedicaoContent({
         </tr>
       `;
     }).join('');
+    
+    const recursosHtml = (recursosAgregados.equipe.length > 0 || recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+      <h2 class="sec">👷 Recursos Utilizados no Período</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        ${recursosAgregados.equipe.length > 0 ? `
+          <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
+            <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Mão de Obra</p>
+            <table class="main" style="margin-bottom: 0;">
+              <thead><tr><th>Nome</th><th>Função</th><th class="num">Horas</th></tr></thead>
+              <tbody>
+                ${recursosAgregados.equipe.map(e => `
+                  <tr><td>${e.nome}</td><td>${e.funcao}</td><td class="num">${e.horas}h</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+        ${(recursosAgregados.equipamentos.length > 0 || recursosAgregados.veiculos.length > 0) ? `
+          <div style="border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
+            <p style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--muted); margin: 0 0 8px 0;">Equipamentos e Veículos</p>
+            <table class="main" style="margin-bottom: 0;">
+              <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
+              <tbody>
+                ${recursosAgregados.equipamentos.map(e => `
+                  <tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>
+                `).join('')}
+                ${recursosAgregados.veiculos.map(v => `
+                  <tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km} km</td></tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
 
     const includedSitesHtml = (isMultiSite && includedSites.length > 0) ? `
       <div class="sites-included">
