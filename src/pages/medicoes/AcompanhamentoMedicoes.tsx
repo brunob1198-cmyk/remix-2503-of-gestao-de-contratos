@@ -78,7 +78,7 @@ interface GeracaoFoto {
   selected: boolean;
 }
 
-export default function AcompanhamentoMedicoesPage() {
+export default memo(AcompanhamentoMedicoesPage);
   const queryClient = useQueryClient();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { lancamentos: producoes } = useLancamentosProducao();

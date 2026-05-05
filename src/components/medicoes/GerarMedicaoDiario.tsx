@@ -32,7 +32,7 @@ interface GerarMedicaoDiarioProps {
   isLoading?: boolean;
 }
 
-export function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiarioProps) {
+export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiarioProps) {
   const { toast } = useToast();
   const { projetos } = useProjetos();
   const { sites } = useSites();
