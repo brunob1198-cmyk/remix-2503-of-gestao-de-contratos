@@ -114,19 +114,24 @@ export default function DiarioObraPage() {
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, "2000-01-01", "2099-12-31");
 
   // Sync uf/municipio and observacoes from diario when loaded
+  const lastDiarioId = useRef<string | null>(null);
   useEffect(() => {
-    if (diario) {
+    if (diario && diario.id !== lastDiarioId.current) {
+      console.count("DiarioObra syncHeader executado");
+      lastDiarioId.current = diario.id;
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
       setObs(diario.observacoes || "");
-    } else {
+      setHeaderSaved(false);
+    } else if (!diario && lastDiarioId.current !== null) {
+      lastDiarioId.current = null;
       setObs("");
       setDiarioClima("");
+      setHeaderSaved(false);
     }
-    setHeaderSaved(false);
-  }, [diario?.id]);
+  }, [diario?.id, setDiarioUf, setDiarioMunicipio]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
