@@ -576,6 +576,7 @@ export default function DiarioCampoPage() {
                             src={foto.url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
+                            loading="lazy"
                           />
                           <button
                             onClick={() => handleRemoveFoto(foto.id)}
