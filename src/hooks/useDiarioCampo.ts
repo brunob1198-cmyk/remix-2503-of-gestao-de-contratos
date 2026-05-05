@@ -21,6 +21,7 @@ export interface DiarioCampoFoto {
   diario_campo_id: string;
   url: string;
   thumb_url?: string | null;
+  thumb_600_url?: string | null;
   legenda: string | null;
   created_at: string | null;
 }
