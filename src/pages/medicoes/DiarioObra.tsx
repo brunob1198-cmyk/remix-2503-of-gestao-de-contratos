@@ -105,16 +105,13 @@ export default function DiarioObraPage() {
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior,
+    previsoes = {}
   } = useDiarioObra(selectedSiteId, selectedDate);
 
   // Diário de Campo data — fetch ALL activities for the project+date (ignore site filter)
   const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
 
-
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, "2000-01-01", "2099-12-31");
-
-  // Build previsoes map (daily production targets from planejamento)
-  const previsoes: Record<string, number> = {};
 
   // Sync uf/municipio and observacoes from diario when loaded
   useEffect(() => {
