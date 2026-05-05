@@ -1144,7 +1144,13 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <img src={f.thumb_url || f.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <ResponsiveImage 
+                  src={f.url} 
+                  thumb300={f.thumb_url}
+                  thumb600={f.thumb_600_url}
+                  alt="" 
+                  className="w-full h-full object-cover" 
+                />
               </div>
             ))}
           </div>
