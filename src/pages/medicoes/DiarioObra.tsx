@@ -97,7 +97,7 @@ export default function DiarioObraPage() {
 
   const {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
-    producoes, addProducao, removeProducao,
+    producoes, addProducao, removeProducao, updateProducao,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
@@ -212,6 +212,8 @@ export default function DiarioObraPage() {
   const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
   const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
+  const [editingProducaoId, setEditingProducaoId] = useState<string | null>(null);
+  const [editProducaoQtd, setEditProducaoQtd] = useState("");
 
   // Filtered resources — only those allocated to the selected project
   const recursosAlocadosProjeto = (() => {
@@ -643,6 +645,25 @@ export default function DiarioObraPage() {
     const kmRodados = Math.max(0, kmFinal - kmInicial);
     await updateVeiculo.mutateAsync({ id: editingVeicId, km_inicial: kmInicial, km_final: kmFinal, km_rodados: kmRodados, custo_diaria: Number(editVeicCusto) });
     setEditingVeicId(null);
+  };
+
+  const startEditProducao = (p: any) => {
+    setEditingProducaoId(p.id);
+    setEditProducaoQtd(String(p.quantidade));
+  };
+
+  const saveEditProducao = async () => {
+    if (!editingProducaoId) return;
+    const qtd = Number(editProducaoQtd);
+    const producao = producoes.find(p => p.id === editingProducaoId);
+    if (!producao) return;
+    const preco = Number(producao.preco_unitario_congelado);
+    await updateProducao.mutateAsync({ 
+      id: editingProducaoId, 
+      quantidade: qtd, 
+      valor_total: qtd * preco 
+    });
+    setEditingProducaoId(null);
   };
 
   const ACCEPTED_FILE_TYPES = "image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx";
@@ -1142,6 +1163,7 @@ export default function DiarioObraPage() {
                     <TableBody>
                       {producoes.map(p => {
                         const itemFotos = fotos.filter(f => f.diario_producao_id === p.id);
+                        const isEditing = editingProducaoId === p.id;
                         return (
                           <TableRow key={p.id} className="align-top">
                             <TableCell className="font-medium text-xs">{p.item_lpu?.codigo} — {p.item_lpu?.descricao}</TableCell>
@@ -1149,17 +1171,31 @@ export default function DiarioObraPage() {
                               {previsoes[p.item_lpu_id] ? previsoes[p.item_lpu_id] : "—"}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              <div className="flex items-center justify-end gap-1">
-                                <span className={previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
-                                  {Number(p.quantidade)}
-                                </span>
-                                {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
-                                  <AlertTriangle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
+                              {isEditing ? (
+                                <Input 
+                                  type="number" 
+                                  value={editProducaoQtd} 
+                                  onChange={ev => setEditProducaoQtd(ev.target.value)} 
+                                  className="w-[80px] ml-auto h-8 text-right" 
+                                />
+                              ) : (
+                                <div className="flex items-center justify-end gap-1">
+                                  <span className={previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
+                                    {Number(p.quantidade)}
+                                  </span>
+                                  {previsoes[p.item_lpu_id] && Number(p.quantidade) < previsoes[p.item_lpu_id] && (
+                                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                                  )}
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{formatCurrency(Number(p.preco_unitario_congelado))}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{formatCurrency(Number(p.valor_total))}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">
+                              {isEditing 
+                                ? formatCurrency(Number(editProducaoQtd) * Number(p.preco_unitario_congelado))
+                                : formatCurrency(Number(p.valor_total))
+                              }
+                            </TableCell>
                             <TableCell>
                               <div className="space-y-2">
                                <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 hover:bg-accent transition-colors">
@@ -1199,9 +1235,27 @@ export default function DiarioObraPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              <div className="flex gap-1 justify-end">
+                                {isEditing ? (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveEditProducao}>
+                                      <Check className="h-4 w-4 text-emerald-600" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingProducaoId(null)}>
+                                      <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditProducao(p)}>
+                                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProducao.mutate(p.id)}>
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
