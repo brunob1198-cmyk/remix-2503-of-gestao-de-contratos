@@ -175,14 +175,17 @@ async function sendOne(
     };
   }
 
+  // ATENÇÃO: campos devem seguir EXATAMENTE a especificação da API ContaAzul v1:
+  // - "contato" (não "id_contato") é o campo correto para o contato
+  // - "id_categoria" só vai dentro do rateio, não no nível raiz
+  // - parcela em condicao_pagamento não aceita campo "valor" diretamente
   const payload: any = {
     data_competencia: transactionDate,
     valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
+    contato: contatoId,            // campo correto conforme API (era id_contato - errado)
     conta_financeira: input.financial_account_id,
-    id_categoria: input.category_id,
-    id_contato: contatoId, // Adicionando o contato obrigatório
     rateio: [
       {
         id_categoria: input.category_id,
@@ -199,10 +202,13 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          valor: transactionValue,
           detalhe_valor: {
             valor_bruto: transactionValue,
-            valor_liquido: transactionValue
+            valor_liquido: transactionValue,
+            multa: 0,
+            juros: 0,
+            desconto: 0,
+            taxa: 0
           }
         }
       ]
@@ -386,14 +392,23 @@ serve(async (req) => {
     const accessToken = await getValidAccessToken(admin, empresaId);
     
     // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
+    // A API do ContaAzul retorna os contatos em { itens: [...] } ou diretamente como array
     const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
     let defaultContactId: string | undefined;
     if (contactsResp.ok) {
       const contactsData = await contactsResp.json();
-      const firstContact = Array.isArray(contactsData) ? contactsData[0] : (contactsData.itens?.[0]);
+      console.log("[DEBUG] Resposta da busca de contatos:", JSON.stringify(contactsData).substring(0, 300));
+      // Tenta diferentes formatos de resposta da API
+      const firstContact = Array.isArray(contactsData)
+        ? contactsData[0]
+        : (contactsData?.itens?.[0] || contactsData?.data?.[0] || contactsData?.content?.[0]);
       defaultContactId = firstContact?.id;
+      console.log(`[DEBUG] Contato padrão selecionado: ${defaultContactId}`);
+    } else {
+      const errText = await contactsResp.text();
+      console.warn(`[WARN] Não foi possível buscar contatos (HTTP ${contactsResp.status}): ${errText}`);
     }
 
     const results = [];
