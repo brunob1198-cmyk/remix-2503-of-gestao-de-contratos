@@ -1161,6 +1161,9 @@ export function DetailMedicaoContent({
         </tr>
       </tfoot>
     </table>
+    
+    ${recursosHtml}
+
 
     ${detailMedicao.observacao_acompanhamento ? `
       <h2 class="sec">📋 Observações Gerais</h2>
