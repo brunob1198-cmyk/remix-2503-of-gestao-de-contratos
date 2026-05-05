@@ -135,7 +135,13 @@ export function useDiarioCampoFotos(diarioCampoId: string | undefined) {
   });
 
   const addFoto = useMutation({
-    mutationFn: async (params: { diario_campo_id: string; url: string; legenda?: string }) => {
+    mutationFn: async (params: { 
+      diario_campo_id: string; 
+      url: string; 
+      thumb_url?: string | null;
+      thumb_600_url?: string | null;
+      legenda?: string 
+    }) => {
       const { error } = await supabase
         .from("diario_campo_fotos")
         .insert([params]);
