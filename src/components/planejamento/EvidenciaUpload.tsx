@@ -13,6 +13,7 @@ import { extractExifGeoData, ExifGeoData } from "@/lib/exifExtractor";
 import { toast } from "sonner";
 import { Upload, MapPin, Camera, Loader2, CheckCircle, AlertTriangle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/imageCompression";
 
 interface EvidenciaUploadProps {
   projetoId: string;
