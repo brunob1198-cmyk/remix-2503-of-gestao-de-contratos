@@ -1106,10 +1106,10 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           {!showSite && (
             <div className="flex items-center gap-2">
               <span className="font-semibold tabular-nums">
-                {format(parseISO(diario.data), "dd/MM", { locale: ptBR })}
+                {safeFormat(diario.data, "dd/MM", { locale: ptBR })}
               </span>
               <span className="text-xs text-muted-foreground">
-                {format(parseISO(diario.data), "EEEE", { locale: ptBR })}
+                {safeFormat(diario.data, "EEEE", { locale: ptBR })}
               </span>
               {hasProblema && (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
