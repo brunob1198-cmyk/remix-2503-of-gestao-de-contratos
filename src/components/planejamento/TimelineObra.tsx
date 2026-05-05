@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useTimelineEventos, TimelineEvento } from "@/hooks/useTimelineEventos";
 import { TimelineMap } from "./TimelineMap";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
