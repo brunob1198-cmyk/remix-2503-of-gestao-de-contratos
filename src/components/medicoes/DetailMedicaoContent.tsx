@@ -976,6 +976,7 @@ export function DetailMedicaoContent({
         const siteItems = productionBySite.get(siteId) || [];
         const siteTotal = getSiteItemsTotal(siteItems);
         const siteObs = (observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : []) || [];
+        const siteRecursos = recursosAgregadosPorSite.get(siteId);
 
         const itemsTableHtml = siteItems.length > 0 ? `
           <div class="site-production">
@@ -995,6 +996,37 @@ export function DetailMedicaoContent({
               </tbody>
             </table>
             <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+          </div>
+        ` : '';
+
+        const recursosHtml = siteRecursos && (siteRecursos.equipe.length > 0 || siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) ? `
+          <div class="site-production" style="margin-top: 12px;">
+            <p class="site-production-title">👷 Recursos Utilizados:</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              ${siteRecursos.equipe.length > 0 ? `
+                <div style="border: 1px solid var(--border); padding: 8px; border-radius: 4px;">
+                  <p style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Mão de Obra</p>
+                  <table class="site-table" style="margin-bottom: 0; font-size: 10px;">
+                    <thead><tr><th>Nome</th><th class="num">Horas</th></tr></thead>
+                    <tbody>
+                      ${siteRecursos.equipe.map(e => `<tr><td>${e.nome} (${e.funcao})</td><td class="num">${e.horas}h</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
+              ${(siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) ? `
+                <div style="border: 1px solid var(--border); padding: 8px; border-radius: 4px;">
+                  <p style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">Equip./Veículos</p>
+                  <table class="site-table" style="margin-bottom: 0; font-size: 10px;">
+                    <thead><tr><th>Descrição</th><th class="num">Uso/KM</th></tr></thead>
+                    <tbody>
+                      ${siteRecursos.equipamentos.map(e => `<tr><td>${e.descricao}</td><td class="num">${e.horas}h</td></tr>`).join('')}
+                      ${siteRecursos.veiculos.map(v => `<tr><td>${v.descricao} (${v.placa})</td><td class="num">${v.km_total}km</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
+            </div>
           </div>
         ` : '';
 
@@ -1018,6 +1050,7 @@ export function DetailMedicaoContent({
           <section class="site-block">
             <div class="site-header">📍 ${siteName}</div>
             ${itemsTableHtml}
+            ${recursosHtml}
             ${obsHtml}
             ${photosHtml}
           </section>
