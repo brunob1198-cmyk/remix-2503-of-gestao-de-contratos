@@ -390,11 +390,15 @@ export default function DiarioObraPage() {
 
           const timestamp = Date.now();
           const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-          const thumbPath = `${diarioId}/thumbs/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb300Path = `${diarioId}/thumbs/300/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb600Path = `${diarioId}/thumbs/600/${timestamp}_${fileIndex}_${file.name}`;
           
-          let thumbFile = fileToUpload;
+          let thumb300File = fileToUpload;
+          let thumb600File = fileToUpload;
+          
           if (isFileImage(file.name)) {
-            thumbFile = await compressImage(file, 400, 0.7);
+            thumb300File = await compressImage(file, 300, 0.7);
+            thumb600File = await compressImage(file, 600, 0.7);
           }
 
           // Upload Original
@@ -407,12 +411,19 @@ export default function DiarioObraPage() {
             return;
           }
 
-          // Upload Thumbnail
-          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, {
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
+          // Upload Thumbnails
+          await Promise.all([
+            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+          ]);
 
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
+          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
           const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
 
           await addFoto.mutateAsync({
