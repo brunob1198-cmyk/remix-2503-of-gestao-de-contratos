@@ -604,11 +604,12 @@ export default function DiarioCampoPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                          <img
-                            src={foto.thumb_url || foto.url}
+                          <ResponsiveImage
+                            src={foto.url}
+                            thumb300={foto.thumb_url}
+                            thumb600={foto.thumb_600_url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
-                            loading="lazy"
                           />
                           <button
                             onClick={() => handleRemoveFoto(foto.id)}
