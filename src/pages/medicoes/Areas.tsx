@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { useAreas } from "@/hooks/useAreas";
 import { Area } from "@/types/medicoes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,18 +19,18 @@ export default function AreasPage() {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setNome("");
     setDescricao("");
     setEditingId(null);
-  };
+  }, []);
 
-  const handleEdit = (area: Area) => {
+  const handleEdit = useCallback((area: Area) => {
     setEditingId(area.id);
     setNome(area.nome);
     setDescricao(area.descricao || "");
     setIsOpen(true);
-  };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
