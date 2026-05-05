@@ -1900,6 +1900,51 @@ export function DetailMedicaoContent({
                           ))}
                         </div>
                       )}
+
+                      {(() => {
+                        const siteRecursos = recursosAgregadosPorSite.get(siteId);
+                        if (!siteRecursos || (siteRecursos.equipe.length === 0 && siteRecursos.equipamentos.length === 0 && siteRecursos.veiculos.length === 0)) return null;
+                        
+                        return (
+                          <div className="p-3 border-t bg-muted/5" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
+                            <p className="text-xs font-semibold mb-2 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>👷 Recursos Utilizados</p>
+                            <div className="grid grid-cols-2 gap-4">
+                              {siteRecursos.equipe.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Equipe</p>
+                                  {siteRecursos.equipe.map((e, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {e.nome}: {e.horas}h</p>
+                                  ))}
+                                </div>
+                              )}
+                              {(siteRecursos.equipamentos.length > 0 || siteRecursos.veiculos.length > 0) && (
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Equip./Veículos</p>
+                                  {siteRecursos.equipamentos.map((e, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {e.descricao}: {e.horas}h</p>
+                                  ))}
+                                  {siteRecursos.veiculos.map((v, idx) => (
+                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_total}km</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+
+                  return (
+                    <div
+                      key={siteName}
+                      className="border rounded-lg overflow-hidden bg-card"
+                    >
+                      {/* Header for the site */}
+                      <div data-pdf-section="site-medicao-intro">
+                        {siteSummary}
+                      </div>
+...
                     </div>
                   );
 
