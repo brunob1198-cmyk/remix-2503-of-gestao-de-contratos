@@ -1236,9 +1236,27 @@ export default function DiarioObraPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              <div className="flex gap-1 justify-end">
+                                {isEditing ? (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveEditProducao}>
+                                      <Check className="h-4 w-4 text-emerald-600" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingProducaoId(null)}>
+                                      <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditProducao(p)}>
+                                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProducao.mutate(p.id)}>
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
