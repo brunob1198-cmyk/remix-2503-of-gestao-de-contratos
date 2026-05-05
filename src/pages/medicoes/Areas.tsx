@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Layers, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { safeFormat } from "@/lib/utils";
 
 export default function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
