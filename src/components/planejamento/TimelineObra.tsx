@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useTimelineEventos, TimelineEvento } from "@/hooks/useTimelineEventos";
 import { TimelineMap } from "./TimelineMap";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { format, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -388,12 +389,18 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
               {selectedEvento.imagem_url && (
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Imagem</p>
-                  <img
-                    src={selectedEvento.imagem_url}
-                    alt="Evidência"
-                    className="rounded-lg w-full max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  <div 
+                    className="rounded-lg w-full max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => setFullScreenImage(selectedEvento.imagem_url)}
-                  />
+                  >
+                    <ResponsiveImage
+                      src={selectedEvento.imagem_url!}
+                      thumb300={selectedEvento.imagem_thumb_url}
+                      thumb600={selectedEvento.imagem_thumb_600_url}
+                      alt="Evidência"
+                      className="w-full max-h-64 object-cover"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -433,12 +440,18 @@ export function TimelineObra({ projetoId, siteFilter, sites = [] }: TimelineObra
                       <tr key={e.id} className="border-b hover:bg-muted/20 transition-colors">
                         <td className="p-2">
                           {e.imagem_url ? (
-                            <img 
-                              src={e.imagem_url} 
-                              alt="" 
-                              className="w-12 h-12 object-cover rounded cursor-pointer" 
+                            <div 
+                              className="w-12 h-12 cursor-pointer" 
                               onClick={() => setFullScreenImage(e.imagem_url)}
-                            />
+                            >
+                              <ResponsiveImage 
+                                src={e.imagem_url!} 
+                                thumb300={e.imagem_thumb_url}
+                                thumb600={e.imagem_thumb_600_url}
+                                alt="" 
+                                className="w-12 h-12 object-cover rounded" 
+                              />
+                            </div>
                           ) : (
                             <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
                               <ImageIcon className="h-4 w-4 text-muted-foreground" />

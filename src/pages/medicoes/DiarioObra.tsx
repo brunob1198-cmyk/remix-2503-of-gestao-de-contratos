@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -390,11 +392,15 @@ export default function DiarioObraPage() {
 
           const timestamp = Date.now();
           const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-          const thumbPath = `${diarioId}/thumbs/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb300Path = `${diarioId}/thumbs/300/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb600Path = `${diarioId}/thumbs/600/${timestamp}_${fileIndex}_${file.name}`;
           
-          let thumbFile = fileToUpload;
+          let thumb300File = fileToUpload;
+          let thumb600File = fileToUpload;
+          
           if (isFileImage(file.name)) {
-            thumbFile = await compressImage(file, 400, 0.7);
+            thumb300File = await compressImage(file, 300, 0.7);
+            thumb600File = await compressImage(file, 600, 0.7);
           }
 
           // Upload Original
@@ -407,18 +413,24 @@ export default function DiarioObraPage() {
             return;
           }
 
-          // Upload Thumbnail
-          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, {
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
+          // Upload Thumbnails
+          await Promise.all([
+            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+          ]);
 
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
-
+          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
+          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: urlData.publicUrl,
-            thumb_url: thumbData.publicUrl,
+            thumb_url: thumb300Data.publicUrl,
+            thumb_600_url: thumb600Data.publicUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
@@ -723,7 +735,20 @@ export default function DiarioObraPage() {
           // 2. Upload to Storage
           const timestamp = Date.now();
           const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          const thumb300Path = `${diarioId}/thumbs/300/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb600Path = `${diarioId}/thumbs/600/${timestamp}_${fileIndex}_${file.name}`;
+
+          let thumb300File = fileToUpload;
+          let thumb600File = fileToUpload;
+          
+          if (isFileImage(file.name)) {
+            thumb300File = await compressImage(file, 300, 0.7);
+            thumb600File = await compressImage(file, 600, 0.7);
+          }
+
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
           
           if (uploadError) {
             console.error(`Erro no upload de ${file.name}:`, uploadError);
@@ -731,11 +756,25 @@ export default function DiarioObraPage() {
             return;
           }
 
-          // 3. Get Public URL and save to DB
+          // Upload Thumbnails
+          await Promise.all([
+            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+          ]);
+
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
+          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
+
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
             url: urlData.publicUrl, 
+            thumb_url: thumb300Data.publicUrl,
+            thumb_600_url: thumb600Data.publicUrl,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
@@ -1237,7 +1276,13 @@ export default function DiarioObraPage() {
                                     {itemFotos.map(f => (
                                       <div key={f.id} className="relative group w-14 h-14 rounded overflow-hidden border">
                                         {isFileImage(f.url) ? (
-                                          <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-full object-cover" loading="lazy" />
+                                           <ResponsiveImage 
+                                             src={f.url} 
+                                             thumb300={f.thumb_url}
+                                             thumb600={f.thumb_600_url}
+                                             alt={f.legenda || "foto"} 
+                                             className="w-full h-full object-cover" 
+                                           />
                                         ) : (
                                           <div className="w-full h-full flex items-center justify-center bg-muted text-[9px] text-center font-medium p-1">
                                             {getFileIcon(f.url) || '📎'}
@@ -1733,7 +1778,13 @@ export default function DiarioObraPage() {
                         {groupFotos.map(f => (
                           <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                             {isFileImage(f.url) ? (
-                               <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
+                                <ResponsiveImage 
+                                  src={f.url} 
+                                  thumb300={f.thumb_url}
+                                  thumb600={f.thumb_600_url}
+                                  alt={f.legenda || "foto"} 
+                                  className="w-full h-32 object-cover" 
+                                />
                             ) : (
                               <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                                 <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
@@ -1786,7 +1837,13 @@ export default function DiarioObraPage() {
                       {semGrupo.map(f => (
                         <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                           {isFileImage(f.url) ? (
-                            <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
+                          <ResponsiveImage 
+                            src={f.url} 
+                            thumb300={f.thumb_url}
+                            thumb600={f.thumb_600_url}
+                            alt={f.legenda || "foto"} 
+                            className="w-full h-32 object-cover" 
+                          />
                           ) : (
                             <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                               <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>

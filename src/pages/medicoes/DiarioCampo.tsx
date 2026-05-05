@@ -23,6 +23,7 @@ import { compressImage } from "@/lib/imageCompression";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { addToUploadQueue, getUploadQueue, updateUploadStatus, removeFromUploadQueue, clearCompletedUploads, UploadItem } from "@/lib/db";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
@@ -77,9 +78,16 @@ export default function DiarioCampoPage() {
 
           const timestamp = Date.now();
           const path = item.path || `campo/${item.diarioId}/${timestamp}_${item.id}_${item.file.name}`;
-          const thumbPath = `campo/${item.diarioId}/thumbs/${timestamp}_${item.id}_${item.file.name}`;
+          const thumb300Path = `campo/${item.diarioId}/thumbs/300/${timestamp}_${item.id}_${item.file.name}`;
+          const thumb600Path = `campo/${item.diarioId}/thumbs/600/${timestamp}_${item.id}_${item.file.name}`;
 
-          const thumbFile = await compressImage(item.file, 400, 0.7);
+          let thumb300File = item.file;
+          let thumb600File = item.file;
+
+          if (item.file.type.startsWith('image/')) {
+            thumb300File = await compressImage(item.file, 300, 0.7);
+            thumb600File = await compressImage(item.file, 600, 0.7);
+          }
           
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { 
             upsert: true,
@@ -87,20 +95,29 @@ export default function DiarioCampoPage() {
           });
           if (uploadError) throw uploadError;
 
-          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, { 
-            upsert: true,
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
+          // Upload Thumbnails
+          await Promise.all([
+            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, { 
+              upsert: true,
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, { 
+              upsert: true,
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+          ]);
 
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
+          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
+          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
           
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
               diario_campo_id: item.diarioId, 
               url: urlData.publicUrl,
-              thumb_url: thumbData.publicUrl
+              thumb_url: thumb300Data.publicUrl,
+              thumb_600_url: thumb600Data.publicUrl
             }]);
           
           if (insertError) throw insertError;
@@ -587,11 +604,12 @@ export default function DiarioCampoPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                          <img
-                            src={foto.thumb_url || foto.url}
+                          <ResponsiveImage
+                            src={foto.url}
+                            thumb300={foto.thumb_url}
+                            thumb600={foto.thumb_600_url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
-                            loading="lazy"
                           />
                           <button
                             onClick={() => handleRemoveFoto(foto.id)}

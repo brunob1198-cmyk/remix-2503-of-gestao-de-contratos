@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { clearPDFChunks, clearExportState, getExportState, saveExportState, clearPhotoCache, clearPartialPDFs } from "@/lib/db";
 import { 
   chunkArray,
@@ -57,6 +58,7 @@ interface DiarioFotoWithItem {
   id: string;
   url: string;
   thumb_url?: string | null;
+  thumb_600_url?: string | null;
   classificacao: string;
   legenda: string | null;
   diario_producao_id: string | null;
@@ -455,12 +457,13 @@ export function DetailMedicaoContent({
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
-          <img
-            src={foto.thumb_url || foto.url}
+          <ResponsiveImage
+            src={foto.url}
+            thumb300={foto.thumb_url}
+            thumb600={foto.thumb_600_url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
-            loading="lazy"
-            decoding="async"
+            containerClassName="w-full h-full"
             crossOrigin="anonymous"
           />
         </div>
@@ -1302,8 +1305,8 @@ export function DetailMedicaoContent({
                 </div>
               ) : (
                 <div className="w-full flex justify-center">
-                  <img 
-                    src={detailMedicao.capa_url} 
+                  <ResponsiveImage 
+                    src={detailMedicao.capa_url!} 
                     alt="Capa da Medição" 
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     style={{ maxHeight: '800px', objectFit: 'contain' }}

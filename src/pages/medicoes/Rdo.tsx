@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -1033,11 +1034,12 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <img
+              <ResponsiveImage
                 src={lightboxPhoto.url}
+                thumb300={lightboxPhoto.thumb_url}
+                thumb600={lightboxPhoto.thumb_600_url}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
-                loading="lazy"
               />
               <div className="absolute top-3 right-3">
                 <Button variant="secondary" size="icon" onClick={() => setLightboxPhoto(null)}>
@@ -1143,7 +1145,13 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <img src={f.thumb_url || f.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <ResponsiveImage 
+                  src={f.url} 
+                  thumb300={f.thumb_url}
+                  thumb600={f.thumb_600_url}
+                  alt="" 
+                  className="w-full h-full object-cover" 
+                />
               </div>
             ))}
           </div>
@@ -1364,11 +1372,12 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           onClick={() => onPhotoClick(f)}
                           className="block w-full relative group"
                         >
-                          <img
-                            src={f.thumb_url || f.url}
+                          <ResponsiveImage
+                            src={f.url}
+                            thumb300={f.thumb_url}
+                            thumb600={f.thumb_600_url}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
-                            loading="lazy"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                             <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
