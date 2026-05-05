@@ -251,7 +251,13 @@ export function useFlashNormalizacao() {
       setLoading(false);
       return;
     }
+    
+    // Evitar chamadas duplicadas se já estiver carregando
+    if (loading && !forceRefresh) return;
+    
     setLoading(true);
+    console.count("fetchData executado");
+    
     if (forceRefresh) {
       toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
       console.log("Forcing database refresh for empresaId:", empresaId);
@@ -448,11 +454,13 @@ export function useFlashNormalizacao() {
     } finally {
       setLoading(false);
     }
-  }, [empresaId, contas]);
+  }, [empresaId, contas, loading]);
 
   const fetchMetadata = useCallback(async () => {
+    if (loadingMetadata) return;
     setLoadingMetadata(true);
     setMetadataError(null);
+    console.count("fetchMetadata executado");
     try {
       const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force: true } });
       if (error) throw error;
@@ -469,7 +477,7 @@ export function useFlashNormalizacao() {
     } finally {
       setLoadingMetadata(false);
     }
-  }, []);
+  }, [loadingMetadata]);
 
   useEffect(() => {
     if (empresaId) {
@@ -477,11 +485,13 @@ export function useFlashNormalizacao() {
     } else {
       setLoading(false);
     }
-  }, [empresaId, fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresaId]);
 
   useEffect(() => {
     fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
-  }, [fetchMetadata]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Mantemos o mappingByType apenas para retrocompatibilidade simples se necessário,
   // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
