@@ -1277,7 +1277,7 @@ export function DetailMedicaoContent({
       </tfoot>
     </table>
     
-    ${recursosHtml}
+    ${!isMultiSite ? recursosHtml : ''}
 
 
     ${detailMedicao.observacao_acompanhamento ? `
