@@ -733,7 +733,20 @@ export default function DiarioObraPage() {
           // 2. Upload to Storage
           const timestamp = Date.now();
           const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload);
+          const thumb300Path = `${diarioId}/thumbs/300/${timestamp}_${fileIndex}_${file.name}`;
+          const thumb600Path = `${diarioId}/thumbs/600/${timestamp}_${fileIndex}_${file.name}`;
+
+          let thumb300File = fileToUpload;
+          let thumb600File = fileToUpload;
+          
+          if (isFileImage(file.name)) {
+            thumb300File = await compressImage(file, 300, 0.7);
+            thumb600File = await compressImage(file, 600, 0.7);
+          }
+
+          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
           
           if (uploadError) {
             console.error(`Erro no upload de ${file.name}:`, uploadError);
@@ -741,11 +754,25 @@ export default function DiarioObraPage() {
             return;
           }
 
-          // 3. Get Public URL and save to DB
+          // Upload Thumbnails
+          await Promise.all([
+            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            }),
+            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, {
+              cacheControl: 'public, max-age=31536000, immutable'
+            })
+          ]);
+
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
+          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
+
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
             url: urlData.publicUrl, 
+            thumb_url: thumb300Data.publicUrl,
+            thumb_600_url: thumb600Data.publicUrl,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
