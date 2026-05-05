@@ -41,9 +41,7 @@ import AuditLogPage from "./pages/medicoes/AuditLog";
 import PowerBIPage from "./pages/medicoes/PowerBI";
 const queryClient = createConfiguredQueryClient();
 
-const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-});
+// Persistência migrada para IndexedDB via lib/queryClient
 
 const RootRedirect = () => {
   const location = useLocation();
@@ -60,7 +58,7 @@ const RootRedirect = () => {
 const App = () => (
   <PersistQueryClientProvider 
     client={queryClient} 
-    persistOptions={{ persister }}
+    persistOptions={{ persister: indexedDBPersister }}
   >
     <ThemeProvider>
     <TooltipProvider>
