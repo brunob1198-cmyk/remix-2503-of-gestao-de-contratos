@@ -1276,7 +1276,13 @@ export default function DiarioObraPage() {
                                     {itemFotos.map(f => (
                                       <div key={f.id} className="relative group w-14 h-14 rounded overflow-hidden border">
                                         {isFileImage(f.url) ? (
-                                          <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-full object-cover" loading="lazy" />
+                                           <ResponsiveImage 
+                                             src={f.url} 
+                                             thumb300={f.thumb_url}
+                                             thumb600={f.thumb_600_url}
+                                             alt={f.legenda || "foto"} 
+                                             className="w-full h-full object-cover" 
+                                           />
                                         ) : (
                                           <div className="w-full h-full flex items-center justify-center bg-muted text-[9px] text-center font-medium p-1">
                                             {getFileIcon(f.url) || '📎'}
