@@ -176,7 +176,12 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
         // Upload image to storage
         const ext = upload.file.name.split(".").pop() || "jpg";
-        const fileName = `${projetoId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).slice(2);
+        const fileName = `${projetoId}/${timestamp}-${randomStr}.${ext}`;
+        const thumbName = `${projetoId}/thumbs/${timestamp}-${randomStr}.${ext}`;
+
+        const thumbFile = await compressImage(upload.file, 400, 0.7);
 
         const { error: uploadError } = await supabase.storage
           .from("timeline-evidencias")
@@ -186,9 +191,19 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
 
         if (uploadError) throw uploadError;
 
+        await supabase.storage
+          .from("timeline-evidencias")
+          .upload(thumbName, thumbFile, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
+
         const { data: urlData } = supabase.storage
           .from("timeline-evidencias")
           .getPublicUrl(fileName);
+
+        const { data: thumbData } = supabase.storage
+          .from("timeline-evidencias")
+          .getPublicUrl(thumbName);
 
         // Create timeline event
         const { error: insertError } = await supabase
@@ -201,6 +216,7 @@ export function EvidenciaUpload({ projetoId, onEventoCreated }: EvidenciaUploadP
             latitude: upload.finalLat,
             longitude: upload.finalLng,
             imagem_url: urlData.publicUrl,
+            imagem_thumb_url: thumbData.publicUrl,
             status: upload.geoValidado ? "ok" : "nao_validado",
             observacao: observacao || null,
             geo_validado: upload.geoValidado,
