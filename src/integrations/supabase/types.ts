@@ -674,6 +674,7 @@ export type Database = {
           diario_campo_id: string
           id: string
           legenda: string | null
+          thumb_url: string | null
           url: string
         }
         Insert: {
@@ -681,6 +682,7 @@ export type Database = {
           diario_campo_id: string
           id?: string
           legenda?: string | null
+          thumb_url?: string | null
           url: string
         }
         Update: {
@@ -688,6 +690,7 @@ export type Database = {
           diario_campo_id?: string
           id?: string
           legenda?: string | null
+          thumb_url?: string | null
           url?: string
         }
         Relationships: [
@@ -787,6 +790,7 @@ export type Database = {
           diario_producao_id: string | null
           id: string
           legenda: string | null
+          thumb_url: string | null
           url: string
         }
         Insert: {
@@ -796,6 +800,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          thumb_url?: string | null
           url: string
         }
         Update: {
@@ -805,6 +810,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          thumb_url?: string | null
           url?: string
         }
         Relationships: [
@@ -3306,6 +3312,7 @@ export type Database = {
           geo_metodo: string | null
           geo_validado: boolean
           id: string
+          imagem_thumb_url: string | null
           imagem_url: string | null
           item: string | null
           latitude: number | null
@@ -3326,6 +3333,7 @@ export type Database = {
           geo_metodo?: string | null
           geo_validado?: boolean
           id?: string
+          imagem_thumb_url?: string | null
           imagem_url?: string | null
           item?: string | null
           latitude?: number | null
@@ -3346,6 +3354,7 @@ export type Database = {
           geo_metodo?: string | null
           geo_validado?: boolean
           id?: string
+          imagem_thumb_url?: string | null
           imagem_url?: string | null
           item?: string | null
           latitude?: number | null
