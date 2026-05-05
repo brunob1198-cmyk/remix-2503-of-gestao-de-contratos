@@ -124,7 +124,7 @@ export default function AreasPage() {
                     <TableCell className="font-semibold">{a.nome}</TableCell>
                     <TableCell>{a.descricao || "-"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {a.created_at ? format(parseISO(a.created_at), "dd/MM/yyyy") : "-"}
+                      {safeFormat(a.created_at, "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
