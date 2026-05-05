@@ -74,7 +74,11 @@ export default function DiarioCampoPage() {
           await updateUploadStatus(item.id, 'uploading');
           setUploadQueue(await getUploadQueue());
 
-          const path = item.path || `campo/${item.diarioId}/${Date.now()}_${item.id}_${item.file.name}`;
+          const timestamp = Date.now();
+          const path = item.path || `campo/${item.diarioId}/${timestamp}_${item.id}_${item.file.name}`;
+          const thumbPath = `campo/${item.diarioId}/thumbs/${timestamp}_${item.id}_${item.file.name}`;
+
+          const thumbFile = await compressImage(item.file, 400, 0.7);
           
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { 
             upsert: true,
@@ -82,11 +86,21 @@ export default function DiarioCampoPage() {
           });
           if (uploadError) throw uploadError;
 
+          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, { 
+            upsert: true,
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
+
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
           
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
-            .insert([{ diario_campo_id: item.diarioId, url: urlData.publicUrl }]);
+            .insert([{ 
+              diario_campo_id: item.diarioId, 
+              url: urlData.publicUrl,
+              thumb_url: thumbData.publicUrl
+            }]);
           
           if (insertError) throw insertError;
 
@@ -573,7 +587,7 @@ export default function DiarioCampoPage() {
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
                           <img
-                            src={foto.url}
+                            src={foto.thumb_url || foto.url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
                             loading="lazy"
