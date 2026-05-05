@@ -956,10 +956,10 @@ export default function RdoPage() {
                         >
                           <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
                           <span className="text-sm font-bold tabular-nums">
-                            {format(parseISO(group.data), "dd/MM", { locale: ptBR })}
+                            {safeFormat(group.data, "dd/MM", { locale: ptBR })}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {format(parseISO(group.data), "EEEE", { locale: ptBR })}
+                            {safeFormat(group.data, "EEEE", { locale: ptBR })}
                           </span>
                           {group.diarios.length > 1 && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
