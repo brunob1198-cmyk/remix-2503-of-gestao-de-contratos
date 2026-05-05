@@ -214,6 +214,8 @@ export function useTimelineEventos(projetoId?: string, filters?: {
             longitude: lng,
             coord_source: sourceLabel,
             imagem_url: f.url,
+            imagem_thumb_url: f.thumb_url,
+            imagem_thumb_600_url: f.thumb_600_url,
             status: "ok",
             observacao: `Foto do diário em ${f.diario.data}${
               info?.municipio ? ` — ${info.municipio}/${info.uf || ""}` : ""
