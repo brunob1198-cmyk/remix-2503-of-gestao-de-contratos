@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ interface GerarMedicaoDiarioProps {
   isLoading?: boolean;
 }
 
-export function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiarioProps) {
+export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiarioProps) {
   const { toast } = useToast();
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -51,34 +51,31 @@ export function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiario
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const filteredSites = projetoId
+  const filteredSites = useMemo(() => projetoId
     ? sites.filter((s) => s.projeto_id === projetoId)
-    : sites;
+    : sites, [projetoId, sites]);
 
   // Fetch LPU items for the selected project (used for manual/extra measurements)
   const { itensLpu } = useItensLpu(projetoId || undefined);
 
   const hasDiarioFilters = siteId && dataInicio && dataFim;
 
-  const handleLancarMedicao = async () => {
+  const handleLancarMedicao = useCallback(async () => {
     if (hasDiarioFilters) {
-      // Existing behavior: search diary production
       await handleBuscarDiario();
     } else if (projetoId) {
-      // New behavior: load LPU items for manual quantity entry
       handleCarregarItensLpu();
     } else {
       toast({ title: "Selecione ao menos um projeto", variant: "destructive" });
     }
-  };
+  }, [hasDiarioFilters, projetoId, toast]);
 
-  const handleCarregarItensLpu = () => {
+  const handleCarregarItensLpu = useCallback(() => {
     if (!itensLpu.length) {
       toast({ title: "Nenhum item LPU encontrado para este projeto", variant: "destructive" });
       return;
     }
 
-    // Pick the first site of the project if none selected
     const targetSiteId = siteId || filteredSites[0]?.id;
     if (!targetSiteId) {
       toast({ title: "Nenhum site encontrado para este projeto. Cadastre um site primeiro.", variant: "destructive" });
@@ -102,7 +99,7 @@ export function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiario
 
     setProducoes(items);
     setSearched(true);
-  };
+  }, [itensLpu, siteId, filteredSites, toast]);
 
   const handleBuscarDiario = async () => {
     setSearching(true);
@@ -373,4 +370,4 @@ export function GerarMedicaoDiario({ onGenerate, isLoading }: GerarMedicaoDiario
       </CardContent>
     </Card>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, memo, useCallback } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLancamentosMedicao, useLancamentosProducao } from "@/hooks/useLancamentos";
 
@@ -78,7 +78,7 @@ interface GeracaoFoto {
   selected: boolean;
 }
 
-export default function AcompanhamentoMedicoesPage() {
+function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { lancamentos: producoes } = useLancamentosProducao();
@@ -178,36 +178,43 @@ export default function AcompanhamentoMedicoesPage() {
   const [reviewNewItems, setReviewNewItems] = useState<Array<{ tempId: string; item_lpu_id: string; quantidade: number; aprovado: number }>>([]);
   const [reviewAddItemId, setReviewAddItemId] = useState<string>("");
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  const formatCurrency = useCallback((value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value), []);
 
-  const formatDate = (dateStr: string) =>
-    parseLocalDate(dateStr).toLocaleDateString("pt-BR");
+  const formatDate = useCallback((dateStr: string) =>
+    parseLocalDate(dateStr).toLocaleDateString("pt-BR"), []);
 
-  const formatDateTime = (dateStr: string) => {
+  const formatDateTime = useCallback((dateStr: string) => {
     const d = new Date(dateStr);
     return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
-  };
+  }, []);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((status: string) => {
     const statusOption = STATUS_OPTIONS.find(s => s.value === status);
     return (
       <Badge className={`${statusOption?.color || "bg-gray-500"} hover:${statusOption?.color || "bg-gray-600"}`}>
         {statusOption?.label || status}
       </Badge>
     );
-  };
+  }, []);
 
-  const filteredSites = selectedProjetos.size > 0 ? sites.filter(s => selectedProjetos.has(s.projeto_id)) : sites;
-  const gerarFilteredSites = gerarProjetoId ? sites.filter(s => s.projeto_id === gerarProjetoId) : sites;
+  const filteredSites = useMemo(() => 
+    selectedProjetos.size > 0 ? sites.filter(s => selectedProjetos.has(s.projeto_id)) : sites,
+    [selectedProjetos, sites]
+  );
+  
+  const gerarFilteredSites = useMemo(() => 
+    gerarProjetoId ? sites.filter(s => s.projeto_id === gerarProjetoId) : sites,
+    [gerarProjetoId, sites]
+  );
 
-  const toggleSetValue = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+  const toggleSetValue = useCallback((setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
     setter(prev => {
       const next = new Set(prev);
       next.has(value) ? next.delete(value) : next.add(value);
       return next;
     });
-  };
+  }, []);
 
   // Group lancamentos by site_id + numero_medicao
   const medicoesAgrupadas = useMemo(() => {
@@ -1909,4 +1916,6 @@ export default function AcompanhamentoMedicoesPage() {
        </Dialog>
      </div>
    );
- }
+}
+
+export default memo(AcompanhamentoMedicoesPage);
