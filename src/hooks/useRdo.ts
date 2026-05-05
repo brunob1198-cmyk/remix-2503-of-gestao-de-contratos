@@ -43,6 +43,8 @@ export interface RdoDiarioResumo {
 export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string, itemLpuId?: string, busca?: string, sitesMap?: Map<string, { codigo: string; nome: string }>) {
   return useQuery({
     queryKey: ["rdo", siteIds, dataInicio, dataFim, itemLpuId, busca],
+    staleTime: 1000 * 60 * 15, // 15 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
     queryFn: async (): Promise<RdoDiarioResumo[]> => {
       if (!siteIds || siteIds.length === 0) return [];
 
