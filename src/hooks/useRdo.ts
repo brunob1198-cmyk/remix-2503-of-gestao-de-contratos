@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface RdoFoto {
   id: string;
   url: string;
+  thumb_url?: string | null;
   classificacao: string;
   legenda: string | null;
   diario_producao_id: string | null;

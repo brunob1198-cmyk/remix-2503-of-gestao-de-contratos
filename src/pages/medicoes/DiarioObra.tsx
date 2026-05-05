@@ -388,18 +388,37 @@ export default function DiarioObraPage() {
             fileToUpload = await compressImage(file);
           }
 
-          const path = `${diarioId}/${Date.now()}_${fileIndex}_${file.name}`;
+          const timestamp = Date.now();
+          const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
+          const thumbPath = `${diarioId}/thumbs/${timestamp}_${fileIndex}_${file.name}`;
+          
+          let thumbFile = fileToUpload;
+          if (isFileImage(file.name)) {
+            thumbFile = await compressImage(file, 400, 0.7);
+          }
+
+          // Upload Original
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
             cacheControl: 'public, max-age=31536000, immutable'
           });
+          
           if (uploadError) {
             toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
             return;
           }
+
+          // Upload Thumbnail
+          await supabase.storage.from("diario-fotos").upload(thumbPath, thumbFile, {
+            cacheControl: 'public, max-age=31536000, immutable'
+          });
+
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const { data: thumbData } = supabase.storage.from("diario-fotos").getPublicUrl(thumbPath);
+
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: urlData.publicUrl,
+            thumb_url: thumbData.publicUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
@@ -1218,7 +1237,7 @@ export default function DiarioObraPage() {
                                     {itemFotos.map(f => (
                                       <div key={f.id} className="relative group w-14 h-14 rounded overflow-hidden border">
                                         {isFileImage(f.url) ? (
-                                          <img src={f.url} alt={f.legenda || "foto"} className="w-full h-full object-cover" loading="lazy" />
+                                          <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-full object-cover" loading="lazy" />
                                         ) : (
                                           <div className="w-full h-full flex items-center justify-center bg-muted text-[9px] text-center font-medium p-1">
                                             {getFileIcon(f.url) || '📎'}
@@ -1714,7 +1733,7 @@ export default function DiarioObraPage() {
                         {groupFotos.map(f => (
                           <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                             {isFileImage(f.url) ? (
-                               <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
+                               <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
                             ) : (
                               <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                                 <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
@@ -1767,7 +1786,7 @@ export default function DiarioObraPage() {
                       {semGrupo.map(f => (
                         <div key={f.id} className="relative group rounded-lg overflow-hidden border">
                           {isFileImage(f.url) ? (
-                            <img src={f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
+                            <img src={f.thumb_url || f.url} alt={f.legenda || "foto"} className="w-full h-32 object-cover" loading="lazy" />
                           ) : (
                             <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                               <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>

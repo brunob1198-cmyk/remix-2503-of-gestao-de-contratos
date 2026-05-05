@@ -15,6 +15,7 @@ export interface TimelineEvento {
   longitude: number | null;
   coord_source?: string;
   imagem_url: string | null;
+  imagem_thumb_url?: string | null;
   status: string;
   observacao: string | null;
   created_at: string;

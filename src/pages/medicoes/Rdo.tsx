@@ -1143,7 +1143,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <img src={f.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <img src={f.thumb_url || f.url} alt="" className="w-full h-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>
@@ -1365,7 +1365,7 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           className="block w-full relative group"
                         >
                           <img
-                            src={f.url}
+                            src={f.thumb_url || f.url}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
                             loading="lazy"
