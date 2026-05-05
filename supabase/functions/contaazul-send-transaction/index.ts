@@ -253,70 +253,77 @@ async function sendOne(
       errorMsg = `HTTP ${resp.status}: ${typeof responseJson === "object" ? JSON.stringify(responseJson) : text}`;
     } else {
       contaAzulProtocolo = responseJson?.protocolo || responseJson?.protocolId || null;
-      
-      // Se for síncrono ou sucesso imediato
+
+      // CASO 1: ContaAzul respondeu sincronamente com o ID do evento criado
       if (responseJson?.id || responseJson?.uuid) {
         status = "ENVIADO";
         contaAzulId = responseJson.id || responseJson.uuid;
-      } else if (responseJson?.status === "PENDING" && (contaAzulProtocolo !== null && contaAzulProtocolo !== undefined)) {
-        console.log(`[DEBUG] Protocolo ${contaAzulProtocolo} pendente. Respondendo imediatamente para evitar timeout.`);
-        
-        // MARCAMOS COMO ENVIADO para evitar reenvio, mas sinalizamos que está em processamento
-        status = "ENVIADO";
-        errorMsg = "Lançamento em processamento assíncrono pelo Conta Azul (Protocolo: " + contaAzulProtocolo + "). Verifique em instantes.";
-        
-        // Disparamos o polling em background sem 'await' para liberar a requisição HTTP
-        (async () => {
-          console.log(`[BACKGROUND] Iniciando polling para protocolo ${contaAzulProtocolo}`);
-          for (let i = 0; i < 20; i++) {
-            await new Promise(r => setTimeout(r, 10000)); // Espera 10s entre tentativas
-            
-            try {
-              const importPath = input.type === "receita" ? "contas-a-receber/importacao" : "contas-a-pagar/importacao";
-              const statusResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`, {
-                headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-              });
-              
-              if (statusResp.ok) {
-                const statusData = await statusResp.json();
-                console.log(`[BACKGROUND] Status do protocolo ${contaAzulProtocolo} (tentativa ${i+1}):`, statusData.status);
+        console.log(`[OK] Evento criado imediatamente com ID: ${contaAzulId}`);
 
-                if (statusData.status === "SUCCESS") {
-                  const finalId = statusData.resourceId || statusData.id;
-                  // Atualiza o log com o ID final
-                  await supabase.from("flash_integration_logs").update({
-                    conta_azul_transaction_id: finalId,
-                    reconciliado: true,
-                    response: { ...responseJson, background_status: statusData }
-                  }).eq("conta_azul_protocolo", contaAzulProtocolo);
-                  
-                  // Tenta realizar a baixa
-                  if (finalId) await realizarBaixa(accessToken, finalId, input, transactionDate);
-                  break;
-                } else if (statusData.status === "ERROR") {
-                  // Atualiza o log com o erro
-                  await supabase.from("flash_integration_logs").update({
-                    status: "erro",
-                    erro: `Erro assíncrono: ${JSON.stringify(statusData.errors || statusData.message)}`
-                  }).eq("conta_azul_protocolo", contaAzulProtocolo);
-                  
-                  // Resetamos o status na normalização para permitir reenvio em caso de erro real
-                  await supabase.from("flash_normalizacao").update({
-                    status: "normalizado",
-                    motivo: `Erro no Conta Azul: ${JSON.stringify(statusData.errors || statusData.message)}`
-                  }).eq("flash_transaction_id", input.flash_transaction_id);
-                  break;
-                }
+      // CASO 2: ContaAzul processando de forma assíncrona (retorna PENDING + protocolo)
+      // IMPORTANTE: NÃO usar fire-and-forget em Edge Functions — o processo Deno é encerrado
+      // junto com a resposta HTTP. Usamos polling SÍNCRONO com até 8 tentativas de 5s (40s total).
+      } else if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
+        console.log(`[ASYNC] ContaAzul processando protocolo ${contaAzulProtocolo}. Iniciando polling síncrono...`);
+        
+        const importPath = input.type === "receita"
+          ? "contas-a-receber/importacao"
+          : "contas-a-pagar/importacao";
+        const pollUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`;
+
+        let pollResolved = false;
+        for (let i = 0; i < 8; i++) {
+          // Aguarda 5 segundos antes de cada tentativa
+          await new Promise(r => setTimeout(r, 5000));
+          
+          try {
+            const pollResp = await fetch(pollUrl, {
+              headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+            });
+            const pollText = await pollResp.text();
+            console.log(`[POLL] Tentativa ${i + 1}/8 (HTTP ${pollResp.status}): ${pollText.substring(0, 200)}`);
+
+            if (pollResp.ok) {
+              let pollData: any = null;
+              try { pollData = JSON.parse(pollText); } catch { pollData = { raw: pollText }; }
+
+              if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED") {
+                status = "ENVIADO";
+                contaAzulId = pollData?.resourceId || pollData?.id || null;
+                errorMsg = null;
+                pollResolved = true;
+                console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
+                break;
+
+              } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED") {
+                status = "erro";
+                errorMsg = `ContaAzul rejeitou o lançamento: ${JSON.stringify(pollData?.errors || pollData?.message || pollData)}`;
+                pollResolved = true;
+                console.error(`[ERRO] Protocolo ${contaAzulProtocolo} falhou:`, errorMsg);
+                break;
               }
-            } catch (pollErr) {
-              console.error(`[BACKGROUND] Erro no polling do protocolo ${contaAzulProtocolo}:`, pollErr);
+              // Se ainda PENDING — continua o loop
+              console.log(`[POLL] Ainda em processamento (tentativa ${i + 1}/8)...`);
+            } else {
+              console.warn(`[POLL] Resposta não-OK do polling: HTTP ${pollResp.status}`);
             }
+          } catch (pollErr: any) {
+            console.error(`[POLL] Erro na tentativa ${i + 1}:`, pollErr?.message || pollErr);
           }
-        })();
+        }
+
+        // Se esgotou as tentativas sem resolução: volta para "normalizado" para reenvio
+        if (!pollResolved) {
+          status = "pendente_ca";
+          errorMsg = `ContaAzul ainda processando após 40s. Protocolo: ${contaAzulProtocolo}. Tente reenviar em alguns minutos.`;
+          console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}`);
+        }
+
       } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
         status = "erro";
-        errorMsg = "Conta Azul retornou status PENDING mas não forneceu um protocolo de rastreio.";
+        errorMsg = "ContaAzul retornou PENDING sem protocolo de rastreio. Não é possível verificar o resultado.";
       } else {
+        // Outro formato de resposta de sucesso
         status = "ENVIADO";
         contaAzulId = responseJson?.id || responseJson?.uuid || null;
       }
@@ -347,12 +354,35 @@ async function sendOne(
   });
 
   if (status === "ENVIADO") {
+    // Lançamento confirmado pelo ContaAzul — marca como enviado
     await supabase
       .from("flash_normalizacao")
       .update({
         status: "enviado",
         enviado_at: new Date().toISOString(),
-        motivo: errorMsg || `Enviado ao Conta Azul em ${new Date().toLocaleString("pt-BR")}.`,
+        motivo: `Enviado ao Conta Azul em ${new Date().toLocaleString("pt-BR")}.${contaAzulId ? ` ID: ${contaAzulId}` : ""}`,
+      })
+      .eq("flash_transaction_id", input.flash_transaction_id)
+      .eq("empresa_id", empresaId);
+
+  } else if (status === "pendente_ca") {
+    // ContaAzul ainda processando após timeout — volta para normalizado para reenvio
+    await supabase
+      .from("flash_normalizacao")
+      .update({
+        status: "normalizado",
+        motivo: errorMsg || `Aguardando processamento no ContaAzul. Tente reenviar em alguns minutos.`,
+      })
+      .eq("flash_transaction_id", input.flash_transaction_id)
+      .eq("empresa_id", empresaId);
+
+  } else if (status === "erro") {
+    // Erro real — volta para normalizado para o usuário poder revisar e reenviar
+    await supabase
+      .from("flash_normalizacao")
+      .update({
+        status: "normalizado",
+        motivo: errorMsg || "Erro no envio ao ContaAzul. Verifique e tente novamente.",
       })
       .eq("flash_transaction_id", input.flash_transaction_id)
       .eq("empresa_id", empresaId);
