@@ -589,9 +589,7 @@ export function DetailMedicaoContent({
         const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
         // Se o modo reduzido estiver ativo, usamos a transformação do Supabase Storage para economizar banda
-        const finalUrl = reducedSize 
-          ? `${foto.url}${foto.url.includes('?') ? '&' : '?'}width=1200&quality=75` 
-          : foto.url;
+        const finalUrl = foto.url;
 
         return {
           url: finalUrl,
