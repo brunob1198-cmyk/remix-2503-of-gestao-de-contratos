@@ -1034,11 +1034,12 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <img
+              <ResponsiveImage
                 src={lightboxPhoto.url}
+                thumb300={lightboxPhoto.thumb_url}
+                thumb600={lightboxPhoto.thumb_600_url}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
-                loading="lazy"
               />
               <div className="absolute top-3 right-3">
                 <Button variant="secondary" size="icon" onClick={() => setLightboxPhoto(null)}>
