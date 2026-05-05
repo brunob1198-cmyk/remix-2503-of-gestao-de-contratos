@@ -447,7 +447,15 @@ export function useDiarioObra(siteId?: string, data?: string) {
   });
 
   const addFoto = useMutation({
-    mutationFn: async (item: { diario_id: string; url: string; thumb_url?: string | null; classificacao: string; legenda?: string; diario_producao_id?: string }) => {
+    mutationFn: async (item: { 
+      diario_id: string; 
+      url: string; 
+      thumb_url?: string | null; 
+      thumb_600_url?: string | null;
+      classificacao: string; 
+      legenda?: string; 
+      diario_producao_id?: string 
+    }) => {
       const { error } = await supabase.from("diario_fotos").insert([item]);
       if (error) throw error;
     },
