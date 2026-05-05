@@ -22,6 +22,8 @@ export function useProjetos() {
 
   const { data: projetos = [], isLoading } = useQuery({
     queryKey: ["projetos"],
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projetos")
