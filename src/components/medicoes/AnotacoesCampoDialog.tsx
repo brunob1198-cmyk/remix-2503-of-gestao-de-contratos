@@ -118,7 +118,7 @@ export function AnotacoesCampoDialog({
             <FileText className="h-5 w-5 text-primary" />
             Anotações de Campo
             <Badge variant="outline" className="ml-2 text-xs">
-              {format(new Date(selectedDate + "T12:00:00"), "dd/MM/yyyy")}
+              {safeFormat(selectedDate, "dd/MM/yyyy")}
             </Badge>
           </DialogTitle>
         </DialogHeader>
