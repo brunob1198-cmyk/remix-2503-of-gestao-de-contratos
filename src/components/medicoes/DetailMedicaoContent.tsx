@@ -1924,7 +1924,7 @@ export function DetailMedicaoContent({
                                     <p key={idx} className="text-[10px] leading-tight">• {e.descricao}: {e.horas}h</p>
                                   ))}
                                   {siteRecursos.veiculos.map((v, idx) => (
-                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_total}km</p>
+                                    <p key={idx} className="text-[10px] leading-tight">• {v.descricao} ({v.placa}): {v.km_ini > 0 ? `KM Ini: ${v.km_ini} | ` : ''}{v.km_fin > 0 ? `KM Fin: ${v.km_fin} | ` : ''}Total: {v.km_total}km</p>
                                   ))}
                                 </div>
                               )}
