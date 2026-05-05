@@ -108,6 +108,8 @@ export function useTimelineEventos(projetoId?: string, filters?: {
             id,
             diario_id,
             url,
+            thumb_url,
+            thumb_600_url,
             legenda,
             classificacao,
             created_at,
