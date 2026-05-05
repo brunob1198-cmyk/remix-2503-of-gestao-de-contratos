@@ -61,7 +61,7 @@ const classificacaoColors: Record<string, string> = {
 
 // Generate HTML report for a single day
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
-  const dataFormatada = format(parseISO(diario.data), "dd/MM/yyyy (EEEE)", { locale: ptBR });
+  const dataFormatada = safeFormat(diario.data, "dd/MM/yyyy (EEEE)", { locale: ptBR });
   const localidade = [diario.municipio, diario.uf].filter(Boolean).join("/");
   const siteLabel = siteName || (diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined);
 
