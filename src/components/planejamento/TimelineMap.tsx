@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { TimelineEvento } from "@/hooks/useTimelineEventos";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { format, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
