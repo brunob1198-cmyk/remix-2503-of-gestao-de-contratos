@@ -16,6 +16,7 @@ export interface TimelineEvento {
   coord_source?: string;
   imagem_url: string | null;
   imagem_thumb_url?: string | null;
+  imagem_thumb_600_url?: string | null;
   status: string;
   observacao: string | null;
   created_at: string;
