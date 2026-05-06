@@ -249,11 +249,22 @@ export function AnotacoesCampoDialog({
                     )}
 
                     {fotosAtividade.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          <Image className="h-3.5 w-3.5 inline mr-1" />
-                          Fotos ({fotosAtividade.length}) — Transferir para Diário de Obra
-                        </p>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            <Image className="h-3.5 w-3.5 inline mr-1" />
+                            Fotos ({fotosAtividade.length}) — Transferir para Diário de Obra
+                          </p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-[10px] px-2"
+                            onClick={() => handleTransferAll(fotosAtividade)}
+                            disabled={fotosAtividade.every(f => fotosObra.some(fo => fo.url === f.url))}
+                          >
+                            Transferir Todas
+                          </Button>
+                        </div>
                         <div className="space-y-3">
                           {fotosAtividade.map((f) => {
                             const fotoNoDiario = fotosObra.find(fo => fo.url === f.url);
