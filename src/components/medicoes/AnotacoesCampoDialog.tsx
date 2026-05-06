@@ -163,6 +163,45 @@ export function AnotacoesCampoDialog({
     }
   };
 
+  const handleRemoveAll = async (fotos: DiarioCampoFoto[]) => {
+    const transferred = fotos
+      .map(f => fotosObra.find(fo => fo.url === f.url))
+      .filter((fo): fo is DiarioFoto => !!fo);
+    
+    if (transferred.length === 0) {
+      toast({ title: "Nenhuma foto para remover" });
+      return;
+    }
+
+    const idsToRemove = transferred.map(f => f.id);
+    
+    setRemoving(prev => {
+      const next = { ...prev };
+      idsToRemove.forEach(id => { next[id] = true; });
+      return next;
+    });
+
+    try {
+      const { error } = await supabase
+        .from("diario_fotos")
+        .delete()
+        .in("id", idsToRemove);
+      
+      if (error) throw error;
+
+      onFotoTransferred();
+      toast({ title: `${transferred.length} fotos removidas com sucesso!` });
+    } catch (err: any) {
+      toast({ title: "Erro ao remover fotos", description: err.message, variant: "destructive" });
+    } finally {
+      setRemoving(prev => {
+        const next = { ...prev };
+        idsToRemove.forEach(id => { next[id] = false; });
+        return next;
+      });
+    }
+  };
+
   const targetOptions = [
     { value: "geral", label: "📷 Geral (sem item LPU)" },
     ...producoes.map((p) => {
