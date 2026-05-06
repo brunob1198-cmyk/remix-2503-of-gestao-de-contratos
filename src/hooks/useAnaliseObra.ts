@@ -514,6 +514,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         servicos,
         alertas: alertas.slice(0, 5),
         custosCategorias,
+        custosErpPorCategoria,
         evolucao,
         producaoItems,
         escopoTotal,
