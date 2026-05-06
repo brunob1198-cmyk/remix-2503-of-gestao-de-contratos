@@ -140,6 +140,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 1. Custo Orçado e Valor Produzido (baseado em escopo)
   const { data: escopoData = { custoOrcado: 0, valorProduzido: 0 }, isLoading: loadOrc } = useQuery({
     queryKey: ["custo_orcado_escopo", projetoId, siteId],
+    staleTime: Infinity,
     queryFn: async () => {
       let qSites = supabase.from("sites").select("id").eq("projeto_id", projetoId);
       const { data: sitesData } = await qSites;
