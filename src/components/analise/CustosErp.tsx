@@ -23,7 +23,6 @@ interface CustosErpProps {
 const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
-  "Equipamentos",
   "Transporte",
   "Indiretos",
   "Financeiros",

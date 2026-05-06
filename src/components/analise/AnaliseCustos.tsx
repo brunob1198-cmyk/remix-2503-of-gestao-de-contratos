@@ -16,7 +16,6 @@ interface AnaliseCustosProps {
 const CATEGORIAS = [
   "Mão de Obra",
   "Materiais",
-  "Equipamentos",
   "Transporte",
   "Indiretos",
   "Financeiros",
