@@ -573,17 +573,55 @@ export default function QuadroGeral() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
-            <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
-            <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
-            <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
-            <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
-            {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
-              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
-                Limpar filtros
-              </Button>
-            )}
+          <div className=\"flex flex-wrap items-center gap-3 bg-muted/20 p-3 rounded-lg border border-dashed\">
+            <span className=\"text-xs font-semibold text-muted-foreground uppercase tracking-wider\">Filtros e Visibilidade:</span>
+            <div className=\"flex flex-wrap gap-2\">
+              <div className=\"flex items-center gap-1 bg-background p-1 rounded border\">
+                <MultiSelectFilter label=\"Área\" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has(\"Area\")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)(\"Area\")}
+                  title=\"Mostrar/Ocultar coluna de Área\"
+                />
+              </div>
+              <div className=\"flex items-center gap-1 bg-background p-1 rounded border\">
+                <MultiSelectFilter label=\"Cliente\" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has(\"Cliente\")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)(\"Cliente\")}
+                  title=\"Mostrar/Ocultar coluna de Cliente\"
+                />
+              </div>
+              <div className=\"flex items-center gap-1 bg-background p-1 rounded border\">
+                <MultiSelectFilter label=\"Projeto\" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has(\"Projeto\")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)(\"Projeto\")}
+                  title=\"Mostrar/Ocultar coluna de Projeto\"
+                />
+              </div>
+              <div className=\"flex items-center gap-1 bg-background p-1 rounded border\">
+                <MultiSelectFilter label=\"Site\" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has(\"Site\")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)(\"Site\")}
+                  title=\"Mostrar/Ocultar coluna de Site\"
+                />
+              </div>
+              <div className=\"flex items-center gap-1 bg-background p-1 rounded border\">
+                <MultiSelectFilter label=\"Status\" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has(\"Status\")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)(\"Status\")}
+                  title=\"Mostrar/Ocultar filtro de Status\"
+                />
+              </div>
+              {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
+                <Button variant=\"ghost\" size=\"sm\" className=\"text-xs h-8\" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
           {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
