@@ -274,6 +274,75 @@ export function useDiarioObra(siteId?: string, data?: string) {
     onError: (e: Error) => toast({ title: "Erro ao atualizar produção", description: e.message, variant: "destructive" }),
   });
 
+  const moverProducao = useMutation({
+    mutationFn: async ({ producaoId, novaData }: { producaoId: string, novaData: string }) => {
+      // 1. Get current production record
+      const { data: currentProd, error: fetchErr } = await supabase
+        .from("diario_producao")
+        .select("*, diario:diarios_obra(site_id)")
+        .eq("id", producaoId)
+        .single();
+      
+      if (fetchErr) throw fetchErr;
+      const siteId = (currentProd as any).diario.site_id;
+
+      // 2. Find or create diary for the new date
+      let targetDiarioId;
+      const { data: targetDiario, error: targetErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("data", novaData)
+        .maybeSingle();
+      
+      if (targetErr) throw targetErr;
+      
+      if (targetDiario) {
+        targetDiarioId = targetDiario.id;
+      } else {
+        // We need to carry over UF/Municipio from the current diary if possible
+        const { data: currentDiario } = await supabase
+          .from("diarios_obra")
+          .select("uf, municipio")
+          .eq("id", currentProd.diario_id)
+          .single();
+
+        const { data: novo, error: insErr } = await supabase
+          .from("diarios_obra")
+          .insert([{ site_id: siteId, data: novaData, uf: currentDiario?.uf, municipio: currentDiario?.municipio }])
+          .select()
+          .single();
+        if (insErr) throw insErr;
+        targetDiarioId = novo.id;
+      }
+
+      // 3. Update production record
+      const { error: updErr } = await supabase
+        .from("diario_producao")
+        .update({ diario_id: targetDiarioId })
+        .eq("id", producaoId);
+      if (updErr) throw updErr;
+
+      // 4. Update associated photos
+      const { error: fotoErr } = await supabase
+        .from("diario_fotos")
+        .update({ diario_id: targetDiarioId })
+        .eq("diario_producao_id", producaoId);
+      if (fotoErr) throw fotoErr;
+
+      return { targetDiarioId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["diario_obra"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      toast({ title: "Produção movida para a nova data!" });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao mover produção", description: e.message, variant: "destructive" }),
+  });
+
   // Equipe
   const { data: equipe = [], isLoading: isLoadingEquipe } = useQuery({
     queryKey: ["diario_equipe", diario?.id],
@@ -516,7 +585,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
   return {
     diario, loadingDiario, criarDiario,
     atualizarObservacoes, atualizarClima, atualizarLocalizacao,
-    producoes, loadingProducao, addProducao, removeProducao, updateProducao,
+    producoes, loadingProducao, addProducao, removeProducao, updateProducao, moverProducao,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
