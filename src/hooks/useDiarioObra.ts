@@ -356,7 +356,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
 
       const { data: targetDiario, error: targetErr } = await supabase
         .from("diarios_obra")
-        .select("id")
+        .select("*")
         .eq("site_id", siteId)
         .eq("data", novaData)
         .maybeSingle();
@@ -373,6 +373,21 @@ export function useDiarioObra(siteId?: string, data?: string) {
         await supabase.from("diario_veiculos").update({ diario_id: targetId }).eq("diario_id", diarioId);
         await supabase.from("diario_fotos").update({ diario_id: targetId }).eq("diario_id", diarioId);
         
+        // Atualizar observações, clima, uf e municipio se estiverem vazios no destino
+        const updates: any = {};
+        if (currentDiario.observacoes) {
+          updates.observacoes = targetDiario.observacoes 
+            ? `${targetDiario.observacoes}\n\n--- Movid de ${currentDiario.data} ---\n${currentDiario.observacoes}` 
+            : currentDiario.observacoes;
+        }
+        if (!targetDiario.clima && currentDiario.clima) updates.clima = currentDiario.clima;
+        if (!targetDiario.uf && currentDiario.uf) updates.uf = currentDiario.uf;
+        if (!targetDiario.municipio && currentDiario.municipio) updates.municipio = currentDiario.municipio;
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("diarios_obra").update(updates).eq("id", targetId);
+        }
+
         const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
         if (delErr) throw delErr;
 
