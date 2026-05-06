@@ -1054,8 +1054,9 @@ export default function DiarioObraPage() {
               diarioObraId={diario?.id || null}
               itensDisponiveis={itensDisponiveis}
               producoes={producoes}
+              fotosObra={fotos}
               onFotoTransferred={() => {
-                queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+                queryClient.invalidateQueries({ queryKey: ["diario_fotos", diario?.id] });
               }}
               ensureDiario={ensureDiario}
               selectedDate={selectedDate}
