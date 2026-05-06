@@ -174,7 +174,7 @@ export default function ProducaoMensal() {
         if (month > periodoFimKey) return;
 
         const [year, m] = month.split("-");
-        const mesLabel = `${monthNames[parseInt(m, 10) - 1]}-${year.substring(2)}`;
+        const mesLabel = `${m}/${year}`;
 
         result.push({
           area: areaName,
