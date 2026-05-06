@@ -59,6 +59,7 @@ export default function PowerBIPage() {
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("powerbi_last_updated", null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
