@@ -111,7 +111,7 @@ export default function DiarioObraPage() {
 
   const {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
-    producoes, addProducao, removeProducao, updateProducao, moverProducao,
+    producoes, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
@@ -898,16 +898,50 @@ export default function DiarioObraPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="calendario" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Calendário
-          </TabsTrigger>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="calendario" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Calendário
+            </TabsTrigger>
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
               Lançamento — {safeFormat(selectedDate, "dd/MM/yyyy")}
             </TabsTrigger>
-        </TabsList>
+          </TabsList>
+
+          {activeTab === "lancamento" && diario && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Mudar Data do Diário
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarComponent
+                  mode="single"
+                  selected={parseLocalDate(selectedDate)}
+                  onSelect={(date) => {
+                    if (date) {
+                      const dateStr = format(date, "yyyy-MM-dd");
+                      if (dateStr !== selectedDate) {
+                        if (window.confirm(`Deseja mover TODOS os lançamentos deste dia (${safeFormat(selectedDate, "dd/MM/yyyy")}) para o dia ${format(date, "dd/MM/yyyy")}?`)) {
+                          moverDiario.mutate({ diarioId: diario.id, novaData: dateStr }, {
+                            onSuccess: (data) => {
+                              setSelectedDate(data.novaData);
+                            }
+                          });
+                        }
+                      }
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
 
         {uploadProgress && (
           <div className="bg-muted/30 border rounded-lg p-3 flex flex-col gap-2">
@@ -1331,30 +1365,6 @@ export default function DiarioObraPage() {
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditProducao(p)}>
                                       <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                                     </Button>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar data de execução">
-                                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="end">
-                                        <CalendarComponent
-                                          mode="single"
-                                          selected={parseLocalDate(selectedDate)}
-                                          onSelect={(date) => {
-                                            if (date) {
-                                              const dateStr = format(date, "yyyy-MM-dd");
-                                              if (dateStr !== selectedDate) {
-                                                if (window.confirm(`Deseja mover esta atividade para o dia ${format(date, "dd/MM/yyyy")}?`)) {
-                                                  moverProducao.mutate({ producaoId: p.id, novaData: dateStr });
-                                                }
-                                              }
-                                            }
-                                          }}
-                                          initialFocus
-                                        />
-                                      </PopoverContent>
-                                    </Popover>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProducao.mutate(p.id)}>
                                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                     </Button>
