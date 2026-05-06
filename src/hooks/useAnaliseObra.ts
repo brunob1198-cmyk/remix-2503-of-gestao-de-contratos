@@ -532,5 +532,5 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
     enabled: !!projetoId,
   });
 
-  return { data, isLoading };
+  return { data, isLoading, isFetching };
 }
