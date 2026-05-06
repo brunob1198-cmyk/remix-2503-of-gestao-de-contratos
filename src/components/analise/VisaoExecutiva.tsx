@@ -61,6 +61,7 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
           <CardTitle className="flex items-center gap-2 text-lg">
             <DollarSign className="h-5 w-5 text-emerald-600" />
             Visão Financeira
+            {isFetching && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground ml-auto" />}
           </CardTitle>
         </CardHeader>
         <CardContent>
