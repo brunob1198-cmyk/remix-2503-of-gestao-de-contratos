@@ -121,7 +121,44 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
       </Card>
 
 
-      {/* ── BLOCO 3: ALERTAS ── */}
+      {/* ── BLOCO: COMPOSIÇÃO DE CUSTOS ERP ── */}
+      {data.custosErpPorCategoria && data.custosErpPorCategoria.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <PieChartIcon className="h-5 w-5 text-indigo-600" />
+              Composição de Custos ERP
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.custosErpPorCategoria}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                  >
+                    {data.custosErpPorCategoria.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => fmt(value)}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {alertas.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
