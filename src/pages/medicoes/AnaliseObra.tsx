@@ -19,11 +19,14 @@ import { startOfMonth, endOfMonth } from "date-fns";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 export default function AnaliseObraPage() {
+  const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("executiva");
   const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>("analise_periodo_inicio", startOfMonth(new Date()).toISOString());
   const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>("analise_periodo_fim", endOfMonth(new Date()).toISOString());
+  const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("analise_last_updated", null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const periodoInicio = useMemo(() => new Date(periodoInicioStr), [periodoInicioStr]);
   const periodoFim = useMemo(() => new Date(periodoFimStr), [periodoFimStr]);
