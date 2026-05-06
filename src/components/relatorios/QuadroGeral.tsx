@@ -636,7 +636,11 @@ export default function QuadroGeral() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[360px]">Área / Cliente / Projeto / Site</TableHead>
+                    <TableHead className=\"min-w-[360px]\">
+                      {Array.from(visibleColumns)
+                        .filter(c => c !== \"Status\") // Status doesn't have its own level in the label
+                        .join(\" / \") || \"Dados\"}
+                    </TableHead>
                     <TableHead className="text-right">Valor Contrato</TableHead>
                     <TableHead className="text-right">Valor Executado</TableHead>
                     <TableHead className="text-right">Valor Faturado</TableHead>
