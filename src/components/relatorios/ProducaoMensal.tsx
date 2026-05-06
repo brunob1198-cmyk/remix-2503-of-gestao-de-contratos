@@ -216,8 +216,12 @@ export default function ProducaoMensal() {
   );
 
   const handleExport = () => {
-    const ws = XLSX.utils.json_to_sheet(
-      processedItems.map((r) => ({
+    const data = processedItems.map((r) => {
+      const [year, month] = r.mes_producao.split("-").map(Number);
+      // Create date object for the first day of the month
+      const dateValue = new Date(year, month - 1, 1);
+      
+      return {
         Área: r.area,
         Cliente: r.cliente,
         Projeto: r.projeto_codigo,
@@ -227,9 +231,19 @@ export default function ProducaoMensal() {
         "Produção Acum. Anterior": r.producao_acum_anterior,
         "Produção do Mês": r.producao_mes,
         "Produção Total Atual": r.producao_total_atual,
-        "Mês de Produção": r.mes_label,
-      }))
-    );
+        "Mês de Produção": dateValue,
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
+    
+    // Set column format for the date column (last column 'J')
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: 9 })]; // Column J is index 9
+      if (cell) cell.z = 'mm/yyyy';
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produção Mensal");
     XLSX.writeFile(wb, `producao_mensal_${new Date().toISOString().split("T")[0]}.xlsx`);

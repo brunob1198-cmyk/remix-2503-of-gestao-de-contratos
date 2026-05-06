@@ -193,7 +193,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
 
   const handleExport = () => {
     const data = filteredItems.map(item => ({
-      [COL_LABELS.competencia]: item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-",
+      [COL_LABELS.competencia]: item.data_competencia ? parseISO(item.data_competencia) : null,
       [COL_LABELS.descricao]: item.descricao || "",
       [COL_LABELS.mapeamento]: item.categoria_erp || "",
       [COL_LABELS.centro_custo]: item.centro_custo || "",
@@ -202,7 +202,15 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
       [COL_LABELS.categoria]: item.categoria_interna || "",
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
+    const ws = XLSX.utils.json_to_sheet(data, { cellDates: true });
+
+    // Set column format for the date column (first column 'A')
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })]; // Column A is index 0
+      if (cell) cell.z = 'dd/mm/yyyy';
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Auditoria ERP");
     XLSX.writeFile(wb, `auditoria_erp_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
