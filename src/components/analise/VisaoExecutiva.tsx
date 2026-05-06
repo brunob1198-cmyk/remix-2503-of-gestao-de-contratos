@@ -2,7 +2,19 @@ import { useAnaliseObra } from "@/hooks/useAnaliseObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+
+const COLORS = [
+  "#10b981", // emerald-500
+  "#3b82f6", // blue-500
+  "#f59e0b", // amber-500
+  "#8b5cf6", // violet-500
+  "#ec4899", // pink-500
+  "#06b6d4", // cyan-500
+  "#f97316", // orange-500
+  "#6366f1", // indigo-500
+];
 
 function fmt(v: number) {
   if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
@@ -109,7 +121,44 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
       </Card>
 
 
-      {/* ── BLOCO 3: ALERTAS ── */}
+      {/* ── BLOCO: COMPOSIÇÃO DE CUSTOS ERP ── */}
+      {data.custosErpPorCategoria && data.custosErpPorCategoria.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <PieChartIcon className="h-5 w-5 text-indigo-600" />
+              Composição de Custos ERP
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.custosErpPorCategoria}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
+                  >
+                    {data.custosErpPorCategoria.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => fmt(value)}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {alertas.length > 0 && (
         <Card>
           <CardHeader className="pb-3">

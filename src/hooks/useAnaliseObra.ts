@@ -144,7 +144,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       while (erpHasMore) {
         let q = (supabase as any)
           .from("custo_real_erp")
-          .select("valor, categoria_erp, centro_custo")
+          .select("valor, categoria_erp, categoria_interna, centro_custo")
           .eq("projeto_id", resolvedProjetoId);
         
         if (startDateStr) {
@@ -162,6 +162,16 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         !disabledCategorias.has(c.categoria_erp) && 
         c.centro_custo?.trim() !== "Reforma Sede Jardim América"
       );
+
+      // Breakdown by category
+      const custosErpPorCategoriaMap: Record<string, number> = {};
+      uniqueErpCustos.forEach((c: any) => {
+        const cat = c.categoria_interna || c.categoria_erp || "Outros";
+        custosErpPorCategoriaMap[cat] = (custosErpPorCategoriaMap[cat] || 0) + Number(c.valor || 0);
+      });
+      const custosErpPorCategoria = Object.entries(custosErpPorCategoriaMap)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
 
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
@@ -504,6 +514,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         servicos,
         alertas: alertas.slice(0, 5),
         custosCategorias,
+        custosErpPorCategoria,
         evolucao,
         producaoItems,
         escopoTotal,
