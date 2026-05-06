@@ -70,6 +70,7 @@ export interface ProducaoItem {
 export function useAnaliseObra(projetoId?: string, filterSiteId?: string, periodoInicio?: Date, periodoFim?: Date) {
   const { data, isLoading } = useQuery({
     queryKey: ["analise_obra", projetoId, filterSiteId, periodoInicio?.toISOString(), periodoFim?.toISOString()],
+    staleTime: Infinity,
     queryFn: async () => {
       if (!projetoId) return null;
 
