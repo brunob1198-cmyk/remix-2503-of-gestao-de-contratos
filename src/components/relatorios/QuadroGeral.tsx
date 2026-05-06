@@ -686,22 +686,24 @@ export default function QuadroGeral() {
                           const clienteExpanded = expanded.has(clienteKey) || !isClienteVisible;
                           return (
                             <Fragment key={clienteKey}>
-                              <TableRow
-                                className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => toggle(clienteKey)}
-                              >
-                                <TableCell className="font-semibold">
-                                  <div className="flex items-center gap-2 pl-6">
-                                    {clienteExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span>{cg.cliente}</span>
-                                    <span className="text-xs text-muted-foreground font-normal ml-1">
-                                      ({cg.projetos.length} projeto{cg.projetos.length !== 1 ? "s" : ""})
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TotalsRow t={cg.totals} />
-                              </TableRow>
+                              {isClienteVisible && (
+                                <TableRow
+                                  className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                                  onClick={() => toggle(clienteKey)}
+                                >
+                                  <TableCell className="font-semibold">
+                                    <div className={cn("flex items-center gap-2", isAreaVisible ? "pl-6" : "pl-0")}>
+                                      {clienteExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                      <span>{cg.cliente}</span>
+                                      <span className="text-xs text-muted-foreground font-normal ml-1">
+                                        ({cg.projetos.length} projeto{cg.projetos.length !== 1 ? "s" : ""})
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TotalsRow t={cg.totals} />
+                                </TableRow>
+                              )}
 
                               {clienteExpanded && cg.projetos.map(p => {
                                 const projetoKey = `projeto:${p.projeto_id}`;
