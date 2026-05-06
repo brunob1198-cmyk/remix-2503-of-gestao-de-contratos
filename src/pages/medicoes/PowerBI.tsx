@@ -80,6 +80,7 @@ export default function PowerBIPage() {
   };
 
   const handleRefresh = () => {
+    setLastUpdated(new Date().toISOString());
     // Força remount do iframe + nova URL com timestamp para tentar invalidar cache do navegador.
     // ATENÇÃO: o Power BI mantém um cache no servidor (até ~1h em "Publicar na Web").
     // Se o relatório não atualizar visualmente, o cache server-side ainda está ativo.
