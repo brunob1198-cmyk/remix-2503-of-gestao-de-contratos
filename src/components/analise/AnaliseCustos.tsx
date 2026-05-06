@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from 
 import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface AnaliseCustosProps {
