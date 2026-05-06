@@ -25,17 +25,18 @@ export function useTableFilters<T, ColKey extends string>(
   items: T[], 
   columns: readonly ColKey[], 
   getColValue: (item: T, col: ColKey) => string,
-  persistKey?: string
+  persistKey?: string,
+  initialSort?: { column: ColKey; direction: SortDir }
 ) {
   const emptySearchTexts = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: "" }), {} as Record<ColKey, string>), [columns]);
   const emptySelectedArrays = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: [] as string[] }), {} as Record<ColKey, string[]>), [columns]);
 
   // Persisted or plain state
   const [sortColumn, setSortColumn] = useState<ColKey | null>(() =>
-    persistKey ? loadPersisted<ColKey | null>(`${persistKey}_sortCol`, null) : null
+    persistKey ? loadPersisted<ColKey | null>(`${persistKey}_sortCol`, initialSort?.column ?? null) : (initialSort?.column ?? null)
   );
   const [sortDir, setSortDir] = useState<SortDir>(() =>
-    persistKey ? loadPersisted<SortDir>(`${persistKey}_sortDir`, null) : null
+    persistKey ? loadPersisted<SortDir>(`${persistKey}_sortDir`, initialSort?.direction ?? null) : (initialSort?.direction ?? null)
   );
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() =>
     persistKey ? loadPersisted(`${persistKey}_search`, emptySearchTexts) : emptySearchTexts

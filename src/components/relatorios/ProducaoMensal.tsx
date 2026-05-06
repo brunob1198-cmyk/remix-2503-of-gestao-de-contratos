@@ -47,7 +47,7 @@ interface MonthlyRow {
 const COLUMNS = [
   "area", "cliente", "projeto_codigo", "projeto_descricao",
   "coordenador", "valor_contrato", "producao_acum_anterior",
-  "producao_mes", "producao_total_atual", "mes_label",
+  "producao_mes", "producao_total_atual", "mes_producao",
 ] as const;
 
 type ColKey = (typeof COLUMNS)[number];
@@ -62,7 +62,7 @@ const COL_LABELS: Record<ColKey, string> = {
   producao_acum_anterior: "Prod. Acum. Anterior",
   producao_mes: "Produção do Mês",
   producao_total_atual: "Prod. Total Atual",
-  mes_label: "Mês de Produção",
+  mes_producao: "Mês de Produção",
 };
 
 const formatCurrency = (value: number) =>
@@ -174,7 +174,7 @@ export default function ProducaoMensal() {
         if (month > periodoFimKey) return;
 
         const [year, m] = month.split("-");
-        const mesLabel = `${monthNames[parseInt(m, 10) - 1]}-${year.substring(2)}`;
+        const mesLabel = `${m}/${year}`;
 
         result.push({
           area: areaName,
@@ -203,7 +203,10 @@ export default function ProducaoMensal() {
     handleSort, setSearchText, toggleValue, selectAll, clearAll,
     processedItems, uniqueValues,
     currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, paginatedItems,
-  } = useTableFilters<MonthlyRow, ColKey>(rows, COLUMNS, getColValue);
+  } = useTableFilters<MonthlyRow, ColKey>(rows, COLUMNS, getColValue, "relatorios:producao_mensal", {
+    column: "mes_producao",
+    direction: "desc"
+  });
 
   const totals = useMemo(
     () => ({
@@ -310,7 +313,7 @@ export default function ProducaoMensal() {
                       <TableHead className="text-right">{renderColumnHeader("producao_acum_anterior")}</TableHead>
                       <TableHead className="text-right">{renderColumnHeader("producao_mes")}</TableHead>
                       <TableHead className="text-right">{renderColumnHeader("producao_total_atual")}</TableHead>
-                      <TableHead>{renderColumnHeader("mes_label")}</TableHead>
+                      <TableHead>{renderColumnHeader("mes_producao")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -358,7 +361,3 @@ export default function ProducaoMensal() {
   );
 }
 
-const monthNames = [
-  "jan", "fev", "mar", "abr", "mai", "jun",
-  "jul", "ago", "set", "out", "nov", "dez",
-];
