@@ -226,18 +226,25 @@ export default function QuadroGeral() {
     },
   });
 
-  const [filterArea, setFilterArea] = useState<Set<string>>(new Set());
-  const [filterCliente, setFilterCliente] = useState<Set<string>>(new Set());
-  const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
-  const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
-  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(["Area", "Cliente", "Projeto", "Site", "Status"]));
+  const [filterAreaArr, setFilterAreaArr] = usePersistedState<string[]>("quadro-geral-filter-area", []);
+  const [filterClienteArr, setFilterClienteArr] = usePersistedState<string[]>("quadro-geral-filter-cliente", []);
+  const [filterProjetoArr, setFilterProjetoArr] = usePersistedState<string[]>("quadro-geral-filter-projeto", []);
+  const [filterSiteArr, setFilterSiteArr] = usePersistedState<string[]>("quadro-geral-filter-site", []);
+  const [filterStatusArr, setFilterStatusArr] = usePersistedState<string[]>("quadro-geral-filter-status", []);
+  const [visibleColumnsArr, setVisibleColumnsArr] = usePersistedState<string[]>("quadro-geral-visible-columns", ["Area", "Cliente", "Projeto", "Site", "Status"]);
 
-  const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
+  const filterArea = useMemo(() => new Set(filterAreaArr), [filterAreaArr]);
+  const filterCliente = useMemo(() => new Set(filterClienteArr), [filterClienteArr]);
+  const filterProjeto = useMemo(() => new Set(filterProjetoArr), [filterProjetoArr]);
+  const filterSite = useMemo(() => new Set(filterSiteArr), [filterSiteArr]);
+  const filterStatus = useMemo(() => new Set(filterStatusArr), [filterStatusArr]);
+  const visibleColumns = useMemo(() => new Set(visibleColumnsArr), [visibleColumnsArr]);
+
+  const toggleSet = (setter: (val: string[] | ((prev: string[]) => string[])) => void) => (v: string) => {
     setter(prev => {
       const next = new Set(prev);
       if (next.has(v)) next.delete(v); else next.add(v);
-      return next;
+      return Array.from(next);
     });
   };
 
@@ -583,47 +590,47 @@ export default function QuadroGeral() {
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtros e Visibilidade:</span>
             <div className="flex flex-wrap gap-2">
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
+                <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterAreaArr)} onSelectAll={() => setFilterAreaArr(filterOptions.areas)} onClearAll={() => setFilterAreaArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Area")} 
-                  onCheckedChange={() => toggleSet(setVisibleColumns)("Area")}
+                  onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Area")}
                   title="Mostrar/Ocultar coluna de Área"
                 />
               </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
+                <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterClienteArr)} onSelectAll={() => setFilterClienteArr(filterOptions.clientes)} onClearAll={() => setFilterClienteArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Cliente")} 
-                  onCheckedChange={() => toggleSet(setVisibleColumns)("Cliente")}
+                  onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Cliente")}
                   title="Mostrar/Ocultar coluna de Cliente"
                 />
               </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
+                <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjetoArr)} onSelectAll={() => setFilterProjetoArr(filterOptions.projetos)} onClearAll={() => setFilterProjetoArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Projeto")} 
-                  onCheckedChange={() => toggleSet(setVisibleColumns)("Projeto")}
+                  onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Projeto")}
                   title="Mostrar/Ocultar coluna de Projeto"
                 />
               </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
+                <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSiteArr)} onSelectAll={() => setFilterSiteArr(filterOptions.sites)} onClearAll={() => setFilterSiteArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Site")} 
-                  onCheckedChange={() => toggleSet(setVisibleColumns)("Site")}
+                  onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Site")}
                   title="Mostrar/Ocultar coluna de Site"
                 />
               </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
+                <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatusArr)} onSelectAll={() => setFilterStatusArr(filterOptions.status)} onClearAll={() => setFilterStatusArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Status")} 
-                  onCheckedChange={() => toggleSet(setVisibleColumns)("Status")}
+                  onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Status")}
                   title="Mostrar/Ocultar filtro de Status"
                 />
               </div>
               {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
-                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
+                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setFilterAreaArr([]); setFilterClienteArr([]); setFilterProjetoArr([]); setFilterSiteArr([]); setFilterStatusArr([]); }}>
                   Limpar filtros
                 </Button>
               )}
