@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -12,23 +12,45 @@ import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
 import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { usePersistedState } from "@/hooks/usePersistedState";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
 
 export default function AnaliseObraPage() {
+  const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("executiva");
   const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>("analise_periodo_inicio", startOfMonth(new Date()).toISOString());
   const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>("analise_periodo_fim", endOfMonth(new Date()).toISOString());
+  const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("analise_last_updated", null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const periodoInicio = useMemo(() => new Date(periodoInicioStr), [periodoInicioStr]);
   const periodoFim = useMemo(() => new Date(periodoFimStr), [periodoFimStr]);
 
   const setPeriodoInicio = (d: Date) => setPeriodoInicioStr(d.toISOString());
   const setPeriodoFim = (d: Date) => setPeriodoFimStr(d.toISOString());
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["analise_obra"] });
+      await queryClient.invalidateQueries({ queryKey: ["analise_custos_matrix_mensal"] });
+      await queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      await queryClient.invalidateQueries({ queryKey: ["custo_orcado_escopo"] });
+      await queryClient.invalidateQueries({ queryKey: ["fisico_apropriado"] });
+      
+      setLastUpdated(new Date().toISOString());
+      toast.success("Dados atualizados com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao atualizar dados.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Single sync hook — uses first selected project but syncs all ERP data
   const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
@@ -131,10 +153,28 @@ export default function AnaliseObraPage() {
 
         {selectedIds.length > 0 && (
           <>
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="gap-2 bg-primary hover:bg-primary/90" 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              Atualizar Dados
+            </Button>
+
             <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate()} disabled={syncErp.isPending}>
               <RefreshCw className={`h-3.5 w-3.5 ${syncErp.isPending ? "animate-spin" : ""}`} />
               Sincronizar Conta Azul
             </Button>
+
+            {lastUpdated && (
+              <span className="text-[10px] text-muted-foreground self-center italic">
+                Última atualização: {new Date(lastUpdated).toLocaleString('pt-BR')}
+              </span>
+            )}
+
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
               <X className="h-4 w-4 mr-1" /> Limpar
             </Button>

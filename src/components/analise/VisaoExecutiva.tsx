@@ -2,7 +2,7 @@ import { useAnaliseObra } from "@/hooks/useAnaliseObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon } from "lucide-react";
+import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const COLORS = [
@@ -39,7 +39,7 @@ function statusBadge(pct: number) {
 }
 
 export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoFim }: { projetoId: string; projetoName: string; periodoInicio?: Date; periodoFim?: Date }) {
-  const { data, isLoading } = useAnaliseObra(projetoId, undefined, periodoInicio, periodoFim);
+  const { data, isLoading, isFetching } = useAnaliseObra(projetoId, undefined, periodoInicio, periodoFim);
 
   if (isLoading) {
     return (
@@ -61,6 +61,7 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
           <CardTitle className="flex items-center gap-2 text-lg">
             <DollarSign className="h-5 w-5 text-emerald-600" />
             Visão Financeira
+            {isFetching && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground ml-auto" />}
           </CardTitle>
         </CardHeader>
         <CardContent>

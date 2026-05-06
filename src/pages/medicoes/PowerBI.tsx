@@ -59,6 +59,7 @@ export default function PowerBIPage() {
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("powerbi_last_updated", null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,7 @@ export default function PowerBIPage() {
   };
 
   const handleRefresh = () => {
+    setLastUpdated(new Date().toISOString());
     // Força remount do iframe + nova URL com timestamp para tentar invalidar cache do navegador.
     // ATENÇÃO: o Power BI mantém um cache no servidor (até ~1h em "Publicar na Web").
     // Se o relatório não atualizar visualmente, o cache server-side ainda está ativo.
@@ -269,9 +271,16 @@ export default function PowerBIPage() {
                   <CardTitle className="text-base">{active.nome}</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleRefresh}>
-                    <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
-                  </Button>
+                  <div className="flex flex-col items-end">
+                    <Button variant="outline" size="sm" onClick={handleRefresh}>
+                      <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+                    </Button>
+                    {lastUpdated && (
+                      <span className="text-[10px] text-muted-foreground italic mt-1">
+                        Última atualização: {new Date(lastUpdated).toLocaleString('pt-BR')}
+                      </span>
+                    )}
+                  </div>
                   <Button variant="outline" size="sm" onClick={toggleFullscreen}>
                     {isFullscreen ? (
                       <>

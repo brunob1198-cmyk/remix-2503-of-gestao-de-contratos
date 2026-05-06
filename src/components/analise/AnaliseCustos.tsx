@@ -7,7 +7,7 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from 
 import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface AnaliseCustosProps {
@@ -78,8 +78,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     }
   }, [sortCol, sortDir]);
 
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], isFetching, refetch } = useQuery({
     queryKey: ["analise_custos_matrix_mensal", projetoIds, startDate, endDate],
+    staleTime: Infinity,
     queryFn: async (): Promise<MonthRow[]> => {
       if (projetoIds.length === 0) return [];
 
@@ -329,9 +330,17 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <Card>
-      <CardHeader className="pb-3 border-b">
-        <CardTitle>Matriz de Custos</CardTitle>
-        <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+      <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Matriz de Custos</CardTitle>
+          <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+        </div>
+        {isFetching && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Atualizando...
+          </div>
+        )}
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">

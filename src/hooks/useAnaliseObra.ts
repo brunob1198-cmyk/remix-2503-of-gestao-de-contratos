@@ -68,8 +68,9 @@ export interface ProducaoItem {
 }
 
 export function useAnaliseObra(projetoId?: string, filterSiteId?: string, periodoInicio?: Date, periodoFim?: Date) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["analise_obra", projetoId, filterSiteId, periodoInicio?.toISOString(), periodoFim?.toISOString()],
+    staleTime: Infinity,
     queryFn: async () => {
       if (!projetoId) return null;
 
@@ -531,5 +532,5 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
     enabled: !!projetoId,
   });
 
-  return { data, isLoading };
+  return { data, isLoading, isFetching };
 }

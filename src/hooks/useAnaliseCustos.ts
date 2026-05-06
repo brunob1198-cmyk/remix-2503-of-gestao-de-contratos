@@ -140,6 +140,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 1. Custo Orçado e Valor Produzido (baseado em escopo)
   const { data: escopoData = { custoOrcado: 0, valorProduzido: 0 }, isLoading: loadOrc } = useQuery({
     queryKey: ["custo_orcado_escopo", projetoId, siteId],
+    staleTime: Infinity,
     queryFn: async () => {
       let qSites = supabase.from("sites").select("id").eq("projeto_id", projetoId);
       const { data: sitesData } = await qSites;
@@ -171,6 +172,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // Fetch disabled ERP categories
   const { data: categoriasDesativadas = [] } = useQuery({
     queryKey: ["categorias_erp_desativadas"],
+    staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
@@ -184,6 +186,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 2. Custos Pagos (ERP) - filtra categorias desativadas
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp", projetoId, siteId, startDate, categoriasDesativadas],
+    staleTime: Infinity,
     queryFn: async () => {
       const BATCH_SIZE = 1000;
       const allData: CustoErp[] = [];
@@ -216,6 +219,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 3. Produzido Físico
   const { data: fisico = { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 }, isLoading: loadFisico } = useQuery({
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
+    staleTime: Infinity,
     queryFn: async () => {
       let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
       if (startDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
@@ -315,6 +319,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const { data: categoriasMapeamento = [] } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
+    staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
@@ -331,6 +336,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
+    staleTime: Infinity,
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       const BATCH_SIZE = 1000;
