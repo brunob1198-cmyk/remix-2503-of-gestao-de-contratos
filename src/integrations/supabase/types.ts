@@ -3505,6 +3505,8 @@ export type Database = {
           ano_mes: string | null
           area_id: string | null
           area_nome: string | null
+          categoria_erp: string | null
+          categoria_interna: string | null
           cliente_cnpj: string | null
           cliente_id: string | null
           cliente_razao_social: string | null

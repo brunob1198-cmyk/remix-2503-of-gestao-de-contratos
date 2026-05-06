@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -327,8 +330,35 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   return (
     <Card>
       <CardHeader className="pb-3 border-b">
-        <CardTitle>Matriz de Custos</CardTitle>
-        <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Matriz de Custos</CardTitle>
+            <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2"
+            onClick={async () => {
+              const { data: viewData } = await supabase
+                .from("view_bi_analise_obras")
+                .select("*")
+                .in("projeto_id", projetoIds)
+                .gte("mes", startDate)
+                .lte("mes", endDate);
+
+              if (!viewData || viewData.length === 0) return;
+
+              const ws = XLSX.utils.json_to_sheet(viewData);
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, "Analise BI");
+              XLSX.writeFile(wb, `analise_obra_bi_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+            }}
+          >
+            <Download className="h-4 w-4" />
+            Exportar BI
+          </Button>
+        </div>
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">
