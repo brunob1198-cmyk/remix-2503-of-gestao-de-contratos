@@ -365,11 +365,13 @@ export function useDiarioObra(siteId?: string, data?: string) {
       
       if (targetDiario) {
         const targetId = targetDiario.id;
-        const tables = ["diario_producao", "diario_equipe", "diario_equipamentos", "diario_veiculos", "diario_fotos"];
         
-        for (const table of tables) {
-          await supabase.from(table).update({ diario_id: targetId }).eq("diario_id", diarioId);
-        }
+        // Mover registros de todas as tabelas relacionadas
+        await supabase.from("diario_producao").update({ diario_id: targetId }).eq("diario_id", diarioId);
+        await supabase.from("diario_equipe").update({ diario_id: targetId }).eq("diario_id", diarioId);
+        await supabase.from("diario_equipamentos").update({ diario_id: targetId }).eq("diario_id", diarioId);
+        await supabase.from("diario_veiculos").update({ diario_id: targetId }).eq("diario_id", diarioId);
+        await supabase.from("diario_fotos").update({ diario_id: targetId }).eq("diario_id", diarioId);
         
         const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
         if (delErr) throw delErr;
