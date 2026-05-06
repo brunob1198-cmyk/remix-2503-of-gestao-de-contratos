@@ -231,6 +231,7 @@ export default function QuadroGeral() {
   const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
   const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(["Area", "Cliente", "Projeto", "Site", "Status"]));
 
   const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
     setter(prev => {
@@ -401,17 +402,23 @@ export default function QuadroGeral() {
   // Apply filters
   const filteredAreaGroups = useMemo(() => {
     return areaGroups
-      .filter(ag => filterArea.size === 0 || filterArea.has(ag.area))
+      .filter(ag => {
+        if (!visibleColumns.has("Area")) return true;
+        return filterArea.size === 0 || filterArea.has(ag.area);
+      })
       .map(ag => {
         const clientes = ag.clientes
-          .filter(cg => filterCliente.size === 0 || filterCliente.has(cg.cliente))
+          .filter(cg => {
+            if (!visibleColumns.has("Cliente")) return true;
+            return filterCliente.size === 0 || filterCliente.has(cg.cliente);
+          })
           .map(cg => {
             const filteredProjetos = cg.projetos.filter(p => {
-              if (filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
+              if (visibleColumns.has("Projeto") && filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
               const proj = projetos.find(pr => pr.id === p.projeto_id);
               const st = proj?.status || "Sem status";
-              if (filterStatus.size > 0 && !filterStatus.has(st)) return false;
-              if (filterSite.size > 0) {
+              if (visibleColumns.has("Status") && filterStatus.size > 0 && !filterStatus.has(st)) return false;
+              if (visibleColumns.has("Site") && filterSite.size > 0) {
                 const hasSiteMatch = p.siteRows.some(s => filterSite.has(`${s.site_codigo} - ${s.site_nome}`));
                 if (!hasSiteMatch) return false;
               }
@@ -426,7 +433,7 @@ export default function QuadroGeral() {
         return { ...ag, clientes, totals: calcTotals(allProjetos) };
       })
       .filter(Boolean) as AreaGroup[];
-  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos]);
+  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos, visibleColumns]);
 
   const grandTotals = useMemo(() => calcTotals(filteredAreaGroups.map(g => g.totals)), [filteredAreaGroups]);
   const grandPercent = grandTotals.valor_contrato > 0 ? (grandTotals.valor_executado / grandTotals.valor_contrato) * 100 : 0;
@@ -572,17 +579,55 @@ export default function QuadroGeral() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
-            <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
-            <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
-            <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
-            <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
-            {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
-              <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
-                Limpar filtros
-              </Button>
-            )}
+          <div className="flex flex-wrap items-center gap-3 bg-muted/20 p-3 rounded-lg border border-dashed">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtros e Visibilidade:</span>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-1 bg-background p-1 rounded border">
+                <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterArea)} onSelectAll={() => setFilterArea(new Set(filterOptions.areas))} onClearAll={() => setFilterArea(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has("Area")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)("Area")}
+                  title="Mostrar/Ocultar coluna de Área"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-background p-1 rounded border">
+                <MultiSelectFilter label="Cliente" options={filterOptions.clientes} selected={filterCliente} onToggle={toggleSet(setFilterCliente)} onSelectAll={() => setFilterCliente(new Set(filterOptions.clientes))} onClearAll={() => setFilterCliente(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has("Cliente")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)("Cliente")}
+                  title="Mostrar/Ocultar coluna de Cliente"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-background p-1 rounded border">
+                <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjeto)} onSelectAll={() => setFilterProjeto(new Set(filterOptions.projetos))} onClearAll={() => setFilterProjeto(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has("Projeto")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)("Projeto")}
+                  title="Mostrar/Ocultar coluna de Projeto"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-background p-1 rounded border">
+                <MultiSelectFilter label="Site" options={filterOptions.sites} selected={filterSite} onToggle={toggleSet(setFilterSite)} onSelectAll={() => setFilterSite(new Set(filterOptions.sites))} onClearAll={() => setFilterSite(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has("Site")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)("Site")}
+                  title="Mostrar/Ocultar coluna de Site"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-background p-1 rounded border">
+                <MultiSelectFilter label="Status" options={filterOptions.status} selected={filterStatus} onToggle={toggleSet(setFilterStatus)} onSelectAll={() => setFilterStatus(new Set(filterOptions.status))} onClearAll={() => setFilterStatus(new Set())} />
+                <Checkbox 
+                  checked={visibleColumns.has("Status")} 
+                  onCheckedChange={() => toggleSet(setVisibleColumns)("Status")}
+                  title="Mostrar/Ocultar filtro de Status"
+                />
+              </div>
+              {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
+                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setFilterArea(new Set()); setFilterCliente(new Set()); setFilterProjeto(new Set()); setFilterSite(new Set()); setFilterStatus(new Set()); }}>
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
           {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
@@ -591,7 +636,11 @@ export default function QuadroGeral() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[360px]">Área / Cliente / Projeto / Site</TableHead>
+                    <TableHead className="min-w-[360px]">
+                      {Array.from(visibleColumns)
+                        .filter(c => c !== "Status") // Status doesn't have its own level in the label
+                        .join(" / ") || "Dados"}
+                    </TableHead>
                     <TableHead className="text-right">Valor Contrato</TableHead>
                     <TableHead className="text-right">Valor Executado</TableHead>
                     <TableHead className="text-right">Valor Faturado</TableHead>
@@ -602,87 +651,98 @@ export default function QuadroGeral() {
                 </TableHeader>
                 <TableBody>
                   {filteredAreaGroups.map(ag => {
+                    const isAreaVisible = visibleColumns.has("Area");
+                    const isClienteVisible = visibleColumns.has("Cliente");
+                    const isProjetoVisible = visibleColumns.has("Projeto");
+                    const isSiteVisible = visibleColumns.has("Site");
+
                     const areaKey = `area:${ag.area}`;
-                    const areaExpanded = expanded.has(areaKey);
+                    const areaExpanded = expanded.has(areaKey) || !isAreaVisible;
                     const totalClientes = ag.clientes.length;
                     const totalProjetos = ag.clientes.reduce((s, c) => s + c.projetos.length, 0);
                     return (
                       <Fragment key={areaKey}>
-                        <TableRow
-                          className="bg-muted/60 cursor-pointer hover:bg-muted/80 transition-colors"
-                          onClick={() => toggle(areaKey)}
-                        >
-                          <TableCell className="font-bold">
-                            <div className="flex items-center gap-2">
-                              {areaExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                              <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span>{ag.area}</span>
-                              <span className="text-xs text-muted-foreground font-normal ml-1">
-                                ({totalClientes} cliente{totalClientes !== 1 ? "s" : ""}, {totalProjetos} projeto{totalProjetos !== 1 ? "s" : ""})
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TotalsRow t={ag.totals} />
-                        </TableRow>
+                        {isAreaVisible && (
+                          <TableRow
+                            className="bg-muted/60 cursor-pointer hover:bg-muted/80 transition-colors"
+                            onClick={() => toggle(areaKey)}
+                          >
+                            <TableCell className="font-bold">
+                              <div className="flex items-center gap-2">
+                                {areaExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span>{ag.area}</span>
+                                <span className="text-xs text-muted-foreground font-normal ml-1">
+                                  ({totalClientes} cliente{totalClientes !== 1 ? "s" : ""}, {totalProjetos} projeto{totalProjetos !== 1 ? "s" : ""})
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TotalsRow t={ag.totals} />
+                          </TableRow>
+                        )}
 
                         {areaExpanded && ag.clientes.map(cg => {
                           const clienteKey = `cliente:${ag.area}|${cg.cliente}`;
-                          const clienteExpanded = expanded.has(clienteKey);
+                          const clienteExpanded = expanded.has(clienteKey) || !isClienteVisible;
                           return (
                             <Fragment key={clienteKey}>
-                              <TableRow
-                                className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => toggle(clienteKey)}
-                              >
-                                <TableCell className="font-semibold">
-                                  <div className="flex items-center gap-2 pl-6">
-                                    {clienteExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                                    <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span>{cg.cliente}</span>
-                                    <span className="text-xs text-muted-foreground font-normal ml-1">
-                                      ({cg.projetos.length} projeto{cg.projetos.length !== 1 ? "s" : ""})
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TotalsRow t={cg.totals} />
-                              </TableRow>
+                              {isClienteVisible && (
+                                <TableRow
+                                  className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                                  onClick={() => toggle(clienteKey)}
+                                >
+                                  <TableCell className="font-semibold">
+                                    <div className={cn("flex items-center gap-2", isAreaVisible ? "pl-6" : "pl-0")}>
+                                      {clienteExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                      <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                      <span>{cg.cliente}</span>
+                                      <span className="text-xs text-muted-foreground font-normal ml-1">
+                                        ({cg.projetos.length} projeto{cg.projetos.length !== 1 ? "s" : ""})
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TotalsRow t={cg.totals} />
+                                </TableRow>
+                              )}
 
                               {clienteExpanded && cg.projetos.map(p => {
                                 const projetoKey = `projeto:${p.projeto_id}`;
-                                const projetoExpanded = expanded.has(projetoKey);
+                                const projetoExpanded = expanded.has(projetoKey) || !isProjetoVisible;
                                 const hasSites = p.siteRows.length > 0;
                                 return (
                                   <Fragment key={p.projeto_id}>
-                                    <TableRow
-                                      className={cn("hover:bg-muted/20", hasSites && "cursor-pointer")}
-                                      onClick={() => hasSites && toggle(projetoKey)}
-                                    >
-                                      <TableCell>
-                                        <div className="flex items-center gap-2 pl-12">
-                                          {hasSites ? (
-                                            projetoExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                                          ) : (
-                                            <span className="w-3.5" />
-                                          )}
-                                          <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                          <span className="font-medium text-sm">{p.projeto_codigo}</span>
-                                          <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
-                                      <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                                        {formatCurrency(p.valor_nao_faturado)}
-                                      </TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
-                                      <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
-                                    </TableRow>
+                                    {isProjetoVisible && (
+                                      <TableRow
+                                        className={cn("hover:bg-muted/20", hasSites && "cursor-pointer")}
+                                        onClick={() => hasSites && toggle(projetoKey)}
+                                      >
+                                        <TableCell>
+                                          <div className={cn("flex items-center gap-2", isAreaVisible && isClienteVisible ? "pl-12" : isAreaVisible || isClienteVisible ? "pl-6" : "pl-0")}>
+                                            {hasSites ? (
+                                              projetoExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                            ) : (
+                                              <span className="w-3.5" />
+                                            )}
+                                            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <span className="font-medium text-sm">{p.projeto_codigo}</span>
+                                            <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
+                                          {formatCurrency(p.valor_nao_faturado)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
+                                        <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
+                                      </TableRow>
+                                    )}
 
-                                    {projetoExpanded && p.siteRows.map(s => (
+                                    {isSiteVisible && projetoExpanded && p.siteRows.map(s => (
                                       <TableRow key={s.site_id} className="hover:bg-muted/10">
                                         <TableCell>
-                                          <div className="flex items-center gap-2 pl-20">
+                                          <div className={cn("flex items-center gap-2", isAreaVisible && isClienteVisible && isProjetoVisible ? "pl-20" : "pl-6")}>
                                             <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                             <span className="text-xs font-medium">{s.site_codigo}</span>
                                             <span className="text-xs text-muted-foreground">— {s.site_nome}</span>
