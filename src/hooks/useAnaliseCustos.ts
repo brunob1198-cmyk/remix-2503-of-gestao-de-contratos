@@ -172,6 +172,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // Fetch disabled ERP categories
   const { data: categoriasDesativadas = [] } = useQuery({
     queryKey: ["categorias_erp_desativadas"],
+    staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
