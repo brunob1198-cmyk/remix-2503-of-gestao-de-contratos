@@ -191,6 +191,23 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     updateBulkCategorias.mutate(updates);
   };
 
+  const handleExport = () => {
+    const data = filteredItems.map(item => ({
+      [COL_LABELS.competencia]: item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-",
+      [COL_LABELS.descricao]: item.descricao || "",
+      [COL_LABELS.mapeamento]: item.categoria_erp || "",
+      [COL_LABELS.centro_custo]: item.centro_custo || "",
+      [COL_LABELS.valor]: item.valor || 0,
+      [COL_LABELS.status]: item.status_erp?.toUpperCase() || "",
+      [COL_LABELS.categoria]: item.categoria_interna || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Auditoria ERP");
+    XLSX.writeFile(wb, `auditoria_erp_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
+  };
+
   const formatCurrency = (val: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
 
   return (
@@ -232,7 +249,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                 Corrigir {conflicts.length} em Lote
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => {}} disabled={filteredItems.length === 0}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredItems.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
           </div>
