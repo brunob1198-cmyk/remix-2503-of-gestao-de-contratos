@@ -457,6 +457,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["diario_veiculos"] });
       queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_campo_calendario"] });
       toast({ title: `Diário movido com sucesso para a nova data!` });
     },
     onError: (e: Error) => toast({ title: "Erro ao mover diário", description: e.message, variant: "destructive" }),
