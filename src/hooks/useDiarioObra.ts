@@ -718,7 +718,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
-    fotos, addFoto, removeFoto,
+    fotos, addFoto, atualizarFoto, removeFoto,
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior, previsoes,
