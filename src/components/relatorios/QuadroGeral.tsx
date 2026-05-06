@@ -739,10 +739,10 @@ export default function QuadroGeral() {
                                       </TableRow>
                                     )}
 
-                                    {projetoExpanded && p.siteRows.map(s => (
+                                    {isSiteVisible && projetoExpanded && p.siteRows.map(s => (
                                       <TableRow key={s.site_id} className="hover:bg-muted/10">
                                         <TableCell>
-                                          <div className="flex items-center gap-2 pl-20">
+                                          <div className={cn("flex items-center gap-2", isAreaVisible && isClienteVisible && isProjetoVisible ? "pl-20" : "pl-6")}>
                                             <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                             <span className="text-xs font-medium">{s.site_codigo}</span>
                                             <span className="text-xs text-muted-foreground">— {s.site_nome}</span>
