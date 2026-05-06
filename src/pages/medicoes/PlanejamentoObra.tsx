@@ -192,9 +192,6 @@ export default function PlanejamentoObra() {
             <TabsTrigger value="gantt" className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> Gantt
             </TabsTrigger>
-            <TabsTrigger value="timeline" className="gap-1.5">
-              <Map className="h-4 w-4" /> Timeline
-            </TabsTrigger>
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
