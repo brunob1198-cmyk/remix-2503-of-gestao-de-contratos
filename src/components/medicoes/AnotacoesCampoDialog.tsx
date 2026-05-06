@@ -8,16 +8,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, ArrowRight, Image, Check } from "lucide-react";
+import { FileText, ArrowRight, Image, Check, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { safeFormat } from "@/lib/utils";
 import type { DiarioCampo, DiarioCampoFoto } from "@/hooks/useDiarioCampo";
+import type { DiarioFoto } from "@/hooks/useDiarioObra";
 
 interface AnotacoesCampoDialogProps {
   atividadesCampo: DiarioCampo[];
   diarioObraId: string | null;
   itensDisponiveis: { id: string; item_lpu_id: string; nome: string }[];
   producoes: { id: string; item_lpu_id: string }[];
+  fotosObra?: DiarioFoto[];
   onFotoTransferred: () => void;
   ensureDiario: () => Promise<string | null>;
   selectedDate: string;
