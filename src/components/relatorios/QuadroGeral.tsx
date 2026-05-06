@@ -402,17 +402,23 @@ export default function QuadroGeral() {
   // Apply filters
   const filteredAreaGroups = useMemo(() => {
     return areaGroups
-      .filter(ag => filterArea.size === 0 || filterArea.has(ag.area))
+      .filter(ag => {
+        if (!visibleColumns.has("Area")) return true;
+        return filterArea.size === 0 || filterArea.has(ag.area);
+      })
       .map(ag => {
         const clientes = ag.clientes
-          .filter(cg => filterCliente.size === 0 || filterCliente.has(cg.cliente))
+          .filter(cg => {
+            if (!visibleColumns.has("Cliente")) return true;
+            return filterCliente.size === 0 || filterCliente.has(cg.cliente);
+          })
           .map(cg => {
             const filteredProjetos = cg.projetos.filter(p => {
-              if (filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
+              if (visibleColumns.has("Projeto") && filterProjeto.size > 0 && !filterProjeto.has(p.projeto_nome)) return false;
               const proj = projetos.find(pr => pr.id === p.projeto_id);
               const st = proj?.status || "Sem status";
-              if (filterStatus.size > 0 && !filterStatus.has(st)) return false;
-              if (filterSite.size > 0) {
+              if (visibleColumns.has("Status") && filterStatus.size > 0 && !filterStatus.has(st)) return false;
+              if (visibleColumns.has("Site") && filterSite.size > 0) {
                 const hasSiteMatch = p.siteRows.some(s => filterSite.has(`${s.site_codigo} - ${s.site_nome}`));
                 if (!hasSiteMatch) return false;
               }
@@ -427,7 +433,7 @@ export default function QuadroGeral() {
         return { ...ag, clientes, totals: calcTotals(allProjetos) };
       })
       .filter(Boolean) as AreaGroup[];
-  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos]);
+  }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos, visibleColumns]);
 
   const grandTotals = useMemo(() => calcTotals(filteredAreaGroups.map(g => g.totals)), [filteredAreaGroups]);
   const grandPercent = grandTotals.valor_contrato > 0 ? (grandTotals.valor_executado / grandTotals.valor_contrato) * 100 : 0;
