@@ -226,18 +226,25 @@ export default function QuadroGeral() {
     },
   });
 
-  const [filterArea, setFilterArea] = useState<Set<string>>(new Set());
-  const [filterCliente, setFilterCliente] = useState<Set<string>>(new Set());
-  const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
-  const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
-  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(["Area", "Cliente", "Projeto", "Site", "Status"]));
+  const [filterAreaArr, setFilterAreaArr] = usePersistedState<string[]>("quadro-geral-filter-area", []);
+  const [filterClienteArr, setFilterClienteArr] = usePersistedState<string[]>("quadro-geral-filter-cliente", []);
+  const [filterProjetoArr, setFilterProjetoArr] = usePersistedState<string[]>("quadro-geral-filter-projeto", []);
+  const [filterSiteArr, setFilterSiteArr] = usePersistedState<string[]>("quadro-geral-filter-site", []);
+  const [filterStatusArr, setFilterStatusArr] = usePersistedState<string[]>("quadro-geral-filter-status", []);
+  const [visibleColumnsArr, setVisibleColumnsArr] = usePersistedState<string[]>("quadro-geral-visible-columns", ["Area", "Cliente", "Projeto", "Site", "Status"]);
 
-  const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
+  const filterArea = useMemo(() => new Set(filterAreaArr), [filterAreaArr]);
+  const filterCliente = useMemo(() => new Set(filterClienteArr), [filterClienteArr]);
+  const filterProjeto = useMemo(() => new Set(filterProjetoArr), [filterProjetoArr]);
+  const filterSite = useMemo(() => new Set(filterSiteArr), [filterSiteArr]);
+  const filterStatus = useMemo(() => new Set(filterStatusArr), [filterStatusArr]);
+  const visibleColumns = useMemo(() => new Set(visibleColumnsArr), [visibleColumnsArr]);
+
+  const toggleSet = (setter: (val: string[] | ((prev: string[]) => string[])) => void) => (v: string) => {
     setter(prev => {
       const next = new Set(prev);
       if (next.has(v)) next.delete(v); else next.add(v);
-      return next;
+      return Array.from(next);
     });
   };
 
