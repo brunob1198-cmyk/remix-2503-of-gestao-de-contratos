@@ -2,7 +2,7 @@ import { useAnaliseObra } from "@/hooks/useAnaliseObra";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon } from "lucide-react";
+import { AlertTriangle, DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 const COLORS = [
