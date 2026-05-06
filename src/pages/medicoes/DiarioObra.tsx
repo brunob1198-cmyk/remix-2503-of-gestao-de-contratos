@@ -898,16 +898,46 @@ export default function DiarioObraPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="calendario" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Calendário
-          </TabsTrigger>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="calendario" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Calendário
+            </TabsTrigger>
             <TabsTrigger value="lancamento" className="flex items-center gap-2">
               <ClipboardEdit className="h-4 w-4" />
               Lançamento — {safeFormat(selectedDate, "dd/MM/yyyy")}
             </TabsTrigger>
-        </TabsList>
+          </TabsList>
+
+          {activeTab === "lancamento" && diario && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Mudar Data do Diário
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarComponent
+                  mode="single"
+                  selected={parseLocalDate(selectedDate)}
+                  onSelect={(date) => {
+                    if (date) {
+                      const dateStr = format(date, "yyyy-MM-dd");
+                      if (dateStr !== selectedDate) {
+                        if (window.confirm(`Deseja mover TODOS os lançamentos deste dia (${safeFormat(selectedDate, "dd/MM/yyyy")}) para o dia ${format(date, "dd/MM/yyyy")}?`)) {
+                          moverDiario.mutate({ diarioId: diario.id, novaData: dateStr });
+                        }
+                      }
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
 
         {uploadProgress && (
           <div className="bg-muted/30 border rounded-lg p-3 flex flex-col gap-2">
