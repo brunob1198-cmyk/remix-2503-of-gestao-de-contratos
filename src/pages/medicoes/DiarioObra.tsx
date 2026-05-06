@@ -856,36 +856,95 @@ export default function DiarioObraPage() {
 
         {/* Projeto + Site selectors */}
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 min-w-[250px]">
+          <div className="flex items-center gap-2 min-w-[300px]">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedProjetoId} onValueChange={handleProjetoChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione o projeto" />
-              </SelectTrigger>
-              <SelectContent>
-                {projetos.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.codigo} — {p.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                >
+                  {selectedProjetoId
+                    ? projetos.find((p) => p.id === selectedProjetoId)?.codigo + " — " + projetos.find((p) => p.id === selectedProjetoId)?.nome
+                    : "Selecione o projeto"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="Pesquisar projeto..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum projeto encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {projetos.map((p) => (
+                        <CommandItem
+                          key={p.id}
+                          value={`${p.codigo} ${p.nome}`}
+                          onSelect={() => {
+                            handleProjetoChange(p.id);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedProjetoId === p.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {p.codigo} — {p.nome}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          <div className="flex items-center gap-2 min-w-[250px]">
+          <div className="flex items-center gap-2 min-w-[300px]">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedSiteId} onValueChange={setSelectedSiteId} disabled={!selectedProjetoId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={selectedProjetoId ? "Selecione o site" : "Selecione um projeto primeiro"} />
-              </SelectTrigger>
-              <SelectContent>
-                {sites.map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.codigo} — {s.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                  disabled={!selectedProjetoId}
+                >
+                  {selectedSiteId
+                    ? sites.find((s) => s.id === selectedSiteId)?.codigo + " — " + sites.find((s) => s.id === selectedSiteId)?.nome
+                    : selectedProjetoId ? "Selecione o site" : "Selecione um projeto primeiro"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0">
+                <Command>
+                  <CommandInput placeholder="Pesquisar site..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum site encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {sites.map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          value={`${s.codigo} ${s.nome}`}
+                          onSelect={() => {
+                            setSelectedSiteId(s.id);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedSiteId === s.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {s.codigo} — {s.nome}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {selectedProjetoId && (
