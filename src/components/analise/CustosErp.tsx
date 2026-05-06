@@ -118,8 +118,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     competencia: new Set(), descricao: new Set(), mapeamento: new Set(), centro_custo: new Set(), valor: new Set(), status: new Set(), categoria: new Set()
   });
 
-  const [showOnlyConflicts, setShowOnlyConflicts] = useState(false);
-  const [ignoredConflicts, setIgnoredConflicts] = useState<Set<string>>(new Set());
+  const [ignoredConflicts] = useState<Set<string>>(new Set());
 
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
@@ -140,7 +139,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   }, [custosErp, categoriasMapeamento, ignoredConflicts]);
 
   const filteredItems = useMemo(() => {
-    let items = showOnlyConflicts ? conflicts : [...custosErp];
+    let items = [...custosErp];
     
     for (const col of allCols) {
       const search = searchTexts[col].toLowerCase();
@@ -166,7 +165,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
       });
     }
     return items;
-  }, [custosErp, conflicts, showOnlyConflicts, searchTexts, selectedFilters, sortCol, sortDir]);
+  }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
 
   const totalValor = useMemo(() => {
     return filteredItems.reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
@@ -225,38 +224,12 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
           <div>
             <CardTitle className="flex items-center gap-2">
               Auditoria de Despesas - Conta Azul
-              {conflicts.length > 0 && (
-                <Badge variant="destructive" className="animate-pulse">
-                  {conflicts.length} Incoerências
-                </Badge>
-              )}
             </CardTitle>
             <CardDescription>
               Verificação automática de categorias ERP vs Regras de Mapeamento (DE-PARA).
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button 
-              variant={showOnlyConflicts ? "destructive" : "outline"} 
-              size="sm" 
-              onClick={() => setShowOnlyConflicts(!showOnlyConflicts)}
-              className="gap-2"
-            >
-              <AlertCircle className="h-4 w-4" />
-              {showOnlyConflicts ? "Mostrar Tudo" : "Ver Incoerências"}
-            </Button>
-            {conflicts.length > 0 && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-white"
-                onClick={handleBulkCorrect}
-                disabled={updateBulkCategorias.isPending}
-              >
-                {updateBulkCategorias.isPending ? <Wand2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Corrigir {conflicts.length} em Lote
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredItems.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
