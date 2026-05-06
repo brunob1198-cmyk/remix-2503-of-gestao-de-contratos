@@ -330,9 +330,17 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <Card>
-      <CardHeader className="pb-3 border-b">
-        <CardTitle>Matriz de Custos</CardTitle>
-        <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+      <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Matriz de Custos</CardTitle>
+          <CardDescription>Produção, Custo Orçado, Despesas por Categoria e Total Real (ERP) — por mês de competência</CardDescription>
+        </div>
+        {isFetching && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Atualizando...
+          </div>
+        )}
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">
