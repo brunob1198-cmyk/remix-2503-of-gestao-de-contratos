@@ -1331,6 +1331,30 @@ export default function DiarioObraPage() {
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditProducao(p)}>
                                       <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                                     </Button>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Alterar data de execução">
+                                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="end">
+                                        <CalendarComponent
+                                          mode="single"
+                                          selected={parseLocalDate(selectedDate)}
+                                          onSelect={(date) => {
+                                            if (date) {
+                                              const dateStr = format(date, "yyyy-MM-dd");
+                                              if (dateStr !== selectedDate) {
+                                                if (window.confirm(`Deseja mover esta atividade para o dia ${format(date, "dd/MM/yyyy")}?`)) {
+                                                  moverProducao.mutate({ producaoId: p.id, novaData: dateStr });
+                                                }
+                                              }
+                                            }
+                                          }}
+                                          initialFocus
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeProducao.mutate(p.id)}>
                                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                     </Button>
