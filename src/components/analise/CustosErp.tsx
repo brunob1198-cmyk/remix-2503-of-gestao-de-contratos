@@ -118,8 +118,6 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     competencia: new Set(), descricao: new Set(), mapeamento: new Set(), centro_custo: new Set(), valor: new Set(), status: new Set(), categoria: new Set()
   });
 
-  const [showOnlyConflicts, setShowOnlyConflicts] = useState(false);
-  const [ignoredConflicts, setIgnoredConflicts] = useState<Set<string>>(new Set());
 
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
@@ -131,16 +129,9 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     return result;
   }, [custosErp]);
 
-  const conflicts = useMemo(() => {
-    return custosErp.filter(item => {
-      const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-      const isActuallyConflict = mapping && mapping.categoria_interna !== item.categoria_interna;
-      return isActuallyConflict && !ignoredConflicts.has(item.erp_id);
-    });
-  }, [custosErp, categoriasMapeamento, ignoredConflicts]);
 
   const filteredItems = useMemo(() => {
-    let items = showOnlyConflicts ? conflicts : [...custosErp];
+    let items = [...custosErp];
     
     for (const col of allCols) {
       const search = searchTexts[col].toLowerCase();
@@ -166,7 +157,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
       });
     }
     return items;
-  }, [custosErp, conflicts, showOnlyConflicts, searchTexts, selectedFilters, sortCol, sortDir]);
+  }, [custosErp, searchTexts, selectedFilters, sortCol, sortDir]);
 
   const totalValor = useMemo(() => {
     return filteredItems.reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
@@ -179,17 +170,6 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
     return filteredItems.slice(start, start + itemsPerPage);
   }, [filteredItems, safeCurrentPage, itemsPerPage]);
 
-  const handleBulkCorrect = () => {
-    const updates = conflicts.map(item => {
-      const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-      return {
-        erp_id: item.erp_id,
-        categoria_erp: item.categoria_erp,
-        categoria_interna: mapping?.categoria_interna || item.categoria_interna
-      };
-    });
-    updateBulkCategorias.mutate(updates);
-  };
 
   const handleExport = () => {
     const data = filteredItems.map(item => ({
@@ -225,38 +205,12 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
           <div>
             <CardTitle className="flex items-center gap-2">
               Auditoria de Despesas - Conta Azul
-              {conflicts.length > 0 && (
-                <Badge variant="destructive" className="animate-pulse">
-                  {conflicts.length} Incoerências
-                </Badge>
-              )}
             </CardTitle>
             <CardDescription>
               Verificação automática de categorias ERP vs Regras de Mapeamento (DE-PARA).
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button 
-              variant={showOnlyConflicts ? "destructive" : "outline"} 
-              size="sm" 
-              onClick={() => setShowOnlyConflicts(!showOnlyConflicts)}
-              className="gap-2"
-            >
-              <AlertCircle className="h-4 w-4" />
-              {showOnlyConflicts ? "Mostrar Tudo" : "Ver Incoerências"}
-            </Button>
-            {conflicts.length > 0 && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="bg-emerald-600 hover:bg-emerald-700 gap-2 text-white"
-                onClick={handleBulkCorrect}
-                disabled={updateBulkCategorias.isPending}
-              >
-                {updateBulkCategorias.isPending ? <Wand2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Corrigir {conflicts.length} em Lote
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredItems.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
@@ -264,15 +218,6 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {conflicts.length > 0 && (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Incoerências Identificadas</AlertTitle>
-            <AlertDescription>
-              Foram encontrados {conflicts.length} lançamentos cujas categorias atuais divergem das regras de mapeamento salvas. Clique em "Corrigir em Lote" para aplicar as regras do DE-PARA automaticamente.
-            </AlertDescription>
-          </Alert>
-        )}
 
         {loadCustos ? (
           <div className="space-y-2">
@@ -311,70 +256,43 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {paginatedItems.map((item) => {
-                  const mapping = categoriasMapeamento.find(m => m.categoria_erp === item.categoria_erp);
-                  const isConflict = mapping && mapping.categoria_interna !== item.categoria_interna && !ignoredConflicts.has(item.erp_id);
-                  
-                  return (
-                    <tr key={item.id} className={`hover:bg-muted/10 transition-colors ${isConflict ? "bg-red-50/50 dark:bg-red-950/10" : ""}`}>
-                      <td className="py-2 px-3 text-muted-foreground">
-                        {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
-                      </td>
-                      <td className="py-2 px-3 font-medium">{item.descricao}</td>
-                      <td className="py-2 px-3 text-xs text-muted-foreground">
-                        {item.categoria_erp}
-                        {isConflict && (
-                          <div className="text-[10px] text-destructive mt-1 font-medium">
-                            Sugestão DE-PARA: {mapping.categoria_interna}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-xs">
-                        {item.centro_custo ? <Badge variant="outline">{item.centro_custo}</Badge> : "-"}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono">{formatCurrency(item.valor)}</td>
-                      <td className="py-2 px-3">
-                        <Badge variant={item.status_erp === "pago" ? "secondary" : "outline"}>
-                          {item.status_erp?.toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          <Select 
-                            value={item.categoria_interna} 
-                            onValueChange={(val) => updateCategoria.mutate({ erpId: item.erp_id, newCategoria: val })}
-                          >
-                            <SelectTrigger className={`h-7 text-xs ${isConflict ? "border-destructive text-destructive font-bold" : ""}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CATEGORIAS_PADRAO.map(cat => (
-                                <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {isConflict && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              onClick={() => {
-                                setIgnoredConflicts(prev => {
-                                  const next = new Set(prev);
-                                  next.add(item.erp_id);
-                                  return next;
-                                });
-                              }}
-                              title="Ignorar divergência"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {paginatedItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                    <td className="py-2 px-3 text-muted-foreground">
+                      {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
+                    </td>
+                    <td className="py-2 px-3 font-medium">{item.descricao}</td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">
+                      {item.categoria_erp}
+                    </td>
+                    <td className="py-2 px-3 text-xs">
+                      {item.centro_custo ? <Badge variant="outline">{item.centro_custo}</Badge> : "-"}
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono">{formatCurrency(item.valor)}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant={item.status_erp === "pago" ? "secondary" : "outline"}>
+                        {item.status_erp?.toUpperCase()}
+                      </Badge>
+                    </td>
+                    <td className="py-2 px-3">
+                      <div className="flex items-center gap-2">
+                        <Select 
+                          value={item.categoria_interna} 
+                          onValueChange={(val) => updateCategoria.mutate({ erpId: item.erp_id, newCategoria: val })}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIAS_PADRAO.map(cat => (
+                              <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
               <tfoot className="bg-muted/50 border-t font-medium">
                 <tr>
