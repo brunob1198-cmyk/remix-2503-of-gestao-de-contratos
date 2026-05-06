@@ -683,7 +683,7 @@ export default function QuadroGeral() {
 
                         {areaExpanded && ag.clientes.map(cg => {
                           const clienteKey = `cliente:${ag.area}|${cg.cliente}`;
-                          const clienteExpanded = expanded.has(clienteKey);
+                          const clienteExpanded = expanded.has(clienteKey) || !isClienteVisible;
                           return (
                             <Fragment key={clienteKey}>
                               <TableRow
