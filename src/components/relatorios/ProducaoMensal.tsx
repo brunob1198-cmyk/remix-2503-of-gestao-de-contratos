@@ -62,7 +62,7 @@ const COL_LABELS: Record<ColKey, string> = {
   producao_acum_anterior: "Prod. Acum. Anterior",
   producao_mes: "Produção do Mês",
   producao_total_atual: "Prod. Total Atual",
-  mes_label: "Mês de Produção",
+  mes_producao: "Mês de Produção",
 };
 
 const formatCurrency = (value: number) =>
