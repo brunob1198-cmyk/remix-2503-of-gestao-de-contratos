@@ -664,6 +664,14 @@ export function useDiarioObra(siteId?: string, data?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
   });
 
+  const atualizarFoto = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; classificacao?: string; legenda?: string; diario_producao_id?: string | null }) => {
+      const { error } = await supabase.from("diario_fotos").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
+  });
+
   const removeFoto = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("diario_fotos").delete().eq("id", id);
