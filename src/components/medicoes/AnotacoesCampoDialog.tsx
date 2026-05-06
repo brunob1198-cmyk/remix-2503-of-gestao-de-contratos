@@ -116,6 +116,53 @@ export function AnotacoesCampoDialog({
     }
   };
 
+  const handleTransferAll = async (fotos: DiarioCampoFoto[]) => {
+    const untransferred = fotos.filter(f => !fotosObra.some(fo => fo.url === f.url));
+    if (untransferred.length === 0) {
+      toast({ title: "Todas as fotos já foram transferidas" });
+      return;
+    }
+
+    const diarioId = diarioObraId || (await ensureDiario());
+    if (!diarioId) return;
+
+    setTransferring(prev => {
+      const next = { ...prev };
+      untransferred.forEach(f => { next[f.id] = true; });
+      return next;
+    });
+
+    try {
+      const inserts = untransferred.map(foto => {
+        const target = selectedTarget[foto.id] || "geral";
+        const data: any = {
+          diario_id: diarioId,
+          url: foto.url,
+          thumb_url: foto.thumb_url,
+          thumb_600_url: foto.thumb_600_url,
+          classificacao: "execucao",
+          legenda: foto.legenda || "Transferido do Diário de Campo",
+        };
+        if (target !== "geral") data.diario_producao_id = target;
+        return data;
+      });
+
+      const { error } = await supabase.from("diario_fotos").insert(inserts);
+      if (error) throw error;
+
+      onFotoTransferred();
+      toast({ title: `${untransferred.length} fotos transferidas com sucesso!` });
+    } catch (err: any) {
+      toast({ title: "Erro ao transferir fotos", description: err.message, variant: "destructive" });
+    } finally {
+      setTransferring(prev => {
+        const next = { ...prev };
+        untransferred.forEach(f => { next[f.id] = false; });
+        return next;
+      });
+    }
+  };
+
   const targetOptions = [
     { value: "geral", label: "📷 Geral (sem item LPU)" },
     ...producoes.map((p) => {
