@@ -47,7 +47,7 @@ interface MonthlyRow {
 const COLUMNS = [
   "area", "cliente", "projeto_codigo", "projeto_descricao",
   "coordenador", "valor_contrato", "producao_acum_anterior",
-  "producao_mes", "producao_total_atual", "mes_label",
+  "producao_mes", "producao_total_atual", "mes_producao",
 ] as const;
 
 type ColKey = (typeof COLUMNS)[number];
