@@ -153,10 +153,28 @@ export default function AnaliseObraPage() {
 
         {selectedIds.length > 0 && (
           <>
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="gap-2 bg-primary hover:bg-primary/90" 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              Atualizar Dados
+            </Button>
+
             <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate()} disabled={syncErp.isPending}>
               <RefreshCw className={`h-3.5 w-3.5 ${syncErp.isPending ? "animate-spin" : ""}`} />
               Sincronizar Conta Azul
             </Button>
+
+            {lastUpdated && (
+              <span className="text-[10px] text-muted-foreground self-center italic">
+                Última atualização: {new Date(lastUpdated).toLocaleString('pt-BR')}
+              </span>
+            )}
+
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
               <X className="h-4 w-4 mr-1" /> Limpar
             </Button>
