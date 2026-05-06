@@ -163,6 +163,45 @@ export function AnotacoesCampoDialog({
     }
   };
 
+  const handleRemoveAll = async (fotos: DiarioCampoFoto[]) => {
+    const transferred = fotos
+      .map(f => fotosObra.find(fo => fo.url === f.url))
+      .filter((fo): fo is DiarioFoto => !!fo);
+    
+    if (transferred.length === 0) {
+      toast({ title: "Nenhuma foto para remover" });
+      return;
+    }
+
+    const idsToRemove = transferred.map(f => f.id);
+    
+    setRemoving(prev => {
+      const next = { ...prev };
+      idsToRemove.forEach(id => { next[id] = true; });
+      return next;
+    });
+
+    try {
+      const { error } = await supabase
+        .from("diario_fotos")
+        .delete()
+        .in("id", idsToRemove);
+      
+      if (error) throw error;
+
+      onFotoTransferred();
+      toast({ title: `${transferred.length} fotos removidas com sucesso!` });
+    } catch (err: any) {
+      toast({ title: "Erro ao remover fotos", description: err.message, variant: "destructive" });
+    } finally {
+      setRemoving(prev => {
+        const next = { ...prev };
+        idsToRemove.forEach(id => { next[id] = false; });
+        return next;
+      });
+    }
+  };
+
   const targetOptions = [
     { value: "geral", label: "📷 Geral (sem item LPU)" },
     ...producoes.map((p) => {
@@ -255,15 +294,26 @@ export function AnotacoesCampoDialog({
                             <Image className="h-3.5 w-3.5 inline mr-1" />
                             Fotos ({fotosAtividade.length}) — Transferir para Diário de Obra
                           </p>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-7 text-[10px] px-2"
-                            onClick={() => handleTransferAll(fotosAtividade)}
-                            disabled={fotosAtividade.every(f => fotosObra.some(fo => fo.url === f.url))}
-                          >
-                            Transferir Todas
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-[10px] px-2"
+                              onClick={() => handleTransferAll(fotosAtividade)}
+                              disabled={fotosAtividade.every(f => fotosObra.some(fo => fo.url === f.url))}
+                            >
+                              Transferir Todas
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-7 text-[10px] px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleRemoveAll(fotosAtividade)}
+                              disabled={!fotosAtividade.some(f => fotosObra.some(fo => fo.url === f.url))}
+                            >
+                              Remover Todas
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-3">
                           {fotosAtividade.map((f) => {
