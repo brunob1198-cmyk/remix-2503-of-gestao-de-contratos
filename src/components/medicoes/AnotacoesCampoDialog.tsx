@@ -71,6 +71,8 @@ export function AnotacoesCampoDialog({
       const insertData: any = {
         diario_id: diarioId,
         url: foto.url,
+        thumb_url: foto.thumb_url,
+        thumb_600_url: foto.thumb_600_url,
         classificacao: "execucao",
         legenda: foto.legenda || "Transferido do Diário de Campo",
       };
@@ -82,13 +84,35 @@ export function AnotacoesCampoDialog({
       const { error } = await supabase.from("diario_fotos").insert([insertData]);
       if (error) throw error;
 
-      setTransferred((p) => ({ ...p, [fotoId]: true }));
       onFotoTransferred();
       toast({ title: "Foto transferida para o Diário de Obra!" });
     } catch (err: any) {
       toast({ title: "Erro ao transferir", description: err.message, variant: "destructive" });
     } finally {
       setTransferring((p) => ({ ...p, [fotoId]: false }));
+    }
+  };
+
+  const handleRemoveFoto = async (fotoUrl: string) => {
+    const fotoNoDiario = fotosObra.find(f => f.url === fotoUrl);
+    if (!fotoNoDiario) return;
+
+    setRemoving((p) => ({ ...p, [fotoNoDiario.id]: true }));
+
+    try {
+      const { error } = await supabase
+        .from("diario_fotos")
+        .delete()
+        .eq("id", fotoNoDiario.id);
+      
+      if (error) throw error;
+
+      onFotoTransferred(); // Invalidate parent queries
+      toast({ title: "Foto removida do Diário de Obra!" });
+    } catch (err: any) {
+      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+    } finally {
+      setRemoving((p) => ({ ...p, [fotoNoDiario.id]: false }));
     }
   };
 
