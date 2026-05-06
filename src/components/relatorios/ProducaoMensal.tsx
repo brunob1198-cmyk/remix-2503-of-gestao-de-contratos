@@ -203,7 +203,10 @@ export default function ProducaoMensal() {
     handleSort, setSearchText, toggleValue, selectAll, clearAll,
     processedItems, uniqueValues,
     currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages, paginatedItems,
-  } = useTableFilters<MonthlyRow, ColKey>(rows, COLUMNS, getColValue);
+  } = useTableFilters<MonthlyRow, ColKey>(rows, COLUMNS, getColValue, "relatorios:producao_mensal", {
+    column: "mes_producao",
+    direction: "desc"
+  });
 
   const totals = useMemo(
     () => ({
