@@ -310,7 +310,7 @@ export default function ProducaoMensal() {
                       <TableHead className="text-right">{renderColumnHeader("producao_acum_anterior")}</TableHead>
                       <TableHead className="text-right">{renderColumnHeader("producao_mes")}</TableHead>
                       <TableHead className="text-right">{renderColumnHeader("producao_total_atual")}</TableHead>
-                      <TableHead>{renderColumnHeader("mes_label")}</TableHead>
+                      <TableHead>{renderColumnHeader("mes_producao")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
