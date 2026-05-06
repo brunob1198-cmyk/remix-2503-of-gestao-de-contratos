@@ -1781,8 +1781,43 @@ export default function DiarioObraPage() {
                 const inputRef = (el: HTMLInputElement | null) => {
                   photoGroupUploadRefs.current[groupName] = el;
                 };
+
+                const onDragOver = (e: React.DragEvent) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add("bg-emerald-50/50", "ring-2", "ring-emerald-500");
+                };
+
+                const onDragLeave = (e: React.DragEvent) => {
+                  e.currentTarget.classList.remove("bg-emerald-50/50", "ring-2", "ring-emerald-500");
+                };
+
+                const onDrop = async (e: React.DragEvent) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("bg-emerald-50/50", "ring-2", "ring-emerald-500");
+                  
+                  const fotoId = e.dataTransfer.getData("fotoId");
+                  if (!fotoId) return;
+
+                  try {
+                    await atualizarFoto.mutateAsync({
+                      id: fotoId,
+                      classificacao: groupName,
+                      diario_producao_id: null
+                    });
+                    toast({ title: "Foto movida para " + groupName });
+                  } catch (err: any) {
+                    toast({ title: "Erro ao mover foto", description: err.message, variant: "destructive" });
+                  }
+                };
+
                 return (
-                  <div key={groupName} className="space-y-2">
+                  <div 
+                    key={groupName} 
+                    className="space-y-2 p-3 rounded-lg border-2 border-transparent transition-all"
+                    onDragOver={onDragOver}
+                    onDragLeave={onDragLeave}
+                    onDrop={onDrop}
+                  >
                     {/* Group header */}
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -1823,23 +1858,31 @@ export default function DiarioObraPage() {
                     {groupFotos.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {groupFotos.map(f => (
-                          <div key={f.id} className="relative group rounded-lg overflow-hidden border">
+                          <div 
+                            key={f.id} 
+                            draggable 
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("fotoId", f.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
+                          >
                             {isFileImage(f.url) ? (
                                 <ResponsiveImage 
                                   src={f.url} 
                                   thumb300={f.thumb_url}
                                   thumb600={f.thumb_600_url}
                                   alt={f.legenda || "foto"} 
-                                  className="w-full h-32 object-cover" 
+                                  className="w-full h-32 object-cover pointer-events-none" 
                                 />
                             ) : (
-                              <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
+                              <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1 pointer-events-none">
                                 <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
                                 <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
                               </div>
                             )}
                             {/* Group badge */}
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 pointer-events-none">
                               <span className="inline-block rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 truncate max-w-full">
                                 {groupName}
                               </span>
