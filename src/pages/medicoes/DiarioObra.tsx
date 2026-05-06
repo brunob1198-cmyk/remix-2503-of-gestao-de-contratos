@@ -927,7 +927,11 @@ export default function DiarioObraPage() {
                       const dateStr = format(date, "yyyy-MM-dd");
                       if (dateStr !== selectedDate) {
                         if (window.confirm(`Deseja mover TODOS os lançamentos deste dia (${safeFormat(selectedDate, "dd/MM/yyyy")}) para o dia ${format(date, "dd/MM/yyyy")}?`)) {
-                          moverDiario.mutate({ diarioId: diario.id, novaData: dateStr });
+                          moverDiario.mutate({ diarioId: diario.id, novaData: dateStr }, {
+                            onSuccess: (data) => {
+                              setSelectedDate(data.novaData);
+                            }
+                          });
                         }
                       }
                     }
