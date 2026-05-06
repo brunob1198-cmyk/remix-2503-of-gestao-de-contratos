@@ -711,31 +711,33 @@ export default function QuadroGeral() {
                                 const hasSites = p.siteRows.length > 0;
                                 return (
                                   <Fragment key={p.projeto_id}>
-                                    <TableRow
-                                      className={cn("hover:bg-muted/20", hasSites && "cursor-pointer")}
-                                      onClick={() => hasSites && toggle(projetoKey)}
-                                    >
-                                      <TableCell>
-                                        <div className="flex items-center gap-2 pl-12">
-                                          {hasSites ? (
-                                            projetoExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                                          ) : (
-                                            <span className="w-3.5" />
-                                          )}
-                                          <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                                          <span className="font-medium text-sm">{p.projeto_codigo}</span>
-                                          <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
-                                      <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                                        {formatCurrency(p.valor_nao_faturado)}
-                                      </TableCell>
-                                      <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
-                                      <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
-                                    </TableRow>
+                                    {isProjetoVisible && (
+                                      <TableRow
+                                        className={cn("hover:bg-muted/20", hasSites && "cursor-pointer")}
+                                        onClick={() => hasSites && toggle(projetoKey)}
+                                      >
+                                        <TableCell>
+                                          <div className={cn("flex items-center gap-2", isAreaVisible && isClienteVisible ? "pl-12" : isAreaVisible || isClienteVisible ? "pl-6" : "pl-0")}>
+                                            {hasSites ? (
+                                              projetoExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                                            ) : (
+                                              <span className="w-3.5" />
+                                            )}
+                                            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <span className="font-medium text-sm">{p.projeto_codigo}</span>
+                                            <span className="text-muted-foreground text-sm">— {p.projeto_nome}</span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
+                                          {formatCurrency(p.valor_nao_faturado)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
+                                        <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
+                                      </TableRow>
+                                    )}
 
                                     {projetoExpanded && p.siteRows.map(s => (
                                       <TableRow key={s.site_id} className="hover:bg-muted/10">
