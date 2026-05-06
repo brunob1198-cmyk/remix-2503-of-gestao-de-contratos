@@ -606,7 +606,7 @@ export default function QuadroGeral() {
                 />
               </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
-                <MultiSelectFilter label="Projeto" options={filterOptions.projects} selected={filterProjeto} onToggle={toggleSet(setFilterProjetoArr)} onSelectAll={() => setFilterProjetoArr(filterOptions.projetos)} onClearAll={() => setFilterProjetoArr([])} />
+                <MultiSelectFilter label="Projeto" options={filterOptions.projetos} selected={filterProjeto} onToggle={toggleSet(setFilterProjetoArr)} onSelectAll={() => setFilterProjetoArr(filterOptions.projetos)} onClearAll={() => setFilterProjetoArr([])} />
                 <Checkbox 
                   checked={visibleColumns.has("Projeto")} 
                   onCheckedChange={() => toggleSet(setVisibleColumnsArr)("Projeto")}
