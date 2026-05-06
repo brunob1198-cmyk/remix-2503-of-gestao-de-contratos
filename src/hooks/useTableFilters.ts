@@ -25,7 +25,8 @@ export function useTableFilters<T, ColKey extends string>(
   items: T[], 
   columns: readonly ColKey[], 
   getColValue: (item: T, col: ColKey) => string,
-  persistKey?: string
+  persistKey?: string,
+  initialSort?: { column: ColKey; direction: SortDir }
 ) {
   const emptySearchTexts = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: "" }), {} as Record<ColKey, string>), [columns]);
   const emptySelectedArrays = useMemo(() => columns.reduce((acc, col) => ({ ...acc, [col]: [] as string[] }), {} as Record<ColKey, string[]>), [columns]);
