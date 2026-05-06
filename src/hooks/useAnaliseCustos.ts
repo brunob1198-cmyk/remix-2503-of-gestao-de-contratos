@@ -219,6 +219,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 3. Produzido Físico
   const { data: fisico = { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 }, isLoading: loadFisico } = useQuery({
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
+    staleTime: Infinity,
     queryFn: async () => {
       let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
       if (startDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
