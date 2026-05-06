@@ -707,7 +707,7 @@ export default function QuadroGeral() {
 
                               {clienteExpanded && cg.projetos.map(p => {
                                 const projetoKey = `projeto:${p.projeto_id}`;
-                                const projetoExpanded = expanded.has(projetoKey);
+                                const projetoExpanded = expanded.has(projetoKey) || !isProjetoVisible;
                                 const hasSites = p.siteRows.length > 0;
                                 return (
                                   <Fragment key={p.projeto_id}>
