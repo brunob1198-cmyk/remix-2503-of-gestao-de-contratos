@@ -662,22 +662,24 @@ export default function QuadroGeral() {
                     const totalProjetos = ag.clientes.reduce((s, c) => s + c.projetos.length, 0);
                     return (
                       <Fragment key={areaKey}>
-                        <TableRow
-                          className="bg-muted/60 cursor-pointer hover:bg-muted/80 transition-colors"
-                          onClick={() => toggle(areaKey)}
-                        >
-                          <TableCell className="font-bold">
-                            <div className="flex items-center gap-2">
-                              {areaExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                              <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span>{ag.area}</span>
-                              <span className="text-xs text-muted-foreground font-normal ml-1">
-                                ({totalClientes} cliente{totalClientes !== 1 ? "s" : ""}, {totalProjetos} projeto{totalProjetos !== 1 ? "s" : ""})
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TotalsRow t={ag.totals} />
-                        </TableRow>
+                        {isAreaVisible && (
+                          <TableRow
+                            className="bg-muted/60 cursor-pointer hover:bg-muted/80 transition-colors"
+                            onClick={() => toggle(areaKey)}
+                          >
+                            <TableCell className="font-bold">
+                              <div className="flex items-center gap-2">
+                                {areaExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span>{ag.area}</span>
+                                <span className="text-xs text-muted-foreground font-normal ml-1">
+                                  ({totalClientes} cliente{totalClientes !== 1 ? "s" : ""}, {totalProjetos} projeto{totalProjetos !== 1 ? "s" : ""})
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TotalsRow t={ag.totals} />
+                          </TableRow>
+                        )}
 
                         {areaExpanded && ag.clientes.map(cg => {
                           const clienteKey = `cliente:${ag.area}|${cg.cliente}`;
