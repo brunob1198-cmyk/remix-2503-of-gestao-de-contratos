@@ -319,6 +319,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const { data: categoriasMapeamento = [] } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
+    staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
