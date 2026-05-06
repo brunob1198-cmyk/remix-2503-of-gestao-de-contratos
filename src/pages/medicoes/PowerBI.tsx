@@ -271,9 +271,16 @@ export default function PowerBIPage() {
                   <CardTitle className="text-base">{active.nome}</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleRefresh}>
-                    <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
-                  </Button>
+                  <div className="flex flex-col items-end">
+                    <Button variant="outline" size="sm" onClick={handleRefresh}>
+                      <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
+                    </Button>
+                    {lastUpdated && (
+                      <span className="text-[10px] text-muted-foreground italic mt-1">
+                        Última atualização: {new Date(lastUpdated).toLocaleString('pt-BR')}
+                      </span>
+                    )}
+                  </div>
                   <Button variant="outline" size="sm" onClick={toggleFullscreen}>
                     {isFullscreen ? (
                       <>
