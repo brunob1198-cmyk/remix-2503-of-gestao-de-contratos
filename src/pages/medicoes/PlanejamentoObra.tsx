@@ -14,7 +14,7 @@ import { GanttChart } from "@/components/planejamento/GanttChart";
 import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailSheet";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 // AtividadeForm removed - escopo linking is done in FrenteForm
-import { TimelineObra } from "@/components/planejamento/TimelineObra";
+
 // SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
@@ -122,7 +122,7 @@ export default function PlanejamentoObra() {
             Planejamento de Obra
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Planeje e acompanhe a execução das frentes de obra com visualização Gantt e Timeline
+            Planeje e acompanhe a execução das frentes de obra com visualização Gantt
           </p>
         </div>
       </div>
@@ -191,9 +191,6 @@ export default function PlanejamentoObra() {
           <TabsList>
             <TabsTrigger value="gantt" className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> Gantt
-            </TabsTrigger>
-            <TabsTrigger value="timeline" className="gap-1.5">
-              <Map className="h-4 w-4" /> Timeline
             </TabsTrigger>
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
@@ -345,15 +342,6 @@ export default function PlanejamentoObra() {
             />
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-4">
-            <ErrorBoundary fallbackMessage="Erro ao carregar a Timeline. Tente novamente.">
-              <TimelineObra
-                projetoId={projetoId}
-                siteFilter={selectedSiteIds.length > 0 ? selectedSiteIds : undefined}
-                sites={sites as any}
-              />
-            </ErrorBoundary>
-          </TabsContent>
 
 
           <TabsContent value="produtividade" className="mt-4">
