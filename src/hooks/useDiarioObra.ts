@@ -388,6 +388,31 @@ export function useDiarioObra(siteId?: string, data?: string) {
           await supabase.from("diarios_obra").update(updates).eq("id", targetId);
         }
 
+        // Mover diários de campo associados
+        const { data: currentCampos } = await supabase
+          .from("diarios_campo")
+          .select("*")
+          .eq("site_id", siteId)
+          .eq("data", currentDiario.data);
+          
+        if (currentCampos && currentCampos.length > 0) {
+           for (const campo of currentCampos) {
+              const { data: targetCampo } = await supabase
+                .from("diarios_campo")
+                .select("id")
+                .eq("site_id", siteId)
+                .eq("data", novaData)
+                .maybeSingle();
+                
+              if (targetCampo) {
+                 await supabase.from("diario_campo_fotos").update({ diario_campo_id: targetCampo.id }).eq("diario_campo_id", campo.id);
+                 await supabase.from("diarios_campo").delete().eq("id", campo.id);
+              } else {
+                 await supabase.from("diarios_campo").update({ data: novaData }).eq("id", campo.id);
+              }
+           }
+        }
+
         const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
         if (delErr) throw delErr;
 
