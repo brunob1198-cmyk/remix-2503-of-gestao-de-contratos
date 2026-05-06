@@ -122,7 +122,7 @@ export default function PlanejamentoObra() {
             Planejamento de Obra
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Planeje e acompanhe a execução das frentes de obra com visualização Gantt e Timeline
+            Planeje e acompanhe a execução das frentes de obra com visualização Gantt
           </p>
         </div>
       </div>
