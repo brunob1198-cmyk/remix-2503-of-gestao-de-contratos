@@ -361,7 +361,3 @@ export default function ProducaoMensal() {
   );
 }
 
-const monthNames = [
-  "jan", "fev", "mar", "abr", "mai", "jun",
-  "jul", "ago", "set", "out", "nov", "dez",
-];
