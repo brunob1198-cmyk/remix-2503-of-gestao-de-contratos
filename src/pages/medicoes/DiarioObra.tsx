@@ -1923,24 +1923,59 @@ export default function DiarioObraPage() {
                       <span className="text-sm font-semibold text-muted-foreground">Outras Fotos</span>
                       <Badge variant="secondary" className="text-[10px]">{semGrupo.length}</Badge>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div 
+                      className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 rounded-lg border-2 border-transparent transition-all"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add("bg-muted/50", "ring-2", "ring-muted-foreground/30");
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove("bg-muted/50", "ring-2", "ring-muted-foreground/30");
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove("bg-muted/50", "ring-2", "ring-muted-foreground/30");
+                        
+                        const fotoId = e.dataTransfer.getData("fotoId");
+                        if (!fotoId) return;
+
+                        try {
+                          await atualizarFoto.mutateAsync({
+                            id: fotoId,
+                            classificacao: "execucao", // Volta para o padrão
+                            diario_producao_id: null
+                          });
+                          toast({ title: "Foto movida para Geral" });
+                        } catch (err: any) {
+                          toast({ title: "Erro ao mover foto", description: err.message, variant: "destructive" });
+                        }
+                      }}
+                    >
                       {semGrupo.map(f => (
-                        <div key={f.id} className="relative group rounded-lg overflow-hidden border">
+                        <div 
+                          key={f.id} 
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("fotoId", f.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
+                        >
                           {isFileImage(f.url) ? (
                           <ResponsiveImage 
                             src={f.url} 
                             thumb300={f.thumb_url}
                             thumb600={f.thumb_600_url}
                             alt={f.legenda || "foto"} 
-                            className="w-full h-32 object-cover" 
+                            className="w-full h-32 object-cover pointer-events-none" 
                           />
                           ) : (
-                            <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
+                            <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1 pointer-events-none">
                               <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
                               <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
                             </div>
                           )}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 pointer-events-none">
                             <span className="inline-block rounded-full bg-gray-600 text-white text-[10px] font-semibold px-2 py-0.5 truncate max-w-full">
                               {f.classificacao || "geral"}
                             </span>
