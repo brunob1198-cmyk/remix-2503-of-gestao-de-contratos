@@ -30,13 +30,14 @@ export function AnotacoesCampoDialog({
   diarioObraId,
   itensDisponiveis,
   producoes,
+  fotosObra = [],
   onFotoTransferred,
   ensureDiario,
   selectedDate,
 }: AnotacoesCampoDialogProps) {
   const { toast } = useToast();
   const [transferring, setTransferring] = useState<Record<string, boolean>>({});
-  const [transferred, setTransferred] = useState<Record<string, boolean>>({});
+  const [removing, setRemoving] = useState<Record<string, boolean>>({});
   const [selectedTarget, setSelectedTarget] = useState<Record<string, string>>({});
 
   // Fetch photos for ALL activities at once
