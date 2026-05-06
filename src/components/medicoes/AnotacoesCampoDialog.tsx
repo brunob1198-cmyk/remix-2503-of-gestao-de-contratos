@@ -208,47 +208,67 @@ export function AnotacoesCampoDialog({
                           Fotos ({fotosAtividade.length}) — Transferir para Diário de Obra
                         </p>
                         <div className="space-y-3">
-                          {fotosAtividade.map((f) => (
-                            <div key={f.id} className="flex items-center gap-3 border rounded-lg p-2 bg-muted/30">
-                              <a href={f.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                                <img src={f.url} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
-                              </a>
-                              <div className="flex-1 min-w-0 space-y-1.5">
-                                <Select
-                                  value={selectedTarget[f.id] || "geral"}
-                                  onValueChange={(v) => setSelectedTarget((p) => ({ ...p, [f.id]: v }))}
-                                  disabled={transferred[f.id]}
-                                >
-                                  <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Destino" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {targetOptions.map((o) => (
-                                      <SelectItem key={o.value} value={o.value} className="text-xs">
-                                        {o.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {transferred[f.id] ? (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Check className="h-3 w-3 mr-1" /> Transferida
-                                  </Badge>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={() => handleTransferFoto(f)}
-                                    disabled={transferring[f.id]}
+                          {fotosAtividade.map((f) => {
+                            const fotoNoDiario = fotosObra.find(fo => fo.url === f.url);
+                            const isTransferred = !!fotoNoDiario;
+                            
+                            return (
+                              <div key={f.id} className="flex items-center gap-3 border rounded-lg p-2 bg-muted/30">
+                                <a href={f.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                                  <img src={f.url} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
+                                </a>
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <Select
+                                    value={selectedTarget[f.id] || (fotoNoDiario?.diario_producao_id || "geral")}
+                                    onValueChange={(v) => setSelectedTarget((p) => ({ ...p, [f.id]: v }))}
+                                    disabled={isTransferred}
                                   >
-                                    <ArrowRight className="h-3 w-3 mr-1" />
-                                    {transferring[f.id] ? "Transferindo..." : "Transferir"}
-                                  </Button>
-                                )}
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue placeholder="Destino" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {targetOptions.map((o) => (
+                                        <SelectItem key={o.value} value={o.value} className="text-xs">
+                                          {o.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  
+                                  <div className="flex gap-2">
+                                    {isTransferred ? (
+                                      <>
+                                        <Badge variant="outline" className="text-xs py-1">
+                                          <Check className="h-3 w-3 mr-1 text-emerald-600" /> Transferida
+                                        </Badge>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                          onClick={() => handleRemoveFoto(f.url)}
+                                          disabled={removing[fotoNoDiario?.id || ""]}
+                                        >
+                                          <Trash2 className="h-3 w-3 mr-1" />
+                                          {removing[fotoNoDiario?.id || ""] ? "Removendo..." : "Remover"}
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs"
+                                        onClick={() => handleTransferFoto(f)}
+                                        disabled={transferring[f.id]}
+                                      >
+                                        <ArrowRight className="h-3 w-3 mr-1" />
+                                        {transferring[f.id] ? "Transferindo..." : "Transferir"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
