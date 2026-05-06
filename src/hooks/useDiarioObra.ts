@@ -343,6 +343,57 @@ export function useDiarioObra(siteId?: string, data?: string) {
     onError: (e: Error) => toast({ title: "Erro ao mover produção", description: e.message, variant: "destructive" }),
   });
 
+  const moverDiario = useMutation({
+    mutationFn: async ({ diarioId, novaData }: { diarioId: string, novaData: string }) => {
+      const { data: currentDiario, error: fetchErr } = await supabase
+        .from("diarios_obra")
+        .select("*")
+        .eq("id", diarioId)
+        .single();
+      
+      if (fetchErr) throw fetchErr;
+      const siteId = currentDiario.site_id;
+
+      const { data: targetDiario, error: targetErr } = await supabase
+        .from("diarios_obra")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("data", novaData)
+        .maybeSingle();
+      
+      if (targetErr) throw targetErr;
+      
+      if (targetDiario) {
+        const targetId = targetDiario.id;
+        const tables = ["diario_producao", "diario_equipe", "diario_equipamentos", "diario_veiculos", "diario_fotos"];
+        
+        for (const table of tables) {
+          await supabase.from(table).update({ diario_id: targetId }).eq("diario_id", diarioId);
+        }
+        
+        const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
+        if (delErr) throw delErr;
+
+        return { targetId, novaData };
+      } else {
+        const { error: updErr } = await supabase.from("diarios_obra").update({ data: novaData }).eq("id", diarioId);
+        if (updErr) throw updErr;
+        return { targetId: diarioId, novaData };
+      }
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["diario_obra"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_equipe"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_equipamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_veiculos"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+      toast({ title: `Diário movido com sucesso para a nova data!` });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao mover diário", description: e.message, variant: "destructive" }),
+  });
+
   // Equipe
   const { data: equipe = [], isLoading: isLoadingEquipe } = useQuery({
     queryKey: ["diario_equipe", diario?.id],
