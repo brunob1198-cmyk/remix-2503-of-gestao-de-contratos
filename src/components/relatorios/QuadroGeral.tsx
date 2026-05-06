@@ -231,6 +231,7 @@ export default function QuadroGeral() {
   const [filterProjeto, setFilterProjeto] = useState<Set<string>>(new Set());
   const [filterSite, setFilterSite] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(["Area", "Cliente", "Projeto", "Site", "Status"]));
 
   const toggleSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) => (v: string) => {
     setter(prev => {
