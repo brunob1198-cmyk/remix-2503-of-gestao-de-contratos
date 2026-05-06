@@ -33,6 +33,24 @@ export default function AnaliseObraPage() {
 
   const setPeriodoInicio = (d: Date) => setPeriodoInicioStr(d.toISOString());
   const setPeriodoFim = (d: Date) => setPeriodoFimStr(d.toISOString());
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["analise_obra"] });
+      await queryClient.invalidateQueries({ queryKey: ["analise_custos_matrix_mensal"] });
+      await queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      await queryClient.invalidateQueries({ queryKey: ["custo_orcado_escopo"] });
+      await queryClient.invalidateQueries({ queryKey: ["fisico_apropriado"] });
+      
+      setLastUpdated(new Date().toISOString());
+      toast.success("Dados atualizados com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao atualizar dados.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Single sync hook — uses first selected project but syncs all ERP data
   const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
