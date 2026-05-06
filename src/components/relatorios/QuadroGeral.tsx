@@ -651,8 +651,13 @@ export default function QuadroGeral() {
                 </TableHeader>
                 <TableBody>
                   {filteredAreaGroups.map(ag => {
+                    const isAreaVisible = visibleColumns.has("Area");
+                    const isClienteVisible = visibleColumns.has("Cliente");
+                    const isProjetoVisible = visibleColumns.has("Projeto");
+                    const isSiteVisible = visibleColumns.has("Site");
+
                     const areaKey = `area:${ag.area}`;
-                    const areaExpanded = expanded.has(areaKey);
+                    const areaExpanded = expanded.has(areaKey) || !isAreaVisible;
                     const totalClientes = ag.clientes.length;
                     const totalProjetos = ag.clientes.reduce((s, c) => s + c.projetos.length, 0);
                     return (
