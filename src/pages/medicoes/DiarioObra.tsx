@@ -111,7 +111,7 @@ export default function DiarioObraPage() {
 
   const {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
-    producoes, addProducao, removeProducao, updateProducao, moverProducao,
+    producoes, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
