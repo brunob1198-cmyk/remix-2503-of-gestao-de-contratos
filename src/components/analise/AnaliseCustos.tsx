@@ -78,8 +78,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     }
   }, [sortCol, sortDir]);
 
-  const { data: rows = [] } = useQuery({
+  const { data: rows = [], isFetching, refetch } = useQuery({
     queryKey: ["analise_custos_matrix_mensal", projetoIds, startDate, endDate],
+    staleTime: Infinity,
     queryFn: async (): Promise<MonthRow[]> => {
       if (projetoIds.length === 0) return [];
 
