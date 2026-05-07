@@ -268,9 +268,9 @@ async function sendOne(
         console.log(`[ASYNC] ContaAzul processando protocolo ${contaAzulProtocolo}. Iniciando polling síncrono...`);
         
         const importPath = input.type === "receita"
-          ? "contas-a-receber"
-          : "contas-a-pagar";
-        const pollUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/importacao/${contaAzulProtocolo}`;
+          ? "contas-a-receber/importacao"
+          : "contas-a-pagar/importacao";
+        const pollUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`;
 
         let pollResolved = false;
         for (let i = 0; i < 8; i++) {
