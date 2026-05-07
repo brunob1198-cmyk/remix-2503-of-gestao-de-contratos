@@ -53,6 +53,11 @@ export function FCAModal({
   const [newFato, setNewFato] = useState("");
   const [newCausa, setNewCausa] = useState("");
   const [newAcao, setNewAcao] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFato, setEditFato] = useState("");
+  const [editCausa, setEditCausa] = useState("");
+  const [editAcao, setEditAcao] = useState("");
+
   const [size, setSize] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY_SIZE);
     return saved ? JSON.parse(saved) : { width: 900, height: 600 };
