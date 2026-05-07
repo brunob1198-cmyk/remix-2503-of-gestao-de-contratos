@@ -361,6 +361,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
+                <th className="py-3 px-4 font-semibold border-r bg-muted/50 sticky left-0 z-10">FCA</th>
                 {textCols.map(col => (
                   <th key={col} className="py-3 px-4 font-semibold border-r">
                     <ColumnHeader
