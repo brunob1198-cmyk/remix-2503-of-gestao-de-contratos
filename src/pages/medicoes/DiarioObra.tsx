@@ -2083,18 +2083,47 @@ export default function DiarioObraPage() {
                              e.dataTransfer.setData("sourceGroup", "outras");
                              e.dataTransfer.effectAllowed = "move";
                           }}
-                          className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
+                           className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
                         >
-                          {isFileImage(f.url) ? (
-                          <ResponsiveImage 
-                            src={f.url} 
-                            thumb300={f.thumb_url}
-                            thumb600={f.thumb_600_url}
-                            alt={f.legenda || "foto"} 
-                            className="w-full h-32 object-cover pointer-events-none" 
-                          />
-                          ) : (
-                            <div className="w-full h-32 flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1 pointer-events-none">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
+                                {isFileImage(f.url) ? (
+                                <ResponsiveImage 
+                                  src={f.url} 
+                                  thumb300={f.thumb_url}
+                                  thumb600={f.thumb_600_url}
+                                  alt={f.legenda || "foto"} 
+                                  className="w-full h-full object-cover" 
+                                />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
+                                    <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
+                                    <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
+                                  </div>
+                                )}
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none">
+                              <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
+                                {isFileImage(f.url) ? (
+                                  <img 
+                                    src={f.url} 
+                                    alt={f.legenda || "Visualização ampliada"} 
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <div className="p-20 text-white text-center space-y-4">
+                                    <div className="text-6xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</div>
+                                    <p className="text-xl">{f.legenda || "Arquivo de documento"}</p>
+                                    <Button asChild variant="secondary">
+                                      <a href={f.url} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                               <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
                               <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
                             </div>
