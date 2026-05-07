@@ -480,6 +480,15 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+
+      <FCAModal
+        projetoId={fcaState.projetoId}
+        projetoNome={fcaState.projetoNome}
+        mesReferencia={fcaState.mesReferencia}
+        mesLabel={fcaState.mesLabel}
+        open={fcaState.open}
+        onOpenChange={(open) => setFcaState(prev => ({ ...prev, open }))}
+      />
     </Card>
   );
 }
