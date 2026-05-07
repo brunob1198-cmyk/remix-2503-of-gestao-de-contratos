@@ -436,7 +436,7 @@ serve(async (req) => {
     
     // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
     // A API do ContaAzul retorna os contatos em { itens: [...] } ou diretamente como array
-    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
+    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/sales/customers?limit=1`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
     let defaultContactId: string | undefined;
