@@ -418,7 +418,7 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: profile } = await admin.from("profiles").select("empresa_id, aprovado").eq("id", userData.user.id).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("empresa_id, aprovado").eq("id", userId).maybeSingle();
     if (!profile?.empresa_id || !profile.aprovado) return json({ error: "Acesso negado" }, 403);
 
     const empresaId = profile.empresa_id;
