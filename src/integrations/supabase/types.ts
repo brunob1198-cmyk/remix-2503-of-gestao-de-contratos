@@ -1480,6 +1480,78 @@ export type Database = {
           },
         ]
       }
+      fca_eventos: {
+        Row: {
+          acao: string
+          causa: string
+          created_at: string | null
+          created_by: string | null
+          fato: string
+          id: string
+          mes_referencia: string
+          projeto_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          acao: string
+          causa: string
+          created_at?: string | null
+          created_by?: string | null
+          fato: string
+          id?: string
+          mes_referencia: string
+          projeto_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          acao?: string
+          causa?: string
+          created_at?: string | null
+          created_by?: string | null
+          fato?: string
+          id?: string
+          mes_referencia?: string
+          projeto_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_analise_obras"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       flash_category_mapping: {
         Row: {
           conta_azul_account_id: string | null
