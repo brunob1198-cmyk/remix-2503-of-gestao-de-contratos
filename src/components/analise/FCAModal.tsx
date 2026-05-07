@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Loader2, ClipboardList, Maximize2 } from "lucide-react";
+import { Plus, Trash2, Loader2, ClipboardList, Maximize2, Edit2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
@@ -53,6 +53,11 @@ export function FCAModal({
   const [newFato, setNewFato] = useState("");
   const [newCausa, setNewCausa] = useState("");
   const [newAcao, setNewAcao] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFato, setEditFato] = useState("");
+  const [editCausa, setEditCausa] = useState("");
+  const [editAcao, setEditAcao] = useState("");
+
   const [size, setSize] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY_SIZE);
     return saved ? JSON.parse(saved) : { width: 900, height: 600 };
@@ -112,6 +117,50 @@ export function FCAModal({
       toast.success("Evento removido.");
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, fato, causa, acao }: FCAEvento) => {
+      const { error } = await supabase
+        .from("fca_eventos")
+        .update({ fato, causa, acao })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fca_eventos", projetoId, mesReferencia] });
+      setEditingId(null);
+      toast.success("Evento atualizado!");
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar FCA:", error);
+      toast.error("Erro ao atualizar evento.");
+    },
+  });
+
+  const startEditing = (evento: FCAEvento) => {
+    setEditingId(evento.id);
+    setEditFato(evento.fato);
+    setEditCausa(evento.causa);
+    setEditAcao(evento.acao);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditFato("");
+    setEditCausa("");
+    setEditAcao("");
+  };
+
+  const handleSaveEdit = () => {
+    if (editingId) {
+      updateMutation.mutate({
+        id: editingId,
+        fato: editFato,
+        causa: editCausa,
+        acao: editAcao,
+      });
+    }
+  };
 
   const handleAdd = () => {
     if (!newFato || !newCausa || !newAcao) {
@@ -178,18 +227,86 @@ export function FCAModal({
                   ) : (
                     eventos.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.fato}</TableCell>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.causa}</TableCell>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.acao}</TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editFato}
+                              onChange={(val) => setEditFato(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.fato
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editCausa}
+                              onChange={(val) => setEditCausa(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.causa
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editAcao}
+                              onChange={(val) => setEditAcao(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.acao
+                          )}
+                        </TableCell>
                         <TableCell className="text-center align-top">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => deleteMutation.mutate(e.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            {editingId === e.id ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={handleSaveEdit}
+                                  disabled={updateMutation.isPending}
+                                >
+                                  {updateMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={cancelEditing}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                  onClick={() => startEditing(e)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => deleteMutation.mutate(e.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
