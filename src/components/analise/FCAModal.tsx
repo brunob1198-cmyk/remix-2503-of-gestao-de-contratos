@@ -227,18 +227,86 @@ export function FCAModal({
                   ) : (
                     eventos.map((e) => (
                       <TableRow key={e.id}>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.fato}</TableCell>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.causa}</TableCell>
-                        <TableCell className="align-top whitespace-pre-wrap">{e.acao}</TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editFato}
+                              onChange={(val) => setEditFato(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.fato
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editCausa}
+                              onChange={(val) => setEditCausa(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.causa
+                          )}
+                        </TableCell>
+                        <TableCell className="align-top whitespace-pre-wrap">
+                          {editingId === e.id ? (
+                            <Input
+                              value={editAcao}
+                              onChange={(val) => setEditAcao(val.target.value)}
+                              className="w-full"
+                            />
+                          ) : (
+                            e.acao
+                          )}
+                        </TableCell>
                         <TableCell className="text-center align-top">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => deleteMutation.mutate(e.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            {editingId === e.id ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  onClick={handleSaveEdit}
+                                  disabled={updateMutation.isPending}
+                                >
+                                  {updateMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={cancelEditing}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                  onClick={() => startEditing(e)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => deleteMutation.mutate(e.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
