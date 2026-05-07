@@ -62,6 +62,19 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const [sortCol, setSortCol] = useState<ColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
+  const [fcaState, setFcaState] = useState<{
+    open: boolean;
+    projetoId: string;
+    projetoNome: string;
+    mesReferencia: string;
+    mesLabel: string;
+  }>({
+    open: false,
+    projetoId: "",
+    projetoNome: "",
+    mesReferencia: "",
+    mesLabel: "",
+  });
 
   const getFilter = useCallback((key: string): FilterState => filters[key] || emptyFilter(), [filters]);
 
