@@ -398,6 +398,23 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
                 return (
                   <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
+                    <td className="py-2.5 px-4 border-r text-center sticky left-0 z-10 bg-background group-hover:bg-muted/30">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => setFcaState({
+                          open: true,
+                          projetoId: row.projetoId,
+                          projetoNome: `${row.codigo} - ${row.nome}`,
+                          mesReferencia: row.refSort,
+                          mesLabel: row.referencia
+                        })}
+                        title="Análise FCA"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                      </Button>
+                    </td>
                     <td className="py-2.5 px-4 border-r font-medium text-center">{row.referencia}</td>
                     <td className="py-2.5 px-4 border-r truncate max-w-[120px]">{row.area}</td>
                     <td className="py-2.5 px-4 border-r font-medium truncate max-w-[200px]">
