@@ -444,7 +444,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               })}
               {processedRows.length > 1 && (
                 <tr className="bg-muted/50 font-bold border-t-2">
-                  <td className="py-3 px-4 border-r" colSpan={4}>Total</td>
+                  <td className="py-3 px-4 border-r sticky left-0 z-10 bg-muted/50" colSpan={5}>Total</td>
                   <td className="py-3 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                     {formatCurrency(totals.valorProduzido)}
                   </td>
