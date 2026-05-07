@@ -62,7 +62,14 @@ export default function MeuPerfilPage() {
         cacheControl: 'public, max-age=31536000, immutable'
       });
       if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path, {
+        transform: {
+          width: 200,
+          height: 200,
+          resize: 'cover'
+        }
+      });
       const url = urlData.publicUrl;
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
       setAvatarUrl(url);

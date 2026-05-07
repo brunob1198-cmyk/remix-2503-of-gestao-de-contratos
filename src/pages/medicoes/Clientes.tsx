@@ -129,7 +129,13 @@ export default function ClientesPage() {
       
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath, {
+        transform: {
+          width: 150,
+          height: 150,
+          resize: 'contain'
+        }
+      });
       
       if (data.publicUrl) {
         setLogoUrl(data.publicUrl);
