@@ -118,6 +118,50 @@ export function FCAModal({
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, fato, causa, acao }: FCAEvento) => {
+      const { error } = await supabase
+        .from("fca_eventos")
+        .update({ fato, causa, acao })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fca_eventos", projetoId, mesReferencia] });
+      setEditingId(null);
+      toast.success("Evento atualizado!");
+    },
+    onError: (error) => {
+      console.error("Erro ao atualizar FCA:", error);
+      toast.error("Erro ao atualizar evento.");
+    },
+  });
+
+  const startEditing = (evento: FCAEvento) => {
+    setEditingId(evento.id);
+    setEditFato(evento.fato);
+    setEditCausa(evento.causa);
+    setEditAcao(evento.acao);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditFato("");
+    setEditCausa("");
+    setEditAcao("");
+  };
+
+  const handleSaveEdit = () => {
+    if (editingId) {
+      updateMutation.mutate({
+        id: editingId,
+        fato: editFato,
+        causa: editCausa,
+        acao: editAcao,
+      });
+    }
+  };
+
   const handleAdd = () => {
     if (!newFato || !newCausa || !newAcao) {
       toast.error("Preencha todos os campos.");
