@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -18,8 +18,10 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Loader2, ClipboardList } from "lucide-react";
+import { Plus, Trash2, Loader2, ClipboardList, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
+import { ResizableBox } from "react-resizable";
+import "react-resizable/css/styles.css";
 
 interface FCAEvento {
   id: string;
@@ -37,6 +39,8 @@ interface FCAModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const STORAGE_KEY_SIZE = "fca-modal-size";
+
 export function FCAModal({
   projetoId,
   projetoNome,
@@ -49,6 +53,14 @@ export function FCAModal({
   const [newFato, setNewFato] = useState("");
   const [newCausa, setNewCausa] = useState("");
   const [newAcao, setNewAcao] = useState("");
+  const [size, setSize] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_SIZE);
+    return saved ? JSON.parse(saved) : { width: 900, height: 600 };
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SIZE, JSON.stringify(size));
+  }, [size]);
 
   const { data: eventos = [], isLoading } = useQuery({
     queryKey: ["fca_eventos", projetoId, mesReferencia],
