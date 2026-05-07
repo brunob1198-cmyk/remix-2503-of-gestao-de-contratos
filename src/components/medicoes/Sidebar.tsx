@@ -59,6 +59,8 @@ export function MedicoesSidebar() {
   const { state, isPinned, setIsPinned } = useSidebar();
   const collapsed = state === "collapsed";
   const { profile, role, signOut } = useAuth();
+  const avatarUrl = profile?.avatar_url; // No extra deps, just for useMemo stability if we wanted, but standard is fine
+
   const { canView } = usePermissions();
 
   const visibleItems = menuItems.filter((item) => {
@@ -143,7 +145,7 @@ export function MedicoesSidebar() {
         <div className="border-t p-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
-              {profile?.avatar_url && <AvatarImage src={profile.avatar_url} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} key={avatarUrl} />}
               <AvatarFallback className="text-xs bg-primary/10 text-primary">
                 {initials}
               </AvatarFallback>
