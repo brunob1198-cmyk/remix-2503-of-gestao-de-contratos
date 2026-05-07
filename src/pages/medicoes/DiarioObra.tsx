@@ -1854,8 +1854,11 @@ export default function DiarioObraPage() {
                   e.preventDefault();
                   e.currentTarget.classList.remove("bg-emerald-50/50", "ring-2", "ring-emerald-500");
                   
-                  const fotoId = e.dataTransfer.getData("fotoId");
+                   const fotoId = e.dataTransfer.getData("fotoId");
+                  const sourceGroup = e.dataTransfer.getData("sourceGroup");
+                  
                   if (!fotoId) return;
+                  if (sourceGroup === groupName) return;
 
                   try {
                     await atualizarFoto.mutateAsync({
@@ -1922,6 +1925,7 @@ export default function DiarioObraPage() {
                             draggable 
                             onDragStart={(e) => {
                               e.dataTransfer.setData("fotoId", f.id);
+                              e.dataTransfer.setData("sourceGroup", groupName);
                               e.dataTransfer.effectAllowed = "move";
                             }}
                             className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
@@ -1995,8 +1999,11 @@ export default function DiarioObraPage() {
                         e.preventDefault();
                         e.currentTarget.classList.remove("bg-muted/50", "ring-2", "ring-muted-foreground/30");
                         
-                        const fotoId = e.dataTransfer.getData("fotoId");
+                         const fotoId = e.dataTransfer.getData("fotoId");
+                        const sourceGroup = e.dataTransfer.getData("sourceGroup");
+                        
                         if (!fotoId) return;
+                        if (sourceGroup === "outras") return;
 
                         try {
                           await atualizarFoto.mutateAsync({
@@ -2015,8 +2022,9 @@ export default function DiarioObraPage() {
                           key={f.id} 
                           draggable
                           onDragStart={(e) => {
-                            e.dataTransfer.setData("fotoId", f.id);
-                            e.dataTransfer.effectAllowed = "move";
+                             e.dataTransfer.setData("fotoId", f.id);
+                             e.dataTransfer.setData("sourceGroup", "outras");
+                             e.dataTransfer.effectAllowed = "move";
                           }}
                           className="relative group rounded-lg overflow-hidden border cursor-move hover:ring-2 hover:ring-primary/50 transition-all bg-card"
                         >
