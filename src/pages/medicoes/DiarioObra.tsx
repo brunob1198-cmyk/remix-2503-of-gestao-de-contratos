@@ -2124,10 +2124,6 @@ export default function DiarioObraPage() {
                               </div>
                             </DialogContent>
                           </Dialog>
-                              <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
-                              <span className="text-xs text-muted-foreground">{getFileIcon(f.url)?.split(' ')[1] || 'Arquivo'}</span>
-                            </div>
-                          )}
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 pointer-events-none">
                             <span className="inline-block rounded-full bg-gray-600 text-white text-[10px] font-semibold px-2 py-0.5 truncate max-w-full">
                               {f.classificacao || "geral"}
