@@ -7,8 +7,9 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from 
 import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
+import { FCAModal } from "./FCAModal";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -61,6 +62,19 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const [sortCol, setSortCol] = useState<ColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [filters, setFilters] = useState<Record<string, FilterState>>({});
+  const [fcaState, setFcaState] = useState<{
+    open: boolean;
+    projetoId: string;
+    projetoNome: string;
+    mesReferencia: string;
+    mesLabel: string;
+  }>({
+    open: false,
+    projetoId: "",
+    projetoNome: "",
+    mesReferencia: "",
+    mesLabel: "",
+  });
 
   const getFilter = useCallback((key: string): FilterState => filters[key] || emptyFilter(), [filters]);
 
@@ -347,6 +361,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
           <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
+                <th className="py-3 px-4 font-semibold border-r bg-muted/50 sticky left-0 z-10">FCA</th>
                 {textCols.map(col => (
                   <th key={col} className="py-3 px-4 font-semibold border-r">
                     <ColumnHeader
@@ -383,6 +398,23 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 const mbPctReal = row.valorProduzido ? (mbReal / row.valorProduzido) * 100 : 0;
                 return (
                   <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
+                    <td className="py-2.5 px-4 border-r text-center sticky left-0 z-10 bg-background group-hover:bg-muted/30">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => setFcaState({
+                          open: true,
+                          projetoId: row.projetoId,
+                          projetoNome: `${row.codigo} - ${row.nome}`,
+                          mesReferencia: row.refSort,
+                          mesLabel: row.referencia
+                        })}
+                        title="Análise FCA"
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                      </Button>
+                    </td>
                     <td className="py-2.5 px-4 border-r font-medium text-center">{row.referencia}</td>
                     <td className="py-2.5 px-4 border-r truncate max-w-[120px]">{row.area}</td>
                     <td className="py-2.5 px-4 border-r font-medium truncate max-w-[200px]">
@@ -412,7 +444,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               })}
               {processedRows.length > 1 && (
                 <tr className="bg-muted/50 font-bold border-t-2">
-                  <td className="py-3 px-4 border-r" colSpan={4}>Total</td>
+                  <td className="py-3 px-4 border-r sticky left-0 z-10 bg-muted/50" colSpan={5}>Total</td>
                   <td className="py-3 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                     {formatCurrency(totals.valorProduzido)}
                   </td>
@@ -448,6 +480,15 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+
+      <FCAModal
+        projetoId={fcaState.projetoId}
+        projetoNome={fcaState.projetoNome}
+        mesReferencia={fcaState.mesReferencia}
+        mesLabel={fcaState.mesLabel}
+        open={fcaState.open}
+        onOpenChange={(open) => setFcaState(prev => ({ ...prev, open }))}
+      />
     </Card>
   );
 }
