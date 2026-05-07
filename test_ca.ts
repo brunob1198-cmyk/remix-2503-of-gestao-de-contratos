@@ -41,9 +41,6 @@ const empresaId = "b1a2f3f6-863d-42a5-80b9-d9cd7faa4a00";
 const { data: tokenData } = await supabase.from("contaazul_tokens").select("*").eq("empresa_id", empresaId).single();
 
 if (tokenData) {
-  console.log("Testing Posto Bandeirante (protocol bf57522a-43f9-11f1-bdf2-278e3a720999)");
-  await testProtocol(tokenData.access_token, "bf57522a-43f9-11f1-bdf2-278e3a720999", "despesa");
-  
-  console.log("\nTesting Search for 604.61 on 2026-04-08");
-  await testSearch(tokenData.access_token, "despesa", "2026-04-08", 604.61);
+  console.log("Testing Protocol 13e3a0c2-4a45-11f1-b817-b722679cb245");
+  await testProtocol(tokenData.access_token, "13e3a0c2-4a45-11f1-b817-b722679cb245", "despesa");
 }

@@ -184,8 +184,8 @@ async function sendOne(
     valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
-    contato: contatoId,            // campo correto conforme API (era id_contato - errado)
-    conta_financeira: input.financial_account_id,
+    ...(input.type === "receita" ? { cliente_id: contatoId } : { fornecedor_id: contatoId }), // Ajuste de contato para a API v1
+    conta_financeira_id: input.financial_account_id, // Ajuste para o nome correto
     rateio: [
       {
         id_categoria: input.category_id,
@@ -200,8 +200,9 @@ async function sendOne(
       parcelas: [
         {
           data_vencimento: transactionDate,
-          conta_financeira: input.financial_account_id,
+          conta_financeira_id: input.financial_account_id, // Ajuste para o nome correto
           descricao: `Parcela única - ${input.description}`,
+          valor: transactionValue, // Adicionado valor que estava faltando
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue,
@@ -283,19 +284,22 @@ async function sendOne(
             const pollText = await pollResp.text();
             console.log(`[POLL] Tentativa ${i + 1}/8 (HTTP ${pollResp.status}): ${pollText.substring(0, 200)}`);
 
-            if (pollResp.ok) {
+              if (pollResp.ok) {
               let pollData: any = null;
               try { pollData = JSON.parse(pollText); } catch { pollData = { raw: pollText }; }
+              
+              // Salva a última resposta de polling para debug
+              responseJson = { ...responseJson, last_poll_data: pollData };
 
-              if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED") {
+              if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                 status = "ENVIADO";
-                contaAzulId = pollData?.resourceId || pollData?.id || null;
+                contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || null;
                 errorMsg = null;
                 pollResolved = true;
                 console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
                 break;
 
-              } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED") {
+              } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
                 status = "erro";
                 errorMsg = `ContaAzul rejeitou o lançamento: ${JSON.stringify(pollData?.errors || pollData?.message || pollData)}`;
                 pollResolved = true;
@@ -306,6 +310,7 @@ async function sendOne(
               console.log(`[POLL] Ainda em processamento (tentativa ${i + 1}/8)...`);
             } else {
               console.warn(`[POLL] Resposta não-OK do polling: HTTP ${pollResp.status}`);
+              responseJson = { ...responseJson, last_poll_error: pollResp.status, last_poll_text: pollText };
             }
           } catch (pollErr: any) {
             console.error(`[POLL] Erro na tentativa ${i + 1}:`, pollErr?.message || pollErr);
@@ -315,7 +320,7 @@ async function sendOne(
         // Se esgotou as tentativas sem resolução: volta para "normalizado" para reenvio
         if (!pollResolved) {
           status = "pendente_ca";
-          errorMsg = `ContaAzul ainda processando após 40s. Protocolo: ${contaAzulProtocolo}. Tente reenviar em alguns minutos.`;
+          errorMsg = `ContaAzul ainda processando após 40s. Protocolo: ${contaAzulProtocolo}. Resposta Atual: ${JSON.stringify(responseJson?.last_poll_data || 'Nenhuma')}. Tente reenviar em alguns minutos.`;
           console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}`);
         }
 
