@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Loader2, ClipboardList, Maximize2 } from "lucide-react";
+import { Plus, Trash2, Loader2, ClipboardList, Maximize2, Edit2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
