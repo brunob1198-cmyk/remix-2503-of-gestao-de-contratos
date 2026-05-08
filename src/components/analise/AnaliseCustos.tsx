@@ -452,6 +452,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-3 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                     {formatCurrency(totals.valorProduzido)}
                   </td>
+                  {CATEGORIAS.map((cat) => (
+                    <td key={cat} className="py-3 px-4 text-right font-mono border-r">
+                      {formatCurrency(totals.categorias[cat] || 0)}
+                    </td>
+                  ))}
                   <td className="py-3 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-r">
                     {formatCurrency(totals.totalErp)}
                   </td>
@@ -461,11 +466,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-3 px-4 text-right font-mono font-bold text-purple-600 bg-purple-50/50 dark:bg-purple-950/10 border-r">
                     {formatCurrency(totals.custoOrcado - totals.totalErp)}
                   </td>
-                  {CATEGORIAS.map((cat) => (
-                    <td key={cat} className="py-3 px-4 text-right font-mono border-r">
-                      {formatCurrency(totals.categorias[cat] || 0)}
-                    </td>
-                  ))}
                   {(() => {
                     const mbOrc = totals.valorProduzido - totals.custoOrcado;
                     const mbReal = totals.valorProduzido - totals.totalErp;
