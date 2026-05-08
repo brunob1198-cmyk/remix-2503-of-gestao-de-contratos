@@ -85,6 +85,9 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
   const map = (categoriaErp || "").toLowerCase();
   const desc = (descricao || "").toLowerCase();
 
+  // Rule 0: Specific mapping requested by user
+  if (map.includes("miscelanea - campo")) return "Materiais";
+
   // Internalized DE-PARA logic based on provided table
   // Materials
   if (
