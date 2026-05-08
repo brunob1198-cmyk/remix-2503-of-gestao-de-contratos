@@ -613,7 +613,7 @@ export default function DiarioCampoPage() {
                           />
                           <button
                             onClick={() => handleRemoveFoto(foto.id)}
-                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 z-20 shadow-sm"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
