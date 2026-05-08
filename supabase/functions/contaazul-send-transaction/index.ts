@@ -455,9 +455,10 @@ serve(async (req) => {
     // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints v1 conhecidos)
     let flashAccountId: string | undefined;
     const accountEndpoints = [
+      `${CONTAAZUL_API}/v1/bank-accounts`,
       `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
       `${CONTAAZUL_API}/v1/contas-financeiras`,
-      `${CONTAAZUL_API}/v2/contas-financeiras`
+      `${CONTAAZUL_API}/v2/bank-accounts`
     ];
 
     for (const url of accountEndpoints) {
@@ -467,16 +468,16 @@ serve(async (req) => {
         });
         if (resp.ok) {
           const data = await resp.json();
-          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || []);
-          console.log(`[DEBUG] Contas encontradas em ${url}:`, JSON.stringify(accounts).substring(0, 300));
-          const found = accounts.find((a: any) => (a.nome || a.name || "").toLowerCase().includes("flash"));
+          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || []);
+          console.log(`[DEBUG] Contas encontradas em ${url}:`, JSON.stringify(accounts).substring(0, 500));
+          const found = accounts.find((a: any) => 
+            (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
+          );
           if (found) {
             flashAccountId = found.id;
             console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
             break;
           }
-        } else {
-          console.warn(`[WARN] Endpoint ${url} retornou HTTP ${resp.status}`);
         }
       } catch (e) {
         console.error(`[ERROR] Falha ao consultar ${url}:`, e);
@@ -486,6 +487,7 @@ serve(async (req) => {
     // Buscar um contato padrão (v1)
     let defaultContactId: string | undefined;
     const contactEndpoints = [
+      `${CONTAAZUL_API}/v1/customers?limit=1`,
       `${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`,
       `${CONTAAZUL_API}/v1/contatos?limit=1`
     ];
@@ -497,7 +499,7 @@ serve(async (req) => {
         });
         if (resp.ok) {
           const data = await resp.json();
-          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0]);
+          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0]);
           if (contact?.id) {
             defaultContactId = contact.id;
             break;
