@@ -242,6 +242,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     if (col === "valorProduzido") return row.valorProduzido;
     if (col === "custoOrcado") return row.custoOrcado;
     if (col === "totalErp") return row.totalErp;
+    if (col === "resultadoDireto") return row.custoOrcado - row.totalErp;
     if (col === "mbOrcada") return row.valorProduzido - row.custoOrcado;
     if (col === "mbRealizado") return row.valorProduzido - row.totalErp;
     if (col === "mbPctOrcado") return row.valorProduzido ? ((row.valorProduzido - row.custoOrcado) / row.valorProduzido) * 100 : 0;
