@@ -84,35 +84,69 @@ async function getValidAccessToken(supabase: any, empresaId: string): Promise<st
 async function realizarBaixa(accessToken: string, contaAzulId: string, input: TransactionInput, transactionDate: string) {
   try {
     const transactionValue = Math.abs(Number(input.value) || 0);
-    const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    if (parcelasResp.ok) {
-      const parcelas = await parcelasResp.json();
-      const parcelaId = parcelas[0]?.id;
-      if (parcelaId && !parcelas[0]?.baixado) {
-        console.log(`[DEBUG] Realizando baixa para parcela ${parcelaId}...`);
-        const baixaResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            data_pagamento: transactionDate,
-            conta_financeira: input.financial_account_id,
-            metodo_pagamento: "OUTRO",
-            composicao_valor: { valor_bruto: transactionValue }
-          })
-        });
-        
-        const baixaText = await baixaResp.text();
-        console.log(`[DEBUG] Resposta baixa (HTTP ${baixaResp.status}):`, baixaText);
+    console.log(`[BAIXA] Iniciando baixa para evento ${contaAzulId}, valor: ${transactionValue}, data: ${transactionDate}`);
+
+    // Aguardar um momento para o evento ser processado antes de buscar parcelas
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Tentar buscar parcelas com retry
+    let parcelas: any[] = [];
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      if (parcelasResp.ok) {
+        const respData = await parcelasResp.json();
+        parcelas = Array.isArray(respData) ? respData : (respData?.itens || respData?.data || []);
+        if (parcelas.length > 0) break;
       } else {
-         console.warn(`[DEBUG] Parcela não encontrada ou já baixada. parcelas[0]:`, parcelas[0]);
+        console.warn(`[BAIXA] Tentativa ${tentativa + 1}/3 falhou ao buscar parcelas: HTTP ${parcelasResp.status}`);
       }
-    } else {
-       console.error(`[ERROR] Falha ao buscar parcelas para baixa:`, await parcelasResp.text());
+      if (tentativa < 2) await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    if (parcelas.length === 0) {
+      console.error(`[BAIXA] Nenhuma parcela encontrada para o evento ${contaAzulId} após 3 tentativas`);
+      return;
+    }
+
+    // Processar todas as parcelas não baixadas
+    for (const parcela of parcelas) {
+      const parcelaId = parcela?.id;
+      if (!parcelaId) continue;
+      if (parcela?.baixado || parcela?.liquidado || parcela?.situacao === "PAGO" || parcela?.situacao === "LIQUIDADO") {
+        console.log(`[BAIXA] Parcela ${parcelaId} já baixada/liquidada, pulando.`);
+        continue;
+      }
+
+      console.log(`[BAIXA] Realizando baixa para parcela ${parcelaId}...`);
+      const baixaResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data_pagamento: transactionDate,
+          conta_financeira: input.financial_account_id,
+          metodo_pagamento: "OUTRO",
+          composicao_valor: {
+            valor_bruto: transactionValue,
+            valor_liquido: transactionValue,
+            multa: 0,
+            juros: 0,
+            desconto: 0,
+            taxa: 0
+          }
+        })
+      });
+
+      const baixaText = await baixaResp.text();
+      if (baixaResp.ok) {
+        console.log(`[BAIXA] Sucesso na baixa da parcela ${parcelaId}: ${baixaText.substring(0, 200)}`);
+      } else {
+        console.error(`[BAIXA] Erro na baixa da parcela ${parcelaId} (HTTP ${baixaResp.status}): ${baixaText.substring(0, 500)}`);
+      }
     }
   } catch (e) {
-    console.error(`Erro na baixa:`, e);
+    console.error(`[BAIXA] Erro inesperado:`, e);
   }
 }
 
@@ -557,10 +591,17 @@ serve(async (req) => {
         || raw?.payload_json?.centro_custo
         || null;
 
+      // Valor: snap.amount já está em reais (dividido por 100 no frontend)
+      // O raw?.payload_json?.amount vem da API Flash em CENTAVOS, precisa dividir por 100
+      const rawAmount = raw?.payload_json?.amount;
+      const valueInReais = typeof snap.amount === "number"
+        ? snap.amount
+        : (typeof rawAmount === "number" ? rawAmount / 100 : 0);
+
       const r = await sendOne(admin, empresaId, accessToken, {
         flash_transaction_id: n.flash_transaction_id,
         description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
-        value: typeof snap.amount === "number" ? snap.amount : Number(raw?.payload_json?.amount || 0),
+        value: valueInReais,
         category_id: n.conta_azul_category_id,
         financial_account_id: financialAccountId,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
