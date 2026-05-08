@@ -78,27 +78,41 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         .eq("flash_transaction_id", flash_transaction_id)
         .maybeSingle();
       
-      const importPath = (normType?.tipo_operacao === "receita") 
-        ? "contas-a-receber/importacao" 
-        : "contas-a-pagar/importacao";
+      const pollUrls = [
+        `${CONTAAZUL_API}/v1/protocolo/${conta_azul_protocolo}`,
+        `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${normType?.tipo_operacao === "receita" ? "contas-a-receber" : "contas-a-pagar"}/importacao/${conta_azul_protocolo}`,
+        `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/importacao/${conta_azul_protocolo}`,
+        `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolo/${conta_azul_protocolo}`,
+        `${CONTAAZUL_API}/v1/importacao/${conta_azul_protocolo}`
+      ];
 
-      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo} via ${importPath}...`);
+      console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo} via múltiplas URLs...`);
       
-      const protResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${conta_azul_protocolo}`, {
-        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-      });
+      let protResp = null;
+      for (const url of pollUrls) {
+        try {
+          protResp = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          if (protResp.status !== 404) {
+            break;
+          }
+        } catch (e) {
+          console.warn(`[Reconcile] Erro ao testar URL ${url}:`, e);
+        }
+      }
       
-      if (protResp.ok) {
+      if (protResp && protResp.ok) {
         const protData = await protResp.json();
         console.log(`[Reconcile] Resposta protocolo ${conta_azul_protocolo}:`, JSON.stringify(protData));
-        if (protData.status === "SUCCESS") {
-          conta_azul_transaction_id = protData.resourceId || protData.id;
+        if (protData.status === "SUCCESS" || protData.status === "PROCESSED" || protData.status === "COMPLETED") {
+          conta_azul_transaction_id = protData.resourceId || protData.id || protData.evento_id;
           if (conta_azul_transaction_id) {
             await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
           }
         }
       } else {
-        console.warn(`[Reconcile] Erro HTTP ao buscar protocolo ${conta_azul_protocolo}: ${protResp.status}`);
+        console.warn(`[Reconcile] Erro HTTP ao buscar protocolo ${conta_azul_protocolo}: ${protResp?.status}`);
       }
     }
 

@@ -184,8 +184,8 @@ async function sendOne(
     valor: transactionValue,
     descricao: input.description,
     observacao: `Flash - ${input.description}`,
-    ...(input.type === "receita" ? { cliente_id: contatoId } : { fornecedor_id: contatoId }), // Ajuste de contato para a API v1
-    conta_financeira_id: input.financial_account_id, // Ajuste para o nome correto
+    contato: contatoId,
+    conta_financeira: input.financial_account_id,
     rateio: [
       {
         id_categoria: input.category_id,
@@ -200,9 +200,8 @@ async function sendOne(
       parcelas: [
         {
           data_vencimento: transactionDate,
-          conta_financeira_id: input.financial_account_id, // Ajuste para o nome correto
+          conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
-          valor: transactionValue, // Adicionado valor que estava faltando
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue,
@@ -267,50 +266,69 @@ async function sendOne(
       } else if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
         console.log(`[ASYNC] ContaAzul processando protocolo ${contaAzulProtocolo}. Iniciando polling síncrono...`);
         
-        const importPath = input.type === "receita"
-          ? "contas-a-receber/importacao"
-          : "contas-a-pagar/importacao";
-        const pollUrl = `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${importPath}/${contaAzulProtocolo}`;
-
+        const pollUrls = [
+          `${CONTAAZUL_API}/v1/protocolo/${contaAzulProtocolo}`,
+          `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${input.type === "receita" ? "contas-a-receber" : "contas-a-pagar"}/importacao/${contaAzulProtocolo}`,
+          `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/importacao/${contaAzulProtocolo}`,
+          `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolo/${contaAzulProtocolo}`,
+          `${CONTAAZUL_API}/v1/importacao/${contaAzulProtocolo}`
+        ];
+        
         let pollResolved = false;
         for (let i = 0; i < 8; i++) {
-          // Aguarda 5 segundos antes de cada tentativa
           await new Promise(r => setTimeout(r, 5000));
           
+          let pollResp = null;
+          let pollText = "";
+          let currentUrl = "";
+
+          // Tenta as possíveis URLs até achar uma que não dê 404
+          for (const url of pollUrls) {
+            currentUrl = url;
+            try {
+              pollResp = await fetch(currentUrl, {
+                headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+              });
+              
+              if (pollResp.status !== 404) {
+                break; // Achou a URL correta (ou pelo menos uma que não é 404)
+              }
+            } catch (e) {
+              console.warn(`Erro ao testar URL ${currentUrl}:`, e);
+            }
+          }
+
           try {
-            const pollResp = await fetch(pollUrl, {
-              headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-            });
-            const pollText = await pollResp.text();
-            console.log(`[POLL] Tentativa ${i + 1}/8 (HTTP ${pollResp.status}): ${pollText.substring(0, 200)}`);
+            if (pollResp) {
+              pollText = await pollResp.text();
+              console.log(`[POLL] Tentativa ${i + 1}/8 (HTTP ${pollResp.status}) URL: ${currentUrl}: ${pollText.substring(0, 200)}`);
 
               if (pollResp.ok) {
-              let pollData: any = null;
-              try { pollData = JSON.parse(pollText); } catch { pollData = { raw: pollText }; }
-              
-              // Salva a última resposta de polling para debug
-              responseJson = { ...responseJson, last_poll_data: pollData };
+                let pollData: any = null;
+                try { pollData = JSON.parse(pollText); } catch { pollData = { raw: pollText }; }
+                
+                responseJson = { ...responseJson, last_poll_data: pollData, last_poll_url: currentUrl };
 
-              if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
-                status = "ENVIADO";
-                contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || null;
-                errorMsg = null;
-                pollResolved = true;
-                console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
-                break;
+                if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
+                  status = "ENVIADO";
+                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || null;
+                  errorMsg = null;
+                  pollResolved = true;
+                  console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
+                  break;
 
-              } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
-                status = "erro";
-                errorMsg = `ContaAzul rejeitou o lançamento: ${JSON.stringify(pollData?.errors || pollData?.message || pollData)}`;
-                pollResolved = true;
-                console.error(`[ERRO] Protocolo ${contaAzulProtocolo} falhou:`, errorMsg);
-                break;
+                } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
+                  status = "erro";
+                  errorMsg = `ContaAzul rejeitou o lançamento: ${JSON.stringify(pollData?.errors || pollData?.message || pollData)}`;
+                  pollResolved = true;
+                  console.error(`[ERRO] Protocolo ${contaAzulProtocolo} falhou:`, errorMsg);
+                  break;
+                }
+                console.log(`[POLL] Ainda em processamento (tentativa ${i + 1}/8)...`);
+              } else {
+                console.warn(`[POLL] Resposta não-OK do polling: HTTP ${pollResp.status}`);
+                responseJson = { ...responseJson, last_poll_error: pollResp.status, last_poll_text: pollText, last_poll_url: currentUrl };
               }
-              // Se ainda PENDING — continua o loop
-              console.log(`[POLL] Ainda em processamento (tentativa ${i + 1}/8)...`);
-            } else {
-              console.warn(`[POLL] Resposta não-OK do polling: HTTP ${pollResp.status}`);
-              responseJson = { ...responseJson, last_poll_error: pollResp.status, last_poll_text: pollText };
             }
           } catch (pollErr: any) {
             console.error(`[POLL] Erro na tentativa ${i + 1}:`, pollErr?.message || pollErr);
