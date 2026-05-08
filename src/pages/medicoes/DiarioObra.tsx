@@ -2010,7 +2010,7 @@ export default function DiarioObraPage() {
                             <Button
                               variant="destructive"
                               size="icon"
-                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 h-6 w-6 z-20 shadow-sm"
                               onClick={() => removeFoto.mutate(f.id)}
                             >
                               <Trash2 className="h-3 w-3" />
