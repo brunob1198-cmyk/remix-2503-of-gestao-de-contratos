@@ -828,6 +828,58 @@ export function useFlashNormalizacao() {
     [empresaId, saveNormalization]
   );
 
+  /**
+   * Atualiza o centro de custo de um lançamento.
+   * Persiste no campo conta_azul_payload.cost_center da tabela flash_normalizacao.
+   */
+  const updateCostCenter = useCallback(
+    async (row: FlashTransactionRow, newCostCenter: string) => {
+      if (!empresaId) return;
+      if (row.status === "enviado") {
+        toast.error("Lançamento enviado", {
+          description: 'Use "Reabrir para correção" antes de editar.',
+        });
+        return;
+      }
+
+      const cleanValue = newCostCenter.trim() || null;
+      const updatedPayload = row.conta_azul_payload
+        ? { ...row.conta_azul_payload, cost_center: cleanValue }
+        : null;
+
+      // Persist to database
+      const { error } = await supabase
+        .from("flash_normalizacao")
+        .update({ conta_azul_payload: updatedPayload })
+        .eq("flash_transaction_id", row.id)
+        .eq("empresa_id", empresaId);
+
+      if (error) {
+        console.error("Erro ao atualizar centro de custo:", error);
+        toast.error("Erro ao salvar centro de custo", { description: error.message });
+        return;
+      }
+
+      // Update local state
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === row.id
+            ? {
+                ...t,
+                flash_cost_center: cleanValue || "—",
+                conta_azul_payload: updatedPayload,
+              }
+            : t
+        )
+      );
+
+      toast.success("Centro de custo atualizado", {
+        description: cleanValue ? `Alterado para: ${cleanValue}` : "Centro de custo removido",
+      });
+    },
+    [empresaId]
+  );
+
   const [sending, setSending] = useState(false);
 
   /**
@@ -927,5 +979,6 @@ export function useFlashNormalizacao() {
     reopenEnviado,
     sendToContaAzul,
     isAlreadyIntegrated,
+    updateCostCenter,
   };
 }

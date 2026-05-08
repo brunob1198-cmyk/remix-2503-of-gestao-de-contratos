@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,12 +70,14 @@ import {
   ArrowDownAZ,
   ArrowUpAZ,
   CalendarRange,
+  Check,
   ChevronDown,
   Eye,
   FileSpreadsheet,
   Filter,
   Info,
   Loader2,
+  Pencil,
   RefreshCw,
   RotateCcw,
   Save,
@@ -166,6 +168,104 @@ function OptionSelect({ options, value, onChange, placeholder, disabled }: Optio
   );
 }
 
+/** Componente para edição inline do Centro de Custo */
+function EditableCostCenter({
+  row,
+  disabled,
+  onSave,
+}: {
+  row: FlashTransactionRow;
+  disabled?: boolean;
+  onSave: (newValue: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(row.flash_cost_center === "—" ? "" : row.flash_cost_center);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  // Sync draft when row changes externally
+  useEffect(() => {
+    if (!editing) {
+      setDraft(row.flash_cost_center === "—" ? "" : row.flash_cost_center);
+    }
+  }, [row.flash_cost_center, editing]);
+
+  const handleConfirm = () => {
+    const newVal = draft.trim();
+    const currentVal = row.flash_cost_center === "—" ? "" : row.flash_cost_center;
+    if (newVal !== currentVal) {
+      onSave(newVal);
+    }
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(row.flash_cost_center === "—" ? "" : row.flash_cost_center);
+    setEditing(false);
+  };
+
+  if (disabled) {
+    return (
+      <span className="block truncate text-muted-foreground">{row.flash_cost_center}</span>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="flex items-center gap-1 w-full group text-left"
+        onClick={() => setEditing(true)}
+        title="Clique para editar o centro de custo"
+      >
+        <span className="truncate flex-1">{row.flash_cost_center}</span>
+        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleConfirm();
+          if (e.key === "Escape") handleCancel();
+        }}
+        onBlur={handleConfirm}
+        className="h-7 text-xs px-1.5 min-w-0"
+        placeholder="Centro de custo..."
+      />
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={handleConfirm}
+        className="shrink-0 p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+        title="Confirmar"
+      >
+        <Check className="h-3.5 w-3.5 text-emerald-600" />
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={handleCancel}
+        className="shrink-0 p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+        title="Cancelar"
+      >
+        <X className="h-3.5 w-3.5 text-red-500" />
+      </button>
+    </div>
+  );
+}
+
 export default function NormalizacaoFlashPage() {
   const {
     loading,
@@ -185,6 +285,7 @@ export default function NormalizacaoFlashPage() {
     bulkApplyToPending,
     reopenEnviado,
     sendToContaAzul,
+    updateCostCenter,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -1436,8 +1537,12 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-xs truncate max-w-[120px]">
                                 {row.flash_category}
                               </TableCell>
-                              <TableCell className="text-xs truncate max-w-[120px]">
-                                {row.flash_cost_center}
+                              <TableCell className="text-xs max-w-[150px]">
+                                <EditableCostCenter
+                                  row={row}
+                                  disabled={isEnviado}
+                                  onSave={(newVal) => updateCostCenter(row, newVal)}
+                                />
                               </TableCell>
                               <TableCell>
                                 <OptionSelect
