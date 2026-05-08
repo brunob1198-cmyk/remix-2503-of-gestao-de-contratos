@@ -45,7 +45,7 @@ interface MonthRow {
   totalErp: number;
 }
 
-type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
+type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "resultadoDireto" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
 
 interface FilterState {
   search: string;
