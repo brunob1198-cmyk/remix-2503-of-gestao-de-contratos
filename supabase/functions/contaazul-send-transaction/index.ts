@@ -452,34 +452,39 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(admin, empresaId);
     
-    // Buscar a conta bancária "flash" no Conta Azul
-    const accountsResp = await fetch(`${CONTAAZUL_API}/v1/contas-financeiras`, {
+    // Buscar a conta bancária "flash" no Conta Azul (tentando v1 financeiro)
+    const accountsResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/contas-financeiras`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
     
     let flashAccountId: string | undefined;
     if (accountsResp.ok) {
       const accountsData = await accountsResp.json();
-      console.log("[DEBUG] Resposta da busca de contas financeiras:", JSON.stringify(accountsData).substring(0, 500));
-      
       const accounts = Array.isArray(accountsData) ? accountsData : (accountsData?.itens || accountsData?.data || []);
       const flashAccount = accounts.find((a: any) => 
-        a.nome?.toLowerCase().includes("flash") || 
-        a.name?.toLowerCase().includes("flash")
+        (a.nome || a.name || "").toLowerCase().includes("flash")
       );
       
       if (flashAccount) {
         flashAccountId = flashAccount.id;
-        console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId} (${flashAccount.nome || flashAccount.name})`);
-      } else {
-        console.warn("[WARN] Conta financeira 'flash' não encontrada. Usando conta do registro de normalização.");
+        console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
       }
     } else {
-      console.warn(`[WARN] Erro ao buscar contas financeiras (HTTP ${accountsResp.status})`);
+      console.warn(`[WARN] Erro ao buscar contas financeiras v1 (HTTP ${accountsResp.status})`);
+      // Fallback para a URL sem /financeiro/ caso seja v2
+      const accountsRespV2 = await fetch(`${CONTAAZUL_API}/v2/contas-financeiras`, {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+      });
+      if (accountsRespV2.ok) {
+        const accountsDataV2 = await accountsRespV2.json();
+        const accountsV2 = Array.isArray(accountsDataV2) ? accountsDataV2 : (accountsDataV2?.itens || accountsDataV2?.data || []);
+        const flashAccountV2 = accountsV2.find((a: any) => (a.nome || a.name || "").toLowerCase().includes("flash"));
+        if (flashAccountV2) flashAccountId = flashAccountV2.id;
+      }
     }
 
-    // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
-    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
+    // Buscar um contato padrão (v1)
+    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
     let defaultContactId: string | undefined;
@@ -489,6 +494,16 @@ serve(async (req) => {
         ? contactsData[0]
         : (contactsData?.itens?.[0] || contactsData?.data?.[0] || contactsData?.content?.[0]);
       defaultContactId = firstContact?.id;
+    } else {
+       // Tenta v1 direto se não for sob financeiro
+       const contactsRespV1 = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
+         headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+       });
+       if (contactsRespV1.ok) {
+         const contactsDataV1 = await contactsRespV1.json();
+         const firstContactV1 = Array.isArray(contactsDataV1) ? contactsDataV1[0] : (contactsDataV1?.itens?.[0]);
+         defaultContactId = firstContactV1?.id;
+       }
     }
 
     const results = [];
@@ -496,7 +511,7 @@ serve(async (req) => {
       const raw = rawsById.get(n.flash_transaction_id);
       const snap = (n.conta_azul_payload || {}) as any;
       
-      // Sempre usa a conta "flash" se encontrada, senão mantém a que está no registro
+      // Sempre usa a conta "flash" se encontrada
       const financialAccountId = flashAccountId || n.conta_azul_account_id;
 
       const r = await sendOne(admin, empresaId, accessToken, {
