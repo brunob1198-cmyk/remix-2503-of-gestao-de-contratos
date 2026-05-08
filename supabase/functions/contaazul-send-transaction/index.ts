@@ -452,36 +452,85 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(admin, empresaId);
     
-    // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
-    // A API do ContaAzul retorna os contatos em { itens: [...] } ou diretamente como array
-    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-    });
+    // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos)
+    let flashAccountId: string | undefined;
+    const accountEndpoints = [
+      `${CONTAAZUL_API}/v1/bank-accounts`,
+      `${CONTAAZUL_API}/v2/bank-accounts`,
+      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
+      `${CONTAAZUL_API}/v1/contas-financeiras`
+    ];
+
+    for (const url of accountEndpoints) {
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        const text = await resp.text();
+        console.log(`[DEBUG] Tentando endpoint ${url} (HTTP ${resp.status})`);
+        
+        if (resp.ok) {
+          const data = JSON.parse(text);
+          // A API v1 pode retornar um array direto ou { itens: [] } ou { items: [] }
+          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || data?.content || []);
+          console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
+          
+          const found = accounts.find((a: any) => 
+            (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
+          );
+          if (found) {
+            flashAccountId = found.id;
+            console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
+            break;
+          }
+        }
+      } catch (e) {
+        console.error(`[ERROR] Falha ao consultar ${url}:`, e);
+      }
+    }
+
+    if (!flashAccountId) {
+       console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados. A função continuará mas pode falhar no CA.");
+    }
+
+    // Buscar um contato padrão
     let defaultContactId: string | undefined;
-    if (contactsResp.ok) {
-      const contactsData = await contactsResp.json();
-      console.log("[DEBUG] Resposta da busca de contatos:", JSON.stringify(contactsData).substring(0, 300));
-      // Tenta diferentes formatos de resposta da API
-      const firstContact = Array.isArray(contactsData)
-        ? contactsData[0]
-        : (contactsData?.itens?.[0] || contactsData?.data?.[0] || contactsData?.content?.[0]);
-      defaultContactId = firstContact?.id;
-      console.log(`[DEBUG] Contato padrão selecionado: ${defaultContactId}`);
-    } else {
-      const errText = await contactsResp.text();
-      console.warn(`[WARN] Não foi possível buscar contatos (HTTP ${contactsResp.status}): ${errText}`);
+    const contactEndpoints = [
+      `${CONTAAZUL_API}/v1/customers?limit=1`,
+      `${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`,
+      `${CONTAAZUL_API}/v1/contatos?limit=1`
+    ];
+
+    for (const url of contactEndpoints) {
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0] || data?.content?.[0]);
+          if (contact?.id) {
+            defaultContactId = contact.id;
+            break;
+          }
+        }
+      } catch (e) {}
     }
 
     const results = [];
     for (const n of norms) {
       const raw = rawsById.get(n.flash_transaction_id);
       const snap = (n.conta_azul_payload || {}) as any;
+      
+      // Sempre usa a conta "flash" se encontrada
+      const financialAccountId = flashAccountId || n.conta_azul_account_id;
+
       const r = await sendOne(admin, empresaId, accessToken, {
         flash_transaction_id: n.flash_transaction_id,
         description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
         value: typeof snap.amount === "number" ? snap.amount : Number(raw?.payload_json?.amount || 0),
         category_id: n.conta_azul_category_id,
-        financial_account_id: n.conta_azul_account_id,
+        financial_account_id: financialAccountId,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
       }, true, defaultContactId); 
