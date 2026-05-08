@@ -455,9 +455,10 @@ serve(async (req) => {
     // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints v1 conhecidos)
     let flashAccountId: string | undefined;
     const accountEndpoints = [
-      `${CONTAAZUL_API}/v1/bank-accounts`,
       `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
       `${CONTAAZUL_API}/v1/contas-financeiras`,
+      `${CONTAAZUL_API}/v2/contas-financeiras`,
+      `${CONTAAZUL_API}/v1/bank-accounts`,
       `${CONTAAZUL_API}/v2/bank-accounts`
     ];
 
@@ -466,10 +467,12 @@ serve(async (req) => {
         const resp = await fetch(url, {
           headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
         });
+        const text = await resp.text();
+        console.log(`[DEBUG] Resposta de ${url}:`, text.substring(0, 500));
+        
         if (resp.ok) {
-          const data = await resp.json();
+          const data = JSON.parse(text);
           const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || []);
-          console.log(`[DEBUG] Contas encontradas em ${url}:`, JSON.stringify(accounts).substring(0, 500));
           const found = accounts.find((a: any) => 
             (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
           );
