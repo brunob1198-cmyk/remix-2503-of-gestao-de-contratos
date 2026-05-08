@@ -1423,7 +1423,7 @@ export default function DiarioObraPage() {
                                         <Button
                                           variant="destructive"
                                           size="icon"
-                                          className="absolute top-0 right-0 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          className="absolute top-0 right-0 h-4 w-4 z-20 shadow-sm"
                                           onClick={() => removeFoto.mutate(f.id)}
                                         >
                                           <Trash2 className="h-2.5 w-2.5" />
