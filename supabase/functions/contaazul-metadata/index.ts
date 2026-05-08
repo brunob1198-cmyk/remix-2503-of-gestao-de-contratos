@@ -160,9 +160,9 @@ serve(async (req) => {
         console.error("Falha categorias:", e.message);
         return [];
       }),
-      fetchAllPages(`${CONTAAZUL_API}/v1/contas-financeiras`, token).catch((e) => {
-        console.error("Falha contas-financeiras:", e.message);
-        return [];
+      fetchAllPages(`${CONTAAZUL_API}/v1/conta-financeira`, token).catch((e) => {
+        console.error("Falha conta-financeira:", e.message);
+        return fetchAllPages(`${CONTAAZUL_API}/v1/contas-financeiras`, token).catch(() => []);
       }),
     ]);
 

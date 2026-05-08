@@ -455,10 +455,11 @@ serve(async (req) => {
     // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos)
     let flashAccountId: string | undefined;
     const accountEndpoints = [
+      `${CONTAAZUL_API}/v1/conta-financeira`,
+      `${CONTAAZUL_API}/v1/contas-financeiras`,
       `${CONTAAZUL_API}/v1/bank-accounts`,
       `${CONTAAZUL_API}/v2/bank-accounts`,
-      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
-      `${CONTAAZUL_API}/v1/contas-financeiras`
+      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`
     ];
 
     for (const url of accountEndpoints) {

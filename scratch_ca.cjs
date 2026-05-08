@@ -1,9 +1,18 @@
 const { createClient } = require("@supabase/supabase-js");
+const fs = require("fs");
+const envVars = Object.fromEntries(
+  fs.readFileSync(".env", "utf8")
+    .split("\n")
+    .filter(l => l.trim() && !l.startsWith("#"))
+    .map(l => {
+      const [k, ...v] = l.split("=");
+      return [k.trim(), v.join("=").trim().replace(/^['"]|['"]$/g, '')];
+    })
+);
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+const supabaseUrl = envVars.VITE_SUPABASE_URL || envVars.SUPABASE_URL;
+const supabaseKey = envVars.SUPABASE_PUBLISHABLE_KEY || envVars.VITE_SUPABASE_PUBLISHABLE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 const CONTAAZUL_API = "https://api-v2.contaazul.com";
 
 async function testProtocol(accessToken, protocol, type) {
@@ -26,11 +35,28 @@ async function main() {
   const { data: tokenData } = await supabase.from("contaazul_tokens").select("*").eq("empresa_id", empresaId).single();
 
   if (tokenData) {
-    console.log("Testing Protocol 13e3a0c2-4a45-11f1-b817-b722679cb245");
-    await testProtocol(tokenData.access_token, "13e3a0c2-4a45-11f1-b817-b722679cb245", "despesa");
-    
-    console.log("Testing Protocol 94d2db1c-4a45-11f1-a0d2-73033b4e3aff");
-    await testProtocol(tokenData.access_token, "94d2db1c-4a45-11f1-a0d2-73033b4e3aff", "despesa");
+    const urls = [
+      "https://api-v2.contaazul.com/v1/conta-financeira",
+      "https://api-v2.contaazul.com/v1/contas-financeiras",
+      "https://api-v2.contaazul.com/v1/bank-accounts"
+    ];
+
+    for (const url of urls) {
+      console.log(`Buscando em: ${url}`);
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "Authorization": `Bearer ${tokenData.access_token}`,
+            "Accept": "application/json"
+          }
+        });
+        console.log(`Status: ${res.status}`);
+        const text = await res.text();
+        console.log(`Resposta: ${text.substring(0, 500)}`);
+      } catch (e) {
+        console.log("Erro:", e.message);
+      }
+    }
   }
 }
 
