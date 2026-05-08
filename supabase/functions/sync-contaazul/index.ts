@@ -1201,7 +1201,9 @@ serve(async (req) => {
           currentIdsByBase.set(erpIdBase, currentIds);
 
           const categoriaErp = allocation.categoriaErp || "Outros";
-          let categoriaInterna = mapCategorias.get(categoriaErp);
+          // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
+          let categoriaInterna = (categoriaErp.toLowerCase().includes("miscelanea - campo")) ? "Materiais" : mapCategorias.get(categoriaErp);
+          
           if (!categoriaInterna) {
             categoriaInterna = categorizarDespesa(categoriaErp, descricao);
             newCategorias.set(categoriaErp, {
