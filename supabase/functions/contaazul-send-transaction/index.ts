@@ -452,24 +452,43 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(admin, empresaId);
     
+    // Buscar a conta bancária "flash" no Conta Azul
+    const accountsResp = await fetch(`${CONTAAZUL_API}/v1/contas-financeiras`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+    });
+    
+    let flashAccountId: string | undefined;
+    if (accountsResp.ok) {
+      const accountsData = await accountsResp.json();
+      console.log("[DEBUG] Resposta da busca de contas financeiras:", JSON.stringify(accountsData).substring(0, 500));
+      
+      const accounts = Array.isArray(accountsData) ? accountsData : (accountsData?.itens || accountsData?.data || []);
+      const flashAccount = accounts.find((a: any) => 
+        a.nome?.toLowerCase().includes("flash") || 
+        a.name?.toLowerCase().includes("flash")
+      );
+      
+      if (flashAccount) {
+        flashAccountId = flashAccount.id;
+        console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId} (${flashAccount.nome || flashAccount.name})`);
+      } else {
+        console.warn("[WARN] Conta financeira 'flash' não encontrada. Usando conta do registro de normalização.");
+      }
+    } else {
+      console.warn(`[WARN] Erro ao buscar contas financeiras (HTTP ${accountsResp.status})`);
+    }
+
     // Buscar um contato padrão para usar no lançamento (obrigatório para contas a pagar)
-    // A API do ContaAzul retorna os contatos em { itens: [...] } ou diretamente como array
     const contactsResp = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
     });
     let defaultContactId: string | undefined;
     if (contactsResp.ok) {
       const contactsData = await contactsResp.json();
-      console.log("[DEBUG] Resposta da busca de contatos:", JSON.stringify(contactsData).substring(0, 300));
-      // Tenta diferentes formatos de resposta da API
       const firstContact = Array.isArray(contactsData)
         ? contactsData[0]
         : (contactsData?.itens?.[0] || contactsData?.data?.[0] || contactsData?.content?.[0]);
       defaultContactId = firstContact?.id;
-      console.log(`[DEBUG] Contato padrão selecionado: ${defaultContactId}`);
-    } else {
-      const errText = await contactsResp.text();
-      console.warn(`[WARN] Não foi possível buscar contatos (HTTP ${contactsResp.status}): ${errText}`);
     }
 
     const results = [];
