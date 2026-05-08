@@ -452,58 +452,58 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(admin, empresaId);
     
-    // Buscar a conta bancária "flash" no Conta Azul (tentando v1 financeiro)
-    const accountsResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/contas-financeiras`, {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-    });
-    
+    // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints v1 conhecidos)
     let flashAccountId: string | undefined;
-    if (accountsResp.ok) {
-      const accountsData = await accountsResp.json();
-      const accounts = Array.isArray(accountsData) ? accountsData : (accountsData?.itens || accountsData?.data || []);
-      const flashAccount = accounts.find((a: any) => 
-        (a.nome || a.name || "").toLowerCase().includes("flash")
-      );
-      
-      if (flashAccount) {
-        flashAccountId = flashAccount.id;
-        console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
-      }
-    } else {
-      console.warn(`[WARN] Erro ao buscar contas financeiras v1 (HTTP ${accountsResp.status})`);
-      // Fallback para a URL sem /financeiro/ caso seja v2
-      const accountsRespV2 = await fetch(`${CONTAAZUL_API}/v2/contas-financeiras`, {
-        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-      });
-      if (accountsRespV2.ok) {
-        const accountsDataV2 = await accountsRespV2.json();
-        const accountsV2 = Array.isArray(accountsDataV2) ? accountsDataV2 : (accountsDataV2?.itens || accountsDataV2?.data || []);
-        const flashAccountV2 = accountsV2.find((a: any) => (a.nome || a.name || "").toLowerCase().includes("flash"));
-        if (flashAccountV2) flashAccountId = flashAccountV2.id;
+    const accountEndpoints = [
+      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
+      `${CONTAAZUL_API}/v1/contas-financeiras`,
+      `${CONTAAZUL_API}/v2/contas-financeiras`
+    ];
+
+    for (const url of accountEndpoints) {
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || []);
+          console.log(`[DEBUG] Contas encontradas em ${url}:`, JSON.stringify(accounts).substring(0, 300));
+          const found = accounts.find((a: any) => (a.nome || a.name || "").toLowerCase().includes("flash"));
+          if (found) {
+            flashAccountId = found.id;
+            console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
+            break;
+          }
+        } else {
+          console.warn(`[WARN] Endpoint ${url} retornou HTTP ${resp.status}`);
+        }
+      } catch (e) {
+        console.error(`[ERROR] Falha ao consultar ${url}:`, e);
       }
     }
 
     // Buscar um contato padrão (v1)
-    const contactsResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`, {
-      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-    });
     let defaultContactId: string | undefined;
-    if (contactsResp.ok) {
-      const contactsData = await contactsResp.json();
-      const firstContact = Array.isArray(contactsData)
-        ? contactsData[0]
-        : (contactsData?.itens?.[0] || contactsData?.data?.[0] || contactsData?.content?.[0]);
-      defaultContactId = firstContact?.id;
-    } else {
-       // Tenta v1 direto se não for sob financeiro
-       const contactsRespV1 = await fetch(`${CONTAAZUL_API}/v1/contatos?limit=1`, {
-         headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-       });
-       if (contactsRespV1.ok) {
-         const contactsDataV1 = await contactsRespV1.json();
-         const firstContactV1 = Array.isArray(contactsDataV1) ? contactsDataV1[0] : (contactsDataV1?.itens?.[0]);
-         defaultContactId = firstContactV1?.id;
-       }
+    const contactEndpoints = [
+      `${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`,
+      `${CONTAAZUL_API}/v1/contatos?limit=1`
+    ];
+
+    for (const url of contactEndpoints) {
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0]);
+          if (contact?.id) {
+            defaultContactId = contact.id;
+            break;
+          }
+        }
+      } catch (e) {}
     }
 
     const results = [];
