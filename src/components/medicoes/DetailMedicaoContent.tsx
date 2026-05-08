@@ -119,7 +119,7 @@ export function DetailMedicaoContent({
       // Get signed URL for the existing storage path
       const { data: signedData, error: sErr } = await supabase.storage
         .from("medicoes-pdf")
-        .createSignedUrl(data.storage_path, 3600);
+        .createSignedUrl(data.storage_path, 31536000);
       
       if (sErr) throw sErr;
       return { ...data, signedUrl: signedData.signedUrl };
