@@ -495,12 +495,16 @@ serve(async (req) => {
     for (const n of norms) {
       const raw = rawsById.get(n.flash_transaction_id);
       const snap = (n.conta_azul_payload || {}) as any;
+      
+      // Sempre usa a conta "flash" se encontrada, senão mantém a que está no registro
+      const financialAccountId = flashAccountId || n.conta_azul_account_id;
+
       const r = await sendOne(admin, empresaId, accessToken, {
         flash_transaction_id: n.flash_transaction_id,
         description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
         value: typeof snap.amount === "number" ? snap.amount : Number(raw?.payload_json?.amount || 0),
         category_id: n.conta_azul_category_id,
-        financial_account_id: n.conta_azul_account_id,
+        financial_account_id: financialAccountId,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
       }, true, defaultContactId); 
