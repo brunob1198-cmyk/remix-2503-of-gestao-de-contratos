@@ -106,7 +106,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         const protData = await protResp.json();
         console.log(`[Reconcile] Resposta protocolo ${conta_azul_protocolo}:`, JSON.stringify(protData));
         if (protData.status === "SUCCESS" || protData.status === "PROCESSED" || protData.status === "COMPLETED") {
-          conta_azul_transaction_id = protData.resourceId || protData.id || protData.evento_id;
+          conta_azul_transaction_id = protData.resourceId || protData.id || protData.evento_id || protData.evento_financeiro_id;
           if (conta_azul_transaction_id) {
             await supabase.from("flash_integration_logs").update({ conta_azul_transaction_id }).eq("id", log.id);
           }
@@ -227,6 +227,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       body: JSON.stringify({
         data_pagamento: transactionDate,
         conta_financeira: normFinal.conta_azul_account_id,
+        metodo_pagamento: "OUTRO",
         composicao_valor: { valor_bruto: transactionValue }
       })
     });

@@ -589,6 +589,8 @@ export function useFlashNormalizacao() {
           conta_azul_account_name: merged.conta_azul_account_name,
           external_id: row.external_id,
           flash_type: row.flash_type,
+          comentarios: row.comentarios !== "—" ? row.comentarios : null,
+          cost_center: row.flash_cost_center !== "—" ? row.flash_cost_center : null,
         });
 
         const upsertPayload: any = {

@@ -92,16 +92,24 @@ async function realizarBaixa(accessToken: string, contaAzulId: string, input: Tr
       const parcelaId = parcelas[0]?.id;
       if (parcelaId && !parcelas[0]?.baixado) {
         console.log(`[DEBUG] Realizando baixa para parcela ${parcelaId}...`);
-        await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
+        const baixaResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             data_pagamento: transactionDate,
             conta_financeira: input.financial_account_id,
+            metodo_pagamento: "OUTRO",
             composicao_valor: { valor_bruto: transactionValue }
           })
         });
+        
+        const baixaText = await baixaResp.text();
+        console.log(`[DEBUG] Resposta baixa (HTTP ${baixaResp.status}):`, baixaText);
+      } else {
+         console.warn(`[DEBUG] Parcela não encontrada ou já baixada. parcelas[0]:`, parcelas[0]);
       }
+    } else {
+       console.error(`[ERROR] Falha ao buscar parcelas para baixa:`, await parcelasResp.text());
     }
   } catch (e) {
     console.error(`Erro na baixa:`, e);
@@ -132,6 +140,8 @@ interface TransactionInput {
   financial_account_id: string;
   date: string | null;
   type: "receita" | "despesa";
+  observacao?: string | null;
+  cost_center?: string | null;
 }
 
 async function sendOne(
@@ -179,23 +189,32 @@ async function sendOne(
   // - "contato" (não "id_contato") é o campo correto para o contato
   // - "id_categoria" só vai dentro do rateio, não no nível raiz
   // - parcela em condicao_pagamento não aceita campo "valor" diretamente
+  // Montar observação: prioriza comentários do Flash, senão usa descrição
+  const obsText = input.observacao && input.observacao.trim()
+    ? input.observacao.trim()
+    : `Flash - ${input.description}`;
+
+  // Montar item de rateio com centro de custo quando disponível
+  const rateioItem: any = {
+    id_categoria: input.category_id,
+    valor: transactionValue,
+    detalhe_valor: {
+      valor_bruto: transactionValue,
+      valor_liquido: transactionValue
+    }
+  };
+  if (input.cost_center && input.cost_center.trim()) {
+    rateioItem.centro_custo = input.cost_center.trim();
+  }
+
   const payload: any = {
     data_competencia: transactionDate,
     valor: transactionValue,
     descricao: input.description,
-    observacao: `Flash - ${input.description}`,
+    observacao: obsText,
     contato: contatoId,
     conta_financeira: input.financial_account_id,
-    rateio: [
-      {
-        id_categoria: input.category_id,
-        valor: transactionValue,
-        detalhe_valor: {
-          valor_bruto: transactionValue,
-          valor_liquido: transactionValue
-        }
-      }
-    ],
+    rateio: [rateioItem],
     condicao_pagamento: {
       parcelas: [
         {
@@ -311,7 +330,7 @@ async function sendOne(
 
                 if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                   status = "ENVIADO";
-                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || null;
+                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || pollData?.evento_financeiro_id || null;
                   errorMsg = null;
                   pollResolved = true;
                   console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
@@ -526,6 +545,18 @@ serve(async (req) => {
       // Sempre usa a conta "flash" se encontrada
       const financialAccountId = flashAccountId || n.conta_azul_account_id;
 
+      // Extrair comentários e centro de custo do payload_json ou do snapshot
+      const comentarios = snap.comentarios
+        || raw?.payload_json?.comments
+        || raw?.payload_json?.comment
+        || raw?.payload_json?.observacao
+        || null;
+      const costCenter = snap.cost_center
+        || raw?.payload_json?.costCenter?.name
+        || raw?.payload_json?.cost_center?.name
+        || raw?.payload_json?.centro_custo
+        || null;
+
       const r = await sendOne(admin, empresaId, accessToken, {
         flash_transaction_id: n.flash_transaction_id,
         description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
@@ -534,6 +565,8 @@ serve(async (req) => {
         financial_account_id: financialAccountId,
         date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
+        observacao: comentarios,
+        cost_center: costCenter,
       }, true, defaultContactId); 
       results.push(r);
     }

@@ -51,6 +51,8 @@ export interface NormalizedFlashTransaction {
     account_name: string | null;
     external_id: string | null;
     flash_type: string;
+    comentarios: string | null;
+    cost_center: string | null;
   } | null;
   requires_manual_review: boolean;
   motivo: string;
@@ -124,6 +126,7 @@ export const normalizeFlashTransaction = (
   const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
   const flash_cost_center = transaction.flash_cost_center || pickValue(payload, ["costCenter.name", "cost_center.name", "centro_custo", "employee.costCenter.name"]) || "—";
   const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
+  const comentarios = pickValue(payload, ["comments", "comment", "observacao", "observation", "note"]) || null;
   
   const valor = typeof transaction.valor === "number" ? transaction.valor : pickNumber(payload, ["amount", "value", "valor", "total"]);
   const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
@@ -229,6 +232,8 @@ export const normalizeFlashTransaction = (
           account_name: finalAccountName,
           external_id: transaction.external_id ?? null,
           flash_type,
+          comentarios,
+          cost_center: flash_cost_center !== "—" ? flash_cost_center : null,
         }
       : null,
     requires_manual_review: !hasFullMapping,
@@ -248,6 +253,8 @@ export const buildContaAzulPayload = (params: {
   conta_azul_account_name: string | null;
   external_id: string | null;
   flash_type: string;
+  comentarios?: string | null;
+  cost_center?: string | null;
 }) => {
   if (!params.conta_azul_category_id || !params.conta_azul_account_id) return null;
   return {
@@ -261,6 +268,8 @@ export const buildContaAzulPayload = (params: {
     account_name: params.conta_azul_account_name,
     external_id: params.external_id,
     flash_type: params.flash_type,
+    comentarios: params.comentarios ?? null,
+    cost_center: params.cost_center ?? null,
   };
 };
 
