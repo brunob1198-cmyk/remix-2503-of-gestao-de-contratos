@@ -455,10 +455,10 @@ serve(async (req) => {
     // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos)
     let flashAccountId: string | undefined;
     const accountEndpoints = [
-      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
-      `${CONTAAZUL_API}/v1/contas-financeiras`,
       `${CONTAAZUL_API}/v1/bank-accounts`,
-      `${CONTAAZUL_API}/v2/bank-accounts`
+      `${CONTAAZUL_API}/v2/bank-accounts`,
+      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
+      `${CONTAAZUL_API}/v1/contas-financeiras`
     ];
 
     for (const url of accountEndpoints) {
@@ -471,8 +471,8 @@ serve(async (req) => {
         
         if (resp.ok) {
           const data = JSON.parse(text);
-          // A API v1 pode retornar um array direto ou { itens: [] }
-          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || []);
+          // A API v1 pode retornar um array direto ou { itens: [] } ou { items: [] }
+          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || data?.content || []);
           console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
           
           const found = accounts.find((a: any) => 
@@ -490,10 +490,10 @@ serve(async (req) => {
     }
 
     if (!flashAccountId) {
-       console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados.");
+       console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados. A função continuará mas pode falhar no CA.");
     }
 
-    // Buscar um contato padrão (v1)
+    // Buscar um contato padrão
     let defaultContactId: string | undefined;
     const contactEndpoints = [
       `${CONTAAZUL_API}/v1/customers?limit=1`,
@@ -508,7 +508,7 @@ serve(async (req) => {
         });
         if (resp.ok) {
           const data = await resp.json();
-          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0]);
+          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0] || data?.content?.[0]);
           if (contact?.id) {
             defaultContactId = contact.id;
             break;
