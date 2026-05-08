@@ -206,7 +206,7 @@ export default function ContratosPage() {
                                       <button
                                         className="text-blue-600 hover:text-blue-800"
                                         onClick={async () => {
-                                          const { data } = await supabase.storage.from('contratos').createSignedUrl(ad.arquivo_url!, 3600);
+                                          const { data } = await supabase.storage.from('contratos').createSignedUrl(ad.arquivo_url!, 31536000);
                                           if (data?.signedUrl) window.open(data.signedUrl, '_blank');
                                         }}
                                       >
@@ -268,7 +268,7 @@ export default function ContratosPage() {
                                 size="icon"
                                 title="Ver arquivo original"
                                 onClick={async () => {
-                                  const { data } = await supabase.storage.from('contratos').createSignedUrl(c.arquivo_url, 3600);
+                                  const { data } = await supabase.storage.from('contratos').createSignedUrl(c.arquivo_url, 31536000);
                                   if (data?.signedUrl) window.open(data.signedUrl, '_blank');
                                 }}
                               >
