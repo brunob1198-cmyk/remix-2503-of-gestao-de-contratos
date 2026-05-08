@@ -45,7 +45,7 @@ interface MonthRow {
   totalErp: number;
 }
 
-type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
+type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "resultadoDireto" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
 
 interface FilterState {
   search: string;
@@ -242,6 +242,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     if (col === "valorProduzido") return row.valorProduzido;
     if (col === "custoOrcado") return row.custoOrcado;
     if (col === "totalErp") return row.totalErp;
+    if (col === "resultadoDireto") return row.custoOrcado - row.totalErp;
     if (col === "mbOrcada") return row.valorProduzido - row.custoOrcado;
     if (col === "mbRealizado") return row.valorProduzido - row.totalErp;
     if (col === "mbPctOrcado") return row.valorProduzido ? ((row.valorProduzido - row.custoOrcado) / row.valorProduzido) * 100 : 0;
@@ -378,11 +379,12 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   </th>
                 ))}
                 <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r" />
+                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r" />
                 <NumericHeader label="Custo Orçado (R$)" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r" />
+                <NumericHeader label="Resultado Direto" col="resultadoDireto" className="bg-purple-50 dark:bg-purple-950/30 border-r" />
                 {CATEGORIAS.map(cat => (
                   <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r" />
                 ))}
-                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r" />
                 <NumericHeader label="MB Orçada (R$)" col="mbOrcada" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
                 <NumericHeader label="MB Realizado (R$)" col="mbRealizado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
                 <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-50 dark:bg-amber-950/30 border-r" />
@@ -423,17 +425,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2.5 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                       {formatCurrency(row.valorProduzido)}
                     </td>
+                    <td className="py-2.5 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-r">
+                      {formatCurrency(row.totalErp)}
+                    </td>
                     <td className="py-2.5 px-4 text-right font-mono text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
                       {formatCurrency(row.custoOrcado)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono font-bold text-purple-600 bg-purple-50/50 dark:bg-purple-950/10 border-r">
+                      {formatCurrency(row.custoOrcado - row.totalErp)}
                     </td>
                     {CATEGORIAS.map((cat) => (
                       <td key={cat} className="py-2.5 px-4 text-right font-mono border-r">
                         {formatCurrency(row.categorias[cat] || 0)}
                       </td>
                     ))}
-                    <td className="py-2.5 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
-                      {formatCurrency(row.totalErp)}
-                    </td>
                     <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbOrc)}</td>
                     <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatCurrency(mbReal)}</td>
                     <td className="py-2.5 px-4 text-right font-mono bg-amber-50/50 dark:bg-amber-950/10 border-r">{formatPercent(mbPctOrc)}</td>
@@ -447,17 +452,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <td className="py-3 px-4 text-right font-mono text-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/10 border-r">
                     {formatCurrency(totals.valorProduzido)}
                   </td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-r">
+                    {formatCurrency(totals.totalErp)}
+                  </td>
                   <td className="py-3 px-4 text-right font-mono text-blue-600 bg-blue-50/50 dark:bg-blue-950/10 border-r">
                     {formatCurrency(totals.custoOrcado)}
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-purple-600 bg-purple-50/50 dark:bg-purple-950/10 border-r">
+                    {formatCurrency(totals.custoOrcado - totals.totalErp)}
                   </td>
                   {CATEGORIAS.map((cat) => (
                     <td key={cat} className="py-3 px-4 text-right font-mono border-r">
                       {formatCurrency(totals.categorias[cat] || 0)}
                     </td>
                   ))}
-                  <td className="py-3 px-4 text-right font-mono font-bold text-destructive bg-red-50/50 dark:bg-red-950/10 border-l-2 border-primary/20">
-                    {formatCurrency(totals.totalErp)}
-                  </td>
                   {(() => {
                     const mbOrc = totals.valorProduzido - totals.custoOrcado;
                     const mbReal = totals.valorProduzido - totals.totalErp;
