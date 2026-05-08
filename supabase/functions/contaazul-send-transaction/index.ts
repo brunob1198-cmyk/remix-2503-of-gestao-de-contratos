@@ -452,12 +452,11 @@ serve(async (req) => {
 
     const accessToken = await getValidAccessToken(admin, empresaId);
     
-    // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints v1 conhecidos)
+    // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos)
     let flashAccountId: string | undefined;
     const accountEndpoints = [
       `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`,
       `${CONTAAZUL_API}/v1/contas-financeiras`,
-      `${CONTAAZUL_API}/v2/contas-financeiras`,
       `${CONTAAZUL_API}/v1/bank-accounts`,
       `${CONTAAZUL_API}/v2/bank-accounts`
     ];
@@ -468,11 +467,14 @@ serve(async (req) => {
           headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
         });
         const text = await resp.text();
-        console.log(`[DEBUG] Resposta de ${url}:`, text.substring(0, 500));
+        console.log(`[DEBUG] Tentando endpoint ${url} (HTTP ${resp.status})`);
         
         if (resp.ok) {
           const data = JSON.parse(text);
+          // A API v1 pode retornar um array direto ou { itens: [] }
           const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || []);
+          console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
+          
           const found = accounts.find((a: any) => 
             (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
           );
@@ -485,6 +487,10 @@ serve(async (req) => {
       } catch (e) {
         console.error(`[ERROR] Falha ao consultar ${url}:`, e);
       }
+    }
+
+    if (!flashAccountId) {
+       console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados.");
     }
 
     // Buscar um contato padrão (v1)
