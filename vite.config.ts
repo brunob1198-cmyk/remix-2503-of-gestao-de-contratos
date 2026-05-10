@@ -15,4 +15,18 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+          charts: ["recharts"],
+          pdf: ["jspdf", "html2canvas", "pdf-lib"],
+          xlsx: ["xlsx"],
+          leaflet: ["leaflet", "react-leaflet"],
+        },
+      },
+    },
+  },
 }));
