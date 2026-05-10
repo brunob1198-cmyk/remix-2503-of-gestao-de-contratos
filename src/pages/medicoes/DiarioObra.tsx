@@ -726,16 +726,6 @@ export default function DiarioObraPage() {
           // 2. Upload to Storage
           const timestamp = Date.now();
           const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-          const thumb300Path = `${diarioId}/thumbs/300/${timestamp}_${fileIndex}_${file.name}`;
-          const thumb600Path = `${diarioId}/thumbs/600/${timestamp}_${fileIndex}_${file.name}`;
-
-          let thumb300File = fileToUpload;
-          let thumb600File = fileToUpload;
-          
-          if (isFileImage(file.name)) {
-            thumb300File = await compressImage(file, 300, 0.7);
-            thumb600File = await compressImage(file, 600, 0.7);
-          }
 
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
             cacheControl: 'public, max-age=31536000, immutable'
@@ -747,25 +737,13 @@ export default function DiarioObraPage() {
             return;
           }
 
-          // Upload Thumbnails
-          await Promise.all([
-            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, {
-              cacheControl: 'public, max-age=31536000, immutable'
-            }),
-            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, {
-              cacheControl: 'public, max-age=31536000, immutable'
-            })
-          ]);
-
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
-          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
 
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
             url: urlData.publicUrl, 
-            thumb_url: thumb300Data.publicUrl,
-            thumb_600_url: thumb600Data.publicUrl,
+            thumb_url: `${urlData.publicUrl}?width=300&resize=contain&quality=70`,
+            thumb_600_url: `${urlData.publicUrl}?width=600&resize=contain&quality=70`,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
