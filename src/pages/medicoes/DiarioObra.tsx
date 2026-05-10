@@ -400,7 +400,7 @@ export default function DiarioObraPage() {
         try {
           let fileToUpload = file;
           if (isFileImage(file.name)) {
-            fileToUpload = await compressImage(file);
+            fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
           const timestamp = Date.now();
@@ -720,7 +720,7 @@ export default function DiarioObraPage() {
           // 1. Compress image if it's an image
           let fileToUpload = file;
           if (isFileImage(file.name)) {
-            fileToUpload = await compressImage(file);
+            fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
           // 2. Upload to Storage
