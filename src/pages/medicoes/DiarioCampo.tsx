@@ -78,46 +78,22 @@ export default function DiarioCampoPage() {
 
           const timestamp = Date.now();
           const path = item.path || `campo/${item.diarioId}/${timestamp}_${item.id}_${item.file.name}`;
-          const thumb300Path = `campo/${item.diarioId}/thumbs/300/${timestamp}_${item.id}_${item.file.name}`;
-          const thumb600Path = `campo/${item.diarioId}/thumbs/600/${timestamp}_${item.id}_${item.file.name}`;
 
-          let thumb300File = item.file;
-          let thumb600File = item.file;
-
-          if (item.file.type.startsWith('image/')) {
-            thumb300File = await compressImage(item.file, 300, 0.7);
-            thumb600File = await compressImage(item.file, 600, 0.7);
-          }
-          
           const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { 
             upsert: true,
             cacheControl: 'public, max-age=31536000, immutable'
           });
           if (uploadError) throw uploadError;
 
-          // Upload Thumbnails
-          await Promise.all([
-            supabase.storage.from("diario-fotos").upload(thumb300Path, thumb300File, { 
-              upsert: true,
-              cacheControl: 'public, max-age=31536000, immutable'
-            }),
-            supabase.storage.from("diario-fotos").upload(thumb600Path, thumb600File, { 
-              upsert: true,
-              cacheControl: 'public, max-age=31536000, immutable'
-            })
-          ]);
-
           const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
-          const { data: thumb300Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb300Path);
-          const { data: thumb600Data } = supabase.storage.from("diario-fotos").getPublicUrl(thumb600Path);
           
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
               diario_campo_id: item.diarioId, 
               url: urlData.publicUrl,
-              thumb_url: thumb300Data.publicUrl,
-              thumb_600_url: thumb600Data.publicUrl
+              thumb_url: `${urlData.publicUrl}?width=300&resize=contain&quality=70`,
+              thumb_600_url: `${urlData.publicUrl}?width=600&resize=contain&quality=70`
             }]);
           
           if (insertError) throw insertError;
