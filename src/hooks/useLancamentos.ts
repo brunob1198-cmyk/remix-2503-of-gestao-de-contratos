@@ -17,7 +17,7 @@ export function useLancamentosProducao(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_producao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
@@ -31,7 +31,7 @@ export function useLancamentosProducao(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoProducao[])];
+          allData = [...allData, ...(data as unknown as LancamentoProducao[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
@@ -129,7 +129,7 @@ export function useLancamentosMedicao(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_medicao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
@@ -143,7 +143,7 @@ export function useLancamentosMedicao(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoMedicao[])];
+          allData = [...allData, ...(data as unknown as LancamentoMedicao[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
@@ -302,7 +302,7 @@ export function useLancamentosFaturamento(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_faturamento")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
@@ -316,7 +316,7 @@ export function useLancamentosFaturamento(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoFaturamento[])];
+          allData = [...allData, ...(data as unknown as LancamentoFaturamento[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
