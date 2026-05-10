@@ -17,7 +17,7 @@ export function useLancamentosProducao(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_producao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
@@ -129,7 +129,7 @@ export function useLancamentosMedicao(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_medicao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
@@ -302,7 +302,7 @@ export function useLancamentosFaturamento(siteId?: string) {
       while (hasMore) {
         let query = supabase
           .from("lancamentos_faturamento")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(*)")
+          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .order("id")
           .range(from, from + 1000 - 1);
         
