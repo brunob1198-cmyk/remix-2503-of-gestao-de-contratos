@@ -143,7 +143,7 @@ export function useLancamentosMedicao(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoMedicao[])];
+          allData = [...allData, ...(data as unknown as LancamentoMedicao[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
