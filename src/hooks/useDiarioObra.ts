@@ -633,7 +633,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       while (true) {
         const { data: d, error } = await supabase
           .from("diario_fotos")
-          .select("*")
+          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at")
           .eq("diario_id", diario.id)
           .range(from, to);
         if (error) throw error;
