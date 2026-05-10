@@ -31,7 +31,7 @@ export function useLancamentosProducao(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoProducao[])];
+          allData = [...allData, ...(data as unknown as LancamentoProducao[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
@@ -316,7 +316,7 @@ export function useLancamentosFaturamento(siteId?: string) {
         if (!data || data.length === 0) {
           hasMore = false;
         } else {
-          allData = [...allData, ...(data as LancamentoFaturamento[])];
+          allData = [...allData, ...(data as unknown as LancamentoFaturamento[])];
           if (data.length < 1000) {
             hasMore = false;
           } else {
