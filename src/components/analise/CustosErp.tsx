@@ -26,6 +26,7 @@ const CATEGORIAS_PADRAO = [
   "Transporte",
   "Indiretos",
   "Financeiros",
+  "Gerência",
 ];
 
 type ColKey = "competencia" | "descricao" | "mapeamento" | "centro_custo" | "valor" | "status" | "categoria";
