@@ -280,6 +280,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       const receitaLiquida = receitaTotal * taxRate;
       const margem = receitaLiquida - custoReal;
       const margemPercent = receitaLiquida > 0 ? (margem / receitaLiquida) * 100 : 0;
+      
+      const mbOrcada = receitaLiquida - custoEsperado;
+      const mbOrcadaPercent = receitaLiquida > 0 ? (mbOrcada / receitaLiquida) * 100 : 0;
 
       const totalMedido = medicao.reduce((s, l) => {
         const preco = (l.item_lpu as any)?.preco_unitario || 0;
