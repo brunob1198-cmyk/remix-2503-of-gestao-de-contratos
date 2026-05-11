@@ -311,6 +311,22 @@ export default function LpuPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDeleteDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+        itemName={itensLpu.find(i => i.id === deletingId)?.codigo || "este item"}
+        loading={deleteItemLpu.isPending}
+      />
+
+      <ConfirmDeleteDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={setShowBulkDeleteConfirm}
+        onConfirm={confirmBulkDelete}
+        title="Excluir Vários Itens"
+        description={`Tem certeza que deseja excluir ${selectedIds.size} itens selecionados? Esta ação não pode ser desfeita.`}
+        loading={deleteItemLpu.isPending}
+      />
     </div>
   );
 }
