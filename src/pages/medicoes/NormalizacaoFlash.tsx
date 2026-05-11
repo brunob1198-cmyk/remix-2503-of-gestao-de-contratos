@@ -521,6 +521,13 @@ export default function NormalizacaoFlashPage() {
     return filtered.slice(startIndex, startIndex + itemsPerPage);
   }, [filtered, currentPage]);
 
+  const rowVirtualizer = useVirtualizer({
+    count: paginatedData.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const pendentes = useMemo(
