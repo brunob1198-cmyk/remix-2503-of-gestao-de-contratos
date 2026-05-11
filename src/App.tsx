@@ -19,7 +19,7 @@ import PendingApprovalPage from "./pages/PendingApproval";
 import MedicoesLayout from "./pages/medicoes/Layout";
 import DashboardPage from "./pages/medicoes/Dashboard";
 import CadastrosPage from "./pages/medicoes/Cadastros";
-import ProducaoPage from "./pages/medicoes/Producao";
+// ProducaoPage removido
 import MedicaoPage from "./pages/medicoes/Medicao";
 import FaturamentoPage from "./pages/medicoes/Faturamento";
 import RelatoriosPage from "./pages/medicoes/Relatorios";
@@ -86,7 +86,7 @@ const App = () => (
               <Route path="diario" element={<DiarioObraPage />} />
               <Route path="diario-campo" element={<DiarioCampoPage />} />
               <Route path="analise" element={<AnaliseObraPage />} />
-              <Route path="producao" element={<ProducaoPage />} />
+              <Route path="producao" element={<Navigate to="/medicoes/dashboard" replace />} />
               <Route path="medicao" element={<MedicaoPage />} />
               <Route path="faturamento" element={<FaturamentoPage />} />
               <Route path="acompanhamento" element={<AcompanhamentoMedicoesPage />} />
