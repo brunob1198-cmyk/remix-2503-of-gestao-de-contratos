@@ -173,7 +173,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
           let custoRealGerencia = 0;
           myErp.forEach((e: any) => {
             const cat = e.categoria_interna || "Indiretos";
-            if (cat === "Indiretos") custoRealGerencia += Number(e.valor || 0);
+            if (cat === "Gerência") custoRealGerencia += Number(e.valor || 0);
             if (categorias[cat] !== undefined) categorias[cat] += Number(e.valor || 0);
             else categorias["Indiretos"] += Number(e.valor || 0);
           });
