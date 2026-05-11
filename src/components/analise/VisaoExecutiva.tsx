@@ -39,7 +39,8 @@ function statusBadge(pct: number) {
 }
 
 export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoFim }: { projetoId: string; projetoName: string; periodoInicio?: Date; periodoFim?: Date }) {
-  const { data, isLoading, isFetching } = useAnaliseObra(projetoId, undefined, periodoInicio, periodoFim);
+  const { data: analiseData, isLoading, isFetching } = useAnaliseObra(projetoId, undefined, periodoInicio, periodoFim);
+  const data = analiseData as any;
 
   if (isLoading) {
     return (
