@@ -159,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         role,
         empresaId: profile?.empresa_id ?? null,
+        empresaLogoUrl,
         aprovado: profile?.aprovado ?? false,
         loading,
         signOut,
