@@ -351,13 +351,7 @@ export default function NormalizacaoFlashPage() {
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get("limit") || "100"));
 
   const parentRef = useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: paginatedData.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 48,
-    overscan: 5,
-  });
-
+  
   // Reset page when filters change (but NOT when changing date range or sorting, 
   // if we want to preserve them, but usually filters should reset page to 1)
   useEffect(() => {
