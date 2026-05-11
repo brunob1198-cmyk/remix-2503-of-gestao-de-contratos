@@ -59,7 +59,9 @@ const RootRedirect = () => {
   return <Navigate to="/medicoes/dashboard" replace />;
 };
 
-const App = () => (
+const App = () => {
+  useAppUpdate();
+  return (
   <PersistQueryClientProvider 
     client={queryClient} 
     persistOptions={{ persister: indexedDBPersister }}
