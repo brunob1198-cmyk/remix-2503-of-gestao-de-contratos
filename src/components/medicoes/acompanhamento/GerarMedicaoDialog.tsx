@@ -90,13 +90,32 @@ export function GerarMedicaoDialog({
   const capaInputRef = useRef<HTMLInputElement>(null);
 
   const { data: diarioProducoes = [] } = useQuery({
-    queryKey: ["diario_producao_all_dialog"],
+    queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
     queryFn: async () => {
-      const { data: diarios, error: dErr } = await supabase
+      let query = supabase
         .from("diarios_obra")
         .select("id, site_id, data")
-        .order('data', { ascending: false })
-        .limit(100000);
+        .order('data', { ascending: false });
+
+      if (gerarPeriodoInicio) {
+        query = query.gte("data", gerarPeriodoInicio);
+      }
+      if (gerarPeriodoFim) {
+        query = query.lte("data", gerarPeriodoFim);
+      }
+
+      if (gerarSiteId) {
+        query = query.eq("site_id", gerarSiteId);
+      } else if (gerarProjetoId) {
+        const projectSiteIds = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
+        if (projectSiteIds.length > 0) {
+          query = query.in("site_id", projectSiteIds);
+        } else {
+          return [];
+        }
+      }
+
+      const { data: diarios, error: dErr } = await query.limit(100000);
       if (dErr) throw dErr;
       if (!diarios || diarios.length === 0) return [];
 
@@ -138,7 +157,7 @@ export function GerarMedicaoDialog({
         };
       });
     },
-    enabled: isOpen,
+    enabled: isOpen && !!gerarPeriodoInicio && !!gerarPeriodoFim,
   });
 
   const handleGerarPreview = async () => {
@@ -533,6 +552,7 @@ export function GerarMedicaoDialog({
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim}>
+                {loadingGeracaoFotos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Ver Itens Produzidos
               </Button>
             </DialogFooter>
