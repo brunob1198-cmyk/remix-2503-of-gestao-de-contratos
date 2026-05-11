@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Layers, Loader2 } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import { safeFormat } from "@/lib/utils";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
