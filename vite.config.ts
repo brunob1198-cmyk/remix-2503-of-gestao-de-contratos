@@ -10,8 +10,8 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    process.env.NODE_ENV === "development" && componentTagger(),
-  ].filter(Boolean),
+    componentTagger(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
