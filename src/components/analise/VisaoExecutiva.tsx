@@ -66,23 +66,27 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita (Diário)</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita Bruta</p>
               <p className="text-xl font-bold tabular-nums">{fmt(financeiro.receitaTotal)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita Líquida</p>
+              <p className="text-xl font-bold tabular-nums text-emerald-600">{fmt(financeiro.receitaLiquida)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo real</p>
               <p className="text-xl font-bold tabular-nums">{fmt(financeiro.custoReal)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Margem</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB Real</p>
               <p className={`text-xl font-bold tabular-nums ${statusColor(financeiro.margemPercent)}`}>
                 {fmt(financeiro.margem)}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Margem %</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB % Real</p>
               <div className="flex items-center gap-2">
                 <p className={`text-xl font-bold tabular-nums ${statusColor(financeiro.margemPercent)}`}>
                   {fmtPct(financeiro.margemPercent)}
@@ -92,10 +96,14 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
             </div>
           </div>
 
-          <div className="border-t mt-4 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="border-t mt-4 pt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo esperado (BDI)</p>
-              <p className="text-lg font-semibold tabular-nums">{fmt(financeiro.custoEsperado)}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo orçado</p>
+              <p className="text-lg font-semibold tabular-nums text-blue-600">{fmt(financeiro.custoEsperado)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB Orçada</p>
+              <p className="text-lg font-semibold tabular-nums text-amber-600">{fmt(financeiro.mbOrcada)} ({fmtPct(financeiro.mbOrcadaPercent)})</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Desvio custo</p>

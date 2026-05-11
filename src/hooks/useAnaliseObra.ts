@@ -4,10 +4,13 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export interface AnaliseFinanceira {
   receitaTotal: number;
+  receitaLiquida: number;
   custoReal: number;
   custoEsperado: number;
   margem: number;
   margemPercent: number;
+  mbOrcada: number;
+  mbOrcadaPercent: number;
   aFaturar: number;
   custoPrevisto: number;
   lucroProjetado: number;
@@ -99,6 +102,18 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       let medicao: any[] = [];
       let faturamento: any[] = [];
       let diarios: any[] = [];
+
+      const { data: faturamentosData } = await supabase
+        .from("faturamentos")
+        .select("valor_liquido, valor_bruto")
+        .eq("projeto_id", resolvedProjetoId);
+
+      let taxRate = 0.94;
+      if (faturamentosData && faturamentosData.length > 0) {
+        const totalBruto = faturamentosData.reduce((a, b) => a + Number(b.valor_bruto || 0), 0);
+        const totalLiquido = faturamentosData.reduce((a, b) => a + Number(b.valor_liquido || 0), 0);
+        taxRate = totalBruto > 0 ? totalLiquido / totalBruto : 0.94;
+      }
 
       if (siteIds.length > 0) {
         for (let i = 0; i < siteIds.length; i += 50) {
@@ -262,8 +277,12 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         }
       });
 
-      const margem = receitaTotal - custoReal;
-      const margemPercent = receitaTotal > 0 ? (margem / receitaTotal) * 100 : 0;
+      const receitaLiquida = receitaTotal * taxRate;
+      const margem = receitaLiquida - custoReal;
+      const margemPercent = receitaLiquida > 0 ? (margem / receitaLiquida) * 100 : 0;
+      
+      const mbOrcada = receitaLiquida - custoEsperado;
+      const mbOrcadaPercent = receitaLiquida > 0 ? (mbOrcada / receitaLiquida) * 100 : 0;
 
       const totalMedido = medicao.reduce((s, l) => {
         const preco = (l.item_lpu as any)?.preco_unitario || 0;
@@ -282,13 +301,16 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
 
       const financeiro: AnaliseFinanceira = {
         receitaTotal,
+        receitaLiquida,
         custoReal,
         custoEsperado,
         margem,
         margemPercent,
+        mbOrcada,
+        mbOrcadaPercent,
         aFaturar,
         custoPrevisto: escopoCustoTotal,
-        lucroProjetado: margem + (aFaturar > 0 ? aFaturar : 0),
+        lucroProjetado: margem + (aFaturar > 0 ? aFaturar * taxRate : 0),
       };
 
       // ── PROGRESS ──
@@ -315,11 +337,12 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           custoEsp = bdi > 0 ? prod.receita / bdi : prod.receita;
         }
 
+        const receitaLiquidaItem = prod.receita * taxRate;
         // Prorate real cost by receita ratio
         const ratio = receitaTotal > 0 ? prod.receita / receitaTotal : 0;
         const custoRealItem = custoReal * ratio;
 
-        const m = prod.receita - custoRealItem;
+        const m = receitaLiquidaItem - custoRealItem;
         servicos.push({
           itemId: itemLpuId,
           codigo,
@@ -328,7 +351,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           custoReal: custoRealItem,
           custoEsperado: custoEsp,
           margem: m,
-          margemPercent: prod.receita > 0 ? (m / prod.receita) * 100 : 0,
+          margemPercent: receitaLiquidaItem > 0 ? (m / receitaLiquidaItem) * 100 : 0,
         });
       });
       servicos.sort((a, b) => b.receita - a.receita);
