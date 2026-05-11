@@ -70,7 +70,10 @@ export function GerarMedicaoDialog({
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("projetos").select("*").order("codigo");
+      const { data, error } = await supabase
+        .from("projetos")
+        .select("*, clienteObj:clientes(*), contratoObj:contratos(*), areaObj:areas(*)")
+        .order("codigo");
       if (error) throw error;
       return data;
     },
@@ -80,7 +83,10 @@ export function GerarMedicaoDialog({
   const { data: sites = [] } = useQuery({
     queryKey: ["sites", undefined],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sites").select("*").order("codigo");
+      const { data, error } = await supabase
+        .from("sites")
+        .select("*, projeto:projetos(*, clienteObj:clientes(*))")
+        .order("codigo");
       if (error) throw error;
       return data;
     },
@@ -90,7 +96,10 @@ export function GerarMedicaoDialog({
   const { data: allItensLpu = [] } = useQuery({
     queryKey: ["itens_lpu", undefined],
     queryFn: async () => {
-      const { data, error } = await supabase.from("itens_lpu").select("*").order("codigo");
+      const { data, error } = await supabase
+        .from("itens_lpu")
+        .select("*, projeto:projetos(*)")
+        .order("codigo");
       if (error) throw error;
       return data;
     },
