@@ -19,7 +19,7 @@ import PendingApprovalPage from "./pages/PendingApproval";
 import MedicoesLayout from "./pages/medicoes/Layout";
 import DashboardPage from "./pages/medicoes/Dashboard";
 import CadastrosPage from "./pages/medicoes/Cadastros";
-import ProducaoPage from "./pages/medicoes/Producao";
+// ProducaoPage removido
 import MedicaoPage from "./pages/medicoes/Medicao";
 import FaturamentoPage from "./pages/medicoes/Faturamento";
 import RelatoriosPage from "./pages/medicoes/Relatorios";
