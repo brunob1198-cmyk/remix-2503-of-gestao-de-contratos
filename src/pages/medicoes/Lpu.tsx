@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 const columns = ["codigo", "descricao", "unidade", "preco_unitario", "bdi", "categoria", "projeto"] as const;
 type ColKey = typeof columns[number];
