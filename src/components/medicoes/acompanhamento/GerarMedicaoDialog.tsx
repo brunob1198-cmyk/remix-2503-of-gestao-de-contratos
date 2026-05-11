@@ -552,6 +552,7 @@ export function GerarMedicaoDialog({
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim}>
+                {loadingGeracaoFotos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Ver Itens Produzidos
               </Button>
             </DialogFooter>
