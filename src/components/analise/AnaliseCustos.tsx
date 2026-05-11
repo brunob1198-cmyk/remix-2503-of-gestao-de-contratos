@@ -358,11 +358,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         <ClipboardList className="h-4 w-4" />
                       </Button>
                     </td>
-                    <td className="py-2 px-4 border-r text-center">{row.referencia}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[120px]">{row.area}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[200px]">{row.codigo} - {row.nome}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[160px]">{row.cliente}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30">{formatCurrency(row.valorProduzido)}</td>
+                    <td className="py-2 px-4 border-r text-center sticky left-[64px] z-10 bg-background">{row.referencia}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[120px] sticky left-[164px] z-10 bg-background">{row.area}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[200px] sticky left-[264px] z-10 bg-background">{row.codigo} - {row.nome}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[160px] sticky left-[464px] z-10 bg-background">{row.cliente}</td>
+                    <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30 sticky left-[624px] z-10">{formatCurrency(row.valorProduzido)}</td>
                     {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r font-mono">{formatCurrency(row.categorias[cat] || 0)}</td>)}
                     <td className="py-2 px-4 text-right border-r font-mono font-bold text-destructive bg-red-50/30">{formatCurrency(row.totalErp)}</td>
                     <td className="py-2 px-4 text-right border-r font-mono text-blue-600 bg-blue-50/30">{formatCurrency(row.custoOrcado)}</td>
