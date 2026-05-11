@@ -22,7 +22,7 @@ export default function AnaliseObraPage() {
   const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = usePersistedState<string[]>("analise_projeto_ids", []);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("executiva");
+  const [activeTab, setActiveTab] = useState("custos-erp");
   const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>("analise_periodo_inicio", startOfMonth(new Date()).toISOString());
   const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>("analise_periodo_fim", endOfMonth(new Date()).toISOString());
   const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("analise_last_updated", null);
@@ -199,10 +199,6 @@ export default function AnaliseObraPage() {
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="executiva" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Visão Executiva
-            </TabsTrigger>
             <TabsTrigger value="custos-erp" className="gap-2">
               <Calculator className="h-4 w-4" />
               Análise de Custos
@@ -210,6 +206,10 @@ export default function AnaliseObraPage() {
             <TabsTrigger value="auditoria-erp" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               Auditoria ERP
+            </TabsTrigger>
+            <TabsTrigger value="executiva" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Visão Executiva
             </TabsTrigger>
           </TabsList>
 
