@@ -156,8 +156,14 @@ export default function ProjetosPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este projeto?")) {
-      deleteProjeto.mutate(id);
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteProjeto.mutate(deletingId, {
+        onSuccess: () => setDeletingId(null)
+      });
     }
   };
 
