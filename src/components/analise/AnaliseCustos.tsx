@@ -314,19 +314,19 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             <thead className="bg-muted text-muted-foreground">
               <tr>
                 <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky z-20 bg-muted" style={{ left: columnWidths.fca }}>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[64px] z-20 bg-muted">
                   <ColumnHeader label="Referência" sortDir={makeSortDir("referencia")} onSort={() => handleSort("referencia")} searchText={getFilter("referencia").search} onSearchChange={makeSearchChange("referencia")} uniqueValues={uniqueValues["referencia"] || []} selectedValues={getFilter("referencia").selected} onToggleValue={makeToggle("referencia")} onSelectAll={makeSelectAll("referencia")} onClearAll={makeClearAll("referencia")} />
                 </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky z-20 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref }}>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[164px] z-20 bg-muted">
                   <ColumnHeader label="Área" sortDir={makeSortDir("area")} onSort={() => handleSort("area")} searchText={getFilter("area").search} onSearchChange={makeSearchChange("area")} uniqueValues={uniqueValues["area"] || []} selectedValues={getFilter("area").selected} onToggleValue={makeToggle("area")} onSelectAll={makeSelectAll("area")} onClearAll={makeClearAll("area")} />
                 </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky z-20 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area }}>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[264px] z-20 bg-muted">
                   <ColumnHeader label="Projeto" sortDir={makeSortDir("projeto")} onSort={() => handleSort("projeto")} searchText={getFilter("projeto").search} onSearchChange={makeSearchChange("projeto")} uniqueValues={uniqueValues["projeto"] || []} selectedValues={getFilter("projeto").selected} onToggleValue={makeToggle("projeto")} onSelectAll={makeSelectAll("projeto")} onClearAll={makeClearAll("projeto")} />
                 </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky z-20 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area + columnWidths.proj }}>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[464px] z-20 bg-muted">
                   <ColumnHeader label="Cliente" sortDir={makeSortDir("cliente")} onSort={() => handleSort("cliente")} searchText={getFilter("cliente").search} onSearchChange={makeSearchChange("cliente")} uniqueValues={uniqueValues["cliente"] || []} selectedValues={getFilter("cliente").selected} onToggleValue={makeToggle("cliente")} onSelectAll={makeSelectAll("cliente")} onClearAll={makeClearAll("cliente")} />
                 </th>
-                <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r border-b sticky z-20" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area + columnWidths.proj + columnWidths.cli }} />
+                <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r border-b sticky left-[624px] z-20" />
                 {CATEGORIAS.map(cat => <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r border-b" />)}
                 <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r border-b" />
                 <NumericHeader label="Custo Orçado" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r border-b" />
