@@ -426,6 +426,7 @@ export function GerarMedicaoDialog({
     setShowPreview(false);
     setGeracaoItens([]);
     setGeracaoFotos([]);
+    setGeracaoFotosTotal(0);
     setGerarNumeroMedicao("");
     setGerarPeriodoInicio("");
     setGerarPeriodoFim("");
