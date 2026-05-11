@@ -58,6 +58,37 @@ interface FilterState {
 const emptyFilter = (): FilterState => ({ search: "", selected: new Set() });
 
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [columnWidths, setColumnWidths] = useState({ fca: 64, ref: 100, area: 100, proj: 200, cli: 160 });
+
+  useEffect(() => {
+    const updateWidths = () => {
+      if (!containerRef.current) return;
+      const table = containerRef.current.querySelector('table');
+      if (!table) return;
+      const firstRow = table.querySelector('tbody tr');
+      if (!firstRow) return;
+      
+      const cells = firstRow.querySelectorAll('td');
+      if (cells.length >= 5) {
+        setColumnWidths({
+          fca: cells[0].offsetWidth,
+          ref: cells[1].offsetWidth,
+          area: cells[2].offsetWidth,
+          proj: cells[3].offsetWidth,
+          cli: cells[4].offsetWidth,
+        });
+      }
+    };
+
+    const timer = setTimeout(updateWidths, 100);
+    window.addEventListener('resize', updateWidths);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateWidths);
+    };
+  }, [projetoIds, periodoInicio, periodoFim]);
+
   const startDate = format(startOfMonth(periodoInicio), "yyyy-MM-dd");
   const endDate = format(endOfMonth(periodoFim), "yyyy-MM-dd");
 
