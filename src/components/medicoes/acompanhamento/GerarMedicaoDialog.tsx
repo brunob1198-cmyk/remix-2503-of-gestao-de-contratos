@@ -13,6 +13,8 @@ import { Loader2, Plus, Search, AlertTriangle, FileText, Camera, MapPin, Calenda
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
+import { toast } from "sonner";
 
 interface GeracaoItem {
   site_id: string;
@@ -139,7 +141,19 @@ export function GerarMedicaoDialog({
   });
 
   const handleGerarPreview = async () => {
-    if (!gerarPeriodoInicio || !gerarPeriodoFim) return;
+    const validation = gerarMedicaoSchema.safeParse({
+      periodoInicio: gerarPeriodoInicio,
+      periodoFim: gerarPeriodoFim,
+      numeroMedicao: gerarNumeroMedicao,
+      tipoMedicao: gerarTipoMedicao,
+      projetoId: gerarProjetoId || undefined,
+      siteId: gerarSiteId || undefined,
+    });
+
+    if (!validation.success) {
+      toast.error(validation.error.issues[0].message);
+      return;
+    }
 
     const allProducao = [
       ...producoes.map(p => ({
