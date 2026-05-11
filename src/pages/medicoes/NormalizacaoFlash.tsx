@@ -1490,13 +1490,21 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
-                        {paginatedData.map((row) => {
+                      <TableBody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                          const row = paginatedData[virtualRow.index];
+                          if (!row) return null;
                           const hasMapping = mappingByType.has(row.flash_type);
                           const isEnviado = row.status === "enviado";
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
-                            <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
+                            <TableRow 
+                              key={virtualRow.key} 
+                              data-index={virtualRow.index}
+                              ref={rowVirtualizer.measureElement}
+                              className={cn("absolute w-full", isEnviado && "opacity-80")}
+                              style={{ transform: `translateY(${virtualRow.start}px)` }}
+                            >
                               <TableCell>
                                 <Checkbox 
                                   checked={selectedToSendIds.includes(row.id)}
@@ -1594,6 +1602,14 @@ export default function NormalizacaoFlashPage() {
                             </TableRow>
                           );
                         })}
+                        {rowVirtualizer.getVirtualItems().length === 0 && paginatedData.length > 0 && (
+                          paginatedData.slice(0, 100).map((row) => (
+                             <TableRow key={row.id}>
+                               {/* Fallback simplified content or just map normal if needed */}
+                               <TableCell colSpan={13} className="text-center py-4">Carregando...</TableCell>
+                             </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
