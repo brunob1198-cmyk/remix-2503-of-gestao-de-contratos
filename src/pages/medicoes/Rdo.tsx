@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
 import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
@@ -349,6 +350,23 @@ export default function RdoPage() {
     sitesMap
   );
 
+  // Query for aggregated totals from the database via RPC
+  const { data: totaisAgregados, isLoading: isLoadingTotais } = useQuery({
+    queryKey: ["rdo-totais", querySiteIds, dataInicio, dataFim],
+    queryFn: async () => {
+      if (!querySiteIds || querySiteIds.length === 0) return null;
+      const { data, error } = await supabase
+        .rpc("resumo_rdo_periodo", {
+          p_site_ids: querySiteIds,
+          p_data_inicio: dataInicio,
+          p_data_fim: dataFim,
+        });
+      if (error) throw error;
+      return data;
+    },
+    enabled: querySiteIds.length > 0 && !!dataInicio && !!dataFim,
+  });
+
   const [selectedDiarioId, setSelectedDiarioId] = useState<string | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const toggleDayCollapse = useCallback((data: string) => {
@@ -384,17 +402,18 @@ export default function RdoPage() {
 
   const isMultiSite = selectedSiteIds.length !== 1;
 
-  const totalDias = dayGroups.length;
-  const totalFotos = diarios.reduce((s, d) => s + d.totalFotos, 0);
-  const totalProd = diarios.reduce((s, d) => s + d.totalProducao, 0);
+  // Use aggregated totals from DB, with local calculation as fallback
+  const totalDias = (totaisAgregados as any)?.total_dias ?? dayGroups.length;
+  const totalFotos = (totaisAgregados as any)?.total_fotos ?? diarios.reduce((s, d) => s + d.totalFotos, 0);
+  const totalProd = (totaisAgregados as any)?.total_producao ?? diarios.reduce((s, d) => s + d.totalProducao, 0);
+  const mediaPorDia = (totaisAgregados as any)?.media_por_dia ?? (totalDias > 0 ? totalProd / totalDias : 0);
 
-  const qtdSitesAtendidos = useMemo(() => {
+  const qtdSitesAtendidosLocal = useMemo(() => {
     const set = new Set<string>();
     diarios.forEach(d => set.add(d.site_id));
     return set.size;
   }, [diarios]);
-
-  const mediaPorDia = totalDias > 0 ? totalProd / totalDias : 0;
+  const qtdSitesAtendidos = (totaisAgregados as any)?.total_sites ?? qtdSitesAtendidosLocal;
 
   const escopoProjetoIds = useMemo(() => {
     if (selectedProjetoIds.length > 0) return selectedProjetoIds;
@@ -799,13 +818,21 @@ export default function RdoPage() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
+                    {isLoadingTotais ? (
+                      <Skeleton className="h-8 w-16 mx-auto mb-1" />
+                    ) : (
+                      <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">Dias registrados</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold tabular-nums">{qtdSitesAtendidos}</p>
+                    {isLoadingTotais ? (
+                      <Skeleton className="h-8 w-16 mx-auto mb-1" />
+                    ) : (
+                      <p className="text-2xl font-bold tabular-nums">{qtdSitesAtendidos}</p>
+                    )}
                     <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                       <Building2 className="h-3 w-3" /> Qtd Sites
                     </p>
@@ -814,7 +841,11 @@ export default function RdoPage() {
                 {!isCliente && (
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
+                      {isLoadingTotais ? (
+                        <Skeleton className="h-8 w-24 mx-auto mb-1" />
+                      ) : (
+                        <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">Produção total</p>
                     </CardContent>
                   </Card>
@@ -822,7 +853,11 @@ export default function RdoPage() {
                 {!isCliente && (
                   <Card>
                     <CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold tabular-nums">{formatCurrency(mediaPorDia)}</p>
+                      {isLoadingTotais ? (
+                        <Skeleton className="h-8 w-24 mx-auto mb-1" />
+                      ) : (
+                        <p className="text-2xl font-bold tabular-nums">{formatCurrency(mediaPorDia)}</p>
+                      )}
                       <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                         <TrendingUp className="h-3 w-3" /> Média R$/Dia
                       </p>
@@ -831,7 +866,11 @@ export default function RdoPage() {
                 )}
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
+                    {isLoadingTotais ? (
+                      <Skeleton className="h-8 w-16 mx-auto mb-1" />
+                    ) : (
+                      <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">Fotos</p>
                   </CardContent>
                 </Card>
