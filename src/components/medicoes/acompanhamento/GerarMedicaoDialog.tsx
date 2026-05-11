@@ -141,7 +141,19 @@ export function GerarMedicaoDialog({
   });
 
   const handleGerarPreview = async () => {
-    if (!gerarPeriodoInicio || !gerarPeriodoFim) return;
+    const validation = gerarMedicaoSchema.safeParse({
+      periodoInicio: gerarPeriodoInicio,
+      periodoFim: gerarPeriodoFim,
+      numeroMedicao: gerarNumeroMedicao,
+      tipoMedicao: gerarTipoMedicao,
+      projetoId: gerarProjetoId || undefined,
+      siteId: gerarSiteId || undefined,
+    });
+
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
+      return;
+    }
 
     const allProducao = [
       ...producoes.map(p => ({
