@@ -305,9 +305,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         </div>
         {isFetching && <div className="text-xs text-muted-foreground animate-pulse">Atualizando...</div>}
       </CardHeader>
-      <ScrollArea className="w-full">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
+      <div className="w-full overflow-x-auto relative">
+        <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
                 <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
