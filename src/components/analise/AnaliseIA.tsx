@@ -328,7 +328,7 @@ export function AnaliseIA({ projetoId, projetoName }: { projetoId: string; proje
           mediaDiaria: p.mediaDiaria,
           diasComProducao: p.diasComProducao,
         })),
-        escopoTotal: obraData.escopoTotal,
+        escopoTotal: (obraData as any).escopoTotal,
         fotos: (obraData as any).fotos?.slice(0, 20).map((f: any) => ({
           url: f.url,
           legenda: f.legenda,
