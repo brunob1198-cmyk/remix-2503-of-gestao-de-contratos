@@ -385,8 +385,12 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             </tbody>
             <tfoot className="bg-muted font-bold">
               <tr>
-                <td colSpan={5} className="py-2 px-4 border-r text-right">Totais:</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.valorProduzido)}</td>
+                <td colSpan={1} className="py-2 px-4 border-r text-right sticky left-0 z-10 bg-muted">Totais:</td>
+                <td className="py-2 px-4 border-r sticky left-[64px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r sticky left-[164px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r sticky left-[264px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r sticky left-[464px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 text-right border-r sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
                 {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
                 <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.totalErp)}</td>
                 <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoOrcado)}</td>
