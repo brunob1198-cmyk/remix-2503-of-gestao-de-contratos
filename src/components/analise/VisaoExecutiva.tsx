@@ -80,13 +80,13 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
               <p className="text-xl font-bold tabular-nums">{fmt(financeiro.custoReal)}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Margem</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB Real</p>
               <p className={`text-xl font-bold tabular-nums ${statusColor(financeiro.margemPercent)}`}>
                 {fmt(financeiro.margem)}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Margem %</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB % Real</p>
               <div className="flex items-center gap-2">
                 <p className={`text-xl font-bold tabular-nums ${statusColor(financeiro.margemPercent)}`}>
                   {fmtPct(financeiro.margemPercent)}
