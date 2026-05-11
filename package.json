@@ -44,6 +44,7 @@
     "@tanstack/query-sync-storage-persister": "^5.100.9",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-persist-client": "^5.100.9",
+    "@tanstack/react-virtual": "^3.13.24",
     "@types/file-saver": "^2.0.7",
     "@types/leaflet": "^1.9.21",
     "@types/streamsaver": "^2.0.5",

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -349,6 +350,8 @@ export default function NormalizacaoFlashPage() {
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
   const [itemsPerPage, setItemsPerPage] = useState(parseInt(searchParams.get("limit") || "100"));
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  
   // Reset page when filters change (but NOT when changing date range or sorting, 
   // if we want to preserve them, but usually filters should reset page to 1)
   useEffect(() => {
@@ -517,6 +520,13 @@ export default function NormalizacaoFlashPage() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filtered.slice(startIndex, startIndex + itemsPerPage);
   }, [filtered, currentPage]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: paginatedData.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
@@ -1281,9 +1291,12 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto relative min-h-[500px]">
+                  <div 
+                    ref={parentRef}
+                    className="overflow-x-auto relative min-h-[500px] max-h-[70vh] overflow-y-auto"
+                  >
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                         <TableRow>
                           <TableHead className="w-[40px]">
                             <Checkbox 
@@ -1477,13 +1490,21 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
-                        {paginatedData.map((row) => {
+                      <TableBody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                          const row = paginatedData[virtualRow.index];
+                          if (!row) return null;
                           const hasMapping = mappingByType.has(row.flash_type);
                           const isEnviado = row.status === "enviado";
                           const fieldsDisabled = isEnviado || loadingMetadata;
                           return (
-                            <TableRow key={row.id} className={isEnviado ? "opacity-80" : undefined}>
+                            <TableRow 
+                              key={virtualRow.key} 
+                              data-index={virtualRow.index}
+                              ref={rowVirtualizer.measureElement}
+                              className={cn("absolute w-full", isEnviado && "opacity-80")}
+                              style={{ transform: `translateY(${virtualRow.start}px)` }}
+                            >
                               <TableCell>
                                 <Checkbox 
                                   checked={selectedToSendIds.includes(row.id)}
@@ -1581,6 +1602,14 @@ export default function NormalizacaoFlashPage() {
                             </TableRow>
                           );
                         })}
+                        {rowVirtualizer.getVirtualItems().length === 0 && paginatedData.length > 0 && (
+                          paginatedData.slice(0, 100).map((row) => (
+                             <TableRow key={row.id}>
+                               {/* Fallback simplified content or just map normal if needed */}
+                               <TableCell colSpan={13} className="text-center py-4">Carregando...</TableCell>
+                             </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
