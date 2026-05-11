@@ -316,7 +316,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const NumericHeader = ({ label, col, className, style }: { label: string; col: ColumnKey; className?: string; style?: React.CSSProperties }) => {
     const dir = makeSortDir(col);
     return (
-      <th className={`py-3 px-4 font-semibold text-right ${className || ""}`}>
+      <th className={`py-3 px-4 font-semibold text-right ${className || ""}`} style={style}>
         <button onClick={() => handleSort(col)} className="flex items-center gap-1 hover:text-foreground transition-colors font-medium ml-auto">
           {label}
           {dir === "asc" ? "▲" : dir === "desc" ? "▼" : "⇅"}
