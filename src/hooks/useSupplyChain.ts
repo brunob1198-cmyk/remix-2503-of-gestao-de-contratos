@@ -336,51 +336,71 @@ export function usePedidosCompra() {
 
   // ─── Realtime: refresh list and notify on key status transitions ───
   useEffect(() => {
-    const channel = supabase
-      .channel("pedidos_compra_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pedidos_compra" },
-        (payload) => {
-          queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+    let channel: any;
 
-          if (payload.eventType === "UPDATE") {
-            const oldStatus = (payload.old as any)?.status;
-            const newStatus = (payload.new as any)?.status;
-            const numero = (payload.new as any)?.numero || "";
+    const setupRealtime = async () => {
+      try {
+        const empresaId = await getEmpresaId();
+        
+        // Uso de canal específico por empresa para isolamento via RLS em realtime.messages
+        channel = supabase
+          .channel(`pedidos_compra:${empresaId}`)
+          .on(
+            "postgres_changes",
+            { 
+              event: "*", 
+              schema: "public", 
+              table: "pedidos_compra",
+              filter: `empresa_id=eq.${empresaId}` 
+            },
+            (payload) => {
+              queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
 
-            if (oldStatus !== newStatus) {
-              if (newStatus === "saiu_para_entrega") {
+              if (payload.eventType === "UPDATE") {
+                const oldStatus = (payload.old as any)?.status;
+                const newStatus = (payload.new as any)?.status;
+                const numero = (payload.new as any)?.numero || "";
+
+                if (oldStatus !== newStatus) {
+                  if (newStatus === "saiu_para_entrega") {
+                    toast({
+                      title: "🚚 Pedido saiu para entrega",
+                      description: `Pedido ${numero} está a caminho do destino.`,
+                    });
+                  } else if (newStatus === "entregue") {
+                    toast({
+                      title: "✅ Pedido entregue",
+                      description: `Pedido ${numero} foi entregue com sucesso.`,
+                    });
+                  } else {
+                    const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
+                    toast({
+                      title: "Pedido atualizado",
+                      description: `Pedido ${numero} → ${label}`,
+                    });
+                  }
+                }
+              } else if (payload.eventType === "INSERT") {
+                const numero = (payload.new as any)?.numero || "";
                 toast({
-                  title: "🚚 Pedido saiu para entrega",
-                  description: `Pedido ${numero} está a caminho do destino.`,
-                });
-              } else if (newStatus === "entregue") {
-                toast({
-                  title: "✅ Pedido entregue",
-                  description: `Pedido ${numero} foi entregue com sucesso.`,
-                });
-              } else {
-                const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
-                toast({
-                  title: "Pedido atualizado",
-                  description: `Pedido ${numero} → ${label}`,
+                  title: "Novo pedido",
+                  description: `Pedido ${numero} criado.`,
                 });
               }
             }
-          } else if (payload.eventType === "INSERT") {
-            const numero = (payload.new as any)?.numero || "";
-            toast({
-              title: "Novo pedido",
-              description: `Pedido ${numero} criado.`,
-            });
-          }
-        }
-      )
-      .subscribe();
+          )
+          .subscribe();
+      } catch (error) {
+        console.error("Erro ao configurar realtime para pedidos:", error);
+      }
+    };
+
+    setupRealtime();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [queryClient, toast]);
 
