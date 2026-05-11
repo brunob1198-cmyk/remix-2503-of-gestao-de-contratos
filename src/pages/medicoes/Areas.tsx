@@ -46,9 +46,15 @@ function AreasPage() {
     }
   };
 
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Tem certeza que deseja excluir a área "${nome}"? Isso não será possível se houverem projetos vinculados a ela.`)) {
-      deleteArea.mutate(id);
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteArea.mutate(deletingId, {
+        onSuccess: () => setDeletingId(null)
+      });
     }
   };
 
