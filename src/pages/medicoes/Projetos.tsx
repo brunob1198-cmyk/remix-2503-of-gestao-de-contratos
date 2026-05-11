@@ -14,6 +14,7 @@ import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowU
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id" | "area_id";
 type SortDir = "asc" | "desc" | null;
@@ -30,6 +31,7 @@ export default function ProjetosPage() {
   const { projetos, isLoading, createProjeto, updateProjeto, deleteProjeto } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [codigo, setCodigo] = useState("");
@@ -154,8 +156,14 @@ export default function ProjetosPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este projeto?")) {
-      deleteProjeto.mutate(id);
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteProjeto.mutate(deletingId, {
+        onSuccess: () => setDeletingId(null)
+      });
     }
   };
 
@@ -555,6 +563,14 @@ export default function ProjetosPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+        itemName={projetos.find(p => p.id === deletingId)?.nome || "este projeto"}
+        loading={deleteProjeto.isPending}
+      />
     </div>
   );
 }
