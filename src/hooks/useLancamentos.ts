@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { LancamentoProducao, LancamentoMedicao, LancamentoFaturamento } from "@/types/medicoes";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,36 +11,16 @@ export function useLancamentosProducao(siteId?: string) {
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ["lancamentos_producao", siteId],
     queryFn: async () => {
-      let allData: LancamentoProducao[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        let query = supabase
-          .from("lancamentos_producao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-          .order("id")
-          .range(from, from + 1000 - 1);
-        
-        if (siteId) {
-          query = query.eq("site_id", siteId);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...(data as unknown as LancamentoProducao[])];
-          if (data.length < 1000) {
-            hasMore = false;
-          } else {
-            from += 1000;
-          }
-        }
+      let query = supabase
+        .from("lancamentos_producao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .order("id");
+      
+      if (siteId) {
+        query = query.eq("site_id", siteId);
       }
-      return allData;
+      
+      return await fetchAllPages<LancamentoProducao>(query);
     },
   });
 
@@ -122,36 +103,16 @@ export function useLancamentosMedicao(siteId?: string) {
   const { data: lancamentos = [], isLoading, refetch } = useQuery({
     queryKey: ["lancamentos_medicao", siteId],
     queryFn: async () => {
-      let allData: LancamentoMedicao[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        let query = supabase
-          .from("lancamentos_medicao")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-          .order("id")
-          .range(from, from + 1000 - 1);
-        
-        if (siteId) {
-          query = query.eq("site_id", siteId);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...(data as unknown as LancamentoMedicao[])];
-          if (data.length < 1000) {
-            hasMore = false;
-          } else {
-            from += 1000;
-          }
-        }
+      let query = supabase
+        .from("lancamentos_medicao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .order("id");
+      
+      if (siteId) {
+        query = query.eq("site_id", siteId);
       }
-      return allData;
+      
+      return await fetchAllPages<LancamentoMedicao>(query);
     },
   });
 
@@ -295,36 +256,16 @@ export function useLancamentosFaturamento(siteId?: string) {
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ["lancamentos_faturamento", siteId],
     queryFn: async () => {
-      let allData: LancamentoFaturamento[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        let query = supabase
-          .from("lancamentos_faturamento")
-          .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-          .order("id")
-          .range(from, from + 1000 - 1);
-        
-        if (siteId) {
-          query = query.eq("site_id", siteId);
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...(data as unknown as LancamentoFaturamento[])];
-          if (data.length < 1000) {
-            hasMore = false;
-          } else {
-            from += 1000;
-          }
-        }
+      let query = supabase
+        .from("lancamentos_faturamento")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .order("id");
+      
+      if (siteId) {
+        query = query.eq("site_id", siteId);
       }
-      return allData;
+      
+      return await fetchAllPages<LancamentoFaturamento>(query);
     },
   });
 

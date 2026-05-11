@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
@@ -48,39 +49,21 @@ export default function RelatoriosPage() {
   const { data: diarioProducao = [] } = useQuery({
     queryKey: ["diario_producao_cruzado"],
     queryFn: async () => {
-      const { data: diarios, error: dErr } = await supabase
+      const query = supabase
         .from("diarios_obra")
-        .select("id, data, site_id, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))")
-        .limit(100000);
-      if (dErr) throw dErr;
+        .select("id, data, site_id, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))");
+      
+      const diarios = await fetchAllPages<any>(query);
       if (!diarios || diarios.length === 0) return [];
 
       const diarioIds = diarios.map((d: any) => d.id);
-      let allProds: any[] = [];
-      let fromProd = 0;
-      let hasMoreProd = true;
-
-      while (hasMoreProd) {
-        const { data: prods, error: pErr } = await supabase
-          .from("diario_producao")
-          .select("diario_id, item_lpu_id, quantidade, valor_total, preco_unitario_congelado, item_lpu:itens_lpu(preco_unitario)")
-          .in("diario_id", diarioIds)
-          .order("diario_id") // Ordering by FK is fine
-          .range(fromProd, fromProd + 1000 - 1);
-        
-        if (pErr) throw pErr;
-        if (!prods || prods.length === 0) {
-          hasMoreProd = false;
-        } else {
-          allProds = [...allProds, ...prods];
-          if (prods.length < 1000) {
-            hasMoreProd = false;
-          } else {
-            fromProd += 1000;
-          }
-        }
-      }
-      const prods = allProds;
+      
+      const prodQuery = supabase
+        .from("diario_producao")
+        .select("diario_id, item_lpu_id, quantidade, valor_total, preco_unitario_congelado, item_lpu:itens_lpu(preco_unitario)")
+        .in("diario_id", diarioIds);
+      
+      const prods = await fetchAllPages<any>(prodQuery);
 
       const diarioMap = new Map(diarios.map((d: any) => [d.id, d]));
       return (prods ?? []).map((p: any) => {
