@@ -40,6 +40,8 @@ export function usePermissions() {
   const { data: permissions = [], isLoading: loading } = useQuery({
     queryKey: ["user_permissions", user?.id],
     ...QUERY_DEFAULTS,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
@@ -75,4 +77,3 @@ export function usePermissions() {
 
   return { permissions, loading, canView, canEdit };
 }
-
