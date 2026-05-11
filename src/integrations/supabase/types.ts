@@ -4055,6 +4055,14 @@ export type Database = {
       }
     }
     Functions: {
+      count_fotos_periodo: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_site_ids: string[]
+        }
+        Returns: number
+      }
       first_of_month: { Args: { d: string }; Returns: string }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
@@ -4067,9 +4075,34 @@ export type Database = {
       }
       is_user_approved: { Args: { _user_id: string }; Returns: boolean }
       join_empresa_by_cnpj: { Args: { _cnpj: string }; Returns: string }
+      resumo_rdo_periodo: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_site_ids: string[]
+        }
+        Returns: Json
+      }
       setup_empresa: {
         Args: { _cnpj?: string; _nome: string }
         Returns: string
+      }
+      sum_producao_periodo: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_site_ids: string[]
+        }
+        Returns: number
+      }
+      sum_producao_por_item: {
+        Args: { p_projeto_ids: string[] }
+        Returns: {
+          item_lpu_id: string
+          site_id: string
+          total_quantidade: number
+          total_valor: number
+        }[]
       }
       user_can_access_diario: {
         Args: { _diario_id: string; _user_id: string }
