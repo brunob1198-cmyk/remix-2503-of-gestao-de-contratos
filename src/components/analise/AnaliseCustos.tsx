@@ -310,7 +310,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
           <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
-                <th className="py-3 px-4 font-semibold border-r sticky left-0 z-20 bg-muted">FCA</th>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
                 <th className="py-3 px-4 font-semibold border-r sticky left-[64px] z-20 bg-muted">
                   <ColumnHeader label="Referência" sortDir={makeSortDir("referencia")} onSort={() => handleSort("referencia")} searchText={getFilter("referencia").search} onSearchChange={makeSearchChange("referencia")} uniqueValues={uniqueValues["referencia"] || []} selectedValues={getFilter("referencia").selected} onToggleValue={makeToggle("referencia")} onSelectAll={makeSelectAll("referencia")} onClearAll={makeClearAll("referencia")} />
                 </th>
