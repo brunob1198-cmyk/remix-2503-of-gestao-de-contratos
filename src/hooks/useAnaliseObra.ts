@@ -296,13 +296,14 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
 
       const financeiro: AnaliseFinanceira = {
         receitaTotal,
+        receitaLiquida,
         custoReal,
         custoEsperado,
         margem,
         margemPercent,
         aFaturar,
         custoPrevisto: escopoCustoTotal,
-        lucroProjetado: margem + (aFaturar > 0 ? aFaturar : 0),
+        lucroProjetado: margem + (aFaturar > 0 ? aFaturar * taxRate : 0),
       };
 
       // ── PROGRESS ──
