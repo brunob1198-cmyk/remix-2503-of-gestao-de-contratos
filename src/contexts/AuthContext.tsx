@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [empresaLogoUrl, setEmpresaLogoUrl] = useState<string | null>(null);
 
   const fetchProfileAndRole = async (userId: string) => {
     let profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
