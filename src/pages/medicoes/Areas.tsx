@@ -15,6 +15,7 @@ function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
