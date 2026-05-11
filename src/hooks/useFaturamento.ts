@@ -402,7 +402,7 @@ export function useUpdateFaturamento() {
 
       const { error } = await supabase
         .from("faturamentos")
-        .update(updates)
+        .update(updates as any)
         .eq("id", params.id);
       if (error) throw error;
     },

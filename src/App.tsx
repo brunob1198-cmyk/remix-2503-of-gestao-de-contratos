@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
@@ -58,7 +59,9 @@ const RootRedirect = () => {
   return <Navigate to="/medicoes/dashboard" replace />;
 };
 
-const App = () => (
+const App = () => {
+  useAppUpdate();
+  return (
   <PersistQueryClientProvider 
     client={queryClient} 
     persistOptions={{ persister: indexedDBPersister }}
@@ -124,6 +127,7 @@ const App = () => (
     </TooltipProvider>
     </ThemeProvider>
   </PersistQueryClientProvider>
-);
+  );
+};
 
 export default App;

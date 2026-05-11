@@ -48,9 +48,12 @@ export function useSites(projetoId?: string) {
 
   const updateSite = useMutation({
     mutationFn: async ({ id, ...site }: Partial<Site> & { id: string }) => {
+      // Remover propriedades que não pertencem à tabela sites
+      const { clienteObj, cliente_id, projeto, created_at, updated_at, ...cleanSite } = site as any;
+      
       const { data, error } = await supabase
         .from("sites")
-        .update(site)
+        .update(cleanSite)
         .eq("id", id)
         .select()
         .single();

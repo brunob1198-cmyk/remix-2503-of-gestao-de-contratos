@@ -57,9 +57,12 @@ export function useProjetos() {
 
   const updateProjeto = useMutation({
     mutationFn: async ({ id, ...projeto }: Partial<Projeto> & { id: string }) => {
+      // Remover propriedades que não pertencem à tabela projetos
+      const { clienteObj, contratoObj, areaObj, created_at, updated_at, ...cleanProjeto } = projeto as any;
+      
       const { data, error } = await supabase
         .from("projetos")
-        .update(projeto)
+        .update(cleanProjeto)
         .eq("id", id)
         .select()
         .single();
