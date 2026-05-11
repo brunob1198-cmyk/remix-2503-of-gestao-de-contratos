@@ -332,8 +332,7 @@ export default function DiarioObraPage() {
     };
 
     void autoPopulate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diario?.id, selectedSiteId, alocacoesDoSite.length, loadingDiario, isLoadingEquipe, isLoadingEquipamentos, isLoadingVeiculos]);
+  }, [diario?.id, selectedSiteId, alocacoesDoSite.length, loadingDiario, isLoadingEquipe, isLoadingEquipamentos, isLoadingVeiculos, addEquipe, addEquipamento, addVeiculo, getCustoAtual, recursos]);
 
   // Helper: check if resource already added today
   const isRecursoDuplicado = (tipo: "pessoa" | "equipamento" | "veiculo", recursoNome: string): boolean => {
