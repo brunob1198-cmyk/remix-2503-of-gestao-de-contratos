@@ -60,6 +60,8 @@ const classificacaoColors: Record<string, string> = {
   problema: "#ef4444",
 };
 
+const htmlCache = new Map<string, string>();
+
 // Generate HTML report for a single day
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
   const dataFormatada = safeFormat(diario.data, "dd/MM/yyyy (EEEE)", { locale: ptBR });
@@ -177,7 +179,6 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         const itemGroups = new Map<string, typeof diario.fotos>();
         const itemOrder: string[] = [];
         diario.fotos.forEach(f => {
-          // Group by item_evidencia when linked to production, otherwise by classificacao
           const key = f.item_evidencia
             ? f.item_evidencia.codigo
             : (f.classificacao || '__geral__');
@@ -275,14 +276,12 @@ export default function RdoPage() {
 
   const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("rdo_site_ids_v6", []);
 
-  // Build sites map for the hook
   const sitesMap = useMemo(() => {
     const m = new Map<string, { codigo: string; nome: string }>();
     sites.forEach(s => m.set(s.id, { codigo: s.codigo, nome: s.nome }));
     return m;
   }, [sites]);
 
-  // Determine which site IDs to query
   const querySiteIds = useMemo(() => {
     if (selectedSiteIds.length > 0) {
       return selectedSiteIds;
@@ -292,7 +291,6 @@ export default function RdoPage() {
 
   const selectedSite = selectedSiteIds.length === 1 ? sites.find(s => s.id === selectedSiteIds[0]) : null;
   
-  // Resolve client logo: from selected site, or from selected project's client, or from first available site
   const clienteLogoUrl = useMemo(() => {
     if (selectedSite) {
       const logo = (selectedSite as any)?.projeto?.clienteObj?.logo_url;
@@ -312,7 +310,6 @@ export default function RdoPage() {
       const isRemoving = prev.includes(id);
       const next = isRemoving ? prev.filter(x => x !== id) : [...prev, id];
       
-      // Se estou removendo um projeto, preciso remover os sites que pertencem a esse projeto da seleção
       if (isRemoving) {
         const sitesToRemove = sites.filter(s => s.projeto_id === id).map(s => s.id);
         setSelectedSiteIds(prevSites => prevSites.filter(sid => !sitesToRemove.includes(sid)));
@@ -367,7 +364,6 @@ export default function RdoPage() {
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ current: number; total: number } | null>(null);
 
-  // Group diarios by date
   const dayGroups = useMemo<DayGroup[]>(() => {
     const map = new Map<string, RdoDiarioResumo[]>();
     diarios.forEach(d => {
@@ -388,29 +384,18 @@ export default function RdoPage() {
 
   const isMultiSite = selectedSiteIds.length !== 1;
 
-  const uniqueItems = useMemo(() => {
-    const map = new Map<string, { id: string; codigo: string; descricao: string }>();
-    diarios.forEach(d => d.producoes.forEach(p => {
-      if (p.item_lpu) map.set(p.item_lpu.codigo, { id: p.item_lpu_id, codigo: p.item_lpu.codigo, descricao: p.item_lpu.descricao });
-    }));
-    return Array.from(map.values());
-  }, [diarios]);
-
   const totalDias = dayGroups.length;
   const totalFotos = diarios.reduce((s, d) => s + d.totalFotos, 0);
   const totalProd = diarios.reduce((s, d) => s + d.totalProducao, 0);
 
-  // Qtd sites atendidos no período (sites únicos com diário)
   const qtdSitesAtendidos = useMemo(() => {
     const set = new Set<string>();
     diarios.forEach(d => set.add(d.site_id));
     return set.size;
   }, [diarios]);
 
-  // Média de valor produzido por dia (usa dias com registros)
   const mediaPorDia = totalDias > 0 ? totalProd / totalDias : 0;
 
-  // Projetos efetivamente em escopo (selecionados ou todos os filteredSites)
   const escopoProjetoIds = useMemo(() => {
     if (selectedProjetoIds.length > 0) return selectedProjetoIds;
     const ids = new Set<string>();
@@ -418,19 +403,16 @@ export default function RdoPage() {
     return Array.from(ids);
   }, [selectedProjetoIds, filteredSites]);
 
-  // Valor do contrato vinculado aos projetos em escopo
   const valorContratoProjeto = useMemo(() => {
     return projetos
       .filter(p => escopoProjetoIds.includes(p.id))
       .reduce((s, p) => s + Number((p as any).valor_total || 0), 0);
   }, [projetos, escopoProjetoIds]);
 
-  // Valor total acumulado de produção do(s) projeto(s) em escopo (todo o histórico)
   const { data: producaoAcumuladaProjeto = 0 } = useQuery({
     queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds],
     queryFn: async () => {
       if (escopoProjetoIds.length === 0) return 0;
-      // Busca sites do(s) projeto(s)
       const { data: sitesData, error: sitesErr } = await supabase
         .from("sites")
         .select("id")
@@ -438,7 +420,6 @@ export default function RdoPage() {
       if (sitesErr) throw sitesErr;
       const siteIds = (sitesData || []).map((s: any) => s.id);
       if (siteIds.length === 0) return 0;
-      // Busca diários desses sites
       const { data: diariosData, error: diariosErr } = await supabase
         .from("diarios_obra")
         .select("id")
@@ -446,7 +427,6 @@ export default function RdoPage() {
       if (diariosErr) throw diariosErr;
       const diarioIds = (diariosData || []).map((d: any) => d.id);
       if (diarioIds.length === 0) return 0;
-      // Soma valor_total de toda a produção
       const { data: prodData, error: prodErr } = await supabase
         .from("diario_producao")
         .select("valor_total")
@@ -459,7 +439,6 @@ export default function RdoPage() {
 
   const saldoContrato = valorContratoProjeto - producaoAcumuladaProjeto;
 
-  // Expand/collapse all days
   const allCollapsed = dayGroups.length > 0 && dayGroups.every(g => collapsedDays.has(g.data));
   const toggleAllDays = useCallback(() => {
     if (allCollapsed) {
@@ -469,7 +448,6 @@ export default function RdoPage() {
     }
   }, [allCollapsed, dayGroups]);
 
-  // Download single day
   const handleDownloadDia = useCallback(async (diario: RdoDiarioResumo) => {
     setDownloading(true);
     try {
@@ -477,7 +455,16 @@ export default function RdoPage() {
       const dataLabel = format(parseISO(diario.data), "yyyy-MM-dd");
       const siteLabel = diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined;
 
-      const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel);
+      const cacheKey = `${diario.id}_${diario.fotos.length}`;
+      if (!htmlCache.has(cacheKey)) {
+        htmlCache.set(cacheKey, gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel));
+        if (htmlCache.size > 20) {
+          const firstKey = htmlCache.keys().next().value;
+          htmlCache.delete(firstKey);
+        }
+      }
+      const html = htmlCache.get(cacheKey)!;
+
       const container = document.createElement("div");
       container.innerHTML = html;
       const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
@@ -509,7 +496,6 @@ export default function RdoPage() {
     }
   }, [isCliente, clienteLogoUrl]);
 
-  // Download period zip
   const handleDownloadPeriodo = useCallback(async () => {
     if (diarios.length === 0) return;
     setDownloading(true);
@@ -525,13 +511,23 @@ export default function RdoPage() {
         if (!dayFolder) continue;
 
         const siteLabel = diario.site_codigo ? `${diario.site_codigo} — ${diario.site_nome}` : undefined;
-        const html = gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel);
+        
+        const cacheKey = `${diario.id}_${diario.fotos.length}`;
+        if (!htmlCache.has(cacheKey)) {
+          htmlCache.set(cacheKey, gerarRelatorioDiaHtml(diario, isCliente, clienteLogoUrl, siteLabel));
+          if (htmlCache.size > 20) {
+            const firstKey = htmlCache.keys().next().value;
+            htmlCache.delete(firstKey);
+          }
+        }
+        const html = htmlCache.get(cacheKey)!;
+
         const container = document.createElement("div");
         container.innerHTML = html;
         const opt = getPdfOptions(`RDO_${dataLabel}.pdf`);
         const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
         dayFolder.file(`RDO_${dataLabel}.pdf`, pdfBlob);
-        await new Promise(resolve => setTimeout(resolve, 300)); // Pause to let GC work
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         if (diario.fotos.length > 0) {
           const fotosFolder = dayFolder.folder("fotos");
@@ -576,7 +572,6 @@ export default function RdoPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
           <FileText className="h-5 w-5 text-primary" />
@@ -598,7 +593,6 @@ export default function RdoPage() {
         </div>
       </div>
 
-      {/* Multi-select filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-[220px]">
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -723,7 +717,6 @@ export default function RdoPage() {
 
       {filteredSites.length > 0 && (
         <>
-          {/* Filters */}
           <Card>
             <CardContent className="py-4">
               <div className="flex flex-wrap gap-3 items-end">
@@ -801,9 +794,7 @@ export default function RdoPage() {
             </CardContent>
           </Card>
 
-          {/* Summary cards + Download buttons */}
           <div className="space-y-3">
-            {/* Linha 1: Métricas do período */}
             <div className="flex flex-wrap items-start gap-3">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
                 <Card>
@@ -873,7 +864,6 @@ export default function RdoPage() {
               )}
             </div>
 
-            {/* Linha 2: Card consolidado de Contrato vs Produção (não exibido p/ cliente) */}
             {!isCliente && escopoProjetoIds.length > 0 && (
               <Card className="border-primary/20">
                 <CardContent className="p-4">
@@ -908,7 +898,6 @@ export default function RdoPage() {
             )}
           </div>
 
-          {/* Content */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-lg border border-dashed">
               <Loader2 className="h-10 w-10 animate-spin mb-4 opacity-50" />
@@ -925,7 +914,6 @@ export default function RdoPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Timeline cards - left */}
               <div className="lg:col-span-1 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-muted-foreground">Linha do Tempo</p>
@@ -950,7 +938,6 @@ export default function RdoPage() {
                       const isDayCollapsed = collapsedDays.has(group.data);
                       return (
                       <div key={group.data} className="space-y-0">
-                        {/* Day header - clickable to collapse/expand */}
                         <button
                           onClick={() => toggleDayCollapse(group.data)}
                           className="flex items-center gap-2 mb-1 w-full text-left hover:bg-accent/50 rounded px-1 py-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-primary"
@@ -969,7 +956,6 @@ export default function RdoPage() {
                           )}
                           <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground ml-auto transition-transform ${isDayCollapsed ? "" : "rotate-90"}`} />
                         </button>
-                        {/* Day totals */}
                         <div className="flex items-center gap-3 ml-5 mb-1.5 text-[11px] text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <ClipboardList className="h-3 w-3" /> {group.totalItens} itens
@@ -983,7 +969,6 @@ export default function RdoPage() {
                             </span>
                           )}
                         </div>
-                        {/* Site cards within the day - collapsible */}
                         {!isDayCollapsed && (
                           <div className={`space-y-1.5 ${group.diarios.length > 1 ? "ml-5 border-l-2 border-primary/20 pl-3" : ""}`}>
                             {group.diarios.map(d => (
@@ -1004,7 +989,6 @@ export default function RdoPage() {
                 </ScrollArea>
               </div>
 
-              {/* Day detail - right */}
               <div className="lg:col-span-2">
                 {!selectedDiario ? (
                   <Card>
@@ -1029,7 +1013,6 @@ export default function RdoPage() {
         </>
       )}
 
-      {/* Photo Lightbox */}
       <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
@@ -1074,7 +1057,6 @@ export default function RdoPage() {
   );
 }
 
-// ===== Day Card Component =====
 function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
   diario: RdoDiarioResumo;
   isSelected: boolean;
@@ -1161,7 +1143,6 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
   );
 }
 
-// ===== Day Detail Component =====
 function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading }: {
   diario: RdoDiarioResumo;
   isCliente: boolean;
@@ -1175,7 +1156,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
     const map = new Map<string, RdoFoto[]>();
     const order: string[] = [];
     diario.fotos.forEach(f => {
-      // Group by LPU item when linked to production; otherwise group by classificacao
       const key = f.item_evidencia
         ? f.item_evidencia.codigo
         : (f.classificacao || '__geral__');
@@ -1201,7 +1181,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
   return (
     <ScrollArea className="h-[calc(100vh-420px)]">
       <div className="space-y-5 pr-2">
-        {/* Date header + download button */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold tabular-nums">
@@ -1240,7 +1219,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
           </Button>
         </div>
 
-        {/* Produção */}
         {diario.producoes.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -1278,7 +1256,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
           </Card>
         )}
 
-        {/* Recursos */}
         {(diario.equipe.length > 0 || diario.equipamentos.length > 0 || diario.veiculos.length > 0) && (
           <Card>
             <CardHeader className="pb-2">
@@ -1345,7 +1322,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
           </Card>
         )}
 
-        {/* Fotos */}
         {diario.fotos.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -1358,13 +1334,11 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
             <CardContent className="space-y-6">
               {fotosByItem.map(({ key, label, photos }) => (
                 <div key={key}>
-                  {/* Group label header */}
                   <div className="flex items-center gap-2 mb-3">
                     <Tag className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     <span className="text-xs font-bold text-foreground">{label}</span>
                     <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{photos.length}</Badge>
                   </div>
-                  {/* 2-column card grid */}
                   <div className="grid grid-cols-2 gap-3">
                     {photos.map(f => (
                       <div key={f.id} className="rounded-lg overflow-hidden border shadow-sm">
@@ -1383,7 +1357,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                             <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         </button>
-                        {/* Description + green badge below photo */}
                         <div className="px-2 pt-1.5 pb-2 space-y-1">
                           {f.legenda && (
                             <p className="text-xs font-medium text-foreground leading-snug">{f.legenda}</p>
@@ -1401,7 +1374,6 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
           </Card>
         )}
 
-        {/* Observações */}
         {diario.observacoes && (
           <Card>
             <CardHeader className="pb-2">
