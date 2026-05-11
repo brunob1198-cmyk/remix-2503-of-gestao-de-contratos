@@ -66,10 +66,14 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita (Diário)</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita Bruta</p>
               <p className="text-xl font-bold tabular-nums">{fmt(financeiro.receitaTotal)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Receita Líquida</p>
+              <p className="text-xl font-bold tabular-nums text-emerald-600">{fmt(financeiro.receitaLiquida)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo real</p>
