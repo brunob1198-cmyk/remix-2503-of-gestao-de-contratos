@@ -417,11 +417,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             <tfoot className="bg-muted font-bold">
               <tr>
                 <td colSpan={1} className="py-2 px-4 border-r border-t text-right sticky left-0 z-10 bg-muted">Totais:</td>
-                <td className="py-2 px-4 border-r border-t sticky left-[64px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[164px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[264px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[464px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 text-right border-r border-t sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
+                <td className="py-2 px-4 border-r border-t sticky z-10 bg-muted" style={{ left: columnWidths.fca }}></td>
+                <td className="py-2 px-4 border-r border-t sticky z-10 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref }}></td>
+                <td className="py-2 px-4 border-r border-t sticky z-10 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area }}></td>
+                <td className="py-2 px-4 border-r border-t sticky z-10 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area + columnWidths.proj }}></td>
+                <td className="py-2 px-4 text-right border-r border-t sticky z-10 bg-muted" style={{ left: columnWidths.fca + columnWidths.ref + columnWidths.area + columnWidths.proj + columnWidths.cli }}>{formatCurrency(totals.valorProduzido)}</td>
                 {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
                 <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.totalErp)}</td>
                 <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcado)}</td>
