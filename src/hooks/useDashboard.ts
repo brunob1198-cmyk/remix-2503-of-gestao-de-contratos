@@ -114,7 +114,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
   });
 
   const { data: resumoItens = [], isLoading: isLoadingItens } = useQuery({
-    queryKey: ["dashboard", "itens", projetoId, siteIds],
+    queryKey: ["dashboard", "itens", projetoId, siteIds, producaoAgregada],
     queryFn: async () => {
       // Get all LPU items
       const { data: itens, error: itemError } = await supabase
@@ -136,37 +136,9 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         filteredSiteIds = allSites?.filter(s => s.projeto_id === projetoId).map(s => s.id) || [];
       }
 
-      // Get all production data from diário de obra (chunked fetch)
-      let allProducaoRaw: any[] = [];
-      let fromProd = 0;
-      let hasMoreProd = true;
-
-      while (hasMoreProd) {
-        const { data, error } = await supabase.from("diario_producao")
-          .select("item_lpu_id, quantidade, valor_total, diario:diarios_obra(site_id)")
-          .order("id")
-          .range(fromProd, fromProd + 1000 - 1);
-        
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMoreProd = false;
-        } else {
-          allProducaoRaw = [...allProducaoRaw, ...data];
-          if (data.length < 1000) {
-            hasMoreProd = false;
-          } else {
-            fromProd += 1000;
-          }
-        }
-      }
-      const producaoRaw = allProducaoRaw;
-      // Map to include site_id at top level for easier processing
-      const producao = (producaoRaw || []).map(p => ({
-        site_id: (p.diario as any)?.site_id as string,
-        item_lpu_id: p.item_lpu_id,
-        quantidade: p.quantidade,
-        valor_total: p.valor_total,
-      })).filter(p => p.site_id && (!filteredSiteIds.length || filteredSiteIds.includes(p.site_id)));
+      // Filter producaoAgregada by filteredSiteIds if any
+      const producao = (producaoAgregada || [])
+        .filter(p => !filteredSiteIds.length || filteredSiteIds.includes(p.site_id));
 
       // Get all measurement data
       let medQuery = supabase.from("lancamentos_medicao").select("site_id, item_lpu_id, quantidade");
@@ -185,17 +157,16 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       // Create site map for quick lookup
       const siteMap = new Map(allSites?.map(s => [s.id, s]) || []);
 
-      // Group by site + item CODE for detailed view (one line per site/item code combination)
-      // This ensures items with the same code but different IDs (project-specific vs general) are merged
+      // Group by site + item CODE for detailed view
       const resumoMap = new Map<string, ResumoItem>();
 
-      // Process production data
-      producao?.forEach(l => {
+      // Process aggregated production data from RPC
+      producao.forEach(l => {
         const item = itens?.find(i => i.id === l.item_lpu_id);
         const site = siteMap.get(l.site_id);
         if (!item || !site) return;
 
-        const key = `${l.site_id}_${item.codigo}`; // Group by site + item CODE (not ID)
+        const key = `${l.site_id}_${item.codigo}`;
         if (!resumoMap.has(key)) {
           resumoMap.set(key, {
             item_lpu_id: item.id,
@@ -218,7 +189,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
           });
         }
         const resumo = resumoMap.get(key)!;
-        resumo.qtd_produzida += Number(l.quantidade);
+        resumo.qtd_produzida += Number(l.total_quantidade);
       });
 
       // Process measurement data
@@ -227,7 +198,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         const site = siteMap.get(l.site_id);
         if (!item || !site) return;
 
-        const key = `${l.site_id}_${item.codigo}`; // Group by site + item CODE (not ID)
+        const key = `${l.site_id}_${item.codigo}`;
         if (!resumoMap.has(key)) {
           resumoMap.set(key, {
             item_lpu_id: item.id,
@@ -259,7 +230,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
         const site = siteMap.get(l.site_id);
         if (!item || !site) return;
 
-        const key = `${l.site_id}_${item.codigo}`; // Group by site + item CODE (not ID)
+        const key = `${l.site_id}_${item.codigo}`;
         if (!resumoMap.has(key)) {
           resumoMap.set(key, {
             item_lpu_id: item.id,
@@ -297,6 +268,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
 
       return resumo;
     },
+    enabled: !!producaoAgregada,
   });
 
   // Calculate totals from resumoProjetos (which respects filters)
