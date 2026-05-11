@@ -142,7 +142,12 @@ export function GerarMedicaoDialog({
       if (gerarSiteId) {
         siteIdsToFetch = [gerarSiteId];
       } else if (gerarProjetoId) {
-        siteIdsToFetch = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
+        // Garantir que temos os sites antes de filtrar
+        const projectSites = sites.filter(s => s.projeto_id === gerarProjetoId);
+        if (projectSites.length === 0 && sites.length > 0) {
+           console.warn(`Nenhum site encontrado para o projeto ${gerarProjetoId} entre os ${sites.length} sites carregados.`);
+        }
+        siteIdsToFetch = projectSites.map(s => s.id);
         console.log(`Projeto ${gerarProjetoId} tem ${siteIdsToFetch.length} sites.`);
       } else {
         siteIdsToFetch = sites.map(s => s.id);
