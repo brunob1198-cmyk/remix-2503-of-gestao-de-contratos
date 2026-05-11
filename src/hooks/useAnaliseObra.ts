@@ -484,7 +484,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
   });
 
   return {
-    analise: data,
+    data,
     isLoading,
     isFetching,
   };
