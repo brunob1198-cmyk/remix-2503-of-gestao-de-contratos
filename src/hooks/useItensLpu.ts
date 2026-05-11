@@ -66,9 +66,12 @@ export function useItensLpu(projetoId?: string) {
 
   const updateItemLpu = useMutation({
     mutationFn: async ({ id, ...item }: Partial<ItemLpu> & { id: string }) => {
+      // Remover propriedades que não pertencem à tabela itens_lpu
+      const { projeto, created_at, updated_at, ...cleanItem } = item as any;
+      
       const { data, error } = await supabase
         .from("itens_lpu")
-        .update(item)
+        .update(cleanItem)
         .eq("id", id)
         .select()
         .single();
