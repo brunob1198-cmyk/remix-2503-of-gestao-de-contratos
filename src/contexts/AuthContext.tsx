@@ -86,6 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setRole(null);
     }
+
+    if (profileRes.data?.empresa_id) {
+      const { data: empData } = await supabase
+        .from("empresas")
+        .select("logo_url")
+        .eq("id", profileRes.data.empresa_id)
+        .maybeSingle();
+      
+      setEmpresaLogoUrl(empData?.logo_url || null);
+    } else {
+      setEmpresaLogoUrl(null);
+    }
   };
 
   const refreshProfile = async () => {
