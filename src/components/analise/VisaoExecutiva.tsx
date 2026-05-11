@@ -96,10 +96,14 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
             </div>
           </div>
 
-          <div className="border-t mt-4 pt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="border-t mt-4 pt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo esperado (BDI)</p>
-              <p className="text-lg font-semibold tabular-nums">{fmt(financeiro.custoEsperado)}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Custo orçado</p>
+              <p className="text-lg font-semibold tabular-nums text-blue-600">{fmt(financeiro.custoEsperado)}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">MB Orçada</p>
+              <p className="text-lg font-semibold tabular-nums text-amber-600">{fmt(financeiro.mbOrcada)} ({fmtPct(financeiro.mbOrcadaPercent)})</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Desvio custo</p>
