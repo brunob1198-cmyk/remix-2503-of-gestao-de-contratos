@@ -106,6 +106,8 @@ export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate,
     setSearched(false);
 
     try {
+      console.log("Iniciando busca de diários...", { siteId, dataInicio, dataFim });
+      
       const { data: diarios, error: dErr } = await supabase
         .from("diarios_obra")
         .select("id")
@@ -114,6 +116,9 @@ export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate,
         .lte("data", dataFim);
 
       if (dErr) throw dErr;
+      
+      console.log(`Encontrados ${diarios?.length || 0} diários.`);
+      
       if (!diarios || diarios.length === 0) {
         setProducoes([]);
         setSearched(true);
@@ -121,21 +126,34 @@ export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate,
       }
 
       const diarioIds = diarios.map((d) => d.id);
+      let prods: any[] = [];
+      const batchSize = 100;
 
-      const { data: prods, error: pErr } = await supabase
-        .from("diario_producao")
-        .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-        .in("diario_id", diarioIds);
+      // Busca em lotes para evitar problemas com grandes volumes de dados
+      for (let i = 0; i < diarioIds.length; i += batchSize) {
+        const batch = diarioIds.slice(i, i + batchSize);
+        console.log(`Buscando produção para lote de ${batch.length} diários...`);
+        
+        const { data, error: pErr } = await supabase
+          .from("diario_producao")
+          .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+          .in("diario_id", batch);
 
-      if (pErr) throw pErr;
+        if (pErr) throw pErr;
+        if (data) prods = [...prods, ...data];
+      }
+
+      console.log(`Total de itens de produção encontrados: ${prods.length}`);
 
       const mapa = new Map<string, ProducaoAgregada>();
-      for (const p of prods || []) {
+      for (const p of prods) {
         const item = (p as any).item_lpu;
         if (!item) continue;
+        
         const key = item.id;
         const existing = mapa.get(key);
         const qty = Number(p.quantidade);
+        
         if (existing) {
           existing.quantidade_total += qty;
           existing.valor_total += qty * Number(item.preco_unitario);
@@ -154,9 +172,13 @@ export const GerarMedicaoDiario = memo(function GerarMedicaoDiario({ onGenerate,
         }
       }
 
-      setProducoes(Array.from(mapa.values()));
+      const resultadoFinal = Array.from(mapa.values());
+      console.log(`Produção agregada: ${resultadoFinal.length} itens.`);
+      
+      setProducoes(resultadoFinal);
       setSearched(true);
     } catch (e: any) {
+      console.error("Erro na busca de produção:", e);
       toast({ title: "Erro ao buscar produção", description: e.message, variant: "destructive" });
     } finally {
       setSearching(false);
