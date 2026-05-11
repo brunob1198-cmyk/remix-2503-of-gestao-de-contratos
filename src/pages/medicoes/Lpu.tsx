@@ -37,19 +37,30 @@ export default function LpuPage() {
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este item?")) {
-      deleteItemLpu.mutate(id);
-      setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteItemLpu.mutate(deletingId, {
+        onSuccess: () => {
+          setSelectedIds((prev) => { const n = new Set(prev); n.delete(deletingId); return n; });
+          setDeletingId(null);
+        }
+      });
     }
   };
 
   const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    if (confirm(`Tem certeza que deseja excluir ${selectedIds.size} item(ns)?`)) {
-      selectedIds.forEach((id) => deleteItemLpu.mutate(id));
-      toast.success(`${selectedIds.size} item(ns) excluído(s)`);
-      setSelectedIds(new Set());
-    }
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = () => {
+    selectedIds.forEach((id) => deleteItemLpu.mutate(id));
+    toast.success(`${selectedIds.size} item(ns) excluído(s)`);
+    setSelectedIds(new Set());
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleStartEdit = (item: any) => {
