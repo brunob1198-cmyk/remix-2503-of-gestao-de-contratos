@@ -307,7 +307,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
+          <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
                 <th className="py-3 px-4 font-semibold border-r sticky left-0 z-20 bg-muted">FCA</th>
