@@ -21,6 +21,7 @@ const CATEGORIAS = [
   "Materiais",
   "Transporte",
   "Indiretos",
+  "Gerência",
 ];
 
 const formatCurrency = (val: number) =>
