@@ -109,7 +109,9 @@ export function GerarMedicaoDialog({
   const { data: lancamentos = [] } = useQuery({
     queryKey: ["lancamentos_medicao", undefined],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lancamentos_medicao").select("*");
+      const { data, error } = await supabase
+        .from("lancamentos_medicao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)");
       if (error) throw error;
       return data;
     },
@@ -119,7 +121,9 @@ export function GerarMedicaoDialog({
   const { data: producoes = [] } = useQuery({
     queryKey: ["lancamentos_producao", undefined],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lancamentos_producao").select("*, item_lpu:itens_lpu(*)");
+      const { data, error } = await supabase
+        .from("lancamentos_producao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)");
       if (error) throw error;
       return data;
     },
