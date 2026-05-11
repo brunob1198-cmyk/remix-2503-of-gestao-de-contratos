@@ -117,7 +117,28 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         .gte("data_producao", startDate)
         .lte("data_producao", endDate);
 
-      // Fetch itens_lpu for BDI
+      // Fetch faturamentos for receita liquida calculation
+      const { data: faturamentosData } = await supabase
+        .from("faturamentos")
+        .select("projeto_id, valor_liquido, valor_bruto, impostos_percentual, data_emissao")
+        .in("projeto_id", projetoIds)
+        .gte("data_emissao", startDate)
+        .lte("data_emissao", endDate);
+
+      // Average tax rate by project
+      const taxRates: Record<string, number> = {};
+      projetoIds.forEach(pid => {
+        const projs = (faturamentosData || []).filter(f => f.projeto_id === pid);
+        if (projs.length > 0) {
+          const totalBruto = projs.reduce((a, b) => a + Number(b.valor_bruto || 0), 0);
+          const totalLiquido = projs.reduce((a, b) => a + Number(b.valor_liquido || 0), 0);
+          taxRates[pid] = totalBruto > 0 ? totalLiquido / totalBruto : 0.94; // Default 6% tax
+        } else {
+          taxRates[pid] = 0.94;
+        }
+      });
+
+      // Fetch itens_lpu for BDI and categories
       const itemIds = [...new Set((producaoData || []).map((p: any) => p.item_lpu_id).filter(Boolean))];
       let bdiMap: Record<string, number> = {};
       if (itemIds.length > 0) {
