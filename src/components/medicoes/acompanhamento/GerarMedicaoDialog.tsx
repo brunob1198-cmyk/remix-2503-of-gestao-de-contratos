@@ -81,6 +81,7 @@ export function GerarMedicaoDialog({
   const [geracaoItens, setGeracaoItens] = useState<GeracaoItem[]>([]);
   const [gerarTipoMedicao, setGerarTipoMedicao] = useState<"separada" | "agrupada" | "mista">("separada");
   const [geracaoFotos, setGeracaoFotos] = useState<GeracaoFoto[]>([]);
+  const [geracaoFotosTotal, setGeracaoFotosTotal] = useState<number>(0);
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
