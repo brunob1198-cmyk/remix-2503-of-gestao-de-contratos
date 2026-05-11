@@ -89,9 +89,10 @@ export function GerarMedicaoDialog({
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: diarioProducoes = [] } = useQuery({
+  const { data: diarioProducoes = [], isLoading: isLoadingDiarios } = useQuery({
     queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
     queryFn: async () => {
+      console.log("Fetching diarios for:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
       let query = supabase
         .from("diarios_obra")
         .select("id, site_id, data")
@@ -111,37 +112,35 @@ export function GerarMedicaoDialog({
         if (projectSiteIds.length > 0) {
           query = query.in("site_id", projectSiteIds);
         } else {
+          console.log("No sites found for project:", gerarProjetoId);
           return [];
         }
       }
 
-      const { data: diarios, error: dErr } = await query.limit(100000);
+      const { data: diarios, error: dErr } = await query.limit(10000);
       if (dErr) throw dErr;
-      if (!diarios || diarios.length === 0) return [];
+      if (!diarios || diarios.length === 0) {
+        console.log("No diarios found in date range");
+        return [];
+      }
 
+      console.log(`Found ${diarios.length} diarios. Fetching production items...`);
       const diarioIds = diarios.map(d => d.id);
       
       let prods: any[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore) {
+      const batchSize = 100;
+      for (let i = 0; i < diarioIds.length; i += batchSize) {
+        const batch = diarioIds.slice(i, i + batchSize);
         const { data, error } = await supabase
           .from("diario_producao")
           .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-          .in("diario_id", diarioIds)
-          .range(from, from + 999);
+          .in("diario_id", batch);
         
         if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          prods = [...prods, ...data];
-          if (data.length < 1000) hasMore = false;
-          else from += 1000;
-        }
+        if (data) prods = [...prods, ...data];
       }
 
+      console.log(`Found ${prods.length} production items in diarios`);
       const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
       return prods.map(p => {
@@ -551,8 +550,8 @@ export function GerarMedicaoDialog({
 
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim}>
-                {loadingGeracaoFotos ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim || isLoadingDiarios}>
+                {(loadingGeracaoFotos || isLoadingDiarios) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Ver Itens Produzidos
               </Button>
             </DialogFooter>
