@@ -539,7 +539,9 @@ export function GerarMedicaoDialog({
               <div className="space-y-2">
                 <Label>Projeto</Label>
                 <Select value={gerarProjetoId || "all"} onValueChange={(v) => { setGerarProjetoId(v === "all" ? "" : v); setGerarSiteId(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={projetos.length === 0 ? "Carregando projetos..." : "Todos os projetos"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os projetos</SelectItem>
                     {projetos.map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}
@@ -548,8 +550,10 @@ export function GerarMedicaoDialog({
               </div>
               <div className="space-y-2">
                 <Label>Site</Label>
-                <Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)} disabled={gerarProjetoId && filterSites.length === 0}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={gerarProjetoId && filterSites.length === 0 ? "Carregando sites..." : "Todos os sites"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os sites</SelectItem>
                     {filterSites.map(s => <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>)}
