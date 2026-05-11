@@ -268,7 +268,8 @@ function AnaliseContent({ analise }: { analise: AnaliseIAData }) {
 }
 
 export function AnaliseIA({ projetoId, projetoName }: { projetoId: string; projetoName: string }) {
-  const { data: obraData, isLoading: isLoadingObra } = useAnaliseObra(projetoId);
+  const { data, isLoading: isLoadingObra } = useAnaliseObra(projetoId);
+  const obraData = data as any;
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
