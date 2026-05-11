@@ -2535,6 +2535,93 @@ export type Database = {
           },
         ]
       }
+      mkp_parametros: {
+        Row: {
+          area: string | null
+          bdi_venda: number
+          created_at: string | null
+          id: string
+          obra_codigo: string | null
+          perc_custo_direto: number
+          perc_gerencia: number
+          perc_impostos: number
+          perc_inflacao: number
+          perc_mb_esperado: number
+          perc_risco: number
+          perc_treinamento: number
+          projeto_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          area?: string | null
+          bdi_venda?: number
+          created_at?: string | null
+          id?: string
+          obra_codigo?: string | null
+          perc_custo_direto?: number
+          perc_gerencia?: number
+          perc_impostos?: number
+          perc_inflacao?: number
+          perc_mb_esperado?: number
+          perc_risco?: number
+          perc_treinamento?: number
+          projeto_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          area?: string | null
+          bdi_venda?: number
+          created_at?: string | null
+          id?: string
+          obra_codigo?: string | null
+          perc_custo_direto?: number
+          perc_gerencia?: number
+          perc_impostos?: number
+          perc_inflacao?: number
+          perc_mb_esperado?: number
+          perc_risco?: number
+          perc_treinamento?: number
+          projeto_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_bi_analise_obras"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       municipios_ibge: {
         Row: {
           codigo_ibge: string
