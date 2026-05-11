@@ -4,6 +4,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export interface AnaliseFinanceira {
   receitaTotal: number;
+  receitaLiquida: number;
   custoReal: number;
   custoEsperado: number;
   margem: number;
