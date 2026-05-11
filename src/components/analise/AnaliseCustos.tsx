@@ -40,12 +40,15 @@ interface MonthRow {
   referencia: string; // "Mar/2026"
   refSort: string; // "2026-03" for sorting
   valorProduzido: number;
+  receitaLiquida: number;
   custoOrcado: number;
+  custoOrcadoGerencia: number;
+  custoRealGerencia: number;
   categorias: Record<string, number>;
   totalErp: number;
 }
 
-type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "custoOrcado" | "totalErp" | "resultadoDireto" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | string;
+type ColumnKey = "area" | "projeto" | "cliente" | "referencia" | "valorProduzido" | "receitaLiquida" | "custoOrcado" | "totalErp" | "resultadoDireto" | "mbOrcada" | "mbRealizado" | "mbPctOrcado" | "mbPctRealizado" | "custoOrcadoGerencia" | "custoRealGerencia" | "gerPctOrcado" | "gerPctRealizado" | string;
 
 interface FilterState {
   search: string;
