@@ -310,27 +310,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       </CardHeader>
       <ScrollArea className="w-full" ref={containerRef}>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap table-fixed">
-            <colgroup>
-              <col style={{ width: columnWidths.fca }} />
-              <col style={{ width: columnWidths.ref }} />
-              <col style={{ width: columnWidths.area }} />
-              <col style={{ width: columnWidths.proj }} />
-              <col style={{ width: columnWidths.cli }} />
-              <col style={{ width: 160 }} />
-              {CATEGORIAS.map(() => <col key={Math.random()} style={{ width: 140 }} />)}
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-              <col style={{ width: 140 }} />
-            </colgroup>
+          <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
                 <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
