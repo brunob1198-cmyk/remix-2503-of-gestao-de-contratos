@@ -17,7 +17,8 @@ function fmtAvg(v: number) {
 }
 
 export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?: string }) {
-  const { data, isLoading } = useAnaliseObra(projetoId || siteId, siteId);
+  const { data: analiseData, isLoading } = useAnaliseObra(projetoId || siteId, siteId);
+  const data = analiseData as any;
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (!data || data.producaoItems.length === 0) {
