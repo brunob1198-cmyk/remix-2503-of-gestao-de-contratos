@@ -31,6 +31,7 @@ export default function ProjetosPage() {
   const { projetos, isLoading, createProjeto, updateProjeto, deleteProjeto } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [codigo, setCodigo] = useState("");
