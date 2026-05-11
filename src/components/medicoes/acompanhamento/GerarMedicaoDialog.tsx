@@ -89,24 +89,27 @@ export function GerarMedicaoDialog({
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: diarioProducoes = [], isLoading: isLoadingDiarios } = useQuery({
+  const { data: diarioProducoes = [], isLoading: isLoadingDiarios, isFetching: isFetchingDiarios } = useQuery({
     queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
     queryFn: async () => {
-      console.log("Fetching diarios for:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
+      console.log("Iniciando busca de produções dos diários:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
       
-      // Construir filtro de sites
       let siteIdsToFetch: string[] = [];
       if (gerarSiteId) {
         siteIdsToFetch = [gerarSiteId];
       } else if (gerarProjetoId) {
         siteIdsToFetch = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
-        if (siteIdsToFetch.length === 0) return [];
+        console.log(`Projeto ${gerarProjetoId} tem ${siteIdsToFetch.length} sites.`);
       } else {
-        // Se não houver projeto/site selecionado, buscamos todos os sites visíveis (pode ser pesado)
         siteIdsToFetch = sites.map(s => s.id);
       }
 
-      // Buscar Diários em lotes para evitar problemas de limite
+      if (siteIdsToFetch.length === 0) {
+        console.warn("Nenhum site encontrado para os filtros selecionados.");
+        return [];
+      }
+
+      // Buscar Diários
       let allDiarios: any[] = [];
       const siteBatchSize = 100;
       for (let i = 0; i < siteIdsToFetch.length; i += siteBatchSize) {
@@ -114,24 +117,30 @@ export function GerarMedicaoDialog({
         let query = supabase
           .from("diarios_obra")
           .select("id, site_id, data")
-          .in("site_id", batch);
-
-        if (gerarPeriodoInicio) query = query.gte("data", gerarPeriodoInicio);
-        if (gerarPeriodoFim) query = query.lte("data", gerarPeriodoFim);
+          .in("site_id", batch)
+          .gte("data", gerarPeriodoInicio)
+          .lte("data", gerarPeriodoFim);
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao buscar diários:", error);
+          throw error;
+        }
         if (data) allDiarios = [...allDiarios, ...data];
       }
 
-      if (allDiarios.length === 0) return [];
+      if (allDiarios.length === 0) {
+        console.log("Nenhum diário de obra encontrado no período para os sites selecionados.");
+        return [];
+      }
 
-      console.log(`Encontrados ${allDiarios.length} diários. Buscando itens de produção...`);
+      console.log(`Encontrados ${allDiarios.length} diários. Buscando itens de produção em lotes...`);
+      
       const diarioIds = allDiarios.map(d => d.id);
       const diarioMap = new Map(allDiarios.map(d => [d.id, d]));
       
       let allProds: any[] = [];
-      const prodBatchSize = 100;
+      const prodBatchSize = 100; // Lotes de IDs de diários
       for (let i = 0; i < diarioIds.length; i += prodBatchSize) {
         const batch = diarioIds.slice(i, i + prodBatchSize);
         const { data, error } = await supabase
@@ -139,11 +148,14 @@ export function GerarMedicaoDialog({
           .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .in("diario_id", batch);
         
-        if (error) throw error;
+        if (error) {
+          console.error("Erro ao buscar produções:", error);
+          throw error;
+        }
         if (data) allProds = [...allProds, ...data];
       }
 
-      console.log(`Encontrados ${allProds.length} itens de produção nos diários`);
+      console.log(`Total de registros de produção encontrados: ${allProds.length}`);
 
       return allProds.map(p => {
         const diario = diarioMap.get(p.diario_id);
@@ -158,7 +170,8 @@ export function GerarMedicaoDialog({
         };
       });
     },
-    enabled: isOpen && !!gerarPeriodoInicio && !!gerarPeriodoFim && (!!gerarProjetoId || !!gerarSiteId),
+    enabled: isOpen && !!gerarPeriodoInicio && !!gerarPeriodoFim,
+    staleTime: 0, // Garante que a busca seja sempre fresca
   });
 
   const handleGerarPreview = async () => {
@@ -552,8 +565,8 @@ export function GerarMedicaoDialog({
 
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim || isLoadingDiarios}>
-                {(loadingGeracaoFotos || isLoadingDiarios) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim || isLoadingDiarios || isFetchingDiarios}>
+                {(loadingGeracaoFotos || isLoadingDiarios || isFetchingDiarios) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Ver Itens Produzidos
               </Button>
             </DialogFooter>
