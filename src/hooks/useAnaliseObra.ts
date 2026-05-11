@@ -70,7 +70,7 @@ export interface ProducaoItem {
 export function useAnaliseObra(projetoId?: string, filterSiteId?: string, periodoInicio?: Date, periodoFim?: Date) {
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["analise_obra", projetoId, filterSiteId, periodoInicio?.toISOString(), periodoFim?.toISOString()],
-    staleTime: Infinity,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       if (!projetoId) return null;
 
@@ -440,11 +440,16 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         let mediaSemanal = 0;
         let mediaMensal = 0;
 
-        if (prod && diasComProducao > 0) {
-          mediaDiaria = executado / diasComProducao;
+        if (totalDiasObra > 0) {
+          mediaDiaria = executado / totalDiasObra;
           mediaSemanal = mediaDiaria * 7;
           mediaMensal = mediaDiaria * 30;
         }
+
+        const itemFotos = fotosData
+          .filter(f => f.diario_producao?.item_lpu_id === itemLpuId)
+          .map(f => f.url)
+          .slice(0, 5);
 
         producaoItems.push({
           itemLpuId,
@@ -460,77 +465,27 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           diasComProducao,
           primeiraData: prod?.primeiraData || null,
           ultimaData: prod?.ultimaData || null,
-          fotos: (fotosData ?? []).filter(f => {
-            if (f.diario_producao_id) {
-              const dp = diarioProducaoData.find(d => d.id === f.diario_producao_id);
-              return dp?.item_lpu_id === itemLpuId;
-            }
-            return false;
-          }).map(f => f.url),
+          fotos: itemFotos,
         });
       });
-
-      // Also add items produced that aren't in escopo
-      prodByItem.forEach((prod, itemLpuId) => {
-        if (escopoMap.has(itemLpuId)) return;
-        const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
-        const item = dpSample?.item_lpu as any;
-
-        let mediaDiaria = 0;
-        const diasComProducao = prod.diasSet.size;
-        if (diasComProducao > 0) {
-          mediaDiaria = prod.quantidade / diasComProducao;
-        }
-
-        producaoItems.push({
-          itemLpuId,
-          codigo: item?.codigo || "?",
-          descricao: item?.descricao || "Item sem escopo",
-          unidade: item?.unidade || "UN",
-          planejado: 0,
-          executado: prod.quantidade,
-          saldo: -prod.quantidade,
-          mediaDiaria,
-          mediaSemanal: mediaDiaria * 7,
-          mediaMensal: mediaDiaria * 30,
-          diasComProducao: prod.diasSet.size,
-          primeiraData: prod.primeiraData,
-          ultimaData: prod.ultimaData,
-          fotos: (fotosData ?? []).filter(f => {
-            if (f.diario_producao_id) {
-              const dp = diarioProducaoData.find(d => d.id === f.diario_producao_id);
-              return dp?.item_lpu_id === itemLpuId;
-            }
-            return false;
-          }).map(f => f.url),
-        });
-      });
-
-      producaoItems.sort((a, b) => a.codigo.localeCompare(b.codigo));
+      producaoItems.sort((a, b) => b.executado - a.executado);
 
       return {
-        siteIds,
         financeiro,
         progresso,
         servicos,
-        alertas: alertas.slice(0, 5),
+        alertas,
         custosCategorias,
-        custosErpPorCategoria,
         evolucao,
         producaoItems,
-        escopoTotal,
-        custoReal,
-        custoEsperado,
-        custoEquipe,
-        custoEquipamentos,
-        custoVeiculos,
-        totalMedido,
-        totalFaturado,
-        fotos: fotosData,
+        custosErpPorCategoria,
       };
     },
-    enabled: !!projetoId,
   });
 
-  return { data, isLoading, isFetching };
+  return {
+    analise: data,
+    isLoading,
+    isFetching,
+  };
 }
