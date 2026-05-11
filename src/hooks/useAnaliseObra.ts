@@ -306,6 +306,8 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         custoEsperado,
         margem,
         margemPercent,
+        mbOrcada,
+        mbOrcadaPercent,
         aFaturar,
         custoPrevisto: escopoCustoTotal,
         lucroProjetado: margem + (aFaturar > 0 ? aFaturar * taxRate : 0),
