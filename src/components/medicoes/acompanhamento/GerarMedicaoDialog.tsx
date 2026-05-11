@@ -134,7 +134,7 @@ export function GerarMedicaoDialog({
   const capaInputRef = useRef<HTMLInputElement>(null);
 
   const { data: diarioProducoes = [], isLoading: isLoadingDiarios, isFetching: isFetchingDiarios } = useQuery({
-    queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
+    queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId, sites.length],
     queryFn: async () => {
       console.log("Iniciando busca de produções dos diários:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
       
