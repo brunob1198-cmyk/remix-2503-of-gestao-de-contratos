@@ -9,6 +9,8 @@ export interface AnaliseFinanceira {
   custoEsperado: number;
   margem: number;
   margemPercent: number;
+  mbOrcada: number;
+  mbOrcadaPercent: number;
   aFaturar: number;
   custoPrevisto: number;
   lucroProjetado: number;
