@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
@@ -39,9 +40,8 @@ import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
 import PowerBIPage from "./pages/medicoes/PowerBI";
-const queryClient = createConfiguredQueryClient();
 
-// Persistência migrada para IndexedDB via lib/queryClient
+const queryClient = createConfiguredQueryClient();
 
 const RootRedirect = () => {
   const location = useLocation();
@@ -83,13 +83,13 @@ const App = () => (
               <Route path="sites" element={<Navigate to="/medicoes/cadastros" replace />} />
               <Route path="sites/:siteId/escopo" element={<EscopoPage />} />
               <Route path="lpu" element={<Navigate to="/medicoes/cadastros" replace />} />
-              <Route path="diario" element={<DiarioObraPage />} />
+              <Route path="diario" element={<ErrorBoundary><DiarioObraPage /></ErrorBoundary>} />
               <Route path="diario-campo" element={<DiarioCampoPage />} />
               <Route path="analise" element={<AnaliseObraPage />} />
               <Route path="producao" element={<Navigate to="/medicoes/dashboard" replace />} />
-              <Route path="medicao" element={<MedicaoPage />} />
-              <Route path="faturamento" element={<FaturamentoPage />} />
-              <Route path="acompanhamento" element={<AcompanhamentoMedicoesPage />} />
+              <Route path="medicao" element={<ErrorBoundary><MedicaoPage /></ErrorBoundary>} />
+              <Route path="faturamento" element={<ErrorBoundary><FaturamentoPage /></ErrorBoundary>} />
+              <Route path="acompanhamento" element={<ErrorBoundary><AcompanhamentoMedicoesPage /></ErrorBoundary>} />
               <Route path="recursos" element={<RecursosPage />} />
               <Route path="relatorios" element={<RelatoriosPage />} />
               <Route path="integracao-erp" element={<IntegracaoErpPage />} />
