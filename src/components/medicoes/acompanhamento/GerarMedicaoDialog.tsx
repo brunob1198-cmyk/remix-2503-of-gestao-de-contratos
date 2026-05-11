@@ -93,57 +93,59 @@ export function GerarMedicaoDialog({
     queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
     queryFn: async () => {
       console.log("Fetching diarios for:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
-      let query = supabase
-        .from("diarios_obra")
-        .select("id, site_id, data")
-        .order('data', { ascending: false });
-
-      if (gerarPeriodoInicio) {
-        query = query.gte("data", gerarPeriodoInicio);
-      }
-      if (gerarPeriodoFim) {
-        query = query.lte("data", gerarPeriodoFim);
-      }
-
-      if (gerarSiteId) {
-        query = query.eq("site_id", gerarSiteId);
-      } else if (gerarProjetoId) {
-        const projectSiteIds = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
-        if (projectSiteIds.length > 0) {
-          query = query.in("site_id", projectSiteIds);
-        } else {
-          console.log("No sites found for project:", gerarProjetoId);
-          return [];
-        }
-      }
-
-      const { data: diarios, error: dErr } = await query.limit(10000);
-      if (dErr) throw dErr;
-      if (!diarios || diarios.length === 0) {
-        console.log("No diarios found in date range");
-        return [];
-      }
-
-      console.log(`Found ${diarios.length} diarios. Fetching production items...`);
-      const diarioIds = diarios.map(d => d.id);
       
-      let prods: any[] = [];
-      const batchSize = 100;
-      for (let i = 0; i < diarioIds.length; i += batchSize) {
-        const batch = diarioIds.slice(i, i + batchSize);
+      // Construir filtro de sites
+      let siteIdsToFetch: string[] = [];
+      if (gerarSiteId) {
+        siteIdsToFetch = [gerarSiteId];
+      } else if (gerarProjetoId) {
+        siteIdsToFetch = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
+        if (siteIdsToFetch.length === 0) return [];
+      } else {
+        // Se não houver projeto/site selecionado, buscamos todos os sites visíveis (pode ser pesado)
+        siteIdsToFetch = sites.map(s => s.id);
+      }
+
+      // Buscar Diários em lotes para evitar problemas de limite
+      let allDiarios: any[] = [];
+      const siteBatchSize = 100;
+      for (let i = 0; i < siteIdsToFetch.length; i += siteBatchSize) {
+        const batch = siteIdsToFetch.slice(i, i + siteBatchSize);
+        let query = supabase
+          .from("diarios_obra")
+          .select("id, site_id, data")
+          .in("site_id", batch);
+
+        if (gerarPeriodoInicio) query = query.gte("data", gerarPeriodoInicio);
+        if (gerarPeriodoFim) query = query.lte("data", gerarPeriodoFim);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        if (data) allDiarios = [...allDiarios, ...data];
+      }
+
+      if (allDiarios.length === 0) return [];
+
+      console.log(`Encontrados ${allDiarios.length} diários. Buscando itens de produção...`);
+      const diarioIds = allDiarios.map(d => d.id);
+      const diarioMap = new Map(allDiarios.map(d => [d.id, d]));
+      
+      let allProds: any[] = [];
+      const prodBatchSize = 100;
+      for (let i = 0; i < diarioIds.length; i += prodBatchSize) {
+        const batch = diarioIds.slice(i, i + prodBatchSize);
         const { data, error } = await supabase
           .from("diario_producao")
           .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
           .in("diario_id", batch);
         
         if (error) throw error;
-        if (data) prods = [...prods, ...data];
+        if (data) allProds = [...allProds, ...data];
       }
 
-      console.log(`Found ${prods.length} production items in diarios`);
-      const diarioMap = new Map(diarios.map(d => [d.id, d]));
+      console.log(`Encontrados ${allProds.length} itens de produção nos diários`);
 
-      return prods.map(p => {
+      return allProds.map(p => {
         const diario = diarioMap.get(p.diario_id);
         return {
           site_id: diario?.site_id || "",
@@ -156,7 +158,7 @@ export function GerarMedicaoDialog({
         };
       });
     },
-    enabled: isOpen && !!gerarPeriodoInicio && !!gerarPeriodoFim,
+    enabled: isOpen && !!gerarPeriodoInicio && !!gerarPeriodoFim && (!!gerarProjetoId || !!gerarSiteId),
   });
 
   const handleGerarPreview = async () => {
