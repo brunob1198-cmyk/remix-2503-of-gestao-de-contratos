@@ -15,7 +15,6 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
 import { GerarMedicaoDialog } from "@/components/medicoes/acompanhamento/GerarMedicaoDialog";
 import { RevisaoParcialDialog } from "@/components/medicoes/acompanhamento/RevisaoParcialDialog";
-import { getStatusBadge } from "@/components/medicoes/acompanhamento/StatusHistoryPopover";
 
 const STATUS_OPTIONS = [
   { value: "pendente", label: "Pendente", color: "bg-gray-500" },
@@ -341,8 +340,9 @@ export default function AcompanhamentoMedicoesPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {detailMedicao && (
             <DetailMedicaoContent 
-              medicao={detailMedicao} 
-              lancamentos={detailLancamentos} 
+              detailMedicao={detailMedicao} 
+              detailLancamentos={detailLancamentos} 
+              sites={sites}
               formatCurrency={formatCurrency}
               formatDate={formatDate}
             />
