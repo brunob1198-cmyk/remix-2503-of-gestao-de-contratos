@@ -330,11 +330,12 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           custoEsp = bdi > 0 ? prod.receita / bdi : prod.receita;
         }
 
+        const receitaLiquidaItem = prod.receita * taxRate;
         // Prorate real cost by receita ratio
         const ratio = receitaTotal > 0 ? prod.receita / receitaTotal : 0;
         const custoRealItem = custoReal * ratio;
 
-        const m = prod.receita - custoRealItem;
+        const m = receitaLiquidaItem - custoRealItem;
         servicos.push({
           itemId: itemLpuId,
           codigo,
@@ -343,7 +344,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           custoReal: custoRealItem,
           custoEsperado: custoEsp,
           margem: m,
-          margemPercent: prod.receita > 0 ? (m / prod.receita) * 100 : 0,
+          margemPercent: receitaLiquidaItem > 0 ? (m / receitaLiquidaItem) * 100 : 0,
         });
       });
       servicos.sort((a, b) => b.receita - a.receita);
