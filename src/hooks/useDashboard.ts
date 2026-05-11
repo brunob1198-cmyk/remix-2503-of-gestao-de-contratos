@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ResumoItem, ResumoProjeto } from "@/types/medicoes";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function useDashboard(projetoId?: string, siteIds?: string[]) {
+  const { empresaId } = useAuth();
+
   const { data: resumoProjetos = [], isLoading: isLoadingProjetos } = useQuery({
     queryKey: ["dashboard", "projetos", projetoId, siteIds],
     queryFn: async () => {
