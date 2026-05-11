@@ -1104,6 +1104,7 @@ export type Database = {
           cnpj: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           nome: string
           updated_at: string | null
         }
@@ -1111,6 +1112,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           nome: string
           updated_at?: string | null
         }
@@ -1118,6 +1120,7 @@ export type Database = {
           cnpj?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           nome?: string
           updated_at?: string | null
         }

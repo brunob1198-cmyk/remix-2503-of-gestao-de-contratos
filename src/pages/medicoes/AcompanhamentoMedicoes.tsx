@@ -32,6 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FileDown, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Save, Plus, Eye, AlertTriangle, FileText, Camera, MapPin, Calendar, Trash2, Search, History, Upload, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { exportLancamentosToExcel } from "@/lib/medicoesExport";
 import { DetailMedicaoContent } from "@/components/medicoes/DetailMedicaoContent";
 import { useTableFilters } from "@/hooks/useTableFilters";
@@ -80,6 +81,7 @@ interface GeracaoFoto {
 
 function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
+  const { empresaLogoUrl } = useAuth();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { lancamentos: producoes } = useLancamentosProducao();
   const { projetos } = useProjetos();
@@ -728,7 +730,7 @@ function AcompanhamentoMedicoesPage() {
     if (selectedItens.length === 0) return;
 
     const today = new Date().toISOString().split("T")[0];
-    const customLogo = localStorage.getItem("custom_logo_url") || "/logo.png";
+    const customLogo = empresaLogoUrl || localStorage.getItem("custom_logo_url") || "/logo.png";
 
     // Upload cover page if provided
     let capaUrl: string | null = null;

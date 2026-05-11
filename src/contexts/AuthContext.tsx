@@ -18,6 +18,7 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   empresaId: string | null;
+  empresaLogoUrl: string | null;
   aprovado: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -29,8 +30,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   role: null,
-  empresaId: null,
-  aprovado: false,
+    empresaId: null,
+    empresaLogoUrl: null,
+    aprovado: false,
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -41,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [empresaLogoUrl, setEmpresaLogoUrl] = useState<string | null>(null);
 
   const fetchProfileAndRole = async (userId: string) => {
     let profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
@@ -82,6 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(roleRes.data.role as AppRole);
     } else {
       setRole(null);
+    }
+
+    if (profileRes.data?.empresa_id) {
+      const { data: empData } = await supabase
+        .from("empresas")
+        .select("logo_url")
+        .eq("id", profileRes.data.empresa_id)
+        .maybeSingle();
+      
+      setEmpresaLogoUrl(empData?.logo_url || null);
+    } else {
+      setEmpresaLogoUrl(null);
     }
   };
 
@@ -144,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         role,
         empresaId: profile?.empresa_id ?? null,
+        empresaLogoUrl,
         aprovado: profile?.aprovado ?? false,
         loading,
         signOut,
