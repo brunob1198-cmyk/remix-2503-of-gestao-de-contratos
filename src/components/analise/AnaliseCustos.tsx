@@ -385,26 +385,26 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             </tbody>
             <tfoot className="bg-muted font-bold">
               <tr>
-                <td colSpan={1} className="py-2 px-4 border-r text-right sticky left-0 z-10 bg-muted">Totais:</td>
-                <td className="py-2 px-4 border-r sticky left-[64px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r sticky left-[164px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r sticky left-[264px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r sticky left-[464px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 text-right border-r sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
-                {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoOrcado)}</td>
+                <td colSpan={1} className="py-2 px-4 border-r border-t text-right sticky left-0 z-10 bg-muted">Totais:</td>
+                <td className="py-2 px-4 border-r border-t sticky left-[64px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[164px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[264px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[464px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 text-right border-r border-t sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
+                {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.totalErp)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcado)}</td>
                 
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
                 
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoOrcadoGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoRealGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcadoGerencia)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoRealGerencia)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-t">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
               </tr>
             </tfoot>
           </table>
