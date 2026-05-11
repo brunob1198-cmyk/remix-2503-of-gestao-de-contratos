@@ -313,7 +313,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const makeClearAll = (col: string) => () => setFilterField(col, prev => ({ ...prev, selected: new Set() }));
   const makeSearchChange = (col: string) => (v: string) => setFilterField(col, prev => ({ ...prev, search: v }));
 
-  const NumericHeader = ({ label, col, className }: { label: string; col: ColumnKey; className?: string }) => {
+  const NumericHeader = ({ label, col, className, style }: { label: string; col: ColumnKey; className?: string; style?: React.CSSProperties }) => {
     const dir = makeSortDir(col);
     return (
       <th className={`py-3 px-4 font-semibold text-right ${className || ""}`}>
