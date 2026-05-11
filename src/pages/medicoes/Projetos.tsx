@@ -14,6 +14,7 @@ import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowU
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 type SortField = "codigo" | "nome" | "cliente" | "coordenador" | "status" | "contrato_id" | "area_id";
 type SortDir = "asc" | "desc" | null;
