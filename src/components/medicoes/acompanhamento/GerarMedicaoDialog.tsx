@@ -81,6 +81,7 @@ export function GerarMedicaoDialog({
   const [geracaoItens, setGeracaoItens] = useState<GeracaoItem[]>([]);
   const [gerarTipoMedicao, setGerarTipoMedicao] = useState<"separada" | "agrupada" | "mista">("separada");
   const [geracaoFotos, setGeracaoFotos] = useState<GeracaoFoto[]>([]);
+  const [geracaoFotosTotal, setGeracaoFotosTotal] = useState<number>(0);
   const [showPreview, setShowPreview] = useState(false);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
@@ -274,27 +275,27 @@ export function GerarMedicaoDialog({
           const diarioIds = diarios.map(d => d.id);
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-          const fetchAllGeracaoFotos = async (ids: string[]) => {
-            let all: any[] = [];
-            let from = 0;
-            let to = 999;
-            while (true) {
-              const { data, error } = await supabase
-                .from("diario_fotos")
-                .select("*")
-                .in("diario_id", ids)
-                .range(from, to);
-              if (error) throw error;
-              if (!data || data.length === 0) break;
-              all = [...all, ...data];
-              if (data.length < 1000) break;
-              from += 1000;
-              to += 1000;
-            }
-            return all;
+          const fetchGeracaoFotosPreview = async (ids: string[]) => {
+            // ETAPA 1 — Contar sem carregar
+            const { count } = await supabase
+              .from("diario_fotos")
+              .select("id", { count: "exact", head: true })
+              .in("diario_id", ids);
+            
+            setGeracaoFotosTotal(count || 0);
+
+            // ETAPA 2 — Carregar para preview apenas as primeiras 50
+            const { data, error } = await supabase
+              .from("diario_fotos")
+              .select("*")
+              .in("diario_id", ids)
+              .limit(50);
+              
+            if (error) throw error;
+            return data || [];
           };
 
-          const fotos = await fetchAllGeracaoFotos(diarioIds);
+          const fotos = await fetchGeracaoFotosPreview(diarioIds);
           const producaoIds = (fotos || []).map(f => (f as any).diario_producao_id).filter(Boolean);
           let producaoMap = new Map<string, any>();
           if (producaoIds.length > 0) {
@@ -324,10 +325,13 @@ export function GerarMedicaoDialog({
           }));
         } else {
           setGeracaoFotos([]);
+          setGeracaoFotosTotal(0);
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("Erro ao carregar fotos:", err);
       setGeracaoFotos([]);
+      setGeracaoFotosTotal(0);
     }
     setLoadingGeracaoFotos(false);
 
@@ -422,6 +426,7 @@ export function GerarMedicaoDialog({
     setShowPreview(false);
     setGeracaoItens([]);
     setGeracaoFotos([]);
+    setGeracaoFotosTotal(0);
     setGerarNumeroMedicao("");
     setGerarPeriodoInicio("");
     setGerarPeriodoFim("");
@@ -596,10 +601,34 @@ export function GerarMedicaoDialog({
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Evidências Fotográficas ({geracaoFotos.length})</h3>
-                {loadingGeracaoFotos && <Loader2 className="h-3 w-3 animate-spin" />}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">
+                    Relatório Fotográfico (mostrando {geracaoFotos.length} de {geracaoFotosTotal} fotos)
+                  </h3>
+                  {loadingGeracaoFotos && <Loader2 className="h-3 w-3 animate-spin" />}
+                </div>
+                {geracaoFotos.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] h-7"
+                      onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: true })))}
+                    >
+                      Selecionar Todas
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] h-7"
+                      onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: false })))}
+                    >
+                      Desmarcar Todas
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {geracaoFotos.map((foto, idx) => (
