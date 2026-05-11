@@ -67,7 +67,7 @@ export function GerarMedicaoDialog({
   const { empresaLogoUrl } = useAuth();
   
   // Data from hooks
-  const { projetos } = useQuery({
+  const { data: projetos = [] } = useQuery({
     queryKey: ["projetos"],
     queryFn: async () => {
       const { data, error } = await supabase.from("projetos").select("*").order("codigo");
