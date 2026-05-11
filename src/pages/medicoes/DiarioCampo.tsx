@@ -201,8 +201,7 @@ export default function DiarioCampoPage() {
     } else {
       setActiveAtividadeIdx("new");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, atividades.length === 0]);
+  }, [selectedDate, atividades.length]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
