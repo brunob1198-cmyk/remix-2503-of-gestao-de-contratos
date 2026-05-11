@@ -127,6 +127,7 @@ const App = () => {
     </TooltipProvider>
     </ThemeProvider>
   </PersistQueryClientProvider>
-);
+  );
+};
 
 export default App;
