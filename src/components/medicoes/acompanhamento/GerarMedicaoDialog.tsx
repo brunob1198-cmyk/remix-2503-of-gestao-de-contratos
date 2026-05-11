@@ -66,12 +66,69 @@ export function GerarMedicaoDialog({
   const queryClient = useQueryClient();
   const { empresaLogoUrl } = useAuth();
   
-  // Data from cache/hooks (mocked by getQueryData in this context)
-  const lancamentos = queryClient.getQueryData<any[]>(["lancamentos_medicao", undefined]) || [];
-  const producoes = queryClient.getQueryData<any[]>(["lancamentos_producao", undefined]) || [];
-  const projetos = queryClient.getQueryData<any[]>(["projetos"]) || [];
-  const sites = queryClient.getQueryData<any[]>(["sites"]) || [];
-  const allItensLpu = queryClient.getQueryData<any[]>(["itens_lpu", undefined]) || [];
+  // Data from hooks
+  const { data: projetos = [] } = useQuery({
+    queryKey: ["projetos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projetos")
+        .select("*, clienteObj:clientes(*), contratoObj:contratos(*), areaObj:areas(*)")
+        .order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["sites", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sites")
+        .select("*, projeto:projetos(*, clienteObj:clientes(*))")
+        .order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: allItensLpu = [] } = useQuery({
+    queryKey: ["itens_lpu", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("itens_lpu")
+        .select("*, projeto:projetos(*)")
+        .order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: lancamentos = [] } = useQuery({
+    queryKey: ["lancamentos_medicao", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lancamentos_medicao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: producoes = [] } = useQuery({
+    queryKey: ["lancamentos_producao", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lancamentos_producao")
+        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
 
   const [gerarProjetoId, setGerarProjetoId] = useState<string>("");
   const [gerarSiteId, setGerarSiteId] = useState<string>("");
@@ -90,7 +147,7 @@ export function GerarMedicaoDialog({
   const capaInputRef = useRef<HTMLInputElement>(null);
 
   const { data: diarioProducoes = [], isLoading: isLoadingDiarios, isFetching: isFetchingDiarios } = useQuery({
-    queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId],
+    queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId, sites.length],
     queryFn: async () => {
       console.log("Iniciando busca de produções dos diários:", { gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId });
       
@@ -98,7 +155,12 @@ export function GerarMedicaoDialog({
       if (gerarSiteId) {
         siteIdsToFetch = [gerarSiteId];
       } else if (gerarProjetoId) {
-        siteIdsToFetch = sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id);
+        // Garantir que temos os sites antes de filtrar
+        const projectSites = sites.filter(s => s.projeto_id === gerarProjetoId);
+        if (projectSites.length === 0 && sites.length > 0) {
+           console.warn(`Nenhum site encontrado para o projeto ${gerarProjetoId} entre os ${sites.length} sites carregados.`);
+        }
+        siteIdsToFetch = projectSites.map(s => s.id);
         console.log(`Projeto ${gerarProjetoId} tem ${siteIdsToFetch.length} sites.`);
       } else {
         siteIdsToFetch = sites.map(s => s.id);
@@ -490,7 +552,9 @@ export function GerarMedicaoDialog({
               <div className="space-y-2">
                 <Label>Projeto</Label>
                 <Select value={gerarProjetoId || "all"} onValueChange={(v) => { setGerarProjetoId(v === "all" ? "" : v); setGerarSiteId(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={projetos.length === 0 ? "Carregando projetos..." : "Todos os projetos"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os projetos</SelectItem>
                     {projetos.map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}
@@ -499,8 +563,10 @@ export function GerarMedicaoDialog({
               </div>
               <div className="space-y-2">
                 <Label>Site</Label>
-                <Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)} disabled={gerarProjetoId && filterSites.length === 0}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={gerarProjetoId && filterSites.length === 0 ? "Carregando sites..." : "Todos os sites"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os sites</SelectItem>
                     {filterSites.map(s => <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>)}
