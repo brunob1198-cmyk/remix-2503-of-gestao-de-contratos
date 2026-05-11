@@ -81,6 +81,7 @@ interface GeracaoFoto {
 
 function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
+  const { empresaLogoUrl } = useAuth();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { lancamentos: producoes } = useLancamentosProducao();
   const { projetos } = useProjetos();
