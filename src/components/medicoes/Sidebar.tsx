@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
   { title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise" },
   { title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento" },
   { title: "Recursos", url: "/medicoes/recursos", icon: Boxes, telaId: "recursos" },
-  { title: "Lançar Produção", url: "/medicoes/producao", icon: ClipboardList, telaId: "producao" },
+  // { title: "Lançar Produção", url: "/medicoes/producao", icon: ClipboardList, telaId: "producao" },
   { title: "Lançar Medição", url: "/medicoes/medicao", icon: Receipt, telaId: "medicao" },
   { title: "Portal de Faturamento", url: "/medicoes/faturamento", icon: DollarSign, telaId: "faturamento" },
   { title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios" },
