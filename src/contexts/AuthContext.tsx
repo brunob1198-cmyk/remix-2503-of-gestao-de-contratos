@@ -18,6 +18,7 @@ interface AuthContextType {
   profile: Profile | null;
   role: AppRole | null;
   empresaId: string | null;
+  empresaLogoUrl: string | null;
   aprovado: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
