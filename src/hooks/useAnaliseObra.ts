@@ -101,6 +101,18 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       let faturamento: any[] = [];
       let diarios: any[] = [];
 
+      const { data: faturamentosData } = await supabase
+        .from("faturamentos")
+        .select("valor_liquido, valor_bruto")
+        .eq("projeto_id", resolvedProjetoId);
+
+      let taxRate = 0.94;
+      if (faturamentosData && faturamentosData.length > 0) {
+        const totalBruto = faturamentosData.reduce((a, b) => a + Number(b.valor_bruto || 0), 0);
+        const totalLiquido = faturamentosData.reduce((a, b) => a + Number(b.valor_liquido || 0), 0);
+        taxRate = totalBruto > 0 ? totalLiquido / totalBruto : 0.94;
+      }
+
       if (siteIds.length > 0) {
         for (let i = 0; i < siteIds.length; i += 50) {
           const chunk = siteIds.slice(i, i + 50);
