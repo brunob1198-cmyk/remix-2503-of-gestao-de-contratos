@@ -307,32 +307,39 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       </CardHeader>
       <ScrollArea className="w-full">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left whitespace-nowrap">
+          <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
             <thead className="bg-muted text-muted-foreground">
               <tr>
-                <th className="py-3 px-4 font-semibold border-r sticky left-0 z-10 bg-muted">FCA</th>
-                {textCols.map(col => (
-                  <th key={col} className="py-3 px-4 font-semibold border-r">
-                    <ColumnHeader label={textColLabels[col]} sortDir={makeSortDir(col)} onSort={() => handleSort(col)} searchText={getFilter(col).search} onSearchChange={makeSearchChange(col)} uniqueValues={uniqueValues[col] || []} selectedValues={getFilter(col).selected} onToggleValue={makeToggle(col)} onSelectAll={makeSelectAll(col)} onClearAll={makeClearAll(col)} />
-                  </th>
-                ))}
-                <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r" />
-                {CATEGORIAS.map(cat => <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r" />)}
-                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r" />
-                <NumericHeader label="Custo Orçado" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r" />
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[64px] z-20 bg-muted">
+                  <ColumnHeader label="Referência" sortDir={makeSortDir("referencia")} onSort={() => handleSort("referencia")} searchText={getFilter("referencia").search} onSearchChange={makeSearchChange("referencia")} uniqueValues={uniqueValues["referencia"] || []} selectedValues={getFilter("referencia").selected} onToggleValue={makeToggle("referencia")} onSelectAll={makeSelectAll("referencia")} onClearAll={makeClearAll("referencia")} />
+                </th>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[164px] z-20 bg-muted">
+                  <ColumnHeader label="Área" sortDir={makeSortDir("area")} onSort={() => handleSort("area")} searchText={getFilter("area").search} onSearchChange={makeSearchChange("area")} uniqueValues={uniqueValues["area"] || []} selectedValues={getFilter("area").selected} onToggleValue={makeToggle("area")} onSelectAll={makeSelectAll("area")} onClearAll={makeClearAll("area")} />
+                </th>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[264px] z-20 bg-muted">
+                  <ColumnHeader label="Projeto" sortDir={makeSortDir("projeto")} onSort={() => handleSort("projeto")} searchText={getFilter("projeto").search} onSearchChange={makeSearchChange("projeto")} uniqueValues={uniqueValues["projeto"] || []} selectedValues={getFilter("projeto").selected} onToggleValue={makeToggle("projeto")} onSelectAll={makeSelectAll("projeto")} onClearAll={makeClearAll("projeto")} />
+                </th>
+                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[464px] z-20 bg-muted">
+                  <ColumnHeader label="Cliente" sortDir={makeSortDir("cliente")} onSort={() => handleSort("cliente")} searchText={getFilter("cliente").search} onSearchChange={makeSearchChange("cliente")} uniqueValues={uniqueValues["cliente"] || []} selectedValues={getFilter("cliente").selected} onToggleValue={makeToggle("cliente")} onSelectAll={makeSelectAll("cliente")} onClearAll={makeClearAll("cliente")} />
+                </th>
+                <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r border-b sticky left-[624px] z-20" />
+                {CATEGORIAS.map(cat => <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r border-b" />)}
+                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r border-b" />
+                <NumericHeader label="Custo Orçado" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r border-b" />
                 
                 {/* Yellow Group - Lucro Bruto */}
-                <NumericHeader label="Receita Líquida" col="receitaLiquida" className="bg-amber-100 dark:bg-amber-900/40 border-r" />
-                <NumericHeader label="MB Orçada" col="mbOrcada" className="bg-amber-100 dark:bg-amber-900/40 border-r" />
-                <NumericHeader label="MB Realizado" col="mbRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r" />
-                <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-100 dark:bg-amber-900/40 border-r" />
-                <NumericHeader label="MB (%) Realizado" col="mbPctRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r" />
+                <NumericHeader label="Receita Líquida" col="receitaLiquida" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+                <NumericHeader label="MB Orçada" col="mbOrcada" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+                <NumericHeader label="MB Realizado" col="mbRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+                <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+                <NumericHeader label="MB (%) Realizado" col="mbPctRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
                 
                 {/* Blue Group - Gerencia Obra */}
-                <NumericHeader label="Orçado Gerência" col="custoOrcadoGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r" />
-                <NumericHeader label="Real Gerência" col="custoRealGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r" />
-                <NumericHeader label="% Ger. Orçado" col="gerPctOrcado" className="bg-blue-100 dark:bg-blue-900/40 border-r" />
-                <NumericHeader label="% Ger. Real" col="gerPctRealizado" className="bg-blue-100 dark:bg-blue-900/40" />
+                <NumericHeader label="Orçado Gerência" col="custoOrcadoGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+                <NumericHeader label="Real Gerência" col="custoRealGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+                <NumericHeader label="% Ger. Orçado" col="gerPctOrcado" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+                <NumericHeader label="% Ger. Real" col="gerPctRealizado" className="bg-blue-100 dark:bg-blue-900/40 border-b" />
               </tr>
             </thead>
             <tbody>
@@ -351,11 +358,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         <ClipboardList className="h-4 w-4" />
                       </Button>
                     </td>
-                    <td className="py-2 px-4 border-r text-center">{row.referencia}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[120px]">{row.area}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[200px]">{row.codigo} - {row.nome}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[160px]">{row.cliente}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30">{formatCurrency(row.valorProduzido)}</td>
+                    <td className="py-2 px-4 border-r text-center sticky left-[64px] z-10 bg-background">{row.referencia}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[120px] sticky left-[164px] z-10 bg-background">{row.area}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[200px] sticky left-[264px] z-10 bg-background">{row.codigo} - {row.nome}</td>
+                    <td className="py-2 px-4 border-r truncate max-w-[160px] sticky left-[464px] z-10 bg-background">{row.cliente}</td>
+                    <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30 sticky left-[624px] z-10">{formatCurrency(row.valorProduzido)}</td>
                     {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r font-mono">{formatCurrency(row.categorias[cat] || 0)}</td>)}
                     <td className="py-2 px-4 text-right border-r font-mono font-bold text-destructive bg-red-50/30">{formatCurrency(row.totalErp)}</td>
                     <td className="py-2 px-4 text-right border-r font-mono text-blue-600 bg-blue-50/30">{formatCurrency(row.custoOrcado)}</td>
@@ -378,22 +385,26 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             </tbody>
             <tfoot className="bg-muted font-bold">
               <tr>
-                <td colSpan={5} className="py-2 px-4 border-r text-right">Totais:</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.valorProduzido)}</td>
-                {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoOrcado)}</td>
+                <td colSpan={1} className="py-2 px-4 border-r border-t text-right sticky left-0 z-10 bg-muted">Totais:</td>
+                <td className="py-2 px-4 border-r border-t sticky left-[64px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[164px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[264px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 border-r border-t sticky left-[464px] z-10 bg-muted"></td>
+                <td className="py-2 px-4 text-right border-r border-t sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
+                {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.totalErp)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcado)}</td>
                 
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
                 
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoOrcadoGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatCurrency(totals.custoRealGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcadoGerencia)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoRealGerencia)}</td>
+                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+                <td className="py-2 px-4 text-right border-t">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
               </tr>
             </tfoot>
           </table>
