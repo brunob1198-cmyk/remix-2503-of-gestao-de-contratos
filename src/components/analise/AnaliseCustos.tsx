@@ -58,9 +58,6 @@ interface FilterState {
 const emptyFilter = (): FilterState => ({ search: "", selected: new Set() });
 
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [columnWidths, setColumnWidths] = useState({ fca: 64, ref: 100, area: 100, proj: 200, cli: 160 });
-
   const startDate = format(startOfMonth(periodoInicio), "yyyy-MM-dd");
   const endDate = format(endOfMonth(periodoFim), "yyyy-MM-dd");
 
