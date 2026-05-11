@@ -562,6 +562,8 @@ export default function ProjetosPage() {
             </>
           )}
         </CardContent>
+      </Card>
+
       <ConfirmDeleteDialog
         open={!!deletingId}
         onOpenChange={(open) => !open && setDeletingId(null)}
