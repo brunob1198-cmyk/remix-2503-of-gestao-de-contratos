@@ -275,8 +275,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         }
       });
 
-      const margem = receitaTotal - custoReal;
-      const margemPercent = receitaTotal > 0 ? (margem / receitaTotal) * 100 : 0;
+      const receitaLiquida = receitaTotal * taxRate;
+      const margem = receitaLiquida - custoReal;
+      const margemPercent = receitaLiquida > 0 ? (margem / receitaLiquida) * 100 : 0;
 
       const totalMedido = medicao.reduce((s, l) => {
         const preco = (l.item_lpu as any)?.preco_unitario || 0;
