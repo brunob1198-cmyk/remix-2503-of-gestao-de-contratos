@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 const columns = ["codigo", "descricao", "unidade", "preco_unitario", "bdi", "categoria", "projeto"] as const;
 type ColKey = typeof columns[number];
@@ -29,24 +30,37 @@ export default function LpuPage() {
   const [editDescricao, setEditDescricao] = useState<string>("");
   const [editUnidade, setEditUnidade] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir este item?")) {
-      deleteItemLpu.mutate(id);
-      setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteItemLpu.mutate(deletingId, {
+        onSuccess: () => {
+          setSelectedIds((prev) => { const n = new Set(prev); n.delete(deletingId); return n; });
+          setDeletingId(null);
+        }
+      });
     }
   };
 
   const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    if (confirm(`Tem certeza que deseja excluir ${selectedIds.size} item(ns)?`)) {
-      selectedIds.forEach((id) => deleteItemLpu.mutate(id));
-      toast.success(`${selectedIds.size} item(ns) excluído(s)`);
-      setSelectedIds(new Set());
-    }
+    setShowBulkDeleteConfirm(true);
+  };
+
+  const confirmBulkDelete = () => {
+    selectedIds.forEach((id) => deleteItemLpu.mutate(id));
+    toast.success(`${selectedIds.size} item(ns) excluído(s)`);
+    setSelectedIds(new Set());
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleStartEdit = (item: any) => {
@@ -297,6 +311,22 @@ export default function LpuPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDeleteDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+        itemName={itensLpu.find(i => i.id === deletingId)?.codigo || "este item"}
+        loading={deleteItemLpu.isPending}
+      />
+
+      <ConfirmDeleteDialog
+        open={showBulkDeleteConfirm}
+        onOpenChange={setShowBulkDeleteConfirm}
+        onConfirm={confirmBulkDelete}
+        title="Excluir Vários Itens"
+        description={`Tem certeza que deseja excluir ${selectedIds.size} itens selecionados? Esta ação não pode ser desfeita.`}
+        loading={deleteItemLpu.isPending}
+      />
     </div>
   );
 }

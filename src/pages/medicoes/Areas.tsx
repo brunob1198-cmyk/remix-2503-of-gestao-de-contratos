@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Layers, Loader2 } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import { safeFormat } from "@/lib/utils";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 function AreasPage() {
   const { areas, isLoading, createArea, updateArea, deleteArea } = useAreas();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -45,9 +46,15 @@ function AreasPage() {
     }
   };
 
-  const handleDelete = (id: string, nome: string) => {
-    if (confirm(`Tem certeza que deseja excluir a área "${nome}"? Isso não será possível se houverem projetos vinculados a ela.`)) {
-      deleteArea.mutate(id);
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingId) {
+      deleteArea.mutate(deletingId, {
+        onSuccess: () => setDeletingId(null)
+      });
     }
   };
 
@@ -131,7 +138,7 @@ function AreasPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(a)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id, a.nome)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -143,6 +150,15 @@ function AreasPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+        itemName={areas.find(a => a.id === deletingId)?.nome || "esta área"}
+        description="Tem certeza que deseja excluir esta área? Isso não será possível se houverem projetos vinculados a ela."
+        loading={deleteArea.isPending}
+      />
     </div>
   );
 }
