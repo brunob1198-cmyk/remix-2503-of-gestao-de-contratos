@@ -66,12 +66,56 @@ export function GerarMedicaoDialog({
   const queryClient = useQueryClient();
   const { empresaLogoUrl } = useAuth();
   
-  // Data from cache/hooks (mocked by getQueryData in this context)
-  const lancamentos = queryClient.getQueryData<any[]>(["lancamentos_medicao", undefined]) || [];
-  const producoes = queryClient.getQueryData<any[]>(["lancamentos_producao", undefined]) || [];
-  const projetos = queryClient.getQueryData<any[]>(["projetos"]) || [];
-  const sites = queryClient.getQueryData<any[]>(["sites"]) || [];
-  const allItensLpu = queryClient.getQueryData<any[]>(["itens_lpu", undefined]) || [];
+  // Data from hooks
+  const { projetos } = useQuery({
+    queryKey: ["projetos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projetos").select("*").order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["sites", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sites").select("*").order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: allItensLpu = [] } = useQuery({
+    queryKey: ["itens_lpu", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("itens_lpu").select("*").order("codigo");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: lancamentos = [] } = useQuery({
+    queryKey: ["lancamentos_medicao", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lancamentos_medicao").select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const { data: producoes = [] } = useQuery({
+    queryKey: ["lancamentos_producao", undefined],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lancamentos_producao").select("*, item_lpu:itens_lpu(*)");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen
+  });
 
   const [gerarProjetoId, setGerarProjetoId] = useState<string>("");
   const [gerarSiteId, setGerarSiteId] = useState<string>("");
