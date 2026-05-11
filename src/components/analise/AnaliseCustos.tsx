@@ -1,13 +1,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ColumnHeader, SortDir } from "@/components/medicoes/ColumnHeader";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, RefreshCw } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { FCAModal } from "./FCAModal";
 
 interface AnaliseCustosProps {
@@ -31,14 +30,14 @@ const formatPercent = (val: number) =>
   isFinite(val) ? `${val.toFixed(1)}%` : "—";
 
 interface MonthRow {
-  key: string; // projetoId + mesRef
+  key: string; 
   projetoId: string;
   codigo: string;
   nome: string;
   area: string;
   cliente: string;
-  referencia: string; // "Mar/2026"
-  refSort: string; // "2026-03" for sorting
+  referencia: string; 
+  refSort: string; 
   valorProduzido: number;
   receitaLiquida: number;
   custoOrcado: number;
@@ -294,8 +293,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     );
   };
 
-  const textColLabels: Record<string, string> = { area: "Área", projeto: "Projeto", cliente: "Cliente", referencia: "Referência" };
-
   return (
     <Card>
       <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
@@ -305,112 +302,122 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         </div>
         {isFetching && <div className="text-xs text-muted-foreground animate-pulse">Atualizando...</div>}
       </CardHeader>
+      
       <div className="w-full overflow-x-auto relative">
         <table className="w-full text-sm text-left border-separate border-spacing-0 whitespace-nowrap">
-            <thead className="bg-muted text-muted-foreground">
-              <tr>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-20 bg-muted">FCA</th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[64px] z-20 bg-muted">
-                  <ColumnHeader label="Referência" sortDir={makeSortDir("referencia")} onSort={() => handleSort("referencia")} searchText={getFilter("referencia").search} onSearchChange={makeSearchChange("referencia")} uniqueValues={uniqueValues["referencia"] || []} selectedValues={getFilter("referencia").selected} onToggleValue={makeToggle("referencia")} onSelectAll={makeSelectAll("referencia")} onClearAll={makeClearAll("referencia")} />
-                </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[164px] z-20 bg-muted">
-                  <ColumnHeader label="Área" sortDir={makeSortDir("area")} onSort={() => handleSort("area")} searchText={getFilter("area").search} onSearchChange={makeSearchChange("area")} uniqueValues={uniqueValues["area"] || []} selectedValues={getFilter("area").selected} onToggleValue={makeToggle("area")} onSelectAll={makeSelectAll("area")} onClearAll={makeClearAll("area")} />
-                </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[264px] z-20 bg-muted">
-                  <ColumnHeader label="Projeto" sortDir={makeSortDir("projeto")} onSort={() => handleSort("projeto")} searchText={getFilter("projeto").search} onSearchChange={makeSearchChange("projeto")} uniqueValues={uniqueValues["projeto"] || []} selectedValues={getFilter("projeto").selected} onToggleValue={makeToggle("projeto")} onSelectAll={makeSelectAll("projeto")} onClearAll={makeClearAll("projeto")} />
-                </th>
-                <th className="py-3 px-4 font-semibold border-r border-b sticky left-[464px] z-20 bg-muted">
-                  <ColumnHeader label="Cliente" sortDir={makeSortDir("cliente")} onSort={() => handleSort("cliente")} searchText={getFilter("cliente").search} onSearchChange={makeSearchChange("cliente")} uniqueValues={uniqueValues["cliente"] || []} selectedValues={getFilter("cliente").selected} onToggleValue={makeToggle("cliente")} onSelectAll={makeSelectAll("cliente")} onClearAll={makeClearAll("cliente")} />
-                </th>
-                <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r border-b sticky left-[624px] z-20" />
-                {CATEGORIAS.map(cat => <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r border-b" />)}
-                <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r border-b" />
-                <NumericHeader label="Custo Orçado" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r border-b" />
-                
-                {/* Yellow Group - Lucro Bruto */}
-                <NumericHeader label="Receita Líquida" col="receitaLiquida" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
-                <NumericHeader label="MB Orçada" col="mbOrcada" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
-                <NumericHeader label="MB Realizado" col="mbRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
-                <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
-                <NumericHeader label="MB (%) Realizado" col="mbPctRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
-                
-                {/* Blue Group - Gerencia Obra */}
-                <NumericHeader label="Orçado Gerência" col="custoOrcadoGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
-                <NumericHeader label="Real Gerência" col="custoRealGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
-                <NumericHeader label="% Ger. Orçado" col="gerPctOrcado" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
-                <NumericHeader label="% Ger. Real" col="gerPctRealizado" className="bg-blue-100 dark:bg-blue-900/40 border-b" />
-              </tr>
-            </thead>
-            <tbody>
-              {processedRows.map((row) => {
-                const mbOrc = row.receitaLiquida - row.custoOrcado;
-                const mbReal = row.receitaLiquida - row.totalErp;
-                const mbPctOrc = row.receitaLiquida ? (mbOrc / row.receitaLiquida) * 100 : 0;
-                const mbPctReal = row.receitaLiquida ? (mbReal / row.receitaLiquida) * 100 : 0;
-                const gerPctOrc = row.receitaLiquida ? (row.custoOrcadoGerencia / row.receitaLiquida) * 100 : 0;
-                const gerPctReal = row.receitaLiquida ? (row.custoRealGerencia / row.receitaLiquida) * 100 : 0;
-                
-                return (
-                  <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
-                    <td className="py-2 px-4 border-r text-center sticky left-0 z-10 bg-background">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setFcaState({ open: true, projetoId: row.projetoId, projetoNome: `${row.codigo} - ${row.nome}`, mesReferencia: row.refSort, mesLabel: row.referencia })}>
-                        <ClipboardList className="h-4 w-4" />
-                      </Button>
-                    </td>
-                    <td className="py-2 px-4 border-r text-center sticky left-[64px] z-10 bg-background">{row.referencia}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[120px] sticky left-[164px] z-10 bg-background">{row.area}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[200px] sticky left-[264px] z-10 bg-background">{row.codigo} - {row.nome}</td>
-                    <td className="py-2 px-4 border-r truncate max-w-[160px] sticky left-[464px] z-10 bg-background">{row.cliente}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30 sticky left-[624px] z-10">{formatCurrency(row.valorProduzido)}</td>
-                    {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r font-mono">{formatCurrency(row.categorias[cat] || 0)}</td>)}
-                    <td className="py-2 px-4 text-right border-r font-mono font-bold text-destructive bg-red-50/30">{formatCurrency(row.totalErp)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono text-blue-600 bg-blue-50/30">{formatCurrency(row.custoOrcado)}</td>
-                    
-                    {/* Yellow columns */}
-                    <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(row.receitaLiquida)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(mbOrc)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(mbReal)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatPercent(mbPctOrc)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatPercent(mbPctReal)}</td>
-                    
-                    {/* Blue columns */}
-                    <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatCurrency(row.custoOrcadoGerencia)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatCurrency(row.custoRealGerencia)}</td>
-                    <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatPercent(gerPctOrc)}</td>
-                    <td className="py-2 px-4 text-right font-mono bg-blue-100/30">{formatPercent(gerPctReal)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="bg-muted font-bold">
-              <tr>
-                <td colSpan={1} className="py-2 px-4 border-r border-t text-right sticky left-0 z-10 bg-muted">Totais:</td>
-                <td className="py-2 px-4 border-r border-t sticky left-[64px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[164px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[264px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 border-r border-t sticky left-[464px] z-10 bg-muted"></td>
-                <td className="py-2 px-4 text-right border-r border-t sticky left-[624px] z-10 bg-muted">{formatCurrency(totals.valorProduzido)}</td>
-                {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcado)}</td>
-                
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
-                
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcadoGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoRealGerencia)}</td>
-                <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
-                <td className="py-2 px-4 text-right border-t">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
-      <FCAModal projetoId={fcaState.projetoId} projetoNome={fcaState.projetoNome} mesReferencia={fcaState.mesReferencia} mesLabel={fcaState.mesLabel} open={fcaState.open} onOpenChange={open => setFcaState(prev => ({ ...prev, open }))} />
+          <thead className="bg-muted text-muted-foreground">
+            <tr>
+              <th className="py-3 px-4 font-semibold border-r border-b sticky left-0 z-[5] bg-muted min-w-[50px]">FCA</th>
+              <th className="py-3 px-4 font-semibold border-r border-b sticky left-[50px] z-[5] bg-muted min-w-[110px]">
+                <ColumnHeader label="Referência" sortDir={makeSortDir("referencia")} onSort={() => handleSort("referencia")} searchText={getFilter("referencia").search} onSearchChange={makeSearchChange("referencia")} uniqueValues={uniqueValues["referencia"] || []} selectedValues={getFilter("referencia").selected} onToggleValue={makeToggle("referencia")} onSelectAll={makeSelectAll("referencia")} onClearAll={makeClearAll("referencia")} />
+              </th>
+              <th className="py-3 px-4 font-semibold border-r border-b sticky left-[160px] z-[5] bg-muted min-w-[120px]">
+                <ColumnHeader label="Área" sortDir={makeSortDir("area")} onSort={() => handleSort("area")} searchText={getFilter("area").search} onSearchChange={makeSearchChange("area")} uniqueValues={uniqueValues["area"] || []} selectedValues={getFilter("area").selected} onToggleValue={makeToggle("area")} onSelectAll={makeSelectAll("area")} onClearAll={makeClearAll("area")} />
+              </th>
+              <th className="py-3 px-4 font-semibold border-r border-b sticky left-[280px] z-[5] bg-muted min-w-[200px]">
+                <ColumnHeader label="Projeto" sortDir={makeSortDir("projeto")} onSort={() => handleSort("projeto")} searchText={getFilter("projeto").search} onSearchChange={makeSearchChange("projeto")} uniqueValues={uniqueValues["projeto"] || []} selectedValues={getFilter("projeto").selected} onToggleValue={makeToggle("projeto")} onSelectAll={makeSelectAll("projeto")} onClearAll={makeClearAll("projeto")} />
+              </th>
+              <th className="py-3 px-4 font-semibold border-r border-b sticky left-[480px] z-[5] bg-muted min-w-[150px]">
+                <ColumnHeader label="Cliente" sortDir={makeSortDir("cliente")} onSort={() => handleSort("cliente")} searchText={getFilter("cliente").search} onSearchChange={makeSearchChange("cliente")} uniqueValues={uniqueValues["cliente"] || []} selectedValues={getFilter("cliente").selected} onToggleValue={makeToggle("cliente")} onSelectAll={makeSelectAll("cliente")} onClearAll={makeClearAll("cliente")} />
+              </th>
+              <NumericHeader label="Produção (R$)" col="valorProduzido" className="bg-emerald-50 dark:bg-emerald-950/30 border-r border-b sticky left-[630px] z-[5] shadow-[2px_0_5px_rgba(0,0,0,0.05)]" />
+              
+              {CATEGORIAS.map(cat => <NumericHeader key={cat} label={`${cat} (R$)`} col={cat} className="border-r border-b" />)}
+              <NumericHeader label="Custo Real" col="totalErp" className="bg-red-50 dark:bg-red-950/30 border-r border-b" />
+              <NumericHeader label="Custo Orçado" col="custoOrcado" className="bg-blue-50 dark:bg-blue-950/30 border-r border-b" />
+              
+              {/* Yellow Group - Lucro Bruto */}
+              <NumericHeader label="Receita Líquida" col="receitaLiquida" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+              <NumericHeader label="MB Orçada" col="mbOrcada" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+              <NumericHeader label="MB Realizado" col="mbRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+              <NumericHeader label="MB (%) Orçado" col="mbPctOrcado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+              <NumericHeader label="MB (%) Realizado" col="mbPctRealizado" className="bg-amber-100 dark:bg-amber-900/40 border-r border-b" />
+              
+              {/* Blue Group - Gerencia Obra */}
+              <NumericHeader label="Orçado Gerência" col="custoOrcadoGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+              <NumericHeader label="Real Gerência" col="custoRealGerencia" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+              <NumericHeader label="% Ger. Orçado" col="gerPctOrcado" className="bg-blue-100 dark:bg-blue-900/40 border-r border-b" />
+              <NumericHeader label="% Ger. Real" col="gerPctRealizado" className="bg-blue-100 dark:bg-blue-900/40 border-b" />
+            </tr>
+          </thead>
+          <tbody>
+            {processedRows.map((row) => {
+              const mbOrc = row.receitaLiquida - row.custoOrcado;
+              const mbReal = row.receitaLiquida - row.totalErp;
+              const mbPctOrc = row.receitaLiquida ? (mbOrc / row.receitaLiquida) * 100 : 0;
+              const mbPctReal = row.receitaLiquida ? (mbReal / row.receitaLiquida) * 100 : 0;
+              const gerPctOrc = row.receitaLiquida ? (row.custoOrcadoGerencia / row.receitaLiquida) * 100 : 0;
+              const gerPctReal = row.receitaLiquida ? (row.custoRealGerencia / row.receitaLiquida) * 100 : 0;
+              
+              return (
+                <tr key={row.key} className="hover:bg-muted/30 transition-colors border-b">
+                  <td className="py-2 px-4 border-r text-center sticky left-0 z-[1] bg-background">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setFcaState({ open: true, projetoId: row.projetoId, projetoNome: `${row.codigo} - ${row.nome}`, mesReferencia: row.refSort, mesLabel: row.referencia })}>
+                      <ClipboardList className="h-4 w-4" />
+                    </Button>
+                  </td>
+                  <td className="py-2 px-4 border-r text-center sticky left-[50px] z-[1] bg-background">{row.referencia}</td>
+                  <td className="py-2 px-4 border-r truncate max-w-[120px] sticky left-[160px] z-[1] bg-background">{row.area}</td>
+                  <td className="py-2 px-4 border-r truncate max-w-[200px] sticky left-[280px] z-[1] bg-background">{row.codigo} - {row.nome}</td>
+                  <td className="py-2 px-4 border-r truncate max-w-[150px] sticky left-[480px] z-[1] bg-background">{row.cliente}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono text-emerald-600 bg-emerald-50/30 sticky left-[630px] z-[1] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{formatCurrency(row.valorProduzido)}</td>
+                  
+                  {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r font-mono">{formatCurrency(row.categorias[cat] || 0)}</td>)}
+                  <td className="py-2 px-4 text-right border-r font-mono font-bold text-destructive bg-red-50/30">{formatCurrency(row.totalErp)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono text-blue-600 bg-blue-50/30">{formatCurrency(row.custoOrcado)}</td>
+                  
+                  {/* Yellow columns */}
+                  <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(row.receitaLiquida)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(mbOrc)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatCurrency(mbReal)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatPercent(mbPctOrc)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-amber-100/30">{formatPercent(mbPctReal)}</td>
+                  
+                  {/* Blue columns */}
+                  <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatCurrency(row.custoOrcadoGerencia)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatCurrency(row.custoRealGerencia)}</td>
+                  <td className="py-2 px-4 text-right border-r font-mono bg-blue-100/30">{formatPercent(gerPctOrc)}</td>
+                  <td className="py-2 px-4 text-right font-mono bg-blue-100/30">{formatPercent(gerPctReal)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="bg-muted font-bold">
+            <tr>
+              <td colSpan={1} className="py-2 px-4 border-r border-t text-right sticky left-0 z-[1] bg-muted">Totais:</td>
+              <td className="py-2 px-4 border-r border-t sticky left-[50px] z-[1] bg-muted"></td>
+              <td className="py-2 px-4 border-r border-t sticky left-[160px] z-[1] bg-muted"></td>
+              <td className="py-2 px-4 border-r border-t sticky left-[280px] z-[1] bg-muted"></td>
+              <td className="py-2 px-4 border-r border-t sticky left-[480px] z-[1] bg-muted"></td>
+              <td className="py-2 px-4 text-right border-r border-t sticky left-[630px] z-[1] bg-muted shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{formatCurrency(totals.valorProduzido)}</td>
+              
+              {CATEGORIAS.map(cat => <td key={cat} className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.categorias[cat] || 0)}</td>)}
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.totalErp)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcado)}</td>
+              
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.custoOrcado)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.receitaLiquida - totals.totalErp)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.custoOrcado) / totals.receitaLiquida) * 100 : 0)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? ((totals.receitaLiquida - totals.totalErp) / totals.receitaLiquida) * 100 : 0)}</td>
+              
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoOrcadoGerencia)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatCurrency(totals.custoRealGerencia)}</td>
+              <td className="py-2 px-4 text-right border-r border-t">{formatPercent(totals.receitaLiquida ? (totals.custoOrcadoGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+              <td className="py-2 px-4 text-right border-t">{formatPercent(totals.receitaLiquida ? (totals.custoRealGerencia / totals.receitaLiquida) * 100 : 0)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <FCAModal 
+        projetoId={fcaState.projetoId} 
+        projetoNome={fcaState.projetoNome} 
+        mesReferencia={fcaState.mesReferencia} 
+        mesLabel={fcaState.mesLabel} 
+        open={fcaState.open} 
+        onOpenChange={open => setFcaState(prev => ({ ...prev, open }))} 
+      />
     </Card>
   );
 }
