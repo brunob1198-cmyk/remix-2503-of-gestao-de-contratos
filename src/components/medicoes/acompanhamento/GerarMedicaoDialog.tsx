@@ -601,10 +601,34 @@ export function GerarMedicaoDialog({
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Evidências Fotográficas ({geracaoFotos.length})</h3>
-                {loadingGeracaoFotos && <Loader2 className="h-3 w-3 animate-spin" />}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">
+                    Relatório Fotográfico (mostrando {geracaoFotos.length} de {geracaoFotosTotal} fotos)
+                  </h3>
+                  {loadingGeracaoFotos && <Loader2 className="h-3 w-3 animate-spin" />}
+                </div>
+                {geracaoFotos.length > 0 && (
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] h-7"
+                      onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: true })))}
+                    >
+                      Selecionar Todas
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-[10px] h-7"
+                      onClick={() => setGeracaoFotos(prev => prev.map(f => ({ ...f, selected: false })))}
+                    >
+                      Desmarcar Todas
+                    </Button>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {geracaoFotos.map((foto, idx) => (
