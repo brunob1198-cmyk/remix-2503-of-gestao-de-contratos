@@ -275,27 +275,27 @@ export function GerarMedicaoDialog({
           const diarioIds = diarios.map(d => d.id);
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
 
-          const fetchAllGeracaoFotos = async (ids: string[]) => {
-            let all: any[] = [];
-            let from = 0;
-            let to = 999;
-            while (true) {
-              const { data, error } = await supabase
-                .from("diario_fotos")
-                .select("*")
-                .in("diario_id", ids)
-                .range(from, to);
-              if (error) throw error;
-              if (!data || data.length === 0) break;
-              all = [...all, ...data];
-              if (data.length < 1000) break;
-              from += 1000;
-              to += 1000;
-            }
-            return all;
+          const fetchGeracaoFotosPreview = async (ids: string[]) => {
+            // ETAPA 1 — Contar sem carregar
+            const { count } = await supabase
+              .from("diario_fotos")
+              .select("id", { count: "exact", head: true })
+              .in("diario_id", ids);
+            
+            setGeracaoFotosTotal(count || 0);
+
+            // ETAPA 2 — Carregar para preview apenas as primeiras 50
+            const { data, error } = await supabase
+              .from("diario_fotos")
+              .select("*")
+              .in("diario_id", ids)
+              .limit(50);
+              
+            if (error) throw error;
+            return data || [];
           };
 
-          const fotos = await fetchAllGeracaoFotos(diarioIds);
+          const fotos = await fetchGeracaoFotosPreview(diarioIds);
           const producaoIds = (fotos || []).map(f => (f as any).diario_producao_id).filter(Boolean);
           let producaoMap = new Map<string, any>();
           if (producaoIds.length > 0) {
@@ -325,10 +325,13 @@ export function GerarMedicaoDialog({
           }));
         } else {
           setGeracaoFotos([]);
+          setGeracaoFotosTotal(0);
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("Erro ao carregar fotos:", err);
       setGeracaoFotos([]);
+      setGeracaoFotosTotal(0);
     }
     setLoadingGeracaoFotos(false);
 
