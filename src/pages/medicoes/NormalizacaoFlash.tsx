@@ -1291,9 +1291,12 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto relative min-h-[500px]">
+                  <div 
+                    ref={parentRef}
+                    className="overflow-x-auto relative min-h-[500px] max-h-[70vh] overflow-y-auto"
+                  >
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                         <TableRow>
                           <TableHead className="w-[40px]">
                             <Checkbox 
