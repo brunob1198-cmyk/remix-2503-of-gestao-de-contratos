@@ -138,7 +138,7 @@ function AreasPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(a)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id, a.nome)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -150,6 +150,15 @@ function AreasPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={!!deletingId}
+        onOpenChange={(open) => !open && setDeletingId(null)}
+        onConfirm={confirmDelete}
+        itemName={areas.find(a => a.id === deletingId)?.nome || "esta área"}
+        description="Tem certeza que deseja excluir esta área? Isso não será possível se houverem projetos vinculados a ela."
+        loading={deleteArea.isPending}
+      />
     </div>
   );
 }
