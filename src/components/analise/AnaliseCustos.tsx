@@ -30,60 +30,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     mesLabel: "",
   });
 
-  const alerts = useMemo(() => {
-    const semMkp = analiseRows.filter(r => r.semMkp).length;
-    return { semMkp };
-  }, [analiseRows]);
-
   const totals = useMemo(() => {
-    const sum = analiseRows.reduce((acc, r) => ({
-      poc: acc.poc + r.poc,
-      producaoLiquida: acc.producaoLiquida + r.producaoLiquida,
-      moObra: acc.moObra + r.moObra,
-      materiais: acc.materiais + r.materiais,
-      transporte: acc.transporte + r.transporte,
-      indiretos: acc.indiretos + r.indiretos,
-      custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
-      custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
-      gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
-      gerenciaOrcada: acc.gerenciaOrcada + r.gerenciaOrcada,
-      mbOrcada: acc.mbOrcada + r.mbOrcada,
-      mbRealizada: acc.mbRealizada + r.mbRealizada,
-    }), {
-      poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
-      indiretos: 0,
-      custoDiretoReal: 0, custoDiretoOrcado: 0,
-      gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
-    });
-
-    const avg = {
-      percMbReal: sum.producaoLiquida > 0 ? sum.mbRealizada / sum.producaoLiquida : 0,
-      percMbOrcada: sum.producaoLiquida > 0 ? sum.mbOrcada / sum.producaoLiquida : 0,
-      percMbMkp: analiseRows.length > 0 ? 
-        analiseRows.reduce((acc, r) => acc + (r.producaoLiquida * r.percMbMkp), 0) / (sum.producaoLiquida || 1) : 0
-    };
-
-    return { ...sum, ...avg };
-  }, [analiseRows]);
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {alerts.semMkp > 0 && (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Parâmetros MKP ausentes</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{alerts.semMkp} projeto(s) sem MKP configurado.</span>
-              <Button variant="link" size="sm" className="h-auto p-0 text-destructive font-bold">
-                <Settings className="h-3 w-3 mr-1" /> Configurar MKP →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-
-      <Card>
         <CardHeader className="pb-3 border-b">
           <CardTitle>Análise de Custos e Margens</CardTitle>
           <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
