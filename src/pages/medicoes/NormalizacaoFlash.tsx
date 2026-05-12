@@ -975,7 +975,7 @@ export default function NormalizacaoFlashPage() {
   return (
     <div className="space-y-6 p-6 pb-20">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="hidden">
           <h1 className="text-2xl font-bold tracking-tight">Normalização Flash</h1>
           <p className="text-sm text-muted-foreground">
             Associe os lançamentos da Flash com categorias e contas do Conta Azul antes do envio.
