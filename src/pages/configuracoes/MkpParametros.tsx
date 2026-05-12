@@ -130,7 +130,7 @@ export default function MkpParametrosPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
