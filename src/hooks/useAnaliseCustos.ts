@@ -276,9 +276,12 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         let q = supabase.from("custo_real_erp").select("*");
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
-        if (startDate) {
+        if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+        } else if (startDate) {
+          q = q.gte("data_competencia", startDate);
         }
+
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
@@ -301,7 +304,9 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     staleTime: Infinity,
     queryFn: async () => {
       let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
-      if (startDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+      if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+      else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+
       const { data: diariosIdList } = await qDiarios;
       
       if (!diariosIdList || diariosIdList.length === 0) {
@@ -452,9 +457,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       while (hasMore) {
         let q = supabase.from("custo_real_erp").select("*");
         q = q.in("projeto_id", projetoIds);
-        if (startDate) {
+        if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+        } else if (startDate) {
+          q = q.gte("data_competencia", startDate);
         }
+
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
@@ -491,9 +499,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu:itens_lpu (
             bdi
           )
-        `)
-        .gte("diarios_obra.data", startDate)
-        .lte("diarios_obra.data", endDate);
+        `);
+
 
       if (error) {
         console.error("Erro ao buscar producaoData:", error);
@@ -572,6 +579,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
               return false;
             }
           });
+
 
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
         
