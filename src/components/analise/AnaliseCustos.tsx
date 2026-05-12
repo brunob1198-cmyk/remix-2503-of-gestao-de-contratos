@@ -33,9 +33,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   const alerts = useMemo(() => {
     const semMkp = analiseRows.filter(r => r.semMkp).length;
-    const semImpostos = analiseRows.filter(r => r.semImpostos).length;
-
-    return { semMkp, semImpostos };
+    return { semMkp };
   }, [analiseRows]);
 
   const totals = useMemo(() => {
