@@ -973,7 +973,7 @@ export default function NormalizacaoFlashPage() {
   };
 
   return (
-    <div className="space-y-6 p-6 pb-20">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="hidden">
           <h1 className="text-2xl font-bold tracking-tight">Normalização Flash</h1>
