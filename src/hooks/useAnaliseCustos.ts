@@ -212,18 +212,33 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
 
       const siteIds = siteId ? [siteId] : sitesData.map(s => s.id);
 
-      const { data: escopoItens } = await supabase
+      const { data: escopoItens, error: escopoError } = await supabase
         .from("escopo_itens")
-        .select("quantidade, custo_unitario, valor_unitario, item_lpu_id")
+        .select(`
+          quantidade, 
+          custo_unitario, 
+          valor_unitario, 
+          item_lpu_id,
+          item_lpu:itens_lpu (
+            bdi
+          )
+        `)
         .in("site_id", siteIds);
 
-      if (!escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
+      if (escopoError || !escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
 
       let custoOrcado = 0;
       let valorProduzido = 0;
       for (const item of escopoItens) {
-        custoOrcado += Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
-        valorProduzido += Number(item.valor_unitario || 0) * Number(item.quantidade || 0);
+        const quantidade = Number(item.quantidade || 0);
+        const valorUnitario = Number(item.valor_unitario || 0);
+        const bdiItem = Number((item.item_lpu as any)?.bdi || 0);
+        
+        // Se houver BDI no item, o custo unitário orçado é o valor unitário / BDI
+        const custoUnitarioCalculado = bdiItem > 0 ? (valorUnitario / bdiItem) : Number(item.custo_unitario || 0);
+        
+        custoOrcado += custoUnitarioCalculado * quantidade;
+        valorProduzido += valorUnitario * quantidade;
       }
       return { custoOrcado, valorProduzido };
     },
@@ -458,19 +473,40 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi", projetoIds, startDate, endDate],
+    queryKey: ["producao_poc_multi_v2", projetoIds, startDate, endDate],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-      // No banco temos lancamentos_producao que somados dão o POC do período
-      // Agrupamos por projeto e mês
-      const { data } = await supabase
-        .from("view_producao")
-        .select("projeto_id, valor_total, data_producao")
-        .in("projeto_id", projetoIds)
-        .gte("data_producao", startDate)
-        .lte("data_producao", endDate);
       
-      return data || [];
+      const { data, error } = await supabase
+        .from("diario_producao")
+        .select(`
+          valor_total,
+          item_lpu_id,
+          diario:diarios_obra (
+            data,
+            site:sites (
+              projeto_id
+            )
+          ),
+          item_lpu:itens_lpu (
+            bdi
+          )
+        `)
+        .gte("diarios_obra.data", startDate)
+        .lte("diarios_obra.data", endDate);
+
+      if (error) {
+        console.error("Erro ao buscar producaoData:", error);
+        return [];
+      }
+
+      // Flatten data for easier use
+      return (data || []).map(p => ({
+        projeto_id: (p.diario as any)?.site?.projeto_id,
+        valor_total: Number(p.valor_total || 0),
+        data_producao: (p.diario as any)?.data,
+        bdi_item: Number((p.item_lpu as any)?.bdi || 0)
+      })).filter(p => projetoIds.includes(p.projeto_id));
     },
     enabled: projetoIds.length > 0 && !!startDate
   });
@@ -525,8 +561,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
 
-        // 1. Produção Bruta (POC) do mês
-        const poc = (producaoData || [])
+        // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
+        const producaoItensMes = (producaoData || [])
           .filter(p => {
             if (p.projeto_id !== projetoId) return false;
             try {
@@ -535,8 +571,39 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             } catch (e) {
               return false;
             }
-          })
-          .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
+          });
+
+        const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
+        
+        // Novo cálculo de Custo Direto Orçado: soma de (Valor Item / BDI Item)
+        // O usuário pediu: (Qtd x Vlr unit Item LPU) x BDI item? 
+        // Não, ele disse: "ajustar para calcular = (Qtd x Vlr unit Item LPU) x BDI item"
+        // Mas o Valor Total no diario_producao já é (Qtd x Vlr unit Item LPU).
+        // Se pegarmos esse valor e MULTIPLICARMOS pelo BDI, teríamos algo maior que o valor de venda (se BDI > 1).
+        // Geralmente o custo é Valor / BDI.
+        // Re-lendo: "ao invés de pegar de %custo do MKP pegar BDI por item que foi cadastrado na tela de LPU... Ajuste para calcular = (Qtd x Vlr unit Item LPU) x BDI item"
+        // Se o BDI for um multiplicador de markup (ex: 1.4), então Custo x BDI = Venda.
+        // Logo, Custo = Venda / BDI.
+        // Mas se o usuário escreveu "x BDI item", talvez ele use BDI como o percentual de custo (ex: 0.7).
+        // Na tela de MKP Parametros o BDI Venda é calculado como 1 / (1 - % Custo Direto).
+        // Se BDI Venda = 1 / (1 - % Custo Direto), então % Custo Direto = 1 - (1 / BDI Venda).
+        // Custo Direto Orçado = POC * % Custo Direto.
+        // Vamos seguir a fórmula sugerida de usar o BDI do item:
+        const percRisco = mkp?.perc_risco ?? 0;
+        const percInflacao = mkp?.perc_inflacao ?? 0;
+        
+        const custoDiretoOrcadoItens = producaoItensMes.reduce((sum, p) => {
+          const bdiItem = p.bdi_item || mkp?.bdi_venda || 1;
+          // Se BDI é o multiplicador (ex 1.4), o custo é valor / bdi
+          // Se o usuário quer x BDI, talvez o BDI no LPU seja o percentual de custo?
+          // No componente MkpParametros, o bdi_venda é exibido como número (ex: 1.4286)
+          // Se usarmos (Valor * (1/BDI)), temos o custo base.
+          const percCustoBase = bdiItem > 0 ? (1 / bdiItem) : 0;
+          return sum + (p.valor_total * percCustoBase);
+        }, 0);
+
+        // Somar Risco e Inflação (que são percentuais sobre o POC total)
+        const custoDiretoOrcado = custoDiretoOrcadoItens + (poc * (percRisco + percInflacao));
 
         // 2. Custos do mês
         const projetoCustosMes = (custosErp || []).filter(c => {
@@ -570,10 +637,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
-        const percCustoDireto = mkp?.perc_custo_direto ?? 0;
-        const percRisco = mkp?.perc_risco ?? 0;
-        const percInflacao = mkp?.perc_inflacao ?? 0;
-        const custoDiretoOrcado = poc * (percCustoDireto + percRisco + percInflacao);
+        const percCustoDireto = poc > 0 ? (custoDiretoOrcado / poc) : (mkp?.perc_custo_direto ?? 0);
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
         const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
