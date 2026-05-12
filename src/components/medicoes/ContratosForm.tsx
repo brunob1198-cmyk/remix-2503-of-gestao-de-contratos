@@ -115,7 +115,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     if (result) {
       const { data: extractedData, path } = result;
       setArquivoUrl(path);
-      setValorTotal(cleanCurrencyOrNumber(extractedData.valor_total));
+      setValorTotal(extractedData.valor_total ? cleanCurrencyOrNumber(extractedData.valor_total) : "");
       setPrazoInicio(extractedData.prazo_inicio || "");
       setPrazoFim(extractedData.prazo_fim || "");
       setEscopo(extractedData.escopo || "");
@@ -154,7 +154,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       numero_contrato: contratoPaiId === "none" ? (numeroContrato || undefined) : undefined,
       contrato_pai_id: contratoPaiId === "none" ? undefined : contratoPaiId,
       cliente_ids: clienteIds.length > 0 ? clienteIds : undefined,
-      valor_total: valorTotal ? parseFloat(valorTotal.replace(",", ".")) : undefined,
+      valor_total: valorTotal ? parseFloat(cleanCurrencyOrNumber(valorTotal)) : undefined,
       prazo_inicio: prazoInicio || undefined,
       prazo_fim: prazoFim || undefined,
       escopo,
@@ -338,7 +338,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <InputAvisoIA valor={valorTotal} label="Valor (R$)" />
-              <Input type="number" step="0.01" placeholder="Ex: 15300.50" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
+              <Input type="text" placeholder="Ex: 15300.50" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
             </div>
             <div className="space-y-2">
               <InputAvisoIA valor={prazoInicio} label="Data Início" />
