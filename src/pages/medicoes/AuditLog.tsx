@@ -128,7 +128,7 @@ export default function AuditLogPage() {
       </Card>
 
       <Card>
-        <ScrollArea className="h-[600px] w-full">
+        <div className="overflow-auto max-h-[700px]">
           <Table>
             <TableHeader>
               <TableRow>
