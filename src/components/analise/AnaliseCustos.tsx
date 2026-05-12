@@ -31,6 +31,39 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   });
 
   const totals = useMemo(() => {
+    const sum = analiseRows.reduce((acc, r) => ({
+      poc: acc.poc + r.poc,
+      producaoLiquida: acc.producaoLiquida + r.producaoLiquida,
+      moObra: acc.moObra + r.moObra,
+      materiais: acc.materiais + r.materiais,
+      transporte: acc.transporte + r.transporte,
+      indiretos: acc.indiretos + r.indiretos,
+      custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
+      custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
+      gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
+      gerenciaOrcada: acc.gerenciaOrcada + r.gerenciaOrcada,
+      mbOrcada: acc.mbOrcada + r.mbOrcada,
+      mbRealizada: acc.mbRealizada + r.mbRealizada,
+    }), {
+      poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
+      indiretos: 0,
+      custoDiretoReal: 0, custoDiretoOrcado: 0,
+      gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
+    });
+
+    const avg = {
+      percMbReal: sum.producaoLiquida > 0 ? sum.mbRealizada / sum.producaoLiquida : 0,
+      percMbOrcada: sum.producaoLiquida > 0 ? sum.mbOrcada / sum.producaoLiquida : 0,
+      percMbMkp: analiseRows.length > 0 ? 
+        analiseRows.reduce((acc, r) => acc + (r.producaoLiquida * r.percMbMkp), 0) / (sum.producaoLiquida || 1) : 0
+    };
+
+    return { ...sum, ...avg };
+  }, [analiseRows]);
+
+  return (
+    <div className="space-y-4">
+      <Card>
         <CardHeader className="pb-3 border-b">
           <CardTitle>Análise de Custos e Margens</CardTitle>
           <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
@@ -90,13 +123,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         size="icon" 
                         className="h-7 w-7 text-muted-foreground hover:text-primary"
                         onClick={() => {
-                          // Try to parse reference date
                           let mesRef = "";
                           try {
                             const date = parseISO(row.referencia);
                             mesRef = format(date, 'yyyy-MM');
                           } catch (e) {
-                            // Fallback if reference string is not ISO
                             mesRef = format(new Date(), 'yyyy-MM');
                           }
                           setFcaState({
