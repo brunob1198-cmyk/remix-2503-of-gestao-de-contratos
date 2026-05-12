@@ -24,6 +24,7 @@ const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
   "Transporte",
+  "Equipamentos",
   "Indiretos",
   "Financeiros",
   "Gerência",
