@@ -108,11 +108,6 @@ export function MedicoesSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {!collapsed && visibleItems.some(i => i.group === "Configurações de Análise") && (
-                <SidebarGroupLabel className="mt-4 px-3 text-[10px] uppercase font-bold text-muted-foreground/70 tracking-wider">
-                  Configurações de Análise
-                </SidebarGroupLabel>
-              )}
               
               {visibleItems.filter(i => i.group === "Configurações de Análise").map((item) => (
                 <SidebarMenuItem key={item.title}>
