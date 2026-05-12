@@ -338,7 +338,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <InputAvisoIA valor={valorTotal} label="Valor (R$)" />
-              <Input type="number" step="0.01" placeholder="Ex: 15300.50" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
+              <Input type="text" placeholder="Ex: 15300.50" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} />
             </div>
             <div className="space-y-2">
               <InputAvisoIA valor={prazoInicio} label="Data Início" />
