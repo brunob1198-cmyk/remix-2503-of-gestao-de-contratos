@@ -2,9 +2,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, AlertTriangle, Search, Settings, Target, ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
@@ -30,11 +29,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     mesReferencia: "",
     mesLabel: "",
   });
-
-  const alerts = useMemo(() => {
-    const semMkp = analiseRows.filter(r => r.semMkp).length;
-    return { semMkp };
-  }, [analiseRows]);
 
   const totals = useMemo(() => {
     const sum = analiseRows.reduce((acc, r) => ({
@@ -69,21 +63,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {alerts.semMkp > 0 && (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Parâmetros MKP ausentes</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{alerts.semMkp} projeto(s) sem MKP configurado.</span>
-              <Button variant="link" size="sm" className="h-auto p-0 text-destructive font-bold">
-                <Settings className="h-3 w-3 mr-1" /> Configurar MKP →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-
       <Card>
         <CardHeader className="pb-3 border-b">
           <CardTitle>Análise de Custos e Margens</CardTitle>
@@ -144,13 +123,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         size="icon" 
                         className="h-7 w-7 text-muted-foreground hover:text-primary"
                         onClick={() => {
-                          // Try to parse reference date
                           let mesRef = "";
                           try {
                             const date = parseISO(row.referencia);
                             mesRef = format(date, 'yyyy-MM');
                           } catch (e) {
-                            // Fallback if reference string is not ISO
                             mesRef = format(new Date(), 'yyyy-MM');
                           }
                           setFcaState({
