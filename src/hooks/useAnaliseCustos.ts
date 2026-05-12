@@ -509,6 +509,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         return [];
       }
 
+      console.log("Raw data length from diario_producao:", data?.length);
+
+
       // Flatten data for easier use
       return (data || []).map(p => ({
         projeto_id: (p.diarios_obra as any)?.site?.projeto_id,
