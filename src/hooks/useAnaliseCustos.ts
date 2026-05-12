@@ -511,8 +511,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       // Flatten data for easier use
       return (data || [])
         .map(p => {
-          const sites = (p.diarios_obra as any)?.sites;
-          const projeto_id = Array.isArray(sites) ? sites[0]?.projeto_id : sites?.projeto_id;
+          const sitesData = (p.diarios_obra as any)?.sites;
+          const projeto_id = Array.isArray(sitesData) ? sitesData[0]?.projeto_id : sitesData?.projeto_id;
+
           
           return {
             projeto_id,
