@@ -87,7 +87,7 @@ export default function IntegracaoErpPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="hidden">
           <h2 className="text-2xl font-bold tracking-tight">Integração ERP</h2>
           <p className="text-muted-foreground">Configure a integração com o Conta Azul e webhooks para ERP financeiro</p>
         </div>
