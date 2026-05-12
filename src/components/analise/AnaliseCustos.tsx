@@ -266,8 +266,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.mbOrcada)}</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.mbRealizada)}</td>
                 <td className="py-3 px-4 border-r">{formatPercent(totals.percMbOrcada)}</td>
-                <td className="py-3 px-4 border-r">{formatPercent(totals.percMbReal)}</td>
-                <td className="py-3 px-4">{formatPercent(totals.percMbMkp)}</td>
+                <td className="py-3 px-4">{formatPercent(totals.percMbReal)}</td>
               </tr>
             </tfoot>
           </table>
