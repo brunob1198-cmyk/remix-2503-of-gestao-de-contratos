@@ -1331,7 +1331,7 @@ export default function NormalizacaoFlashPage() {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="cursor-pointer group"
+                            className="w-[250px] cursor-pointer group"
                             onClick={() => toggleSort('descricao')}
                           >
                             <div className="flex items-center gap-1">
