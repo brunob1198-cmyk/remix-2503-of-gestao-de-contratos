@@ -518,10 +518,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthLabel = format(monthStart, 'MMM/yyyy');
 
         // Produção Bruta (POC) do mês
-        const poc = producaoData
-          .filter(p => p.projeto_id === projetoId && 
-                      parseISO(p.data_producao) >= monthStart && 
-                      parseISO(p.data_producao) <= monthEnd)
+        const poc = (producaoData || [])
+          .filter(p => {
+            if (p.projeto_id !== projetoId) return false;
+            const d = parseISO(p.data_producao);
+            return d >= monthStart && d <= monthEnd;
+          })
           .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
         // Se não houver produção nem custos no mês, talvez pular? 
@@ -533,12 +535,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const producaoLiquida = poc - impostosReais;
 
         // Custos do mês
-        const projetoCustosMes = custosErp.filter(c => 
-          c.projeto_id === projetoId && 
-          c.data_competencia && 
-          parseISO(c.data_competencia) >= monthStart && 
-          parseISO(c.data_competencia) <= monthEnd
-        );
+        const projetoCustosMes = (custosErp || []).filter(c => {
+          if (c.projeto_id !== projetoId || !c.data_competencia) return false;
+          const d = parseISO(c.data_competencia);
+          return d >= monthStart && d <= monthEnd;
+        });
 
         const custosGerencia = projetoCustosMes.filter(c => c.categoria_analise === 'GERENCIA');
         const custosDiretos = projetoCustosMes.filter(c => c.categoria_analise === 'DIRETO');
