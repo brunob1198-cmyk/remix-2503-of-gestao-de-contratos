@@ -125,8 +125,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-gray-50">MB Orç. (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-gray-50">MB Real (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-gray-50">% MB Orç.</th>
-                <th className="py-3 px-4 border-b border-r bg-gray-50">% MB Real</th>
-                <th className="py-3 px-4 border-b bg-gray-50">% MB Alvo</th>
+                <th className="py-3 px-4 border-b bg-gray-50">% MB Real</th>
               </tr>
             </thead>
             <tbody>
