@@ -300,6 +300,17 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               <tbody className="divide-y">
                 {paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                    <td className="py-2 px-3 text-center">
+                      <Checkbox 
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          if (checked) next.add(item.id);
+                          else next.delete(item.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </td>
                     <td className="py-2 px-3 text-muted-foreground">
                       {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
                     </td>
