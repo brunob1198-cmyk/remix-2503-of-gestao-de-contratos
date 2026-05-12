@@ -479,7 +479,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")
-        .select("id, codigo, nome, area_analise, cliente_id, clientes(*), areas(*)")
+        .select("id, codigo, nome, area_analise, cliente, cliente_id, clientes(*), areas(*)")
         .in("id", projetoIds);
       return data || [];
     },
@@ -537,8 +537,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           })
           .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
-        // Se não houver produção nem custos no mês, talvez pular? 
-        // Mas o usuário pediu "separar mensalmente", então mostramos todos os meses do período.
+        // Ignorar meses sem produção e sem custos reais
+        if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0) return;
 
         // Impostos
         const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
