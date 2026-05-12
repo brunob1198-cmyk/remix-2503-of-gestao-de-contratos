@@ -53,8 +53,6 @@ const menuItems: MenuItem[] = [
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
   { title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
-  { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true, group: "Configurações de Análise" },
-  { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true, group: "Configurações de Análise" },
 ];
 
 export function MedicoesSidebar() {
