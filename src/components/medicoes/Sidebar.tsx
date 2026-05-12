@@ -98,7 +98,7 @@ export function MedicoesSidebar() {
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground"
                       activeClassName="bg-accent text-accent-foreground font-medium"
                     >
                       <item.icon className="h-5 w-5" />
@@ -116,7 +116,7 @@ export function MedicoesSidebar() {
                   <SidebarMenuButton asChild tooltip="Gerenciar Usuários">
                     <NavLink
                       to="/medicoes/usuarios"
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground"
                       activeClassName="bg-accent text-accent-foreground font-medium"
                     >
                       <Users className="h-5 w-5" />
@@ -131,7 +131,7 @@ export function MedicoesSidebar() {
                 <SidebarMenuButton asChild tooltip="Meu Perfil">
                   <NavLink
                     to="/medicoes/perfil"
-                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                    className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground"
                     activeClassName="bg-accent text-accent-foreground font-medium"
                   >
                     <UserCircle className="h-5 w-5" />
