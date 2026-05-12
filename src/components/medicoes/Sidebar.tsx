@@ -17,6 +17,7 @@ import {
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
+  Percent,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -53,6 +54,7 @@ const menuItems: MenuItem[] = [
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
   { title: "Integração Flash", url: "/medicoes/integracao-flash", icon: Zap, adminOnly: true },
   { title: "Normalização Flash", url: "/medicoes/normalizacao-flash", icon: Wand2, adminOnly: true },
+  { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true },
 ];
 
 export function MedicoesSidebar() {
