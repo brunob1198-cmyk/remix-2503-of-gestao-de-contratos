@@ -481,41 +481,72 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v6", projetoIds],
+    queryKey: ["producao_poc_multi_v14", projetoIds],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       
-      const { data, error } = await supabase
-        .from("diario_producao")
-        .select(`
-          valor_total,
-          item_lpu_id,
-          diarios_obra (
-            data,
-            sites (
-              projeto_id
+      const BATCH_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select(`
+            valor_total,
+            item_lpu_id,
+            diarios_obra (
+              id,
+              data,
+              site:sites (
+                id,
+                projeto_id
+              )
+            ),
+            item_lpu:itens_lpu (
+              bdi
             )
-          ),
-          item_lpu:itens_lpu (
-            bdi
-          )
-        `);
+          `)
+          .range(offset, offset + BATCH_SIZE - 1);
 
-
-      if (error) {
-        console.error("Erro ao buscar producaoData:", error);
-        return [];
+        if (error) {
+          console.error("Erro ao buscar producaoData:", error);
+          break;
+        }
+        
+        allData = [...allData, ...(data || [])];
+        hasMore = data?.length === BATCH_SIZE;
+        offset += BATCH_SIZE;
       }
 
-      // Flatten data for easier use
-      return (data || [])
-        .map(p => ({
-          projeto_id: (p.diarios_obra as any)?.sites?.projeto_id,
-          valor_total: Number(p.valor_total || 0),
-          data_producao: (p.diarios_obra as any)?.data,
-          bdi_item: Number((p.item_lpu as any)?.bdi || 0)
-        }))
+      const mapped = allData
+
+        .map(p => {
+          // A estrutura pode ser p.diarios_obra.sites.projeto_id ou p.diarios_obra.site.projeto_id
+          const doObj = (p.diarios_obra as any);
+          const siteData = doObj?.site || doObj?.sites;
+          const projeto_id = Array.isArray(siteData) ? siteData[0]?.projeto_id : siteData?.projeto_id;
+          
+          return {
+            projeto_id,
+            valor_total: Number(p.valor_total || 0),
+            data_producao: doObj?.data,
+            bdi_item: Number((p.item_lpu as any)?.bdi || 0)
+          };
+        })
         .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
+
+
+
+      console.log(`[Producao] Itens filtrados: ${mapped.length}. Projetos buscados: ${projetoIds.join(',')}`);
+      if (mapped.length > 0) {
+        console.log(`[Producao] Exemplo de item:`, mapped[0]);
+      }
+      
+      return mapped;
+
+
 
     },
     enabled: projetoIds.length > 0
@@ -584,8 +615,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           .filter(p => {
             if (p.projeto_id !== projetoId) return false;
             try {
-              const d = parseISO(p.data_producao);
+              const dStr = p.data_producao;
+              if (!dStr) return false;
+              // data_producao usually comes as YYYY-MM-DD
+              const d = parseISO(dStr);
               return d >= monthStart && d <= monthEnd;
+
             } catch (e) {
               return false;
             }
