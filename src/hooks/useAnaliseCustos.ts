@@ -481,7 +481,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v5", projetoIds],
+    queryKey: ["producao_poc_multi_v6", projetoIds],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       
@@ -492,7 +492,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu_id,
           diarios_obra (
             data,
-            site:sites (
+            sites (
               projeto_id
             )
           ),
@@ -500,6 +500,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             bdi
           )
         `);
+
 
       if (error) {
         console.error("Erro ao buscar producaoData:", error);
@@ -509,12 +510,13 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       // Flatten data for easier use
       return (data || [])
         .map(p => ({
-          projeto_id: (p.diarios_obra as any)?.site?.projeto_id,
+          projeto_id: (p.diarios_obra as any)?.sites?.projeto_id,
           valor_total: Number(p.valor_total || 0),
           data_producao: (p.diarios_obra as any)?.data,
           bdi_item: Number((p.item_lpu as any)?.bdi || 0)
         }))
         .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
+
     },
     enabled: projetoIds.length > 0
   });
