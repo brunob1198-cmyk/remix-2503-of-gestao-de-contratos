@@ -115,7 +115,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
     if (result) {
       const { data: extractedData, path } = result;
       setArquivoUrl(path);
-      setValorTotal(cleanCurrencyOrNumber(extractedData.valor_total));
+      setValorTotal(extractedData.valor_total ? cleanCurrencyOrNumber(extractedData.valor_total) : "");
       setPrazoInicio(extractedData.prazo_inicio || "");
       setPrazoFim(extractedData.prazo_fim || "");
       setEscopo(extractedData.escopo || "");
