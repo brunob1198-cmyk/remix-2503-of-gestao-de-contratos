@@ -514,19 +514,27 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       }
 
       // Flatten data for easier use
+      console.log(`[Producao] Itens brutos carregados: ${data?.length}. Projetos buscados: ${projetoIds.join(',')}`);
+      if (data && data.length > 0) {
+        console.log(`[Producao] Exemplo raw item 0:`, JSON.stringify(data[0], null, 2));
+      }
+
       const mapped = (data || [])
         .map(p => {
-          const siteData = (p.diarios_obra as any)?.site;
+          // A estrutura pode ser p.diarios_obra.sites.projeto_id ou p.diarios_obra.site.projeto_id
+          const doObj = (p.diarios_obra as any);
+          const siteData = doObj?.site || doObj?.sites;
           const projeto_id = Array.isArray(siteData) ? siteData[0]?.projeto_id : siteData?.projeto_id;
           
           return {
             projeto_id,
             valor_total: Number(p.valor_total || 0),
-            data_producao: (p.diarios_obra as any)?.data,
+            data_producao: doObj?.data,
             bdi_item: Number((p.item_lpu as any)?.bdi || 0)
           };
         })
         .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
+
 
 
       console.log(`[Producao] Itens filtrados: ${mapped.length}. Projetos buscados: ${projetoIds.join(',')}`);
