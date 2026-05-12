@@ -377,6 +377,32 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const startDate = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
   const endDate = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
 
+  // 1. Parâmetros MKP
+  const { data: mkpParams = [] } = useQuery({
+    queryKey: ["mkp_parametros", projetoIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("mkp_parametros")
+        .select("*")
+        .in("projeto_id", projetoIds);
+      return data || [];
+    },
+    enabled: projetoIds.length > 0,
+  });
+
+  // 2. Impostos por projeto
+  const { data: impostosData = [] } = useQuery({
+    queryKey: ["projeto_impostos", projetoIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("projeto_impostos")
+        .select("*")
+        .in("projeto_id", projetoIds);
+      return data || [];
+    },
+    enabled: projetoIds.length > 0,
+  });
+
   const { data: categoriasMapeamento = [] } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
     staleTime: Infinity,
@@ -405,7 +431,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       let hasMore = true;
 
       while (hasMore) {
-        let q = (supabase as any).from("custo_real_erp").select("*");
+        let q = supabase.from("custo_real_erp").select("*");
         q = q.in("projeto_id", projetoIds);
         if (startDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
@@ -426,6 +452,130 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     enabled: projetoIds.length > 0
   });
 
+  // 4. Produção (POC) por Projeto e Referência
+  const { data: producaoData = [] } = useQuery({
+    queryKey: ["producao_poc_multi", projetoIds, startDate, endDate],
+    queryFn: async () => {
+      if (projetoIds.length === 0) return [];
+      // No banco temos lancamentos_producao que somados dão o POC do período
+      // Agrupamos por projeto e mês
+      const { data } = await supabase
+        .from("view_producao")
+        .select("projeto_id, valor_total, data_producao")
+        .in("projeto_id", projetoIds)
+        .gte("data_producao", startDate)
+        .lte("data_producao", endDate);
+      
+      return data || [];
+    },
+    enabled: projetoIds.length > 0 && !!startDate
+  });
+
+  const { data: projetosData = [] } = useQuery({
+    queryKey: ["projetos_analise", projetoIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("projetos")
+        .select("id, codigo, nome, area_analise")
+        .in("id", projetoIds);
+      return data || [];
+    },
+    enabled: projetoIds.length > 0
+  });
+
+  const analiseRows = useMemo(() => {
+    if (!startDate || !endDate || projetosData.length === 0) return [];
+
+    return projetosData.map(projeto => {
+      const projetoId = projeto.id;
+      const mkp = mkpParams.find(m => m.projeto_id === projetoId);
+      const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
+      
+      // Produção Bruta (POC)
+      const poc = producaoData
+        .filter(p => p.projeto_id === projetoId)
+        .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
+
+      // Impostos
+      const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
+      const impostosReais = poc * totalPercImpostos;
+      const producaoLiquida = poc - impostosReais;
+
+      // Custos
+      const projetoCustos = custosErp.filter(c => c.projeto_id === projetoId);
+      const custosGerencia = projetoCustos.filter(c => c.categoria_analise === 'GERENCIA');
+      const custosDiretos = projetoCustos.filter(c => c.categoria_analise === 'DIRETO');
+
+      const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
+      const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
+      
+      // Detalhamento Direto (exemplo simplificado, precisaria de mapeamento de categoria_interna)
+      const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
+      const materiais = custosDiretos.filter(c => c.categoria_interna === 'Material').reduce((s, c) => s + Number(c.valor || 0), 0);
+      const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
+
+      const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
+      const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
+
+      const custoTotalReal = custoDiretoReal + gerenciaReal;
+      const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
+
+      const mbRealizada = producaoLiquida - custoTotalReal;
+      const mbOrcada = producaoLiquida - custoTotalOrcado;
+      
+      const percMbReal = producaoLiquida > 0 ? mbRealizada / producaoLiquida : 0;
+      const percMbOrcada = producaoLiquida > 0 ? mbOrcada / producaoLiquida : 0;
+      const percMbMkp = mkp?.perc_mb_esperado ?? 0;
+
+      const pendentesCategorizacao = projetoCustos.filter(c => !c.categoria_confirmada).length;
+
+      return {
+        projetoId,
+        projetoCodigo: projeto.codigo || '',
+        projetoNome: projeto.nome,
+        area: projeto.area_analise || 'N/A',
+        referencia: format(parseISO(startDate), 'MMM/yyyy'),
+        poc,
+        impostos: {
+          issqn: poc * (impostosProjeto?.perc_issqn ?? 0),
+          pis: poc * (impostosProjeto?.perc_pis ?? 0),
+          cofins: poc * (impostosProjeto?.perc_cofins ?? 0),
+          inss: poc * (impostosProjeto?.perc_inss ?? 0),
+          dara: poc * (impostosProjeto?.perc_dara ?? 0),
+          icms: poc * (impostosProjeto?.perc_icms ?? 0),
+          totalPerc: totalPercImpostos,
+          totalReais: impostosReais
+        },
+        producaoLiquida,
+        moObra,
+        materiais,
+        transporte,
+        custoDiretoReal,
+        custoDiretoOrcado,
+        deltaDireto: custoDiretoOrcado - custoDiretoReal,
+        percCustoDiretoOrcado: mkp?.perc_custo_direto ?? 0,
+        percCustoDiretoReal: poc > 0 ? custoDiretoReal / poc : 0,
+        gerenciaReal,
+        gerenciaOrcada,
+        deltaGerencia: gerenciaOrcada - gerenciaReal,
+        percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
+        percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
+        pendentesCategorizacao,
+        custoTotalReal,
+        custoTotalOrcado,
+        mbOrcada,
+        mbRealizada,
+        percMbOrcada,
+        percMbReal,
+        percMbMkp,
+        alertaMb: percMbReal < (percMbMkp * 0.85),
+        alertaGerencia: gerenciaReal > (gerenciaOrcada * 1.15),
+        semMkp: !mkp,
+        semImpostos: !impostosProjeto
+      } as AnaliseCustosRow;
+    });
+  }, [projetosData, mkpParams, impostosData, producaoData, custosErp, startDate, endDate]);
+
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
       const { data: current } = await supabase
@@ -434,7 +584,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .eq("erp_id", erpId)
         .single();
 
-      const { error } = await supabase.from("custo_real_erp" as any)
+      const { error } = await supabase.from("custo_real_erp")
         .update({ categoria_interna: newCategoria })
         .eq("erp_id", erpId);
       if (error) throw error;
@@ -457,9 +607,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const updateBulkCategorias = useMutation({
     mutationFn: async (updates: { erp_id: string; categoria_interna: string; categoria_erp: string }[]) => {
-      // update custo_real_erp for each
       for (const up of updates) {
-        await supabase.from("custo_real_erp" as any)
+        await supabase.from("custo_real_erp")
           .update({ categoria_interna: up.categoria_interna })
           .eq("erp_id", up.erp_id);
         
@@ -478,5 +627,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     }
   });
 
-  return { custosErp, loadCustos, updateCategoria, updateBulkCategorias, categoriasMapeamento };
+  return { 
+    analiseRows, 
+    custosErp, 
+    loadCustos, 
+    updateCategoria, 
+    updateBulkCategorias, 
+    categoriasMapeamento 
+  };
 }
