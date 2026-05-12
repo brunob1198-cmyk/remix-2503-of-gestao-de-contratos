@@ -566,9 +566,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const areaNome = (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || 'N/A';
       
       (periodMonths || []).forEach(monthStr => {
-        const monthStart = startOfMonth(parseISO(monthStr));
+        const monthStart = parseISO(monthStr);
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
+
 
 
 
