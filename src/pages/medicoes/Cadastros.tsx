@@ -88,7 +88,23 @@ export default function CadastrosPage() {
               <FileSpreadsheet className="h-4 w-4" /> LPU
             </TabsTrigger>
           )}
+          {showMkp && (
+            <TabsTrigger value="mkp" className="flex items-center gap-2">
+              <Percent className="h-4 w-4" /> Parâmetros MKP
+            </TabsTrigger>
+          )}
+          {showImpostos && (
+            <TabsTrigger value="impostos" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" /> Alíquotas de Imposto
+            </TabsTrigger>
+          )}
         </TabsList>
+
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        }>
 
         {showContratos && (
           <TabsContent value="contratos" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
