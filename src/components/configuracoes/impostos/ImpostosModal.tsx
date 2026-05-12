@@ -39,6 +39,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
   const [inss, setInss] = useState(0);
   const [dara, setDara] = useState(0);
   const [icms, setIcms] = useState(0);
+  const [irpj, setIrpj] = useState(0);
+  const [csll, setCsll] = useState(0);
 
   const { data: projetos } = useQuery({
     queryKey: ["projetos_select_impostos"],
@@ -78,6 +80,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
       setInss(editingData.perc_inss * 100);
       setDara(editingData.perc_dara * 100);
       setIcms(editingData.perc_icms * 100);
+      setIrpj((editingData.perc_irpj || 0) * 100);
+      setCsll((editingData.perc_csll || 0) * 100);
     } else {
       setProjetoId("");
       setIssqn(0);
@@ -86,10 +90,12 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
       setInss(0);
       setDara(0);
       setIcms(0);
+      setIrpj(0);
+      setCsll(0);
     }
   }, [editingData, isOpen]);
 
-  const totalImpostos = (issqn + pis + cofins + inss + dara + icms) / 100;
+  const totalImpostos = (issqn + pis + cofins + inss + dara + icms + irpj + csll) / 100;
   const pocExemplo = 100000;
   const deducoes = pocExemplo * totalImpostos;
   const receitaLiquida = pocExemplo - deducoes;
@@ -105,6 +111,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
         perc_inss: inss / 100,
         perc_dara: dara / 100,
         perc_icms: icms / 100,
+        perc_irpj: irpj / 100,
+        perc_csll: csll / 100,
       };
 
       if (id) {
@@ -134,13 +142,9 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
     },
   });
 
-  const applyPreset = (type: 'telecom' | 'rodovias' | 'limpar') => {
-    if (type === 'telecom') {
-      setIssqn(0); setPis(0.65); setCofins(3.00); setInss(0); setDara(0); setIcms(5.00);
-    } else if (type === 'rodovias') {
-      setIssqn(5.00); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
-    } else {
-      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
+  const applyPreset = (type: 'limpar') => {
+    if (type === 'limpar') {
+      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0); setIrpj(0); setCsll(0);
     }
   };
 
@@ -231,15 +235,25 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
               </div>
               <p className="text-[10px] text-muted-foreground">Imposto Circulação</p>
             </div>
+            <div className="space-y-2">
+              <Label>IRPJ</Label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={irpj} onChange={(e) => setIrpj(Number(e.target.value))} />
+                <span className="absolute right-3 top-2.5 text-muted-foreground text-xs">%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Imposto de Renda</p>
+            </div>
+            <div className="space-y-2">
+              <Label>CSLL</Label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={csll} onChange={(e) => setCsll(Number(e.target.value))} />
+                <span className="absolute right-3 top-2.5 text-muted-foreground text-xs">%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Contrib. Social s/ Lucro</p>
+            </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => applyPreset('telecom')}>
-              Regime Telecom
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => applyPreset('rodovias')}>
-              ISS Rodovias
-            </Button>
             <Button variant="ghost" size="sm" onClick={() => applyPreset('limpar')}>
               Limpar tudo
             </Button>

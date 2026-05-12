@@ -116,6 +116,8 @@ export default function ConfigImpostosPage() {
               <TableHead className="text-right">INSS</TableHead>
               <TableHead className="text-right">DARA</TableHead>
               <TableHead className="text-right">ICMS</TableHead>
+              <TableHead className="text-right">IRPJ</TableHead>
+              <TableHead className="text-right">CSLL</TableHead>
               <TableHead className="text-right font-bold text-primary">TOTAL</TableHead>
               <TableHead className="text-right">Receita Líq.*</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -124,13 +126,13 @@ export default function ConfigImpostosPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center h-24 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredImpostos?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center h-24 text-muted-foreground">
                   Nenhuma configuração encontrada.
                 </TableCell>
               </TableRow>
@@ -148,6 +150,8 @@ export default function ConfigImpostosPage() {
                   <TableCell className="text-right">{formatPerc(p.perc_inss)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_dara)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_icms)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_irpj || 0)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_csll || 0)}</TableCell>
                   <TableCell className="text-right font-bold text-primary">
                     {formatPerc(p.perc_total_impostos)}
                   </TableCell>
