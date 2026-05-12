@@ -51,7 +51,7 @@ export default function RelatoriosPage() {
     queryFn: async () => {
       const query = supabase
         .from("diarios_obra")
-        .select("id, data, site_id, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))");
+        .select("id, data, site_id, observacoes, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))");
       
       const diarios = await fetchAllPages<any>(query);
       if (!diarios || diarios.length === 0) return [];
@@ -72,6 +72,7 @@ export default function RelatoriosPage() {
           site_id: d?.site_id,
           site: d?.site,
           data_producao: d?.data,
+          observacoes_diario: d?.observacoes || "",
           quantidade: Number(p.quantidade) || 0,
           valor_total: Number(p.valor_total) || 0,
           preco_unitario_congelado: Number(p.preco_unitario_congelado) || 0,
@@ -147,6 +148,7 @@ export default function RelatoriosPage() {
       total_origem: number;
       total_destino: number;
       diferenca: number;
+      observacoes_diario: string[];
     }>();
 
     const processData = (
@@ -179,9 +181,18 @@ export default function RelatoriosPage() {
             total_origem: 0,
             total_destino: 0,
             diferenca: 0,
+            observacoes_diario: [],
           });
         }
-        siteMap.get(key)!.total_origem += valor;
+        
+        const currentEntry = siteMap.get(key)!;
+        currentEntry.total_origem += valor;
+        
+        if (origemKind === "producao" && l.observacoes_diario) {
+          if (!currentEntry.observacoes_diario.includes(l.observacoes_diario)) {
+            currentEntry.observacoes_diario.push(l.observacoes_diario);
+          }
+        }
       });
 
       destinoData.forEach(l => {
@@ -199,6 +210,7 @@ export default function RelatoriosPage() {
             total_origem: 0,
             total_destino: 0,
             diferenca: 0,
+            observacoes_diario: [],
           });
         }
         siteMap.get(key)!.total_destino += valor;
@@ -317,6 +329,7 @@ export default function RelatoriosPage() {
       [labels.origem]: s.total_origem,
       [labels.destino]: s.total_destino,
       [labels.diff]: s.diferenca,
+      "Observações Diário": s.observacoes_diario.join(" | "),
     })));
 
     const typeName = crossType === "producao_medicao" 
@@ -544,6 +557,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
+                        <TableHead>Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -557,6 +571,9 @@ export default function RelatoriosPage() {
                           <TableCell className={`text-right font-semibold ${row.diferenca > 0 ? "text-orange-600" : row.diferenca < 0 ? "text-red-600" : ""}`}>
                             {formatCurrency(row.diferenca)}
                           </TableCell>
+                          <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
+                            {row.observacoes_diario.join(" | ") || "-"}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -568,6 +585,7 @@ export default function RelatoriosPage() {
                         <TableCell className={`text-right ${crossReferenceTotals.diferenca > 0 ? "text-orange-600" : crossReferenceTotals.diferenca < 0 ? "text-red-600" : ""}`}>
                           {formatCurrency(crossReferenceTotals.diferenca)}
                         </TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
                     </TableFooter>
                   </Table>
