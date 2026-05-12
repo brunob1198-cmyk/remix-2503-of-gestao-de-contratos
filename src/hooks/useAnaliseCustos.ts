@@ -319,7 +319,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         .single();
 
       // 2. Update record
-      const { error } = await (supabase as any).from("custo_real_erp")
+      const { error } = await supabase.from("custo_real_erp")
          .update({ categoria_interna: newCategoria })
          .eq("erp_id", erpId);
       if (error) throw error;
