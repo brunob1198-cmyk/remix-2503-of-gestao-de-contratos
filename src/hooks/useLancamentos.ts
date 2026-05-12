@@ -22,7 +22,7 @@ export function useLancamentosProducao(siteId?: string) {
       
       return await fetchAllPages<LancamentoProducao>(query);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const createLancamento = useMutation({
@@ -115,7 +115,7 @@ export function useLancamentosMedicao(siteId?: string) {
       
       return await fetchAllPages<LancamentoMedicao>(query);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const createLancamento = useMutation({
@@ -269,7 +269,7 @@ export function useLancamentosFaturamento(siteId?: string) {
       
       return await fetchAllPages<LancamentoFaturamento>(query);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const createLancamento = useMutation({
