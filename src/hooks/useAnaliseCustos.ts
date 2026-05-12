@@ -635,8 +635,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
 
-        // 3. Ignorar meses sem produção e sem custos reais
-        if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0) return;
+        // 3. Ignorar meses sem produção e sem custos reais (exceto para o mês atual para garantir visibilidade)
+        const isCurrentMonth = format(new Date(), 'yyyy-MM-01') === monthStr;
+        if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0 && !isCurrentMonth) return;
+
 
         // Impostos
         const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
