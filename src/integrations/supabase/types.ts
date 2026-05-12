@@ -2544,7 +2544,6 @@ export type Database = {
           obra_codigo: string | null
           perc_custo_direto: number
           perc_gerencia: number
-          perc_impostos: number
           perc_inflacao: number
           perc_mb_esperado: number
           perc_risco: number
@@ -2560,7 +2559,6 @@ export type Database = {
           obra_codigo?: string | null
           perc_custo_direto?: number
           perc_gerencia?: number
-          perc_impostos?: number
           perc_inflacao?: number
           perc_mb_esperado?: number
           perc_risco?: number
@@ -2576,7 +2574,6 @@ export type Database = {
           obra_codigo?: string | null
           perc_custo_direto?: number
           perc_gerencia?: number
-          perc_impostos?: number
           perc_inflacao?: number
           perc_mb_esperado?: number
           perc_risco?: number
