@@ -235,15 +235,25 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
               </div>
               <p className="text-[10px] text-muted-foreground">Imposto Circulação</p>
             </div>
+            <div className="space-y-2">
+              <Label>IRPJ</Label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={irpj} onChange={(e) => setIrpj(Number(e.target.value))} />
+                <span className="absolute right-3 top-2.5 text-muted-foreground text-xs">%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Imposto de Renda</p>
+            </div>
+            <div className="space-y-2">
+              <Label>CSLL</Label>
+              <div className="relative">
+                <Input type="number" step="0.01" value={csll} onChange={(e) => setCsll(Number(e.target.value))} />
+                <span className="absolute right-3 top-2.5 text-muted-foreground text-xs">%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">Contrib. Social s/ Lucro</p>
+            </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => applyPreset('telecom')}>
-              Regime Telecom
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => applyPreset('rodovias')}>
-              ISS Rodovias
-            </Button>
             <Button variant="ghost" size="sm" onClick={() => applyPreset('limpar')}>
               Limpar tudo
             </Button>
