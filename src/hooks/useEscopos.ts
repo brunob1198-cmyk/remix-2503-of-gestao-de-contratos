@@ -34,6 +34,8 @@ export function useEscopos(siteId?: string, projetoId?: string) {
 
   const saveEscopo = useMutation({
     mutationFn: async (novosItens: EscopoItem[]) => {
+      if (!siteId) throw new Error("ID do site é obrigatório para salvar escopo.");
+      
       // 1. Delete existing items
       const { error: deleteError } = await supabase
         .from("escopo_itens")
@@ -45,7 +47,7 @@ export function useEscopos(siteId?: string, projetoId?: string) {
       if (novosItens.length > 0) {
         const itemsToInsert = novosItens.map(item => {
           const { id, created_at, updated_at, ...rest } = item;
-          return rest;
+          return { ...rest, site_id: siteId };
         });
 
         const { error: insertError } = await supabase
