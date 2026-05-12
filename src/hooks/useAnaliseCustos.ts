@@ -509,13 +509,19 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
       // Flatten data for easier use
       return (data || [])
-        .map(p => ({
-          projeto_id: (p.diarios_obra as any)?.sites?.projeto_id,
-          valor_total: Number(p.valor_total || 0),
-          data_producao: (p.diarios_obra as any)?.data,
-          bdi_item: Number((p.item_lpu as any)?.bdi || 0)
-        }))
+        .map(p => {
+          const sites = (p.diarios_obra as any)?.sites;
+          const projeto_id = Array.isArray(sites) ? sites[0]?.projeto_id : sites?.projeto_id;
+          
+          return {
+            projeto_id,
+            valor_total: Number(p.valor_total || 0),
+            data_producao: (p.diarios_obra as any)?.data,
+            bdi_item: Number((p.item_lpu as any)?.bdi || 0)
+          };
+        })
         .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
+
 
     },
     enabled: projetoIds.length > 0
