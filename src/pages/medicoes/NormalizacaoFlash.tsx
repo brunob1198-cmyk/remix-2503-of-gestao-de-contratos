@@ -1521,7 +1521,7 @@ export default function NormalizacaoFlashPage() {
                                 />
                               </TableCell>
                               <TableCell className="text-xs">{formatDate(row.data)}</TableCell>
-                              <TableCell className="max-w-[300px]">
+                              <TableCell className="w-[250px]">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="block truncate text-xs">{row.descricao}</span>
