@@ -490,9 +490,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .select(`
           valor_total,
           item_lpu_id,
-          diarios_obra!inner (
+          diarios_obra (
             data,
-            site:sites!inner (
+            site:sites (
               projeto_id
             )
           ),
