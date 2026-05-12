@@ -485,41 +485,43 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       
-      const { data, error } = await supabase
-        .from("diario_producao")
-        .select(`
-          valor_total,
-          item_lpu_id,
-          diarios_obra (
-            id,
-            data,
-            site:sites (
+      const BATCH_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select(`
+            valor_total,
+            item_lpu_id,
+            diarios_obra (
               id,
-              projeto_id
+              data,
+              site:sites (
+                id,
+                projeto_id
+              )
+            ),
+            item_lpu:itens_lpu (
+              bdi
             )
-          ),
+          `)
+          .range(offset, offset + BATCH_SIZE - 1);
 
-
-
-
-          item_lpu:itens_lpu (
-            bdi
-          )
-        `);
-
-
-      if (error) {
-        console.error("Erro ao buscar producaoData:", error);
-        return [];
+        if (error) {
+          console.error("Erro ao buscar producaoData:", error);
+          break;
+        }
+        
+        allData = [...allData, ...(data || [])];
+        hasMore = data?.length === BATCH_SIZE;
+        offset += BATCH_SIZE;
       }
 
-      // Flatten data for easier use
-      console.log(`[Producao] Itens brutos carregados: ${data?.length}. Projetos buscados: ${projetoIds.join(',')}`);
-      if (data && data.length > 0) {
-        console.log(`[Producao] Exemplo raw item 0:`, JSON.stringify(data[0], null, 2));
-      }
+      const mapped = allData
 
-      const mapped = (data || [])
         .map(p => {
           // A estrutura pode ser p.diarios_obra.sites.projeto_id ou p.diarios_obra.site.projeto_id
           const doObj = (p.diarios_obra as any);
