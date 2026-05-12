@@ -35,7 +35,7 @@ export interface AnaliseCustosRow {
   equipamentos: number;
   indiretos: number;
   custoDiretoReal: number;      // soma dos três acima — SEM gerência
-  custoDiretoOrcado: number;    // poc * mkp.perc_custo_direto
+  custoDiretoOrcado: number;    // poc * (mkp.perc_custo_direto + mkp.perc_risco + mkp.perc_inflacao)
   deltaDireto: number;          // orcado - real (+ = favorável)
   percCustoDiretoOrcado: number;
   percCustoDiretoReal: number;
