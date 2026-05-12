@@ -2857,9 +2857,11 @@ export type Database = {
           id: string
           observacao: string | null
           perc_cofins: number
+          perc_csll: number | null
           perc_dara: number
           perc_icms: number
           perc_inss: number
+          perc_irpj: number | null
           perc_issqn: number
           perc_pis: number
           perc_total_impostos: number | null
@@ -2871,9 +2873,11 @@ export type Database = {
           id?: string
           observacao?: string | null
           perc_cofins?: number
+          perc_csll?: number | null
           perc_dara?: number
           perc_icms?: number
           perc_inss?: number
+          perc_irpj?: number | null
           perc_issqn?: number
           perc_pis?: number
           perc_total_impostos?: number | null
@@ -2885,9 +2889,11 @@ export type Database = {
           id?: string
           observacao?: string | null
           perc_cofins?: number
+          perc_csll?: number | null
           perc_dara?: number
           perc_icms?: number
           perc_inss?: number
+          perc_irpj?: number | null
           perc_issqn?: number
           perc_pis?: number
           perc_total_impostos?: number | null
