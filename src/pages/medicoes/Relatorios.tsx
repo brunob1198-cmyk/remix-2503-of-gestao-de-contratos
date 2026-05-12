@@ -93,6 +93,8 @@ export default function RelatoriosPage() {
         };
       });
     },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!empresaId,
   });
 
   const filteredSites = projetoId
@@ -586,7 +588,7 @@ export default function RelatoriosPage() {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-w-md">
                             {row.observacoes_diario.length > 0 ? (
-                              <div className="space-y-2">
+                              <div className="space-y-2 group">
                                 {row.observacoes_diario.map((obs, i) => (
                                   <div key={i} className={i > 0 ? "pt-2 border-t border-border/50" : ""}>
                                     {obs}
@@ -595,9 +597,12 @@ export default function RelatoriosPage() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-6 px-2 text-[10px]"
+                                  className="h-6 px-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={() => {
                                     navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
+                                    toast({
+                                      description: "Observações copiadas para a área de transferência",
+                                    });
                                   }}
                                 >
                                   Copiar observações
