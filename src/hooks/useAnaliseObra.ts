@@ -496,6 +496,40 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           fotos: itemFotos,
         });
       });
+
+      // Include items that are in prodByItem but NOT in escopoMap (Extra-plan production)
+      prodByItem.forEach((prod, itemLpuId) => {
+        if (!escopoMap.has(itemLpuId)) {
+          const executado = prod.quantidade;
+          const diasComProducao = prod.diasSet.size;
+          
+          let mediaDiaria = totalDiasObra > 0 ? executado / totalDiasObra : 0;
+          
+          const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
+          const item = dpSample?.item_lpu as any;
+
+          producaoItems.push({
+            itemLpuId,
+            codigo: item?.codigo || "Extra",
+            descricao: item?.descricao || "Item fora do escopo",
+            unidade: item?.unidade || "-",
+            planejado: 0,
+            executado,
+            saldo: -executado,
+            mediaDiaria,
+            mediaSemanal: mediaDiaria * 7,
+            mediaMensal: mediaDiaria * 30,
+            diasComProducao,
+            primeiraData: prod.primeiraData,
+            ultimaData: prod.ultimaData,
+            fotos: fotosData
+              .filter(f => f.diario_producao?.item_lpu_id === itemLpuId)
+              .map(f => f.url)
+              .slice(0, 5),
+          });
+        }
+      });
+
       producaoItems.sort((a, b) => b.executado - a.executado);
 
       return {
