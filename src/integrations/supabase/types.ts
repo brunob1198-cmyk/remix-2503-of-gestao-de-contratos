@@ -2845,6 +2845,87 @@ export type Database = {
           },
         ]
       }
+      projeto_impostos: {
+        Row: {
+          created_at: string | null
+          id: string
+          observacao: string | null
+          perc_cofins: number
+          perc_dara: number
+          perc_icms: number
+          perc_inss: number
+          perc_issqn: number
+          perc_pis: number
+          perc_total_impostos: number | null
+          projeto_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          observacao?: string | null
+          perc_cofins?: number
+          perc_dara?: number
+          perc_icms?: number
+          perc_inss?: number
+          perc_issqn?: number
+          perc_pis?: number
+          perc_total_impostos?: number | null
+          projeto_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          observacao?: string | null
+          perc_cofins?: number
+          perc_dara?: number
+          perc_icms?: number
+          perc_inss?: number
+          perc_issqn?: number
+          perc_pis?: number
+          perc_total_impostos?: number | null
+          projeto_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_bi_analise_obras"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       projetos: {
         Row: {
           area_id: string | null
