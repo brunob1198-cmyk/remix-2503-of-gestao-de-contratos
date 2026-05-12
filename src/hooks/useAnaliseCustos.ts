@@ -304,7 +304,9 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     staleTime: Infinity,
     queryFn: async () => {
       let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
-      if (startDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+      if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+      else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+
       const { data: diariosIdList } = await qDiarios;
       
       if (!diariosIdList || diariosIdList.length === 0) {
