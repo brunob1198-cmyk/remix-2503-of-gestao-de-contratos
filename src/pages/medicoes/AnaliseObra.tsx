@@ -244,11 +244,6 @@ export default function AnaliseObraPage() {
             )}
           </Badge>
 
-          {statusData.iaPending > 0 && (
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-              <SearchIcon className="h-3 w-3 mr-1" /> {statusData.iaPending} pendentes IA
-            </Badge>
-          )}
         </div>
       )}
 
