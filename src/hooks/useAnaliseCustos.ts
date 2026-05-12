@@ -492,7 +492,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu_id,
           diarios_obra (
             data,
-            site:sites (
+            sites (
               projeto_id
             )
           ),
@@ -500,6 +500,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             bdi
           )
         `);
+
 
       if (error) {
         console.error("Erro ao buscar producaoData:", error);
