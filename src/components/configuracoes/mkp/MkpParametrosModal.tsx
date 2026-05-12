@@ -110,7 +110,7 @@ export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalPr
   const percImpostos = impostoData?.perc_total_impostos || 0;
   const percTotalCustos = (percCustoDireto + percGerencia + percRisco + percTreinamento + percInflacao) / 100;
   const percMbEsperado = 1 - percTotalCustos - percImpostos;
-  const bdiVenda = 1 / (1 - (percCustoDireto / 100));
+  const bdiVenda = 1 / (percCustoDireto / 100);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
