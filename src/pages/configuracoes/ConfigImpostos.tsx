@@ -150,6 +150,8 @@ export default function ConfigImpostosPage() {
                   <TableCell className="text-right">{formatPerc(p.perc_inss)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_dara)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_icms)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_irpj || 0)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_csll || 0)}</TableCell>
                   <TableCell className="text-right font-bold text-primary">
                     {formatPerc(p.perc_total_impostos)}
                   </TableCell>
