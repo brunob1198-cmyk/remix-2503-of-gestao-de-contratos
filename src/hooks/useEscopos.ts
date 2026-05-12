@@ -4,23 +4,32 @@ import { EscopoItem } from "@/types/medicoes";
 import { useToast } from "@/hooks/use-toast";
 import type { Json } from "@/integrations/supabase/types";
 
-export function useEscopos(siteId: string) {
+export function useEscopos(siteId?: string, projetoId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: itens = [], isLoading } = useQuery({
-    queryKey: ["escopo_itens", siteId],
+    queryKey: ["escopo_itens", siteId, projetoId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("escopo_itens")
-        .select("*")
-        .eq("site_id", siteId)
-        .order("created_at", { ascending: true });
+      let query = supabase.from("escopo_itens").select("*");
       
+      if (siteId) {
+        query = query.eq("site_id", siteId);
+      } else if (projetoId) {
+        // Find all sites for this project and get their items
+        const { data: sites } = await supabase.from("sites").select("id").eq("projeto_id", projetoId);
+        const sIds = (sites || []).map(s => s.id);
+        if (sIds.length === 0) return [];
+        query = query.in("site_id", sIds);
+      } else {
+        return [];
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: true });
       if (error) throw error;
       return data as EscopoItem[];
     },
-    enabled: !!siteId,
+    enabled: !!siteId || !!projetoId,
   });
 
   const saveEscopo = useMutation({
