@@ -200,7 +200,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r text-left max-w-[200px] truncate" title={`${row.projetoCodigo} - ${row.projetoNome}`}>
                       {row.projetoCodigo} - {row.projetoNome}
                     </td>
-                    <td className="py-2 px-4 border-b border-r text-left">---</td>
+                    <td className="py-2 px-4 border-b border-r text-left">{row.cliente}</td>
 
                     {/* RECEITA */}
                     <td className={`py-2 px-4 border-b border-r bg-green-50/30 ${row.poc > 0 ? 'text-green-600 font-bold' : ''}`}>
