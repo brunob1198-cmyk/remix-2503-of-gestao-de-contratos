@@ -116,7 +116,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Indir.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50 text-muted-foreground/60 font-normal">Orçado</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Δ Direto</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-50">Resultado Direto</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-50 text-amber-700">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-50 text-muted-foreground/60 font-normal">Orçado</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-50 text-amber-700">Δ Ger.</th>
