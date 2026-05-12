@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, AlertTriangle, Search, Settings, Target } from "lucide-react";
+import { ClipboardList, AlertTriangle, Search, Settings, Target, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
@@ -229,8 +229,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.transporte)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30 font-bold">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30 text-muted-foreground/60">{formatCurrency(row.custoDiretoOrcado)}</td>
-                    <td className={`py-2 px-4 border-b border-r bg-blue-50/30 font-medium ${row.deltaDireto >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(row.deltaDireto)}
+                    <td className={`py-2 px-4 border-b border-r bg-blue-50/30 font-medium ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        {row.deltaDireto > 0 ? <ArrowDown className="h-3 w-3" /> : row.deltaDireto < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {row.deltaDireto === 0 ? "—" : formatCurrency(Math.abs(row.deltaDireto))}
+                      </div>
                     </td>
 
                     {/* GERENCIA */}
@@ -245,8 +248,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                       </div>
                     </td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-muted-foreground/60">{formatCurrency(row.gerenciaOrcada)}</td>
-                    <td className={`py-2 px-4 border-b border-r bg-amber-50/30 font-medium ${row.deltaGerencia >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(row.deltaGerencia)}
+                    <td className={`py-2 px-4 border-b border-r bg-amber-50/30 font-medium ${row.deltaGerencia > 0 ? 'text-green-600' : row.deltaGerencia < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        {row.deltaGerencia > 0 ? <ArrowDown className="h-3 w-3" /> : row.deltaGerencia < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {row.deltaGerencia === 0 ? "—" : formatCurrency(Math.abs(row.deltaGerencia))}
+                      </div>
                     </td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-amber-700">{formatPercent(row.percGerenciaReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-muted-foreground/60">{formatPercent(row.percGerenciaOrcada)}</td>
@@ -261,11 +267,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <Badge className={`font-bold ${
-                              row.percMbReal >= row.percMbMkp ? 'bg-green-600' : 
-                              row.percMbReal >= row.percMbMkp * 0.85 ? 'bg-amber-500' : 'bg-red-600'
+                            <Badge variant="secondary" className={`font-bold border shadow-sm ${
+                              row.percMbReal >= row.percMbMkp ? 'bg-green-50 text-green-700 border-green-200' : 
+                              row.percMbReal >= row.percMbMkp * 0.85 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
                             }`}>
-                              {formatPercent(row.percMbReal)}
+                              {row.percMbReal >= row.percMbMkp ? '▲' : row.percMbReal >= row.percMbMkp * 0.85 ? '≈' : '▼'} {formatPercent(row.percMbReal)}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent className="p-3">
