@@ -570,7 +570,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
-        const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
+        const percCustoDireto = mkp?.perc_custo_direto ?? 0;
+        const percRisco = mkp?.perc_risco ?? 0;
+        const percInflacao = mkp?.perc_inflacao ?? 0;
+        const custoDiretoOrcado = poc * (percCustoDireto + percRisco + percInflacao);
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
         const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
