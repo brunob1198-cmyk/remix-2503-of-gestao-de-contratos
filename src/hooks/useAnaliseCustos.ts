@@ -572,6 +572,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             }
           });
 
+
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
         
         // Novo cálculo de Custo Direto Orçado: soma de (Valor Item / BDI Item)
