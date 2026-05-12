@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import ProjetosPage from "./Projetos";
 import SitesPage from "./Sites";
@@ -9,7 +9,11 @@ import ClientesPage from "./Clientes";
 import ContratosPage from "./Contratos";
 import AreasPage from "./Areas";
 import { usePermissions } from "@/hooks/usePermissions";
-import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText } from "lucide-react";
+import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText, Percent, Receipt, Loader2 } from "lucide-react";
+import React from "react";
+
+const MkpParametrosPage = React.lazy(() => import("../configuracoes/MkpParametros"));
+const ConfigImpostosPage = React.lazy(() => import("../configuracoes/ConfigImpostos"));
 
 export default function CadastrosPage() {
   const { canView } = usePermissions();
