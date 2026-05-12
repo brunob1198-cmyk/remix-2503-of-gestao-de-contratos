@@ -482,9 +482,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .select(`
           valor_total,
           item_lpu_id,
-          diario:diarios_obra (
+          diarios_obra!inner (
             data,
-            site:sites (
+            site:sites!inner (
               projeto_id
             )
           ),
@@ -502,9 +502,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
       // Flatten data for easier use
       return (data || []).map(p => ({
-        projeto_id: (p.diario as any)?.site?.projeto_id,
+        projeto_id: (p.diarios_obra as any)?.site?.projeto_id,
         valor_total: Number(p.valor_total || 0),
-        data_producao: (p.diario as any)?.data,
+        data_producao: (p.diarios_obra as any)?.data,
         bdi_item: Number((p.item_lpu as any)?.bdi || 0)
       })).filter(p => projetoIds.includes(p.projeto_id));
     },
