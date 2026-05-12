@@ -510,15 +510,13 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       }
 
       // Flatten data for easier use
-      const flattened = (data || []).map(p => ({
+      return (data || []).map(p => ({
         projeto_id: (p.diarios_obra as any)?.site?.projeto_id,
         valor_total: Number(p.valor_total || 0),
         data_producao: (p.diarios_obra as any)?.data,
         bdi_item: Number((p.item_lpu as any)?.bdi || 0)
       })).filter(p => projetoIds.includes(p.projeto_id));
 
-      console.log("Produção carregada com sucesso:", flattened.length, "itens encontrados para os projetos", projetoIds);
-      return flattened;
 
     },
     enabled: projetoIds.length > 0 && !!startDate
