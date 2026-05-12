@@ -43,7 +43,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       moObra: acc.moObra + r.moObra,
       materiais: acc.materiais + r.materiais,
       transporte: acc.transporte + r.transporte,
-      equipamentos: acc.equipamentos + r.equipamentos,
       indiretos: acc.indiretos + r.indiretos,
       custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
@@ -53,7 +52,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
       poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
-      equipamentos: 0, indiretos: 0,
+      indiretos: 0,
       custoDiretoReal: 0, custoDiretoOrcado: 0,
       gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
     });
@@ -96,7 +95,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               <tr className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-left">Identificação</th>
                 <th colSpan={3} className="py-2 px-4 border-b border-r text-center bg-green-50 text-green-700">Receita</th>
-                <th colSpan={8} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
+                <th colSpan={7} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-center bg-amber-50 text-amber-700">Gerência</th>
                 <th colSpan={4} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
@@ -112,14 +111,13 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">MO</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Mat.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Transp.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Equip.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Indir.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800/60 font-normal">Orçado</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Resultado Direto</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">Orçado</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Δ Ger.</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Resultado Gerência</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">% Real</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">% Orç.</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">MB Orç. (R$)</th>
