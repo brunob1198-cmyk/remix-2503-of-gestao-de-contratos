@@ -241,38 +241,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                       {formatCurrency(row.mbRealizada)}
                     </td>
                     <td className="py-2 px-4 border-b border-r bg-gray-50/30 text-muted-foreground">{formatPercent(row.percMbOrcada)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-gray-50/30">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge variant="secondary" className={`font-bold border shadow-sm whitespace-nowrap ${
-                              row.percMbReal >= row.percMbMkp ? 'bg-green-50 text-green-700 border-green-200' : 
-                              row.percMbReal >= row.percMbMkp * 0.85 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {row.percMbReal >= row.percMbMkp ? '▲ acima do alvo' : row.percMbReal >= row.percMbMkp * 0.85 ? '≈ próximo do alvo' : '▼ abaixo do alvo'}
-                              <span className="ml-1 opacity-70">({formatPercent(row.percMbReal)})</span>
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent className="p-3">
-                            <div className="space-y-1 text-[11px]">
-                              <div className="flex justify-between gap-6"><span>Alvo MKP:</span> <span className="font-bold">{formatPercent(row.percMbMkp)}</span></div>
-                              <div className="flex justify-between gap-6"><span>Realizado:</span> <span className="font-bold">{formatPercent(row.percMbReal)}</span></div>
-                              <div className="flex justify-between gap-6 border-t pt-1">
-                                <span>Δ vs alvo:</span> 
-                                <span className={`font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-600' : 'text-red-600'}`}>
-                                  {(row.percMbReal - row.percMbMkp > 0 ? '+' : '') + ((row.percMbReal - row.percMbMkp) * 100).toFixed(1)} pp
-                                </span>
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </td>
-                    <td className="py-2 px-4 border-b bg-gray-50/30 italic text-muted-foreground text-xs">
-                      <div className="flex items-center justify-end gap-1">
-                        <Target className="h-3 w-3" />
-                        {formatPercent(row.percMbMkp)}
-                      </div>
+                    <td className={`py-2 px-4 border-b bg-gray-50/30 font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatPercent(row.percMbReal)}
                     </td>
                   </tr>
                 ))
