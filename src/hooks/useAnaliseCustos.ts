@@ -481,7 +481,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v3", projetoIds],
+    queryKey: ["producao_poc_multi_v4", projetoIds],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       
@@ -490,9 +490,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .select(`
           valor_total,
           item_lpu_id,
-          diarios_obra (
+          diarios_obra!inner (
             data,
-            site:sites (
+            site:sites!inner (
               projeto_id
             )
           ),
