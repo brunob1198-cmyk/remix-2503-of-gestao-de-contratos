@@ -276,9 +276,12 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         let q = supabase.from("custo_real_erp").select("*");
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
-        if (startDate) {
+        if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+        } else if (startDate) {
+          q = q.gte("data_competencia", startDate);
         }
+
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
