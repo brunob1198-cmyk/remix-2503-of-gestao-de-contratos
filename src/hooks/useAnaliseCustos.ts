@@ -494,11 +494,18 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     // Helper to get all months between start and end
     const getMonths = (start: string, end: string) => {
       const months = [];
-      let curr = startOfMonth(parseISO(start));
-      const last = startOfMonth(parseISO(end));
-      while (curr <= last) {
-        months.push(format(curr, "yyyy-MM-dd"));
-        curr = startOfMonth(new Date(curr.getFullYear(), curr.getMonth() + 1, 1));
+      try {
+        let curr = startOfMonth(parseISO(start));
+        const last = startOfMonth(parseISO(end));
+        // Safety break for infinite loops
+        let iterations = 0;
+        while (curr <= last && iterations < 120) {
+          months.push(format(curr, "yyyy-MM-dd"));
+          curr = startOfMonth(new Date(curr.getFullYear(), curr.getMonth() + 1, 1));
+          iterations++;
+        }
+      } catch (e) {
+        console.error("Error generating months:", e);
       }
       return months;
     };
@@ -521,8 +528,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const poc = (producaoData || [])
           .filter(p => {
             if (p.projeto_id !== projetoId) return false;
-            const d = parseISO(p.data_producao);
-            return d >= monthStart && d <= monthEnd;
+            try {
+              const d = parseISO(p.data_producao);
+              return d >= monthStart && d <= monthEnd;
+            } catch (e) {
+              return false;
+            }
           })
           .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
