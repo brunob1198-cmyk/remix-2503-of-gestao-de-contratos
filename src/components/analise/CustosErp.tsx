@@ -113,6 +113,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>({
     competencia: "", descricao: "", mapeamento: "", centro_custo: "", valor: "", status: "", categoria: ""
   });
@@ -213,6 +214,32 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {selectedIds.size > 0 && (
+              <Select onValueChange={(val) => {
+                const updates = Array.from(selectedIds).map(id => {
+                  const item = custosErp.find(c => c.id === id);
+                  return {
+                    erp_id: item?.erp_id || "",
+                    categoria_interna: val,
+                    categoria_erp: item?.categoria_erp || ""
+                  };
+                }).filter(u => u.erp_id);
+                
+                updateBulkCategorias.mutate(updates, {
+                  onSuccess: () => setSelectedIds(new Set())
+                });
+              }}>
+                <SelectTrigger className="h-9 w-[180px] bg-primary text-primary-foreground border-none">
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={`Alterar ${selectedIds.size} itens`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_PADRAO.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredItems.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
@@ -232,6 +259,19 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
             <table className="w-full text-sm">
               <thead className="bg-muted text-muted-foreground">
                 <tr>
+                  <th className="py-2 px-3 w-10 text-center">
+                    <Checkbox 
+                      checked={paginatedItems.length > 0 && paginatedItems.every(item => selectedIds.has(item.id))}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedIds);
+                        paginatedItems.forEach(item => {
+                          if (checked) next.add(item.id);
+                          else next.delete(item.id);
+                        });
+                        setSelectedIds(next);
+                      }}
+                    />
+                  </th>
                   {allCols.map(col => (
                     <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
                       <ColumnHeaderFilter
@@ -260,6 +300,17 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               <tbody className="divide-y">
                 {paginatedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                    <td className="py-2 px-3 text-center">
+                      <Checkbox 
+                        checked={selectedIds.has(item.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          if (checked) next.add(item.id);
+                          else next.delete(item.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </td>
                     <td className="py-2 px-3 text-muted-foreground">
                       {item.data_competencia ? format(parseISO(item.data_competencia), "dd/MM/yyyy") : "-"}
                     </td>
@@ -298,6 +349,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               </tbody>
               <tfoot className="bg-muted/50 border-t font-medium">
                 <tr>
+                  <td className="py-2 px-3 w-10"></td>
                   {allCols.map(col => (
                     <td key={`footer-${col}`} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
                       {col === "valor" ? (
