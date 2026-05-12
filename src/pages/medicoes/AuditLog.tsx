@@ -128,7 +128,7 @@ export default function AuditLogPage() {
       </Card>
 
       <Card>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="h-[calc(100vh-320px)]">
           <Table>
             <TableHeader>
               <TableRow>
