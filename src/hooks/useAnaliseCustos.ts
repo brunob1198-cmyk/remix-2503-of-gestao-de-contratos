@@ -516,8 +516,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       // Flatten data for easier use
       const mapped = (data || [])
         .map(p => {
-          const sitesData = (p.diarios_obra as any)?.sites;
-          const projeto_id = Array.isArray(sitesData) ? sitesData[0]?.projeto_id : sitesData?.projeto_id;
+          const siteData = (p.diarios_obra as any)?.site;
+          const projeto_id = Array.isArray(siteData) ? siteData[0]?.projeto_id : siteData?.projeto_id;
           
           return {
             projeto_id,
@@ -527,6 +527,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           };
         })
         .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
+
 
       console.log(`[Producao] Itens filtrados: ${mapped.length}. Projetos buscados: ${projetoIds.join(',')}`);
       if (mapped.length > 0) {
