@@ -95,7 +95,8 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
     map.includes("material") || map.includes("ferramentas") || map.includes("cimento") || 
     map.includes("areia") || map.includes("brita") || map.includes("tintas") || 
     map.includes("acabamento") || map.includes("epi") || map.includes("aço") ||
-    desc.includes("aço") || desc.includes("cimento") || desc.includes("tinta")
+    desc.includes("aço") || desc.includes("cimento") || desc.includes("tinta") ||
+    desc.includes("fretes pagos")
   ) return "Materiais";
 
   // Mão de Obra
