@@ -80,6 +80,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
       setInss(editingData.perc_inss * 100);
       setDara(editingData.perc_dara * 100);
       setIcms(editingData.perc_icms * 100);
+      setIrpj((editingData.perc_irpj || 0) * 100);
+      setCsll((editingData.perc_csll || 0) * 100);
     } else {
       setProjetoId("");
       setIssqn(0);
@@ -88,6 +90,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
       setInss(0);
       setDara(0);
       setIcms(0);
+      setIrpj(0);
+      setCsll(0);
     }
   }, [editingData, isOpen]);
 
