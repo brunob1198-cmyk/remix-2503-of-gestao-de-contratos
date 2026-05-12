@@ -491,9 +491,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu:itens_lpu (
             bdi
           )
-        `)
-        .gte("diarios_obra.data", startDate)
-        .lte("diarios_obra.data", endDate);
+        `);
+
 
       if (error) {
         console.error("Erro ao buscar producaoData:", error);
