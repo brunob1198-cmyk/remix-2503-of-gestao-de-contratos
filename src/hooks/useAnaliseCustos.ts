@@ -479,7 +479,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")
-        .select("id, codigo, nome, area_analise, cliente_id, clientes(*), areas(*)")
+        .select("id, codigo, nome, area_analise, cliente, cliente_id, clientes(*), areas(*)")
         .in("id", projetoIds);
       return data || [];
     },
@@ -524,7 +524,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy');
 
-        // Produção Bruta (POC) do mês
+        // 1. Produção Bruta (POC) do mês
         const poc = (producaoData || [])
           .filter(p => {
             if (p.projeto_id !== projetoId) return false;
@@ -537,15 +537,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           })
           .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
-        // Se não houver produção nem custos no mês, talvez pular? 
-        // Mas o usuário pediu "separar mensalmente", então mostramos todos os meses do período.
-
-        // Impostos
-        const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
-        const impostosReais = poc * totalPercImpostos;
-        const producaoLiquida = poc - impostosReais;
-
-        // Custos do mês
+        // 2. Custos do mês
         const projetoCustosMes = (custosErp || []).filter(c => {
           if (c.projeto_id !== projetoId || !c.data_competencia) return false;
           try {
@@ -561,6 +553,14 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+        // 3. Ignorar meses sem produção e sem custos reais
+        if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0) return;
+
+        // Impostos
+        const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
+        const impostosReais = poc * totalPercImpostos;
+        const producaoLiquida = poc - impostosReais;
         
         const moObra = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
         const materiais = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
