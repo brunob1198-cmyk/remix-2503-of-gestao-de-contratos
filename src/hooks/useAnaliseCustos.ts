@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface AnaliseCustosRow {
@@ -522,7 +523,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       (periodMonths || []).forEach(monthStr => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
-        const monthLabel = format(monthStart, 'MMM/yyyy');
+        const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
 
         // 1. Produção Bruta (POC) do mês
         const poc = (producaoData || [])
