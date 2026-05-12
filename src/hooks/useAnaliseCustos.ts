@@ -586,11 +586,16 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             if (p.projeto_id !== projetoId) return false;
             try {
               const d = parseISO(p.data_producao);
-              return d >= monthStart && d <= monthEnd;
+              const match = d >= monthStart && d <= monthEnd;
+              if (projeto.codigo === 'T011.25' && match) {
+                console.log(`[Analise] Encontrou produção para ${monthLabel}:`, p.valor_total);
+              }
+              return match;
             } catch (e) {
               return false;
             }
           });
+
 
 
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
