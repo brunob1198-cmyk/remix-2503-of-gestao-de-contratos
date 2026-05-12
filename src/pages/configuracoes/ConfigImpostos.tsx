@@ -79,7 +79,7 @@ export default function ConfigImpostosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden">
         <h1 className="text-3xl font-bold tracking-tight">Alíquotas de Imposto — Configuração por Projeto</h1>
         <p className="text-muted-foreground">
           Configure os impostos de venda de cada projeto para calcular a Receita Líquida

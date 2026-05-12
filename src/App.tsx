@@ -114,8 +114,8 @@ const App = () => {
                 
                 <Route path="audit-log" element={<AuditLogPage />} />
                 <Route path="power-bi" element={<PowerBIPage />} />
-                <Route path="mkp-parametros" element={<MkpParametrosPage />} />
-                <Route path="config-impostos" element={<ConfigImpostosPage />} />
+                <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
+                <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
               </Route>
 

@@ -79,7 +79,7 @@ export default function MkpParametrosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden">
         <h1 className="text-3xl font-bold tracking-tight">Parâmetros MKP — Percentuais por Projeto</h1>
         <p className="text-muted-foreground">
           Configure os % do orçamento/markup para comparação com resultado real

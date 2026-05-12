@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import ProjetosPage from "./Projetos";
 import SitesPage from "./Sites";
@@ -9,7 +9,11 @@ import ClientesPage from "./Clientes";
 import ContratosPage from "./Contratos";
 import AreasPage from "./Areas";
 import { usePermissions } from "@/hooks/usePermissions";
-import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText } from "lucide-react";
+import { FolderKanban, MapPin, FileSpreadsheet, Building2, ScrollText, Percent, Receipt, Loader2 } from "lucide-react";
+import React from "react";
+
+const MkpParametrosPage = React.lazy(() => import("../configuracoes/MkpParametros"));
+const ConfigImpostosPage = React.lazy(() => import("../configuracoes/ConfigImpostos"));
 
 export default function CadastrosPage() {
   const { canView } = usePermissions();
@@ -17,9 +21,11 @@ export default function CadastrosPage() {
   const showProjetos = canView("projetos");
   const showSites = canView("sites");
   const showLpu = canView("lpu");
-  const showClientes = true; // Todo: add strict permission later
+  const showClientes = true; 
   const showContratos = true;
   const showAreas = true;
+  const showMkp = true;
+  const showImpostos = true;
 
   const defaultValue = showContratos ? "contratos" : showAreas ? "areas" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
 
@@ -82,7 +88,23 @@ export default function CadastrosPage() {
               <FileSpreadsheet className="h-4 w-4" /> LPU
             </TabsTrigger>
           )}
+          {showMkp && (
+            <TabsTrigger value="mkp" className="flex items-center gap-2">
+              <Percent className="h-4 w-4" /> Parâmetros MKP
+            </TabsTrigger>
+          )}
+          {showImpostos && (
+            <TabsTrigger value="impostos" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" /> Alíquotas de Imposto
+            </TabsTrigger>
+          )}
         </TabsList>
+
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        }>
 
         {showContratos && (
           <TabsContent value="contratos" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
@@ -114,7 +136,18 @@ export default function CadastrosPage() {
             <LpuPage />
           </TabsContent>
         )}
-      </Tabs>
+        {showMkp && (
+          <TabsContent value="mkp" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <MkpParametrosPage />
+          </TabsContent>
+        )}
+        {showImpostos && (
+          <TabsContent value="impostos" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <ConfigImpostosPage />
+          </TabsContent>
+        )}
+      </Suspense>
+    </Tabs>
     </div>
   );
 }

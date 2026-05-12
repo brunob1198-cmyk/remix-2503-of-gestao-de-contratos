@@ -53,8 +53,6 @@ const menuItems: MenuItem[] = [
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
   { title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
-  { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true, group: "Configurações de Análise" },
-  { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true, group: "Configurações de Análise" },
 ];
 
 export function MedicoesSidebar() {
@@ -110,26 +108,7 @@ export function MedicoesSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {!collapsed && visibleItems.some(i => i.group === "Configurações de Análise") && (
-                <SidebarGroupLabel className="mt-4 px-3 text-[10px] uppercase font-bold text-muted-foreground/70 tracking-wider">
-                  Configurações de Análise
-                </SidebarGroupLabel>
-              )}
               
-              {visibleItems.filter(i => i.group === "Configurações de Análise").map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
-                      activeClassName="bg-accent text-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
 
               {/* Admin-only: Gerenciar Usuários */}
               {role === "admin" && (
