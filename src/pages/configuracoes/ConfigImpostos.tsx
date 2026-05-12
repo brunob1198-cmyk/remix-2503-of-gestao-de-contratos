@@ -126,13 +126,13 @@ export default function ConfigImpostosPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center h-24 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredImpostos?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center h-24 text-muted-foreground">
                   Nenhuma configuração encontrada.
                 </TableCell>
               </TableRow>
