@@ -83,18 +83,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
             </AlertDescription>
           </Alert>
         )}
-        {alerts.semImpostos > 0 && (
-          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Alíquotas ausentes</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{alerts.semImpostos} projeto(s) sem impostos.</span>
-              <Button variant="link" size="sm" className="h-auto p-0 text-destructive font-bold">
-                <Settings className="h-3 w-3 mr-1" /> Configurar Impostos →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
       </div>
 
       <Card>
