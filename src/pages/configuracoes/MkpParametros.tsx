@@ -136,7 +136,7 @@ export default function MkpParametrosPage() {
               </TableRow>
             ) : filteredParametros?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
                   Nenhum parâmetro encontrado.
                 </TableCell>
               </TableRow>
