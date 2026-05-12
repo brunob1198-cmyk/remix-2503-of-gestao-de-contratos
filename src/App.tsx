@@ -103,9 +103,10 @@ const App = () => {
                 <Route path="acompanhamento" element={<ErrorBoundary><AcompanhamentoMedicoesPage /></ErrorBoundary>} />
                 <Route path="recursos" element={<RecursosPage />} />
                 <Route path="relatorios" element={<RelatoriosPage />} />
-                <Route path="integracao-erp" element={<IntegracaoErpPage />} />
-                <Route path="integracao-flash" element={<IntegracaoFlashPage />} />
-                <Route path="normalizacao-flash" element={<NormalizacaoFlashPage />} />
+                <Route path="integracao" element={<IntegracaoPage />} />
+                <Route path="integracao-erp" element={<Navigate to="/medicoes/integracao?tab=erp" replace />} />
+                <Route path="integracao-flash" element={<Navigate to="/medicoes/integracao?tab=flash" replace />} />
+                <Route path="normalizacao-flash" element={<Navigate to="/medicoes/integracao?tab=normalizacao" replace />} />
                 <Route path="rdo" element={<RdoPage />} />
                 <Route path="usuarios" element={<GerenciarUsuariosPage />} />
                 <Route path="planejamento" element={<PlanejamentoObraPage />} />
