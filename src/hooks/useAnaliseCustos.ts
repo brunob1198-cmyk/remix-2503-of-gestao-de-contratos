@@ -605,8 +605,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           .filter(p => {
             if (p.projeto_id !== projetoId) return false;
             try {
-              const d = parseISO(p.data_producao);
+              const dStr = p.data_producao;
+              if (!dStr) return false;
+              // data_producao usually comes as YYYY-MM-DD
+              const d = parseISO(dStr);
               return d >= monthStart && d <= monthEnd;
+
             } catch (e) {
               return false;
             }
