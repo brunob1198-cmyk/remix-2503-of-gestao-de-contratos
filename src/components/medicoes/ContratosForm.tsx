@@ -154,7 +154,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       numero_contrato: contratoPaiId === "none" ? (numeroContrato || undefined) : undefined,
       contrato_pai_id: contratoPaiId === "none" ? undefined : contratoPaiId,
       cliente_ids: clienteIds.length > 0 ? clienteIds : undefined,
-      valor_total: valorTotal ? parseFloat(valorTotal.replace(",", ".")) : undefined,
+      valor_total: valorTotal ? parseFloat(cleanCurrencyOrNumber(valorTotal)) : undefined,
       prazo_inicio: prazoInicio || undefined,
       prazo_fim: prazoFim || undefined,
       escopo,
