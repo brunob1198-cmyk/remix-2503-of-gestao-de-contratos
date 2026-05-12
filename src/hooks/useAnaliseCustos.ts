@@ -479,7 +479,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")
-        .select("id, codigo, nome, area_analise, cliente_id, clientes(nome)")
+        .select("id, codigo, nome, area_analise, cliente_id, clientes(*), areas(*)")
         .in("id", projetoIds);
       return data || [];
     },
@@ -509,7 +509,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const projetoId = projeto.id;
       const mkp = mkpParams.find(m => m.projeto_id === projetoId);
       const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
-      const clienteNome = (projeto as any).clientes?.nome || 'N/A';
+      const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || 'N/A';
+      const areaNome = (projeto as any).areas?.nome || projeto.area_analise || 'N/A';
       
       periodMonths.forEach(monthStr => {
         const monthStart = startOfMonth(parseISO(monthStr));
@@ -570,7 +571,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           projetoId,
           projetoCodigo: projeto.codigo || '',
           projetoNome: projeto.nome,
-          area: projeto.area_analise || 'N/A',
+          area: areaNome,
           cliente: clienteNome,
           referencia: monthLabel,
           poc,
