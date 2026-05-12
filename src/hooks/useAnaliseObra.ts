@@ -77,9 +77,14 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
     queryFn: async () => {
       if (!projetoId) return null;
 
-      // If filterSiteId is provided, it means projetoId is actually a siteId — resolve the project
+      // Ensure we have the correct projeto_id. 
+      // In some cases, projetoId might be passed as a siteId if incorrectly linked in UI,
+      // but usuallyprojetoId is the actual projeto.id.
       let resolvedProjetoId = projetoId;
-      if (filterSiteId) {
+      
+      // If we are filtering by site, and projetoId is not set or seems like a site ID, 
+      // we double check it.
+      if (filterSiteId && (!projetoId || projetoId === filterSiteId)) {
         const { data: siteData } = await supabase.from("sites").select("projeto_id").eq("id", filterSiteId).maybeSingle();
         if (siteData) resolvedProjetoId = siteData.projeto_id;
       }
