@@ -1295,7 +1295,7 @@ export default function NormalizacaoFlashPage() {
                     ref={parentRef}
                     className="overflow-x-auto relative min-h-[500px] max-h-[70vh] overflow-y-auto"
                   >
-                    <Table className="table-fixed">
+                    <Table className="table-fixed min-w-[2150px]">
                       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                         <TableRow>
                           <TableHead className="w-[40px]">
