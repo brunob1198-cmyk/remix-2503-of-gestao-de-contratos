@@ -723,6 +723,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             inss: poc * (impostosProjeto?.perc_inss ?? 0),
             dara: poc * (impostosProjeto?.perc_dara ?? 0),
             icms: poc * (impostosProjeto?.perc_icms ?? 0),
+            irpj: poc * (impostosProjeto?.perc_irpj ?? 0),
+            csll: poc * (impostosProjeto?.perc_csll ?? 0),
             totalPerc: totalPercImpostos,
             totalReais: impostosReais
           },
