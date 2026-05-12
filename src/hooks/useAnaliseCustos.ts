@@ -548,8 +548,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         // Custos do mês
         const projetoCustosMes = (custosErp || []).filter(c => {
           if (c.projeto_id !== projetoId || !c.data_competencia) return false;
-          const d = parseISO(c.data_competencia);
-          return d >= monthStart && d <= monthEnd;
+          try {
+            const d = parseISO(c.data_competencia);
+            return d >= monthStart && d <= monthEnd;
+          } catch (e) {
+            return false;
+          }
         });
 
         const custosGerencia = projetoCustosMes.filter(c => c.categoria_analise === 'GERENCIA');
