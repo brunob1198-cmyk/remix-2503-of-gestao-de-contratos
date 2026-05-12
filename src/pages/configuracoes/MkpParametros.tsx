@@ -145,9 +145,8 @@ export default function MkpParametrosPage() {
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.projetos?.nome}</div>
-                    <div className="text-xs text-muted-foreground">{p.obra_codigo}</div>
                   </TableCell>
-                  <TableCell className="capitalize">{p.area?.replace("_", " ") || "—"}</TableCell>
+                  <TableCell className="capitalize">{p.area || "—"}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_custo_direto)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_gerencia)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_risco)}</TableCell>

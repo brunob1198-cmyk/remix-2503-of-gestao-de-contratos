@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAreas } from "@/hooks/useAreas";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -30,16 +31,13 @@ interface MkpParametrosModalProps {
   id: string | null;
 }
 
-const AREAS = [
-  "EQUIP", "REDE_TELECOM", "REDE_ITS", "ITS", "O_M", 
-  "PROJETO", "INFRA", "SOLAR", "LOCACAO"
-];
+// Removida a constante estática AREAS, agora buscamos do banco de dados via hook useAreas
 
 export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { areas } = useAreas();
   const [projetoId, setProjetoId] = useState("");
-  const [obraCodigo, setObraCodigo] = useState("");
   const [area, setArea] = useState("");
   
   const [percCustoDireto, setPercCustoDireto] = useState(0);
@@ -92,7 +90,6 @@ export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalPr
   useEffect(() => {
     if (editingData) {
       setProjetoId(editingData.projeto_id || "");
-      setObraCodigo(editingData.obra_codigo || "");
       setArea(editingData.area || "");
       setPercCustoDireto(editingData.perc_custo_direto * 100);
       setPercGerencia(editingData.perc_gerencia * 100);
@@ -101,7 +98,6 @@ export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalPr
       setPercInflacao(editingData.perc_inflacao * 100);
     } else {
       setProjetoId("");
-      setObraCodigo("");
       setArea("");
       setPercCustoDireto(0);
       setPercGerencia(0);
@@ -120,7 +116,6 @@ export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalPr
     mutationFn: async () => {
       const payload = {
         projeto_id: projetoId,
-        obra_codigo: obraCodigo,
         area,
         perc_custo_direto: percCustoDireto / 100,
         perc_gerencia: percGerencia / 100,
@@ -191,25 +186,16 @@ export function MkpParametrosModal({ isOpen, onClose, id }: MkpParametrosModalPr
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Código da Obra</Label>
-            <Input 
-              placeholder="Ex: E034.24" 
-              value={obraCodigo} 
-              onChange={(e) => setObraCodigo(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2">
             <Label>Área</Label>
             <Select value={area} onValueChange={setArea}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione a área" />
               </SelectTrigger>
               <SelectContent>
-                {AREAS.map((a) => (
-                  <SelectItem key={a} value={a}>
-                    {a.replace("_", " ")}
+                {areas?.map((a) => (
+                  <SelectItem key={a.id} value={a.nome}>
+                    {a.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
