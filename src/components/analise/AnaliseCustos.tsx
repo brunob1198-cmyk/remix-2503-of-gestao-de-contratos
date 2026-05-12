@@ -43,6 +43,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const sum = analiseRows.reduce((acc, r) => ({
       poc: acc.poc + r.poc,
       producaoLiquida: acc.producaoLiquida + r.producaoLiquida,
+      moObra: acc.moObra + r.moObra,
+      materiais: acc.materiais + r.materiais,
+      transporte: acc.transporte + r.transporte,
+      equipamentos: acc.equipamentos + r.equipamentos,
+      indiretos: acc.indiretos + r.indiretos,
       custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
       gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
@@ -50,7 +55,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       mbOrcada: acc.mbOrcada + r.mbOrcada,
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
-      poc: 0, producaoLiquida: 0, custoDiretoReal: 0, custoDiretoOrcado: 0,
+      poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
+      equipamentos: 0, indiretos: 0,
+      custoDiretoReal: 0, custoDiretoOrcado: 0,
       gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
     });
 
@@ -116,7 +123,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               <tr className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-left">Identificação</th>
                 <th colSpan={3} className="py-2 px-4 border-b border-r text-center bg-green-50 text-green-700">Receita</th>
-                <th colSpan={6} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
+                <th colSpan={8} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-center bg-amber-50 text-amber-700">Gerência</th>
                 <th colSpan={5} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
@@ -132,6 +139,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-blue-50">MO</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Mat.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Transp.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-50">Equip.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-50">Indir.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50 text-muted-foreground/60 font-normal">Orçado</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-50">Δ Direto</th>
@@ -227,6 +236,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.moObra)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.materiais)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.transporte)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.equipamentos)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.indiretos)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30 font-bold">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/30 text-muted-foreground/60">{formatCurrency(row.custoDiretoOrcado)}</td>
                     <td className={`py-2 px-4 border-b border-r bg-blue-50/30 font-medium ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
@@ -308,7 +319,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.poc)}</td>
                 <td className="py-3 px-4 border-r">---</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.producaoLiquida)}</td>
-                <td className="py-3 px-4 border-r" colSpan={3}>---</td>
+                <td className="py-3 px-4 border-r" colSpan={5}>---</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoReal)}</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoOrcado)}</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)}</td>
