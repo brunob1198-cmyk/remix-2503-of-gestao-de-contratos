@@ -212,18 +212,33 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
 
       const siteIds = siteId ? [siteId] : sitesData.map(s => s.id);
 
-      const { data: escopoItens } = await supabase
+      const { data: escopoItens, error: escopoError } = await supabase
         .from("escopo_itens")
-        .select("quantidade, custo_unitario, valor_unitario, item_lpu_id")
+        .select(`
+          quantidade, 
+          custo_unitario, 
+          valor_unitario, 
+          item_lpu_id,
+          item_lpu:itens_lpu (
+            bdi
+          )
+        `)
         .in("site_id", siteIds);
 
-      if (!escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
+      if (escopoError || !escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
 
       let custoOrcado = 0;
       let valorProduzido = 0;
       for (const item of escopoItens) {
-        custoOrcado += Number(item.custo_unitario || 0) * Number(item.quantidade || 0);
-        valorProduzido += Number(item.valor_unitario || 0) * Number(item.quantidade || 0);
+        const quantidade = Number(item.quantidade || 0);
+        const valorUnitario = Number(item.valor_unitario || 0);
+        const bdiItem = Number((item.item_lpu as any)?.bdi || 0);
+        
+        // Se houver BDI no item, o custo unitário orçado é o valor unitário / BDI
+        const custoUnitarioCalculado = bdiItem > 0 ? (valorUnitario / bdiItem) : Number(item.custo_unitario || 0);
+        
+        custoOrcado += custoUnitarioCalculado * quantidade;
+        valorProduzido += valorUnitario * quantidade;
       }
       return { custoOrcado, valorProduzido };
     },
