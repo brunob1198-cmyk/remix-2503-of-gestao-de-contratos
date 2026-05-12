@@ -101,7 +101,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th colSpan={4} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
               <tr className="bg-muted text-muted-foreground font-semibold text-center h-12">
-                <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-10 bg-muted">FCA</th>
+                <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-20 bg-muted">FCA</th>
                 <th className="py-3 px-4 border-b border-r text-left">Referência</th>
                 <th className="py-3 px-4 border-b border-r text-left">Área</th>
                 <th className="py-3 px-4 border-b border-r text-left">Projeto</th>
@@ -140,7 +140,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               ) : (
                 analiseRows.map((row, idx) => (
                   <tr key={`${row.projetoId}-${idx}`} className="hover:bg-muted/30 transition-colors text-right">
-                    <td className="py-2 px-4 border-b border-r text-center sticky left-0 z-10 bg-background">
+                    <td className="py-2 px-4 border-b border-r text-center sticky left-0 z-20 bg-background">
                       <Button 
                         variant="ghost" 
                         size="icon" 
