@@ -249,25 +249,23 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 ))
               )}
             </tbody>
-            <tfoot className={`font-bold text-right sticky bottom-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t-2 ${
-              totals.percMbReal >= totals.percMbMkp ? 'bg-green-100 text-green-900 border-green-200' : 'bg-red-100 text-red-900 border-red-200'
-            }`}>
+            <tfoot className="font-bold text-right sticky bottom-0 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] border-t-2 bg-slate-100 text-slate-900 border-slate-200">
               <tr>
                 <td colSpan={5} className="py-3 px-4 text-left uppercase text-[10px] tracking-wider">Totais do Período</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.poc)}</td>
-                <td className="py-3 px-4 border-r">---</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.producaoLiquida)}</td>
-                <td className="py-3 px-4 border-r" colSpan={5}>---</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoReal)}</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoOrcado)}</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)}</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.gerenciaReal)}</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.gerenciaOrcada)}</td>
-                <td className="py-3 px-4 border-r" colSpan={3}>---</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.mbOrcada)}</td>
-                <td className="py-3 px-4 border-r">{formatCurrency(totals.mbRealizada)}</td>
-                <td className="py-3 px-4 border-r">{formatPercent(totals.percMbOrcada)}</td>
-                <td className="py-3 px-4">{formatPercent(totals.percMbReal)}</td>
+                <td className="py-3 px-4 border-r bg-green-100/80">{formatCurrency(totals.poc)}</td>
+                <td className="py-3 px-4 border-r bg-green-100/80">---</td>
+                <td className="py-3 px-4 border-r bg-green-100/80">{formatCurrency(totals.producaoLiquida)}</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80" colSpan={5}>---</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoReal)}</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80 text-slate-900/60">{formatCurrency(totals.custoDiretoOrcado)}</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)}</td>
+                <td className="py-3 px-4 border-r bg-amber-100/80">{formatCurrency(totals.gerenciaReal)}</td>
+                <td className="py-3 px-4 border-r bg-amber-100/80 text-slate-900/60">{formatCurrency(totals.gerenciaOrcada)}</td>
+                <td className="py-3 px-4 border-r bg-amber-100/80" colSpan={3}>---</td>
+                <td className="py-3 px-4 border-r bg-slate-200/80">{formatCurrency(totals.mbOrcada)}</td>
+                <td className={`py-3 px-4 border-r bg-slate-200/80 ${totals.mbRealizada >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(totals.mbRealizada)}</td>
+                <td className="py-3 px-4 border-r bg-slate-200/80">{formatPercent(totals.percMbOrcada)}</td>
+                <td className={`py-3 px-4 bg-slate-200/80 ${totals.percMbReal >= totals.percMbMkp ? 'text-green-700' : 'text-red-700'}`}>{formatPercent(totals.percMbReal)}</td>
               </tr>
             </tfoot>
           </table>
