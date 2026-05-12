@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BarChart3, Calculator, ClipboardList, ChevronDown, X, RefreshCw } from "lucide-react";
+import { BarChart3, Calculator, ClipboardList, ChevronDown, X, RefreshCw, Settings2, CheckCircle2, AlertCircle, SearchIcon } from "lucide-react";
 import { VisaoExecutiva } from "@/components/analise/VisaoExecutiva";
 import { AnaliseCustos } from "@/components/analise/AnaliseCustos";
 import { CustosErp } from "@/components/analise/CustosErp";
+import { ConfigDrawer } from "@/components/analise/ConfigDrawer";
 import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ export default function AnaliseObraPage() {
   const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>("analise_periodo_fim", endOfMonth(new Date()).toISOString());
   const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("analise_last_updated", null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   const periodoInicio = useMemo(() => new Date(periodoInicioStr), [periodoInicioStr]);
   const periodoFim = useMemo(() => new Date(periodoFimStr), [periodoFimStr]);
@@ -96,6 +98,27 @@ export default function AnaliseObraPage() {
         ? `${selectedProjeto?.codigo} - ${selectedProjeto?.nome}`
         : `${selectedIds.length} projetos selecionados`;
 
+  // Fetch status for badges
+  const { data: statusData } = useQuery({
+    queryKey: ["projeto_config_status", selectedIds[0]],
+    queryFn: async () => {
+      if (!selectedIds[0]) return null;
+      
+      const [mkp, imp, ia] = await Promise.all([
+        supabase.from("mkp_parametros").select("id").eq("projeto_id", selectedIds[0]).maybeSingle(),
+        supabase.from("projeto_impostos").select("perc_total_impostos").eq("projeto_id", selectedIds[0]).maybeSingle(),
+        supabase.from("custos_erp").select("id", { count: 'exact', head: true }).eq("projeto_id", selectedIds[0]).eq("categoria_confirmada", false)
+      ]);
+
+      return {
+        mkpConfigured: !!mkp.data,
+        impostos: imp.data?.perc_total_impostos,
+        iaPending: ia.count || 0
+      };
+    },
+    enabled: selectedIds.length === 1
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -143,6 +166,17 @@ export default function AnaliseObraPage() {
             </ScrollArea>
           </PopoverContent>
         </Popover>
+
+        {selectedIds.length === 1 && (
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setIsConfigOpen(true)}
+            title="Configurar Parâmetros"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        )}
 
         <MonthRangePicker
           startDate={periodoInicio}
@@ -192,6 +226,32 @@ export default function AnaliseObraPage() {
         )}
       </div>
 
+      {selectedIds.length === 1 && statusData && (
+        <div className="flex gap-2 -mt-4 animate-in fade-in slide-in-from-top-1">
+          <Badge variant={statusData.mkpConfigured ? "outline" : "destructive"} className={statusData.mkpConfigured ? "bg-green-50 text-green-700 border-green-200" : ""}>
+            {statusData.mkpConfigured ? (
+              <><CheckCircle2 className="h-3 w-3 mr-1" /> MKP configurado</>
+            ) : (
+              <><AlertCircle className="h-3 w-3 mr-1" /> MKP não configurado</>
+            )}
+          </Badge>
+          
+          <Badge variant={statusData.impostos !== undefined ? "outline" : "destructive"} className={statusData.impostos !== undefined ? "bg-green-50 text-green-700 border-green-200" : ""}>
+            {statusData.impostos !== undefined ? (
+              <><CheckCircle2 className="h-3 w-3 mr-1" /> Impostos: {(statusData.impostos * 100).toFixed(2)}%</>
+            ) : (
+              <><AlertCircle className="h-3 w-3 mr-1" /> Impostos não configurados</>
+            )}
+          </Badge>
+
+          {statusData.iaPending > 0 && (
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+              <SearchIcon className="h-3 w-3 mr-1" /> {statusData.iaPending} pendentes IA
+            </Badge>
+          )}
+        </div>
+      )}
+
       {selectedIds.length === 0 ? (
         <div className="flex items-center justify-center h-64 text-muted-foreground">
           Selecione um ou mais projetos para ver a análise
@@ -236,6 +296,14 @@ export default function AnaliseObraPage() {
             );
           })}
         </Tabs>
+      )}
+
+      {selectedIds[0] && (
+        <ConfigDrawer 
+          projetoId={selectedIds[0]} 
+          isOpen={isConfigOpen} 
+          onOpenChange={setIsConfigOpen} 
+        />
       )}
     </div>
   );
