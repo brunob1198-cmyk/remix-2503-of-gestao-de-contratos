@@ -214,6 +214,32 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {selectedIds.size > 0 && (
+              <Select onValueChange={(val) => {
+                const updates = Array.from(selectedIds).map(id => {
+                  const item = custosErp.find(c => c.id === id);
+                  return {
+                    erp_id: item?.erp_id || "",
+                    categoria_interna: val,
+                    categoria_erp: item?.categoria_erp || ""
+                  };
+                }).filter(u => u.erp_id);
+                
+                updateBulkCategorias.mutate(updates, {
+                  onSuccess: () => setSelectedIds(new Set())
+                });
+              }}>
+                <SelectTrigger className="h-9 w-[180px] bg-primary text-primary-foreground border-none">
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={`Alterar ${selectedIds.size} itens`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_PADRAO.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={filteredItems.length === 0}>
               <Download className="h-4 w-4 mr-1" /> Exportar
             </Button>
