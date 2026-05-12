@@ -267,11 +267,12 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <Badge variant="secondary" className={`font-bold border shadow-sm ${
+                            <Badge variant="secondary" className={`font-bold border shadow-sm whitespace-nowrap ${
                               row.percMbReal >= row.percMbMkp ? 'bg-green-50 text-green-700 border-green-200' : 
                               row.percMbReal >= row.percMbMkp * 0.85 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
                             }`}>
-                              {row.percMbReal >= row.percMbMkp ? '▲' : row.percMbReal >= row.percMbMkp * 0.85 ? '≈' : '▼'} {formatPercent(row.percMbReal)}
+                              {row.percMbReal >= row.percMbMkp ? '▲ acima do alvo' : row.percMbReal >= row.percMbMkp * 0.85 ? '≈ próximo do alvo' : '▼ abaixo do alvo'}
+                              <span className="ml-1 opacity-70">({formatPercent(row.percMbReal)})</span>
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent className="p-3">
