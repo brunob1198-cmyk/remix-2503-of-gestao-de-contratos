@@ -23,6 +23,8 @@ export interface AnaliseCustosRow {
     inss: number;
     dara: number;
     icms: number;
+    irpj: number;
+    csll: number;
     totalPerc: number;          // soma dos percentuais
     totalReais: number;         // poc * totalPerc
   };
