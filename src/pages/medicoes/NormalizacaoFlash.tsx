@@ -1534,7 +1534,7 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-right text-xs font-medium tabular-nums">
                                 {formatCurrency(row.valor)}
                               </TableCell>
-                              <TableCell className="text-xs truncate max-w-[120px]">{row.usuario}</TableCell>
+                              <TableCell className="text-xs truncate w-[140px]">{row.usuario}</TableCell>
                               <TableCell className="text-xs truncate max-w-[150px]">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
