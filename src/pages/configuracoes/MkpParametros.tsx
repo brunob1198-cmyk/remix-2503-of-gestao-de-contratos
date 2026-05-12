@@ -120,6 +120,7 @@ export default function MkpParametrosPage() {
               <TableHead className="text-right">% Gerência</TableHead>
               <TableHead className="text-right">% Risco</TableHead>
               <TableHead className="text-right">% Trein.</TableHead>
+              <TableHead className="text-right">% Inflação</TableHead>
               <TableHead className="text-right">% MB Alvo</TableHead>
               <TableHead className="text-right">BDI</TableHead>
               <TableHead>Atualizado</TableHead>
