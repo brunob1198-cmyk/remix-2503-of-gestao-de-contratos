@@ -109,20 +109,6 @@ export function MedicoesSidebar() {
               ))}
 
               
-              {visibleItems.filter(i => i.group === "Configurações de Análise").map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
-                      activeClassName="bg-accent text-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
 
               {/* Admin-only: Gerenciar Usuários */}
               {role === "admin" && (
