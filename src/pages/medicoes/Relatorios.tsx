@@ -22,6 +22,8 @@ import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoes
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 type CrossType = "producao_medicao" | "medicao_faturamento" | "producao_faturamento";
 type CrossSortField = "projeto" | "site" | "nome" | "origem" | "destino" | "diferenca";
 type SortDirection = "asc" | "desc";
@@ -37,6 +39,7 @@ export default function RelatoriosPage() {
   const [crossSortDirection, setCrossSortDirection] = useState<SortDirection>("asc");
   const [crossProjetoFilter, setCrossProjetoFilter] = useState<string>("");
   const [crossSiteFilter, setCrossSiteFilter] = useState<string>("");
+  const { empresaId } = useAuth();
 
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -47,11 +50,19 @@ export default function RelatoriosPage() {
 
   // Production data from Diário de Obra (RDO) — source of truth for "Total Produzido"
   const { data: diarioProducao = [] } = useQuery({
-    queryKey: ["diario_producao_cruzado"],
+    queryKey: ["diario_producao_cruzado", projetoId, empresaId],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from("diarios_obra")
-        .select("id, data, site_id, observacoes, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))");
+        .select("id, data, site_id, observacoes, site:sites!inner(id, codigo, nome, projeto_id, projeto:projetos!inner(id, codigo, empresa_id))");
+      
+      if (empresaId) {
+        query = query.eq("site.projeto.empresa_id", empresaId);
+      }
+      
+      if (projetoId) {
+        query = query.eq("site.projeto_id", projetoId);
+      }
       
       const diarios = await fetchAllPages<any>(query);
       if (!diarios || diarios.length === 0) return [];
