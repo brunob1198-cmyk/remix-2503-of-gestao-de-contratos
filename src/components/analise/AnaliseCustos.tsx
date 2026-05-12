@@ -175,13 +175,13 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r text-left">{row.cliente}</td>
 
                     {/* RECEITA */}
-                    <td className={`py-2 px-4 border-b border-r bg-green-50/30 ${row.poc > 0 ? 'text-green-600 font-bold' : ''}`}>
+                    <td className={`py-2 px-4 border-b border-r bg-green-50/50 ${row.poc > 0 ? 'text-green-700 font-bold' : ''}`}>
                       {formatCurrency(row.poc)}
                     </td>
-                    <td className="py-2 px-4 border-b border-r bg-green-50/30 text-center">
+                    <td className="py-2 px-4 border-b border-r bg-green-50/50 text-center">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger className="underline decoration-dotted cursor-help">
+                          <TooltipTrigger className="underline decoration-dotted cursor-help text-green-700">
                             {formatPercent(row.impostos.totalPerc)}
                           </TooltipTrigger>
                           <TooltipContent className="p-3 leading-relaxed">
@@ -200,19 +200,19 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         </Tooltip>
                       </TooltipProvider>
                     </td>
-                    <td className="py-2 px-4 border-b border-r bg-green-50/30 font-bold">
+                    <td className="py-2 px-4 border-b border-r bg-green-50/50 font-bold text-green-700">
                       {formatCurrency(row.producaoLiquida)}
                     </td>
 
                     {/* CUSTO DIRETO */}
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.moObra)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.materiais)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.transporte)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.equipamentos)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30">{formatCurrency(row.indiretos)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30 font-bold">{formatCurrency(row.custoDiretoReal)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/30 text-muted-foreground/60">{formatCurrency(row.custoDiretoOrcado)}</td>
-                    <td className={`py-2 px-4 border-b border-r bg-blue-50/30 font-medium ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.moObra)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.materiais)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.transporte)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.equipamentos)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.indiretos)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 font-bold text-blue-700">{formatCurrency(row.custoDiretoReal)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700/60">{formatCurrency(row.custoDiretoOrcado)}</td>
+                    <td className={`py-2 px-4 border-b border-r bg-blue-50/50 font-bold ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                       <div className="flex items-center justify-end gap-1">
                         {row.deltaDireto > 0 ? <ArrowDown className="h-3 w-3" /> : row.deltaDireto < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                         {row.deltaDireto === 0 ? "—" : formatCurrency(Math.abs(row.deltaDireto))}
@@ -220,30 +220,31 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     </td>
 
                     {/* GERENCIA */}
-                    <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-amber-700 font-bold">
+                    <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700 font-bold">
                       <div className="flex flex-col items-end gap-1">
                         {formatCurrency(row.gerenciaReal)}
                       </div>
                     </td>
-                    <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-muted-foreground/60">{formatCurrency(row.gerenciaOrcada)}</td>
-                    <td className={`py-2 px-4 border-b border-r bg-amber-50/30 font-medium ${row.deltaGerencia > 0 ? 'text-green-600' : row.deltaGerencia < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                    <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700/60">{formatCurrency(row.gerenciaOrcada)}</td>
+                    <td className={`py-2 px-4 border-b border-r bg-amber-50/50 font-bold ${row.deltaGerencia > 0 ? 'text-green-600' : row.deltaGerencia < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                       <div className="flex items-center justify-end gap-1">
                         {row.deltaGerencia > 0 ? <ArrowDown className="h-3 w-3" /> : row.deltaGerencia < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                         {row.deltaGerencia === 0 ? "—" : formatCurrency(Math.abs(row.deltaGerencia))}
                       </div>
                     </td>
-                    <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-amber-700">{formatPercent(row.percGerenciaReal)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-muted-foreground/60">{formatPercent(row.percGerenciaOrcada)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700">{formatPercent(row.percGerenciaReal)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700/60">{formatPercent(row.percGerenciaOrcada)}</td>
 
                     {/* MB */}
-                    <td className="py-2 px-4 border-b border-r bg-gray-50/30 text-muted-foreground">{formatCurrency(row.mbOrcada)}</td>
-                    <td className={`py-2 px-4 border-b border-r bg-gray-50/30 font-bold ${row.mbRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className="py-2 px-4 border-b border-r bg-slate-50/50 text-slate-600">{formatCurrency(row.mbOrcada)}</td>
+                    <td className={`py-2 px-4 border-b border-r bg-slate-50/50 font-bold ${row.mbRealizada >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {formatCurrency(row.mbRealizada)}
                     </td>
-                    <td className="py-2 px-4 border-b border-r bg-gray-50/30 text-muted-foreground">{formatPercent(row.percMbOrcada)}</td>
-                    <td className={`py-2 px-4 border-b bg-gray-50/30 font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className="py-2 px-4 border-b border-r bg-slate-50/50 text-slate-600">{formatPercent(row.percMbOrcada)}</td>
+                    <td className={`py-2 px-4 border-b bg-slate-50/50 font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-700' : 'text-red-700'}`}>
                       {formatPercent(row.percMbReal)}
                     </td>
+
                   </tr>
                 ))
               )}
