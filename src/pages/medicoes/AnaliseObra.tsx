@@ -107,7 +107,7 @@ export default function AnaliseObraPage() {
       const [mkp, imp, ia] = await Promise.all([
         supabase.from("mkp_parametros").select("id").eq("projeto_id", selectedIds[0]).maybeSingle(),
         supabase.from("projeto_impostos").select("perc_total_impostos").eq("projeto_id", selectedIds[0]).maybeSingle(),
-        supabase.from("custos_erp").select("id", { count: 'exact', head: true }).eq("projeto_id", selectedIds[0]).eq("categoria_confirmada", false)
+        supabase.from("custo_real_erp").select("id", { count: 'exact', head: true }).eq("projeto_id", selectedIds[0]).eq("categoria_confirmada", false)
       ]);
 
       return {
