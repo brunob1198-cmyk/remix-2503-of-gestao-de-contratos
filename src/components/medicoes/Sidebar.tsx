@@ -17,7 +17,7 @@ import {
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
-  Percent,
+  Percent, Settings2,
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -31,6 +31,7 @@ interface MenuItem {
   telaId?: string; // maps to permission tela
   telaIds?: string[]; // allows multiple permission checks
   adminOnly?: boolean;
+  group?: string;
 }
 
 const menuItems: MenuItem[] = [
@@ -54,8 +55,8 @@ const menuItems: MenuItem[] = [
   { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
   { title: "Integração Flash", url: "/medicoes/integracao-flash", icon: Zap, adminOnly: true },
   { title: "Normalização Flash", url: "/medicoes/normalizacao-flash", icon: Wand2, adminOnly: true },
-  { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true },
-  { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true },
+  { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true, group: "Configurações de Análise" },
+  { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true, group: "Configurações de Análise" },
 ];
 
 export function MedicoesSidebar() {
@@ -96,7 +97,28 @@ export function MedicoesSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleItems.map((item) => (
+              {visibleItems.filter(i => !i.group).map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild tooltip={item.title}>
+                    <NavLink
+                      to={item.url}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                      activeClassName="bg-accent text-accent-foreground font-medium"
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+
+              {!collapsed && visibleItems.some(i => i.group === "Configurações de Análise") && (
+                <SidebarGroupLabel className="mt-4 px-3 text-[10px] uppercase font-bold text-muted-foreground/70 tracking-wider">
+                  Configurações de Análise
+                </SidebarGroupLabel>
+              )}
+              
+              {visibleItems.filter(i => i.group === "Configurações de Análise").map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
