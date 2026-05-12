@@ -38,9 +38,7 @@ import AuditLogPage from "./pages/medicoes/AuditLog";
 // Lazy Loaded Pages
 const RecursosPage = React.lazy(() => import("./pages/medicoes/Recursos"));
 const AnaliseObraPage = React.lazy(() => import("./pages/medicoes/AnaliseObra"));
-const IntegracaoErpPage = React.lazy(() => import("./pages/medicoes/IntegracaoErp"));
-const IntegracaoFlashPage = React.lazy(() => import("./pages/medicoes/IntegracaoFlash"));
-const NormalizacaoFlashPage = React.lazy(() => import("./pages/medicoes/NormalizacaoFlash"));
+const IntegracaoPage = React.lazy(() => import("./pages/medicoes/Integracao"));
 const RdoPage = React.lazy(() => import("./pages/medicoes/Rdo"));
 const PlanejamentoObraPage = React.lazy(() => import("./pages/medicoes/PlanejamentoObra"));
 const PowerBIPage = React.lazy(() => import("./pages/medicoes/PowerBI"));
