@@ -494,34 +494,47 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     // Helper to get all months between start and end
     const getMonths = (start: string, end: string) => {
       const months = [];
-      let curr = startOfMonth(parseISO(start));
-      const last = startOfMonth(parseISO(end));
-      while (curr <= last) {
-        months.push(format(curr, "yyyy-MM-dd"));
-        curr = startOfMonth(new Date(curr.getFullYear(), curr.getMonth() + 1, 1));
+      try {
+        let curr = startOfMonth(parseISO(start));
+        const last = startOfMonth(parseISO(end));
+        // Safety break for infinite loops
+        let iterations = 0;
+        while (curr <= last && iterations < 120) {
+          months.push(format(curr, "yyyy-MM-dd"));
+          curr = startOfMonth(new Date(curr.getFullYear(), curr.getMonth() + 1, 1));
+          iterations++;
+        }
+      } catch (e) {
+        console.error("Error generating months:", e);
       }
       return months;
     };
 
     const periodMonths = getMonths(startDate, endDate);
 
-    projetosData.forEach(projeto => {
+    (projetosData || []).forEach(projeto => {
       const projetoId = projeto.id;
-      const mkp = mkpParams.find(m => m.projeto_id === projetoId);
-      const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
-      const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || 'N/A';
-      const areaNome = (projeto as any).areas?.nome || projeto.area_analise || 'N/A';
+      const mkp = (mkpParams || []).find(m => m.projeto_id === projetoId);
+      const impostosProjeto = (impostosData || []).find(i => i.projeto_id === projetoId);
+      const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || (projeto as any).cliente_id || 'N/A';
+      const areaNome = (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || 'N/A';
       
-      periodMonths.forEach(monthStr => {
+      (periodMonths || []).forEach(monthStr => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy');
 
         // Produção Bruta (POC) do mês
-        const poc = producaoData
-          .filter(p => p.projeto_id === projetoId && 
-                      parseISO(p.data_producao) >= monthStart && 
-                      parseISO(p.data_producao) <= monthEnd)
+        const poc = (producaoData || [])
+          .filter(p => {
+            if (p.projeto_id !== projetoId) return false;
+            try {
+              const d = parseISO(p.data_producao);
+              return d >= monthStart && d <= monthEnd;
+            } catch (e) {
+              return false;
+            }
+          })
           .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
         // Se não houver produção nem custos no mês, talvez pular? 
@@ -533,12 +546,15 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const producaoLiquida = poc - impostosReais;
 
         // Custos do mês
-        const projetoCustosMes = custosErp.filter(c => 
-          c.projeto_id === projetoId && 
-          c.data_competencia && 
-          parseISO(c.data_competencia) >= monthStart && 
-          parseISO(c.data_competencia) <= monthEnd
-        );
+        const projetoCustosMes = (custosErp || []).filter(c => {
+          if (c.projeto_id !== projetoId || !c.data_competencia) return false;
+          try {
+            const d = parseISO(c.data_competencia);
+            return d >= monthStart && d <= monthEnd;
+          } catch (e) {
+            return false;
+          }
+        });
 
         const custosGerencia = projetoCustosMes.filter(c => c.categoria_analise === 'GERENCIA');
         const custosDiretos = projetoCustosMes.filter(c => c.categoria_analise === 'DIRETO');
@@ -546,11 +562,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
         
-        const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const materiais = custosDiretos.filter(c => c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const equipamentos = custosDiretos.filter(c => c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const indiretos = custosDiretos.filter(c => c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const moObra = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const materiais = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const transporte = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const equipamentos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
         const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
