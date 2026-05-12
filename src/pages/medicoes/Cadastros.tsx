@@ -21,9 +21,11 @@ export default function CadastrosPage() {
   const showProjetos = canView("projetos");
   const showSites = canView("sites");
   const showLpu = canView("lpu");
-  const showClientes = true; // Todo: add strict permission later
+  const showClientes = true; 
   const showContratos = true;
   const showAreas = true;
+  const showMkp = true;
+  const showImpostos = true;
 
   const defaultValue = showContratos ? "contratos" : showAreas ? "areas" : showClientes ? "clientes" : showProjetos ? "projetos" : showSites ? "sites" : showLpu ? "lpu" : "";
 
