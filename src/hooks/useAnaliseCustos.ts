@@ -512,14 +512,14 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
     const periodMonths = getMonths(startDate, endDate);
 
-    projetosData.forEach(projeto => {
+    (projetosData || []).forEach(projeto => {
       const projetoId = projeto.id;
-      const mkp = mkpParams.find(m => m.projeto_id === projetoId);
-      const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
+      const mkp = (mkpParams || []).find(m => m.projeto_id === projetoId);
+      const impostosProjeto = (impostosData || []).find(i => i.projeto_id === projetoId);
       const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || (projeto as any).cliente_id || 'N/A';
       const areaNome = (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || 'N/A';
       
-      periodMonths.forEach(monthStr => {
+      (periodMonths || []).forEach(monthStr => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy');
@@ -562,11 +562,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
         
-        const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const materiais = custosDiretos.filter(c => c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const equipamentos = custosDiretos.filter(c => c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const indiretos = custosDiretos.filter(c => c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const moObra = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const materiais = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const transporte = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const equipamentos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
         const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
