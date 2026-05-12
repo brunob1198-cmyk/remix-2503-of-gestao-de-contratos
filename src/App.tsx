@@ -44,6 +44,7 @@ const NormalizacaoFlashPage = React.lazy(() => import("./pages/medicoes/Normaliz
 const RdoPage = React.lazy(() => import("./pages/medicoes/Rdo"));
 const PlanejamentoObraPage = React.lazy(() => import("./pages/medicoes/PlanejamentoObra"));
 const PowerBIPage = React.lazy(() => import("./pages/medicoes/PowerBI"));
+const MkpParametrosPage = React.lazy(() => import("./pages/configuracoes/MkpParametros"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -113,6 +114,7 @@ const App = () => {
                 
                 <Route path="audit-log" element={<AuditLogPage />} />
                 <Route path="power-bi" element={<PowerBIPage />} />
+                <Route path="mkp-parametros" element={<MkpParametrosPage />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
               </Route>
 
