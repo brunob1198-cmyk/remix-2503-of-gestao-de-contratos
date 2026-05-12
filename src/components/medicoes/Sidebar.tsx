@@ -55,6 +55,7 @@ const menuItems: MenuItem[] = [
   { title: "Integração Flash", url: "/medicoes/integracao-flash", icon: Zap, adminOnly: true },
   { title: "Normalização Flash", url: "/medicoes/normalizacao-flash", icon: Wand2, adminOnly: true },
   { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true },
+  { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true },
 ];
 
 export function MedicoesSidebar() {
