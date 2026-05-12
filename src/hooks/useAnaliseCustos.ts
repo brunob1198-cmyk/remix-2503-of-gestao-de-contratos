@@ -30,6 +30,8 @@ export interface AnaliseCustosRow {
   moObra: number;
   materiais: number;
   transporte: number;
+  equipamentos: number;
+  indiretos: number;
   custoDiretoReal: number;      // soma dos três acima — SEM gerência
   custoDiretoOrcado: number;    // poc * mkp.perc_custo_direto
   deltaDireto: number;          // orcado - real (+ = favorável)
@@ -511,8 +513,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       
       // Detalhamento Direto (exemplo simplificado, precisaria de mapeamento de categoria_interna)
       const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
-      const materiais = custosDiretos.filter(c => c.categoria_interna === 'Material').reduce((s, c) => s + Number(c.valor || 0), 0);
+      const materiais = custosDiretos.filter(c => c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
       const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
+      const equipamentos = custosDiretos.filter(c => c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
+      const indiretos = custosDiretos.filter(c => c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
       const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
       const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
@@ -550,6 +554,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         moObra,
         materiais,
         transporte,
+        equipamentos,
+        indiretos,
         custoDiretoReal,
         custoDiretoOrcado,
         deltaDireto: custoDiretoOrcado - custoDiretoReal,
