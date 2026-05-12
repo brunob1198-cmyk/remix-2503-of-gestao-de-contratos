@@ -167,6 +167,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                               <div className="flex justify-between gap-4"><span>INSS:</span> <span>{formatPercent((row.impostos.inss / (row.poc || 1)))}</span></div>
                               <div className="flex justify-between gap-4"><span>DARA:</span> <span>{formatPercent((row.impostos.dara / (row.poc || 1)))}</span></div>
                               <div className="flex justify-between gap-4"><span>ICMS:</span> <span>{formatPercent((row.impostos.icms / (row.poc || 1)))}</span></div>
+                              <div className="flex justify-between gap-4"><span>IRPJ:</span> <span>{formatPercent((row.impostos.irpj / (row.poc || 1)))}</span></div>
+                              <div className="flex justify-between gap-4"><span>CSLL:</span> <span>{formatPercent((row.impostos.csll / (row.poc || 1)))}</span></div>
                               <div className="border-t border-muted-foreground/30 my-1 pt-1 font-bold flex justify-between">
                                 <span>Total:</span> <span>{formatPercent(row.impostos.totalPerc)}</span>
                               </div>
