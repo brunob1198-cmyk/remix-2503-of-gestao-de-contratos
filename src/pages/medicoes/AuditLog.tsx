@@ -177,7 +177,7 @@ export default function AuditLogPage() {
               )}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
       </Card>
     </div>
   );
