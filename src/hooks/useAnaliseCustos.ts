@@ -569,6 +569,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthStart = parseISO(monthStr);
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
+        
+        // Debug para verificar por que os dados não aparecem
+        if (projeto.codigo === 'T011.25') {
+          console.log(`[Analise] Projeto: ${projeto.codigo}, Referência: ${monthLabel}, Inicio: ${format(monthStart, 'yyyy-MM-dd')}, Fim: ${format(monthEnd, 'yyyy-MM-dd')}`);
+        }
+
 
 
 
