@@ -570,7 +570,6 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
 
-        console.log(`Processando ${projeto.codigo} para ${monthLabel}. Produção total carregada:`, producaoData.length);
 
 
         // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
