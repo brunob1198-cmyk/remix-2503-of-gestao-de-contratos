@@ -77,9 +77,14 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
     queryFn: async () => {
       if (!projetoId) return null;
 
-      // If filterSiteId is provided, it means projetoId is actually a siteId — resolve the project
+      // Ensure we have the correct projeto_id. 
+      // In some cases, projetoId might be passed as a siteId if incorrectly linked in UI,
+      // but usuallyprojetoId is the actual projeto.id.
       let resolvedProjetoId = projetoId;
-      if (filterSiteId) {
+      
+      // If we are filtering by site, and projetoId is not set or seems like a site ID, 
+      // we double check it.
+      if (filterSiteId && (!projetoId || projetoId === filterSiteId)) {
         const { data: siteData } = await supabase.from("sites").select("projeto_id").eq("id", filterSiteId).maybeSingle();
         if (siteData) resolvedProjetoId = siteData.projeto_id;
       }
@@ -491,6 +496,40 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           fotos: itemFotos,
         });
       });
+
+      // Include items that are in prodByItem but NOT in escopoMap (Extra-plan production)
+      prodByItem.forEach((prod, itemLpuId) => {
+        if (!escopoMap.has(itemLpuId)) {
+          const executado = prod.quantidade;
+          const diasComProducao = prod.diasSet.size;
+          
+          let mediaDiaria = totalDiasObra > 0 ? executado / totalDiasObra : 0;
+          
+          const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
+          const item = dpSample?.item_lpu as any;
+
+          producaoItems.push({
+            itemLpuId,
+            codigo: item?.codigo || "Extra",
+            descricao: item?.descricao || "Item fora do escopo",
+            unidade: item?.unidade || "-",
+            planejado: 0,
+            executado,
+            saldo: -executado,
+            mediaDiaria,
+            mediaSemanal: mediaDiaria * 7,
+            mediaMensal: mediaDiaria * 30,
+            diasComProducao,
+            primeiraData: prod.primeiraData,
+            ultimaData: prod.ultimaData,
+            fotos: fotosData
+              .filter(f => f.diario_producao?.item_lpu_id === itemLpuId)
+              .map(f => f.url)
+              .slice(0, 5),
+          });
+        }
+      });
+
       producaoItems.sort((a, b) => b.executado - a.executado);
 
       return {
