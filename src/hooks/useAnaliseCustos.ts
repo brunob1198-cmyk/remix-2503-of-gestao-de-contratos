@@ -458,19 +458,40 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi", projetoIds, startDate, endDate],
+    queryKey: ["producao_poc_multi_v2", projetoIds, startDate, endDate],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-      // No banco temos lancamentos_producao que somados dão o POC do período
-      // Agrupamos por projeto e mês
-      const { data } = await supabase
-        .from("view_producao")
-        .select("projeto_id, valor_total, data_producao")
-        .in("projeto_id", projetoIds)
-        .gte("data_producao", startDate)
-        .lte("data_producao", endDate);
       
-      return data || [];
+      const { data, error } = await supabase
+        .from("diario_producao")
+        .select(`
+          valor_total,
+          item_lpu_id,
+          diario:diarios_obra (
+            data,
+            site:sites (
+              projeto_id
+            )
+          ),
+          item_lpu:itens_lpu (
+            bdi
+          )
+        `)
+        .gte("diarios_obra.data", startDate)
+        .lte("diarios_obra.data", endDate);
+
+      if (error) {
+        console.error("Erro ao buscar producaoData:", error);
+        return [];
+      }
+
+      // Flatten data for easier use
+      return (data || []).map(p => ({
+        projeto_id: (p.diario as any)?.site?.projeto_id,
+        valor_total: Number(p.valor_total || 0),
+        data_producao: (p.diario as any)?.data,
+        bdi_item: Number((p.item_lpu as any)?.bdi || 0)
+      })).filter(p => projetoIds.includes(p.projeto_id));
     },
     enabled: projetoIds.length > 0 && !!startDate
   });
