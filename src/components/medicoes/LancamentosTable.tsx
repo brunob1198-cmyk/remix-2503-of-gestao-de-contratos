@@ -406,7 +406,7 @@ export function LancamentosTable({ titulo, lancamentos, tipo, isLoading, onDelet
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedLancamentos.map((l) => {
+                {filteredAndSortedLancamentos.slice(0, 50).map((l) => {
                   const preco = Number(l.item_lpu?.preco_unitario || 0);
                   const valor = tipo === "faturamento" && l.valor_faturado 
                     ? Number(l.valor_faturado) 
