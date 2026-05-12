@@ -1491,6 +1491,12 @@ export default function NormalizacaoFlashPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                        {/* Spacers for virtualization */}
+                        {rowVirtualizer.getVirtualItems().length > 0 && (
+                          <TableRow style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px`, border: 0 }}>
+                            <TableCell colSpan={14} style={{ padding: 0 }} />
+                          </TableRow>
+                        )}
                         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                           const row = paginatedData[virtualRow.index];
                           if (!row) return null;
@@ -1502,8 +1508,7 @@ export default function NormalizacaoFlashPage() {
                               key={virtualRow.key} 
                               data-index={virtualRow.index}
                               ref={rowVirtualizer.measureElement}
-                              className={cn("absolute w-full", isEnviado && "opacity-80")}
-                              style={{ transform: `translateY(${virtualRow.start}px)` }}
+                              className={cn(isEnviado && "opacity-80")}
                             >
                               <TableCell>
                                 <Checkbox 
