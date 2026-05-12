@@ -540,8 +540,11 @@ export type Database = {
       }
       custo_real_erp: {
         Row: {
+          categoria_analise: string | null
+          categoria_confirmada: boolean | null
           categoria_erp: string
           categoria_interna: string
+          categoria_sugerida_ia: string | null
           centro_custo: string | null
           created_at: string | null
           data_competencia: string | null
@@ -556,8 +559,11 @@ export type Database = {
           valor: number
         }
         Insert: {
+          categoria_analise?: string | null
+          categoria_confirmada?: boolean | null
           categoria_erp?: string
           categoria_interna?: string
+          categoria_sugerida_ia?: string | null
           centro_custo?: string | null
           created_at?: string | null
           data_competencia?: string | null
@@ -572,8 +578,11 @@ export type Database = {
           valor?: number
         }
         Update: {
+          categoria_analise?: string | null
+          categoria_confirmada?: boolean | null
           categoria_erp?: string
           categoria_interna?: string
+          categoria_sugerida_ia?: string | null
           centro_custo?: string | null
           created_at?: string | null
           data_competencia?: string | null
