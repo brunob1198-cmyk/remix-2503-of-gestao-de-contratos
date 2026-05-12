@@ -259,6 +259,19 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
             <table className="w-full text-sm">
               <thead className="bg-muted text-muted-foreground">
                 <tr>
+                  <th className="py-2 px-3 w-10 text-center">
+                    <Checkbox 
+                      checked={paginatedItems.length > 0 && paginatedItems.every(item => selectedIds.has(item.id))}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(selectedIds);
+                        paginatedItems.forEach(item => {
+                          if (checked) next.add(item.id);
+                          else next.delete(item.id);
+                        });
+                        setSelectedIds(next);
+                      }}
+                    />
+                  </th>
                   {allCols.map(col => (
                     <th key={col} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
                       <ColumnHeaderFilter
