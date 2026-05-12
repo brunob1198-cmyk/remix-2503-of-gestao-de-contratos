@@ -2934,6 +2934,7 @@ export type Database = {
       }
       projetos: {
         Row: {
+          area_analise: string | null
           area_id: string | null
           cliente: string | null
           cliente_id: string | null
@@ -2951,6 +2952,7 @@ export type Database = {
           valor_total: number | null
         }
         Insert: {
+          area_analise?: string | null
           area_id?: string | null
           cliente?: string | null
           cliente_id?: string | null
@@ -2968,6 +2970,7 @@ export type Database = {
           valor_total?: number | null
         }
         Update: {
+          area_analise?: string | null
           area_id?: string | null
           cliente?: string | null
           cliente_id?: string | null
