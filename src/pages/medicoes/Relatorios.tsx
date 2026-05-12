@@ -6,6 +6,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useLancamentosProducao, useLancamentosMedicao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +41,7 @@ export default function RelatoriosPage() {
   const [crossProjetoFilter, setCrossProjetoFilter] = useState<string>("");
   const [crossSiteFilter, setCrossSiteFilter] = useState<string>("");
   const { empresaId } = useAuth();
+  const { toast } = useToast();
 
   const { projetos } = useProjetos();
   const { sites } = useSites();
