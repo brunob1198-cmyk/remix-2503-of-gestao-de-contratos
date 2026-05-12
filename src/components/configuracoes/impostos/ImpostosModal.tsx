@@ -39,6 +39,8 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
   const [inss, setInss] = useState(0);
   const [dara, setDara] = useState(0);
   const [icms, setIcms] = useState(0);
+  const [irpj, setIrpj] = useState(0);
+  const [csll, setCsll] = useState(0);
 
   const { data: projetos } = useQuery({
     queryKey: ["projetos_select_impostos"],
