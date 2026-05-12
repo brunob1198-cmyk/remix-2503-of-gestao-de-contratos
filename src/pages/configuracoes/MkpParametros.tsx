@@ -120,6 +120,7 @@ export default function MkpParametrosPage() {
               <TableHead className="text-right">% Gerência</TableHead>
               <TableHead className="text-right">% Risco</TableHead>
               <TableHead className="text-right">% Trein.</TableHead>
+              <TableHead className="text-right">% Inflação</TableHead>
               <TableHead className="text-right">% MB Alvo</TableHead>
               <TableHead className="text-right">BDI</TableHead>
               <TableHead>Atualizado</TableHead>
@@ -129,13 +130,13 @@ export default function MkpParametrosPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredParametros?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                <TableCell colSpan={11} className="text-center h-24 text-muted-foreground">
                   Nenhum parâmetro encontrado.
                 </TableCell>
               </TableRow>
@@ -151,6 +152,7 @@ export default function MkpParametrosPage() {
                   <TableCell className="text-right">{formatPerc(p.perc_gerencia)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_risco)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_treinamento)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_inflacao)}</TableCell>
                   <TableCell className="text-right font-semibold text-primary">
                     {formatPerc(p.perc_mb_esperado)}
                   </TableCell>
