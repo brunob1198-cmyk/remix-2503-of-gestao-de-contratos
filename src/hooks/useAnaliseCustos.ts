@@ -499,8 +499,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu:itens_lpu (
             bdi
           )
-        `)
-        .filter("diarios_obra.site.projeto_id", "in", `(${projetoIds.join(',')})`);
+        `);
 
 
       if (error) {
