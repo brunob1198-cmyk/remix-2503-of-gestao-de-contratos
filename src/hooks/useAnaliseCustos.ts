@@ -493,6 +493,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           diarios_obra!inner (
             data,
             site:sites!inner (
+              id,
               projeto_id
             )
           ),
@@ -500,6 +501,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             bdi
           )
         `);
+
 
 
       if (error) {
