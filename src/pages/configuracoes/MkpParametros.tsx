@@ -152,6 +152,7 @@ export default function MkpParametrosPage() {
                   <TableCell className="text-right">{formatPerc(p.perc_gerencia)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_risco)}</TableCell>
                   <TableCell className="text-right">{formatPerc(p.perc_treinamento)}</TableCell>
+                  <TableCell className="text-right">{formatPerc(p.perc_inflacao)}</TableCell>
                   <TableCell className="text-right font-semibold text-primary">
                     {formatPerc(p.perc_mb_esperado)}
                   </TableCell>
