@@ -98,7 +98,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th colSpan={3} className="py-2 px-4 border-b border-r text-center bg-green-50 text-green-700">Receita</th>
                 <th colSpan={8} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-center bg-amber-50 text-amber-700">Gerência</th>
-                <th colSpan={5} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
+                <th colSpan={4} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
               <tr className="bg-muted text-muted-foreground font-semibold text-center">
                 <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-10 bg-muted">FCA</th>
@@ -125,8 +125,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-gray-50">MB Orç. (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-gray-50">MB Real (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-gray-50">% MB Orç.</th>
-                <th className="py-3 px-4 border-b border-r bg-gray-50">% MB Real</th>
-                <th className="py-3 px-4 border-b bg-gray-50">% MB Alvo</th>
+                <th className="py-3 px-4 border-b bg-gray-50">% MB Real</th>
               </tr>
             </thead>
             <tbody>
@@ -242,38 +241,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                       {formatCurrency(row.mbRealizada)}
                     </td>
                     <td className="py-2 px-4 border-b border-r bg-gray-50/30 text-muted-foreground">{formatPercent(row.percMbOrcada)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-gray-50/30">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge variant="secondary" className={`font-bold border shadow-sm whitespace-nowrap ${
-                              row.percMbReal >= row.percMbMkp ? 'bg-green-50 text-green-700 border-green-200' : 
-                              row.percMbReal >= row.percMbMkp * 0.85 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {row.percMbReal >= row.percMbMkp ? '▲ acima do alvo' : row.percMbReal >= row.percMbMkp * 0.85 ? '≈ próximo do alvo' : '▼ abaixo do alvo'}
-                              <span className="ml-1 opacity-70">({formatPercent(row.percMbReal)})</span>
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent className="p-3">
-                            <div className="space-y-1 text-[11px]">
-                              <div className="flex justify-between gap-6"><span>Alvo MKP:</span> <span className="font-bold">{formatPercent(row.percMbMkp)}</span></div>
-                              <div className="flex justify-between gap-6"><span>Realizado:</span> <span className="font-bold">{formatPercent(row.percMbReal)}</span></div>
-                              <div className="flex justify-between gap-6 border-t pt-1">
-                                <span>Δ vs alvo:</span> 
-                                <span className={`font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-600' : 'text-red-600'}`}>
-                                  {(row.percMbReal - row.percMbMkp > 0 ? '+' : '') + ((row.percMbReal - row.percMbMkp) * 100).toFixed(1)} pp
-                                </span>
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </td>
-                    <td className="py-2 px-4 border-b bg-gray-50/30 italic text-muted-foreground text-xs">
-                      <div className="flex items-center justify-end gap-1">
-                        <Target className="h-3 w-3" />
-                        {formatPercent(row.percMbMkp)}
-                      </div>
+                    <td className={`py-2 px-4 border-b bg-gray-50/30 font-bold ${row.percMbReal >= row.percMbMkp ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatPercent(row.percMbReal)}
                     </td>
                   </tr>
                 ))
@@ -297,8 +266,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.mbOrcada)}</td>
                 <td className="py-3 px-4 border-r">{formatCurrency(totals.mbRealizada)}</td>
                 <td className="py-3 px-4 border-r">{formatPercent(totals.percMbOrcada)}</td>
-                <td className="py-3 px-4 border-r">{formatPercent(totals.percMbReal)}</td>
-                <td className="py-3 px-4">{formatPercent(totals.percMbMkp)}</td>
+                <td className="py-3 px-4">{formatPercent(totals.percMbReal)}</td>
               </tr>
             </tfoot>
           </table>
