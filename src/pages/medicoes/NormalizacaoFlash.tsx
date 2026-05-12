@@ -1563,7 +1563,7 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-xs truncate w-[150px]">
                                 {row.flash_category}
                               </TableCell>
-                              <TableCell className="text-xs max-w-[150px]">
+                              <TableCell className="text-xs w-[150px]">
                                 <EditableCostCenter
                                   row={row}
                                   disabled={isEnviado}
