@@ -34,9 +34,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   const alerts = useMemo(() => {
     const semMkp = analiseRows.filter(r => r.semMkp).length;
     const semImpostos = analiseRows.filter(r => r.semImpostos).length;
-    const pendentes = analiseRows.reduce((acc, r) => acc + (r.pendentesCategorizacao || 0), 0);
 
-    return { semMkp, semImpostos, pendentes };
+    return { semMkp, semImpostos };
   }, [analiseRows]);
 
   const totals = useMemo(() => {
@@ -94,18 +93,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               <span>{alerts.semImpostos} projeto(s) sem impostos.</span>
               <Button variant="link" size="sm" className="h-auto p-0 text-destructive font-bold">
                 <Settings className="h-3 w-3 mr-1" /> Configurar Impostos →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {alerts.pendentes > 0 && (
-          <Alert className="bg-amber-50 border-amber-200 text-amber-900">
-            <Search className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-800">Categorização Pendente</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{alerts.pendentes} lançamento(s) aguardando IA.</span>
-              <Button variant="link" size="sm" className="h-auto p-0 text-amber-700 font-bold">
-                Revisar →
               </Button>
             </AlertDescription>
           </Alert>
@@ -251,11 +238,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-amber-700 font-bold">
                       <div className="flex flex-col items-end gap-1">
                         {formatCurrency(row.gerenciaReal)}
-                        {row.pendentesCategorizacao > 0 && (
-                          <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[9px] px-1 h-4 animate-pulse">
-                            ⚠ {row.pendentesCategorizacao} pendentes
-                          </Badge>
-                        )}
                       </div>
                     </td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/30 text-muted-foreground/60">{formatCurrency(row.gerenciaOrcada)}</td>
