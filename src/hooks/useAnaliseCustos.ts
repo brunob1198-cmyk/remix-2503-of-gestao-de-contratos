@@ -455,9 +455,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       while (hasMore) {
         let q = supabase.from("custo_real_erp").select("*");
         q = q.in("projeto_id", projetoIds);
-        if (startDate) {
+        if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
+        } else if (startDate) {
+          q = q.gte("data_competencia", startDate);
         }
+
         const { data, error } = await q;
         if (error) throw error;
         const batch = (data || []) as CustoErp[];
