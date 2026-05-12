@@ -6,6 +6,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useLancamentosProducao, useLancamentosMedicao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +23,8 @@ import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoes
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 type CrossType = "producao_medicao" | "medicao_faturamento" | "producao_faturamento";
 type CrossSortField = "projeto" | "site" | "nome" | "origem" | "destino" | "diferenca";
 type SortDirection = "asc" | "desc";
@@ -37,6 +40,8 @@ export default function RelatoriosPage() {
   const [crossSortDirection, setCrossSortDirection] = useState<SortDirection>("asc");
   const [crossProjetoFilter, setCrossProjetoFilter] = useState<string>("");
   const [crossSiteFilter, setCrossSiteFilter] = useState<string>("");
+  const { empresaId } = useAuth();
+  const { toast } = useToast();
 
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -47,11 +52,19 @@ export default function RelatoriosPage() {
 
   // Production data from Diário de Obra (RDO) — source of truth for "Total Produzido"
   const { data: diarioProducao = [] } = useQuery({
-    queryKey: ["diario_producao_cruzado"],
+    queryKey: ["diario_producao_cruzado", projetoId, empresaId],
     queryFn: async () => {
-      const query = supabase
+      let query = supabase
         .from("diarios_obra")
-        .select("id, data, site_id, observacoes, site:sites(id, codigo, nome, projeto_id, projeto:projetos(id, codigo))");
+        .select("id, data, site_id, observacoes, site:sites!inner(id, codigo, nome, projeto_id, projeto:projetos!inner(id, codigo, empresa_id))");
+      
+      if (empresaId) {
+        query = query.eq("site.projeto.empresa_id", empresaId);
+      }
+      
+      if (projetoId) {
+        query = query.eq("site.projeto_id", projetoId);
+      }
       
       const diarios = await fetchAllPages<any>(query);
       if (!diarios || diarios.length === 0) return [];
@@ -80,6 +93,8 @@ export default function RelatoriosPage() {
         };
       });
     },
+    staleTime: 10 * 60 * 1000,
+    enabled: !!empresaId,
   });
 
   const filteredSites = projetoId
@@ -557,7 +572,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
-                        <TableHead>Observações Diário</TableHead>
+                        <TableHead className="min-w-[300px]">Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -571,8 +586,29 @@ export default function RelatoriosPage() {
                           <TableCell className={`text-right font-semibold ${row.diferenca > 0 ? "text-orange-600" : row.diferenca < 0 ? "text-red-600" : ""}`}>
                             {formatCurrency(row.diferenca)}
                           </TableCell>
-                          <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
-                            {row.observacoes_diario.join(" | ") || "-"}
+                          <TableCell className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-w-md">
+                            {row.observacoes_diario.length > 0 ? (
+                              <div className="space-y-2 group">
+                                {row.observacoes_diario.map((obs, i) => (
+                                  <div key={i} className={i > 0 ? "pt-2 border-t border-border/50" : ""}>
+                                    {obs}
+                                  </div>
+                                ))}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 px-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
+                                    toast({
+                                      description: "Observações copiadas para a área de transferência",
+                                    });
+                                  }}
+                                >
+                                  Copiar observações
+                                </Button>
+                              </div>
+                            ) : "-"}
                           </TableCell>
                         </TableRow>
                       ))}
