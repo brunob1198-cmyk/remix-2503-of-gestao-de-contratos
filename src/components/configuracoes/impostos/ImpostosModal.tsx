@@ -95,7 +95,7 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
     }
   }, [editingData, isOpen]);
 
-  const totalImpostos = (issqn + pis + cofins + inss + dara + icms) / 100;
+  const totalImpostos = (issqn + pis + cofins + inss + dara + icms + irpj + csll) / 100;
   const pocExemplo = 100000;
   const deducoes = pocExemplo * totalImpostos;
   const receitaLiquida = pocExemplo - deducoes;
