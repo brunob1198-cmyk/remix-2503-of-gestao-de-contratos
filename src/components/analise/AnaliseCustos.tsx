@@ -206,7 +206,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.moObra)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.materiais)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.transporte)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.equipamentos)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.indiretos)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 font-bold text-blue-700">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700/60">{formatCurrency(row.custoDiretoOrcado)}</td>
