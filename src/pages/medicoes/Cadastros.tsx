@@ -136,7 +136,18 @@ export default function CadastrosPage() {
             <LpuPage />
           </TabsContent>
         )}
-      </Tabs>
+        {showMkp && (
+          <TabsContent value="mkp" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <MkpParametrosPage />
+          </TabsContent>
+        )}
+        {showImpostos && (
+          <TabsContent value="impostos" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
+            <ConfigImpostosPage />
+          </TabsContent>
+        )}
+      </Suspense>
+    </Tabs>
     </div>
   );
 }
