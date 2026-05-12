@@ -53,7 +53,7 @@ const RootRedirect = () => {
   const hasContaAzulCallback = searchParams.has("code") || searchParams.has("error");
 
   if (hasContaAzulCallback) {
-    return <Navigate to={`/medicoes/integracao-erp${location.search}`} replace />;
+    return <Navigate to={`/medicoes/integracao?tab=erp${location.search.replace('?', '&')}`} replace />;
   }
 
   return <Navigate to="/medicoes/dashboard" replace />;
