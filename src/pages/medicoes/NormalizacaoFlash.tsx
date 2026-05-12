@@ -1560,7 +1560,7 @@ export default function NormalizacaoFlashPage() {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-xs truncate max-w-[120px]">
+                              <TableCell className="text-xs truncate w-[150px]">
                                 {row.flash_category}
                               </TableCell>
                               <TableCell className="text-xs max-w-[150px]">
