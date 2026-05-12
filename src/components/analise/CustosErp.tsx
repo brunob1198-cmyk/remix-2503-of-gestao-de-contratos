@@ -113,6 +113,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>({
     competencia: "", descricao: "", mapeamento: "", centro_custo: "", valor: "", status: "", categoria: ""
   });
