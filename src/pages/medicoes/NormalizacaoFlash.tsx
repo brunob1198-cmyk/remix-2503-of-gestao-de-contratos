@@ -1607,11 +1607,16 @@ export default function NormalizacaoFlashPage() {
                             </TableRow>
                           );
                         })}
+                        {rowVirtualizer.getVirtualItems().length > 0 && (
+                          <TableRow style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px`, border: 0 }}>
+                            <TableCell colSpan={14} style={{ padding: 0 }} />
+                          </TableRow>
+                        )}
                         {rowVirtualizer.getVirtualItems().length === 0 && paginatedData.length > 0 && (
                           paginatedData.slice(0, 100).map((row) => (
                              <TableRow key={row.id}>
                                {/* Fallback simplified content or just map normal if needed */}
-                               <TableCell colSpan={13} className="text-center py-4">Carregando...</TableCell>
+                               <TableCell colSpan={14} className="text-center py-4">Carregando...</TableCell>
                              </TableRow>
                           ))
                         )}
