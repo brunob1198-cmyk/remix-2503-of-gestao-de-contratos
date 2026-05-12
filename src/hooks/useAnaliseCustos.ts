@@ -549,8 +549,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           }
         });
 
-        const custosGerencia = projetoCustosMes.filter(c => c.categoria_analise === 'GERENCIA');
-        const custosDiretos = projetoCustosMes.filter(c => c.categoria_analise === 'DIRETO');
+        const custosGerencia = projetoCustosMes.filter(c => c.categoria_interna === 'Gerência');
+        const custosDiretos = projetoCustosMes.filter(c => c.categoria_interna !== 'Gerência' && c.categoria_interna !== 'Financeiros');
 
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
