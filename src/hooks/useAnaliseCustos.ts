@@ -492,10 +492,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           item_lpu_id,
           diarios_obra (
             data,
-            sites:sites (
+            sites (
               projeto_id
             )
           ),
+
 
           item_lpu:itens_lpu (
             bdi
