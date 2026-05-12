@@ -100,32 +100,32 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-center bg-amber-50 text-amber-700">Gerência</th>
                 <th colSpan={4} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
-              <tr className="bg-muted text-muted-foreground font-semibold text-center">
+              <tr className="bg-muted text-muted-foreground font-semibold text-center h-12">
                 <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-10 bg-muted">FCA</th>
                 <th className="py-3 px-4 border-b border-r text-left">Referência</th>
                 <th className="py-3 px-4 border-b border-r text-left">Área</th>
                 <th className="py-3 px-4 border-b border-r text-left">Projeto</th>
                 <th className="py-3 px-4 border-b border-r text-left">Cliente</th>
-                <th className="py-3 px-4 border-b border-r bg-green-50">Produção (POC)</th>
-                <th className="py-3 px-4 border-b border-r bg-green-50">% Impostos</th>
-                <th className="py-3 px-4 border-b border-r bg-green-50">Receita Líquida</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">MO</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Mat.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Transp.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Equip.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Indir.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Real</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50 text-muted-foreground/60 font-normal">Orçado</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-50">Resultado Direto</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-50 text-amber-700">Real</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-50 text-muted-foreground/60 font-normal">Orçado</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-50 text-amber-700">Δ Ger.</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-50 text-amber-700">% Real</th>
-                <th className="py-3 px-4 border-b border-r bg-amber-50 text-muted-foreground/60 font-normal">% Orç.</th>
-                <th className="py-3 px-4 border-b border-r bg-gray-50">MB Orç. (R$)</th>
-                <th className="py-3 px-4 border-b border-r bg-gray-50">MB Real (R$)</th>
-                <th className="py-3 px-4 border-b border-r bg-gray-50">% MB Orç.</th>
-                <th className="py-3 px-4 border-b bg-gray-50">% MB Real</th>
+                <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Produção (POC)</th>
+                <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">% Impostos</th>
+                <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Receita Líquida</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">MO</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Mat.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Transp.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Equip.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Indir.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Real</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800/60 font-normal">Orçado</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Resultado Direto</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Real</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">Orçado</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Δ Ger.</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">% Real</th>
+                <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">% Orç.</th>
+                <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">MB Orç. (R$)</th>
+                <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800 font-bold">MB Real (R$)</th>
+                <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">% MB Orç.</th>
+                <th className="py-3 px-4 border-b bg-slate-100/50 text-slate-800 font-bold">% MB Real</th>
               </tr>
             </thead>
             <tbody>
