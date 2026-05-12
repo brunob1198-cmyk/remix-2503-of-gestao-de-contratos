@@ -493,11 +493,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           diarios_obra (
             id,
             data,
-            sites (
+            site:sites (
               id,
               projeto_id
             )
           ),
+
 
 
 
