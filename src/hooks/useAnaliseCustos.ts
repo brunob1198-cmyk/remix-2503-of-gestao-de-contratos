@@ -10,6 +10,7 @@ export interface AnaliseCustosRow {
   projetoCodigo: string;
   projetoNome: string;
   area: string;
+  cliente: string;
   referencia: string;           // "Jan/2026"
 
   // ── RECEITA ──────────────────────────────────────
@@ -478,7 +479,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")
-        .select("id, codigo, nome, area_analise")
+        .select("id, codigo, nome, area_analise, cliente_id, clientes(nome)")
         .in("id", projetoIds);
       return data || [];
     },
@@ -488,98 +489,134 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const analiseRows = useMemo(() => {
     if (!startDate || !endDate || projetosData.length === 0) return [];
 
-    return projetosData.map(projeto => {
+    const rows: AnaliseCustosRow[] = [];
+
+    // Helper to get all months between start and end
+    const getMonths = (start: string, end: string) => {
+      const months = [];
+      let curr = startOfMonth(parseISO(start));
+      const last = startOfMonth(parseISO(end));
+      while (curr <= last) {
+        months.push(format(curr, "yyyy-MM-dd"));
+        curr = startOfMonth(new Date(curr.getFullYear(), curr.getMonth() + 1, 1));
+      }
+      return months;
+    };
+
+    const periodMonths = getMonths(startDate, endDate);
+
+    projetosData.forEach(projeto => {
       const projetoId = projeto.id;
       const mkp = mkpParams.find(m => m.projeto_id === projetoId);
       const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
+      const clienteNome = (projeto as any).clientes?.nome || 'N/A';
       
-      // Produção Bruta (POC)
-      const poc = producaoData
-        .filter(p => p.projeto_id === projetoId)
-        .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
+      periodMonths.forEach(monthStr => {
+        const monthStart = startOfMonth(parseISO(monthStr));
+        const monthEnd = endOfMonth(monthStart);
+        const monthLabel = format(monthStart, 'MMM/yyyy');
 
-      // Impostos
-      const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
-      const impostosReais = poc * totalPercImpostos;
-      const producaoLiquida = poc - impostosReais;
+        // Produção Bruta (POC) do mês
+        const poc = producaoData
+          .filter(p => p.projeto_id === projetoId && 
+                      parseISO(p.data_producao) >= monthStart && 
+                      parseISO(p.data_producao) <= monthEnd)
+          .reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
-      // Custos
-      const projetoCustos = custosErp.filter(c => c.projeto_id === projetoId);
-      const custosGerencia = projetoCustos.filter(c => c.categoria_analise === 'GERENCIA');
-      const custosDiretos = projetoCustos.filter(c => c.categoria_analise === 'DIRETO');
+        // Se não houver produção nem custos no mês, talvez pular? 
+        // Mas o usuário pediu "separar mensalmente", então mostramos todos os meses do período.
 
-      const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
-      const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
-      
-      // Detalhamento Direto (exemplo simplificado, precisaria de mapeamento de categoria_interna)
-      const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
-      const materiais = custosDiretos.filter(c => c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
-      const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
-      const equipamentos = custosDiretos.filter(c => c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
-      const indiretos = custosDiretos.filter(c => c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        // Impostos
+        const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
+        const impostosReais = poc * totalPercImpostos;
+        const producaoLiquida = poc - impostosReais;
 
-      const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
-      const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
+        // Custos do mês
+        const projetoCustosMes = custosErp.filter(c => 
+          c.projeto_id === projetoId && 
+          c.data_competencia && 
+          parseISO(c.data_competencia) >= monthStart && 
+          parseISO(c.data_competencia) <= monthEnd
+        );
 
-      const custoTotalReal = custoDiretoReal + gerenciaReal;
-      const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
+        const custosGerencia = projetoCustosMes.filter(c => c.categoria_analise === 'GERENCIA');
+        const custosDiretos = projetoCustosMes.filter(c => c.categoria_analise === 'DIRETO');
 
-      const mbRealizada = producaoLiquida - custoTotalReal;
-      const mbOrcada = producaoLiquida - custoTotalOrcado;
-      
-      const percMbReal = producaoLiquida > 0 ? mbRealizada / producaoLiquida : 0;
-      const percMbOrcada = producaoLiquida > 0 ? mbOrcada / producaoLiquida : 0;
-      const percMbMkp = mkp?.perc_mb_esperado ?? 0;
+        const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
+        const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
+        
+        const moObra = custosDiretos.filter(c => c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const materiais = custosDiretos.filter(c => c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const transporte = custosDiretos.filter(c => c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const equipamentos = custosDiretos.filter(c => c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
+        const indiretos = custosDiretos.filter(c => c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
-      const pendentesCategorizacao = projetoCustos.filter(c => !c.categoria_confirmada).length;
+        const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
+        const custoDiretoOrcado = poc * (mkp?.perc_custo_direto ?? 0);
 
-      return {
-        projetoId,
-        projetoCodigo: projeto.codigo || '',
-        projetoNome: projeto.nome,
-        area: projeto.area_analise || 'N/A',
-        referencia: format(parseISO(startDate), 'MMM/yyyy'),
-        poc,
-        impostos: {
-          issqn: poc * (impostosProjeto?.perc_issqn ?? 0),
-          pis: poc * (impostosProjeto?.perc_pis ?? 0),
-          cofins: poc * (impostosProjeto?.perc_cofins ?? 0),
-          inss: poc * (impostosProjeto?.perc_inss ?? 0),
-          dara: poc * (impostosProjeto?.perc_dara ?? 0),
-          icms: poc * (impostosProjeto?.perc_icms ?? 0),
-          totalPerc: totalPercImpostos,
-          totalReais: impostosReais
-        },
-        producaoLiquida,
-        moObra,
-        materiais,
-        transporte,
-        equipamentos,
-        indiretos,
-        custoDiretoReal,
-        custoDiretoOrcado,
-        deltaDireto: custoDiretoOrcado - custoDiretoReal,
-        percCustoDiretoOrcado: mkp?.perc_custo_direto ?? 0,
-        percCustoDiretoReal: poc > 0 ? custoDiretoReal / poc : 0,
-        gerenciaReal,
-        gerenciaOrcada,
-        deltaGerencia: gerenciaOrcada - gerenciaReal,
-        percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
-        percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
-        pendentesCategorizacao,
-        custoTotalReal,
-        custoTotalOrcado,
-        mbOrcada,
-        mbRealizada,
-        percMbOrcada,
-        percMbReal,
-        percMbMkp,
-        alertaMb: percMbReal < (percMbMkp * 0.85),
-        alertaGerencia: gerenciaReal > (gerenciaOrcada * 1.15),
-        semMkp: !mkp,
-        semImpostos: !impostosProjeto
-      } as AnaliseCustosRow;
+        const custoTotalReal = custoDiretoReal + gerenciaReal;
+        const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
+
+        const mbRealizada = producaoLiquida - custoTotalReal;
+        const mbOrcada = producaoLiquida - custoTotalOrcado;
+        
+        const percMbReal = producaoLiquida > 0 ? mbRealizada / producaoLiquida : 0;
+        const percMbOrcada = producaoLiquida > 0 ? mbOrcada / producaoLiquida : 0;
+        const percMbMkp = mkp?.perc_mb_esperado ?? 0;
+
+        const pendentesCategorizacao = projetoCustosMes.filter(c => !c.categoria_confirmada).length;
+
+        rows.push({
+          projetoId,
+          projetoCodigo: projeto.codigo || '',
+          projetoNome: projeto.nome,
+          area: projeto.area_analise || 'N/A',
+          cliente: clienteNome,
+          referencia: monthLabel,
+          poc,
+          impostos: {
+            issqn: poc * (impostosProjeto?.perc_issqn ?? 0),
+            pis: poc * (impostosProjeto?.perc_pis ?? 0),
+            cofins: poc * (impostosProjeto?.perc_cofins ?? 0),
+            inss: poc * (impostosProjeto?.perc_inss ?? 0),
+            dara: poc * (impostosProjeto?.perc_dara ?? 0),
+            icms: poc * (impostosProjeto?.perc_icms ?? 0),
+            totalPerc: totalPercImpostos,
+            totalReais: impostosReais
+          },
+          producaoLiquida,
+          moObra,
+          materiais,
+          transporte,
+          equipamentos,
+          indiretos,
+          custoDiretoReal,
+          custoDiretoOrcado,
+          deltaDireto: custoDiretoOrcado - custoDiretoReal,
+          percCustoDiretoOrcado: mkp?.perc_custo_direto ?? 0,
+          percCustoDiretoReal: poc > 0 ? custoDiretoReal / poc : 0,
+          gerenciaReal,
+          gerenciaOrcada,
+          deltaGerencia: gerenciaOrcada - gerenciaReal,
+          percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
+          percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
+          pendentesCategorizacao,
+          custoTotalReal,
+          custoTotalOrcado,
+          mbOrcada,
+          mbRealizada,
+          percMbOrcada,
+          percMbReal,
+          percMbMkp,
+          alertaMb: percMbReal < (percMbMkp * 0.85),
+          alertaGerencia: gerenciaReal > (gerenciaOrcada * 1.15),
+          semMkp: !mkp,
+          semImpostos: !impostosProjeto
+        });
+      });
     });
+
+    return rows;
   }, [projetosData, mkpParams, impostosData, producaoData, custosErp, startDate, endDate]);
 
   const updateCategoria = useMutation({
