@@ -116,6 +116,8 @@ export default function ConfigImpostosPage() {
               <TableHead className="text-right">INSS</TableHead>
               <TableHead className="text-right">DARA</TableHead>
               <TableHead className="text-right">ICMS</TableHead>
+              <TableHead className="text-right">IRPJ</TableHead>
+              <TableHead className="text-right">CSLL</TableHead>
               <TableHead className="text-right font-bold text-primary">TOTAL</TableHead>
               <TableHead className="text-right">Receita Líq.*</TableHead>
               <TableHead className="text-right">Ações</TableHead>
