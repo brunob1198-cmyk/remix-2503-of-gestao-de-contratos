@@ -52,9 +52,7 @@ const menuItems: MenuItem[] = [
   { title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
-  { title: "Integração ERP", url: "/medicoes/integracao-erp", icon: Webhook, telaId: "integracao-erp", adminOnly: true },
-  { title: "Integração Flash", url: "/medicoes/integracao-flash", icon: Zap, adminOnly: true },
-  { title: "Normalização Flash", url: "/medicoes/normalizacao-flash", icon: Wand2, adminOnly: true },
+  { title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
   { title: "Parâmetros MKP", url: "/medicoes/mkp-parametros", icon: Percent, adminOnly: true, group: "Configurações de Análise" },
   { title: "Alíquotas de Imposto", url: "/medicoes/config-impostos", icon: Receipt, adminOnly: true, group: "Configurações de Análise" },
 ];

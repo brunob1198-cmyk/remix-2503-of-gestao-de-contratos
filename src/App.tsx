@@ -38,9 +38,7 @@ import AuditLogPage from "./pages/medicoes/AuditLog";
 // Lazy Loaded Pages
 const RecursosPage = React.lazy(() => import("./pages/medicoes/Recursos"));
 const AnaliseObraPage = React.lazy(() => import("./pages/medicoes/AnaliseObra"));
-const IntegracaoErpPage = React.lazy(() => import("./pages/medicoes/IntegracaoErp"));
-const IntegracaoFlashPage = React.lazy(() => import("./pages/medicoes/IntegracaoFlash"));
-const NormalizacaoFlashPage = React.lazy(() => import("./pages/medicoes/NormalizacaoFlash"));
+const IntegracaoPage = React.lazy(() => import("./pages/medicoes/Integracao"));
 const RdoPage = React.lazy(() => import("./pages/medicoes/Rdo"));
 const PlanejamentoObraPage = React.lazy(() => import("./pages/medicoes/PlanejamentoObra"));
 const PowerBIPage = React.lazy(() => import("./pages/medicoes/PowerBI"));
@@ -55,7 +53,7 @@ const RootRedirect = () => {
   const hasContaAzulCallback = searchParams.has("code") || searchParams.has("error");
 
   if (hasContaAzulCallback) {
-    return <Navigate to={`/medicoes/integracao-erp${location.search}`} replace />;
+    return <Navigate to={`/medicoes/integracao?tab=erp${location.search.replace('?', '&')}`} replace />;
   }
 
   return <Navigate to="/medicoes/dashboard" replace />;
@@ -105,9 +103,10 @@ const App = () => {
                 <Route path="acompanhamento" element={<ErrorBoundary><AcompanhamentoMedicoesPage /></ErrorBoundary>} />
                 <Route path="recursos" element={<RecursosPage />} />
                 <Route path="relatorios" element={<RelatoriosPage />} />
-                <Route path="integracao-erp" element={<IntegracaoErpPage />} />
-                <Route path="integracao-flash" element={<IntegracaoFlashPage />} />
-                <Route path="normalizacao-flash" element={<NormalizacaoFlashPage />} />
+                <Route path="integracao" element={<IntegracaoPage />} />
+                <Route path="integracao-erp" element={<Navigate to="/medicoes/integracao?tab=erp" replace />} />
+                <Route path="integracao-flash" element={<Navigate to="/medicoes/integracao?tab=flash" replace />} />
+                <Route path="normalizacao-flash" element={<Navigate to="/medicoes/integracao?tab=normalizacao" replace />} />
                 <Route path="rdo" element={<RdoPage />} />
                 <Route path="usuarios" element={<GerenciarUsuariosPage />} />
                 <Route path="planejamento" element={<PlanejamentoObraPage />} />
