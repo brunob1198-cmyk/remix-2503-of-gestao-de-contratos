@@ -510,7 +510,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const mkp = mkpParams.find(m => m.projeto_id === projetoId);
       const impostosProjeto = impostosData.find(i => i.projeto_id === projetoId);
       const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || 'N/A';
-      const areaNome = (projeto as any).areas?.nome || projeto.area_analise || 'N/A';
+      const areaNome = (projeto as any).areas?.nome || (projeto as any).area_analise || 'N/A';
       
       periodMonths.forEach(monthStr => {
         const monthStart = startOfMonth(parseISO(monthStr));
