@@ -142,13 +142,9 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
     },
   });
 
-  const applyPreset = (type: 'telecom' | 'rodovias' | 'limpar') => {
-    if (type === 'telecom') {
-      setIssqn(0); setPis(0.65); setCofins(3.00); setInss(0); setDara(0); setIcms(5.00);
-    } else if (type === 'rodovias') {
-      setIssqn(5.00); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
-    } else {
-      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
+  const applyPreset = (type: 'limpar') => {
+    if (type === 'limpar') {
+      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0); setIrpj(0); setCsll(0);
     }
   };
 
