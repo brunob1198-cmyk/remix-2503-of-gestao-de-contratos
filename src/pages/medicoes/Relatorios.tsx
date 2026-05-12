@@ -557,7 +557,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
-                        <TableHead>Observações Diário</TableHead>
+                        <TableHead className="min-w-[300px]">Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -571,8 +571,26 @@ export default function RelatoriosPage() {
                           <TableCell className={`text-right font-semibold ${row.diferenca > 0 ? "text-orange-600" : row.diferenca < 0 ? "text-red-600" : ""}`}>
                             {formatCurrency(row.diferenca)}
                           </TableCell>
-                          <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
-                            {row.observacoes_diario.join(" | ") || "-"}
+                          <TableCell className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-w-md">
+                            {row.observacoes_diario.length > 0 ? (
+                              <div className="space-y-2">
+                                {row.observacoes_diario.map((obs, i) => (
+                                  <div key={i} className={i > 0 ? "pt-2 border-t border-border/50" : ""}>
+                                    {obs}
+                                  </div>
+                                ))}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
+                                  }}
+                                >
+                                  Copiar observações
+                                </Button>
+                              </div>
+                            ) : "-"}
                           </TableCell>
                         </TableRow>
                       ))}
