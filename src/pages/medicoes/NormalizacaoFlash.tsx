@@ -1295,7 +1295,7 @@ export default function NormalizacaoFlashPage() {
                     ref={parentRef}
                     className="overflow-x-auto relative min-h-[500px] max-h-[70vh] overflow-y-auto"
                   >
-                    <Table>
+                    <Table className="table-fixed min-w-[2150px]">
                       <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                         <TableRow>
                           <TableHead className="w-[40px]">
@@ -1331,7 +1331,7 @@ export default function NormalizacaoFlashPage() {
                             </div>
                           </TableHead>
                           <TableHead 
-                            className="cursor-pointer group"
+                            className="w-[250px] cursor-pointer group"
                             onClick={() => toggleSort('descricao')}
                           >
                             <div className="flex items-center gap-1">
@@ -1490,7 +1490,13 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                      <TableBody>
+                        {/* Spacers for virtualization */}
+                        {rowVirtualizer.getVirtualItems().length > 0 && (
+                          <TableRow style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px`, border: 0 }}>
+                            <TableCell colSpan={14} style={{ padding: 0 }} />
+                          </TableRow>
+                        )}
                         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                           const row = paginatedData[virtualRow.index];
                           if (!row) return null;
@@ -1502,8 +1508,7 @@ export default function NormalizacaoFlashPage() {
                               key={virtualRow.key} 
                               data-index={virtualRow.index}
                               ref={rowVirtualizer.measureElement}
-                              className={cn("absolute w-full", isEnviado && "opacity-80")}
-                              style={{ transform: `translateY(${virtualRow.start}px)` }}
+                              className={cn(isEnviado && "opacity-80")}
                             >
                               <TableCell>
                                 <Checkbox 
@@ -1516,7 +1521,7 @@ export default function NormalizacaoFlashPage() {
                                 />
                               </TableCell>
                               <TableCell className="text-xs">{formatDate(row.data)}</TableCell>
-                              <TableCell className="max-w-[300px]">
+                              <TableCell className="w-[250px]">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="block truncate text-xs">{row.descricao}</span>
@@ -1529,8 +1534,8 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-right text-xs font-medium tabular-nums">
                                 {formatCurrency(row.valor)}
                               </TableCell>
-                              <TableCell className="text-xs truncate max-w-[120px]">{row.usuario}</TableCell>
-                              <TableCell className="text-xs truncate max-w-[150px]">
+                              <TableCell className="text-xs truncate w-[140px]">{row.usuario}</TableCell>
+                              <TableCell className="text-xs truncate w-[150px]">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="block truncate">{row.comentarios}</span>
@@ -1555,10 +1560,10 @@ export default function NormalizacaoFlashPage() {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-xs truncate max-w-[120px]">
+                              <TableCell className="text-xs truncate w-[150px]">
                                 {row.flash_category}
                               </TableCell>
-                              <TableCell className="text-xs max-w-[150px]">
+                              <TableCell className="text-xs w-[150px]">
                                 <EditableCostCenter
                                   row={row}
                                   disabled={isEnviado}
@@ -1602,11 +1607,16 @@ export default function NormalizacaoFlashPage() {
                             </TableRow>
                           );
                         })}
+                        {rowVirtualizer.getVirtualItems().length > 0 && (
+                          <TableRow style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px`, border: 0 }}>
+                            <TableCell colSpan={14} style={{ padding: 0 }} />
+                          </TableRow>
+                        )}
                         {rowVirtualizer.getVirtualItems().length === 0 && paginatedData.length > 0 && (
                           paginatedData.slice(0, 100).map((row) => (
                              <TableRow key={row.id}>
                                {/* Fallback simplified content or just map normal if needed */}
-                               <TableCell colSpan={13} className="text-center py-4">Carregando...</TableCell>
+                               <TableCell colSpan={14} className="text-center py-4">Carregando...</TableCell>
                              </TableRow>
                           ))
                         )}
