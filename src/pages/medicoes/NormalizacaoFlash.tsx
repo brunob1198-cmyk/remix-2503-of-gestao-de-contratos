@@ -1490,7 +1490,7 @@ export default function NormalizacaoFlashPage() {
                           <TableHead className="w-[160px] text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+                      <TableBody>
                         {/* Spacers for virtualization */}
                         {rowVirtualizer.getVirtualItems().length > 0 && (
                           <TableRow style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px`, border: 0 }}>
