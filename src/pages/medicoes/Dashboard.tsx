@@ -390,7 +390,7 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAndSortedItems.slice(0, 50).map((item, index) => (
+                  {filteredAndSortedItems.slice(0, 100).map((item, index) => (
                     <TableRow key={`${item.item_lpu_id}_${item.site_codigo}_${index}`}>
                       <TableCell className="font-medium">{item.projeto_codigo}</TableCell>
                       <TableCell>{item.site_codigo}</TableCell>

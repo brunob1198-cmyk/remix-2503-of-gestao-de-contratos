@@ -32,7 +32,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       return data || [];
     },
     enabled: !!(projetoId || empresaId),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: resumoProjetos = [], isLoading: isLoadingProjetos } = useQuery({
@@ -111,6 +111,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       return resumo.filter(p => p.total_produzido !== 0 || p.total_medido !== 0 || p.total_faturado !== 0);
     },
     enabled: !!producaoAgregada,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: resumoItens = [], isLoading: isLoadingItens } = useQuery({
@@ -269,6 +270,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       return resumo;
     },
     enabled: !!producaoAgregada,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Calculate totals from resumoProjetos (which respects filters)
