@@ -481,7 +481,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v4", projetoIds],
+    queryKey: ["producao_poc_multi_v5", projetoIds],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       
@@ -490,9 +490,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .select(`
           valor_total,
           item_lpu_id,
-          diarios_obra!inner (
+          diarios_obra (
             data,
-            site:sites!inner (
+            site:sites (
               projeto_id
             )
           ),
@@ -572,6 +572,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
 
 
+
+
+
+
+
         // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
         const producaoItensMes = (producaoData || [])
           .filter(p => {
@@ -583,6 +588,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
               return false;
             }
           });
+
+
 
 
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
@@ -636,6 +643,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
         // 3. Ignorar meses sem produção e sem custos reais
         if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0) return;
+
 
         // Impostos
         const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
