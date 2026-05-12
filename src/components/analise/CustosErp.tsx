@@ -349,6 +349,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
               </tbody>
               <tfoot className="bg-muted/50 border-t font-medium">
                 <tr>
+                  <td className="py-2 px-3 w-10"></td>
                   {allCols.map(col => (
                     <td key={`footer-${col}`} className={`py-2 px-3 ${col === "valor" ? "text-right" : "text-left"}`}>
                       {col === "valor" ? (
