@@ -1,6 +1,7 @@
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { calculateCustoDiretoOrcado } from '../lib/custoUtils';
+
 
 describe('calculateCustoDiretoOrcado', () => {
   it('deve calcular o custo base usando o BDI do item', () => {
