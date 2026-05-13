@@ -24,6 +24,50 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
   const { data: analiseData, isLoading } = useAnaliseObra(projetoId || siteId, siteId);
   const data = analiseData as any;
 
+  const exportToExcel = () => {
+    if (!data?.producaoItems) return;
+
+    const exportData = data.producaoItems.map((item: any) => {
+      const pct = item.planejado > 0 ? (item.executado / item.planejado) : (item.executado > 0 ? 9.99 : 0);
+      return {
+        "Código": item.codigo,
+        "Descrição": item.descricao,
+        "Unidade": item.unidade,
+        "Planejado": item.planejado,
+        "Executado": item.executado,
+        "Saldo": item.saldo,
+        "% Executado": pct,
+        "Dias": item.diasComProducao,
+        "Média Diária": item.mediaDiaria,
+        "Média Semanal": item.mediaSemanal,
+        "Média Mensal": item.mediaMensal
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // Formatting numbers and percentages
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      // Column G is % Executado (0-indexed 6)
+      const cellG = worksheet[XLSX.utils.encode_cell({ r: R, c: 6 })];
+      if (cellG) cellG.z = '0.0%';
+      
+      // Numeric columns D, E, F, I, J, K (3, 4, 5, 8, 9, 10)
+      [3, 4, 5, 8, 9, 10].forEach(C => {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (cell) cell.z = '#,##0.00';
+      });
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Produção por Item");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const fileData = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    saveAs(fileData, `Producao_Item_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
+  };
+
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (!data || data.producaoItems.length === 0) {
     return (
