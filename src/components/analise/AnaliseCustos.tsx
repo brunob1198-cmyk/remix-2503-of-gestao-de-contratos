@@ -220,6 +220,16 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700">{formatPercent(row.percGerenciaReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700/60">{formatPercent(row.percGerenciaOrcada)}</td>
 
+                    {/* CUSTO TOTAL */}
+                    <td className="py-2 px-4 border-b border-r bg-purple-50/50 text-purple-700 font-bold">{formatCurrency(row.custoTotalReal)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-purple-50/50 text-purple-700/60">{formatCurrency(row.custoTotalOrcado)}</td>
+                    <td className={`py-2 px-4 border-b border-r bg-purple-50/50 font-bold ${row.resultadoTotal > 0 ? 'text-green-600' : row.resultadoTotal < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        {row.resultadoTotal > 0 ? <ArrowDown className="h-3 w-3" /> : row.resultadoTotal < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {row.resultadoTotal === 0 ? "—" : formatCurrency(Math.abs(row.resultadoTotal))}
+                      </div>
+                    </td>
+
                     {/* MB */}
                     <td className="py-2 px-4 border-b border-r bg-slate-50/50 text-slate-600">{formatCurrency(row.mbOrcada)}</td>
                     <td className={`py-2 px-4 border-b border-r bg-slate-50/50 font-bold ${row.mbRealizada >= 0 ? 'text-green-700' : 'text-red-700'}`}>
