@@ -115,7 +115,7 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
                 <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
                 <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
               </div>
-              <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto space-y-1 pr-1">
                 {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
                   <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1.5 transition-colors">
                     <Checkbox 
