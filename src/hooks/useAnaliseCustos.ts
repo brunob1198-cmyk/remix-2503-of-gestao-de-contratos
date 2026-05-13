@@ -275,7 +275,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       let hasMore = true;
 
       while (hasMore) {
-        let q = supabase.from("custo_real_erp").select("*");
+        let q = supabase.from("custo_real_erp").select("*").range(offset, offset + BATCH_SIZE - 1);
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
         if (startDate && endDate) {
