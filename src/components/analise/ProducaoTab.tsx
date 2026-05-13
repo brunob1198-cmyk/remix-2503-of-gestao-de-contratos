@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ClipboardList, TrendingUp, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, TrendingUp, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import { format } from "date-fns";
 
 function fmtQty(v: number) {
   if (v === 0) return "—";
@@ -19,6 +23,50 @@ function fmtAvg(v: number) {
 export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?: string }) {
   const { data: analiseData, isLoading } = useAnaliseObra(projetoId || siteId, siteId);
   const data = analiseData as any;
+
+  const exportToExcel = () => {
+    if (!data?.producaoItems) return;
+
+    const exportData = data.producaoItems.map((item: any) => {
+      const pct = item.planejado > 0 ? (item.executado / item.planejado) : (item.executado > 0 ? 9.99 : 0);
+      return {
+        "Código": item.codigo,
+        "Descrição": item.descricao,
+        "Unidade": item.unidade,
+        "Planejado": item.planejado,
+        "Executado": item.executado,
+        "Saldo": item.saldo,
+        "% Executado": pct,
+        "Dias": item.diasComProducao,
+        "Média Diária": item.mediaDiaria,
+        "Média Semanal": item.mediaSemanal,
+        "Média Mensal": item.mediaMensal
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // Formatting numbers and percentages
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      // Column G is % Executado (0-indexed 6)
+      const cellG = worksheet[XLSX.utils.encode_cell({ r: R, c: 6 })];
+      if (cellG) cellG.z = '0.0%';
+      
+      // Numeric columns D, E, F, I, J, K (3, 4, 5, 8, 9, 10)
+      [3, 4, 5, 8, 9, 10].forEach(C => {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (cell) cell.z = '#,##0.00';
+      });
+    }
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Produção por Item");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const fileData = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    saveAs(fileData, `Producao_Item_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
+  };
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (!data || data.producaoItems.length === 0) {
@@ -70,11 +118,15 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
 
       {/* Table */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ClipboardList className="h-5 w-5 text-emerald-600" />
             Acompanhamento de Produção por Item
           </CardTitle>
+          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="w-full">
