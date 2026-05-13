@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileSpreadsheet, Trash2, Loader2, Pencil, Check, X, FilterX } from "lucide-react";
+import { FileSpreadsheet, Trash2, Loader2, Pencil, Check, X, FilterX, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
+import XLSX from "xlsx-js-style";
 
 const columns = ["codigo", "descricao", "unidade", "preco_unitario", "bdi", "categoria", "projeto"] as const;
 type ColKey = typeof columns[number];
