@@ -661,7 +661,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         }, 0);
 
         // Somar Risco e Inflação (que são percentuais sobre o POC total)
-        const custoDiretoOrcado = custoDiretoOrcadoItens + (poc * (percRisco + percInflacao));
+        // Ajustado para considerar apenas custoDiretoOrcadoItens conforme solicitação
+        const custoDiretoOrcado = custoDiretoOrcadoItens;
 
         // 2. Custos do mês
         const projetoCustosMes = (custosErp || []).filter(c => {
