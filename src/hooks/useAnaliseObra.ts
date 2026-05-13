@@ -166,7 +166,8 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         let q = (supabase as any)
           .from("custo_real_erp")
           .select("valor, categoria_erp, categoria_interna, centro_custo")
-          .eq("projeto_id", resolvedProjetoId);
+          .eq("projeto_id", resolvedProjetoId)
+          .range(erpOffset, erpOffset + 999);
         
         if (startDateStr) {
           q = q.gte("data_competencia", startDateStr).lte("data_competencia", endDateStr);
