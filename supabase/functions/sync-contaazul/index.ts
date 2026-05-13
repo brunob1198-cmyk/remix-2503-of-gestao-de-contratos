@@ -724,31 +724,34 @@ async function fetchBillDetail(
   return detail;
 }
 
-async function fetchAllExistingErpIds(): Promise<string[]> {
+async function fetchAllExistingRecords(): Promise<Map<string, { categoria_interna: string; categoria_confirmada: boolean }>> {
   const pageSize = 1000;
-  const erpIds: string[] = [];
+  const recordsMap = new Map<string, { categoria_interna: string; categoria_confirmada: boolean }>();
 
   for (let from = 0; ; from += pageSize) {
     const to = from + pageSize - 1;
     const { data, error } = await supabase
       .from("custo_real_erp")
-      .select("erp_id")
+      .select("erp_id, categoria_interna, categoria_confirmada")
       .range(from, to);
 
     if (error) throw error;
 
-    const pageIds = (data || [])
-      .map((row: any) => row.erp_id)
-      .filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0);
-
-    erpIds.push(...pageIds);
+    for (const row of (data || [])) {
+      if (row.erp_id) {
+        recordsMap.set(row.erp_id, {
+          categoria_interna: row.categoria_interna,
+          categoria_confirmada: !!row.categoria_confirmada,
+        });
+      }
+    }
 
     if ((data || []).length < pageSize) {
       break;
     }
   }
 
-  return erpIds;
+  return recordsMap;
 }
 
 /**
