@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { calculateCustoDiretoOrcado } from './useAnaliseCustos';
+import { calculateCustoDiretoOrcado } from '../lib/custoUtils';
 
 describe('calculateCustoDiretoOrcado', () => {
   it('deve calcular o custo base usando o BDI do item', () => {
@@ -27,7 +27,7 @@ describe('calculateCustoDiretoOrcado', () => {
     expect(result).toBe(100);
   });
 
-  it('deve retornar 0 para itens sem BDI se o MKP também não tiver', () => {
+  it('deve retornar o próprio valor se BDI for 1 ou indefinido', () => {
     const producaoItens = [
       { valor_total: 100 },
     ];
