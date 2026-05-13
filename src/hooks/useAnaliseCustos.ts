@@ -46,7 +46,7 @@ export interface AnaliseCustosRow {
 
   // ── GERÊNCIA (categoria_analise = 'GERENCIA') ────
   gerenciaReal: number;         // soma dos lançamentos IA-categorizados como GERENCIA
-  gerenciaOrcada: number;       // poc * mkp.perc_gerencia
+  gerenciaOrcada: number;       // custoDiretoOrcado * mkp.perc_gerencia
   deltaGerencia: number;        // orcado - real
   percGerenciaOrcada: number;
   percGerenciaReal: number;
@@ -676,12 +676,13 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const percInflacao = mkp?.perc_inflacao ?? 0;
         const percGerencia = mkp?.perc_gerencia ?? 0;
         const percTreinamento = mkp?.perc_treinamento ?? 0;
-        const gerenciaOrcada = poc * percGerencia;
+        
+        // O Cálculo de gerência deve ser feito sobre o custo direto orçado e não sobre o total produzido (POC).
+        const gerenciaOrcada = custoDiretoOrcado * percGerencia;
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
         
         // Coluna “Custo Orçado Total”
-        // const custoTotalOrcado = custoDiretoOrcado + (custoDiretoOrcado * percRisco) + ((custoDiretoOrcado * (percRisco+percGerencia)) * percInflacao) + gerenciaOrcada + ((custoDiretoOrcado * (percRisco+percGerencia)) * perc_treinamento);
         const custoTotalOrcado = 
           custoDiretoOrcado + 
           (custoDiretoOrcado * percRisco) + 
@@ -734,7 +735,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           gerenciaReal,
           gerenciaOrcada,
           deltaGerencia: gerenciaOrcada - gerenciaReal,
-          percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
+          percGerenciaOrcada: poc > 0 ? gerenciaOrcada / poc : 0,
           percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
           pendentesCategorizacao,
           custoTotalReal,
