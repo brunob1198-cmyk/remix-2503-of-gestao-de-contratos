@@ -799,3 +799,21 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     categoriasMapeamento 
   };
 }
+
+/**
+ * Calcula o custo direto orçado baseado no BDI de cada item produzido.
+ * Garante que percentuais de Risco e Inflação não sejam somados ao custo direto,
+ * conforme solicitação do usuário.
+ */
+export function calculateCustoDiretoOrcado(
+  producaoItens: { valor_total: number; bdi_item?: number }[], 
+  mkp?: { bdi_venda?: number; perc_risco?: number; perc_inflacao?: number }
+): number {
+  return producaoItens.reduce((sum, p) => {
+    const bdiItem = p.bdi_item || mkp?.bdi_venda || 1;
+    // Custo = Venda / BDI
+    const percCustoBase = bdiItem > 0 ? (1 / bdiItem) : 0;
+    return sum + (p.valor_total * percCustoBase);
+  }, 0);
+}
+
