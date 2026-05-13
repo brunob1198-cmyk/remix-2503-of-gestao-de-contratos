@@ -54,7 +54,8 @@ export interface AnaliseCustosRow {
 
   // ── CUSTO TOTAL ──────────────────────────────────
   custoTotalReal: number;       // custoDiretoReal + gerenciaReal
-  custoTotalOrcado: number;     // custoDiretoOrcado + gerenciaOrcada
+  custoTotalOrcado: number;     // custoDiretoOrcado + formula complexa
+  resultadoTotal: number;       // custoTotalOrcado - custoTotalReal
 
   // ── MB ───────────────────────────────────────────
   mbOrcada: number;
