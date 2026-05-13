@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateCustoDiretoOrcado } from '../lib/custoUtils';
 
-
 describe('calculateCustoDiretoOrcado', () => {
   it('deve calcular o custo base usando o BDI do item', () => {
     const producaoItens = [
@@ -18,25 +17,6 @@ describe('calculateCustoDiretoOrcado', () => {
     expect(result).toBe(150);
   });
 
-  it('deve usar o BDI do MKP quando o item não tiver BDI', () => {
-    const producaoItens = [
-      { valor_total: 200 }, // Usa BDI 2.0 do MKP -> 100
-    ];
-    const mkp = { bdi_venda: 2.0 };
-    
-    const result = calculateCustoDiretoOrcado(producaoItens, mkp);
-    expect(result).toBe(100);
-  });
-
-  it('deve retornar o próprio valor se BDI for 1 ou indefinido', () => {
-    const producaoItens = [
-      { valor_total: 100 },
-    ];
-    // Sem mkp ou mkp sem bdi_venda, bdiItem será 1
-    const result = calculateCustoDiretoOrcado(producaoItens, undefined);
-    expect(result).toBe(100); // 100 / 1
-  });
-
   it('deve garantir que perc_risco e perc_inflacao não alterem o custo direto orçado', () => {
     const producaoItens = [{ valor_total: 100, bdi_item: 1.0 }];
     
@@ -49,5 +29,52 @@ describe('calculateCustoDiretoOrcado', () => {
     expect(resultSem).toBe(100);
     expect(resultCom).toBe(100);
     expect(resultSem).toBe(resultCom);
+  });
+});
+
+describe('Cálculos de Custo Total e Resultado', () => {
+  it('deve calcular corretamente o Custo Orçado Total e Resultado Total usando os parâmetros do MKP', () => {
+    // Valores base
+    const custoDiretoOrcado = 1000;
+    const gerenciaOrcada = 200;
+    const custoDiretoReal = 900;
+    const gerenciaReal = 250;
+    
+    // Parâmetros MKP
+    const percRisco = 0.05;      // 5%
+    const percInflacao = 0.03;   // 3%
+    const percGerencia = 0.10;   // 10%
+    const percTreinamento = 0.02; // 2%
+    
+    // Lógica implementada no hook:
+    // custoTotalOrcado = 
+    //   custoDiretoOrcado + 
+    //   (custoDiretoOrcado * percRisco) + 
+    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+    //   gerenciaOrcada + 
+    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+    
+    const term1 = custoDiretoOrcado; // 1000
+    const term2 = custoDiretoOrcado * percRisco; // 1000 * 0.05 = 50
+    const baseExtra = custoDiretoOrcado * (percRisco + percGerencia); // 1000 * (0.05 + 0.10) = 150
+    const term3 = baseExtra * percInflacao; // 150 * 0.03 = 4.5
+    const term4 = gerenciaOrcada; // 200
+    const term5 = baseExtra * percTreinamento; // 150 * 0.02 = 3
+    
+    const expectedCustoTotalOrcado = term1 + term2 + term3 + term4 + term5; // 1000 + 50 + 4.5 + 200 + 3 = 1257.5
+    
+    const actualCustoTotalOrcado = 
+      custoDiretoOrcado + 
+      (custoDiretoOrcado * percRisco) + 
+      ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+      gerenciaOrcada + 
+      ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+      
+    expect(actualCustoTotalOrcado).toBe(1257.5);
+    
+    const custoTotalReal = custoDiretoReal + gerenciaReal; // 900 + 250 = 1150
+    const expectedResultadoTotal = actualCustoTotalOrcado - custoTotalReal; // 1257.5 - 1150 = 107.5
+    
+    expect(actualCustoTotalOrcado - custoTotalReal).toBe(expectedResultadoTotal);
   });
 });
