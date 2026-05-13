@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { calculateCustoDiretoOrcado } from "@/lib/custoUtils";
+
 
 export interface AnaliseCustosRow {
   projetoId: string;
@@ -634,35 +636,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
         
         // Novo cálculo de Custo Direto Orçado: soma de (Valor Item / BDI Item)
-        // O usuário pediu: (Qtd x Vlr unit Item LPU) x BDI item? 
-        // Não, ele disse: "ajustar para calcular = (Qtd x Vlr unit Item LPU) x BDI item"
-        // Mas o Valor Total no diario_producao já é (Qtd x Vlr unit Item LPU).
-        // Se pegarmos esse valor e MULTIPLICARMOS pelo BDI, teríamos algo maior que o valor de venda (se BDI > 1).
-        // Geralmente o custo é Valor / BDI.
-        // Re-lendo: "ao invés de pegar de %custo do MKP pegar BDI por item que foi cadastrado na tela de LPU... Ajuste para calcular = (Qtd x Vlr unit Item LPU) x BDI item"
-        // Se o BDI for um multiplicador de markup (ex: 1.4), então Custo x BDI = Venda.
-        // Logo, Custo = Venda / BDI.
-        // Mas se o usuário escreveu "x BDI item", talvez ele use BDI como o percentual de custo (ex: 0.7).
-        // Na tela de MKP Parametros o BDI Venda é calculado como 1 / (1 - % Custo Direto).
-        // Se BDI Venda = 1 / (1 - % Custo Direto), então % Custo Direto = 1 - (1 / BDI Venda).
-        // Custo Direto Orçado = POC * % Custo Direto.
-        // Vamos seguir a fórmula sugerida de usar o BDI do item:
-        const percRisco = mkp?.perc_risco ?? 0;
-        const percInflacao = mkp?.perc_inflacao ?? 0;
-        
-        const custoDiretoOrcadoItens = producaoItensMes.reduce((sum, p) => {
-          const bdiItem = p.bdi_item || mkp?.bdi_venda || 1;
-          // Se BDI é o multiplicador (ex 1.4), o custo é valor / bdi
-          // Se o usuário quer x BDI, talvez o BDI no LPU seja o percentual de custo?
-          // No componente MkpParametros, o bdi_venda é exibido como número (ex: 1.4286)
-          // Se usarmos (Valor * (1/BDI)), temos o custo base.
-          const percCustoBase = bdiItem > 0 ? (1 / bdiItem) : 0;
-          return sum + (p.valor_total * percCustoBase);
-        }, 0);
+        const custoDiretoOrcado = calculateCustoDiretoOrcado(producaoItensMes, mkp);
 
-        // Somar Risco e Inflação (que são percentuais sobre o POC total)
-        // Ajustado para considerar apenas custoDiretoOrcadoItens conforme solicitação
-        const custoDiretoOrcado = custoDiretoOrcadoItens;
 
         // 2. Custos do mês
         const projetoCustosMes = (custosErp || []).filter(c => {
@@ -826,3 +801,5 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     categoriasMapeamento 
   };
 }
+
+
