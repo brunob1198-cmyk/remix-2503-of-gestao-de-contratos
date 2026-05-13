@@ -29,6 +29,13 @@ import { toast } from "sonner";
 export default function PlanejamentoObra() {
   const { projetos = [] } = useProjetos();
   const [projetoId, setProjetoId] = usePersistedState<string>("planejamento_projeto_id", "");
+  
+  // Se o projetoId salvo não existir na lista de projetos (por exemplo, após troca de conta), limpa
+  useMemo(() => {
+    if (projetoId && projetos.length > 0 && !projetos.some(p => p.id === projetoId)) {
+      setProjetoId("");
+    }
+  }, [projetos, projetoId, setProjetoId]);
   const [frenteFilter, setFrenteFilter] = usePersistedState<string>("planejamento_frente_filter", "all");
   const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("planejamento_site_filter_v2", []);
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
@@ -361,7 +368,17 @@ export default function PlanejamentoObra() {
       ) : (
         <Card>
           <CardContent className="flex items-center justify-center h-48 text-muted-foreground">
-            Selecione um projeto para visualizar o planejamento
+            {projetos.length === 0 ? "Nenhum projeto encontrado." : "Selecione um projeto para visualizar o planejamento"}
+          </CardContent>
+        </Card>
+      )}
+
+      {projetoId && frentes.length === 0 && (
+        <Card className="mt-4 border-amber-200 bg-amber-50">
+          <CardContent className="flex flex-col items-center justify-center h-48 text-amber-700">
+            <AlertTriangle className="h-8 w-8 mb-2" />
+            <p className="font-medium">Nenhuma frente de obra cadastrada para este projeto.</p>
+            <p className="text-sm mt-1">Utilize o botão "Nova Frente" para começar.</p>
           </CardContent>
         </Card>
       )}
