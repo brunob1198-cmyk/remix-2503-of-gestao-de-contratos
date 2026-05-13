@@ -81,27 +81,27 @@ describe('Cálculos de Custo Total, Gerência e Resultado', () => {
     // custoTotalOrcado = 
     //   custoDiretoOrcado + 
     //   (custoDiretoOrcado * percRisco) + 
-    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+    //   ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percInflacao) + 
     //   gerenciaOrcada + 
-    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+    //   ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percTreinamento);
     
     const term1 = custoDiretoOrcado; // 1000
     const term2 = custoDiretoOrcado * percRisco; // 1000 * 0.05 = 50
-    const baseExtra = custoDiretoOrcado * (percRisco + percGerencia); // 1000 * (0.05 + 0.10) = 150
-    const term3 = baseExtra * percInflacao; // 150 * 0.03 = 4.5
+    const baseExtra = custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia)); // 1000 + 150 = 1150
+    const term3 = baseExtra * percInflacao; // 1150 * 0.03 = 34.5
     const term4 = gerenciaOrcada; // 100
-    const term5 = baseExtra * percTreinamento; // 150 * 0.02 = 3
+    const term5 = baseExtra * percTreinamento; // 1150 * 0.02 = 23
     
-    const expectedCustoTotalOrcado = term1 + term2 + term3 + term4 + term5; // 1000 + 50 + 4.5 + 100 + 3 = 1157.5
+    const expectedCustoTotalOrcado = term1 + term2 + term3 + term4 + term5; // 1000 + 50 + 34.5 + 100 + 23 = 1207.5
     
     const actualCustoTotalOrcado = 
       custoDiretoOrcado + 
       (custoDiretoOrcado * percRisco) + 
-      ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+      ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percInflacao) + 
       gerenciaOrcada + 
-      ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+      ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percTreinamento);
       
-    expect(actualCustoTotalOrcado).toBe(1157.5);
+    expect(actualCustoTotalOrcado).toBe(1207.5);
     
     const custoTotalReal = custoDiretoReal + gerenciaReal; // 900 + 250 = 1150
     const expectedResultadoTotal = actualCustoTotalOrcado - custoTotalReal; // 1157.5 - 1150 = 7.5
