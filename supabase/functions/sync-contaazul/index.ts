@@ -1211,7 +1211,7 @@ serve(async (req) => {
           const existingInfo = existingRecordsMap.get(erpRecordId);
           let categoriaInterna: string | undefined;
 
-          if (existingInfo?.categoria_confirmada) {
+          if (existingInfo) {
             categoriaInterna = existingInfo.categoria_interna;
           } else {
             // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
