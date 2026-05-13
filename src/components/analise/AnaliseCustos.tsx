@@ -105,6 +105,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Resultado Gerência</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">% Real</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">% Orç.</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800 font-bold">Real</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800/60 font-normal">Orçado</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800 font-bold">Resultado</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">MB Orç. (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800 font-bold">MB Real (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">% MB Orç.</th>
