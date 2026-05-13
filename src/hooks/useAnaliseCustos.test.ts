@@ -59,9 +59,7 @@ describe('Cálculos de Custo Total, Gerência e Resultado', () => {
     
     custoDiretoOrcado = 5000;
     gerenciaOrcada = custoDiretoOrcado * percGerencia;
-    expect(gerenciaOrcada).toBe(500); // 5000 * 0.10 (sqn, usei o valor anterior de percGerencia no raciocinio, mas o teste garante o valor atual)
-    // 5000 * 0.05 = 250
-    expect(gerenciaOrcada).toBe(250);
+    expect(gerenciaOrcada).toBe(250); // 5000 * 0.05 = 250
   });
 
   it('deve calcular corretamente o Custo Orçado Total e Resultado Total usando os parâmetros do MKP e a nova Gerência Orçada', () => {
