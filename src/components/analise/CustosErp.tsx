@@ -145,12 +145,38 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>({
-    competencia: "", descricao: "", mapeamento: "", centro_custo: "", valor: "", status: "", categoria: ""
+  const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() => {
+    const saved = localStorage.getItem("custos_erp_search_texts");
+    return saved ? JSON.parse(saved) : {
+      competencia: "", descricao: "", mapeamento: "", centro_custo: "", valor: "", status: "", categoria: ""
+    };
   });
-  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>({
-    competencia: new Set(), descricao: new Set(), mapeamento: new Set(), centro_custo: new Set(), valor: new Set(), status: new Set(), categoria: new Set()
+  const [selectedFilters, setSelectedFilters] = useState<Record<ColKey, Set<string>>>(() => {
+    const saved = localStorage.getItem("custos_erp_selected_filters");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const result: any = {};
+      Object.keys(parsed).forEach(key => {
+        result[key] = new Set(parsed[key]);
+      });
+      return result;
+    }
+    return {
+      competencia: new Set(), descricao: new Set(), mapeamento: new Set(), centro_custo: new Set(), valor: new Set(), status: new Set(), categoria: new Set()
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem("custos_erp_search_texts", JSON.stringify(searchTexts));
+  }, [searchTexts]);
+
+  useEffect(() => {
+    const toSave: any = {};
+    Object.keys(selectedFilters).forEach(key => {
+      toSave[key] = Array.from(selectedFilters[key as ColKey]);
+    });
+    localStorage.setItem("custos_erp_selected_filters", JSON.stringify(toSave));
+  }, [selectedFilters]);
 
 
   const uniqueValues = useMemo(() => {
