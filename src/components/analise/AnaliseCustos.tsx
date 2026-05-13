@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -66,12 +68,62 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return { ...sum, ...avg };
   }, [analiseRows]);
 
+  const exportToExcel = () => {
+    const data = analiseRows.map(row => ({
+      "Referência": row.referencia,
+      "Área": row.area,
+      "Projeto": `${row.projetoCodigo} - ${row.projetoNome}`,
+      "Cliente": row.cliente,
+      "Produção (POC)": row.poc,
+      "Receita Líquida": row.producaoLiquida,
+      "MO Real": row.moObra,
+      "Mat. Real": row.materiais,
+      "Transp. Real": row.transporte,
+      "Indir. Real": row.indiretos,
+      "Custo Direto Real": row.custoDiretoReal,
+      "Custo Direto Orçado": row.custoDiretoOrcado,
+      "Resultado Direto": row.deltaDireto,
+      "Gerência Real": row.gerenciaReal,
+      "Gerência Orçada": row.gerenciaOrcada,
+      "Custo Total Real": row.custoTotalReal,
+      "Custo Total Orçado": row.custoTotalOrcado,
+      "Resultado Total": row.resultadoTotal,
+      "MB Real (R$)": row.mbRealizada,
+      "% MB Real": row.percMbReal
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Análise de Custos");
+
+    // Add totals row
+    XLSX.utils.sheet_add_aoa(worksheet, [[
+      "TOTAL", "", "", "", 
+      totals.poc, totals.producaoLiquida, 
+      totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
+      totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
+      totals.gerenciaReal, totals.gerenciaOrcada,
+      totals.custoTotalReal, totals.custoTotalOrcado, totals.resultadoTotal,
+      totals.mbRealizada, totals.percMbReal
+    ]], { origin: -1 });
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    saveAs(blob, `Analise_Custos_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3 border-b">
-          <CardTitle>Análise de Custos e Margens</CardTitle>
-          <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Análise de Custos e Margens</CardTitle>
+            <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+          </div>
+          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
         </CardHeader>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
