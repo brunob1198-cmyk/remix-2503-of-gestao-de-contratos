@@ -243,6 +243,15 @@ export default function LpuPage() {
                 <FileSpreadsheet className="h-5 w-5" />
                 Itens Cadastrados ({processedItems.length})
               </CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={exportToExcel}
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+              </Button>
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                   <FilterX className="h-4 w-4 mr-1" /> Limpar filtros de coluna
