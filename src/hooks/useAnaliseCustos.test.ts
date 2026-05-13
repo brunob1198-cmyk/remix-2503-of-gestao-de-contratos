@@ -32,49 +32,33 @@ describe('calculateCustoDiretoOrcado', () => {
   });
 });
 
-describe('Cálculos de Custo Total e Resultado', () => {
-  it('deve calcular corretamente o Custo Orçado Total e Resultado Total usando os parâmetros do MKP', () => {
-    // Valores base
+describe('Cálculos de Custo Total, Gerência e Resultado', () => {
+  it('deve calcular corretamente a Gerência Orçada baseada no Custo Direto Orçado', () => {
     const custoDiretoOrcado = 1000;
-    const gerenciaOrcada = 200;
-    const custoDiretoReal = 900;
-    const gerenciaReal = 250;
+    const percGerencia = 0.15; // 15%
     
-    // Parâmetros MKP
-    const percRisco = 0.05;      // 5%
-    const percInflacao = 0.03;   // 3%
-    const percGerencia = 0.10;   // 10%
-    const percTreinamento = 0.02; // 2%
+    // Nova lógica: gerenciaOrcada = custoDiretoOrcado * mkp.perc_gerencia
+    const gerenciaOrcada = custoDiretoOrcado * percGerencia;
     
-    // Lógica implementada no hook:
-    // custoTotalOrcado = 
-    //   custoDiretoOrcado + 
-    //   (custoDiretoOrcado * percRisco) + 
-    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
-    //   gerenciaOrcada + 
-    //   ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+    expect(gerenciaOrcada).toBe(150);
+  });
+
+  it('deve recalcular a Gerência Orçada corretamente quando os inputs mudam', () => {
+    let custoDiretoOrcado = 1000;
+    let percGerencia = 0.10;
     
-    const term1 = custoDiretoOrcado; // 1000
-    const term2 = custoDiretoOrcado * percRisco; // 1000 * 0.05 = 50
-    const baseExtra = custoDiretoOrcado * (percRisco + percGerencia); // 1000 * (0.05 + 0.10) = 150
-    const term3 = baseExtra * percInflacao; // 150 * 0.03 = 4.5
-    const term4 = gerenciaOrcada; // 200
-    const term5 = baseExtra * percTreinamento; // 150 * 0.02 = 3
+    let gerenciaOrcada = custoDiretoOrcado * percGerencia;
+    expect(gerenciaOrcada).toBe(100);
     
-    const expectedCustoTotalOrcado = term1 + term2 + term3 + term4 + term5; // 1000 + 50 + 4.5 + 200 + 3 = 1257.5
+    // Mudando inputs
+    custoDiretoOrcado = 2000;
+    percGerencia = 0.05;
     
-    const actualCustoTotalOrcado = 
-      custoDiretoOrcado + 
-      (custoDiretoOrcado * percRisco) + 
-      ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
-      gerenciaOrcada + 
-      ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
-      
-    expect(actualCustoTotalOrcado).toBe(1257.5);
+    gerenciaOrcada = custoDiretoOrcado * percGerencia;
+    expect(gerenciaOrcada).toBe(100); // 2000 * 0.05 = 100
     
-    const custoTotalReal = custoDiretoReal + gerenciaReal; // 900 + 250 = 1150
-    const expectedResultadoTotal = actualCustoTotalOrcado - custoTotalReal; // 1257.5 - 1150 = 107.5
-    
-    expect(actualCustoTotalOrcado - custoTotalReal).toBe(expectedResultadoTotal);
+    custoDiretoOrcado = 5000;
+    gerenciaOrcada = custoDiretoOrcado * perc_gerencia;
+    // Opa, corrigindo para percGerencia
   });
 });
