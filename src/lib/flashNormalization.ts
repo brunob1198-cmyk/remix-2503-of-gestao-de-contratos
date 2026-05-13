@@ -124,7 +124,7 @@ export const normalizeFlashTransaction = (
   
   // Extrair metadados para matching inteligente
   const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
-  const flash_cost_center = transaction.flash_cost_center || pickValue(payload, ["costCenter.name", "cost_center.name", "centro_custo", "employee.costCenter.name"]) || "—";
+  const flash_cost_center = transaction.flash_cost_center || pickValue(payload, ["costCenter.name", "cost_center.name", "employee.costCenter.name", "user.costCenter.name", "employee.cost_center.name", "user.cost_center.name", "centro_custo", "costCenter.code", "costCenter.externalId", "costCenterId", "cost_center_id", "employee.costCenterId"]) || "—";
   const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
   const comentarios = pickValue(payload, ["comments", "comment", "observacao", "observation", "note"]) || null;
   

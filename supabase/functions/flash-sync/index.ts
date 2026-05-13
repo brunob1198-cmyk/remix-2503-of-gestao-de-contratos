@@ -23,6 +23,8 @@ const FLASH_API_BASE_URL =
   Deno.env.get("FLASH_API_BASE_URL") ?? "https://api.flashapp.services";
 const FLASH_TRANSACTIONS_PATH =
   Deno.env.get("FLASH_TRANSACTIONS_PATH") ?? "/expenses/v1/expenses";
+// Endpoint de centros de custo — /core/v1/cost-centers (documentado)
+const FLASH_COST_CENTERS_PATH = "/core/v1/cost-centers";
 // Endpoint sempre confiável para validar token (documentado)
 const FLASH_VALIDATE_PATH = "/core/v1/companies";
 const FLASH_PAGE_SIZE = Number(Deno.env.get("FLASH_PAGE_SIZE") ?? "100");
@@ -206,6 +208,103 @@ async function getTransactions(params: {
   }
 
   return { transactions: all, pagesFetched, lastResponse };
+}
+
+/**
+ * Fetch all cost centers from Flash API (/core/v1/cost-centers).
+ * Returns a Map from costCenterId → { id, name, code, externalId }.
+ */
+async function getCostCenters(token: string): Promise<Map<string, { id: string; name: string; code?: string; externalId?: string }>> {
+  const map = new Map<string, { id: string; name: string; code?: string; externalId?: string }>();
+  let page = 1;
+  let pagesFetched = 0;
+
+  while (pagesFetched < 50) {
+    const url = new URL(FLASH_COST_CENTERS_PATH, FLASH_API_BASE_URL);
+    url.searchParams.set("pageSize", "100");
+    url.searchParams.set("pageNumber", String(page));
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("limit", "100");
+
+    console.log(`[flash-sync] Fetching cost centers page ${page}: ${url.toString()}`);
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "x-flash-auth": token,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        console.warn(`[flash-sync] Cost centers fetch failed: HTTP ${res.status}`);
+        break;
+      }
+
+      const text = await res.text();
+      let payload: any;
+      try {
+        payload = text ? JSON.parse(text) : {};
+      } catch {
+        console.warn(`[flash-sync] Cost centers: invalid JSON response`);
+        break;
+      }
+
+      // Flash retorna { records: [...], metadata: { ... } }
+      const records = payload.records ?? payload.data ?? payload.items ?? payload.results ?? (Array.isArray(payload) ? payload : []);
+      if (!Array.isArray(records) || records.length === 0) {
+        if (pagesFetched === 0) {
+          // Tenta buscar o array do primeiro campo que seja array
+          for (const key in payload) {
+            if (Array.isArray(payload[key]) && payload[key].length > 0) {
+              for (const cc of payload[key]) {
+                const id = cc.id || cc.costCenterId || "";
+                if (id) {
+                  map.set(id, {
+                    id,
+                    name: cc.name || cc.description || cc.label || cc.title || id,
+                    code: cc.code || cc.externalId || undefined,
+                    externalId: cc.externalId || undefined,
+                  });
+                }
+              }
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      for (const cc of records) {
+        const id = cc.id || cc.costCenterId || "";
+        if (id) {
+          map.set(id, {
+            id,
+            name: cc.name || cc.description || cc.label || cc.title || id,
+            code: cc.code || cc.externalId || undefined,
+            externalId: cc.externalId || undefined,
+          });
+        }
+      }
+
+      pagesFetched++;
+
+      // Pagination
+      const totalPages = payload.metadata?.totalPages ?? payload.total_pages ?? payload.totalPages;
+      const hasMore = payload.metadata?.hasMore ?? payload.has_more ?? payload.hasMore;
+      if (totalPages && page >= Number(totalPages)) break;
+      if (hasMore === false) break;
+      if (records.length < 100) break;
+      page++;
+    } catch (err) {
+      console.warn(`[flash-sync] Cost centers fetch error:`, err?.message ?? err);
+      break;
+    }
+  }
+
+  console.log(`[flash-sync] Fetched ${map.size} cost centers from Flash API`);
+  return map;
 }
 
 Deno.serve(async (req) => {
@@ -434,11 +533,50 @@ Deno.serve(async (req) => {
   const logId = logRow?.id;
 
   try {
+    // Buscar centros de custo do Flash para enriquecer as transações
+    let costCenterMap = new Map<string, { id: string; name: string; code?: string; externalId?: string }>();
+    try {
+      costCenterMap = await getCostCenters(flashToken);
+    } catch (err) {
+      console.warn(`[flash-sync] Falha ao buscar centros de custo:`, err?.message ?? err);
+    }
+
     const { transactions, pagesFetched, lastResponse } = await getTransactions({
       startDate,
       endDate,
       token: flashToken,
     });
+
+    // Enriquecer cada transação com o centro de custo se tiver apenas o ID
+    for (const tx of transactions) {
+      const ccId = (tx as any).costCenterId ?? (tx as any).cost_center_id ?? (tx as any).costCenter?.id ?? null;
+      const hasName = !!(tx as any).costCenter?.name;
+      
+      if (ccId && !hasName && costCenterMap.has(ccId)) {
+        const cc = costCenterMap.get(ccId)!;
+        (tx as any).costCenter = {
+          id: cc.id,
+          name: cc.name,
+          ...(cc.code ? { code: cc.code } : {}),
+          ...(cc.externalId ? { externalId: cc.externalId } : {}),
+        };
+      } else if (ccId && !hasName && !costCenterMap.has(ccId)) {
+        // Se temos o ID mas não encontramos no mapa, salvar o ID como nome temporário
+        (tx as any).costCenter = { id: ccId, name: ccId };
+      }
+      
+      // Se a transação tem employee com costCenterId mas sem name, enriquecer também
+      const empCcId = (tx as any).employee?.costCenterId ?? (tx as any).employee?.costCenter?.id ?? null;
+      const empHasName = !!(tx as any).employee?.costCenter?.name;
+      if (empCcId && !empHasName && costCenterMap.has(empCcId)) {
+        const cc = costCenterMap.get(empCcId)!;
+        (tx as any).employee = (tx as any).employee || {};
+        (tx as any).employee.costCenter = {
+          id: cc.id,
+          name: cc.name,
+        };
+      }
+    }
 
     let inserted = 0;
     if (transactions.length > 0) {

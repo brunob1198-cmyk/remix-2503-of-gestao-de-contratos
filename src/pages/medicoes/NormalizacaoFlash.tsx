@@ -174,10 +174,12 @@ function EditableCostCenter({
   row,
   disabled,
   onSave,
+  isInSaas,
 }: {
   row: FlashTransactionRow;
   disabled?: boolean;
   onSave: (newValue: string) => void;
+  isInSaas?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(row.flash_cost_center === "—" ? "" : row.flash_cost_center);
@@ -212,22 +214,48 @@ function EditableCostCenter({
   };
 
   if (disabled) {
+    const hasCostCenter = row.flash_cost_center && row.flash_cost_center !== "—";
+    const showRed = hasCostCenter && isInSaas === false;
     return (
-      <span className="block truncate text-muted-foreground">{row.flash_cost_center}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn("block truncate", showRed ? "text-red-600 font-medium" : "text-muted-foreground")}>
+            {row.flash_cost_center}
+          </span>
+        </TooltipTrigger>
+        {showRed && (
+          <TooltipContent>
+            <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
     );
   }
 
   if (!editing) {
+    const hasCostCenter = row.flash_cost_center && row.flash_cost_center !== "—";
+    const showRed = hasCostCenter && isInSaas === false;
     return (
-      <button
-        type="button"
-        className="flex items-center gap-1 w-full group text-left"
-        onClick={() => setEditing(true)}
-        title="Clique para editar o centro de custo"
-      >
-        <span className="truncate flex-1">{row.flash_cost_center}</span>
-        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1 w-full group text-left"
+            onClick={() => setEditing(true)}
+            title="Clique para editar o centro de custo"
+          >
+            <span className={cn("truncate flex-1", showRed && "text-red-600 font-medium")}>
+              {row.flash_cost_center}
+            </span>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+          </button>
+        </TooltipTrigger>
+        {showRed && (
+          <TooltipContent>
+            <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
     );
   }
 
@@ -287,6 +315,7 @@ export default function NormalizacaoFlashPage() {
     reopenEnviado,
     sendToContaAzul,
     updateCostCenter,
+    saasCostCenters,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -1568,6 +1597,17 @@ export default function NormalizacaoFlashPage() {
                                   row={row}
                                   disabled={isEnviado}
                                   onSave={(newVal) => updateCostCenter(row, newVal)}
+                                  isInSaas={
+                                    !row.flash_cost_center || row.flash_cost_center === "—"
+                                      ? undefined
+                                      : saasCostCenters.length === 0
+                                        ? undefined
+                                        : saasCostCenters.some(sc =>
+                                            sc.toLowerCase() === row.flash_cost_center.toLowerCase()
+                                            || row.flash_cost_center.toLowerCase().includes(sc.toLowerCase())
+                                            || sc.toLowerCase().includes(row.flash_cost_center.toLowerCase())
+                                          )
+                                  }
                                 />
                               </TableCell>
                               <TableCell>

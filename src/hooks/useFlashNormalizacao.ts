@@ -218,15 +218,25 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_type,
     flash_category,
     flash_cost_center: pickPayloadValue(p, [
+      // Objeto costCenter completo (enriquecido pelo sync ou já presente na API)
       "costCenter.name", 
       "cost_center.name", 
-      "centro_custo", 
+      // Objeto dentro de employee/user
       "employee.costCenter.name", 
       "user.costCenter.name",
       "employee.cost_center.name",
       "user.cost_center.name",
+      // Campo direto (legado ou custom)
+      "centro_custo",
+      // Fallbacks: código, externalId, ou ID direto do costCenter
+      "costCenter.code",
       "costCenter.externalId",
-      "costCenter.code"
+      // Se só tem o ID como string (sem objeto), usar como último recurso
+      "costCenterId",
+      "cost_center_id",
+      "employee.costCenterId",
+      "employee.cost_center_id",
+      "user.costCenterId",
     ]) || "—",
     comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "observation", "note"]) || "—",
     flash_prestacao_contas,
@@ -244,6 +254,7 @@ export function useFlashNormalizacao() {
   const [contas, setContas] = useState<ContaAzulOption[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
 
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!empresaId) {
@@ -492,6 +503,29 @@ export function useFlashNormalizacao() {
     fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Buscar centros de custo do SaaS (tabela areas) para comparação
+  useEffect(() => {
+    if (!empresaId) return;
+    const fetchAreas = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("areas")
+          .select("nome")
+          .eq("empresa_id", empresaId);
+        if (error) {
+          console.error("Erro ao buscar áreas (centros de custo do SaaS):", error);
+          return;
+        }
+        const names = (data || []).map((a: any) => a.nome).filter(Boolean);
+        console.log(`[SaaS Cost Centers] Encontrados: ${names.length} centros de custo`);
+        setSaasCostCenters(names);
+      } catch (e) {
+        console.error("Erro ao buscar centros de custo do SaaS:", e);
+      }
+    };
+    fetchAreas();
+  }, [empresaId]);
 
   // Mantemos o mappingByType apenas para retrocompatibilidade simples se necessário,
   // mas o ideal é usar a lista completa com a lógica do flashNormalization.ts
@@ -980,5 +1014,6 @@ export function useFlashNormalizacao() {
     sendToContaAzul,
     isAlreadyIntegrated,
     updateCostCenter,
+    saasCostCenters,
   };
 }
