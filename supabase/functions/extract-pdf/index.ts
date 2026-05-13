@@ -50,38 +50,30 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `Você é um assistente especializado em extrair dados estruturados de documentos PDF de pedidos de compra.
+    const systemPrompt = `Você é um assistente especializado em extrair dados estruturados de documentos PDF de pedidos de compra, notas fiscais e orçamentos de obra.
 
-IMPORTANTE: Analise o documento e extraia TODOS os dados relevantes, organizados nas seguintes categorias:
+IMPORTANTE: O layout dos documentos pode variar significativamente entre diferentes fornecedores e sistemas ERP. Use heurísticas inteligentes para identificar os campos, mesmo que não sigam um padrão rígido ou rótulos explícitos.
 
+PROCEDIMENTO DE EXTRAÇÃO:
+1. Identifique o tipo de documento (Pedido, Nota Fiscal, Orçamento).
+2. Procure por identificadores de projeto em qualquer lugar do texto (ex: códigos no formato "OXXX.XX", "Job XXX", "Prj XXX", "Centro de Custo").
+3. Localize o nome do Site/Local. Se não houver o rótulo "Site", procure por descrições de locais de entrega, nomes de subestações ou códigos de localidade que acompanhem o projeto.
+4. Em tabelas de itens, extraia colunas mesmo que os cabeçalhos sejam abreviados ou incomuns. Use o contexto das linhas para deduzir qual coluna é a quantidade, preço unitário, etc.
+5. Para valores monetários, identifique o separador decimal e de milhar corretamente.
+
+DADOS A EXTRAIR:
 1. DADOS DO PEDIDO:
-   - Número do pedido
-   - Número do projeto (se houver)
-   - Nome do site (se houver - geralmente é o nome do local/site onde o serviço será prestado ou material entregue, pode aparecer como "Site", "Local", "Estação", "ID do Site", etc.)
-   - Data do pedido
+   - Número do pedido/nota
+   - Número do projeto (heurística: códigos como "O010.25")
+   - Nome do site (identificado por contexto/proximidade se não houver rótulo)
+   - Data do documento
    - Condição de pagamento
-   - Valor total do pedido
-   - Data de entrega (se houver)
+   - Valor total (procure por "Total Geral", "Líquido", "Valor da Nota")
+   - Data de entrega
 
-2. DADOS DO FORNECEDOR:
-   - Razão Social
-   - CNPJ
-   - Endereço completo
-   - Cidade/Estado
-   - Telefone/Email (se houver)
+2. DADOS DO FORNECEDOR/COMPRADOR: Razão Social, CNPJ, Endereço.
 
-3. DADOS DO COMPRADOR/EMPRESA:
-   - Razão Social
-   - CNPJ
-   - Endereço
-
-4. ITENS DO PEDIDO (para cada item):
-   - Código/SKU
-   - Descrição do produto
-   - Quantidade
-   - Unidade de medida
-   - Preço unitário
-   - Valor total do item
+3. ITENS (Lista detalhada): Código, Descrição, Qtd, Unidade, Preço Unitário, Total Item.
 
 Retorne os dados em formato JSON estruturado. Use null para campos não encontrados.
 O JSON deve seguir exatamente este formato:
@@ -117,7 +109,9 @@ O JSON deve seguir exatamente este formato:
       "preco_unitario": "string ou null",
       "valor_total": "string ou null"
     }
-  ]
+  ],
+  "heuristica_aplicada": "booleano indicando se campos foram deduzidos por contexto",
+  "tipo_documento_detectado": "string"
 }`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
