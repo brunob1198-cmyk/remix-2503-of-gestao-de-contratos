@@ -1206,17 +1206,26 @@ serve(async (req) => {
           currentIdsByBase.set(erpIdBase, currentIds);
 
           const categoriaErp = allocation.categoriaErp || "Outros";
-          // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
-          let categoriaInterna = (categoriaErp.toLowerCase().includes("miscelanea - campo")) ? "Materiais" : mapCategorias.get(categoriaErp);
           
-          if (!categoriaInterna) {
-            categoriaInterna = categorizarDespesa(categoriaErp, descricao);
-            newCategorias.set(categoriaErp, {
-              categoria_erp: categoriaErp,
-              categoria_interna: categoriaInterna,
-              criado_por_ia: true,
-            });
-            mapCategorias.set(categoriaErp, categoriaInterna);
+          // Rule: Check if record exists and has confirmed category
+          const existingInfo = existingRecordsMap.get(erpRecordId);
+          let categoriaInterna: string | undefined;
+
+          if (existingInfo?.categoria_confirmada) {
+            categoriaInterna = existingInfo.categoria_interna;
+          } else {
+            // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
+            categoriaInterna = (categoriaErp.toLowerCase().includes("miscelanea - campo")) ? "Materiais" : mapCategorias.get(categoriaErp);
+            
+            if (!categoriaInterna) {
+              categoriaInterna = categorizarDespesa(categoriaErp, descricao);
+              newCategorias.set(categoriaErp, {
+                categoria_erp: categoriaErp,
+                categoria_interna: categoriaInterna,
+                criado_por_ia: true,
+              });
+              mapCategorias.set(categoriaErp, categoriaInterna);
+            }
           }
 
           const { projetoId, siteId, strategy } = resolveProjetoESite(
