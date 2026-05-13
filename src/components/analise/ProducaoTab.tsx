@@ -118,11 +118,15 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
 
       {/* Table */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ClipboardList className="h-5 w-5 text-emerald-600" />
             Acompanhamento de Produção por Item
           </CardTitle>
+          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="w-full">
