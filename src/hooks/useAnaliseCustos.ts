@@ -735,7 +735,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           gerenciaReal,
           gerenciaOrcada,
           deltaGerencia: gerenciaOrcada - gerenciaReal,
-          percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
+          percGerenciaOrcada: poc > 0 ? gerenciaOrcada / poc : 0,
           percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
           pendentesCategorizacao,
           custoTotalReal,
