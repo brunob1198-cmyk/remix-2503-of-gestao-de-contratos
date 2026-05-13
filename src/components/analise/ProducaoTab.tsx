@@ -44,28 +44,80 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
       };
     });
 
+    const workbook = XLSX.utils.book_new();
+    
+    // ABA 1: Detalhamento
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     
-    // Formatting numbers and percentages
+    // Configurar larguras das colunas
+    const wscols = [
+      { wch: 15 }, // Código
+      { wch: 40 }, // Descrição
+      { wch: 10 }, // Unidade
+      { wch: 15 }, // Planejado
+      { wch: 15 }, // Executado
+      { wch: 15 }, // Saldo
+      { wch: 15 }, // % Executado
+      { wch: 10 }, // Dias
+      { wch: 15 }, // Média Diária
+      { wch: 15 }, // Média Semanal
+      { wch: 15 }, // Média Mensal
+    ];
+    worksheet['!cols'] = wscols;
+
+    // Adicionar Filtros (AutoFilter)
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    worksheet['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+
+    // Formatação de números e percentuais
     for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-      // Column G is % Executado (0-indexed 6)
+      // Coluna G (% Executado) - index 6
       const cellG = worksheet[XLSX.utils.encode_cell({ r: R, c: 6 })];
       if (cellG) cellG.z = '0.0%';
       
-      // Numeric columns D, E, F, I, J, K (3, 4, 5, 8, 9, 10)
+      // Colunas numéricas
       [3, 4, 5, 8, 9, 10].forEach(C => {
         const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
         if (cell) cell.z = '#,##0.00';
       });
     }
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Produção por Item");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Detalhamento por Item");
+
+    // ABA 2: Resumo Geral
+    const totalPlanejado = data.producaoItems.reduce((s: number, i: any) => s + i.planejado, 0);
+    const totalExecutado = data.producaoItems.reduce((s: number, i: any) => s + i.executado, 0);
+    const totalSaldo = data.producaoItems.reduce((s: number, i: any) => s + Math.max(0, i.saldo), 0);
+    const pctGeral = totalPlanejado > 0 ? (totalExecutado / totalPlanejado) : 0;
+    
+    const summaryData = [
+      ["RESUMO GERAL DE PRODUÇÃO"],
+      ["Data de Geração", format(new Date(), "dd/MM/yyyy HH:mm")],
+      [],
+      ["Métrica", "Valor"],
+      ["Total de Itens", data.producaoItems.length],
+      ["Total Planejado", totalPlanejado],
+      ["Total Executado", totalExecutado],
+      ["Saldo Total", totalSaldo],
+      ["Percentual de Execução Geral", pctGeral],
+      ["Itens Iniciados", data.producaoItems.filter((i: any) => i.executado > 0).length],
+      ["Itens Concluídos", data.producaoItems.filter((i: any) => i.planejado > 0 && i.saldo <= 0).length]
+    ];
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // Formatação da aba de resumo
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
+    
+    // Formatação percentual no resumo (linha 9, coluna B -> R:8, C:1)
+    const pctCell = summarySheet[XLSX.utils.encode_cell({ r: 8, c: 1 })];
+    if (pctCell) pctCell.z = '0.0%';
+
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo Geral");
 
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    const fileData = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-    saveAs(fileData, `Producao_Item_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
+    const fileBlob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    saveAs(fileBlob, `Acompanhamento_Producao_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
   };
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
