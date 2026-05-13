@@ -46,7 +46,7 @@ export interface AnaliseCustosRow {
 
   // ── GERÊNCIA (categoria_analise = 'GERENCIA') ────
   gerenciaReal: number;         // soma dos lançamentos IA-categorizados como GERENCIA
-  gerenciaOrcada: number;       // poc * mkp.perc_gerencia
+  gerenciaOrcada: number;       // custoDiretoOrcado * mkp.perc_gerencia
   deltaGerencia: number;        // orcado - real
   percGerenciaOrcada: number;
   percGerenciaReal: number;
