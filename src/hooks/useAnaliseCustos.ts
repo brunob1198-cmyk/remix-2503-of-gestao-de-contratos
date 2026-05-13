@@ -349,8 +349,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
 
       // 2. Update record
       const { error } = await supabase.from("custo_real_erp")
-         .update({ categoria_interna: newCategoria })
-         .eq("erp_id", erpId);
+        .update({ categoria_interna: newCategoria, categoria_confirmada: true })
+        .eq("erp_id", erpId);
       if (error) throw error;
 
       // 3. Learning Step: Upsert mapping
