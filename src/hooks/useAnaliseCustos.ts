@@ -790,7 +790,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     mutationFn: async (updates: { erp_id: string; categoria_interna: string; categoria_erp: string }[]) => {
       for (const up of updates) {
         await supabase.from("custo_real_erp")
-          .update({ categoria_interna: up.categoria_interna })
+          .update({ categoria_interna: up.categoria_interna, categoria_confirmada: true })
           .eq("erp_id", up.erp_id);
         
         await supabase.from("mapeamento_categorias_erp").upsert({
