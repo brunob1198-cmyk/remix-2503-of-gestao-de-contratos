@@ -766,7 +766,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .single();
 
       const { error } = await supabase.from("custo_real_erp")
-        .update({ categoria_interna: newCategoria })
+        .update({ categoria_interna: newCategoria, categoria_confirmada: true })
         .eq("erp_id", erpId);
       if (error) throw error;
 
