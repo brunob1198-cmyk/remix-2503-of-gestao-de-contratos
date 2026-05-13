@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
+import { calculateCustoDiretoOrcado } from "@/lib/custoUtils";
+
 
 export interface AnaliseCustosRow {
   projetoId: string;
