@@ -7,7 +7,7 @@ import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet } from "lucid
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
-import * as XLSX from "xlsx";
+import XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
 
 interface AnaliseCustosProps {
