@@ -73,6 +73,7 @@ interface ColumnHeaderFilterProps {
 function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange, uniqueValues, selectedValues, onToggleValue, onSelectAll, onClearAll }: ColumnHeaderFilterProps) {
   const isFiltered = searchText !== "" || selectedValues.size > 0;
   const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowUpDown;
+  const [width, setWidth] = useState(350);
 
   return (
     <div className="flex items-center gap-1">
@@ -86,20 +87,48 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
             <Filter className="h-3 w-3" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[450px] p-3 space-y-3" align="start">
-          <Input placeholder={`Pesquisar ${label.toLowerCase()}...`} value={searchText} onChange={(e) => onSearchChange(e.target.value)} className="h-8 text-sm" />
-          <div className="flex gap-2 text-xs">
-            <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
-            <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
-          </div>
-          <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-            {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
-              <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1">
-                <Checkbox checked={selectedValues.has(v)} onCheckedChange={() => onToggleValue(v)} className="h-3.5 w-3.5 mt-0.5" />
-                <span className="break-words leading-tight">{v || "(vazio)"}</span>
-              </label>
-            ))}
-          </div>
+        <PopoverContent className="p-0 border-none bg-transparent shadow-none w-auto overflow-visible" align="start" sideOffset={8}>
+          <ResizableBox
+            width={width}
+            height={320}
+            minConstraints={[280, 250]}
+            maxConstraints={[800, 600]}
+            axis="both"
+            onResize={(e, data) => setWidth(data.size.width)}
+            handle={
+              <div className="absolute right-0 bottom-0 p-1 cursor-nwse-resize z-50 text-muted-foreground hover:text-primary transition-colors">
+                <GripHorizontal className="h-3 w-3 rotate-45" />
+              </div>
+            }
+            className="relative bg-popover border rounded-lg shadow-xl overflow-hidden flex flex-col"
+          >
+            <div className="p-3 space-y-3 flex flex-col h-full">
+              <div className="flex items-center gap-2">
+                <Input 
+                  placeholder={`Pesquisar ${label.toLowerCase()}...`} 
+                  value={searchText} 
+                  onChange={(e) => onSearchChange(e.target.value)} 
+                  className="h-8 text-sm" 
+                />
+              </div>
+              <div className="flex gap-2 text-xs font-medium">
+                <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
+                <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
+                  <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1.5 transition-colors">
+                    <Checkbox 
+                      checked={selectedValues.has(v)} 
+                      onCheckedChange={() => onToggleValue(v)} 
+                      className="h-4 w-4 mt-0.5" 
+                    />
+                    <span className="break-words leading-tight flex-1">{v || "(vazio)"}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </ResizableBox>
         </PopoverContent>
       </Popover>
     </div>
