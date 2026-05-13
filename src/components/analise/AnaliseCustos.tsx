@@ -42,13 +42,18 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
       gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
       gerenciaOrcada: acc.gerenciaOrcada + r.gerenciaOrcada,
+      custoTotalReal: acc.custoTotalReal + r.custoTotalReal,
+      custoTotalOrcado: acc.custoTotalOrcado + r.custoTotalOrcado,
+      resultadoTotal: acc.resultadoTotal + r.resultadoTotal,
       mbOrcada: acc.mbOrcada + r.mbOrcada,
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
       poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
       indiretos: 0,
       custoDiretoReal: 0, custoDiretoOrcado: 0,
-      gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
+      gerenciaReal: 0, gerenciaOrcada: 0, 
+      custoTotalReal: 0, custoTotalOrcado: 0, resultadoTotal: 0,
+      mbOrcada: 0, mbRealizada: 0
     });
 
     const avg = {
@@ -76,6 +81,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th colSpan={3} className="py-2 px-4 border-b border-r text-center bg-green-50 text-green-700">Receita</th>
                 <th colSpan={7} className="py-2 px-4 border-b border-r text-center bg-blue-50 text-blue-700">Custo Direto</th>
                 <th colSpan={5} className="py-2 px-4 border-b border-r text-center bg-amber-50 text-amber-700">Gerência</th>
+                <th colSpan={3} className="py-2 px-4 border-b border-r text-center bg-purple-50 text-purple-700">Custo Total</th>
                 <th colSpan={4} className="py-2 px-4 border-b text-center bg-gray-50 text-gray-700">Margem Bruta (MB)</th>
               </tr>
               <tr className="bg-muted text-muted-foreground font-semibold text-center h-12">
@@ -99,6 +105,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">Resultado Gerência</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800 font-bold">% Real</th>
                 <th className="py-3 px-4 border-b border-r bg-amber-100/50 text-amber-800/60 font-normal">% Orç.</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800 font-bold">Real</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800/60 font-normal">Orçado</th>
+                <th className="py-3 px-4 border-b border-r bg-purple-100/50 text-purple-800 font-bold">Resultado</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">MB Orç. (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800 font-bold">MB Real (R$)</th>
                 <th className="py-3 px-4 border-b border-r bg-slate-100/50 text-slate-800">% MB Orç.</th>
@@ -211,6 +220,16 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700">{formatPercent(row.percGerenciaReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-amber-50/50 text-amber-700/60">{formatPercent(row.percGerenciaOrcada)}</td>
 
+                    {/* CUSTO TOTAL */}
+                    <td className="py-2 px-4 border-b border-r bg-purple-50/50 text-purple-700 font-bold">{formatCurrency(row.custoTotalReal)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-purple-50/50 text-purple-700/60">{formatCurrency(row.custoTotalOrcado)}</td>
+                    <td className={`py-2 px-4 border-b border-r bg-purple-50/50 font-bold ${row.resultadoTotal > 0 ? 'text-green-600' : row.resultadoTotal < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                      <div className="flex items-center justify-end gap-1">
+                        {row.resultadoTotal > 0 ? <ArrowDown className="h-3 w-3" /> : row.resultadoTotal < 0 ? <ArrowUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                        {row.resultadoTotal === 0 ? "—" : formatCurrency(Math.abs(row.resultadoTotal))}
+                      </div>
+                    </td>
+
                     {/* MB */}
                     <td className="py-2 px-4 border-b border-r bg-slate-50/50 text-slate-600">{formatCurrency(row.mbOrcada)}</td>
                     <td className={`py-2 px-4 border-b border-r bg-slate-50/50 font-bold ${row.mbRealizada >= 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -243,6 +262,9 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r bg-amber-100/80">{formatCurrency(totals.gerenciaOrcada - totals.gerenciaReal)}</td>
                 <td className="py-3 px-4 border-r bg-amber-100/80">{formatPercent(totals.gerenciaReal / (totals.producaoLiquida || 1))}</td>
                 <td className="py-3 px-4 border-r bg-amber-100/80 text-slate-900/60">{formatPercent(totals.gerenciaOrcada / (totals.producaoLiquida || 1))}</td>
+                <td className="py-3 px-4 border-r bg-purple-100/80">{formatCurrency(totals.custoTotalReal)}</td>
+                <td className="py-3 px-4 border-r bg-purple-100/80 text-slate-900/60">{formatCurrency(totals.custoTotalOrcado)}</td>
+                <td className="py-3 px-4 border-r bg-purple-100/80">{formatCurrency(totals.resultadoTotal)}</td>
                 <td className="py-3 px-4 border-r bg-slate-200/80">{formatCurrency(totals.mbOrcada)}</td>
                 <td className={`py-3 px-4 border-r bg-slate-200/80 ${totals.mbRealizada >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(totals.mbRealizada)}</td>
                 <td className="py-3 px-4 border-r bg-slate-200/80">{formatPercent(totals.percMbOrcada)}</td>

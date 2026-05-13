@@ -54,7 +54,8 @@ export interface AnaliseCustosRow {
 
   // ── CUSTO TOTAL ──────────────────────────────────
   custoTotalReal: number;       // custoDiretoReal + gerenciaReal
-  custoTotalOrcado: number;     // custoDiretoOrcado + gerenciaOrcada
+  custoTotalOrcado: number;     // custoDiretoOrcado + formula complexa
+  resultadoTotal: number;       // custoTotalOrcado - custoTotalReal
 
   // ── MB ───────────────────────────────────────────
   mbOrcada: number;
@@ -671,11 +672,24 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const equipamentos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
         const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
-        const gerenciaOrcada = poc * (mkp?.perc_gerencia ?? 0);
-        const percCustoDireto = poc > 0 ? (custoDiretoOrcado / poc) : (mkp?.perc_custo_direto ?? 0);
+        const percRisco = mkp?.perc_risco ?? 0;
+        const percInflacao = mkp?.perc_inflacao ?? 0;
+        const percGerencia = mkp?.perc_gerencia ?? 0;
+        const percTreinamento = mkp?.perc_treinamento ?? 0;
+        const gerenciaOrcada = poc * percGerencia;
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
-        const custoTotalOrcado = custoDiretoOrcado + gerenciaOrcada;
+        
+        // Coluna “Custo Orçado Total”
+        // const custoTotalOrcado = custoDiretoOrcado + (custoDiretoOrcado * percRisco) + ((custoDiretoOrcado * (percRisco+percGerencia)) * percInflacao) + gerenciaOrcada + ((custoDiretoOrcado * (percRisco+percGerencia)) * perc_treinamento);
+        const custoTotalOrcado = 
+          custoDiretoOrcado + 
+          (custoDiretoOrcado * percRisco) + 
+          ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+          gerenciaOrcada + 
+          ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+
+        const resultadoTotal = custoTotalOrcado - custoTotalReal;
 
         const mbRealizada = producaoLiquida - custoTotalReal;
         const mbOrcada = producaoLiquida - custoTotalOrcado;
@@ -725,6 +739,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           pendentesCategorizacao,
           custoTotalReal,
           custoTotalOrcado,
+          resultadoTotal,
           mbOrcada,
           mbRealizada,
           percMbOrcada,
