@@ -84,17 +84,17 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
             <Filter className="h-3 w-3" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-3 space-y-3" align="start">
+        <PopoverContent className="w-[450px] p-3 space-y-3" align="start">
           <Input placeholder={`Pesquisar ${label.toLowerCase()}...`} value={searchText} onChange={(e) => onSearchChange(e.target.value)} className="h-8 text-sm" />
           <div className="flex gap-2 text-xs">
             <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
             <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
           </div>
-          <div className="max-h-40 overflow-y-auto space-y-1">
+          <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
             {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
-              <label key={v} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
-                <Checkbox checked={selectedValues.has(v)} onCheckedChange={() => onToggleValue(v)} className="h-3.5 w-3.5" />
-                <span className="truncate">{v || "(vazio)"}</span>
+              <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-1">
+                <Checkbox checked={selectedValues.has(v)} onCheckedChange={() => onToggleValue(v)} className="h-3.5 w-3.5 mt-0.5" />
+                <span className="break-words leading-tight">{v || "(vazio)"}</span>
               </label>
             ))}
           </div>
