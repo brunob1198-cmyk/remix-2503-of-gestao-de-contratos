@@ -129,6 +129,95 @@ export default function LpuPage() {
 
   const columnLabels: Record<ColKey, string> = { codigo: "Código", descricao: "Descrição", unidade: "Unidade", preco_unitario: "Preço Unitário", bdi: "BDI", categoria: "Categoria", projeto: "Projeto" };
 
+  const exportToExcel = () => {
+    if (processedItems.length === 0) {
+      toast.error("Não há itens para exportar");
+      return;
+    }
+
+    const header = [
+      "Código",
+      "Descrição",
+      "Unidade",
+      "Preço Unitário",
+      "BDI",
+      "Categoria",
+      "Projeto"
+    ];
+
+    const rows = processedItems.map(item => [
+      item.codigo || "",
+      item.descricao || "",
+      item.unidade || "",
+      item.preco_unitario || 0,
+      item.bdi || 1,
+      item.categoria || "",
+      getProjetoNome(item.projeto_id)
+    ]);
+
+    const worksheetData = [header, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Estilo do cabeçalho
+    const headerStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F46E5" } }, // Indigo 600
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    };
+
+    // Aplicar estilos às células do cabeçalho
+    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const address = XLSX.utils.encode_col(C) + "1";
+      if (!ws[address]) continue;
+      ws[address].s = headerStyle;
+    }
+
+    // Filtros e larguras automáticas
+    ws["!autofilter"] = { ref: ws["!ref"] || "" };
+
+    const colWidths = header.map((h, i) => {
+      let maxLen = h.length;
+      rows.forEach(row => {
+        const val = String(row[i] || "");
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      return { wch: Math.min(maxLen + 2, 50) };
+    });
+    ws["!cols"] = colWidths;
+
+    // Criar aba de resumo
+    const summaryData = [
+      ["Resumo da Lista de Preços Unitária"],
+      [""],
+      ["Data de Geração", new Date().toLocaleString("pt-BR")],
+      ["Total de Itens", processedItems.length],
+      ["Projeto Filtrado", projetoFilter ? getProjetoNome(projetoFilter === "geral" ? undefined : projetoFilter) : "Todos"],
+      [""],
+      ["Média de Preço Unitário", rows.reduce((acc, curr) => acc + (Number(curr[3]) || 0), 0) / rows.length],
+      ["Média de BDI", rows.reduce((acc, curr) => acc + (Number(curr[4]) || 0), 0) / rows.length]
+    ];
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // Estilo do título do resumo
+    wsSummary["A1"].s = { font: { bold: true, size: 14 } };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Itens LPU");
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
+
+    const fileName = `LPU_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success("Excel gerado com sucesso!");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
