@@ -724,31 +724,34 @@ async function fetchBillDetail(
   return detail;
 }
 
-async function fetchAllExistingErpIds(): Promise<string[]> {
+async function fetchAllExistingRecords(): Promise<Map<string, { categoria_interna: string; categoria_confirmada: boolean }>> {
   const pageSize = 1000;
-  const erpIds: string[] = [];
+  const recordsMap = new Map<string, { categoria_interna: string; categoria_confirmada: boolean }>();
 
   for (let from = 0; ; from += pageSize) {
     const to = from + pageSize - 1;
     const { data, error } = await supabase
       .from("custo_real_erp")
-      .select("erp_id")
+      .select("erp_id, categoria_interna, categoria_confirmada")
       .range(from, to);
 
     if (error) throw error;
 
-    const pageIds = (data || [])
-      .map((row: any) => row.erp_id)
-      .filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0);
-
-    erpIds.push(...pageIds);
+    for (const row of (data || [])) {
+      if (row.erp_id) {
+        recordsMap.set(row.erp_id, {
+          categoria_interna: row.categoria_interna,
+          categoria_confirmada: !!row.categoria_confirmada,
+        });
+      }
+    }
 
     if ((data || []).length < pageSize) {
       break;
     }
   }
 
-  return erpIds;
+  return recordsMap;
 }
 
 /**
@@ -1067,7 +1070,8 @@ serve(async (req) => {
         idsAntigosRemovidos: 0,
       };
 
-      const existingErpIds = await fetchAllExistingErpIds();
+      const existingRecordsMap = await fetchAllExistingRecords();
+      const existingErpIds = Array.from(existingRecordsMap.keys());
       const existingIdsByBase = new Map<string, Set<string>>();
 
       for (const erpId of existingErpIds) {
@@ -1202,17 +1206,26 @@ serve(async (req) => {
           currentIdsByBase.set(erpIdBase, currentIds);
 
           const categoriaErp = allocation.categoriaErp || "Outros";
-          // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
-          let categoriaInterna = (categoriaErp.toLowerCase().includes("miscelanea - campo")) ? "Materiais" : mapCategorias.get(categoriaErp);
           
-          if (!categoriaInterna) {
-            categoriaInterna = categorizarDespesa(categoriaErp, descricao);
-            newCategorias.set(categoriaErp, {
-              categoria_erp: categoriaErp,
-              categoria_interna: categoriaInterna,
-              criado_por_ia: true,
-            });
-            mapCategorias.set(categoriaErp, categoriaInterna);
+          // Rule: Check if record exists and has confirmed category
+          const existingInfo = existingRecordsMap.get(erpRecordId);
+          let categoriaInterna: string | undefined;
+
+          if (existingInfo) {
+            categoriaInterna = existingInfo.categoria_interna;
+          } else {
+            // Rule 0: Specific mapping requested by user for "Miscelanea - Campo"
+            categoriaInterna = (categoriaErp.toLowerCase().includes("miscelanea - campo")) ? "Materiais" : mapCategorias.get(categoriaErp);
+            
+            if (!categoriaInterna) {
+              categoriaInterna = categorizarDespesa(categoriaErp, descricao);
+              newCategorias.set(categoriaErp, {
+                categoria_erp: categoriaErp,
+                categoria_interna: categoriaInterna,
+                criado_por_ia: true,
+              });
+              mapCategorias.set(categoriaErp, categoriaInterna);
+            }
           }
 
           const { projetoId, siteId, strategy } = resolveProjetoESite(
@@ -1233,6 +1246,7 @@ serve(async (req) => {
             status_erp: statusNormalizado,
             categoria_erp: categoriaErp,
             categoria_interna: categoriaInterna || "Indiretos",
+            categoria_confirmada: existingInfo?.categoria_confirmada || false,
             centro_custo: allocation.centroCusto,
             projeto_id: projetoId,
             site_id: siteId,

@@ -46,7 +46,7 @@ export interface AnaliseCustosRow {
 
   // ── GERÊNCIA (categoria_analise = 'GERENCIA') ────
   gerenciaReal: number;         // soma dos lançamentos IA-categorizados como GERENCIA
-  gerenciaOrcada: number;       // poc * mkp.perc_gerencia
+  gerenciaOrcada: number;       // custoDiretoOrcado * mkp.perc_gerencia
   deltaGerencia: number;        // orcado - real
   percGerenciaOrcada: number;
   percGerenciaReal: number;
@@ -349,8 +349,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
 
       // 2. Update record
       const { error } = await supabase.from("custo_real_erp")
-         .update({ categoria_interna: newCategoria })
-         .eq("erp_id", erpId);
+        .update({ categoria_interna: newCategoria, categoria_confirmada: true })
+        .eq("erp_id", erpId);
       if (error) throw error;
 
       // 3. Learning Step: Upsert mapping
@@ -676,18 +676,19 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const percInflacao = mkp?.perc_inflacao ?? 0;
         const percGerencia = mkp?.perc_gerencia ?? 0;
         const percTreinamento = mkp?.perc_treinamento ?? 0;
-        const gerenciaOrcada = poc * percGerencia;
+        
+        // O Cálculo de gerência deve ser feito sobre o custo direto orçado e não sobre o total produzido (POC).
+        const gerenciaOrcada = custoDiretoOrcado * percGerencia;
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
         
         // Coluna “Custo Orçado Total”
-        // const custoTotalOrcado = custoDiretoOrcado + (custoDiretoOrcado * percRisco) + ((custoDiretoOrcado * (percRisco+percGerencia)) * percInflacao) + gerenciaOrcada + ((custoDiretoOrcado * (percRisco+percGerencia)) * perc_treinamento);
         const custoTotalOrcado = 
           custoDiretoOrcado + 
           (custoDiretoOrcado * percRisco) + 
-          ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percInflacao) + 
           gerenciaOrcada + 
-          ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percTreinamento);
 
         const resultadoTotal = custoTotalOrcado - custoTotalReal;
 
@@ -734,7 +735,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           gerenciaReal,
           gerenciaOrcada,
           deltaGerencia: gerenciaOrcada - gerenciaReal,
-          percGerenciaOrcada: mkp?.perc_gerencia ?? 0,
+          percGerenciaOrcada: poc > 0 ? gerenciaOrcada / poc : 0,
           percGerenciaReal: poc > 0 ? gerenciaReal / poc : 0,
           pendentesCategorizacao,
           custoTotalReal,
@@ -765,7 +766,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .single();
 
       const { error } = await supabase.from("custo_real_erp")
-        .update({ categoria_interna: newCategoria })
+        .update({ categoria_interna: newCategoria, categoria_confirmada: true })
         .eq("erp_id", erpId);
       if (error) throw error;
 
@@ -789,7 +790,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     mutationFn: async (updates: { erp_id: string; categoria_interna: string; categoria_erp: string }[]) => {
       for (const up of updates) {
         await supabase.from("custo_real_erp")
-          .update({ categoria_interna: up.categoria_interna })
+          .update({ categoria_interna: up.categoria_interna, categoria_confirmada: true })
           .eq("erp_id", up.erp_id);
         
         await supabase.from("mapeamento_categorias_erp").upsert({

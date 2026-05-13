@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ClipboardList, TrendingUp, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, TrendingUp, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import { format } from "date-fns";
 
 function fmtQty(v: number) {
   if (v === 0) return "—";
@@ -19,6 +23,102 @@ function fmtAvg(v: number) {
 export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?: string }) {
   const { data: analiseData, isLoading } = useAnaliseObra(projetoId || siteId, siteId);
   const data = analiseData as any;
+
+  const exportToExcel = () => {
+    if (!data?.producaoItems) return;
+
+    const exportData = data.producaoItems.map((item: any) => {
+      const pct = item.planejado > 0 ? (item.executado / item.planejado) : (item.executado > 0 ? 9.99 : 0);
+      return {
+        "Código": item.codigo,
+        "Descrição": item.descricao,
+        "Unidade": item.unidade,
+        "Planejado": item.planejado,
+        "Executado": item.executado,
+        "Saldo": item.saldo,
+        "% Executado": pct,
+        "Dias": item.diasComProducao,
+        "Média Diária": item.mediaDiaria,
+        "Média Semanal": item.mediaSemanal,
+        "Média Mensal": item.mediaMensal
+      };
+    });
+
+    const workbook = XLSX.utils.book_new();
+    
+    // ABA 1: Detalhamento
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // Configurar larguras das colunas
+    const wscols = [
+      { wch: 15 }, // Código
+      { wch: 40 }, // Descrição
+      { wch: 10 }, // Unidade
+      { wch: 15 }, // Planejado
+      { wch: 15 }, // Executado
+      { wch: 15 }, // Saldo
+      { wch: 15 }, // % Executado
+      { wch: 10 }, // Dias
+      { wch: 15 }, // Média Diária
+      { wch: 15 }, // Média Semanal
+      { wch: 15 }, // Média Mensal
+    ];
+    worksheet['!cols'] = wscols;
+
+    // Adicionar Filtros (AutoFilter)
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    worksheet['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+
+    // Formatação de números e percentuais
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      // Coluna G (% Executado) - index 6
+      const cellG = worksheet[XLSX.utils.encode_cell({ r: R, c: 6 })];
+      if (cellG) cellG.z = '0.0%';
+      
+      // Colunas numéricas
+      [3, 4, 5, 8, 9, 10].forEach(C => {
+        const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (cell) cell.z = '#,##0.00';
+      });
+    }
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Detalhamento por Item");
+
+    // ABA 2: Resumo Geral
+    const totalPlanejado = data.producaoItems.reduce((s: number, i: any) => s + i.planejado, 0);
+    const totalExecutado = data.producaoItems.reduce((s: number, i: any) => s + i.executado, 0);
+    const totalSaldo = data.producaoItems.reduce((s: number, i: any) => s + Math.max(0, i.saldo), 0);
+    const pctGeral = totalPlanejado > 0 ? (totalExecutado / totalPlanejado) : 0;
+    
+    const summaryData = [
+      ["RESUMO GERAL DE PRODUÇÃO"],
+      ["Data de Geração", format(new Date(), "dd/MM/yyyy HH:mm")],
+      [],
+      ["Métrica", "Valor"],
+      ["Total de Itens", data.producaoItems.length],
+      ["Total Planejado", totalPlanejado],
+      ["Total Executado", totalExecutado],
+      ["Saldo Total", totalSaldo],
+      ["Percentual de Execução Geral", pctGeral],
+      ["Itens Iniciados", data.producaoItems.filter((i: any) => i.executado > 0).length],
+      ["Itens Concluídos", data.producaoItems.filter((i: any) => i.planejado > 0 && i.saldo <= 0).length]
+    ];
+
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // Formatação da aba de resumo
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 20 }];
+    
+    // Formatação percentual no resumo (linha 9, coluna B -> R:8, C:1)
+    const pctCell = summarySheet[XLSX.utils.encode_cell({ r: 8, c: 1 })];
+    if (pctCell) pctCell.z = '0.0%';
+
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo Geral");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const fileBlob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+    saveAs(fileBlob, `Acompanhamento_Producao_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
+  };
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-xl" />;
   if (!data || data.producaoItems.length === 0) {
@@ -70,11 +170,15 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
 
       {/* Table */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ClipboardList className="h-5 w-5 text-emerald-600" />
             Acompanhamento de Produção por Item
           </CardTitle>
+          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar Excel
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="w-full">
