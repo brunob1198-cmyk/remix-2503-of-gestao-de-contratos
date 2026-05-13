@@ -686,9 +686,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const custoTotalOrcado = 
           custoDiretoOrcado + 
           (custoDiretoOrcado * percRisco) + 
-          ((custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao) + 
+          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percInflacao) + 
           gerenciaOrcada + 
-          ((custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento);
+          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percTreinamento);
 
         const resultadoTotal = custoTotalOrcado - custoTotalReal;
 
