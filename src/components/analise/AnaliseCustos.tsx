@@ -69,45 +69,193 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   }, [analiseRows]);
 
   const exportToExcel = () => {
-    const data = analiseRows.map(row => ({
-      "Referência": row.referencia,
-      "Área": row.area,
-      "Projeto": `${row.projetoCodigo} - ${row.projetoNome}`,
-      "Cliente": row.cliente,
-      "Produção (POC)": row.poc,
-      "Receita Líquida": row.producaoLiquida,
-      "MO Real": row.moObra,
-      "Mat. Real": row.materiais,
-      "Transp. Real": row.transporte,
-      "Indir. Real": row.indiretos,
-      "Custo Direto Real": row.custoDiretoReal,
-      "Custo Direto Orçado": row.custoDiretoOrcado,
-      "Resultado Direto": row.deltaDireto,
-      "Gerência Real": row.gerenciaReal,
-      "Gerência Orçada": row.gerenciaOrcada,
-      "Custo Total Real": row.custoTotalReal,
-      "Custo Total Orçado": row.custoTotalOrcado,
-      "Resultado Total": row.resultadoTotal,
-      "MB Real (R$)": row.mbRealizada,
-      "% MB Real": row.percMbReal
-    }));
+    const header = [
+      "Referência", "Área", "Projeto", "Cliente", 
+      "Produção (POC)", "% Impostos", "Receita Líquida",
+      "MO", "Mat.", "Transp.", "Indir.", "Custo Direto Real", "Custo Direto Orçado", "Resultado Direto",
+      "Gerência Real", "Gerência Orçada", "Resultado Gerência", "% Gerência Real", "% Gerência Orç.",
+      "Custo Total Real", "Custo Total Orçado", "Resultado Total",
+      "MB Orç. (R$)", "MB Real (R$)", "% MB Orç.", "% MB Real"
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Análise de Custos");
+    const rows = analiseRows.map(row => [
+      row.referencia,
+      row.area,
+      `${row.projetoCodigo} - ${row.projetoNome}`,
+      row.cliente,
+      row.poc,
+      row.impostos.totalPerc,
+      row.producaoLiquida,
+      row.moObra,
+      row.materiais,
+      row.transporte,
+      row.indiretos,
+      row.custoDiretoReal,
+      row.custoDiretoOrcado,
+      row.deltaDireto,
+      row.gerenciaReal,
+      row.gerenciaOrcada,
+      row.deltaGerencia,
+      row.percGerenciaReal,
+      row.percGerenciaOrcada,
+      row.custoTotalReal,
+      row.custoTotalOrcado,
+      row.resultadoTotal,
+      row.mbOrcada,
+      row.mbRealizada,
+      row.percMbOrcada,
+      row.percMbReal
+    ]);
 
-    // Add totals row
-    XLSX.utils.sheet_add_aoa(worksheet, [[
-      "TOTAL", "", "", "", 
-      totals.poc, totals.producaoLiquida, 
+    const totalRow = [
+      "TOTAL", "", "", "",
+      totals.poc, "", totals.producaoLiquida,
       totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
       totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
-      totals.gerenciaReal, totals.gerenciaOrcada,
+      totals.gerenciaReal, totals.gerenciaOrcada, totals.gerenciaOrcada - totals.gerenciaReal,
+      totals.gerenciaReal / (totals.producaoLiquida || 1), totals.gerenciaOrcada / (totals.producaoLiquida || 1),
       totals.custoTotalReal, totals.custoTotalOrcado, totals.resultadoTotal,
-      totals.mbRealizada, totals.percMbReal
-    ]], { origin: -1 });
+      totals.mbOrcada, totals.mbRealizada, totals.percMbOrcada, totals.percMbReal
+    ];
 
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const worksheetData = [header, ...rows, totalRow];
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    const colors = {
+      receita: "DCFCE7", // bg-green-100
+      custoDireto: "DBEAFE", // bg-blue-100
+      gerencia: "FEF3C7", // bg-amber-100
+      custoTotal: "F3E8FF", // bg-purple-100
+      mb: "F1F5F9" // bg-slate-100
+    };
+
+    const headerStyle = (color?: string) => ({
+      font: { bold: true },
+      fill: color ? { fgColor: { rgb: color } } : undefined,
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" }
+      }
+    });
+
+    const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    
+    // Apply Header styles
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const address = XLSX.utils.encode_col(C) + "1";
+      if (!ws[address]) continue;
+      
+      let color;
+      if (C >= 4 && C <= 6) color = colors.receita;
+      else if (C >= 7 && C <= 13) color = colors.custoDireto;
+      else if (C >= 14 && C <= 18) color = colors.gerencia;
+      else if (C >= 19 && C <= 21) color = colors.custoTotal;
+      else if (C >= 22 && C <= 25) color = colors.mb;
+      
+      ws[address].s = headerStyle(color);
+    }
+
+    // Apply data styles
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+      const isTotalRow = R === range.e.r;
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const address = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[address]) continue;
+
+        const cell = ws[address];
+        cell.s = cell.s || {};
+        cell.s.alignment = cell.s.alignment || {};
+        
+        if (C >= 4) {
+          cell.s.alignment.horizontal = "right";
+        } else {
+          cell.s.alignment.horizontal = "left";
+        }
+
+        if (isTotalRow) {
+          cell.s.font = { bold: true };
+          cell.s.fill = { fgColor: { rgb: "E2E8F0" } }; // Slate 200 for total row
+        } else {
+          let color;
+          if (C >= 4 && C <= 6) color = "F0FDF4"; // bg-green-50
+          else if (C >= 7 && C <= 13) color = "EFF6FF"; // bg-blue-50
+          else if (C >= 14 && C <= 18) color = "FFFBEB"; // bg-amber-50
+          else if (C >= 19 && C <= 21) color = "FAF5FF"; // bg-purple-50
+          else if (C >= 22 && C <= 25) color = "F8FAFC"; // bg-slate-50
+          
+          if (color) {
+            cell.s.fill = { fgColor: { rgb: color } };
+          }
+        }
+
+        // Number formats
+        if (C === 5 || C === 17 || C === 18 || C === 24 || C === 25) {
+          cell.z = "0.00%";
+        } else if (C >= 4) {
+          cell.z = '"R$ "#,##0.00';
+        }
+      }
+    }
+
+    // Auto-width
+    const colWidths = header.map((h, i) => {
+      let maxLen = h.length;
+      analiseRows.forEach((_, rowIndex) => {
+        const val = String(rows[rowIndex][i] || "");
+        if (val.length > maxLen) maxLen = val.length;
+      });
+      return { wch: Math.min(maxLen + 4, 40) };
+    });
+    ws["!cols"] = colWidths;
+
+    // Filters
+    ws["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}${range.e.r - 1}` };
+
+    // Summary Sheet
+    const summaryData = [
+      ["RESUMO GERAL - ANÁLISE DE CUSTOS E MARGENS"],
+      [""],
+      ["Data de Geração", format(new Date(), "dd/MM/yyyy HH:mm")],
+      ["Período", `${format(periodoInicio, "MM/yyyy")} a ${format(periodoFim, "MM/yyyy")}`],
+      [""],
+      ["Métrica", "Valor"],
+      ["Total de Projetos", analiseRows.length],
+      ["Produção Total (POC)", totals.poc],
+      ["Receita Líquida Total", totals.producaoLiquida],
+      ["Custo Direto Total (Real)", totals.custoDiretoReal],
+      ["Custo Direto Total (Orçado)", totals.custoDiretoOrcado],
+      ["Gerência Total (Real)", totals.gerenciaReal],
+      ["Gerência Total (Orçada)", totals.gerenciaOrcada],
+      ["Custo Total (Real)", totals.custoTotalReal],
+      ["Custo Total (Orçado)", totals.custoTotalOrcado],
+      ["Resultado Total", totals.resultadoTotal],
+      ["Margem Bruta Total (Real)", totals.mbRealizada],
+      ["% Margem Bruta (Real)", totals.percMbReal]
+    ];
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    
+    // Summary styling
+    wsSummary["A1"].s = { font: { bold: true, size: 14 } };
+    for (let i = 5; i <= 17; i++) {
+      const labelCell = XLSX.utils.encode_cell({ r: i, c: 0 });
+      const valCell = XLSX.utils.encode_cell({ r: i, c: 1 });
+      if (wsSummary[labelCell]) wsSummary[labelCell].s = { font: { bold: true } };
+      if (wsSummary[valCell]) {
+        if (i === 17) wsSummary[valCell].z = "0.00%";
+        else if (i >= 7) wsSummary[valCell].z = '"R$ "#,##0.00';
+      }
+    }
+    wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Análise de Custos");
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
+
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
     saveAs(blob, `Analise_Custos_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`);
   };
