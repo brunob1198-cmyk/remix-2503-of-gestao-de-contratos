@@ -42,13 +42,18 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
       gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
       gerenciaOrcada: acc.gerenciaOrcada + r.gerenciaOrcada,
+      custoTotalReal: acc.custoTotalReal + r.custoTotalReal,
+      custoTotalOrcado: acc.custoTotalOrcado + r.custoTotalOrcado,
+      resultadoTotal: acc.resultadoTotal + r.resultadoTotal,
       mbOrcada: acc.mbOrcada + r.mbOrcada,
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
       poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
       indiretos: 0,
       custoDiretoReal: 0, custoDiretoOrcado: 0,
-      gerenciaReal: 0, gerenciaOrcada: 0, mbOrcada: 0, mbRealizada: 0
+      gerenciaReal: 0, gerenciaOrcada: 0, 
+      custoTotalReal: 0, custoTotalOrcado: 0, resultadoTotal: 0,
+      mbOrcada: 0, mbRealizada: 0
     });
 
     const avg = {
