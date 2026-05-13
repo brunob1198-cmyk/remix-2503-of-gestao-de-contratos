@@ -739,6 +739,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           pendentesCategorizacao,
           custoTotalReal,
           custoTotalOrcado,
+          resultadoTotal,
           mbOrcada,
           mbRealizada,
           percMbOrcada,
