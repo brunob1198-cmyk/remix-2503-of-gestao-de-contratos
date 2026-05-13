@@ -368,7 +368,17 @@ export default function PlanejamentoObra() {
       ) : (
         <Card>
           <CardContent className="flex items-center justify-center h-48 text-muted-foreground">
-            Selecione um projeto para visualizar o planejamento
+            {projetos.length === 0 ? "Nenhum projeto encontrado." : "Selecione um projeto para visualizar o planejamento"}
+          </CardContent>
+        </Card>
+      )}
+
+      {projetoId && frentes.length === 0 && (
+        <Card className="mt-4 border-amber-200 bg-amber-50">
+          <CardContent className="flex flex-col items-center justify-center h-48 text-amber-700">
+            <AlertTriangle className="h-8 w-8 mb-2" />
+            <p className="font-medium">Nenhuma frente de obra cadastrada para este projeto.</p>
+            <p className="text-sm mt-1">Utilize o botão "Nova Frente" para começar.</p>
           </CardContent>
         </Card>
       )}
