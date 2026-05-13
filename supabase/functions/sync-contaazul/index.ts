@@ -1070,7 +1070,8 @@ serve(async (req) => {
         idsAntigosRemovidos: 0,
       };
 
-      const existingErpIds = await fetchAllExistingErpIds();
+      const existingRecordsMap = await fetchAllExistingRecords();
+      const existingErpIds = Array.from(existingRecordsMap.keys());
       const existingIdsByBase = new Map<string, Set<string>>();
 
       for (const erpId of existingErpIds) {
