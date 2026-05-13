@@ -1,5 +1,5 @@
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { calculateCustoDiretoOrcado } from '../lib/custoUtils';
 
 
