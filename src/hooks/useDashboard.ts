@@ -32,7 +32,7 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
       return data || [];
     },
     enabled: !!(projetoId || empresaId),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 1000,
   });
 
   const { data: dashboardData, isLoading } = useQuery({
@@ -135,8 +135,8 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
 
       return { resumoProjetos: resumoProjetosList, resumoItens: itemsResumo, totais };
     },
-    staleTime: 15 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+    staleTime: 5 * 1000,
+    gcTime: 10 * 1000,
   });
 
   return {
