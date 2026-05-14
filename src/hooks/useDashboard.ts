@@ -146,4 +146,3 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
     isLoading,
   };
 }
-}
