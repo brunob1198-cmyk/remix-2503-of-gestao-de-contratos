@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/supabasePagination";
 import { LancamentoProducao, LancamentoMedicao, LancamentoFaturamento } from "@/types/medicoes";
@@ -10,7 +10,7 @@ export function useLancamentosProducao(siteId?: string) {
 
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ["lancamentos_producao", siteId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       let query = supabase
         .from("lancamentos_producao")
         .select("id, site_id, item_lpu_id, data_producao, quantidade, empresa_executora, uf, municipio, observacao, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
@@ -20,9 +20,13 @@ export function useLancamentosProducao(siteId?: string) {
         query = query.eq("site_id", siteId);
       }
       
+      // Pass the signal if you want to cancel the fetch if the query is cancelled
       return await fetchAllPages<LancamentoProducao>(query);
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const createLancamento = useMutation({
@@ -103,7 +107,7 @@ export function useLancamentosMedicao(siteId?: string) {
 
   const { data: lancamentos = [], isLoading, refetch } = useQuery({
     queryKey: ["lancamentos_medicao", siteId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       let query = supabase
         .from("lancamentos_medicao")
         .select("id, site_id, item_lpu_id, data_medicao, quantidade, numero_medicao, status, observacao, numero_po, observacao_acompanhamento, data_resposta, quantidade_aprovada, quantidade_rejeitada, quantidade_pendente, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
@@ -115,7 +119,10 @@ export function useLancamentosMedicao(siteId?: string) {
       
       return await fetchAllPages<LancamentoMedicao>(query);
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const createLancamento = useMutation({
@@ -257,7 +264,7 @@ export function useLancamentosFaturamento(siteId?: string) {
 
   const { data: lancamentos = [], isLoading } = useQuery({
     queryKey: ["lancamentos_faturamento", siteId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       let query = supabase
         .from("lancamentos_faturamento")
         .select("id, site_id, item_lpu_id, data_faturamento, quantidade, numero_nf, numero_po, valor_faturado, observacao, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
@@ -269,7 +276,10 @@ export function useLancamentosFaturamento(siteId?: string) {
       
       return await fetchAllPages<LancamentoFaturamento>(query);
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const createLancamento = useMutation({

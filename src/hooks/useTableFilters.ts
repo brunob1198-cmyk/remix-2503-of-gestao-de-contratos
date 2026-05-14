@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { SortDir } from "@/components/medicoes/ColumnHeader";
 
 function loadPersisted<T>(key: string, fallback: T): T {
@@ -41,6 +41,8 @@ export function useTableFilters<T, ColKey extends string>(
   const [searchTexts, setSearchTexts] = useState<Record<ColKey, string>>(() =>
     persistKey ? loadPersisted(`${persistKey}_search`, emptySearchTexts) : emptySearchTexts
   );
+  const [debouncedSearchTexts, setDebouncedSearchTexts] = useState<Record<ColKey, string>>(searchTexts);
+  const searchTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
   // Store selected filters as arrays for serialization, convert to Sets for use
   const [selectedFilterArrays, setSelectedFilterArrays] = useState<Record<ColKey, string[]>>(() =>
     persistKey ? loadPersisted(`${persistKey}_filters`, emptySelectedArrays) : emptySelectedArrays
@@ -82,7 +84,24 @@ export function useTableFilters<T, ColKey extends string>(
     }
   };
 
-  const setSearchText = (col: ColKey, v: string) => setSearchTexts(prev => ({ ...prev, [col]: v }));
+  const setSearchText = (col: ColKey, v: string) => {
+    setSearchTexts(prev => ({ ...prev, [col]: v }));
+    
+    if (searchTimeoutRef.current[col]) {
+      clearTimeout(searchTimeoutRef.current[col]);
+    }
+    
+    searchTimeoutRef.current[col] = setTimeout(() => {
+      setDebouncedSearchTexts(prev => ({ ...prev, [col]: v }));
+      setCurrentPage(1);
+    }, 500);
+  };
+
+  useEffect(() => {
+    return () => {
+      Object.values(searchTimeoutRef.current).forEach(clearTimeout);
+    };
+  }, []);
   const toggleValue = (col: ColKey, v: string) => {
     setSelectedFilterArrays(prev => {
       const current = prev[col] || [];
@@ -96,18 +115,19 @@ export function useTableFilters<T, ColKey extends string>(
 
   const clearAllFilters = () => {
     setSearchTexts(emptySearchTexts);
+    setDebouncedSearchTexts(emptySearchTexts);
     setSelectedFilterArrays(emptySelectedArrays);
     setSortColumn(null);
     setSortDir(null);
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = columns.some(c => searchTexts[c] !== "" || (selectedFilterArrays[c]?.length || 0) > 0);
+  const hasActiveFilters = columns.some(c => debouncedSearchTexts[c] !== "" || (selectedFilterArrays[c]?.length || 0) > 0);
 
   const processedItems = useMemo(() => {
     let result = [...items];
     for (const col of columns) {
-      const search = searchTexts[col].toLowerCase();
+      const search = debouncedSearchTexts[col].toLowerCase();
       const selected = selectedFilters[col];
       if (search) result = result.filter(s => getColValue(s, col).toLowerCase().includes(search));
       if (selected.size > 0) result = result.filter(s => selected.has(getColValue(s, col)));
@@ -120,7 +140,7 @@ export function useTableFilters<T, ColKey extends string>(
       });
     }
     return result;
-  }, [items, searchTexts, selectedFilters, sortColumn, sortDir, columns, getColValue]);
+  }, [items, debouncedSearchTexts, selectedFilters, sortColumn, sortDir, columns, getColValue]);
 
   const uniqueValues = useMemo(() => {
     const result = {} as Record<ColKey, string[]>;
