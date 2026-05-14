@@ -114,6 +114,7 @@ export default function DiarioObraPage() {
     diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
     producoes, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
+    observacoesLabel, setObservacoesLabel,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
     fotos, addFoto, atualizarFoto, removeFoto,
