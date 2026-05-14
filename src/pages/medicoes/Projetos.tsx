@@ -32,7 +32,7 @@ export default function ProjetosPage() {
   const [isOpen, setIsOpen] = useState(false);
   
   useEffect(() => {
-    console.log("ProjetosPage - projetos state:", projects?.length);
+    console.log("ProjetosPage - projetos state:", projetos?.length);
   }, [projetos]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);

@@ -31,9 +31,22 @@ export function useProjetos() {
       const { data, error } = await supabase
         .from("projetos")
         .select(`
-          id, codigo, nome, descricao, coordenador, cliente_id, contrato_id, area_id, valor_total, status, created_at, updated_at, empresa_id,
-          clienteObj:clientes(id, nome, razao_social),
-          contratoObj:contratos(id, numero, numero_contrato),
+          id, 
+          codigo, 
+          nome, 
+          descricao, 
+          coordenador, 
+          cliente_id, 
+          contrato_id, 
+          area_id, 
+          valor_total, 
+          status, 
+          created_at, 
+          updated_at, 
+          empresa_id,
+          contrato_ids,
+          clienteObj:clientes(id, razao_social),
+          contratoObj:contratos(id, numero_contrato),
           areaObj:areas(id, nome)
         `)
         .order("nome");
@@ -43,7 +56,7 @@ export function useProjetos() {
         throw error;
       }
       console.log("Projetos fetched successfully:", data?.length);
-      return data || [];
+      return (data || []) as unknown as Projeto[];
     },
   });
 
