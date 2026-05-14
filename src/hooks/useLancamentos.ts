@@ -110,8 +110,8 @@ export function useLancamentosMedicao(siteId?: string) {
     queryFn: async ({ signal }) => {
       let query = supabase
         .from("lancamentos_medicao")
-        .select("id, site_id, item_lpu_id, data_medicao, quantidade, numero_medicao, status, observacao, numero_po, observacao_acompanhamento, data_resposta, quantidade_aprovada, quantidade_rejeitada, quantidade_pendente, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
-        .order("id");
+        .select("*, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .order("data_medicao", { ascending: false });
       
       if (siteId) {
         query = query.eq("site_id", siteId);

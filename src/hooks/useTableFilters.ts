@@ -127,9 +127,9 @@ export function useTableFilters<T, ColKey extends string>(
   const processedItems = useMemo(() => {
     let result = [...items];
     for (const col of columns) {
-      const search = debouncedSearchTexts[col].toLowerCase();
+      const search = (debouncedSearchTexts[col] || "").toLowerCase();
       const selected = selectedFilters[col];
-      if (search) result = result.filter(s => getColValue(s, col).toLowerCase().includes(search));
+      if (search) result = result.filter(s => (getColValue(s, col) || "").toLowerCase().includes(search));
       if (selected.size > 0) result = result.filter(s => selected.has(getColValue(s, col)));
     }
     if (sortColumn && sortDir) {
