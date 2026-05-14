@@ -198,7 +198,7 @@ export default function ProjetosPage() {
 
   // Apply filters then sort
   const filteredSorted = useMemo(() => {
-    let result = [...projetos];
+    let result = Array.isArray(projetos) ? [...projetos] : [];
 
     // Text filters
     for (const [field, value] of Object.entries(filters)) {
