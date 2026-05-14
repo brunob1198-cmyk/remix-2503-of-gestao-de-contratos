@@ -38,25 +38,25 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
   const { data: resumoProjetos = [], isLoading: isLoadingProjetos } = useQuery({
     queryKey: ["dashboard", "projetos", projetoId, siteIds, producaoAgregada],
     queryFn: async () => {
-      // Get all projects with their sites
+      // Get all projects with their sites - Optimized: Select only needed columns
       const { data: projetos, error: projError } = await supabase
         .from("projetos")
         .select("id, codigo, nome");
       if (projError) throw projError;
 
-      // Get all measurement data
+      // Get all measurement data - Optimized: Select only needed columns
       const { data: medicao, error: medError } = await supabase
         .from("lancamentos_medicao")
-        .select("site_id, quantidade, item_lpu:itens_lpu(preco_unitario)");
+        .select("site_id, quantidade, item_lpu_id, item_lpu:itens_lpu(preco_unitario)");
       if (medError) throw medError;
 
-      // Get all billing data
+      // Get all billing data - Optimized: Select only needed columns
       const { data: faturamento, error: fatError } = await supabase
         .from("lancamentos_faturamento")
-        .select("site_id, quantidade, valor_faturado, item_lpu:itens_lpu(preco_unitario)");
+        .select("site_id, quantidade, valor_faturado, item_lpu_id, item_lpu:itens_lpu(preco_unitario)");
       if (fatError) throw fatError;
 
-      // Get sites with project mapping
+      // Get sites with project mapping - Optimized: Select only needed columns
       const { data: sites, error: siteError } = await supabase
         .from("sites")
         .select("id, projeto_id");
@@ -117,16 +117,16 @@ export function useDashboard(projetoId?: string, siteIds?: string[]) {
   const { data: resumoItens = [], isLoading: isLoadingItens } = useQuery({
     queryKey: ["dashboard", "itens", projetoId, siteIds, producaoAgregada],
     queryFn: async () => {
-      // Get all LPU items
+      // Get all LPU items - Optimized: Select only needed columns
       const { data: itens, error: itemError } = await supabase
         .from("itens_lpu")
-        .select("*");
+        .select("id, codigo, descricao, unidade, preco_unitario");
       if (itemError) throw itemError;
 
-      // Get all sites with project info
+      // Get all sites with project info - Optimized: Select only needed columns
       const { data: allSites, error: allSitesError } = await supabase
         .from("sites")
-        .select("*, projeto:projetos(*)");
+        .select("id, codigo, nome, projeto_id, projeto:projetos(codigo, nome)");
       if (allSitesError) throw allSitesError;
 
       // Filter sites by project or site IDs

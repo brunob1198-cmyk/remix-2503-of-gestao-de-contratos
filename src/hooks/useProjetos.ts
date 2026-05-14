@@ -29,7 +29,7 @@ export function useProjetos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("projetos")
-        .select("*, clienteObj:clientes(*), contratoObj:contratos(*), areaObj:areas(*)")
+        .select("id, codigo, nome, descricao, coordenador, cliente_id, contrato_id, area_id, valor_total, status, created_at, updated_at, empresa_id, clienteObj:clientes(id, nome), contratoObj:contratos(id, numero), areaObj:areas(id, nome)")
         .order("codigo");
       if (error) throw error;
       return data as unknown as Projeto[];

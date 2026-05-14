@@ -50,7 +50,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
 
       let q = supabase
         .from("diarios_obra")
-        .select("*")
+        .select("id, data, observacoes, clima, site_id, municipio, uf")
         .in("site_id", siteIds)
         .order("data", { ascending: false });
 
@@ -74,7 +74,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
         while (!finished) {
           const { data, error } = await supabase
             .from("diario_fotos")
-            .select("*")
+            .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id")
             .in("diario_id", ids)
             .range(from, to);
             
@@ -92,10 +92,10 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
       };
 
       const [prodRes, equipeRes, equipRes, veicRes, allFotos] = await Promise.all([
-        supabase.from("diario_producao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade)").in("diario_id", diarioIds),
-        supabase.from("diario_equipe").select("*").in("diario_id", diarioIds),
-        supabase.from("diario_equipamentos").select("*").in("diario_id", diarioIds),
-        supabase.from("diario_veiculos").select("*").in("diario_id", diarioIds),
+        supabase.from("diario_producao").select("id, diario_id, quantidade, preco_unitario_congelado, valor_total, item_lpu_id, item_lpu:itens_lpu(codigo, descricao, unidade)").in("diario_id", diarioIds),
+        supabase.from("diario_equipe").select("id, diario_id, nome, funcao, horas, custo_hora, custo_total").in("diario_id", diarioIds),
+        supabase.from("diario_equipamentos").select("id, diario_id, descricao, horas, custo_hora, custo_total").in("diario_id", diarioIds),
+        supabase.from("diario_veiculos").select("id, diario_id, descricao, placa, km_inicial, km_final, km_rodados, custo_diaria").in("diario_id", diarioIds),
         fetchAllPhotos(diarioIds),
       ]);
 

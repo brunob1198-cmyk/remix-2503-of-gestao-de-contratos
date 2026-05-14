@@ -14,7 +14,7 @@ export function useItensLpu(projetoId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("itens_lpu")
-        .select("*, projeto:projetos(*)")
+        .select("id, codigo, descricao, unidade, preco_unitario, bdi, categoria, projeto_id, created_at, updated_at, projeto:projetos(id, codigo, nome)")
         .order("codigo");
       
       if (projetoId) {
