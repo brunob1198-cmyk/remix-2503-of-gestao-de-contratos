@@ -1410,7 +1410,10 @@ export function DetailMedicaoContent({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Configurações de Exportação</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+        <DropdownMenuRadioItem value=\"tep\" onClick={handleExportTEP} className=\"flex items-center gap-2\">
+          <FileDown className=\"h-4 w-4\" /> Modelo TEP (Fotos e Obs)
+        </DropdownMenuRadioItem>
+        <DropdownMenuSeparator />
             <div className="p-2 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs">Modo Depuração</span>
