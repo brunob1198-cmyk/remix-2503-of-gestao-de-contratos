@@ -50,7 +50,8 @@ export const exportTEPToPdf = async (data: TEPData) => {
   for (const group of groups) {
     const groupFotos = data.fotos.filter(f => 
       f.classificacao.toLowerCase() === group.toLowerCase() || 
-      (group === "Vistoria" && f.classificacao.toLowerCase() === "antes")
+      (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
+      (group === "Execução" && f.classificacao.toLowerCase() === "execucao")
     );
 
     if (groupFotos.length > 0) {

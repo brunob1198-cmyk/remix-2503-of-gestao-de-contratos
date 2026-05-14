@@ -907,6 +907,34 @@ export function DetailMedicaoContent({
   }, [diarioFotos]);
 
   // Helper to sanitize strings for files/paths
+  const handleExportTEP = async () => {
+    try {
+      setIsExporting(true);
+      addLog("Iniciando exportação TEP...", "info");
+      
+      const siteObs = isMultiSite 
+        ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n")
+        : detailMedicao.observacao_acompanhamento || "";
+
+      await exportTEPToPdf({
+        siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        observacoes: siteObs,
+        fotos: diarioFotos.map(f => ({
+          url: f.url,
+          classificacao: f.classificacao,
+          legenda: f.legenda
+        })),
+        logoUrl: finalEmpresaLogoUrl
+      });
+
+      addLog("Exportação TEP concluída!", "success");
+    } catch (err: any) {
+      addLog(`Erro na exportação TEP: ${err.message}`, "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const sanitize = useCallback((s: string) => {
     return (s || "")
       .normalize("NFD")
@@ -1410,10 +1438,10 @@ export function DetailMedicaoContent({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Configurações de Exportação</DropdownMenuLabel>
-        <DropdownMenuRadioItem value=\"tep\" onClick={handleExportTEP} className=\"flex items-center gap-2\">
-          <FileDown className=\"h-4 w-4\" /> Modelo TEP (Fotos e Obs)
-        </DropdownMenuRadioItem>
-        <DropdownMenuSeparator />
+            <DropdownMenuRadioItem value="tep" onClick={handleExportTEP} className="flex items-center gap-2 cursor-pointer">
+              <FileDown className="h-4 w-4" /> Modelo TEP (Fotos e Obs)
+            </DropdownMenuRadioItem>
+            <DropdownMenuSeparator />
             <div className="p-2 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs">Modo Depuração</span>
