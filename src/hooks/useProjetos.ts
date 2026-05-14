@@ -21,25 +21,47 @@ export function useProjetos() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: projetos = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["projetos"],
     ...QUERY_DEFAULTS,
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
+      console.log("Fetching projetos...");
       const { data, error } = await supabase
         .from("projetos")
         .select(`
-          id, codigo, nome, descricao, coordenador, cliente_id, contrato_id, area_id, valor_total, status, created_at, updated_at, empresa_id,
-          clienteObj:clientes(id, nome, razao_social),
-          contratoObj:contratos(id, numero, numero_contrato),
+          id, 
+          codigo, 
+          nome, 
+          descricao, 
+          coordenador, 
+          cliente_id, 
+          contrato_id, 
+          area_id, 
+          valor_total, 
+          status, 
+          created_at, 
+          updated_at, 
+          empresa_id,
+          cliente,
+          contrato_ids,
+          clienteObj:clientes(id, razao_social),
+          contratoObj:contratos(id, numero_contrato, valor_total),
           areaObj:areas(id, nome)
         `)
         .order("nome");
-      if (error) throw error;
-      return data as unknown as Projeto[];
+      
+      if (error) {
+        console.error("Error fetching projetos:", error);
+        throw error;
+      }
+      console.log("Projetos fetched successfully:", data?.length);
+      return (data || []) as any[];
     },
   });
+
+  const projetos = data || [];
 
   const createProjeto = useMutation({
     mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string | null; contrato_ids?: string[]; area_id?: string; valor_total?: number; status?: string }) => {

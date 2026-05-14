@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useClientes } from "@/hooks/useClientes";
 import { useContratos } from "@/hooks/useContratos";
@@ -30,6 +30,10 @@ function useColumnFilter(projetos: any[], field: SortField) {
 export default function ProjetosPage() {
   const { projetos, isLoading, createProjeto, updateProjeto, deleteProjeto } = useProjetos();
   const [isOpen, setIsOpen] = useState(false);
+  
+  useEffect(() => {
+    console.log("ProjetosPage - projetos state:", projetos?.length);
+  }, [projetos]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
