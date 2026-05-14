@@ -21,12 +21,13 @@ export function useProjetos() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: projetos = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["projetos"],
     ...QUERY_DEFAULTS,
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
+      console.log("Fetching projetos...");
       const { data, error } = await supabase
         .from("projetos")
         .select(`
@@ -36,10 +37,17 @@ export function useProjetos() {
           areaObj:areas(id, nome)
         `)
         .order("nome");
-      if (error) throw error;
-      return data as unknown as Projeto[];
+      
+      if (error) {
+        console.error("Error fetching projetos:", error);
+        throw error;
+      }
+      console.log("Projetos fetched successfully:", data?.length);
+      return data || [];
     },
   });
+
+  const projetos = data || [];
 
   const createProjeto = useMutation({
     mutationFn: async (projeto: { codigo: string; nome: string; descricao?: string; coordenador?: string; cliente?: string; cliente_id?: string; contrato_id?: string | null; contrato_ids?: string[]; area_id?: string; valor_total?: number; status?: string }) => {
