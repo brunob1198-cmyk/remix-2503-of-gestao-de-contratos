@@ -52,6 +52,7 @@ const menuItems: MenuItem[] = [
   { title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
+  { title: "Monitoramento", url: "/medicoes/monitoramento", icon: Activity, adminOnly: true },
   { title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
 ];
 
