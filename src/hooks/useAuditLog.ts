@@ -52,7 +52,7 @@ export function useAuditLog(filters?: { tabela?: string; limit?: number }) {
     queryFn: async () => {
       let query = supabase
         .from("audit_log")
-        .select("*")
+        .select("id, tabela, operacao, registro_id, campos_alterados, user_email, created_at")
         .order("created_at", { ascending: false })
         .limit(limit);
 

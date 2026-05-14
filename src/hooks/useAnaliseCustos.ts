@@ -278,7 +278,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       let hasMore = true;
 
       while (hasMore) {
-        let q = supabase.from("custo_real_erp").select("*").range(offset, offset + BATCH_SIZE - 1);
+        let q = supabase.from("custo_real_erp").select("id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id").range(offset, offset + BATCH_SIZE - 1);
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
         if (startDate && endDate) {
@@ -460,7 +460,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       let hasMore = true;
 
       while (hasMore) {
-        let q = supabase.from("custo_real_erp").select("*").range(offset, offset + BATCH_SIZE - 1);
+        let q = supabase.from("custo_real_erp").select("id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id").range(offset, offset + BATCH_SIZE - 1);
         q = q.in("projeto_id", projetoIds);
         if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);

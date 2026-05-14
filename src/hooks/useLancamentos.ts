@@ -13,7 +13,7 @@ export function useLancamentosProducao(siteId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("lancamentos_producao")
-        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .select("id, site_id, item_lpu_id, data_producao, quantidade, empresa_executora, uf, municipio, observacao, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
         .order("id");
       
       if (siteId) {
@@ -106,7 +106,7 @@ export function useLancamentosMedicao(siteId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("lancamentos_medicao")
-        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .select("id, site_id, item_lpu_id, data_medicao, quantidade, numero_medicao, status, observacao, numero_po, observacao_acompanhamento, data_resposta, quantidade_aprovada, quantidade_rejeitada, quantidade_pendente, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
         .order("id");
       
       if (siteId) {
@@ -260,7 +260,7 @@ export function useLancamentosFaturamento(siteId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("lancamentos_faturamento")
-        .select("*, site:sites(*, projeto:projetos(*)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
+        .select("id, site_id, item_lpu_id, data_faturamento, quantidade, numero_nf, numero_po, valor_faturado, observacao, created_at, site:sites(id, codigo, nome, projeto:projetos(id, codigo, nome)), item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario)")
         .order("id");
       
       if (siteId) {
