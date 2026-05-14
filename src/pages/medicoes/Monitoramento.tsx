@@ -20,7 +20,7 @@ export default function MonitoringPage() {
         return {
           key: JSON.stringify(q.queryKey),
           status: state.status,
-          fetchCount: state.fetchCount,
+          fetchCount: (state as any).fetchCount,
           lastUpdated: state.dataUpdatedAt,
           isStale: q.isStale(),
           observers: q.getObserversCount()

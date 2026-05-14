@@ -17,7 +17,7 @@ import {
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
-  Percent, Settings2,
+  Percent, Settings2, Activity
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
