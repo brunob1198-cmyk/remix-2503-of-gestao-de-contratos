@@ -44,9 +44,10 @@ export function useProjetos() {
           created_at, 
           updated_at, 
           empresa_id,
+          cliente,
           contrato_ids,
           clienteObj:clientes(id, razao_social),
-          contratoObj:contratos(id, numero_contrato),
+          contratoObj:contratos(id, numero_contrato, valor_total),
           areaObj:areas(id, nome)
         `)
         .order("nome");
@@ -56,7 +57,7 @@ export function useProjetos() {
         throw error;
       }
       console.log("Projetos fetched successfully:", data?.length);
-      return (data || []) as unknown as Projeto[];
+      return (data || []) as any[];
     },
   });
 
