@@ -41,6 +41,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "analises_ia_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       areas: {
@@ -191,6 +198,13 @@ export type Database = {
             columns: ["item_lpu_id"]
             isOneToOne: false
             referencedRelation: "view_producao_diario"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "atividades_planejamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
             referencedColumns: ["item_lpu_id"]
           },
         ]
@@ -639,6 +653,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       dependencias_atividade: {
@@ -930,6 +951,13 @@ export type Database = {
             referencedRelation: "view_producao_diario"
             referencedColumns: ["item_lpu_id"]
           },
+          {
+            foreignKeyName: "diario_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
         ]
       }
       diario_veiculos: {
@@ -1062,6 +1090,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "diarios_campo_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       diarios_obra: {
@@ -1105,6 +1140,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -1202,11 +1244,25 @@ export type Database = {
             referencedColumns: ["item_lpu_id"]
           },
           {
+            foreignKeyName: "escopo_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
             foreignKeyName: "escopo_itens_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escopo_itens_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -1236,6 +1292,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escopos_historico_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -1307,11 +1370,25 @@ export type Database = {
             referencedColumns: ["item_lpu_id"]
           },
           {
+            foreignKeyName: "faturamento_itens_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
             foreignKeyName: "faturamento_itens_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faturamento_itens_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -1993,6 +2070,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "frentes_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       integracoes_erp_config: {
@@ -2244,11 +2328,25 @@ export type Database = {
             referencedColumns: ["item_lpu_id"]
           },
           {
+            foreignKeyName: "lancamentos_faturamento_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
             foreignKeyName: "lancamentos_faturamento_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_faturamento_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -2349,11 +2447,25 @@ export type Database = {
             referencedColumns: ["item_lpu_id"]
           },
           {
+            foreignKeyName: "lancamentos_medicao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
             foreignKeyName: "lancamentos_medicao_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_medicao_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -2427,11 +2539,25 @@ export type Database = {
             referencedColumns: ["item_lpu_id"]
           },
           {
+            foreignKeyName: "lancamentos_producao_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
             foreignKeyName: "lancamentos_producao_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_producao_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -2541,6 +2667,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicao_status_historico_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -3119,6 +3252,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "recurso_alocacoes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       recurso_custos: {
@@ -3495,6 +3635,13 @@ export type Database = {
             referencedRelation: "sites"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sc_locais_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
         ]
       }
       sites: {
@@ -3640,6 +3787,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_sites_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
         ]
       }
@@ -3872,6 +4026,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "projetos_area_id_fkey"
             columns: ["area_id"]
             isOneToOne: false
@@ -3913,6 +4074,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
           },
           {
             foreignKeyName: "projetos_area_id_fkey"
@@ -4041,6 +4209,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "custo_real_erp_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "projetos_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -4084,6 +4259,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
             foreignKeyName: "projetos_area_id_fkey"
             columns: ["area_id"]
             isOneToOne: false
@@ -4121,6 +4303,67 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sites"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diarios_obra_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+        ]
+      }
+      vw_resumo_financeiro_site_item: {
+        Row: {
+          item_codigo: string | null
+          item_descricao: string | null
+          item_lpu_id: string | null
+          item_preco_unitario: number | null
+          item_unidade: string | null
+          projeto_id: string | null
+          qtd_faturada: number | null
+          qtd_medida: number | null
+          qtd_produzida: number | null
+          site_id: string | null
+          valor_faturado: number | null
+          valor_medido: number | null
+          valor_produzido: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_analise_obras"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
           },
         ]
       }
