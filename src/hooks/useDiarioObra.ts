@@ -66,7 +66,12 @@ export interface DiarioFoto {
 export function useDiarioObra(siteId?: string, data?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [observacoesLabel, setObservacoesLabel] = useQueryState(\"obs_label\");
+  const [observacoesLabel, setObservacoesLabel] = useState(() => localStorage.getItem(\"obs_label\") || \"Relatório Descritivo / Observações\");
+
+  const updateObservacoesLabel = (newVal: string) => {
+    localStorage.setItem(\"obs_label\", newVal);
+    setObservacoesLabel(newVal);
+  };
 
   // Fetch or create diary for a given site+date
   const { data: diario, isLoading: loadingDiario } = useQuery({
@@ -723,15 +728,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior, previsoes,
-    observacoesLabel, setObservacoesLabel,
+    observacoesLabel, 
+    setObservacoesLabel: updateObservacoesLabel,
   };
-}
-
-function useQueryState(key: string) {
-  const [val, setVal] = import(\"react\").then(r => r.useState)(() => localStorage.getItem(key) || \"\");
-  const setter = (newVal: string) => {
-    localStorage.setItem(key, newVal);
-    setVal(newVal);
-  };
-  return [val, setter] as const;
 }
