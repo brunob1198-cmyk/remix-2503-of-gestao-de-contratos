@@ -17,7 +17,7 @@ import {
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
-  Percent, Settings2,
+  Percent, Settings2, Activity
 } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -52,6 +52,7 @@ const menuItems: MenuItem[] = [
   { title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
   { title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
+  { title: "Monitoramento", url: "/medicoes/monitoramento", icon: Activity, adminOnly: true },
   { title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
 ];
 

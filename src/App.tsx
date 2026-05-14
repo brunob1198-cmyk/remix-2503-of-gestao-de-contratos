@@ -34,6 +34,7 @@ import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
+const MonitoringPage = React.lazy(() => import("./pages/medicoes/Monitoramento"));
 
 // Lazy Loaded Pages
 const RecursosPage = React.lazy(() => import("./pages/medicoes/Recursos"));
@@ -113,6 +114,7 @@ const App = () => {
                 <Route path="supply-chain" element={<SupplyChainPage />} />
                 
                 <Route path="audit-log" element={<AuditLogPage />} />
+                <Route path="monitoramento" element={<MonitoringPage />} />
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
                 <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
