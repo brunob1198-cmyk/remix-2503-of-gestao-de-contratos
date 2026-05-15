@@ -327,10 +327,55 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               </tr>
               <tr className="bg-muted text-muted-foreground font-semibold text-center h-12">
                 <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-20 bg-muted">FCA</th>
-                <th className="py-3 px-4 border-b border-r text-left">Referência</th>
-                <th className="py-3 px-4 border-b border-r text-left">Área</th>
-                <th className="py-3 px-4 border-b border-r text-left">Projeto</th>
-                <th className="py-3 px-4 border-b border-r text-left">Cliente</th>
+                
+                {/* Referência */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[120px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Referência</span>
+                    <FilterPopover 
+                      options={filterOptions.referencia}
+                      selected={filters.referencia}
+                      onSelect={(vals) => setFilters(f => ({ ...f, referencia: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Área */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[120px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Área</span>
+                    <FilterPopover 
+                      options={filterOptions.area}
+                      selected={filters.area}
+                      onSelect={(vals) => setFilters(f => ({ ...f, area: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Projeto */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[200px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Projeto</span>
+                    <FilterPopover 
+                      options={filterOptions.projeto}
+                      selected={filters.projeto}
+                      onSelect={(vals) => setFilters(f => ({ ...f, projeto: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Cliente */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[150px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Cliente</span>
+                    <FilterPopover 
+                      options={filterOptions.cliente}
+                      selected={filters.cliente}
+                      onSelect={(vals) => setFilters(f => ({ ...f, cliente: vals }))}
+                    />
+                  </div>
+                </th>
+
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Produção (POC)</th>
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">% Impostos</th>
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Receita Líquida</th>
