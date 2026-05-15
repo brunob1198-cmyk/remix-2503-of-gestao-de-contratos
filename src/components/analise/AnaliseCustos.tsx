@@ -305,14 +305,27 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle>Análise de Custos e Margens</CardTitle>
-            <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+          <div className="flex flex-1 items-center justify-between">
+            <div>
+              <CardTitle>Análise de Custos e Margens</CardTitle>
+              <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar..."
+                  className="pl-8 h-9"
+                  value={filters.search}
+                  onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+                />
+              </div>
+              <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+            </div>
           </div>
-          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Exportar Excel
-          </Button>
         </CardHeader>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
