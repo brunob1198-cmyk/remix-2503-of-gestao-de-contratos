@@ -3807,32 +3807,21 @@ export type Database = {
           custo_direto_real: number | null
           custo_total_orcado: number | null
           custo_total_real: number | null
-          delta_direto: number | null
-          delta_gerencia: number | null
           gerencia_orcada: number | null
           gerencia_real: number | null
           indiretos: number | null
           materiais: number | null
-          mb_orcada: number | null
-          mb_realizada: number | null
+          mb_real: number | null
           mes: string | null
           mo_obra: number | null
-          perc_cofins: number | null
-          perc_csll: number | null
-          perc_dara: number | null
-          perc_icms: number | null
           perc_impostos: number | null
-          perc_inss: number | null
-          perc_irpj: number | null
-          perc_issqn: number | null
           perc_mb_mkp: number | null
-          perc_pis: number | null
           poc: number | null
-          producao_liquida: number | null
           projeto_codigo: string | null
           projeto_id: string | null
           projeto_nome: string | null
-          resultado_total: number | null
+          receita_liquida: number | null
+          resultado_direto: number | null
           transporte: number | null
         }
         Relationships: []
