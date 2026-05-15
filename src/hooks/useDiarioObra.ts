@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,12 @@ export interface DiarioFoto {
 export function useDiarioObra(siteId?: string, data?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [observacoesLabel, setObservacoesLabel] = useState(() => localStorage.getItem("obs_label") || "Relatório Descritivo / Observações");
+
+  const updateObservacoesLabel = (newVal: string) => {
+    localStorage.setItem("obs_label", newVal);
+    setObservacoesLabel(newVal);
+  };
 
   // Fetch or create diary for a given site+date
   const { data: diario, isLoading: loadingDiario } = useQuery({
@@ -722,5 +729,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior, previsoes,
+    observacoesLabel, 
+    setObservacoesLabel: updateObservacoesLabel,
   };
 }

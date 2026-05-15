@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users } from "lucide-react";
+import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users, FileDown } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,6 +20,7 @@ import {
   getPdfSafeImageDataUrl,
 } from "@/lib/pdfExportUtils";
 import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
+import { exportTEPToPdf } from "@/lib/tepExportUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
@@ -906,6 +907,34 @@ export function DetailMedicaoContent({
   }, [diarioFotos]);
 
   // Helper to sanitize strings for files/paths
+  const handleExportTEP = async () => {
+    try {
+      setIsExporting(true);
+      addLog("Iniciando exportação TEP...", "info");
+      
+      const siteObs = isMultiSite 
+        ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n")
+        : detailMedicao.observacao_acompanhamento || "";
+
+      await exportTEPToPdf({
+        siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        observacoes: siteObs,
+        fotos: diarioFotos.map(f => ({
+          url: f.url,
+          classificacao: f.classificacao,
+          legenda: f.legenda
+        })),
+        logoUrl: finalEmpresaLogoUrl
+      });
+
+      addLog("Exportação TEP concluída!", "success");
+    } catch (err: any) {
+      addLog(`Erro na exportação TEP: ${err.message}`, "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const sanitize = useCallback((s: string) => {
     return (s || "")
       .normalize("NFD")
@@ -1409,6 +1438,9 @@ export function DetailMedicaoContent({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Configurações de Exportação</DropdownMenuLabel>
+            <DropdownMenuRadioItem value="tep" onClick={handleExportTEP} className="flex items-center gap-2 cursor-pointer">
+              <FileDown className="h-4 w-4" /> Modelo TEP (Fotos e Obs)
+            </DropdownMenuRadioItem>
             <DropdownMenuSeparator />
             <div className="p-2 space-y-2">
               <div className="flex items-center justify-between">
