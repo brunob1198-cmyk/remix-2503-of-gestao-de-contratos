@@ -243,49 +243,59 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_type,
     flash_category,
     flash_cost_center: pickPayloadValue(p, [
-      // Objeto costCenter completo (enriquecido pelo sync ou já presente na API)
+      // Prioridade: Campos diretos de centro de custo
       "costCenter.name", 
       "cost_center.name", 
+      "costCenter.code",
+      "costCenter.externalId",
+      "costCenterId",
+      "cost_center_id",
       // Objeto dentro de employee/user
       "employee.costCenter.name", 
       "user.costCenter.name",
       "employee.cost_center.name",
       "user.cost_center.name",
-      // Campo direto (legado ou custom)
+      "employee.costCenter.code",
+      "user.costCenter.code",
+      // Campo de exportação ou legado
       "centro_custo",
-      // Fallbacks: código, externalId, ou ID direto do costCenter
-      "costCenter.code",
-      "costCenter.externalId",
+      "centroCusto",
+      // Novos caminhos baseados em payloads reais da Flash
+      "expense.costCenter.name",
+      "expense.cost_center.name",
+      "accountability.costCenter.name",
       // Se só tem o ID como string (sem objeto), usar como último recurso
-      "costCenterId",
-      "cost_center_id",
       "employee.costCenterId",
       "employee.cost_center_id",
       "user.costCenterId",
     ]) || "—",
     comentarios: pickPayloadValue(p, [
-      // Flash API documented field
+      // Prioridade: Comentários e Observações
       "comments",
-      // Variantes comuns
       "comment",
       "observacao",
       "observation",
       "note",
       "notes",
-      // Justificativa (alguns fluxos usam esse campo)
+      // Justificativa e motivos
       "justification",
+      "justificativa",
       "reason",
-      // Campos dentro do objeto de contabilização
+      "motivo",
+      // Campos aninhados (contabilização/comprovante/memo)
       "accounting.comments",
       "accounting.notes",
       "accounting.observation",
-      // Campos dentro do comprovante
       "receipt.comments",
       "receipt.notes",
-      // Memo/observações gerais
       "memo",
       "remarks",
       "remark",
+      // Novos caminhos baseados em payloads reais da Flash
+      "expense.comments",
+      "expense.notes",
+      "accountability.comments",
+      "accountability.notes",
     ]) || "—",
     flash_prestacao_contas,
   };
