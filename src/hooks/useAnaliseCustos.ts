@@ -486,75 +486,59 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v14", projetoIds],
+    queryKey: ["producao_poc_multi_v14", projetoIds, startDate, endDate],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-      
-      const BATCH_SIZE = 1000;
-      let allData: any[] = [];
-      let offset = 0;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
+  
+      const { data: sitesData } = await supabase
+        .from("sites")
+        .select("id, projeto_id")
+        .in("projeto_id", projetoIds);
+  
+      const siteIds = (sitesData || []).map(s => s.id);
+      if (siteIds.length === 0) return [];
+  
+      let diariosQuery = supabase
+        .from("diarios_obra")
+        .select("id, data, site_id")
+        .in("site_id", siteIds);
+  
+      if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
+      if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
+  
+      const { data: diarios } = await diariosQuery;
+      if (!diarios || diarios.length === 0) return [];
+  
+      const diarioIds = diarios.map(d => d.id);
+      const diarioSiteMap = Object.fromEntries(
+        diarios.map(d => [d.id, { site_id: d.site_id, data: d.data }])
+      );
+  
+      const BATCH = 500;
+      let allProducao: any[] = [];
+      for (let i = 0; i < diarioIds.length; i += BATCH) {
+        const chunk = diarioIds.slice(i, i + BATCH);
+        const { data } = await supabase
           .from("diario_producao")
-          .select(`
-            valor_total,
-            item_lpu_id,
-            diarios_obra (
-              id,
-              data,
-              site:sites (
-                id,
-                projeto_id
-              )
-            ),
-            item_lpu:itens_lpu (
-              bdi
-            )
-          `)
-          .range(offset, offset + BATCH_SIZE - 1);
-
-        if (error) {
-          console.error("Erro ao buscar producaoData:", error);
-          break;
-        }
-        
-        allData = [...allData, ...(data || [])];
-        hasMore = data?.length === BATCH_SIZE;
-        offset += BATCH_SIZE;
+          .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
+          .in("diario_id", chunk);
+        allProducao = [...allProducao, ...(data || [])];
       }
-
-      const mapped = allData
-
-        .map(p => {
-          // A estrutura pode ser p.diarios_obra.sites.projeto_id ou p.diarios_obra.site.projeto_id
-          const doObj = (p.diarios_obra as any);
-          const siteData = doObj?.site || doObj?.sites;
-          const projeto_id = Array.isArray(siteData) ? siteData[0]?.projeto_id : siteData?.projeto_id;
-          
-          return {
-            projeto_id,
-            valor_total: Number(p.valor_total || 0),
-            data_producao: doObj?.data,
-            bdi_item: Number((p.item_lpu as any)?.bdi || 0)
-          };
-        })
-        .filter(p => p.projeto_id && projetoIds.includes(p.projeto_id));
-
-
-
-      console.log(`[Producao] Itens filtrados: ${mapped.length}. Projetos buscados: ${projetoIds.join(',')}`);
-      if (mapped.length > 0) {
-        console.log(`[Producao] Exemplo de item:`, mapped[0]);
-      }
-      
-      return mapped;
-
-
-
+  
+      const siteToProjetoMap = Object.fromEntries(
+        (sitesData || []).map(s => [s.id, s.projeto_id])
+      );
+  
+      return allProducao.map(p => ({
+        projeto_id: siteToProjetoMap[diarioSiteMap[p.diario_id]?.site_id],
+        valor_total: Number(p.valor_total || 0),
+        data_producao: diarioSiteMap[p.diario_id]?.data,
+        bdi_item: Number(p.item_lpu?.bdi || 0),
+        site_id: diarioSiteMap[p.diario_id]?.site_id,
+      })).filter(p => p.projeto_id);
     },
-    enabled: projetoIds.length > 0
+    enabled: projetoIds.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
 
 
