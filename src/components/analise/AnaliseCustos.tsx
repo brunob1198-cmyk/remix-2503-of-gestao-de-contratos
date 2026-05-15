@@ -460,8 +460,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r bg-amber-100/80">{formatCurrency(totals.gerenciaReal)}</td>
                 <td className="py-3 px-4 border-r bg-amber-100/80 text-slate-900/60">{formatCurrency(totals.gerenciaOrcada)}</td>
                 <td className="py-3 px-4 border-r bg-amber-100/80">{formatCurrency(totals.gerenciaOrcada - totals.gerenciaReal)}</td>
-                <td className="py-3 px-4 border-r bg-amber-100/80">{formatPercent(totals.gerenciaReal / (totals.producaoLiquida || 1))}</td>
-                <td className="py-3 px-4 border-r bg-amber-100/80 text-slate-900/60">{formatPercent(totals.gerenciaOrcada / (totals.producaoLiquida || 1))}</td>
+                <td className="py-3 px-4 border-r bg-amber-100/80">{formatPercent(totals.gerenciaReal / (totals.custoDiretoReal || 1))}</td>
+                <td className="py-3 px-4 border-r bg-amber-100/80 text-slate-900/60">{formatPercent(totals.gerenciaOrcada / (totals.custoDiretoOrcado || 1))}</td>
                 <td className="py-3 px-4 border-r bg-purple-100/80">{formatCurrency(totals.custoTotalReal)}</td>
                 <td className="py-3 px-4 border-r bg-purple-100/80 text-slate-900/60">{formatCurrency(totals.custoTotalOrcado)}</td>
                 <td className="py-3 px-4 border-r bg-purple-100/80">{formatCurrency(totals.resultadoTotal)}</td>
