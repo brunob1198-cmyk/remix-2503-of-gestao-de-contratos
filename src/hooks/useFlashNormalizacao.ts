@@ -980,9 +980,9 @@ export function useFlashNormalizacao() {
     mappingByType,
     loadingMetadata,
     metadataError,
-    refresh: (force = true) => {
+    refresh: async (force = true) => {
       console.log("Hook refresh called with force:", force);
-      return fetchData(force);
+      return await fetchDataRaw(force);
     },
     refreshMetadata: fetchMetadata,
     saveNormalization,
