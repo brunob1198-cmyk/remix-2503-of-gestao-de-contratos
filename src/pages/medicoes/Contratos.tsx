@@ -216,6 +216,16 @@ export default function ContratosPage() {
                                     <button onClick={() => handleEdit(ad)} className="text-muted-foreground hover:text-primary">
                                       <Pencil className="h-3 w-3" />
                                     </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (confirm("Tem certeza que deseja excluir este aditivo?")) {
+                                          deleteContrato.mutate(ad.id);
+                                        }
+                                      }} 
+                                      className="text-muted-foreground hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
                                   </div>
                                 </div>
                               ))}
