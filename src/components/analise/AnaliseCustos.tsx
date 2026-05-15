@@ -3,12 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
 import XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -23,7 +28,7 @@ const formatPercent = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
-  const { analiseRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
+  const { analiseRows: allRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
   const [fcaState, setFcaState] = useState({
     open: false,
     projetoId: "",
@@ -31,6 +36,42 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     mesReferencia: "",
     mesLabel: "",
   });
+
+  const [filters, setFilters] = useState({
+    referencia: [] as string[],
+    area: [] as string[],
+    projeto: [] as string[],
+    cliente: [] as string[],
+    search: ""
+  });
+
+  const filterOptions = useMemo(() => {
+    return {
+      referencia: Array.from(new Set(allRows.map(r => r.referencia))).sort(),
+      area: Array.from(new Set(allRows.map(r => r.area))).sort(),
+      projeto: Array.from(new Set(allRows.map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
+      cliente: Array.from(new Set(allRows.map(r => r.cliente))).sort(),
+    };
+  }, [allRows]);
+
+  const analiseRows = useMemo(() => {
+    return allRows.filter(row => {
+      const matchesReferencia = filters.referencia.length === 0 || filters.referencia.includes(row.referencia);
+      const matchesArea = filters.area.length === 0 || filters.area.includes(row.area);
+      const projetoStr = `${row.projetoCodigo} - ${row.projetoNome}`;
+      const matchesProjeto = filters.projeto.length === 0 || filters.projeto.includes(projetoStr);
+      const matchesCliente = filters.cliente.length === 0 || filters.cliente.includes(row.cliente);
+      
+      const searchLower = filters.search.toLowerCase();
+      const matchesSearch = !filters.search || 
+        row.referencia.toLowerCase().includes(searchLower) ||
+        row.area.toLowerCase().includes(searchLower) ||
+        projetoStr.toLowerCase().includes(searchLower) ||
+        row.cliente.toLowerCase().includes(searchLower);
+
+      return matchesReferencia && matchesArea && matchesProjeto && matchesCliente && matchesSearch;
+    });
+  }, [allRows, filters]);
 
   const totals = useMemo(() => {
     const sum = analiseRows.reduce((acc, r) => ({
@@ -264,14 +305,27 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle>Análise de Custos e Margens</CardTitle>
-            <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+          <div className="flex flex-1 items-center justify-between">
+            <div>
+              <CardTitle>Análise de Custos e Margens</CardTitle>
+              <CardDescription>Detalhamento de produção, custos diretos, gerência e margem bruta por projeto e período.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Pesquisar..."
+                  className="pl-8 h-9"
+                  value={filters.search}
+                  onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
+                />
+              </div>
+              <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+            </div>
           </div>
-          <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Exportar Excel
-          </Button>
         </CardHeader>
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
@@ -286,10 +340,55 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
               </tr>
               <tr className="bg-muted text-muted-foreground font-semibold text-center h-12">
                 <th className="py-3 px-4 border-b border-r text-left sticky left-0 z-20 bg-muted">FCA</th>
-                <th className="py-3 px-4 border-b border-r text-left">Referência</th>
-                <th className="py-3 px-4 border-b border-r text-left">Área</th>
-                <th className="py-3 px-4 border-b border-r text-left">Projeto</th>
-                <th className="py-3 px-4 border-b border-r text-left">Cliente</th>
+                
+                {/* Referência */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[120px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Referência</span>
+                    <FilterPopover 
+                      options={filterOptions.referencia}
+                      selected={filters.referencia}
+                      onSelect={(vals) => setFilters(f => ({ ...f, referencia: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Área */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[120px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Área</span>
+                    <FilterPopover 
+                      options={filterOptions.area}
+                      selected={filters.area}
+                      onSelect={(vals) => setFilters(f => ({ ...f, area: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Projeto */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[200px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Projeto</span>
+                    <FilterPopover 
+                      options={filterOptions.projeto}
+                      selected={filters.projeto}
+                      onSelect={(vals) => setFilters(f => ({ ...f, projeto: vals }))}
+                    />
+                  </div>
+                </th>
+
+                {/* Cliente */}
+                <th className="py-3 px-4 border-b border-r text-left min-w-[150px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Cliente</span>
+                    <FilterPopover 
+                      options={filterOptions.cliente}
+                      selected={filters.cliente}
+                      onSelect={(vals) => setFilters(f => ({ ...f, cliente: vals }))}
+                    />
+                  </div>
+                </th>
+
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Produção (POC)</th>
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">% Impostos</th>
                 <th className="py-3 px-4 border-b border-r bg-green-100/50 text-green-800">Receita Líquida</th>
@@ -480,5 +579,98 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         onOpenChange={(open) => setFcaState(prev => ({ ...prev, open }))} 
       />
     </div>
+  );
+}
+
+function FilterPopover({ 
+  options, 
+  selected, 
+  onSelect 
+}: { 
+  options: string[], 
+  selected: string[], 
+  onSelect: (vals: string[]) => void 
+}) {
+  const [search, setSearch] = useState("");
+  
+  const filteredOptions = useMemo(() => {
+    return options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  }, [options, search]);
+
+  const toggleOption = (val: string) => {
+    if (selected.includes(val)) {
+      onSelect(selected.filter(v => v !== val));
+    } else {
+      onSelect([...selected, val]);
+    }
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`h-7 w-7 p-0 ${selected.length > 0 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <Filter className="h-3 w-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 border-none focus-visible:ring-0 px-0"
+            />
+            {search && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={() => setSearch("")}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          <Separator />
+          <ScrollArea className="h-48">
+            <div className="space-y-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-muted-foreground">Nenhuma opção encontrada</div>
+              ) : (
+                filteredOptions.map((opt) => (
+                  <div 
+                    key={opt}
+                    className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded-sm cursor-pointer"
+                    onClick={() => toggleOption(opt)}
+                  >
+                    <Checkbox checked={selected.includes(opt)} />
+                    <span className="text-xs truncate" title={opt}>{opt}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+          {selected.length > 0 && (
+            <>
+              <Separator />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full h-8 text-xs" 
+                onClick={() => onSelect([])}
+              >
+                Limpar filtros
+              </Button>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
