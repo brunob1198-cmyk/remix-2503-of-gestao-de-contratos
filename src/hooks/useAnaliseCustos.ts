@@ -653,7 +653,6 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const moObra = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
         const materiais = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
         const transporte = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const equipamentos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Equipamentos').reduce((s, c) => s + Number(c.valor || 0), 0);
         const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const percRisco = mkp?.perc_risco ?? 0;
@@ -709,7 +708,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           moObra,
           materiais,
           transporte,
-          equipamentos,
+          // equipamentos column removed as per user request
           indiretos,
           custoDiretoReal,
           custoDiretoOrcado,
