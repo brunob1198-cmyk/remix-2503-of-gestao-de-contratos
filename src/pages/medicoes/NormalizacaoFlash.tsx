@@ -1015,7 +1015,7 @@ export default function NormalizacaoFlashPage() {
             <FileSpreadsheet className="h-4 w-4 mr-2" />
             Exportar Excel
           </Button>
-          <Button variant="outline" size="sm" onClick={refreshMetadata} disabled={loadingMetadata}>
+          <Button variant="outline" size="sm" onClick={() => refreshMetadata()} disabled={loadingMetadata}>
             {loadingMetadata ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (

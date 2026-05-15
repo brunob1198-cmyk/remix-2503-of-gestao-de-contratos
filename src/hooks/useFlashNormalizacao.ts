@@ -447,12 +447,12 @@ export function useFlashNormalizacao() {
 
   const fetchData = useMemo(() => debounce(fetchDataRaw, 300), [fetchDataRaw]);
 
-  const fetchMetadata = useCallback(async () => {
+  const fetchMetadata = useCallback(async (force = false) => {
     if (loadingMetadata) return;
     setLoadingMetadata(true);
     setMetadataError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force: true } });
+      const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force } });
       if (error) throw error;
       setCategorias(data?.categorias || []);
       setContas(data?.contas_financeiras || []);
@@ -984,7 +984,7 @@ export function useFlashNormalizacao() {
       console.log("Hook refresh called with force:", force);
       return await fetchDataRaw(force);
     },
-    refreshMetadata: fetchMetadata,
+    refreshMetadata: () => fetchMetadata(true),
     saveNormalization,
     applyMappingToAllPending,
     bulkApplyToPending,
