@@ -66,27 +66,25 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
       // Usamos paginação manual para garantir que TODAS as fotos sejam carregadas,
       // contornando o limite de 1000 registros por requisição do Supabase.
       const fetchAllPhotos = async (ids: string[]) => {
-        let all: any[] = [];
-        let from = 0;
-        let to = 999;
-        let finished = false;
+        if (ids.length === 0) return [];
         
-        while (!finished) {
+        // Processar em chunks de 200 diários por vez para evitar URLs gigantes
+        const CHUNK_SIZE = 200;
+        const MAX_PHOTOS = 2000; // limite de segurança para evitar requests infinitos
+        let all: any[] = [];
+        
+        for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+          const chunk = ids.slice(i, i + CHUNK_SIZE);
           const { data, error } = await supabase
             .from("diario_fotos")
             .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id")
-            .in("diario_id", ids)
-            .range(from, to);
-            
-          if (error) throw error;
-          if (!data || data.length === 0) break;
+            .in("diario_id", chunk)
+            .limit(MAX_PHOTOS - all.length);
           
-          all = [...all, ...data];
-          if (data.length < 1000) finished = true;
-          else {
-            from += 1000;
-            to += 1000;
-          }
+          if (error) throw error;
+          
+          all = [...all, ...(data || [])];
+          if (all.length >= MAX_PHOTOS) break;
         }
         return all;
       };
