@@ -695,7 +695,7 @@ export function useFlashNormalizacao() {
         setSavingId(null);
       }
     },
-    [empresaId, mappings, contas, saveNormalization]
+    [empresaId, mappings, contas]
   );
 
   // Use a more efficient approach for applyMappingToAllPending
