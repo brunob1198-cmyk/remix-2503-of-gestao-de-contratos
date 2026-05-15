@@ -664,9 +664,14 @@ Deno.serve(async (req) => {
         (mappings || []).forEach((m) => mappingIdx.set(m.flash_type, m));
 
         const pickFlashType = (payload: any): string => {
-          const candidates = ["type", "tipo", "category", "categoria", "transaction_type"];
+          const candidates = ["type", "tipo", "category.name", "categoria.nome", "category", "categoria", "transaction_type"];
           for (const k of candidates) {
-            if (payload[k]) return String(payload[k]).trim();
+            const parts = k.split('.');
+            let val = payload;
+            for (const part of parts) {
+              val = val?.[part];
+            }
+            if (val) return String(val).trim();
           }
           return "indefinido";
         };

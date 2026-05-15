@@ -212,7 +212,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     payload_json: p,
     created_at: raw.created_at,
     data: parseFlashDate(rawDate),
-    descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment", "name", "comments"]) || "—",
+    descricao: pickPayloadValue(p, ["comments", "comment", "category.name", "categoria.nome", "transaction.description", "description", "descricao", "merchant", "establishment", "name"]) || "—",
     valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario:
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
@@ -222,6 +222,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       // Objeto costCenter completo (enriquecido pelo sync ou já presente na API)
       "costCenter.name", 
       "cost_center.name", 
+      "costCenter.id",
+      "cost_center.id",
       // Objeto dentro de employee/user
       "employee.costCenter.name", 
       "user.costCenter.name",
@@ -238,6 +240,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "employee.costCenterId",
       "employee.cost_center_id",
       "user.costCenterId",
+      "user.costCenter.id"
     ]) || "—",
     comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "observation", "note"]) || "—",
     flash_prestacao_contas,

@@ -101,6 +101,8 @@ export const extractFlashType = (transaction: FlashRawTransactionLike): string =
   const fromPayload = pickValue(transaction.payload_json, [
     "type",
     "tipo",
+    "category.name", // Adicionado como fallback
+    "categoria.nome", // Adicionado como fallback
     "category",
     "categoria",
     "transaction_type",
@@ -123,9 +125,16 @@ export const normalizeFlashTransaction = (
   const payload = transaction.payload_json || {};
   
   // Extrair metadados para matching inteligente
-  const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
-  const flash_cost_center = transaction.flash_cost_center || pickValue(payload, ["costCenter.name", "cost_center.name", "employee.costCenter.name", "user.costCenter.name", "employee.cost_center.name", "user.cost_center.name", "centro_custo", "costCenter.code", "costCenter.externalId", "costCenterId", "cost_center_id", "employee.costCenterId"]) || "—";
-  const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
+  const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "categoria.nome", "transaction.category", "category", "categoria"]) || "—";
+  
+  // Caminhos corrigidos para Centro de Custo e ID conforme feedback do usuário
+  const flash_cost_center_id = pickValue(payload, ["costCenter.id", "cost_center.id", "costCenterId", "cost_center_id"]);
+  const flash_cost_center_name = pickValue(payload, ["costCenter.name", "cost_center.name", "employee.costCenter.name", "user.costCenter.name", "employee.cost_center.name", "user.cost_center.name", "centro_custo", "costCenter.code", "costCenter.externalId"]);
+  
+  const flash_cost_center = transaction.flash_cost_center || flash_cost_center_name || flash_cost_center_id || "—";
+  
+  // Descrição: prioriza comentários ou categoria se o campo description for nulo
+  const descricao = transaction.descricao || pickValue(payload, ["comments", "comment", "category.name", "categoria.nome", "description", "descricao", "merchant", "establishment", "name"]) || "—";
   const comentarios = pickValue(payload, ["comments", "comment", "observacao", "observation", "note"]) || null;
   
   const valor = typeof transaction.valor === "number" ? transaction.valor : pickNumber(payload, ["amount", "value", "valor", "total"]);
