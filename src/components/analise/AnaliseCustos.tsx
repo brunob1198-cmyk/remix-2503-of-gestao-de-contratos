@@ -3,12 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
 import XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -23,7 +28,7 @@ const formatPercent = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
-  const { analiseRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
+  const { analiseRows: allRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
   const [fcaState, setFcaState] = useState({
     open: false,
     projetoId: "",
@@ -31,6 +36,42 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     mesReferencia: "",
     mesLabel: "",
   });
+
+  const [filters, setFilters] = useState({
+    referencia: [] as string[],
+    area: [] as string[],
+    projeto: [] as string[],
+    cliente: [] as string[],
+    search: ""
+  });
+
+  const filterOptions = useMemo(() => {
+    return {
+      referencia: Array.from(new Set(allRows.map(r => r.referencia))).sort(),
+      area: Array.from(new Set(allRows.map(r => r.area))).sort(),
+      projeto: Array.from(new Set(allRows.map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
+      cliente: Array.from(new Set(allRows.map(r => r.cliente))).sort(),
+    };
+  }, [allRows]);
+
+  const analiseRows = useMemo(() => {
+    return allRows.filter(row => {
+      const matchesReferencia = filters.referencia.length === 0 || filters.referencia.includes(row.referencia);
+      const matchesArea = filters.area.length === 0 || filters.area.includes(row.area);
+      const projetoStr = `${row.projetoCodigo} - ${row.projetoNome}`;
+      const matchesProjeto = filters.projeto.length === 0 || filters.projeto.includes(projetoStr);
+      const matchesCliente = filters.cliente.length === 0 || filters.cliente.includes(row.cliente);
+      
+      const searchLower = filters.search.toLowerCase();
+      const matchesSearch = !filters.search || 
+        row.referencia.toLowerCase().includes(searchLower) ||
+        row.area.toLowerCase().includes(searchLower) ||
+        projetoStr.toLowerCase().includes(searchLower) ||
+        row.cliente.toLowerCase().includes(searchLower);
+
+      return matchesReferencia && matchesArea && matchesProjeto && matchesCliente && matchesSearch;
+    });
+  }, [allRows, filters]);
 
   const totals = useMemo(() => {
     const sum = analiseRows.reduce((acc, r) => ({
