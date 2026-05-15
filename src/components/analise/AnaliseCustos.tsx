@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +37,20 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     mesLabel: "",
   });
 
-  const [filters, setFilters] = useState({
-    referencia: [] as string[],
-    area: [] as string[],
-    projeto: [] as string[],
-    cliente: [] as string[],
-    search: ""
+  const [filters, setFilters] = useState(() => {
+    const saved = localStorage.getItem("analise_custos_filters");
+    return saved ? JSON.parse(saved) : {
+      referencia: [] as string[],
+      area: [] as string[],
+      projeto: [] as string[],
+      cliente: [] as string[],
+      search: ""
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem("analise_custos_filters", JSON.stringify(filters));
+  }, [filters]);
 
   const filterOptions = useMemo(() => {
     return {
