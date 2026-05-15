@@ -1067,7 +1067,7 @@ export function DetailMedicaoContent({
 
         const obsHtml = siteObs.length > 0 ? `
           <div class="site-obs">
-            <p class="site-obs-title">📋 Observações</p>
+            <p class="site-obs-title">📋 Relatório Descritivo / Observações</p>
             ${siteObs.map(o => `<p class="site-obs-text">${o.replace(/\n/g, '<br>')}</p>`).join('')}
           </div>
         ` : '';
@@ -1316,7 +1316,7 @@ export function DetailMedicaoContent({
 
 
     ${detailMedicao.observacao_acompanhamento ? `
-      <h2 class="sec">📋 Observações Gerais</h2>
+      <h2 class="sec">📋 Relatório Descritivo / Observações</h2>
       <div class="obs-box">${detailMedicao.observacao_acompanhamento}</div>
     ` : ''}
   </div>
@@ -1749,7 +1749,7 @@ export function DetailMedicaoContent({
           {/* Observations */}
           {detailMedicao.observacao_acompanhamento && (
             <div className="mb-4">
-              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>Observações</h2>
+              <h2 className="pdf-section-heading" style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, lineHeight: '1.6' }}>Relatório Descritivo / Observações</h2>
               <p className="text-sm text-muted-foreground whitespace-pre-line" style={{ lineHeight: '1.6', paddingBottom: '4px' }}>{detailMedicao.observacao_acompanhamento}</p>
             </div>
           )}
@@ -1865,7 +1865,7 @@ export function DetailMedicaoContent({
 
                       {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])?.length > 0 && (
                         <div className="p-3 border-t bg-muted/10" style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
-                          <p className="text-xs font-semibold mb-1 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>📋 Observações</p>
+                          <p className="text-xs font-semibold mb-1 flex items-center gap-1 py-0.5" style={{ lineHeight: '1.4' }}>📋 Relatório Descritivo / Observações</p>
                           {(observacoesBySite instanceof Map ? observacoesBySite.get(siteId) : [])!.map((obs, idx) => (
                             <p key={idx} className="text-xs text-muted-foreground whitespace-pre-line mb-1" style={{ lineHeight: '1.4' }}>{obs}</p>
                           ))}

@@ -2105,7 +2105,7 @@ export default function DiarioObraPage() {
           {/* ===== OBSERVAÇÕES ===== */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Observações</CardTitle>
+              <CardTitle className="text-base">Relatório Descritivo / Observações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Textarea
