@@ -106,13 +106,19 @@ export default function IntegracaoPage() {
           </div>
         }>
           <TabsContent value="erp" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <IntegracaoErpPage />
+            <ErrorBoundary>
+              <IntegracaoErpPage />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="flash" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <IntegracaoFlashPage />
+            <ErrorBoundary>
+              <IntegracaoFlashPage />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="normalizacao" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <NormalizacaoFlashPage />
+            <ErrorBoundary>
+              <NormalizacaoFlashPage />
+            </ErrorBoundary>
           </TabsContent>
         </Suspense>
       </Tabs>
