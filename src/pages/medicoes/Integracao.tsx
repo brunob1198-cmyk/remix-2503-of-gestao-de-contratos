@@ -11,7 +11,7 @@ const IntegracaoFlashPage = React.lazy(() => import("./IntegracaoFlash"));
 const NormalizacaoFlashPage = React.lazy(() => import("./NormalizacaoFlash"));
 
 export default function IntegracaoPage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const isAdmin = role === "admin";
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +25,14 @@ export default function IntegracaoPage() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, activeTab, setActiveTab, setSearchParams]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (
