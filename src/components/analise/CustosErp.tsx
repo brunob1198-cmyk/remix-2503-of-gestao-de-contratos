@@ -181,13 +181,37 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
 
   const uniqueValues = useMemo(() => {
     const result: Record<ColKey, string[]> = {} as any;
+    
     allCols.forEach(col => {
-      const vals = Array.from(new Set(custosErp.map(item => getColValue(item, col))));
+      // Para cada coluna, as opções disponíveis devem respeitar os filtros das OUTRAS colunas
+      let itemsForThisCol = [...custosErp];
+      
+      allCols.forEach(otherCol => {
+        if (col === otherCol) return; // Não filtra a si mesma para permitir trocar a seleção
+        
+        const search = searchTexts[otherCol].toLowerCase();
+        const selected = selectedFilters[otherCol];
+        
+        if (search) {
+          itemsForThisCol = itemsForThisCol.filter(item => 
+            getColValue(item, otherCol).toLowerCase().includes(search)
+          );
+        }
+        
+        if (selected.size > 0) {
+          itemsForThisCol = itemsForThisCol.filter(item => 
+            selected.has(getColValue(item, otherCol))
+          );
+        }
+      });
+
+      const vals = Array.from(new Set(itemsForThisCol.map(item => getColValue(item, col))));
       vals.sort();
       result[col] = vals;
     });
+    
     return result;
-  }, [custosErp]);
+  }, [custosErp, searchTexts, selectedFilters]);
 
 
   const filteredItems = useMemo(() => {
