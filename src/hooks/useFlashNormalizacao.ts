@@ -448,7 +448,11 @@ export function useFlashNormalizacao() {
   const fetchData = useMemo(() => debounce(fetchDataRaw, 300), [fetchDataRaw]);
 
   const fetchMetadata = useCallback(async (force = false) => {
-    if (loadingMetadata) return;
+    if (loadingMetadata) {
+      console.log("fetchMetadata skip: already loading");
+      return;
+    }
+    console.log("fetchMetadata starting, force:", force);
     setLoadingMetadata(true);
     setMetadataError(null);
     try {
