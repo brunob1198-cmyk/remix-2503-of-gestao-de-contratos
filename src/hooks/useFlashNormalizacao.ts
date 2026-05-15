@@ -984,7 +984,7 @@ export function useFlashNormalizacao() {
       console.log("Hook refresh called with force:", force);
       return await fetchDataRaw(force);
     },
-    refreshMetadata: fetchMetadata,
+    refreshMetadata: () => fetchMetadata(true),
     saveNormalization,
     applyMappingToAllPending,
     bulkApplyToPending,
