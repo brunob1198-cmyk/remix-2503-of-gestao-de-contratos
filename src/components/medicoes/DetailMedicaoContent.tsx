@@ -936,6 +936,7 @@ export function DetailMedicaoContent({
           site_id: f.site_id
         })),
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
+        clienteLogoUrl: base64ClienteLogo || finalClienteLogoUrl,
         isMultiSite: isMultiSite,
         sitesData: sitesData,
         addLog
