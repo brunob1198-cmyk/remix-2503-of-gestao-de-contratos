@@ -113,7 +113,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
       totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
       totals.gerenciaReal, totals.gerenciaOrcada, totals.gerenciaOrcada - totals.gerenciaReal,
-      totals.gerenciaReal / (totals.producaoLiquida || 1), totals.gerenciaOrcada / (totals.producaoLiquida || 1),
+      totals.gerenciaReal / (totals.custoDiretoReal || 1), totals.gerenciaOrcada / (totals.custoDiretoOrcado || 1),
       totals.custoTotalReal, totals.custoTotalOrcado, totals.resultadoTotal,
       totals.mbOrcada, totals.mbRealizada, totals.percMbOrcada, totals.percMbReal
     ];
