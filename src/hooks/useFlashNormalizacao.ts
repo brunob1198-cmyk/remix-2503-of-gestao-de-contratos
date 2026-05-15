@@ -491,12 +491,12 @@ export function useFlashNormalizacao() {
 
   useEffect(() => {
     // Only fetch automatically on first mount or if empresaId changes
-    // We avoid calling this if it's already loading
-    if (!loadingMetadata && categorias.length === 0) {
+    // We avoid calling this if it's already loading or if we have data
+    if (!loadingMetadata && categorias.length === 0 && empresaId) {
       console.log("Initial fetchMetadata triggered by useEffect");
       fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
     }
-  }, [empresaId]); // Depend on empresaId so it runs when user logs in
+  }, [empresaId, fetchMetadata, loadingMetadata, categorias.length]);
 
   // Buscar centros de custo do SaaS (tabela areas) para comparação
   useEffect(() => {
