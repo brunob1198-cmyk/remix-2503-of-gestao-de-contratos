@@ -1,17 +1,55 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
-import { useEffect, Suspense } from "react";
+import { useEffect, Suspense, Component, ReactNode } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useAuth } from "@/contexts/AuthContext";
-import { Webhook, Zap, Wand2, Loader2 } from "lucide-react";
+import { Webhook, Zap, Wand2, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import React from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Alert variant="destructive" className="my-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro na guia</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Ocorreu um erro ao carregar esta guia de integração.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                this.setState({ hasError: false });
+                window.location.reload();
+              }}
+            >
+              Recarregar página
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const IntegracaoErpPage = React.lazy(() => import("./IntegracaoErp"));
 const IntegracaoFlashPage = React.lazy(() => import("./IntegracaoFlash"));
 const NormalizacaoFlashPage = React.lazy(() => import("./NormalizacaoFlash"));
 
 export default function IntegracaoPage() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const isAdmin = role === "admin";
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +63,14 @@ export default function IntegracaoPage() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, activeTab, setActiveTab, setSearchParams]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (
@@ -60,13 +106,19 @@ export default function IntegracaoPage() {
           </div>
         }>
           <TabsContent value="erp" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <IntegracaoErpPage />
+            <ErrorBoundary>
+              <IntegracaoErpPage />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="flash" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <IntegracaoFlashPage />
+            <ErrorBoundary>
+              <IntegracaoFlashPage />
+            </ErrorBoundary>
           </TabsContent>
           <TabsContent value="normalizacao" className="m-0 border rounded-lg p-6 bg-card text-card-foreground shadow-sm">
-            <NormalizacaoFlashPage />
+            <ErrorBoundary>
+              <NormalizacaoFlashPage />
+            </ErrorBoundary>
           </TabsContent>
         </Suspense>
       </Tabs>
