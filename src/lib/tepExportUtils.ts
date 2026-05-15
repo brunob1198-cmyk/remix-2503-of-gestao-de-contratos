@@ -11,6 +11,7 @@ interface TEPData {
     site_id?: string;
   }[];
   logoUrl?: string | null;
+  clienteLogoUrl?: string | null;
   isMultiSite?: boolean;
   sitesData?: {
     siteId: string;
@@ -35,14 +36,14 @@ export const exportTEPToHtml = async (data: TEPData) => {
                  foto.classificacao;
 
     return `
-      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 260px;">
-        <div style="width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
+        <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
           <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
             <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor}; margin-bottom: 6px;">${badgeText}</span>
-            ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin: 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">“${foto.legenda}”</p>` : ""}
+            ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin: 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">“${foto.legenda}”</p>` : ""}
           </div>
         </div>
       </div>
@@ -120,7 +121,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
         body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f3f4f6; }
         .page { background: white; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { max-height: 60px; }
+        .logo { max-height: 70px; max-width: 220px; object-fit: contain; }
         .title { font-size: 28px; font-weight: bold; color: #1e3a8a; margin: 0; }
         .info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; margin-bottom: 25px; }
         .label { font-weight: bold; color: #374151; }
@@ -134,8 +135,9 @@ export const exportTEPToHtml = async (data: TEPData) => {
     <body>
       <div class="page">
         <div class="header">
-          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" />` : "<div></div>"}
+          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
           <h1 class="title">Relatório TEP</h1>
+          ${data.clienteLogoUrl ? `<img src="${data.clienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
         <div class="info-grid">
