@@ -720,7 +720,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           gerenciaOrcada,
           deltaGerencia: gerenciaOrcada - gerenciaReal,
           percGerenciaOrcada: custoDiretoOrcado > 0 ? gerenciaOrcada / custoDiretoOrcado : 0,
-          percGerenciaReal: custoDiretoOrcado > 0 ? gerenciaReal / custoDiretoOrcado : 0,
+          percGerenciaReal: custoDiretoReal > 0 ? gerenciaReal / custoDiretoReal : 0,
           pendentesCategorizacao,
           custoTotalReal,
           custoTotalOrcado,
