@@ -452,6 +452,13 @@ export function useFlashNormalizacao() {
       console.log("fetchMetadata skip: already loading");
       return;
     }
+    
+    // Check if we already have data and not forcing, to avoid redundant calls
+    if (!force && categorias.length > 0 && contas.length > 0) {
+      console.log("fetchMetadata skip: already have data and not forcing");
+      return;
+    }
+
     console.log("fetchMetadata starting, force:", force);
     setLoadingMetadata(true);
     setMetadataError(null);
@@ -471,7 +478,7 @@ export function useFlashNormalizacao() {
     } finally {
       setLoadingMetadata(false);
     }
-  }, [loadingMetadata]);
+  }, [loadingMetadata, categorias.length, contas.length]);
 
   useEffect(() => {
     if (empresaId) {
