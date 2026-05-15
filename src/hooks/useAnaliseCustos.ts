@@ -36,7 +36,8 @@ export interface AnaliseCustosRow {
   moObra: number;
   materiais: number;
   transporte: number;
-  equipamentos: number;
+  // equipamentos removed
+
   indiretos: number;
   custoDiretoReal: number;      // soma dos três acima — SEM gerência
   custoDiretoOrcado: number;    // poc * (mkp.perc_custo_direto + mkp.perc_risco + mkp.perc_inflacao)
