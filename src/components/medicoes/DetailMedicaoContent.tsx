@@ -915,8 +915,15 @@ export function DetailMedicaoContent({
       addLog("Iniciando exportação TEP (Modelo Compacto)...", "info");
       
       const siteObs = isMultiSite 
-        ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n\n")
+        ? (observacoesBySite instanceof Map ? (observacoesBySite.get(detailMedicao.site_id) || []) : []).join("\n\n")
         : detailMedicao.observacao_acompanhamento || "";
+
+      const sitesData = isMultiSite ? fotosBySiteAndClass.map(site => ({
+        siteId: site.siteId,
+        siteName: site.siteName,
+        observacoes: (observacoesBySite instanceof Map ? (observacoesBySite.get(site.siteId) || []) : []),
+        classes: site.classes
+      })) : undefined;
 
       await exportTEPToHtml({
         siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
@@ -924,9 +931,13 @@ export function DetailMedicaoContent({
         fotos: diarioFotos.map(f => ({
           url: f.url,
           classificacao: f.classificacao,
-          legenda: f.legenda
+          legenda: f.legenda,
+          site_nome: f.site_nome,
+          site_id: f.site_id
         })),
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
+        isMultiSite: isMultiSite,
+        sitesData: sitesData,
         addLog
       });
 

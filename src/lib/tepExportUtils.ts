@@ -7,43 +7,108 @@ interface TEPData {
     url: string;
     classificacao: string;
     legenda: string | null;
+    site_nome?: string;
+    site_id?: string;
   }[];
   logoUrl?: string | null;
-  addLog?: (message: string, type?: 'info' | 'error' | 'success') => void;
+  isMultiSite?: boolean;
+  sitesData?: {
+    siteId: string;
+    siteName: string;
+    observacoes: string[];
+    classes: [string, any[]][];
+  }[];
+  addLog?: (message: string, type?: 'info' | 'error' | 'success' | 'debug') => void;
 }
 
 export const exportTEPToHtml = async (data: TEPData) => {
   const { addLog } = data;
   addLog?.("Gerando Relatório TEP em formato HTML...", "info");
 
-  const groups = ["Vistoria", "Execução"];
-  
-  const sectionsHtml = groups.map(group => {
-    const groupFotos = data.fotos.filter(f => 
-      f.classificacao.toLowerCase() === group.toLowerCase() || 
-      (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
-      (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
-      (group === "Execução" && f.classificacao.toLowerCase() === "execução")
-    );
-
-    if (groupFotos.length === 0) return "";
-
-    const fotosHtml = groupFotos.map(foto => `
-      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb;">
-        <img src="${foto.url}" style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
-        ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin-top: 8px;">${foto.legenda}</p>` : ""}
-      </div>
-    `).join("");
+  const buildPhotoCardHtml = (foto: any) => {
+    const clsLower = foto.classificacao?.toLowerCase();
+    const badgeColor = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
+                  (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
+                  "#64748b";
+    const badgeText = (clsLower === "antes" || clsLower === "vistoria") ? "Vistoria" :
+                 (clsLower === "execucao" || clsLower === "execução") ? "Execução" : 
+                 foto.classificacao;
 
     return `
-      <div style="margin-top: 30px;">
-        <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
-          ${fotosHtml}
+      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
+        <div style="width: 100%; height: 220px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" />
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
+          <div>
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor}; margin-bottom: 6px;">${badgeText}</span>
+            ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin: 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">“${foto.legenda}”</p>` : ""}
+          </div>
         </div>
       </div>
     `;
-  }).join("");
+  };
+
+  let contentHtml = "";
+
+  if (data.isMultiSite && data.sitesData) {
+    contentHtml = data.sitesData.map(site => {
+      const siteObsHtml = site.observacoes.length > 0 ? `
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+          <p style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; color: #92400e;">📋 Relatório Descritivo / Observações</p>
+          ${site.observacoes.map(o => `<p style="font-size: 12px; margin: 0 0 4px 0; color: #4b5563; white-space: pre-line;">${o}</p>`).join("")}
+        </div>
+      ` : "";
+
+      const photoSectionsHtml = site.classes.map(([className, photos]) => `
+        <div style="margin-top: 20px;">
+          <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">${className}</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            ${photos.map(f => buildPhotoCardHtml(f)).join("")}
+          </div>
+        </div>
+      `).join("");
+
+      return `
+        <div style="margin-bottom: 40px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff;">
+          <div style="background: #1e3a8a; color: #fff; padding: 10px 16px; font-size: 16px; font-weight: bold;">📍 Site: ${site.siteName}</div>
+          <div style="padding: 20px;">
+            ${siteObsHtml}
+            ${photoSectionsHtml}
+          </div>
+        </div>
+      `;
+    }).join("");
+  } else {
+    const groups = ["Vistoria", "Execução"];
+    const sectionsHtml = groups.map(group => {
+      const groupFotos = data.fotos.filter(f => 
+        f.classificacao.toLowerCase() === group.toLowerCase() || 
+        (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
+        (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
+        (group === "Execução" && f.classificacao.toLowerCase() === "execução")
+      );
+
+      if (groupFotos.length === 0) return "";
+
+      return `
+        <div style="margin-top: 30px;">
+          <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+            ${groupFotos.map(f => buildPhotoCardHtml(f)).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    contentHtml = `
+      <div style="margin-top: 20px;">
+        <div class="label" style="font-size: 16px; margin-bottom: 8px; font-weight: bold;">Relatório Descritivo / Observações:</div>
+        <div style="background: #f8fafc; border-left: 4px solid #1e3a8a; padding: 15px; margin-bottom: 25px; white-space: pre-wrap; font-size: 14px;">${data.observacoes || "Nenhuma observação informada."}</div>
+      </div>
+      ${sectionsHtml}
+    `;
+  }
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -59,7 +124,6 @@ export const exportTEPToHtml = async (data: TEPData) => {
         .title { font-size: 28px; font-weight: bold; color: #1e3a8a; margin: 0; }
         .info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; margin-bottom: 25px; }
         .label { font-weight: bold; color: #374151; }
-        .obs-box { background: #f8fafc; border-left: 4px solid #1e3a8a; padding: 15px; margin-top: 10px; white-space: pre-wrap; }
         @media print {
           body { background: white; padding: 0; }
           .page { box-shadow: none; padding: 0; }
@@ -81,12 +145,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
           <div>${format(new Date(), "dd/MM/yyyy")}</div>
         </div>
 
-        <div style="margin-top: 20px;">
-          <div class="label" style="font-size: 16px; margin-bottom: 8px;">Relatório Descritivo / Observações:</div>
-          <div class="obs-box">${data.observacoes || "Nenhuma observação informada."}</div>
-        </div>
-
-        ${sectionsHtml}
+        ${contentHtml}
         
         <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">
           Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm:ss")}
