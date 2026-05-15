@@ -1490,17 +1490,6 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={() => handleExportZip()} 
-          variant="outline" 
-          size="sm" 
-          disabled={isExporting} 
-          className="bg-green-600 text-white hover:bg-green-700 hover:text-white font-bold"
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
-          {isExporting ? "Gerando Relatório..." : "Gerar Relatório (ZIP/PDF)"}
-        </Button>
-
-        <Button 
           onClick={() => {
             const htmlContent = generateHtmlReport();
             const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -1518,19 +1507,9 @@ export function DetailMedicaoContent({
           className="border-blue-600 text-blue-600 hover:bg-blue-50"
         >
           <ScrollText className="h-4 w-4 mr-2" />
-          HTML Online
+          Gerar Relatório HTML
         </Button>
 
-        <Button 
-          onClick={() => handleExportPdf(false)} 
-          variant="ghost" 
-          size="sm" 
-          disabled={isExporting} 
-          className="text-muted-foreground hover:text-primary"
-        >
-          {isExporting ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <FileText className="h-3 w-3 mr-2" />}
-          {isExporting ? "Processando..." : "PDF Direto (Legado)"}
-        </Button>
       </div>
 
 
