@@ -169,28 +169,6 @@ export function VisaoExecutiva({ projetoId, projetoName, periodoInicio, periodoF
         </Card>
       )}
 
-      {alertas.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              Alertas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {alertas.map((a, i) => (
-                <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
-                  a.tipo === "critico" ? "bg-red-50 text-red-800" : a.tipo === "atencao" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-800"
-                }`}>
-                  <span>{a.tipo === "critico" ? "🔴" : a.tipo === "atencao" ? "🟡" : "🔵"}</span>
-                  <span>{a.mensagem}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
 
     </div>
