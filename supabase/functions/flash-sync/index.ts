@@ -252,6 +252,8 @@ async function getCostCenters(token: string): Promise<Map<string, { id: string; 
       }
 
       // Flash retorna { records: [...], metadata: { ... } }
+      console.log(`[flash-sync] Cost centers raw response keys:`, Object.keys(payload).join(", "));
+      console.log(`[flash-sync] Cost centers raw response (first 500 chars):`, JSON.stringify(payload).substring(0, 500));
       const records = payload.records ?? payload.data ?? payload.items ?? payload.results ?? (Array.isArray(payload) ? payload : []);
       if (!Array.isArray(records) || records.length === 0) {
         if (pagesFetched === 0) {
@@ -575,6 +577,23 @@ Deno.serve(async (req) => {
           id: cc.id,
           name: cc.name,
         };
+      }
+    }
+
+    // === DEBUG: Log dos primeiros 3 registros para diagnóstico ===
+    if (transactions.length > 0) {
+      console.log(`[flash-sync] === DEBUG: Amostra de ${Math.min(3, transactions.length)} transações após enriquecimento ===`);
+      for (let i = 0; i < Math.min(3, transactions.length); i++) {
+        const tx = transactions[i] as any;
+        console.log(`[flash-sync] TX[${i}] id=${tx.id}, description=${(tx.description || '').substring(0, 50)}`);
+        console.log(`[flash-sync]   costCenter:`, JSON.stringify(tx.costCenter));
+        console.log(`[flash-sync]   costCenterId:`, tx.costCenterId);
+        console.log(`[flash-sync]   comments:`, (tx.comments || '(null/undefined)').substring(0, 100));
+        console.log(`[flash-sync]   category:`, JSON.stringify(tx.category));
+        console.log(`[flash-sync]   type:`, tx.type);
+        console.log(`[flash-sync]   employee?.name:`, tx.employee?.name);
+        console.log(`[flash-sync]   employee?.costCenterId:`, tx.employee?.costCenterId);
+        console.log(`[flash-sync]   top-level keys:`, Object.keys(tx).join(", "));
       }
     }
 

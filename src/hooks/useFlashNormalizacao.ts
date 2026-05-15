@@ -110,8 +110,32 @@ const parseFlashDate = (raw: string | null): string | null => {
   return null;
 };
 
+let _debugCount = 0;
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
+  
+  // DEBUG: Log dos primeiros 5 payloads para diagnóstico
+  if (_debugCount < 5) {
+    _debugCount++;
+    console.log(`[DEBUG mapTransactionRow #${_debugCount}]`, {
+      id: raw.id,
+      external_id: raw.external_id,
+      topLevelKeys: Object.keys(p).join(", "),
+      costCenter: p.costCenter,
+      costCenterId: p.costCenterId,
+      comments: p.comments,
+      category: typeof p.category === 'object' ? p.category : p.category,
+      type: p.type,
+      description: typeof p.description === 'string' ? p.description.substring(0, 50) : p.description,
+      "establishment.name": p.establishment?.name,
+      "employee.costCenter": p.employee?.costCenter,
+      "employee.costCenterId": p.employee?.costCenterId,
+      justification: p.justification,
+      "accounting.comments": p.accounting?.comments,
+      "receipt.comments": p.receipt?.comments,
+    });
+  }
+  
   const flash_type_raw = pickPayloadValue(p, ["type", "tipo", "category", "categoria", "transaction_type"]) || "indefinido";
   
   const typeTranslations: Record<string, string> = {
@@ -212,7 +236,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     payload_json: p,
     created_at: raw.created_at,
     data: parseFlashDate(rawDate),
-    descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment", "name", "comments"]) || "—",
+    descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—",
     valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario:
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
@@ -239,7 +263,30 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "employee.cost_center_id",
       "user.costCenterId",
     ]) || "—",
-    comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "observation", "note"]) || "—",
+    comentarios: pickPayloadValue(p, [
+      // Flash API documented field
+      "comments",
+      // Variantes comuns
+      "comment",
+      "observacao",
+      "observation",
+      "note",
+      "notes",
+      // Justificativa (alguns fluxos usam esse campo)
+      "justification",
+      "reason",
+      // Campos dentro do objeto de contabilização
+      "accounting.comments",
+      "accounting.notes",
+      "accounting.observation",
+      // Campos dentro do comprovante
+      "receipt.comments",
+      "receipt.notes",
+      // Memo/observações gerais
+      "memo",
+      "remarks",
+      "remark",
+    ]) || "—",
     flash_prestacao_contas,
   };
 };
