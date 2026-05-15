@@ -636,6 +636,13 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -1073,6 +1080,13 @@ export type Database = {
             foreignKeyName: "diarios_campo_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "diarios_campo_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -1464,6 +1478,13 @@ export type Database = {
             foreignKeyName: "faturamentos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "faturamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -1557,6 +1578,13 @@ export type Database = {
             foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -1623,6 +1651,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "fca_eventos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -1833,6 +1868,13 @@ export type Database = {
             columns: ["flash_transaction_id"]
             isOneToOne: true
             referencedRelation: "flash_transactions_raw"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flash_normalizacao_flash_transaction_id_fkey"
+            columns: ["flash_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -2053,6 +2095,13 @@ export type Database = {
             foreignKeyName: "frentes_obra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "frentes_obra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -2240,6 +2289,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "itens_lpu_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -2749,6 +2805,13 @@ export type Database = {
             foreignKeyName: "mkp_parametros_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: true
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "mkp_parametros_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -3059,6 +3122,13 @@ export type Database = {
             foreignKeyName: "projeto_impostos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: true
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "projeto_impostos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: true
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -3222,6 +3292,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -3489,6 +3566,13 @@ export type Database = {
             foreignKeyName: "requisicoes_compra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -3618,6 +3702,13 @@ export type Database = {
             foreignKeyName: "sc_locais_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sc_locais_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -3695,6 +3786,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -3979,6 +4077,13 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -4162,6 +4267,13 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
             referencedRelation: "view_producao"
             referencedColumns: ["projeto_id"]
           },
@@ -4188,6 +4300,37 @@ export type Database = {
           },
           {
             foreignKeyName: "projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      view_flash_transactions: {
+        Row: {
+          categoria_mapeada: string | null
+          category: string | null
+          comments: string | null
+          cost_center: string | null
+          cost_center_id: string | null
+          data: string | null
+          description: string | null
+          empresa_id: string | null
+          enviado_ao_conta_azul: boolean | null
+          external_id: string | null
+          id: string | null
+          projeto_codigo: string | null
+          projeto_id: string | null
+          projeto_nome: string | null
+          status_normalizacao: string | null
+          type: string | null
+          usuario: string | null
+          valor: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flash_transactions_raw_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
@@ -4320,6 +4463,13 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sites_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
             referencedColumns: ["projeto_id"]
           },
           {
