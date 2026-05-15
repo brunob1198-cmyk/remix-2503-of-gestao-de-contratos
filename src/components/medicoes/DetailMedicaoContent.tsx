@@ -910,10 +910,12 @@ export function DetailMedicaoContent({
   const handleExportTEP = async () => {
     try {
       setIsExporting(true);
-      addLog("Iniciando exportação TEP...", "info");
+      setExportProgress(5);
+      setShowLogPanel(true);
+      addLog("Iniciando exportação TEP (Modelo Compacto)...", "info");
       
       const siteObs = isMultiSite 
-        ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n")
+        ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n\n")
         : detailMedicao.observacao_acompanhamento || "";
 
       await exportTEPToPdf({
@@ -924,11 +926,15 @@ export function DetailMedicaoContent({
           classificacao: f.classificacao,
           legenda: f.legenda
         })),
-        logoUrl: finalEmpresaLogoUrl
+        logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
+        addLog,
+        onProgress: (p) => setExportProgress(p)
       });
 
       addLog("Exportação TEP concluída!", "success");
+      setExportProgress(100);
     } catch (err: any) {
+      console.error("Erro na exportação TEP:", err);
       addLog(`Erro na exportação TEP: ${err.message}`, "error");
     } finally {
       setIsExporting(false);
