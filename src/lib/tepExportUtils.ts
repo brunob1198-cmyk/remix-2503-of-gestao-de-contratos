@@ -63,7 +63,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
       const photoSectionsHtml = site.classes.map(([className, photos]) => `
         <div style="margin-top: 20px;">
           <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">${className}</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
             ${photos.map(f => buildPhotoCardHtml(f)).join("")}
           </div>
         </div>
@@ -94,7 +94,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
       return `
         <div style="margin-top: 30px;">
           <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
             ${groupFotos.map(f => buildPhotoCardHtml(f)).join("")}
           </div>
         </div>
@@ -117,8 +117,8 @@ export const exportTEPToHtml = async (data: TEPData) => {
       <meta charset="UTF-8">
       <title>Relatório TEP - ${data.siteNome}</title>
       <style>
-        body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1000px; margin: 0 auto; padding: 40px; background: #f3f4f6; }
-        .page { background: white; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f3f4f6; }
+        .page { background: white; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 20px; margin-bottom: 30px; }
         .logo { max-height: 60px; }
         .title { font-size: 28px; font-weight: bold; color: #1e3a8a; margin: 0; }
