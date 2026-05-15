@@ -1459,27 +1459,7 @@ export function DetailMedicaoContent({
               <FileDown className="h-4 w-4" /> Modelo TEP (Fotos e Obs)
             </DropdownMenuRadioItem>
             <DropdownMenuSeparator />
-            <div className="p-2 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Modo Depuração</span>
-                <input 
-                  type="checkbox" 
-                  checked={debugMode} 
-                  onChange={(e) => setDebugMode(e.target.checked)}
-                  className="h-3 w-3"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs">Reduzir Tamanho (ZIP)</span>
-                <input 
-                  type="checkbox" 
-                  checked={reducedSize} 
-                  onChange={(e) => setReducedSize(e.target.checked)}
-                  className="h-3 w-3"
-                />
-              </div>
-            </div>
-            <DropdownMenuSeparator />
+
             <DropdownMenuLabel>Qualidade do PDF</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={pdfQuality} onValueChange={(v) => setPdfQuality(v as PDFQuality)}>
               <DropdownMenuRadioItem value="high">Alta (Arquivos maiores)</DropdownMenuRadioItem>
