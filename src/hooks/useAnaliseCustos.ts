@@ -7,18 +7,18 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { calculateCustoDiretoOrcado } from "@/lib/custoUtils";
 
-
 export interface AnaliseCustosRow {
   projetoId: string;
   projetoCodigo: string;
   projetoNome: string;
   area: string;
   cliente: string;
-  referencia: string;           // "Jan/2026"
+  referencia: string; // "Jan/2026"
 
   // ── RECEITA ──────────────────────────────────────
-  poc: number;                  // Produção bruta (POC do período)
-  impostos: {                   // detalhamento por tipo
+  poc: number; // Produção bruta (POC do período)
+  impostos: {
+    // detalhamento por tipo
     issqn: number;
     pis: number;
     cofins: number;
@@ -27,10 +27,10 @@ export interface AnaliseCustosRow {
     icms: number;
     irpj: number;
     csll: number;
-    totalPerc: number;          // soma dos percentuais
-    totalReais: number;         // poc * totalPerc
+    totalPerc: number; // soma dos percentuais
+    totalReais: number; // poc * totalPerc
   };
-  producaoLiquida: number;      // poc * (1 - impostos.totalPerc)
+  producaoLiquida: number; // poc * (1 - impostos.totalPerc)
 
   // ── CUSTO DIRETO (categoria_analise = 'DIRETO') ──
   moObra: number;
@@ -39,37 +39,37 @@ export interface AnaliseCustosRow {
   // equipamentos removed
 
   indiretos: number;
-  custoDiretoReal: number;      // soma dos três acima — SEM gerência
-  custoDiretoOrcado: number;    // poc * (mkp.perc_custo_direto + mkp.perc_risco + mkp.perc_inflacao)
-  deltaDireto: number;          // orcado - real (+ = favorável)
+  custoDiretoReal: number; // soma dos três acima — SEM gerência
+  custoDiretoOrcado: number; // poc * (mkp.perc_custo_direto + mkp.perc_risco + mkp.perc_inflacao)
+  deltaDireto: number; // orcado - real (+ = favorável)
   percCustoDiretoOrcado: number;
   percCustoDiretoReal: number;
 
   // ── GERÊNCIA (categoria_analise = 'GERENCIA') ────
-  gerenciaReal: number;         // soma dos lançamentos IA-categorizados como GERENCIA
-  gerenciaOrcada: number;       // custoDiretoOrcado * mkp.perc_gerencia
-  deltaGerencia: number;        // orcado - real
+  gerenciaReal: number; // soma dos lançamentos IA-categorizados como GERENCIA
+  gerenciaOrcada: number; // custoDiretoOrcado * mkp.perc_gerencia
+  deltaGerencia: number; // orcado - real
   percGerenciaOrcada: number;
   percGerenciaReal: number;
   pendentesCategorizacao: number; // qtd. lançamentos ainda sem categoria confirmada
 
   // ── CUSTO TOTAL ──────────────────────────────────
-  custoTotalReal: number;       // custoDiretoReal + gerenciaReal
-  custoTotalOrcado: number;     // custoDiretoOrcado + formula complexa
-  resultadoTotal: number;       // custoTotalOrcado - custoTotalReal
+  custoTotalReal: number; // custoDiretoReal + gerenciaReal
+  custoTotalOrcado: number; // custoDiretoOrcado + formula complexa
+  resultadoTotal: number; // custoTotalOrcado - custoTotalReal
 
   // ── MB ───────────────────────────────────────────
   mbOrcada: number;
   mbRealizada: number;
   percMbOrcada: number;
   percMbReal: number;
-  percMbMkp: number;            // benchmark: mkp.perc_mb_esperado
+  percMbMkp: number; // benchmark: mkp.perc_mb_esperado
 
   // ── FLAGS ────────────────────────────────────────
-  alertaMb: boolean;            // percMbReal < percMbMkp * 0.85
-  alertaGerencia: boolean;      // gerenciaReal > gerenciaOrcada * 1.15
-  semMkp: boolean;              // não tem mkp_parametros cadastrado
-  semImpostos: boolean;         // não tem projeto_impostos cadastrado
+  alertaMb: boolean; // percMbReal < percMbMkp * 0.85
+  alertaGerencia: boolean; // gerenciaReal > gerenciaOrcada * 1.15
+  semMkp: boolean; // não tem mkp_parametros cadastrado
+  semImpostos: boolean; // não tem projeto_impostos cadastrado
 }
 
 export interface MapeamentoErp {
@@ -88,7 +88,7 @@ export interface CustoErp {
   status_erp: string;
   categoria_erp: string;
   categoria_interna: string;
-  categoria_analise: 'DIRETO' | 'GERENCIA';
+  categoria_analise: "DIRETO" | "GERENCIA";
   categoria_sugerida_ia: string | null;
   categoria_confirmada: boolean;
   centro_custo: string | null;
@@ -216,11 +216,12 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       const { data: sitesData } = await qSites;
       if (!sitesData || sitesData.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
 
-      const siteIds = siteId ? [siteId] : sitesData.map(s => s.id);
+      const siteIds = siteId ? [siteId] : sitesData.map((s) => s.id);
 
       const { data: escopoItens, error: escopoError } = await supabase
         .from("escopo_itens")
-        .select(`
+        .select(
+          `
           quantidade, 
           custo_unitario, 
           valor_unitario, 
@@ -228,7 +229,8 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
           item_lpu:itens_lpu (
             bdi
           )
-        `)
+        `,
+        )
         .in("site_id", siteIds);
 
       if (escopoError || !escopoItens || escopoItens.length === 0) return { custoOrcado: 0, valorProduzido: 0 };
@@ -239,16 +241,16 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         const quantidade = Number(item.quantidade || 0);
         const valorUnitario = Number(item.valor_unitario || 0);
         const bdiItem = Number((item.item_lpu as any)?.bdi || 0);
-        
+
         // Se houver BDI no item, o custo unitário orçado é o valor unitário / BDI
-        const custoUnitarioCalculado = bdiItem > 0 ? (valorUnitario / bdiItem) : Number(item.custo_unitario || 0);
-        
+        const custoUnitarioCalculado = bdiItem > 0 ? valorUnitario / bdiItem : Number(item.custo_unitario || 0);
+
         custoOrcado += custoUnitarioCalculado * quantidade;
         valorProduzido += valorUnitario * quantidade;
       }
       return { custoOrcado, valorProduzido };
     },
-    enabled: !!projetoId
+    enabled: !!projetoId,
   });
 
   const custoOrcado = escopoData.custoOrcado;
@@ -264,7 +266,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         .select("categoria_erp")
         .eq("ativo", false);
       if (error) throw error;
-      return (data || []).map(d => d.categoria_erp);
+      return (data || []).map((d) => d.categoria_erp);
     },
   });
 
@@ -279,7 +281,12 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       let hasMore = true;
 
       while (hasMore) {
-        let q = supabase.from("custo_real_erp").select("id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id").range(offset, offset + BATCH_SIZE - 1);
+        let q = supabase
+          .from("custo_real_erp")
+          .select(
+            "id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id",
+          )
+          .range(offset, offset + BATCH_SIZE - 1);
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
         if (startDate && endDate) {
@@ -297,15 +304,19 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       }
 
       return allData.filter(
-        item => !categoriasDesativadas.includes(item.categoria_erp) &&
-                item.centro_custo?.trim() !== "Reforma Sede Jardim América"
+        (item) =>
+          !categoriasDesativadas.includes(item.categoria_erp) &&
+          item.centro_custo?.trim() !== "Reforma Sede Jardim América",
       );
     },
-    enabled: !!projetoId
+    enabled: !!projetoId,
   });
 
   // 3. Produzido Físico
-  const { data: fisico = { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 }, isLoading: loadFisico } = useQuery({
+  const {
+    data: fisico = { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 },
+    isLoading: loadFisico,
+  } = useQuery({
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
     staleTime: Infinity,
     queryFn: async () => {
@@ -314,18 +325,18 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
       else if (startDate) qDiarios = qDiarios.gte("data", startDate);
 
       const { data: diariosIdList } = await qDiarios;
-      
+
       if (!diariosIdList || diariosIdList.length === 0) {
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
-      
-      const dids = diariosIdList.map(d => d.id);
-      
+
+      const dids = diariosIdList.map((d) => d.id);
+
       const [eq, equip, veic, prods] = await Promise.all([
         supabase.from("diario_equipe").select("custo_total").in("diario_id", dids),
         supabase.from("diario_equipamentos").select("custo_total").in("diario_id", dids),
         supabase.from("diario_veiculos").select("custo_diaria").in("diario_id", dids),
-        supabase.from("diario_producao").select("valor_total").in("diario_id", dids)
+        supabase.from("diario_producao").select("valor_total").in("diario_id", dids),
       ]);
 
       return {
@@ -333,14 +344,14 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         equipamentos: (equip.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
         transporte: (veic.data || []).reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
         materiais: 0,
-        total_produzido: (prods.data || []).reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0)
+        total_produzido: (prods.data || []).reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0),
       };
     },
-    enabled: !!projetoId && !!siteId
+    enabled: !!projetoId && !!siteId,
   });
 
   const updateCategoria = useMutation({
-    mutationFn: async ({ erpId, newCategoria }: { erpId: string, newCategoria: string }) => {
+    mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
       // 1. Get current record to know original category
       const { data: current } = await supabase
         .from("custo_real_erp")
@@ -349,26 +360,30 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         .single();
 
       // 2. Update record
-      const { error } = await supabase.from("custo_real_erp")
+      const { error } = await supabase
+        .from("custo_real_erp")
         .update({ categoria_interna: newCategoria, categoria_confirmada: true })
         .eq("erp_id", erpId);
       if (error) throw error;
 
       // 3. Learning Step: Upsert mapping
       if (current?.categoria_erp) {
-        await supabase.from("mapeamento_categorias_erp").upsert({
-          categoria_erp: current.categoria_erp,
-          categoria_interna: newCategoria,
-          criado_por_ia: false, // User manual adjustment
-          ativo: true
-        }, { onConflict: "categoria_erp" });
+        await supabase.from("mapeamento_categorias_erp").upsert(
+          {
+            categoria_erp: current.categoria_erp,
+            categoria_interna: newCategoria,
+            criado_por_ia: false, // User manual adjustment
+            ativo: true,
+          },
+          { onConflict: "categoria_erp" },
+        );
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
       queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
       toast.success("Categoria atualizada e sistema atualizado para futuros registros.");
-    }
+    },
   });
 
   // Sincronizar com API real do Conta Azul
@@ -392,12 +407,17 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     onError: (e: any) => toast.error("Falha ao sincronizar ERP: " + e.message),
   });
 
-  return { 
-    custoOrcado, valorProduzido, loadOrc,
-    custosErp, loadCustos, updateCategoria, 
+  return {
+    custoOrcado,
+    valorProduzido,
+    loadOrc,
+    custosErp,
+    loadCustos,
+    updateCategoria,
     syncErpMock: syncErp,
     syncErp,
-    fisico, loadFisico
+    fisico,
+    loadFisico,
   };
 }
 
@@ -411,10 +431,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const { data: mkpParams = [] } = useQuery({
     queryKey: ["mkp_parametros", projetoIds],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("mkp_parametros")
-        .select("*")
-        .in("projeto_id", projetoIds);
+      const { data } = await supabase.from("mkp_parametros").select("*").in("projeto_id", projetoIds);
       return data || [];
     },
     enabled: projetoIds.length > 0,
@@ -424,10 +441,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const { data: impostosData = [] } = useQuery({
     queryKey: ["projeto_impostos", projetoIds],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("projeto_impostos")
-        .select("*")
-        .in("projeto_id", projetoIds);
+      const { data } = await supabase.from("projeto_impostos").select("*").in("projeto_id", projetoIds);
       return data || [];
     },
     enabled: projetoIds.length > 0,
@@ -445,9 +459,9 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     },
   });
 
-  const categoriasDesativadas = useMemo(() => 
-    categoriasMapeamento.filter(c => !c.ativo).map(c => c.categoria_erp),
-    [categoriasMapeamento]
+  const categoriasDesativadas = useMemo(
+    () => categoriasMapeamento.filter((c) => !c.ativo).map((c) => c.categoria_erp),
+    [categoriasMapeamento],
   );
 
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
@@ -461,7 +475,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       let hasMore = true;
 
       while (hasMore) {
-        let q = supabase.from("custo_real_erp").select("id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id").range(offset, offset + BATCH_SIZE - 1);
+        let q = supabase
+          .from("custo_real_erp")
+          .select(
+            "id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id",
+          )
+          .range(offset, offset + BATCH_SIZE - 1);
         q = q.in("projeto_id", projetoIds);
         if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
@@ -478,11 +497,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       }
 
       return allData.filter(
-        item => !categoriasDesativadas.includes(item.categoria_erp) &&
-                item.centro_custo?.trim() !== "Reforma Sede Jardim América"
+        (item) =>
+          !categoriasDesativadas.includes(item.categoria_erp) &&
+          item.centro_custo?.trim() !== "Reforma Sede Jardim América",
       );
     },
-    enabled: projetoIds.length > 0
+    enabled: projetoIds.length > 0,
   });
 
   // 4. Produção (POC) por Projeto e Referência
@@ -490,31 +510,23 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryKey: ["producao_poc_multi_v14", projetoIds, startDate, endDate],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-  
-      const { data: sitesData } = await supabase
-        .from("sites")
-        .select("id, projeto_id")
-        .in("projeto_id", projetoIds);
-  
-      const siteIds = (sitesData || []).map(s => s.id);
+
+      const { data: sitesData } = await supabase.from("sites").select("id, projeto_id").in("projeto_id", projetoIds);
+
+      const siteIds = (sitesData || []).map((s) => s.id);
       if (siteIds.length === 0) return [];
-  
-      let diariosQuery = supabase
-        .from("diarios_obra")
-        .select("id, data, site_id")
-        .in("site_id", siteIds);
-  
+
+      let diariosQuery = supabase.from("diarios_obra").select("id, data, site_id").in("site_id", siteIds);
+
       if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
       if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
-  
+
       const { data: diarios } = await diariosQuery;
       if (!diarios || diarios.length === 0) return [];
-  
-      const diarioIds = diarios.map(d => d.id);
-      const diarioSiteMap = Object.fromEntries(
-        diarios.map(d => [d.id, { site_id: d.site_id, data: d.data }])
-      );
-  
+
+      const diarioIds = diarios.map((d) => d.id);
+      const diarioSiteMap = Object.fromEntries(diarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
+
       const BATCH = 500;
       let allProducao: any[] = [];
       for (let i = 0; i < diarioIds.length; i += BATCH) {
@@ -525,23 +537,22 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           .in("diario_id", chunk);
         allProducao = [...allProducao, ...(data || [])];
       }
-  
-      const siteToProjetoMap = Object.fromEntries(
-        (sitesData || []).map(s => [s.id, s.projeto_id])
-      );
-  
-      return allProducao.map(p => ({
-        projeto_id: siteToProjetoMap[diarioSiteMap[p.diario_id]?.site_id],
-        valor_total: Number(p.valor_total || 0),
-        data_producao: diarioSiteMap[p.diario_id]?.data,
-        bdi_item: Number(p.item_lpu?.bdi || 0),
-        site_id: diarioSiteMap[p.diario_id]?.site_id,
-      })).filter(p => p.projeto_id);
+
+      const siteToProjetoMap = Object.fromEntries((sitesData || []).map((s) => [s.id, s.projeto_id]));
+
+      return allProducao
+        .map((p) => ({
+          projeto_id: siteToProjetoMap[diarioSiteMap[p.diario_id]?.site_id],
+          valor_total: Number(p.valor_total || 0),
+          data_producao: diarioSiteMap[p.diario_id]?.data,
+          bdi_item: Number(p.item_lpu?.bdi || 0),
+          site_id: diarioSiteMap[p.diario_id]?.site_id,
+        }))
+        .filter((p) => p.projeto_id);
     },
     enabled: projetoIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
-
 
   const { data: projetosData = [] } = useQuery({
     queryKey: ["projetos_analise", projetoIds],
@@ -552,7 +563,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .in("id", projetoIds);
       return data || [];
     },
-    enabled: projetoIds.length > 0
+    enabled: projetoIds.length > 0,
   });
 
   const analiseRows = useMemo(() => {
@@ -581,52 +592,41 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
     const periodMonths = getMonths(startDate, endDate);
 
-    (projetosData || []).forEach(projeto => {
+    (projetosData || []).forEach((projeto) => {
       const projetoId = projeto.id;
-      const mkp = (mkpParams || []).find(m => m.projeto_id === projetoId);
-      const impostosProjeto = (impostosData || []).find(i => i.projeto_id === projetoId);
-      const clienteNome = (projeto as any).clientes?.nome || (projeto as any).cliente || (projeto as any).cliente_id || 'N/A';
-      const areaNome = (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || 'N/A';
-      
-      (periodMonths || []).forEach(monthStr => {
+      const mkp = (mkpParams || []).find((m) => m.projeto_id === projetoId);
+      const impostosProjeto = (impostosData || []).find((i) => i.projeto_id === projetoId);
+      const clienteNome =
+        (projeto as any).clientes?.nome || (projeto as any).cliente || (projeto as any).cliente_id || "N/A";
+      const areaNome =
+        (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
+
+      (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
-        const monthLabel = format(monthStart, 'MMM/yyyy', { locale: ptBR });
-
-
-
-
-
-
-
+        const monthLabel = format(monthStart, "MMM/yyyy", { locale: ptBR });
 
         // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
-        const producaoItensMes = (producaoData || [])
-          .filter(p => {
-            if (p.projeto_id !== projetoId) return false;
-            try {
-              const dStr = p.data_producao;
-              if (!dStr) return false;
-              // data_producao usually comes as YYYY-MM-DD
-              const d = parseISO(dStr);
-              return d >= monthStart && d <= monthEnd;
-
-            } catch (e) {
-              return false;
-            }
-          });
-
-
-
+        const producaoItensMes = (producaoData || []).filter((p) => {
+          if (p.projeto_id !== projetoId) return false;
+          try {
+            const dStr = p.data_producao;
+            if (!dStr) return false;
+            // data_producao usually comes as YYYY-MM-DD
+            const d = parseISO(dStr);
+            return d >= monthStart && d <= monthEnd;
+          } catch (e) {
+            return false;
+          }
+        });
 
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
-        
+
         // Novo cálculo de Custo Direto Orçado: soma de (Valor Item / BDI Item)
         const custoDiretoOrcado = calculateCustoDiretoOrcado(producaoItensMes, mkp);
 
-
         // 2. Custos do mês
-        const projetoCustosMes = (custosErp || []).filter(c => {
+        const projetoCustosMes = (custosErp || []).filter((c) => {
           if (c.projeto_id !== projetoId || !c.data_competencia) return false;
           try {
             const d = parseISO(c.data_competencia);
@@ -636,8 +636,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           }
         });
 
-        const custosGerencia = projetoCustosMes.filter(c => c.categoria_interna === 'Gerência');
-        const custosDiretos = projetoCustosMes.filter(c => c.categoria_interna !== 'Gerência' && c.categoria_interna !== 'Financeiros');
+        const custosGerencia = projetoCustosMes.filter((c) => c.categoria_interna === "Gerência");
+        const custosDiretos = projetoCustosMes.filter(
+          (c) => c.categoria_interna !== "Gerência" && c.categoria_interna !== "Financeiros",
+        );
 
         const gerenciaReal = custosGerencia.reduce((s, c) => s + Number(c.valor || 0), 0);
         const custoDiretoReal = custosDiretos.reduce((s, c) => s + Number(c.valor || 0), 0);
@@ -645,49 +647,56 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         // 3. Ignorar meses sem produção e sem custos reais
         if (poc === 0 && custoDiretoReal === 0 && gerenciaReal === 0) return;
 
-
         // Impostos
         const totalPercImpostos = impostosProjeto?.perc_total_impostos ?? 0;
         const impostosReais = poc * totalPercImpostos;
         const producaoLiquida = poc - impostosReais;
-        
-        const moObra = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Mão de Obra').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const materiais = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Materiais').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const transporte = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Transporte').reduce((s, c) => s + Number(c.valor || 0), 0);
-        const indiretos = (projetoCustosMes || []).filter(c => c.categoria_analise === 'DIRETO' && c.categoria_interna === 'Indiretos').reduce((s, c) => s + Number(c.valor || 0), 0);
+
+        const moObra = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Mão de Obra")
+          .reduce((s, c) => s + Number(c.valor || 0), 0);
+        const materiais = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Materiais")
+          .reduce((s, c) => s + Number(c.valor || 0), 0);
+        const transporte = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Transporte")
+          .reduce((s, c) => s + Number(c.valor || 0), 0);
+        const indiretos = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Indiretos")
+          .reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const percRisco = mkp?.perc_risco ?? 0;
         const percInflacao = mkp?.perc_inflacao ?? 0;
         const percGerencia = mkp?.perc_gerencia ?? 0;
         const percTreinamento = mkp?.perc_treinamento ?? 0;
-        
+
         // O Cálculo de gerência deve ser feito sobre o custo direto orçado e não sobre o total produzido (POC).
         const gerenciaOrcada = custoDiretoOrcado * percGerencia;
 
         const custoTotalReal = custoDiretoReal + gerenciaReal;
-        
+
         // Coluna “Custo Orçado Total”
-        const custoTotalOrcado = 
-          custoDiretoOrcado + 
-          (custoDiretoOrcado * percRisco) + 
-          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percInflacao) + 
-          gerenciaOrcada + 
-          ((custoDiretoOrcado + (custoDiretoOrcado * (percRisco + percGerencia))) * percTreinamento);
+        const custoTotalOrcado =
+          custoDiretoOrcado +
+          custoDiretoOrcado * percRisco +
+          (custoDiretoOrcado + custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao +
+          gerenciaOrcada +
+          (custoDiretoOrcado + custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento;
 
         const resultadoTotal = custoTotalOrcado - custoTotalReal;
 
         const mbRealizada = producaoLiquida - custoTotalReal;
         const mbOrcada = producaoLiquida - custoTotalOrcado;
-        
+
         const percMbReal = producaoLiquida > 0 ? mbRealizada / producaoLiquida : 0;
         const percMbOrcada = producaoLiquida > 0 ? mbOrcada / producaoLiquida : 0;
         const percMbMkp = mkp?.perc_mb_esperado ?? 0;
 
-        const pendentesCategorizacao = projetoCustosMes.filter(c => !c.categoria_confirmada).length;
+        const pendentesCategorizacao = projetoCustosMes.filter((c) => !c.categoria_confirmada).length;
 
         rows.push({
           projetoId,
-          projetoCodigo: projeto.codigo || '',
+          projetoCodigo: projeto.codigo || "",
           projetoNome: projeto.nome,
           area: areaNome,
           cliente: clienteNome,
@@ -703,7 +712,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             irpj: poc * (impostosProjeto?.perc_irpj ?? 0),
             csll: poc * (impostosProjeto?.perc_csll ?? 0),
             totalPerc: totalPercImpostos,
-            totalReais: impostosReais
+            totalReais: impostosReais,
           },
           producaoLiquida,
           moObra,
@@ -719,8 +728,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           gerenciaReal,
           gerenciaOrcada,
           deltaGerencia: gerenciaOrcada - gerenciaReal,
-          percGerenciaOrcada: custoDiretoOrcado > 0 ? gerenciaOrcada / custoDiretoOrcado : 0,
-          percGerenciaReal: custoDiretoReal > 0 ? gerenciaReal / custoDiretoReal : 0,
+          percGerenciaOrcada: poc > 0 ? gerenciaOrcada / custoDiretoOrcado : 0,
+          percGerenciaReal: poc > 0 ? gerenciaReal / custoDiretoReal : 0,
           pendentesCategorizacao,
           custoTotalReal,
           custoTotalOrcado,
@@ -730,10 +739,10 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           percMbOrcada,
           percMbReal,
           percMbMkp,
-          alertaMb: percMbReal < (percMbMkp * 0.85),
-          alertaGerencia: gerenciaReal > (gerenciaOrcada * 1.15),
+          alertaMb: percMbReal < percMbMkp * 0.85,
+          alertaGerencia: gerenciaReal > gerenciaOrcada * 1.15,
           semMkp: !mkp,
-          semImpostos: !impostosProjeto
+          semImpostos: !impostosProjeto,
         });
       });
     });
@@ -749,57 +758,63 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .eq("erp_id", erpId)
         .single();
 
-      const { error } = await supabase.from("custo_real_erp")
+      const { error } = await supabase
+        .from("custo_real_erp")
         .update({ categoria_interna: newCategoria, categoria_confirmada: true })
         .eq("erp_id", erpId);
       if (error) throw error;
 
       if (current?.categoria_erp) {
-        await supabase.from("mapeamento_categorias_erp").upsert({
-          categoria_erp: current.categoria_erp,
-          categoria_interna: newCategoria,
-          criado_por_ia: false,
-          ativo: true
-        }, { onConflict: "categoria_erp" });
+        await supabase.from("mapeamento_categorias_erp").upsert(
+          {
+            categoria_erp: current.categoria_erp,
+            categoria_interna: newCategoria,
+            criado_por_ia: false,
+            ativo: true,
+          },
+          { onConflict: "categoria_erp" },
+        );
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
       toast.success("Categoria atualizada.");
-    }
+    },
   });
 
   const updateBulkCategorias = useMutation({
     mutationFn: async (updates: { erp_id: string; categoria_interna: string; categoria_erp: string }[]) => {
       for (const up of updates) {
-        await supabase.from("custo_real_erp")
+        await supabase
+          .from("custo_real_erp")
           .update({ categoria_interna: up.categoria_interna, categoria_confirmada: true })
           .eq("erp_id", up.erp_id);
-        
-        await supabase.from("mapeamento_categorias_erp").upsert({
-          categoria_erp: up.categoria_erp,
-          categoria_interna: up.categoria_interna,
-          criado_por_ia: false,
-          ativo: true
-        }, { onConflict: "categoria_erp" });
+
+        await supabase.from("mapeamento_categorias_erp").upsert(
+          {
+            categoria_erp: up.categoria_erp,
+            categoria_interna: up.categoria_interna,
+            criado_por_ia: false,
+            ativo: true,
+          },
+          { onConflict: "categoria_erp" },
+        );
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
       queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
       toast.success("Correções em lote aplicadas com sucesso.");
-    }
+    },
   });
 
-  return { 
-    analiseRows, 
-    custosErp, 
-    loadCustos, 
-    updateCategoria, 
-    updateBulkCategorias, 
-    categoriasMapeamento 
+  return {
+    analiseRows,
+    custosErp,
+    loadCustos,
+    updateCategoria,
+    updateBulkCategorias,
+    categoriasMapeamento,
   };
 }
-
-
