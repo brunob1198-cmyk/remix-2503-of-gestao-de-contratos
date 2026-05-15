@@ -150,7 +150,6 @@ export const exportTEPToHtml = async (data: TEPData) => {
         ${contentHtml}
         
         <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-          Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm:ss")}
         </div>
       </div>
     </body>
