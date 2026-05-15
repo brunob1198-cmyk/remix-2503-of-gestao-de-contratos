@@ -20,7 +20,7 @@ import {
   getPdfSafeImageDataUrl,
 } from "@/lib/pdfExportUtils";
 import { exportMedicaoCompletePackage, PhotoToZip, ExtraFile } from "@/lib/photoZipUtils";
-import { exportTEPToPdf } from "@/lib/tepExportUtils";
+import { exportTEPToHtml } from "@/lib/tepExportUtils";
 
 const PDF_EXPORT_MIN_WIDTH = 1120;
 
@@ -918,7 +918,7 @@ export function DetailMedicaoContent({
         ? (observacoesBySite.get(detailMedicao.site_id) || []).join("\n\n")
         : detailMedicao.observacao_acompanhamento || "";
 
-      await exportTEPToPdf({
+      await exportTEPToHtml({
         siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
@@ -927,8 +927,7 @@ export function DetailMedicaoContent({
           legenda: f.legenda
         })),
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
-        addLog,
-        onProgress: (p) => setExportProgress(p)
+        addLog
       });
 
       addLog("Exportação TEP concluída!", "success");

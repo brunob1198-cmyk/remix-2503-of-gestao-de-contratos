@@ -1,6 +1,4 @@
-import { jsPDF } from "jspdf";
 import { format } from "date-fns";
-import { getPdfSafeImageDataUrl } from "./pdfExportUtils";
 
 interface TEPData {
   siteNome: string;
@@ -11,67 +9,16 @@ interface TEPData {
     legenda: string | null;
   }[];
   logoUrl?: string | null;
-  onProgress?: (progress: number) => void;
   addLog?: (message: string, type?: 'info' | 'error' | 'success') => void;
 }
 
-export const exportTEPToPdf = async (data: TEPData) => {
-  const { addLog, onProgress } = data;
-  const doc = new jsPDF();
-  const margin = 14;
-  let currentY = 20;
+export const exportTEPToHtml = async (data: TEPData) => {
+  const { addLog } = data;
+  addLog?.("Gerando Relatório TEP em formato HTML...", "info");
 
-  addLog?.("Iniciando processamento do Relatório TEP...", "info");
-
-  // Header
-  if (data.logoUrl) {
-    try {
-      addLog?.("Carregando logo...", "info");
-      const safeLogo = await getPdfSafeImageDataUrl(data.logoUrl, { maxWidth: 300, quality: 0.9 });
-      doc.addImage(safeLogo, 'PNG', margin, 10, 30, 15);
-    } catch (e) {
-      console.warn("Could not add logo to TEP PDF", e);
-      addLog?.("Aviso: Não foi possível carregar o logo no PDF.", "error");
-    }
-  }
-
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("Relatório TEP", 105, 25, { align: "center" });
-  
-  currentY = 40;
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Site:", margin, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.text(data.siteNome || "N/A", margin + 15, currentY);
-
-  currentY += 15;
-  doc.setFont("helvetica", "bold");
-  doc.text("Relatório Descritivo / Observações:", margin, currentY);
-  currentY += 7;
-  doc.setFont("helvetica", "normal");
-  
-  const splitObs = doc.splitTextToSize(data.observacoes || "Nenhuma observação informada.", 180);
-  
-  // Handle page breaks for observations
-  for (const line of splitObs) {
-    if (currentY > 280) {
-      doc.addPage();
-      currentY = 20;
-    }
-    doc.text(line, margin, currentY);
-    currentY += 7;
-  }
-  
-  currentY += 5;
-
-  // Photos
   const groups = ["Vistoria", "Execução"];
-  let photoIndex = 0;
-  const totalPhotos = data.fotos.length;
-
-  for (const group of groups) {
+  
+  const sectionsHtml = groups.map(group => {
     const groupFotos = data.fotos.filter(f => 
       f.classificacao.toLowerCase() === group.toLowerCase() || 
       (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
@@ -79,59 +26,85 @@ export const exportTEPToPdf = async (data: TEPData) => {
       (group === "Execução" && f.classificacao.toLowerCase() === "execução")
     );
 
-    if (groupFotos.length > 0) {
-      if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
-      }
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.text(`Fotos de ${group}`, margin, currentY);
-      currentY += 10;
+    if (groupFotos.length === 0) return "";
 
-      for (let i = 0; i < groupFotos.length; i += 2) {
-        if (currentY > 230) {
-          doc.addPage();
-          currentY = 20;
+    const fotosHtml = groupFotos.map(foto => `
+      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb;">
+        <img src="${foto.url}" style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
+        ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin-top: 8px;">${foto.legenda}</p>` : ""}
+      </div>
+    `).join("");
+
+    return `
+      <div style="margin-top: 30px;">
+        <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+          ${fotosHtml}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+      <meta charset="UTF-8">
+      <title>Relatório TEP - ${data.siteNome}</title>
+      <style>
+        body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1000px; margin: 0 auto; padding: 40px; background: #f3f4f6; }
+        .page { background: white; padding: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1e3a8a; padding-bottom: 20px; margin-bottom: 30px; }
+        .logo { max-height: 60px; }
+        .title { font-size: 28px; font-weight: bold; color: #1e3a8a; margin: 0; }
+        .info-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; margin-bottom: 25px; }
+        .label { font-weight: bold; color: #374151; }
+        .obs-box { background: #f8fafc; border-left: 4px solid #1e3a8a; padding: 15px; margin-top: 10px; white-space: pre-wrap; }
+        @media print {
+          body { background: white; padding: 0; }
+          .page { box-shadow: none; padding: 0; }
+          @page { margin: 1.5cm; }
         }
+      </style>
+    </head>
+    <body>
+      <div class="page">
+        <div class="header">
+          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" />` : "<div></div>"}
+          <h1 class="title">Relatório TEP</h1>
+        </div>
 
-        const photosInRow = [groupFotos[i], groupFotos[i+1]].filter(Boolean);
+        <div class="info-grid">
+          <div class="label">Site:</div>
+          <div>${data.siteNome}</div>
+          <div class="label">Data:</div>
+          <div>${format(new Date(), "dd/MM/yyyy")}</div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <div class="label" style="font-size: 16px; margin-bottom: 8px;">Relatório Descritivo / Observações:</div>
+          <div class="obs-box">${data.observacoes || "Nenhuma observação informada."}</div>
+        </div>
+
+        ${sectionsHtml}
         
-        for (let j = 0; j < photosInRow.length; j++) {
-          const foto = photosInRow[j];
-          const xPos = margin + (j * 95);
-          
-          try {
-            photoIndex++;
-            if (onProgress) onProgress(Math.round((photoIndex / totalPhotos) * 90));
-            
-            addLog?.(`Processando foto ${photoIndex} de ${totalPhotos}...`, "info");
-            
-            // Critical: get safe data URL for the image
-            const safeUrl = await getPdfSafeImageDataUrl(foto.url, { maxWidth: 800, quality: 0.75 });
-            doc.addImage(safeUrl, 'JPEG', xPos, currentY, 85, 60);
-            
-            if (foto.legenda) {
-              doc.setFontSize(8);
-              doc.setFont("helvetica", "normal");
-              const splitLegenda = doc.splitTextToSize(foto.legenda, 85);
-              doc.text(splitLegenda, xPos, currentY + 65);
-            }
-          } catch (e) {
-            console.error("Error adding photo to TEP PDF", e);
-            doc.rect(xPos, currentY, 85, 60);
-            doc.setFontSize(8);
-            doc.text("Erro ao carregar imagem", xPos + 5, currentY + 30);
-          }
-        }
+        <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+          Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm:ss")}
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 
-        currentY += 75;
-      }
-      currentY += 10;
-    }
-  }
-
-  addLog?.("Finalizando arquivo...", "info");
-  doc.save(`TEP_${data.siteNome}_${format(new Date(), "yyyy-MM-dd")}.pdf`);
-  onProgress?.(100);
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TEP_${data.siteNome.replace(/\s+/g, '_')}_${format(new Date(), "yyyy-MM-dd")}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  addLog?.("Relatório TEP HTML gerado com sucesso!", "success");
 };
