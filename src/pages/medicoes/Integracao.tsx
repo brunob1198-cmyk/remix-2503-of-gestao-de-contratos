@@ -1,10 +1,48 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router-dom";
-import { useEffect, Suspense } from "react";
+import { useEffect, Suspense, Component, ReactNode } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useAuth } from "@/contexts/AuthContext";
-import { Webhook, Zap, Wand2, Loader2 } from "lucide-react";
+import { Webhook, Zap, Wand2, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import React from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Alert variant="destructive" className="my-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro na guia</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>Ocorreu um erro ao carregar esta guia de integração.</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                this.setState({ hasError: false });
+                window.location.reload();
+              }}
+            >
+              Recarregar página
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const IntegracaoErpPage = React.lazy(() => import("./IntegracaoErp"));
 const IntegracaoFlashPage = React.lazy(() => import("./IntegracaoFlash"));
