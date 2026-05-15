@@ -695,9 +695,10 @@ export function useFlashNormalizacao() {
         setSavingId(null);
       }
     },
-    [empresaId, mappingByType]
+    [empresaId, mappings, contas, saveNormalization]
   );
 
+  // Use a more efficient approach for applyMappingToAllPending
   const applyMappingToAllPending = useCallback(async () => {
     if (!empresaId || mappings.length === 0) return;
     
@@ -707,39 +708,50 @@ export function useFlashNormalizacao() {
       toast.info("Nenhum lançamento pendente encontrado.");
       return;
     }
+
+    setLoading(true); // Show general loader
     
     let count = 0;
-    for (const row of pendingRows) {
-      const normalized = normalizeFlashTransaction(
-        { 
-          id: row.id, 
-          external_id: row.external_id, 
-          payload_json: row.payload_json, 
-          flash_type: row.flash_type,
-          flash_category: row.flash_category,
-          flash_cost_center: row.flash_cost_center,
-          descricao: row.descricao
-        },
-        mappings as any[]
-      );
+    try {
+      // Process in small chunks to avoid UI lock and massive concurrent requests
+      const CHUNK_SIZE = 5;
+      for (let i = 0; i < pendingRows.length; i += CHUNK_SIZE) {
+        const chunk = pendingRows.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(async (row) => {
+          const normalized = normalizeFlashTransaction(
+            { 
+              id: row.id, 
+              external_id: row.external_id, 
+              payload_json: row.payload_json, 
+              flash_type: row.flash_type,
+              flash_category: row.flash_category,
+              flash_cost_center: row.flash_cost_center,
+              descricao: row.descricao
+            },
+            mappings as any[]
+          );
 
-      if (normalized.status === "normalizado") {
-        await saveNormalization(row, {
-          conta_azul_category_id: normalized.conta_azul_category_id,
-          conta_azul_category_name: normalized.conta_azul_category_name,
-          conta_azul_account_id: normalized.conta_azul_account_id,
-          conta_azul_account_name: normalized.conta_azul_account_name,
-          tipo_operacao: normalized.tipo_operacao,
-          status: "normalizado",
-        });
-        count += 1;
+          if (normalized.status === "normalizado") {
+            await saveNormalization(row, {
+              conta_azul_category_id: normalized.conta_azul_category_id,
+              conta_azul_category_name: normalized.conta_azul_category_name,
+              conta_azul_account_id: normalized.conta_azul_account_id,
+              conta_azul_account_name: normalized.conta_azul_account_name,
+              tipo_operacao: normalized.tipo_operacao,
+              status: "normalizado",
+            });
+            count += 1;
+          }
+        }));
       }
-    }
-    
-    if (count > 0) {
-      toast.success(`${count} lançamento(s) normalizado(s) automaticamente usando mapeamento inteligente.`);
-    } else {
-      toast.info("Nenhum mapeamento compatível encontrado para os lançamentos pendentes.");
+      
+      if (count > 0) {
+        toast.success(`${count} lançamento(s) normalizado(s) automaticamente usando mapeamento inteligente.`);
+      } else {
+        toast.info("Nenhum mapeamento compatível encontrado para os lançamentos pendentes.");
+      }
+    } finally {
+      setLoading(false);
     }
   }, [empresaId, mappings, transactions, saveNormalization]);
 
