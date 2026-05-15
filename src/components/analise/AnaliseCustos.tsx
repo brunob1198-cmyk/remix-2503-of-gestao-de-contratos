@@ -568,3 +568,96 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     </div>
   );
 }
+
+function FilterPopover({ 
+  options, 
+  selected, 
+  onSelect 
+}: { 
+  options: string[], 
+  selected: string[], 
+  onSelect: (vals: string[]) => void 
+}) {
+  const [search, setSearch] = useState("");
+  
+  const filteredOptions = useMemo(() => {
+    return options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  }, [options, search]);
+
+  const toggleOption = (val: string) => {
+    if (selected.includes(val)) {
+      onSelect(selected.filter(v => v !== val));
+    } else {
+      onSelect([...selected, val]);
+    }
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={`h-7 w-7 p-0 ${selected.length > 0 ? "text-primary" : "text-muted-foreground"}`}
+        >
+          <Filter className="h-3 w-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 border-none focus-visible:ring-0 px-0"
+            />
+            {search && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={() => setSearch("")}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          <Separator />
+          <ScrollArea className="h-48">
+            <div className="space-y-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-muted-foreground">Nenhuma opção encontrada</div>
+              ) : (
+                filteredOptions.map((opt) => (
+                  <div 
+                    key={opt}
+                    className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded-sm cursor-pointer"
+                    onClick={() => toggleOption(opt)}
+                  >
+                    <Checkbox checked={selected.includes(opt)} />
+                    <span className="text-xs truncate" title={opt}>{opt}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+          {selected.length > 0 && (
+            <>
+              <Separator />
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full h-8 text-xs" 
+                onClick={() => onSelect([])}
+              >
+                Limpar filtros
+              </Button>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
