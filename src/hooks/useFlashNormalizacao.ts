@@ -257,8 +257,8 @@ export function useFlashNormalizacao() {
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
 
-  const fetchData = useCallback(
-    debounce(async (forceRefresh = false) => {
+  const fetchDataRaw = useCallback(
+    async (forceRefresh = false) => {
       if (!empresaId) {
         console.log("fetchData skip: no empresaId");
         setLoading(false);
@@ -279,13 +279,11 @@ export function useFlashNormalizacao() {
       try {
         console.log("Fetching data for empresaId:", empresaId);
         
-        // 1. Fetch raw transactions in batches to bypass Supabase 1000-row limit
+        // 1. Fetch raw transactions in batches
         let allTransactions: any[] = [];
         let lastCount = 0;
         let rangeStart = 0;
         const BATCH_SIZE = 1000;
-        
-        console.log("Starting batch fetch for transactions...");
         
         do {
           const { data, error } = await supabase
@@ -295,16 +293,12 @@ export function useFlashNormalizacao() {
             .order("created_at", { ascending: false })
             .range(rangeStart, rangeStart + BATCH_SIZE - 1);
 
-          if (error) {
-            console.error("Error fetching raw transactions batch:", error);
-            throw error;
-          }
+          if (error) throw error;
 
           if (data) {
             allTransactions = [...allTransactions, ...data];
             lastCount = data.length;
             rangeStart += BATCH_SIZE;
-            console.log(`Fetched batch: ${data.length} records (Total: ${allTransactions.length})`);
           } else {
             lastCount = 0;
           }
@@ -312,12 +306,9 @@ export function useFlashNormalizacao() {
 
         const txRes = { data: allTransactions };
 
-
         // 2. Fetch normalization records in batches
         let allNormalizations: any[] = [];
         rangeStart = 0;
-        
-        console.log("Starting batch fetch for normalizations...");
         
         do {
           const { data, error } = await supabase
@@ -326,16 +317,12 @@ export function useFlashNormalizacao() {
             .eq("empresa_id", empresaId)
             .range(rangeStart, rangeStart + BATCH_SIZE - 1);
 
-          if (error) {
-            console.error("Error fetching normalizations batch:", error);
-            throw error;
-          }
+          if (error) throw error;
 
           if (data) {
             allNormalizations = [...allNormalizations, ...data];
             lastCount = data.length;
             rangeStart += BATCH_SIZE;
-            console.log(`Fetched normalization batch: ${data.length} records (Total: ${allNormalizations.length})`);
           } else {
             lastCount = 0;
           }
@@ -343,30 +330,21 @@ export function useFlashNormalizacao() {
 
         const normRes = { data: allNormalizations };
 
-
         const mapRes = await supabase
           .from("flash_category_mapping")
           .select("*")
           .eq("empresa_id", empresaId);
 
-        if (mapRes.error) {
-          console.error("Error fetching mappings:", mapRes.error);
-          throw mapRes.error;
-        }
-
-        console.log(`Fetched ${txRes.data?.length || 0} raw transactions and ${normRes.data?.length || 0} normalization records.`);
+        if (mapRes.error) throw mapRes.error;
 
         const normByTx = new Map<string, any>();
         (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
 
         const mappingList = (mapRes.data || []) as CategoryMapping[];
-
-
-        const FLASH_CARD_ACCOUNT_NAME = "Flash";
         const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
-
         const normIds = new Set((normRes.data || []).map((n: any) => n.flash_transaction_id));
         const autoNormPayloads: any[] = [];
+
         const rows = (txRes.data || []).map((raw: any) => {
           const base = mapTransactionRow(raw);
           const n = normByTx.get(raw.id);
@@ -438,28 +416,21 @@ export function useFlashNormalizacao() {
           return base;
         });
 
-        console.log("Mapping completed. Final rows count:", rows.length);
         setTransactions(rows);
         setMappings(mappingList);
 
         const UPSERT_LIMIT = 100;
         if (autoNormPayloads.length > 0) {
-          console.log("Upserting auto-normalizations:", autoNormPayloads.length);
           for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
             const batch = autoNormPayloads.slice(i, i + UPSERT_LIMIT);
-            const { error: upsertError } = await supabase
+            await supabase
               .from("flash_normalizacao")
               .upsert(batch, { onConflict: "flash_transaction_id" });
-            
-            if (upsertError) {
-              console.error("Auto-normalização falhou no lote:", upsertError);
-            }
           }
         }
         
         if (forceRefresh) {
           toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`, { id: "refresh-flash" });
-          console.log("Forced refresh complete. Total rows in state:", rows.length);
         }
       } catch (e: any) {
         console.error("fetchData error:", e);
@@ -470,15 +441,16 @@ export function useFlashNormalizacao() {
       } finally {
         setLoading(false);
       }
-    }, 300),
+    },
     [empresaId, contas, loading]
   );
+
+  const fetchData = useMemo(() => debounce(fetchDataRaw, 300), [fetchDataRaw]);
 
   const fetchMetadata = useCallback(async () => {
     if (loadingMetadata) return;
     setLoadingMetadata(true);
     setMetadataError(null);
-    console.count("fetchMetadata executado");
     try {
       const { data, error } = await supabase.functions.invoke("contaazul-metadata", { body: { force: true } });
       if (error) throw error;
@@ -499,7 +471,7 @@ export function useFlashNormalizacao() {
 
   useEffect(() => {
     if (empresaId) {
-      fetchData().catch(err => console.error("Initial fetchData failed:", err));
+      fetchDataRaw().catch(err => console.error("Initial fetchData failed:", err));
     } else {
       setLoading(false);
     }
@@ -508,8 +480,7 @@ export function useFlashNormalizacao() {
 
   useEffect(() => {
     fetchMetadata().catch(err => console.error("Initial fetchMetadata failed:", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchMetadata]);
 
   // Buscar centros de custo do SaaS (tabela areas) para comparação
   useEffect(() => {
