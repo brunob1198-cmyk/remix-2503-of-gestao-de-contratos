@@ -365,6 +365,7 @@ export function useFlashNormalizacao() {
       // Use the latest 'contas' state or try to find it from the data if available
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
 
+      const normIds = new Set((normRes.data || []).map((n: any) => n.flash_transaction_id));
       const autoNormPayloads: any[] = [];
       const rows = (txRes.data || []).map((raw: any) => {
         const base = mapTransactionRow(raw);
@@ -416,21 +417,23 @@ export function useFlashNormalizacao() {
         base.mapping_id_usado = normalized.mapping_id_usado;
         base.conta_azul_payload = normalized.conta_azul_payload;
 
-        autoNormPayloads.push({
-          empresa_id: empresaId,
-          flash_transaction_id: raw.id,
-          conta_azul_category_id: base.conta_azul_category_id,
-          conta_azul_category_name: base.conta_azul_category_name,
-          conta_azul_account_id: base.conta_azul_account_id,
-          conta_azul_account_name: base.conta_azul_account_name,
-          tipo_operacao: base.tipo_operacao,
-          status: base.status,
-          normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
-          motivo: base.motivo,
-          flash_type_detectado: base.flash_type_detectado,
-          mapping_id_usado: base.mapping_id_usado,
-          conta_azul_payload: base.conta_azul_payload,
-        });
+        if (!normIds.has(raw.id)) {
+          autoNormPayloads.push({
+            empresa_id: empresaId,
+            flash_transaction_id: raw.id,
+            conta_azul_category_id: base.conta_azul_category_id,
+            conta_azul_category_name: base.conta_azul_category_name,
+            conta_azul_account_id: base.conta_azul_account_id,
+            conta_azul_account_name: base.conta_azul_account_name,
+            tipo_operacao: base.tipo_operacao,
+            status: base.status,
+            normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
+            motivo: base.motivo,
+            flash_type_detectado: base.flash_type_detectado,
+            mapping_id_usado: base.mapping_id_usado,
+            conta_azul_payload: base.conta_azul_payload,
+          });
+        }
 
         return base;
       });
@@ -439,16 +442,18 @@ export function useFlashNormalizacao() {
       setTransactions(rows);
       setMappings(mappingList);
 
-      // We perform a batch upsert to ensure all transactions have a corresponding normalization record.
-      // We use a small delay or non-blocking approach if the volume is very high, but for ~1500 rows it's fine.
+      const UPSERT_LIMIT = 100;
       if (autoNormPayloads.length > 0) {
         console.log("Upserting auto-normalizations:", autoNormPayloads.length);
-        const { error: upsertError } = await supabase
-          .from("flash_normalizacao")
-          .upsert(autoNormPayloads, { onConflict: "flash_transaction_id" });
-        
-        if (upsertError) {
-          console.error("Auto-normalização falhou:", upsertError);
+        for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
+          const batch = autoNormPayloads.slice(i, i + UPSERT_LIMIT);
+          const { error: upsertError } = await supabase
+            .from("flash_normalizacao")
+            .upsert(batch, { onConflict: "flash_transaction_id" });
+          
+          if (upsertError) {
+            console.error("Auto-normalização falhou no lote:", upsertError);
+          }
         }
       }
       
