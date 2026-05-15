@@ -362,30 +362,8 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       });
       servicos.sort((a, b) => b.receita - a.receita);
 
-      // ── ALERTS ──
+      // ── ALERTS REMOVED ──
       const alertas: AlertaObra[] = [];
-      // Cost overrun vs expected
-      if (custoEsperado > 0 && custoReal > custoEsperado * 1.05) {
-        const desvio = ((custoReal - custoEsperado) / custoEsperado) * 100;
-        alertas.push({ tipo: "critico", mensagem: `Custo real ${desvio.toFixed(0)}% acima do esperado para a produção apontada` });
-      }
-      // Low margin services
-      servicos.filter(s => s.margemPercent < 10 && s.receita > 0).forEach(s => {
-        alertas.push({ tipo: "critico", mensagem: `${s.descricao} com margem baixa (${s.margemPercent.toFixed(0)}%)` });
-      });
-      // Unmeasured production
-      const naoMedido = receitaTotal - totalMedido;
-      if (naoMedido > 1000) {
-        alertas.push({ tipo: "atencao", mensagem: `R$ ${(naoMedido / 1000).toFixed(0)}k produzidos e não medidos` });
-      }
-      if (aFaturar > 1000) {
-        alertas.push({ tipo: "atencao", mensagem: `R$ ${(aFaturar / 1000).toFixed(0)}k medidos e não faturados` });
-      }
-      // Cost saving
-      if (custoEsperado > 0 && custoReal < custoEsperado * 0.95) {
-        const economia = ((custoEsperado - custoReal) / custoEsperado) * 100;
-        alertas.push({ tipo: "info", mensagem: `Custo real ${economia.toFixed(0)}% abaixo do esperado — boa eficiência` });
-      }
 
       // ── COST CATEGORIES (expected vs real) ──
       // Calculate expected split based on actual cost composition

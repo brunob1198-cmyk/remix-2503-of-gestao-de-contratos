@@ -3801,53 +3801,35 @@ export type Database = {
     Views: {
       view_bi_analise_obras: {
         Row: {
-          area_id: string | null
           area_nome: string | null
-          categoria_erp: string | null
-          categoria_ia: string | null
-          categoria_interna: string | null
-          cliente_cnpj: string | null
-          cliente_id: string | null
-          cliente_razao_social: string | null
-          custo_erp_total: number | null
-          dias_com_diario: number | null
-          empresa_id: string | null
-          empresa_nome: string | null
-          faturamento_bruto: number | null
-          faturamento_liquido: number | null
-          faturas_qtd: number | null
+          cliente: string | null
+          custo_direto_orcado: number | null
+          custo_direto_real: number | null
+          custo_total_orcado: number | null
+          custo_total_real: number | null
+          delta_gerencia: number | null
+          gerencia_orcada: number | null
+          gerencia_real: number | null
+          indiretos: number | null
+          materiais: number | null
+          mb_orcada: number | null
+          mb_real: number | null
           mes: string | null
-          producao_quantidade: number | null
-          producao_valor: number | null
+          mo_obra: number | null
+          perc_gerencia_orcada: number | null
+          perc_gerencia_real: number | null
+          perc_impostos: number | null
+          perc_mb_mkp: number | null
+          poc: number | null
           projeto_codigo: string | null
           projeto_id: string | null
           projeto_nome: string | null
-          projeto_status: string | null
-          projeto_valor_total: number | null
+          receita_liquida: number | null
+          resultado_direto: number | null
+          resultado_total: number | null
+          transporte: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "projetos_area_id_fkey"
-            columns: ["area_id"]
-            isOneToOne: false
-            referencedRelation: "areas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projetos_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projetos_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       view_bi_contratos: {
         Row: {
@@ -4366,7 +4348,19 @@ export type Database = {
         }
         Returns: number
       }
-      first_of_month: { Args: { d: string }; Returns: string }
+      first_of_month:
+        | {
+            Args: { d: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.first_of_month(d => date), public.first_of_month(d => timestamptz). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { d: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.first_of_month(d => date), public.first_of_month(d => timestamptz). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
