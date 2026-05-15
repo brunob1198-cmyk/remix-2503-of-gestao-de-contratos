@@ -3801,32 +3801,22 @@ export type Database = {
     Views: {
       view_bi_analise_obras: {
         Row: {
-          ano: number | null
-          ano_mes: string | null
           area_id: string | null
           area_nome: string | null
           categoria_erp: string | null
+          categoria_ia: string | null
           categoria_interna: string | null
           cliente_cnpj: string | null
           cliente_id: string | null
           cliente_razao_social: string | null
-          custo_equipamentos: number | null
           custo_erp_total: number | null
-          custo_financeiros: number | null
-          custo_indiretos: number | null
-          custo_mao_de_obra: number | null
-          custo_materiais: number | null
-          custo_outros: number | null
-          custo_transporte: number | null
           dias_com_diario: number | null
           empresa_id: string | null
           empresa_nome: string | null
           faturamento_bruto: number | null
           faturamento_liquido: number | null
-          margem_bruta: number | null
-          margem_bruta_percent: number | null
+          faturas_qtd: number | null
           mes: string | null
-          mes_numero: number | null
           producao_quantidade: number | null
           producao_valor: number | null
           projeto_codigo: string | null
@@ -3834,7 +3824,6 @@ export type Database = {
           projeto_nome: string | null
           projeto_status: string | null
           projeto_valor_total: number | null
-          qtd_faturas: number | null
         }
         Relationships: [
           {
