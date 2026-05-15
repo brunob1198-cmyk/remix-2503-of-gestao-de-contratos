@@ -451,7 +451,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
-    staleTime: Infinity,
+    staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       const BATCH_SIZE = 1000;
