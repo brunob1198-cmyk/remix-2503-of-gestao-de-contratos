@@ -257,221 +257,222 @@ export function useFlashNormalizacao() {
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
 
-  const fetchData = useCallback(async (forceRefresh = false) => {
-    if (!empresaId) {
-      console.log("fetchData skip: no empresaId");
-      setLoading(false);
-      return;
-    }
-    
-    // Evitar chamadas duplicadas se já estiver carregando
-    if (loading && !forceRefresh) return;
-    
-    setLoading(true);
-    console.count("fetchData executado");
-    
-    if (forceRefresh) {
-      toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
-      console.log("Forcing database refresh for empresaId:", empresaId);
-    }
-    
-    try {
-      console.log("Fetching data for empresaId:", empresaId);
-      
-      // 1. Fetch raw transactions in batches to bypass Supabase 1000-row limit
-      let allTransactions: any[] = [];
-      let lastCount = 0;
-      let rangeStart = 0;
-      const BATCH_SIZE = 1000;
-      
-      console.log("Starting batch fetch for transactions...");
-      
-      do {
-        const { data, error } = await supabase
-          .from("flash_transactions_raw")
-          .select("id, external_id, payload_json, created_at, transaction_date")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-          .range(rangeStart, rangeStart + BATCH_SIZE - 1);
-
-        if (error) {
-          console.error("Error fetching raw transactions batch:", error);
-          throw error;
-        }
-
-        if (data) {
-          allTransactions = [...allTransactions, ...data];
-          lastCount = data.length;
-          rangeStart += BATCH_SIZE;
-          console.log(`Fetched batch: ${data.length} records (Total: ${allTransactions.length})`);
-        } else {
-          lastCount = 0;
-        }
-      } while (lastCount === BATCH_SIZE && allTransactions.length < 100000);
-
-      const txRes = { data: allTransactions };
-
-
-      // 2. Fetch normalization records in batches
-      let allNormalizations: any[] = [];
-      rangeStart = 0;
-      
-      console.log("Starting batch fetch for normalizations...");
-      
-      do {
-        const { data, error } = await supabase
-          .from("flash_normalizacao")
-          .select("*")
-          .eq("empresa_id", empresaId)
-          .range(rangeStart, rangeStart + BATCH_SIZE - 1);
-
-        if (error) {
-          console.error("Error fetching normalizations batch:", error);
-          throw error;
-        }
-
-        if (data) {
-          allNormalizations = [...allNormalizations, ...data];
-          lastCount = data.length;
-          rangeStart += BATCH_SIZE;
-          console.log(`Fetched normalization batch: ${data.length} records (Total: ${allNormalizations.length})`);
-        } else {
-          lastCount = 0;
-        }
-      } while (lastCount === BATCH_SIZE && allNormalizations.length < 100000);
-
-      const normRes = { data: allNormalizations };
-
-
-      const mapRes = await supabase
-        .from("flash_category_mapping")
-        .select("*")
-        .eq("empresa_id", empresaId);
-
-      if (mapRes.error) {
-        console.error("Error fetching mappings:", mapRes.error);
-        throw mapRes.error;
+  const fetchData = useCallback(
+    debounce(async (forceRefresh = false) => {
+      if (!empresaId) {
+        console.log("fetchData skip: no empresaId");
+        setLoading(false);
+        return;
       }
-
-      console.log(`Fetched ${txRes.data?.length || 0} raw transactions and ${normRes.data?.length || 0} normalization records.`);
-
-      const normByTx = new Map<string, any>();
-      (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
-
-      const mappingList = (mapRes.data || []) as CategoryMapping[];
-      // Já não precisamos do mappingIdx fixo, pois a lógica agora é mais complexa e usa a lista completa
-
-
-      const FLASH_CARD_ACCOUNT_NAME = "Flash";
-      // Use the latest 'contas' state or try to find it from the data if available
-      const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
-
-      const normIds = new Set((normRes.data || []).map((n: any) => n.flash_transaction_id));
-      const autoNormPayloads: any[] = [];
-      const rows = (txRes.data || []).map((raw: any) => {
-        const base = mapTransactionRow(raw);
-        const n = normByTx.get(raw.id);
+      
+      // Evitar chamadas duplicadas se já estiver carregando
+      if (loading && !forceRefresh) return;
+      
+      setLoading(true);
+      console.count("fetchData executado");
+      
+      if (forceRefresh) {
+        toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
+        console.log("Forcing database refresh for empresaId:", empresaId);
+      }
+      
+      try {
+        console.log("Fetching data for empresaId:", empresaId);
         
-        if (n) {
-          base.norm_id = n.id;
-          base.conta_azul_category_id = n.conta_azul_category_id;
-          base.conta_azul_category_name = n.conta_azul_category_name;
-          base.conta_azul_account_id = n.conta_azul_account_id;
-          base.conta_azul_account_name = n.conta_azul_account_name;
-          base.tipo_operacao = n.tipo_operacao;
-          base.status = n.status;
-          base.motivo = n.motivo;
-          base.flash_type_detectado = n.flash_type_detectado || base.flash_type;
-          base.mapping_id_usado = n.mapping_id_usado;
-          base.conta_azul_payload = n.conta_azul_payload;
-          base.enviado_at = n.enviado_at;
+        // 1. Fetch raw transactions in batches to bypass Supabase 1000-row limit
+        let allTransactions: any[] = [];
+        let lastCount = 0;
+        let rangeStart = 0;
+        const BATCH_SIZE = 1000;
+        
+        console.log("Starting batch fetch for transactions...");
+        
+        do {
+          const { data, error } = await supabase
+            .from("flash_transactions_raw")
+            .select("id, external_id, payload_json, created_at, transaction_date")
+            .eq("empresa_id", empresaId)
+            .order("created_at", { ascending: false })
+            .range(rangeStart, rangeStart + BATCH_SIZE - 1);
 
-          if (!base.conta_azul_account_id && flashAccount) {
-            base.conta_azul_account_id = flashAccount.id;
-            base.conta_azul_account_name = flashAccount.name;
+          if (error) {
+            console.error("Error fetching raw transactions batch:", error);
+            throw error;
+          }
+
+          if (data) {
+            allTransactions = [...allTransactions, ...data];
+            lastCount = data.length;
+            rangeStart += BATCH_SIZE;
+            console.log(`Fetched batch: ${data.length} records (Total: ${allTransactions.length})`);
+          } else {
+            lastCount = 0;
+          }
+        } while (lastCount === BATCH_SIZE && allTransactions.length < 100000);
+
+        const txRes = { data: allTransactions };
+
+
+        // 2. Fetch normalization records in batches
+        let allNormalizations: any[] = [];
+        rangeStart = 0;
+        
+        console.log("Starting batch fetch for normalizations...");
+        
+        do {
+          const { data, error } = await supabase
+            .from("flash_normalizacao")
+            .select("*")
+            .eq("empresa_id", empresaId)
+            .range(rangeStart, rangeStart + BATCH_SIZE - 1);
+
+          if (error) {
+            console.error("Error fetching normalizations batch:", error);
+            throw error;
+          }
+
+          if (data) {
+            allNormalizations = [...allNormalizations, ...data];
+            lastCount = data.length;
+            rangeStart += BATCH_SIZE;
+            console.log(`Fetched normalization batch: ${data.length} records (Total: ${allNormalizations.length})`);
+          } else {
+            lastCount = 0;
+          }
+        } while (lastCount === BATCH_SIZE && allNormalizations.length < 100000);
+
+        const normRes = { data: allNormalizations };
+
+
+        const mapRes = await supabase
+          .from("flash_category_mapping")
+          .select("*")
+          .eq("empresa_id", empresaId);
+
+        if (mapRes.error) {
+          console.error("Error fetching mappings:", mapRes.error);
+          throw mapRes.error;
+        }
+
+        console.log(`Fetched ${txRes.data?.length || 0} raw transactions and ${normRes.data?.length || 0} normalization records.`);
+
+        const normByTx = new Map<string, any>();
+        (normRes.data || []).forEach((n: any) => normByTx.set(n.flash_transaction_id, n));
+
+        const mappingList = (mapRes.data || []) as CategoryMapping[];
+
+
+        const FLASH_CARD_ACCOUNT_NAME = "Flash";
+        const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
+
+        const normIds = new Set((normRes.data || []).map((n: any) => n.flash_transaction_id));
+        const autoNormPayloads: any[] = [];
+        const rows = (txRes.data || []).map((raw: any) => {
+          const base = mapTransactionRow(raw);
+          const n = normByTx.get(raw.id);
+          
+          if (n) {
+            base.norm_id = n.id;
+            base.conta_azul_category_id = n.conta_azul_category_id;
+            base.conta_azul_category_name = n.conta_azul_category_name;
+            base.conta_azul_account_id = n.conta_azul_account_id;
+            base.conta_azul_account_name = n.conta_azul_account_name;
+            base.tipo_operacao = n.tipo_operacao;
+            base.status = n.status;
+            base.motivo = n.motivo;
+            base.flash_type_detectado = n.flash_type_detectado || base.flash_type;
+            base.mapping_id_usado = n.mapping_id_usado;
+            base.conta_azul_payload = n.conta_azul_payload;
+            base.enviado_at = n.enviado_at;
+
+            if (!base.conta_azul_account_id && flashAccount) {
+              base.conta_azul_account_id = flashAccount.id;
+              base.conta_azul_account_name = flashAccount.name;
+            }
+
+            return base;
+          }
+
+          const normalized = normalizeFlashTransaction(
+            { 
+              id: raw.id, 
+              external_id: raw.external_id, 
+              payload_json: raw.payload_json, 
+              flash_type: base.flash_type,
+              flash_category: base.flash_category,
+              flash_cost_center: base.flash_cost_center,
+              descricao: base.descricao
+            },
+            mappingList as FlashCategoryMappingLike[]
+          );
+
+          base.tipo_operacao = normalized.tipo_operacao;
+          base.status = normalized.status;
+          base.conta_azul_category_id = normalized.conta_azul_category_id;
+          base.conta_azul_category_name = normalized.conta_azul_category_name;
+          base.conta_azul_account_id = flashAccount?.id ?? normalized.conta_azul_account_id;
+          base.conta_azul_account_name = flashAccount?.name ?? normalized.conta_azul_account_name;
+          base.motivo = normalized.motivo;
+          base.flash_type_detectado = normalized.flash_type;
+          base.mapping_id_usado = normalized.mapping_id_usado;
+          base.conta_azul_payload = normalized.conta_azul_payload;
+
+          if (!normIds.has(raw.id)) {
+            autoNormPayloads.push({
+              empresa_id: empresaId,
+              flash_transaction_id: raw.id,
+              conta_azul_category_id: base.conta_azul_category_id,
+              conta_azul_category_name: base.conta_azul_category_name,
+              conta_azul_account_id: base.conta_azul_account_id,
+              conta_azul_account_name: base.conta_azul_account_name,
+              tipo_operacao: base.tipo_operacao,
+              status: base.status,
+              normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
+              motivo: base.motivo,
+              flash_type_detectado: base.flash_type_detectado,
+              mapping_id_usado: base.mapping_id_usado,
+              conta_azul_payload: base.conta_azul_payload,
+            });
           }
 
           return base;
-        }
+        });
 
-        const normalized = normalizeFlashTransaction(
-          { 
-            id: raw.id, 
-            external_id: raw.external_id, 
-            payload_json: raw.payload_json, 
-            flash_type: base.flash_type,
-            flash_category: base.flash_category,
-            flash_cost_center: base.flash_cost_center,
-            descricao: base.descricao
-          },
-          mappingList as FlashCategoryMappingLike[]
-        );
+        console.log("Mapping completed. Final rows count:", rows.length);
+        setTransactions(rows);
+        setMappings(mappingList);
 
-        base.tipo_operacao = normalized.tipo_operacao;
-        base.status = normalized.status;
-        base.conta_azul_category_id = normalized.conta_azul_category_id;
-        base.conta_azul_category_name = normalized.conta_azul_category_name;
-        base.conta_azul_account_id = flashAccount?.id ?? normalized.conta_azul_account_id;
-        base.conta_azul_account_name = flashAccount?.name ?? normalized.conta_azul_account_name;
-        base.motivo = normalized.motivo;
-        base.flash_type_detectado = normalized.flash_type;
-        base.mapping_id_usado = normalized.mapping_id_usado;
-        base.conta_azul_payload = normalized.conta_azul_payload;
-
-        if (!normIds.has(raw.id)) {
-          autoNormPayloads.push({
-            empresa_id: empresaId,
-            flash_transaction_id: raw.id,
-            conta_azul_category_id: base.conta_azul_category_id,
-            conta_azul_category_name: base.conta_azul_category_name,
-            conta_azul_account_id: base.conta_azul_account_id,
-            conta_azul_account_name: base.conta_azul_account_name,
-            tipo_operacao: base.tipo_operacao,
-            status: base.status,
-            normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
-            motivo: base.motivo,
-            flash_type_detectado: base.flash_type_detectado,
-            mapping_id_usado: base.mapping_id_usado,
-            conta_azul_payload: base.conta_azul_payload,
-          });
-        }
-
-        return base;
-      });
-
-      console.log("Mapping completed. Final rows count:", rows.length);
-      setTransactions(rows);
-      setMappings(mappingList);
-
-      const UPSERT_LIMIT = 100;
-      if (autoNormPayloads.length > 0) {
-        console.log("Upserting auto-normalizations:", autoNormPayloads.length);
-        for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
-          const batch = autoNormPayloads.slice(i, i + UPSERT_LIMIT);
-          const { error: upsertError } = await supabase
-            .from("flash_normalizacao")
-            .upsert(batch, { onConflict: "flash_transaction_id" });
-          
-          if (upsertError) {
-            console.error("Auto-normalização falhou no lote:", upsertError);
+        const UPSERT_LIMIT = 100;
+        if (autoNormPayloads.length > 0) {
+          console.log("Upserting auto-normalizations:", autoNormPayloads.length);
+          for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
+            const batch = autoNormPayloads.slice(i, i + UPSERT_LIMIT);
+            const { error: upsertError } = await supabase
+              .from("flash_normalizacao")
+              .upsert(batch, { onConflict: "flash_transaction_id" });
+            
+            if (upsertError) {
+              console.error("Auto-normalização falhou no lote:", upsertError);
+            }
           }
         }
+        
+        if (forceRefresh) {
+          toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`, { id: "refresh-flash" });
+          console.log("Forced refresh complete. Total rows in state:", rows.length);
+        }
+      } catch (e: any) {
+        console.error("fetchData error:", e);
+        toast.error("Erro ao carregar dados", { 
+          description: e.message,
+          id: "refresh-flash" 
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      if (forceRefresh) {
-        toast.success(`Dados atualizados: ${rows.length} lançamentos encontrados.`, { id: "refresh-flash" });
-        console.log("Forced refresh complete. Total rows in state:", rows.length);
-      }
-    } catch (e: any) {
-      console.error("fetchData error:", e);
-      toast.error("Erro ao carregar dados", { 
-        description: e.message,
-        id: "refresh-flash" 
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [empresaId, contas, loading]);
+    }, 300),
+    [empresaId, contas, loading]
+  );
 
   const fetchMetadata = useCallback(async () => {
     if (loadingMetadata) return;
