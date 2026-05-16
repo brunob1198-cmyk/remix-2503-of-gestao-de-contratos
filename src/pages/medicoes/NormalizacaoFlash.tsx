@@ -1599,6 +1599,7 @@ export default function NormalizacaoFlashPage() {
                                   row={row}
                                   disabled={isEnviado}
                                   onSave={(newVal) => updateCostCenter(row, newVal)}
+                                  options={saasCostCenters}
                                   isInSaas={
                                     !row.flash_cost_center || row.flash_cost_center === "—"
                                       ? undefined
