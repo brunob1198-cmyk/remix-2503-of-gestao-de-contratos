@@ -267,11 +267,12 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_type,
     flash_category,
     flash_cost_center: pickPayloadValue(p, [
-      // Prioridade: Campos diretos de centro de custo (objetos)
+      // Prioridade: Campos diretos de centro de custo (objetos ou strings)
       "costCenter.name", 
       "cost_center.name", 
       "costCenter.code",
       "costCenter.externalId",
+      "costCenter.id",
       "costCenterId",
       "cost_center_id",
       // Objeto dentro de employee/user
@@ -283,21 +284,28 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "user.costCenter.code",
       "employee.costCenter.externalId",
       "user.costCenter.externalId",
-      // Campo de exportação ou legado
-      "centro_custo",
-      "centroCusto",
-      // Novos caminhos baseados em payloads reais da Flash
+      "employee.costCenter.id",
+      "user.costCenter.id",
+      // Novos caminhos baseados em payloads reais da Flash (aninhados em despesa ou prestação)
       "expense.costCenter.name",
       "expense.cost_center.name",
+      "expense.costCenter.code",
+      "expense.costCenterId",
       "accountability.costCenter.name",
+      "accountability.cost_center.name",
+      "accountability.costCenterId",
       "transaction.costCenter.name",
-      // Se só tem o ID como string (sem objeto), usar como último recurso
-      "employee.costCenterId",
-      "employee.cost_center_id",
-      "user.costCenterId",
-      // Tentar campos de nível superior que possam conter o nome se o costCenter for objeto mas o pickPayloadValue falhou no .name
+      "transaction.costCenterId",
+      // Campos de nível superior
+      "centro_custo",
+      "centroCusto",
       "costCenter", 
-      "cost_center"
+      "cost_center",
+      // Fallback para campos de funcionário
+      "employee.costCenter",
+      "employee.cost_center",
+      "user.costCenter",
+      "user.cost_center"
     ]) || "—",
     comentarios: pickPayloadValue(p, [
       // Prioridade: Comentários e Observações
@@ -307,6 +315,9 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "observation",
       "note",
       "notes",
+      "memo",
+      "remarks",
+      "remark",
       // Justificativa e motivos
       "justification",
       "justificativa",
@@ -316,19 +327,28 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "accounting.comments",
       "accounting.notes",
       "accounting.observation",
+      "accounting.memo",
       "receipt.comments",
       "receipt.notes",
-      "memo",
-      "remarks",
-      "remark",
+      "receipt.observation",
+      "receipt.memo",
       // Novos caminhos baseados em payloads reais da Flash
       "expense.comments",
       "expense.notes",
+      "expense.description",
+      "expense.justification",
       "accountability.comments",
       "accountability.notes",
+      "accountability.description",
       "transaction.comments",
       "transaction.comment",
       "transaction.description",
+      "transaction.memo",
+      "transaction.notes",
+      // Array de comentários
+      "comment_list",
+      "comments_list",
+      "notes_list"
     ]) || "—",
     flash_prestacao_contas,
   };
