@@ -123,12 +123,33 @@ export const normalizeFlashTransaction = (
   const payload = transaction.payload_json || {};
   
   // Extrair metadados para matching inteligente
-  const flash_category = transaction.flash_category || pickValue(payload, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
+  const flash_category = transaction.flash_category || pickValue(payload, [
+    "category.name", 
+    "transaction.category", 
+    "categoria.nome", 
+    "category", 
+    "categoria",
+    "transaction.categoryName",
+  ]) || "—";
   const flash_cost_center = transaction.flash_cost_center || pickValue(payload, [
-    "costCenter.name", "cost_center.name", "costCenter.code", "costCenter.externalId", 
-    "costCenterId", "cost_center_id", "employee.costCenter.name", "user.costCenter.name", 
-    "employee.cost_center.name", "user.cost_center.name", "centro_custo", "centroCusto",
-    "expense.costCenter.name", "accountability.costCenter.name"
+    "costCenter.name", 
+    "cost_center.name", 
+    "costCenter.code", 
+    "costCenter.externalId", 
+    "costCenterId", 
+    "cost_center_id", 
+    "employee.costCenter.name", 
+    "user.costCenter.name", 
+    "employee.cost_center.name", 
+    "user.cost_center.name", 
+    "employee.costCenter",
+    "employee.cost_center",
+    "employee.centro_custo",
+    "employee.centroCusto",
+    "centro_custo", 
+    "centroCusto",
+    "expense.costCenter.name", 
+    "accountability.costCenter.name"
   ]) || "—";
   const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
   const comentarios = pickValue(payload, [
