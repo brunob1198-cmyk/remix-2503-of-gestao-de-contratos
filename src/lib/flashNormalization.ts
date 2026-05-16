@@ -61,6 +61,7 @@ export interface NormalizedFlashTransaction {
 
 const pickValue = (payload: any, paths: string[]): string | null => {
   if (!payload) return null;
+  
   for (const p of paths) {
     const parts = p.split(".");
     let cur: any = payload;
@@ -68,6 +69,27 @@ const pickValue = (payload: any, paths: string[]): string | null => {
       cur = cur?.[k];
       if (cur == null) break;
     }
+    
+    // Se cur for um array, tenta pegar o primeiro item se for string ou tiver .name
+    if (Array.isArray(cur) && cur.length > 0) {
+      const first = cur[0];
+      if (typeof first === 'string' && first.trim()) return first.trim();
+      if (first && typeof first === 'object') {
+        if (first.name && typeof first.name === 'string' && first.name.trim()) return first.name.trim();
+        if (first.text && typeof first.text === 'string' && first.text.trim()) return first.text.trim();
+      }
+    }
+
+    // Se cur for um objeto (ex: {name: "Marketing", code: "123"}), tenta pegar campos comuns de texto
+    if (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) {
+      const candidates = ["name", "text", "description", "value", "code", "label", "display_name", "title"];
+      for (const cand of candidates) {
+        if (cur[cand] && typeof cur[cand] === 'string' && cur[cand].trim()) {
+          return cur[cand].trim();
+        }
+      }
+    }
+
     if (typeof cur === "string" && cur.trim()) return cur.trim();
     if (typeof cur === "number") return String(cur);
   }
