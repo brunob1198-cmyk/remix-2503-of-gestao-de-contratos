@@ -138,24 +138,27 @@ let _debugCount = 0;
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
   
-  // DEBUG: Log dos primeiros 5 payloads para diagnóstico
+  // LOG: Diagnóstico para transações sem centro de custo ou comentários
+  const hasCC = pickPayloadValue(p, ["costCenter.name", "costCenter", "centro_custo"]) !== null;
+  const hasComm = pickPayloadValue(p, ["comments", "justification", "memo"]) !== null;
+  
+  if (!hasCC || !hasComm) {
+    console.warn(`[DIAGNOSTICO] Transação ${raw.id} (Ext: ${raw.external_id}) faltando dados:`, {
+      hasCostCenter: hasCC,
+      hasComments: hasComm,
+      keys: Object.keys(p),
+      // Mostra apenas os primeiros 100 caracteres dos valores para não poluir demais o log
+      sample: Object.fromEntries(
+        Object.entries(p).slice(0, 10).map(([k, v]) => [k, typeof v === 'object' ? 'object' : String(v).substring(0, 50)])
+      )
+    });
+  }
+  
+  // DEBUG: Log dos primeiros 5 payloads para diagnóstico inicial (mantido para compatibilidade)
   if (_debugCount < 5) {
     _debugCount++;
     console.log(`[DEBUG mapTransactionRow #${_debugCount}]`, {
-      id: raw.id,
-      external_id: raw.external_id,
-      topLevelKeys: Object.keys(p).join(", "),
-      costCenter: p.costCenter,
-      costCenterId: p.costCenterId,
-      comments: p.comments,
-      category: typeof p.category === 'object' ? p.category : p.category,
-      type: p.type,
-      description: typeof p.description === 'string' ? p.description.substring(0, 50) : p.description,
-      "establishment.name": p.establishment?.name,
-      "employee.costCenter": p.employee?.costCenter,
-      "employee.costCenterId": p.employee?.costCenterId,
-      justification: p.justification,
-      "accounting.comments": p.accounting?.comments,
+...
       "receipt.comments": p.receipt?.comments,
     });
   }
