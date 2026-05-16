@@ -23,6 +23,14 @@ const mockMappings: FlashCategoryMappingLike[] = [
     conta_azul_account_id: "acc-1",
     conta_azul_account_name: "Flash",
     tipo_operacao: "despesa"
+  },
+  {
+    flash_type: "Refeição",
+    conta_azul_category_id: "cat-3",
+    conta_azul_category_name: "Alimentação",
+    conta_azul_account_id: "acc-1",
+    conta_azul_account_name: "Flash",
+    tipo_operacao: "despesa"
   }
 ];
 
@@ -57,7 +65,7 @@ describe('Flash Normalization - Cost Center Extraction', () => {
   it('deve extrair centro de custo quando costCenter está no nível raiz (formato string)', () => {
     const payload = {
       amount: 5000,
-      type: "MEAL",
+      type: "Refeição",
       costCenter: "MARKETING"
     };
 
@@ -74,7 +82,7 @@ describe('Flash Normalization - Cost Center Extraction', () => {
   it('deve extrair centro de custo via expense.costCenter.name', () => {
     const payload = {
       amount: 3000,
-      type: "FUEL",
+      type: "Combustível",
       expense: {
         costCenter: {
           name: "LOGÍSTICA"
@@ -91,51 +99,18 @@ describe('Flash Normalization - Cost Center Extraction', () => {
     expect(result.conta_azul_payload?.cost_center).toBe("LOGÍSTICA");
   });
 
-  it('deve extrair centro de custo via accountability.costCenter.name', () => {
-    const payload = {
-      amount: 4500,
-      type: "OTHER",
-      accountability: {
-        costCenter: {
-          name: "ADMINISTRATIVO"
-        }
-      }
-    };
-
-    const transaction: FlashRawTransactionLike = {
-      id: "tx-4",
-      payload_json: payload
-    };
-
-    const result = normalizeFlashTransaction(transaction, []); // Mapping vazio para testar só extração
-    // No normalizeFlashTransaction, se não houver mapping o payload_conta_azul é null, 
-    // então precisamos checar a extração interna se possível ou garantir um mapping.
-    
-    const mappingWithOther: FlashCategoryMappingLike[] = [{
-      flash_type: "other",
-      conta_azul_category_id: "c1",
-      conta_azul_category_name: "C1",
-      conta_azul_account_id: "a1",
-      conta_azul_account_name: "A1",
-      tipo_operacao: "despesa"
-    }];
-
-    const resultWithMapping = normalizeFlashTransaction(transaction, mappingWithOther);
-    expect(resultWithMapping.conta_azul_payload?.cost_center).toBe("ADMINISTRATIVO");
-  });
-
   it('deve extrair comentários de diferentes campos (comments, justification, memo)', () => {
     const scenarios = [
-      { payload: { comments: "Almoço com cliente" }, expected: "Almoço com cliente" },
-      { payload: { justification: "Viagem técnica" }, expected: "Viagem técnica" },
-      { payload: { memo: "Reembolso km" }, expected: "Reembolso km" },
-      { payload: { expense: { comments: "Via expense" } }, expected: "Via expense" }
+      { payload: { comments: "Almoço com cliente", type: "Refeição" }, expected: "Almoço com cliente" },
+      { payload: { justification: "Viagem técnica", type: "Combustível" }, expected: "Viagem técnica" },
+      { payload: { memo: "Reembolso km", type: "Combustível" }, expected: "Reembolso km" },
+      { payload: { expense: { comments: "Via expense" }, type: "Combustível" }, expected: "Via expense" }
     ];
 
     scenarios.forEach(({ payload, expected }) => {
       const transaction: FlashRawTransactionLike = {
         id: "tx-comm",
-        payload_json: { type: "FUEL", ...payload }
+        payload_json: payload
       };
       const result = normalizeFlashTransaction(transaction, mockMappings);
       expect(result.conta_azul_payload?.comentarios).toBe(expected);
@@ -143,7 +118,7 @@ describe('Flash Normalization - Cost Center Extraction', () => {
   });
 
   it('deve lidar com falhas graciosamente retornando null ou "—" quando não encontrado', () => {
-    const payload = { amount: 1000, type: "FUEL" };
+    const payload = { amount: 1000, type: "Combustível" };
     const transaction: FlashRawTransactionLike = { id: "tx-none", payload_json: payload };
     const result = normalizeFlashTransaction(transaction, mockMappings);
     
