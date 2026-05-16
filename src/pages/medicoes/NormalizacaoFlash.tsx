@@ -1032,6 +1032,18 @@ export default function NormalizacaoFlashPage() {
             )}
             Atualizar Conta Azul
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReprocess}
+            disabled={loading || transactions.length === 0}
+            className="h-8 gap-2"
+            title="Re-extrair Centros de Custo e Comentários usando as regras mais recentes"
+          >
+            <Sparkles className="h-4 w-4 text-purple-500" />
+            <span className="hidden sm:inline">Reprocessar Local</span>
+          </Button>
+
           <Button 
             variant="outline" 
             size="sm" 
