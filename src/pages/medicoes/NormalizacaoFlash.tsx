@@ -319,6 +319,7 @@ export default function NormalizacaoFlashPage() {
     updateCostCenter,
     saasCostCenters,
     reprocessAll,
+    bulkUpdateCostCenter,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -444,6 +445,11 @@ export default function NormalizacaoFlashPage() {
   const [bulkTipo, setBulkTipo] = useState<"receita" | "despesa">("despesa");
   const [bulkSaveMapping, setBulkSaveMapping] = useState(true);
   const [bulkApplying, setBulkApplying] = useState(false);
+
+  // Bulk CC state
+  const [bulkCCValue, setBulkCCValue] = useState("");
+  const [bulkCCOpen, setBulkCCOpen] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // Efeito para fixar a conta financeira padrão "Flash" (qualquer conta com 'flash' no nome)
   useEffect(() => {
@@ -1208,7 +1214,72 @@ export default function NormalizacaoFlashPage() {
               <div className="flex flex-col space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-base">Lançamentos Flash</CardTitle>
-                  <div className="ml-auto flex flex-wrap gap-2">
+                  <div className="ml-auto flex flex-wrap gap-2 items-center">
+                    {selectedToSendIds.length > 0 && (
+                      <Popover open={bulkCCOpen} onOpenChange={setBulkCCOpen}>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-9 gap-2 border-primary/50 bg-primary/5 text-primary hover:bg-primary/10"
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            CC em Massa ({selectedToSendIds.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="end">
+                          <Command>
+                            <CommandInput 
+                              placeholder="Buscar centro de custo..." 
+                              value={bulkCCValue}
+                              onValueChange={setBulkCCValue}
+                            />
+                            <CommandList>
+                              <CommandEmpty>Nenhum centro de custo encontrado.</CommandEmpty>
+                              <CommandGroup heading="Sugestões do SaaS">
+                                {saasCostCenters.map((opt) => (
+                                  <CommandItem
+                                    key={opt}
+                                    value={opt}
+                                    onSelect={(currentValue) => {
+                                      const confirmText = `Deseja aplicar o Centro de Custo "${currentValue}" em ${selectedToSendIds.length} lançamentos selecionados?`;
+                                      if (window.confirm(confirmText)) {
+                                        bulkUpdateCostCenter(selectedToSendIds, currentValue).then(() => {
+                                          setSelectedToSendIds([]);
+                                          setBulkCCOpen(false);
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {opt}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                              {bulkCCValue && !saasCostCenters.includes(bulkCCValue) && (
+                                <CommandGroup heading="Personalizado">
+                                  <CommandItem
+                                    value={bulkCCValue}
+                                    onSelect={(currentValue) => {
+                                      const confirmText = `Deseja aplicar o Centro de Custo "${currentValue}" em ${selectedToSendIds.length} lançamentos selecionados?`;
+                                      if (window.confirm(confirmText)) {
+                                        bulkUpdateCostCenter(selectedToSendIds, currentValue).then(() => {
+                                          setSelectedToSendIds([]);
+                                          setBulkCCOpen(false);
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Usar "{bulkCCValue}"
+                                  </CommandItem>
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input

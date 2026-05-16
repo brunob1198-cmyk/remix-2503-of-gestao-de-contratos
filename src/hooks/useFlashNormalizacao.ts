@@ -1074,6 +1074,79 @@ export function useFlashNormalizacao() {
     [empresaId]
   );
 
+  /**
+   * Atualiza o centro de custo de vários lançamentos em lote.
+   */
+  const bulkUpdateCostCenter = useCallback(
+    async (rowIds: string[], newCostCenter: string) => {
+      if (!empresaId || !rowIds.length) return;
+      
+      const eligibleRows = transactions.filter(
+        t => rowIds.includes(t.id) && t.status !== "enviado"
+      );
+
+      if (eligibleRows.length === 0) {
+        toast.error("Nenhum lançamento elegível para atualização em massa", {
+          description: "Lançamentos já enviados não podem ser editados."
+        });
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const cleanValue = newCostCenter.trim() || null;
+        
+        // Atualiza no banco de dados
+        // Como o update do Supabase .in() é para uma coluna igual para todos, 
+        // mas aqui o payload_json pode variar (manter as outras chaves), precisamos ter cuidado.
+        // Se o flash_normalizacao for apenas para o payload Conta Azul, podemos fazer o merge.
+        
+        // Vamos fazer o update individual para garantir a integridade do JSON de cada linha
+        // ou processar no cliente e enviar um bulk update se possível.
+        // O Supabase não suporta merge de JSON em bulk nativamente via .update().
+        
+        const updates = eligibleRows.map(row => {
+          const updatedPayload = row.conta_azul_payload
+            ? { ...row.conta_azul_payload, cost_center: cleanValue }
+            : { cost_center: cleanValue };
+            
+          return supabase
+            .from("flash_normalizacao")
+            .update({ conta_azul_payload: updatedPayload })
+            .eq("flash_transaction_id", row.id)
+            .eq("empresa_id", empresaId);
+        });
+
+        await Promise.all(updates);
+
+        // Update local state
+        setTransactions((prev) =>
+          prev.map((t) => {
+            if (rowIds.includes(t.id) && t.status !== "enviado") {
+              const updatedPayload = t.conta_azul_payload
+                ? { ...t.conta_azul_payload, cost_center: cleanValue }
+                : { cost_center: cleanValue };
+              return {
+                ...t,
+                flash_cost_center: cleanValue || "—",
+                conta_azul_payload: updatedPayload,
+              };
+            }
+            return t;
+          })
+        );
+
+        toast.success(`Centro de custo atualizado em ${eligibleRows.length} lançamentos`);
+      } catch (error: any) {
+        console.error("Erro no bulkUpdateCostCenter:", error);
+        toast.error("Erro ao atualizar em massa", { description: error.message });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [empresaId, transactions]
+  );
+
   const [sending, setSending] = useState(false);
 
   /**
@@ -1178,6 +1251,7 @@ export function useFlashNormalizacao() {
     isAlreadyIntegrated,
     updateCostCenter,
     saasCostCenters,
+    bulkUpdateCostCenter,
     reprocessAll: async () => {
       if (!empresaId) return;
       setLoading(true);
