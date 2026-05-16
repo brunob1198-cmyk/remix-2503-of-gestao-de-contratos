@@ -154,24 +154,33 @@ export const normalizeFlashTransaction = (
     "transaction.categoryName",
   ]) || "—";
   const flash_cost_center = transaction.flash_cost_center || pickValue(payload, [
+    // Prioridade: Campos diretos de centro de custo
     "costCenter.name", 
     "cost_center.name", 
     "costCenter.code", 
     "costCenter.externalId", 
     "costCenterId", 
     "cost_center_id", 
+    // Objeto dentro de employee/user
     "employee.costCenter.name", 
     "user.costCenter.name", 
     "employee.cost_center.name", 
     "user.cost_center.name", 
+    // Nível superior
+    "centro_custo", 
+    "centroCusto",
+    "costCenter", 
+    "cost_center",
+    // Aninhados em expense/accountability
+    "expense.costCenter.name", 
+    "expense.cost_center.name",
+    "accountability.costCenter.name",
+    "accountability.cost_center.name",
+    // CORPORATE_CARD fallbacks
     "employee.costCenter",
     "employee.cost_center",
     "employee.centro_custo",
-    "employee.centroCusto",
-    "centro_custo", 
-    "centroCusto",
-    "expense.costCenter.name", 
-    "accountability.costCenter.name"
+    "employee.centroCusto"
   ]) || "—";
   const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
   const comentarios = pickValue(payload, [
