@@ -1178,5 +1178,58 @@ export function useFlashNormalizacao() {
     isAlreadyIntegrated,
     updateCostCenter,
     saasCostCenters,
+    reprocessAll: async () => {
+      if (!empresaId) return;
+      setLoading(true);
+      try {
+        toast.info("Reprocessando todas as transações...", { id: "reprocess-flash" });
+        // Simplesmente re-mapeia as transações atuais com as regras atualizadas
+        const rows = transactions.map(t => {
+          const raw = {
+            id: t.id,
+            external_id: t.external_id,
+            payload_json: t.payload_json,
+            transaction_date: t.data,
+            // Passamos as propriedades extraídas se o payload original sumiu, mas mapTransactionRow prioriza o payload
+          };
+          const base = mapTransactionRow(raw);
+          // Se já estava enviado, mantemos o status, se não, re-normalizamos
+          if (t.status === 'enviado') return t;
+          
+          const norm = normalizeFlashTransaction({
+            id: t.id,
+            external_id: t.external_id,
+            payload_json: t.payload_json,
+            flash_type: base.flash_type,
+            flash_category: base.flash_category,
+            flash_cost_center: base.flash_cost_center,
+            descricao: base.descricao,
+            valor: base.valor,
+            data: base.data
+          }, mappings);
+
+          return {
+            ...base,
+            norm_id: t.norm_id,
+            conta_azul_category_id: norm.conta_azul_category_id,
+            conta_azul_category_name: norm.conta_azul_category_name,
+            conta_azul_account_id: norm.conta_azul_account_id,
+            conta_azul_account_name: norm.conta_azul_account_name,
+            tipo_operacao: norm.tipo_operacao,
+            status: norm.status,
+            motivo: norm.motivo,
+            flash_type_detectado: norm.flash_type,
+            mapping_id_usado: norm.mapping_id_usado,
+            conta_azul_payload: norm.conta_azul_payload,
+          };
+        });
+        setTransactions(rows);
+        toast.success("Reprocessamento local concluído. Lembre-se de salvar se necessário.", { id: "reprocess-flash" });
+      } catch (e: any) {
+        toast.error("Erro ao reprocessar: " + e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 }
