@@ -1251,6 +1251,7 @@ export function useFlashNormalizacao() {
     isAlreadyIntegrated,
     updateCostCenter,
     saasCostCenters,
+    bulkUpdateCostCenter,
     reprocessAll: async () => {
       if (!empresaId) return;
       setLoading(true);
