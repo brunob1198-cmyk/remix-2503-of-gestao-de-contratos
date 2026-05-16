@@ -324,9 +324,13 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "centroCusto",
       "costCenter", 
       "cost_center",
-      // Fallback para campos de funcionário
+      // Campos dentro de employee em payloads CORPORATE_CARD
       "employee.costCenter",
       "employee.cost_center",
+      "employee.centro_custo",
+      "employee.centroCusto",
+      "employee.cost_center_id",
+      // Fallback para campos de funcionário
       "user.costCenter",
       "user.cost_center"
     ]) || "—",
