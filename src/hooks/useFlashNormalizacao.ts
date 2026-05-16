@@ -64,6 +64,14 @@ const pickPayloadValue = (payload: any, paths: string[]): string | null => {
       cur = cur?.[k];
       if (cur == null) break;
     }
+    
+    // Se cur for um objeto (ex: {name: "Marketing", code: "123"}), tenta pegar name ou code
+    if (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) {
+      if (cur.name && typeof cur.name === 'string' && cur.name.trim()) return cur.name.trim();
+      if (cur.code && typeof cur.code === 'string' && cur.code.trim()) return cur.code.trim();
+      if (cur.label && typeof cur.label === 'string' && cur.label.trim()) return cur.label.trim();
+    }
+
     if (typeof cur === "string" && cur.trim()) return cur.trim();
     if (typeof cur === "number") return String(cur);
   }
@@ -243,7 +251,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_type,
     flash_category,
     flash_cost_center: pickPayloadValue(p, [
-      // Prioridade: Campos diretos de centro de custo
+      // Prioridade: Campos diretos de centro de custo (objetos)
       "costCenter.name", 
       "cost_center.name", 
       "costCenter.code",
@@ -271,6 +279,9 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "employee.costCenterId",
       "employee.cost_center_id",
       "user.costCenterId",
+      // Tentar campos de nível superior que possam conter o nome se o costCenter for objeto mas o pickPayloadValue falhou no .name
+      "costCenter", 
+      "cost_center"
     ]) || "—",
     comentarios: pickPayloadValue(p, [
       // Prioridade: Comentários e Observações
