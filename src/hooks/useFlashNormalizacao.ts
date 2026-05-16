@@ -558,24 +558,41 @@ export function useFlashNormalizacao() {
   // Buscar centros de custo do SaaS (tabela areas) para comparação
   useEffect(() => {
     if (!empresaId) return;
-    const fetchAreas = async () => {
+    const fetchSaasData = async () => {
       try {
-        const { data, error } = await supabase
+        // Buscar áreas
+        const { data: areasData, error: areasError } = await supabase
           .from("areas")
           .select("nome")
           .eq("empresa_id", empresaId);
-        if (error) {
-          console.error("Erro ao buscar áreas (centros de custo do SaaS):", error);
-          return;
+        
+        if (areasError) {
+          console.error("Erro ao buscar áreas (centros de custo do SaaS):", areasError);
         }
-        const names = (data || []).map((a: any) => a.nome).filter(Boolean);
-        console.log(`[SaaS Cost Centers] Encontrados: ${names.length} centros de custo`);
-        setSaasCostCenters(names);
+
+        // Buscar projetos
+        const { data: projectsData, error: projectsError } = await supabase
+          .from("projetos")
+          .select("nome")
+          .eq("empresa_id", empresaId);
+
+        if (projectsError) {
+          console.error("Erro ao buscar projetos:", projectsError);
+        }
+
+        const areaNames = (areasData || []).map((a: any) => a.nome).filter(Boolean);
+        const projectNames = (projectsData || []).map((p: any) => p.nome).filter(Boolean);
+        
+        // Unir ambos como centros de custo válidos
+        const allNames = Array.from(new Set([...areaNames, ...projectNames])).sort();
+        
+        console.log(`[SaaS Metadata] Encontrados: ${areaNames.length} áreas e ${projectNames.length} projetos`);
+        setSaasCostCenters(allNames);
       } catch (e) {
-        console.error("Erro ao buscar centros de custo do SaaS:", e);
+        console.error("Erro ao buscar metadados do SaaS:", e);
       }
     };
-    fetchAreas();
+    fetchSaasData();
   }, [empresaId]);
 
   // Mantemos o mappingByType apenas para retrocompatibilidade simples se necessário,
