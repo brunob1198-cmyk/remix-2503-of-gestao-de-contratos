@@ -1244,10 +1244,7 @@ export default function NormalizacaoFlashPage() {
                                     onSelect={(currentValue) => {
                                       const confirmText = `Deseja aplicar o Centro de Custo "${currentValue}" em ${selectedToSendIds.length} lançamentos selecionados?`;
                                       if (window.confirm(confirmText)) {
-                                        const rowsToUpdate = filtered.filter(f => selectedToSendIds.includes(f.id));
-                                        // Executar em sequência para evitar sobrecarga ou usar uma nova função bulk no hook
-                                        Promise.all(rowsToUpdate.map(r => updateCostCenter(r, currentValue))).then(() => {
-                                          toast.success("Centros de custo atualizados em massa");
+                                        bulkUpdateCostCenter(selectedToSendIds, currentValue).then(() => {
                                           setSelectedToSendIds([]);
                                           setBulkCCOpen(false);
                                         });
@@ -1266,9 +1263,7 @@ export default function NormalizacaoFlashPage() {
                                     onSelect={(currentValue) => {
                                       const confirmText = `Deseja aplicar o Centro de Custo "${currentValue}" em ${selectedToSendIds.length} lançamentos selecionados?`;
                                       if (window.confirm(confirmText)) {
-                                        const rowsToUpdate = filtered.filter(f => selectedToSendIds.includes(f.id));
-                                        Promise.all(rowsToUpdate.map(r => updateCostCenter(r, currentValue))).then(() => {
-                                          toast.success("Centros de custo atualizados em massa");
+                                        bulkUpdateCostCenter(selectedToSendIds, currentValue).then(() => {
                                           setSelectedToSendIds([]);
                                           setBulkCCOpen(false);
                                         });
