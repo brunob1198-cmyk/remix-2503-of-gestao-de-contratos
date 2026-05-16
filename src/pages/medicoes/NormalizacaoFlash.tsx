@@ -318,6 +318,7 @@ export default function NormalizacaoFlashPage() {
     sendToContaAzul,
     updateCostCenter,
     saasCostCenters,
+    reprocessAll,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -331,6 +332,12 @@ export default function NormalizacaoFlashPage() {
       toast.error("Erro ao recarregar", { description: error.message });
     } finally {
       setLoadingFilter(false);
+    }
+  };
+
+  const handleReprocess = async () => {
+    if (window.confirm("Isso irá re-aplicar as regras de extração de Centro de Custo em todos os lançamentos carregados. Deseja continuar?")) {
+      await reprocessAll();
     }
   };
 
