@@ -195,7 +195,14 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
 
   const flash_type = typeTranslations[flash_type_raw] || (flash_type_raw === "CORPORATE_CARD" ? "Cartão Corporativo" : flash_type_raw);
 
-  const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria"]) || "—";
+  const flash_category_raw = pickPayloadValue(p, [
+    "category.name", 
+    "transaction.category", 
+    "categoria.nome", 
+    "category", 
+    "categoria",
+    "transaction.categoryName", // Novo
+  ]) || "—";
   let flash_category = flash_category_raw;
   
   // Padronização para português
