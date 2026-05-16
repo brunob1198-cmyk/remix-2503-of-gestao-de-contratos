@@ -57,6 +57,8 @@ interface CategoryMapping {
 }
 
 const pickPayloadValue = (payload: any, paths: string[]): string | null => {
+  if (!payload) return null;
+  
   for (const p of paths) {
     const parts = p.split(".");
     let cur: any = payload;
@@ -65,11 +67,25 @@ const pickPayloadValue = (payload: any, paths: string[]): string | null => {
       if (cur == null) break;
     }
     
-    // Se cur for um objeto (ex: {name: "Marketing", code: "123"}), tenta pegar name ou code
+    // Se cur for um array, tenta pegar o primeiro item se for string ou tiver .name
+    if (Array.isArray(cur) && cur.length > 0) {
+      const first = cur[0];
+      if (typeof first === 'string' && first.trim()) return first.trim();
+      if (first && typeof first === 'object') {
+        if (first.name && typeof first.name === 'string' && first.name.trim()) return first.name.trim();
+        if (first.text && typeof first.text === 'string' && first.text.trim()) return first.text.trim();
+      }
+    }
+
+    // Se cur for um objeto (ex: {name: "Marketing", code: "123"}), tenta pegar campos comuns de texto
     if (cur !== null && typeof cur === 'object' && !Array.isArray(cur)) {
-      if (cur.name && typeof cur.name === 'string' && cur.name.trim()) return cur.name.trim();
-      if (cur.code && typeof cur.code === 'string' && cur.code.trim()) return cur.code.trim();
-      if (cur.label && typeof cur.label === 'string' && cur.label.trim()) return cur.label.trim();
+      const candidates = ["name", "text", "description", "value", "code", "label", "display_name", "title"];
+      for (const cand of candidates) {
+        if (cur[cand] && typeof cur[cand] === 'string' && cur[cand].trim()) {
+          return cur[cand].trim();
+        }
+      }
+      // Se for um objeto mas não achamos campos conhecidos, não retornamos [object Object]
     }
 
     if (typeof cur === "string" && cur.trim()) return cur.trim();
@@ -122,7 +138,23 @@ let _debugCount = 0;
 const mapTransactionRow = (raw: any): FlashTransactionRow => {
   const p = raw.payload_json || {};
   
-  // DEBUG: Log dos primeiros 5 payloads para diagnóstico
+  // LOG: Diagnóstico para transações sem centro de custo ou comentários
+  const hasCC = pickPayloadValue(p, ["costCenter.name", "costCenter", "centro_custo"]) !== null;
+  const hasComm = pickPayloadValue(p, ["comments", "justification", "memo"]) !== null;
+  
+  if (!hasCC || !hasComm) {
+    console.warn(`[DIAGNOSTICO] Transação ${raw.id} (Ext: ${raw.external_id}) faltando dados:`, {
+      hasCostCenter: hasCC,
+      hasComments: hasComm,
+      keys: Object.keys(p),
+      // Mostra apenas os primeiros 100 caracteres dos valores para não poluir demais o log
+      sample: Object.fromEntries(
+        Object.entries(p).slice(0, 10).map(([k, v]) => [k, typeof v === 'object' ? 'object' : String(v).substring(0, 50)])
+      )
+    });
+  }
+  
+  // DEBUG: Log dos primeiros 5 payloads para diagnóstico inicial (mantido para compatibilidade)
   if (_debugCount < 5) {
     _debugCount++;
     console.log(`[DEBUG mapTransactionRow #${_debugCount}]`, {
@@ -251,11 +283,12 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     flash_type,
     flash_category,
     flash_cost_center: pickPayloadValue(p, [
-      // Prioridade: Campos diretos de centro de custo (objetos)
+      // Prioridade: Campos diretos de centro de custo (objetos ou strings)
       "costCenter.name", 
       "cost_center.name", 
       "costCenter.code",
       "costCenter.externalId",
+      "costCenter.id",
       "costCenterId",
       "cost_center_id",
       // Objeto dentro de employee/user
@@ -267,21 +300,28 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "user.costCenter.code",
       "employee.costCenter.externalId",
       "user.costCenter.externalId",
-      // Campo de exportação ou legado
-      "centro_custo",
-      "centroCusto",
-      // Novos caminhos baseados em payloads reais da Flash
+      "employee.costCenter.id",
+      "user.costCenter.id",
+      // Novos caminhos baseados em payloads reais da Flash (aninhados em despesa ou prestação)
       "expense.costCenter.name",
       "expense.cost_center.name",
+      "expense.costCenter.code",
+      "expense.costCenterId",
       "accountability.costCenter.name",
+      "accountability.cost_center.name",
+      "accountability.costCenterId",
       "transaction.costCenter.name",
-      // Se só tem o ID como string (sem objeto), usar como último recurso
-      "employee.costCenterId",
-      "employee.cost_center_id",
-      "user.costCenterId",
-      // Tentar campos de nível superior que possam conter o nome se o costCenter for objeto mas o pickPayloadValue falhou no .name
+      "transaction.costCenterId",
+      // Campos de nível superior
+      "centro_custo",
+      "centroCusto",
       "costCenter", 
-      "cost_center"
+      "cost_center",
+      // Fallback para campos de funcionário
+      "employee.costCenter",
+      "employee.cost_center",
+      "user.costCenter",
+      "user.cost_center"
     ]) || "—",
     comentarios: pickPayloadValue(p, [
       // Prioridade: Comentários e Observações
@@ -291,6 +331,9 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "observation",
       "note",
       "notes",
+      "memo",
+      "remarks",
+      "remark",
       // Justificativa e motivos
       "justification",
       "justificativa",
@@ -300,19 +343,28 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "accounting.comments",
       "accounting.notes",
       "accounting.observation",
+      "accounting.memo",
       "receipt.comments",
       "receipt.notes",
-      "memo",
-      "remarks",
-      "remark",
+      "receipt.observation",
+      "receipt.memo",
       // Novos caminhos baseados em payloads reais da Flash
       "expense.comments",
       "expense.notes",
+      "expense.description",
+      "expense.justification",
       "accountability.comments",
       "accountability.notes",
+      "accountability.description",
       "transaction.comments",
       "transaction.comment",
       "transaction.description",
+      "transaction.memo",
+      "transaction.notes",
+      // Array de comentários
+      "comment_list",
+      "comments_list",
+      "notes_list"
     ]) || "—",
     flash_prestacao_contas,
   };
