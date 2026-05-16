@@ -318,6 +318,7 @@ export default function NormalizacaoFlashPage() {
     sendToContaAzul,
     updateCostCenter,
     saasCostCenters,
+    reprocessAll,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -331,6 +332,12 @@ export default function NormalizacaoFlashPage() {
       toast.error("Erro ao recarregar", { description: error.message });
     } finally {
       setLoadingFilter(false);
+    }
+  };
+
+  const handleReprocess = async () => {
+    if (window.confirm("Isso irá re-aplicar as regras de extração de Centro de Custo em todos os lançamentos carregados. Deseja continuar?")) {
+      await reprocessAll();
     }
   };
 
@@ -1025,6 +1032,18 @@ export default function NormalizacaoFlashPage() {
             )}
             Atualizar Conta Azul
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReprocess}
+            disabled={loading || transactions.length === 0}
+            className="h-8 gap-2"
+            title="Re-extrair Centros de Custo e Comentários usando as regras mais recentes"
+          >
+            <Sparkles className="h-4 w-4 text-purple-500" />
+            <span className="hidden sm:inline">Reprocessar Local</span>
+          </Button>
+
           <Button 
             variant="outline" 
             size="sm" 
