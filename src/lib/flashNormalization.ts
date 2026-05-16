@@ -177,7 +177,9 @@ export const normalizeFlashTransaction = (
   const comentarios = pickValue(payload, [
     "comments", "comment", "observacao", "observation", "note", "notes", 
     "justification", "justificativa", "reason", "motivo", "memo",
-    "expense.comments", "accountability.comments"
+    "expense.comments", "accountability.comments", "expense.justification",
+    "expense.description", "transaction.description", "transaction.comments",
+    "receipt.comments", "accounting.comments"
   ]) || null;
   
   const valor = typeof transaction.valor === "number" ? transaction.valor : pickNumber(payload, ["amount", "value", "valor", "total"]);
