@@ -319,6 +319,7 @@ export default function NormalizacaoFlashPage() {
     updateCostCenter,
     saasCostCenters,
     reprocessAll,
+    bulkUpdateCostCenter,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
