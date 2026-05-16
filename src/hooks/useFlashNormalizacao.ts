@@ -257,6 +257,8 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "user.cost_center.name",
       "employee.costCenter.code",
       "user.costCenter.code",
+      "employee.costCenter.externalId",
+      "user.costCenter.externalId",
       // Campo de exportação ou legado
       "centro_custo",
       "centroCusto",
@@ -264,6 +266,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "expense.costCenter.name",
       "expense.cost_center.name",
       "accountability.costCenter.name",
+      "transaction.costCenter.name",
       // Se só tem o ID como string (sem objeto), usar como último recurso
       "employee.costCenterId",
       "employee.cost_center_id",
@@ -296,6 +299,9 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
       "expense.notes",
       "accountability.comments",
       "accountability.notes",
+      "transaction.comments",
+      "transaction.comment",
+      "transaction.description",
     ]) || "—",
     flash_prestacao_contas,
   };
