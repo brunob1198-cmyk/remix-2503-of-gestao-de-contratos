@@ -722,48 +722,71 @@ Deno.serve(async (req) => {
     // Limita a 50 para não explodir o tempo de execução
     const INDIVIDUAL_FETCH_LIMIT = 50;
     const toFetch = txsWithoutCC.slice(0, INDIVIDUAL_FETCH_LIMIT);
-    if (toFetch.length > 0) {
-      console.log(`[flash-sync] Buscando detalhe individual para ${toFetch.length} transações sem CC...`);
-      for (const idx of toFetch) {
+    if (txsWithoutCC.length > 0) {
+      const INDIVIDUAL_FETCH_LIMIT = 50;
+      const CONCURRENCY_LIMIT = 5;
+      
+      // Agrupa índices por ID para evitar duplicidade de fetch e facilitar preenchimento
+      const idToIndices = new Map<string, number[]>();
+      for (const idx of txsWithoutCC) {
         const tx = transactions[idx] as any;
         const txId = tx.id ?? tx.external_id;
-        if (!txId) continue;
+        if (txId) {
+          if (!idToIndices.has(txId)) idToIndices.set(txId, []);
+          idToIndices.get(txId)!.push(idx);
+        }
+      }
 
+      const uniqueIds = Array.from(idToIndices.keys()).slice(0, INDIVIDUAL_FETCH_LIMIT);
+      console.log(`[flash-sync] Buscando detalhes para ${uniqueIds.length} IDs únicos (impactando ${txsWithoutCC.length} transações)...`);
+
+      // Função de processamento de um único ID
+      const processId = async (txId: string) => {
         try {
-          let detail = expenseDetailCache.get(txId);
+          const cached = expenseDetailCache.get(txId);
+          let detail = (cached && (Date.now() - cached.timestamp < CACHE_TTL)) ? cached.data : null;
+
           if (!detail) {
             detail = await fetchExpenseDetail(flashToken, txId);
             if (detail) {
-              expenseDetailCache.set(txId, detail);
-              // Pequena pausa apenas se fizemos uma chamada real à API
-              await new Promise(r => setTimeout(r, 100));
+              expenseDetailCache.set(txId, { data: detail, timestamp: Date.now() });
             }
           }
 
           if (detail) {
-            // Mescla campos do detalhe na transação original
-            const detailCcId =
-              detail.costCenterId ??
-              detail.cost_center_id ??
-              detail.costCenter?.id ??
-              detail.employee?.costCenterId ??
-              detail.userId;
+            const indices = idToIndices.get(txId) || [];
+            for (const idx of indices) {
+              const tx = transactions[idx] as any;
+              
+              const detailCcId =
+                detail.costCenterId ??
+                detail.cost_center_id ??
+                detail.costCenter?.id ??
+                detail.employee?.costCenterId ??
+                detail.userId;
 
-            if (detailCcId && costCenterMap.has(detailCcId)) {
-              const cc = costCenterMap.get(detailCcId)!;
-              tx.costCenter = { id: cc.id, name: cc.name };
-              console.log(`[flash-sync] CC resolvido via fetch individual para ${txId}: ${cc.name}`);
-            } else if (detail.costCenter?.name) {
-              tx.costCenter = detail.costCenter;
-              console.log(`[flash-sync] CC resolvido via fetch individual para ${txId}: ${detail.costCenter.name}`);
+              if (detailCcId && costCenterMap.has(detailCcId)) {
+                const cc = costCenterMap.get(detailCcId)!;
+                tx.costCenter = { id: cc.id, name: cc.name };
+              } else if (detail.costCenter?.name) {
+                tx.costCenter = detail.costCenter;
+              }
+
+              if (!tx.comments && detail.comments) tx.comments = detail.comments;
+              if (!tx.employee && detail.employee) tx.employee = detail.employee;
             }
-
-            // Mescla outros campos úteis do detalhe
-            if (!tx.comments && detail.comments) tx.comments = detail.comments;
-            if (!tx.employee && detail.employee) tx.employee = detail.employee;
           }
         } catch (e) {
-          console.warn(`[flash-sync] Falha no fetch individual para ${txId}:`, e?.message ?? e);
+          console.warn(`[flash-sync] Falha no processamento para ${txId}:`, e?.message ?? e);
+        }
+      };
+
+      // Execução paralela com limite de concorrência
+      for (let i = 0; i < uniqueIds.length; i += CONCURRENCY_LIMIT) {
+        const chunk = uniqueIds.slice(i, i + CONCURRENCY_LIMIT);
+        await Promise.all(chunk.map(id => processId(id)));
+        if (i + CONCURRENCY_LIMIT < uniqueIds.length) {
+          await new Promise(r => setTimeout(r, 100)); // Rate limit breathing room
         }
       }
     }
