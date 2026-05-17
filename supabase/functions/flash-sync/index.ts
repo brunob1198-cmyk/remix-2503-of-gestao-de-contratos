@@ -379,6 +379,27 @@ async function getEmployees(token: string, costCenterMap: Map<string, any>): Pro
   return map;
 }
 
+/**
+ * Nova função para buscar despesa individual (fallback quando dados básicos vêm incompletos)
+ */
+async function fetchExpenseDetail(token: string, expenseId: string): Promise<any | null> {
+  const candidatePaths = [
+    `/expenses/v1/expenses/${expenseId}`,
+    `/core/v1/expenses/${expenseId}`,
+  ];
+  for (const path of candidatePaths) {
+    try {
+      const res = await fetch(`${FLASH_API_BASE_URL}${path}`, {
+        headers: { "x-flash-auth": token, Accept: "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data?.expense ?? data?.data ?? data;
+      }
+    } catch { /* continua */ }
+  }
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
