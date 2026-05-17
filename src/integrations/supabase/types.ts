@@ -3899,22 +3899,40 @@ export type Database = {
     Views: {
       view_bi_analise_obras: {
         Row: {
+          ano: number | null
+          ano_mes: string | null
+          area_id: string | null
           area_nome: string | null
           cliente: string | null
           cliente_cnpj: string | null
+          cliente_id: string | null
           custo_direto_orcado: number | null
           custo_direto_real: number | null
+          custo_equipamentos: number | null
+          custo_erp_total: number | null
+          custo_financeiros: number | null
+          custo_indiretos: number | null
+          custo_mao_de_obra: number | null
+          custo_materiais: number | null
+          custo_outros: number | null
           custo_total_orcado: number | null
           custo_total_real: number | null
+          custo_transporte: number | null
           delta_gerencia: number | null
+          empresa_id: string | null
           empresa_nome: string | null
+          faturamento_bruto: number | null
+          faturamento_liquido: number | null
           gerencia_orcada: number | null
           gerencia_real: number | null
           indiretos: number | null
+          margem_bruta: number | null
+          margem_bruta_percent: number | null
           materiais: number | null
           mb_orcada: number | null
           mb_real: number | null
           mes: string | null
+          mes_numero: number | null
           mo_obra: number | null
           perc_gerencia_orcada: number | null
           perc_gerencia_real: number | null
@@ -3927,6 +3945,7 @@ export type Database = {
           projeto_id: string | null
           projeto_nome: string | null
           projeto_status: string | null
+          qtd_faturas: number | null
           receita_liquida: number | null
           referencia: string | null
           resultado_direto: number | null
@@ -3934,7 +3953,29 @@ export type Database = {
           resultado_total: number | null
           transporte: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projetos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       view_bi_contratos: {
         Row: {
