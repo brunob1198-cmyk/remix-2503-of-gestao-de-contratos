@@ -669,29 +669,31 @@ Deno.serve(async (req) => {
         tx.employee?.costCenter?.id ??
         null;
 
+      // O CC vindo da Flash tem prioridade máxima se tiver nome
       let hasName = !!(tx.costCenter?.name ?? tx.costCenter?.description);
 
-      // 1. Enriquece pelo map de centros de custo carregado
+      // 1. Enriquece pelo map de centros de custo carregado APENAS se ainda não tiver nome
       if (ccId && !hasName && costCenterMap.has(ccId)) {
         const cc = costCenterMap.get(ccId)!;
         tx.costCenter = { id: cc.id, name: cc.name, ...(cc.code ? { code: cc.code } : {}) };
         hasName = true;
       }
 
-      // 2. Fallback por funcionário (tenta userId também, comum em cartão corporativo)
+      // 2. Fallback por funcionário (extração histórica) - AGORA SECUNDÁRIO
+      // Só aplica se a própria Flash não enviou centro de custo algum
       if (!hasName) {
         const empId =
           tx.employeeId ??
           tx.employee_id ??
           tx.employee?.id ??
-          tx.userId ??         // <-- campo adicional para cartão
-          tx.user?.id ??       // <-- campo adicional para cartão
+          tx.userId ??         
+          tx.user?.id ??       
           null;
 
         if (empId && employeeMap.has(empId)) {
           const empData = employeeMap.get(empId)!;
           if (empData.costCenter) {
-            console.log(`[flash-sync] CC via fallback funcionário para tx ${tx.id} (emp ${empId})`);
+            console.log(`[flash-sync] CC via fallback funcionário (histórico) para tx ${tx.id} (emp ${empId})`);
             tx.costCenter = empData.costCenter;
             hasName = true;
           }
@@ -940,10 +942,14 @@ Deno.serve(async (req) => {
       // Auto-normalization
       try {
         const externalIds = rows.map((r) => r.external_id);
-        const [{ data: savedRows }, { data: mappings }] = await Promise.all([
+        const [{ data: savedRows }, { data: mappings }, { data: existingNorms }] = await Promise.all([
           adminClient.from("flash_transactions_raw").select("id, external_id, payload_json").eq("empresa_id", empresaId).in("external_id", externalIds),
           adminClient.from("flash_category_mapping").select("*").eq("empresa_id", empresaId),
+          adminClient.from("flash_normalizacao").select("flash_transaction_id, status, conta_azul_payload").eq("empresa_id", empresaId).in("flash_transaction_id", rows.map(r => r.id).filter(Boolean).concat(transactions.map((t:any) => t.id).filter(Boolean))),
         ]);
+
+        const normMap = new Map();
+        (existingNorms || []).forEach(n => normMap.set(n.flash_transaction_id, n));
 
         const mappingIdx = new Map();
         (mappings || []).forEach((m) => mappingIdx.set(m.flash_type, m));
@@ -957,6 +963,11 @@ Deno.serve(async (req) => {
         };
 
         const normRows = (savedRows || []).map((r: any) => {
+          const existing = normMap.get(r.id);
+          
+          // Se já está enviado, não mexe na normalização via sync
+          if (existing?.status === "enviado") return null;
+
           const flash_type = pickFlashType(r.payload_json);
           const m = mappingIdx.get(flash_type);
           
@@ -969,6 +980,9 @@ Deno.serve(async (req) => {
           
           const hasFull = !!(categoryId && fixedAccountId);
           
+          // Se já existe e não é "pendente" e não temos novo mapping, mantém o que está lá
+          if (existing && existing.status !== "pendente" && !hasFull) return null;
+
           return {
             empresa_id: empresaId,
             flash_transaction_id: r.id,
@@ -984,7 +998,7 @@ Deno.serve(async (req) => {
               ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")` 
               : `Pendente: aguardando mapeamento para o tipo "${flash_type}"`,
           };
-        });
+        }).filter(Boolean);
 
         if (normRows.length > 0) {
           const chunk = 500;
