@@ -237,6 +237,8 @@ async function sendOne(
       valor_liquido: transactionValue
     }
   };
+  
+  // No Conta Azul, o centro de custo no rateio deve ser o NOME (string)
   if (input.cost_center && input.cost_center.trim()) {
     rateioItem.centro_custo = input.cost_center.trim();
   }
