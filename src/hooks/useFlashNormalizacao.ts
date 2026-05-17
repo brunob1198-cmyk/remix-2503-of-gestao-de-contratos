@@ -644,6 +644,10 @@ export function useFlashNormalizacao() {
       if (error) throw error;
       setCategorias(data?.categorias || []);
       setContas(data?.contas_financeiras || []);
+
+      // Atualiza o cache global de metadados
+      GLOBAL_CACHE.categorias = data?.categorias || [];
+      GLOBAL_CACHE.contas = data?.contas_financeiras || [];
       if (!(data?.categorias?.length || 0) && !(data?.contas_financeiras?.length || 0)) {
         setMetadataError("Nenhum dado retornado do Conta Azul. Verifique a conexão.");
       }
