@@ -669,29 +669,31 @@ Deno.serve(async (req) => {
         tx.employee?.costCenter?.id ??
         null;
 
+      // O CC vindo da Flash tem prioridade máxima se tiver nome
       let hasName = !!(tx.costCenter?.name ?? tx.costCenter?.description);
 
-      // 1. Enriquece pelo map de centros de custo carregado
+      // 1. Enriquece pelo map de centros de custo carregado APENAS se ainda não tiver nome
       if (ccId && !hasName && costCenterMap.has(ccId)) {
         const cc = costCenterMap.get(ccId)!;
         tx.costCenter = { id: cc.id, name: cc.name, ...(cc.code ? { code: cc.code } : {}) };
         hasName = true;
       }
 
-      // 2. Fallback por funcionário (tenta userId também, comum em cartão corporativo)
+      // 2. Fallback por funcionário (extração histórica) - AGORA SECUNDÁRIO
+      // Só aplica se a própria Flash não enviou centro de custo algum
       if (!hasName) {
         const empId =
           tx.employeeId ??
           tx.employee_id ??
           tx.employee?.id ??
-          tx.userId ??         // <-- campo adicional para cartão
-          tx.user?.id ??       // <-- campo adicional para cartão
+          tx.userId ??         
+          tx.user?.id ??       
           null;
 
         if (empId && employeeMap.has(empId)) {
           const empData = employeeMap.get(empId)!;
           if (empData.costCenter) {
-            console.log(`[flash-sync] CC via fallback funcionário para tx ${tx.id} (emp ${empId})`);
+            console.log(`[flash-sync] CC via fallback funcionário (histórico) para tx ${tx.id} (emp ${empId})`);
             tx.costCenter = empData.costCenter;
             hasName = true;
           }
