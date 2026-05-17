@@ -255,6 +255,11 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
+          baixa: {
+            data_pagamento: transactionDate,
+            conta_financeira: input.financial_account_id,
+            valor_pago: transactionValue
+          },
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue,
