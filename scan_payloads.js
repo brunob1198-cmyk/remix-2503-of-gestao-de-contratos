@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -16,7 +15,7 @@ async function scan() {
     .from('flash_transactions_raw')
     .select('id, payload_json')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(300);
 
   if (error) {
     console.error(error);
@@ -24,7 +23,6 @@ async function scan() {
   }
 
   const pathsFound = new Set();
-  const summary = {};
 
   function traverse(obj, path = '') {
     if (!obj || typeof obj !== 'object') return;
