@@ -647,7 +647,12 @@ Deno.serve(async (req) => {
 
     // Enriquecer cada transação com centro de custo
     const txsWithoutCC: number[] = [];
-    const expenseDetailCache = new Map<string, any>();
+    
+    // Cache em memória persistente entre transações do mesmo loop (não entre invocações da Edge Function)
+    // Com TTL de 5 minutos para segurança, embora o loop de sync dure menos.
+    const CACHE_TTL = 5 * 60 * 1000; 
+    const expenseDetailCache = new Map<string, { data: any; timestamp: number }>();
+
 
 
     for (let i = 0; i < transactions.length; i++) {
