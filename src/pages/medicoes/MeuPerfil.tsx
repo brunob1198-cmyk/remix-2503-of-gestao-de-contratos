@@ -66,6 +66,12 @@ export default function MeuPerfilPage() {
       }
 
       const url = await uploadImage(fileToUpload);
+      
+      // Delete old avatar if it exists
+      if (avatarUrl) {
+        await deleteImage(avatarUrl);
+      }
+
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
 
       setAvatarUrl(url);
