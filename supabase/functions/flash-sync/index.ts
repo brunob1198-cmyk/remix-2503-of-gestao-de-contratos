@@ -126,6 +126,11 @@ async function getTransactions(params: {
       url.searchParams.set("page", String(page));
       url.searchParams.set("offset", String((page - 1) * FLASH_PAGE_SIZE));
     }
+    
+    // Adicionar parâmetros de expansão para garantir que a API retorne os detalhes necessários
+    url.searchParams.set("embed", "costCenter,employee,category");
+    url.searchParams.set("include", "costCenter");
+    url.searchParams.set("fields", "id,type,amount,date,costCenter,costCenterId,employee,employeeId,userId,category,comments,description,transaction");
     console.log(`[flash-sync] Fetching page ${page} (cursor=${cursor ?? "none"}): ${url.toString()}`);
 
     const res = await fetch(url.toString(), {
