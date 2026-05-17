@@ -318,7 +318,10 @@ export default function ClientesPage() {
                           variant="destructive" 
                           size="sm" 
                           className="h-8 px-3" 
-                          onClick={() => setLogoUrl("")}
+                          onClick={async () => {
+                            if (logoUrl) await deleteImage(logoUrl);
+                            setLogoUrl("");
+                          }}
                         >
                           Remover
                         </Button>
