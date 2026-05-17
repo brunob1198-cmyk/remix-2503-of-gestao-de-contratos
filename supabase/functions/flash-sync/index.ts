@@ -647,6 +647,8 @@ Deno.serve(async (req) => {
 
     // Enriquecer cada transação com centro de custo
     const txsWithoutCC: number[] = [];
+    const expenseDetailCache = new Map<string, any>();
+
 
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i] as any;
