@@ -791,6 +791,74 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ============================================================
+    // PASS FINAL: Cross-reference por employee.id dentro do lote
+    // Cobre transações automáticas de cartão sem CC explícito
+    // ============================================================
+
+    // 1. Constrói mapa employee_id → costCenter a partir das
+    //    transações do lote que JÁ têm CC
+    const empToCCInBatch = new Map<string, any>();
+    for (const tx of transactions) {
+      const t = tx as any;
+      if (t.costCenter?.name && t.employee?.id) {
+        if (!empToCCInBatch.has(t.employee.id)) {
+          empToCCInBatch.set(t.employee.id, t.costCenter);
+        }
+      }
+    }
+    console.log(`[flash-sync] Mapa employee→CC do lote: ${empToCCInBatch.size} funcionários com CC`);
+
+    // 2. Tenta resolver os que ainda estão sem CC pelo mesmo funcionário
+    let resolvidosPorCrossRef = 0;
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i] as any;
+      if (tx.costCenter?.name) continue; // já tem CC
+
+      const empId = tx.employee?.id;
+      if (empId && empToCCInBatch.has(empId)) {
+        tx.costCenter = empToCCInBatch.get(empId);
+        resolvidosPorCrossRef++;
+        console.log(`[flash-sync] CC via cross-ref lote para ${tx.id} (${tx.employee?.name}): ${tx.costCenter.name}`);
+      }
+    }
+    console.log(`[flash-sync] Cross-ref resolveu ${resolvidosPorCrossRef} transações adicionais`);
+
+    // 3. Para os que ainda estão sem CC mesmo após cross-ref do lote,
+    //    busca no banco os CCs já conhecidos desse funcionário
+    const empIdsAindaSemCC = [...new Set(
+      transactions
+        .filter((tx: any) => !tx.costCenter?.name && tx.employee?.id)
+        .map((tx: any) => (tx as any).employee.id)
+    )];
+
+    if (empIdsAindaSemCC.length > 0) {
+      console.log(`[flash-sync] Consultando DB para ${empIdsAindaSemCC.length} funcionários ainda sem CC...`);
+      
+      // Busca o CC mais recente de cada funcionário no banco
+      const { data: ccFromDB } = await adminClient
+        .rpc('get_employee_cc_map', { employee_ids: empIdsAindaSemCC })
+        .catch(() => ({ data: null }));
+
+      if (ccFromDB && Array.isArray(ccFromDB)) {
+        const dbCCMap = new Map<string, any>(
+          ccFromDB.map((row: any) => [row.employee_id, { id: row.cc_id, name: row.cc_name }])
+        );
+        
+        let resolvidosPorDB = 0;
+        for (const tx of transactions) {
+          const t = tx as any;
+          if (t.costCenter?.name) continue;
+          const empId = t.employee?.id;
+          if (empId && dbCCMap.has(empId)) {
+            t.costCenter = dbCCMap.get(empId);
+            resolvidosPorDB++;
+          }
+        }
+        console.log(`[flash-sync] DB cross-ref resolveu ${resolvidosPorDB} transações adicionais`);
+      }
+    }
+
     console.log(`[flash-sync] Fetched ${transactions.length} transações: ${transactions.length - txsWithoutCC.length} com CC, ${txsWithoutCC.length} sem CC (${Math.min(toFetch.length, INDIVIDUAL_FETCH_LIMIT)} buscados individualmente)`);
 
     let inserted = 0;
