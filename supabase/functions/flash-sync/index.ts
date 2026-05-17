@@ -645,71 +645,115 @@ Deno.serve(async (req) => {
       token: flashToken,
     });
 
-    // Enriquecer cada transação com o centro de custo
-    for (const tx of transactions) {
-      const ccId = (tx as any).costCenterId ?? (tx as any).cost_center_id ?? (tx as any).costCenter?.id ?? null;
-      let hasName = !!(tx as any).costCenter?.name;
-      
-      // 1. Tenta enriquecer se já tiver o ID na transação
+    // Enriquecer cada transação com centro de custo
+    const txsWithoutCC: number[] = [];
+
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i] as any;
+
+      // --- extração do ID do centro de custo com mais caminhos ---
+      const ccId =
+        tx.costCenterId ??
+        tx.cost_center_id ??
+        tx.costCenter?.id ??
+        tx.project?.costCenter?.id ??
+        tx.department?.costCenter?.id ??
+        tx.employee?.costCenterId ??
+        tx.employee?.costCenter?.id ??
+        null;
+
+      let hasName = !!(tx.costCenter?.name ?? tx.costCenter?.description);
+
+      // 1. Enriquece pelo map de centros de custo carregado
       if (ccId && !hasName && costCenterMap.has(ccId)) {
         const cc = costCenterMap.get(ccId)!;
-        (tx as any).costCenter = {
-          id: cc.id,
-          name: cc.name,
-          ...(cc.code ? { code: cc.code } : {}),
-          ...(cc.externalId ? { externalId: cc.externalId } : {}),
-        };
+        tx.costCenter = { id: cc.id, name: cc.name, ...(cc.code ? { code: cc.code } : {}) };
         hasName = true;
       }
 
-      // 2. Fallback: Se não tem centro de custo na transação, busca pelo funcionário
-      if (!ccId || !hasName) {
-        const empId = (tx as any).employeeId ?? (tx as any).employee_id ?? (tx as any).employee?.id;
+      // 2. Fallback por funcionário (tenta userId também, comum em cartão corporativo)
+      if (!hasName) {
+        const empId =
+          tx.employeeId ??
+          tx.employee_id ??
+          tx.employee?.id ??
+          tx.userId ??         // <-- campo adicional para cartão
+          tx.user?.id ??       // <-- campo adicional para cartão
+          null;
+
         if (empId && employeeMap.has(empId)) {
           const empData = employeeMap.get(empId)!;
           if (empData.costCenter) {
-            console.log(`[flash-sync] Aplicando fallback de CC para transação ${tx.id} baseada no funcionário ${empId}`);
-            (tx as any).costCenter = empData.costCenter;
+            console.log(`[flash-sync] CC via fallback funcionário para tx ${tx.id} (emp ${empId})`);
+            tx.costCenter = empData.costCenter;
+            hasName = true;
           }
         }
       }
-      
-      // Se ainda assim temos apenas o ID mas sem nome, salvar o ID como nome temporário
-      const finalCcId = (tx as any).costCenterId ?? (tx as any).cost_center_id ?? (tx as any).costCenter?.id;
-      if (finalCcId && !(tx as any).costCenter?.name) {
-        (tx as any).costCenter = { id: finalCcId, name: finalCcId };
+
+      // 3. Marca para fetch individual se ainda sem CC
+      if (!hasName) {
+        txsWithoutCC.push(i);
       }
-      
-      // Se a transação tem employee com costCenterId mas sem name, enriquecer o objeto employee também
-      const empCcId = (tx as any).employee?.costCenterId ?? (tx as any).employee?.costCenter?.id ?? null;
-      const empHasName = !!(tx as any).employee?.costCenter?.name;
-      if (empCcId && !empHasName && costCenterMap.has(empCcId)) {
+
+      // Garante que ID sem nome apareça como fallback textual
+      const finalCcId = tx.costCenterId ?? tx.cost_center_id ?? tx.costCenter?.id;
+      if (finalCcId && !tx.costCenter?.name) {
+        tx.costCenter = { id: finalCcId, name: finalCcId };
+      }
+
+      // Enriquece costCenter do employee também
+      const empCcId = tx.employee?.costCenterId ?? tx.employee?.costCenter?.id ?? null;
+      if (empCcId && !tx.employee?.costCenter?.name && costCenterMap.has(empCcId)) {
         const cc = costCenterMap.get(empCcId)!;
-        (tx as any).employee = (tx as any).employee || {};
-        (tx as any).employee.costCenter = {
-          id: cc.id,
-          name: cc.name,
-        };
+        tx.employee = tx.employee || {};
+        tx.employee.costCenter = { id: cc.id, name: cc.name };
       }
     }
 
+    // 4. Fetch individual para transações que ainda estão sem centro de custo
+    // Limita a 50 para não explodir o tempo de execução
+    const INDIVIDUAL_FETCH_LIMIT = 50;
+    const toFetch = txsWithoutCC.slice(0, INDIVIDUAL_FETCH_LIMIT);
+    if (toFetch.length > 0) {
+      console.log(`[flash-sync] Buscando detalhe individual para ${toFetch.length} transações sem CC...`);
+      for (const idx of toFetch) {
+        const tx = transactions[idx] as any;
+        const txId = tx.id ?? tx.external_id;
+        if (!txId) continue;
+        try {
+          const detail = await fetchExpenseDetail(flashToken, txId);
+          if (detail) {
+            // Mescla campos do detalhe na transação original
+            const detailCcId =
+              detail.costCenterId ??
+              detail.cost_center_id ??
+              detail.costCenter?.id ??
+              detail.employee?.costCenterId ??
+              detail.userId; // alguns endpoints retornam isso
 
-    // === DEBUG: Log dos primeiros 3 registros para diagnóstico ===
-    if (transactions.length > 0) {
-      console.log(`[flash-sync] === DEBUG: Amostra de ${Math.min(3, transactions.length)} transações após enriquecimento ===`);
-      for (let i = 0; i < Math.min(3, transactions.length); i++) {
-        const tx = transactions[i] as any;
-        console.log(`[flash-sync] TX[${i}] id=${tx.id}, description=${(tx.description || '').substring(0, 50)}`);
-        console.log(`[flash-sync]   costCenter:`, JSON.stringify(tx.costCenter));
-        console.log(`[flash-sync]   costCenterId:`, tx.costCenterId);
-        console.log(`[flash-sync]   comments:`, (tx.comments || '(null/undefined)').substring(0, 100));
-        console.log(`[flash-sync]   category:`, JSON.stringify(tx.category));
-        console.log(`[flash-sync]   type:`, tx.type);
-        console.log(`[flash-sync]   employee?.name:`, tx.employee?.name);
-        console.log(`[flash-sync]   employee?.costCenterId:`, tx.employee?.costCenterId);
-        console.log(`[flash-sync]   top-level keys:`, Object.keys(tx).join(", "));
+            if (detailCcId && costCenterMap.has(detailCcId)) {
+              const cc = costCenterMap.get(detailCcId)!;
+              tx.costCenter = { id: cc.id, name: cc.name };
+              console.log(`[flash-sync] CC resolvido via fetch individual para ${txId}: ${cc.name}`);
+            } else if (detail.costCenter?.name) {
+              tx.costCenter = detail.costCenter;
+              console.log(`[flash-sync] CC resolvido via fetch individual para ${txId}: ${detail.costCenter.name}`);
+            }
+
+            // Mescla outros campos úteis do detalhe
+            if (!tx.comments && detail.comments) tx.comments = detail.comments;
+            if (!tx.employee && detail.employee) tx.employee = detail.employee;
+          }
+        } catch (e) {
+          console.warn(`[flash-sync] Falha no fetch individual para ${txId}:`, e?.message ?? e);
+        }
+        // Pequena pausa para não estrangular a API
+        await new Promise(r => setTimeout(r, 100));
       }
     }
+
+    console.log(`[flash-sync] Fetched ${transactions.length} transações: ${transactions.length - txsWithoutCC.length} com CC, ${txsWithoutCC.length} sem CC (${Math.min(toFetch.length, INDIVIDUAL_FETCH_LIMIT)} buscados individualmente)`);
 
     let inserted = 0;
     if (transactions.length > 0) {
