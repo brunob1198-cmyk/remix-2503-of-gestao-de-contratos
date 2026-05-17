@@ -4511,6 +4511,14 @@ export type Database = {
               error: true
             } & "Could not choose the best candidate function between: public.first_of_month(d => date), public.first_of_month(d => timestamptz). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
           }
+      get_employee_cc_map: {
+        Args: { employee_ids: string[] }
+        Returns: {
+          cc_id: string
+          cc_name: string
+          employee_id: string
+        }[]
+      }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
