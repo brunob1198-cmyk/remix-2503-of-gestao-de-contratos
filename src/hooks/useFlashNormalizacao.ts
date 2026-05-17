@@ -381,15 +381,35 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   };
 };
 
+// Cache global para manter os dados entre navegações de tela sem re-fetch desnecessário
+const GLOBAL_CACHE: {
+  empresaId: string | null;
+  transactions: any[];
+  mappings: any[];
+  categorias: any[];
+  contas: any[];
+  lastFetch: number;
+} = {
+  empresaId: null,
+  transactions: [],
+  mappings: [],
+  categorias: [],
+  contas: [],
+  lastFetch: 0,
+};
+
+// TTL de 10 minutos para o cache
+const CACHE_TTL = 10 * 60 * 1000;
+
 export function useFlashNormalizacao() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
   const [loading, setLoading] = useState(false); 
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
-  const [mappings, setMappings] = useState<CategoryMapping[]>([]);
-  const [categorias, setCategorias] = useState<ContaAzulOption[]>([]);
-  const [contas, setContas] = useState<ContaAzulOption[]>([]);
+  const [transactions, setTransactions] = useState<FlashTransactionRow[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.transactions : []);
+  const [mappings, setMappings] = useState<CategoryMapping[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.mappings : []);
+  const [categorias, setCategorias] = useState<ContaAzulOption[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.categorias : []);
+  const [contas, setContas] = useState<ContaAzulOption[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.contas : []);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
@@ -401,6 +421,17 @@ export function useFlashNormalizacao() {
         setLoading(false);
         return;
       }
+
+      // Se não for forceRefresh, verifica se temos cache válido
+      if (!forceRefresh && 
+          GLOBAL_CACHE.empresaId === empresaId && 
+          GLOBAL_CACHE.transactions.length > 0 && 
+          (Date.now() - GLOBAL_CACHE.lastFetch < CACHE_TTL)) {
+        console.log("[useFlashNormalizacao] Usando dados do cache global...");
+        setTransactions(GLOBAL_CACHE.transactions);
+        setMappings(GLOBAL_CACHE.mappings);
+        return;
+      }
       
       // Evitar chamadas duplicadas se já estiver carregando
       if (loading && !forceRefresh) return;
@@ -409,9 +440,6 @@ export function useFlashNormalizacao() {
       console.count("fetchData executado");
       
       if (forceRefresh) {
-        toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
-        console.log("Forcing database refresh for empresaId:", empresaId);
-      }
       
       try {
         console.log("Fetching data for empresaId:", empresaId);
