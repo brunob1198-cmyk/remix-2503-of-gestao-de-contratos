@@ -97,6 +97,10 @@ export default function ClientesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
     try {
+      const cliente = clientes.find(c => c.id === id);
+      if (cliente?.logo_url) {
+        await deleteImage(cliente.logo_url);
+      }
       await deleteCliente.mutateAsync(id);
     } catch (e) {
       console.error(e);
