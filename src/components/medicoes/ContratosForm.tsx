@@ -13,7 +13,7 @@ import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
 
 
 interface Props {
