@@ -381,15 +381,35 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   };
 };
 
+// Cache global para manter os dados entre navegações de tela sem re-fetch desnecessário
+const GLOBAL_CACHE: {
+  empresaId: string | null;
+  transactions: any[];
+  mappings: any[];
+  categorias: any[];
+  contas: any[];
+  lastFetch: number;
+} = {
+  empresaId: null,
+  transactions: [],
+  mappings: [],
+  categorias: [],
+  contas: [],
+  lastFetch: 0,
+};
+
+// TTL de 10 minutos para o cache
+const CACHE_TTL = 10 * 60 * 1000;
+
 export function useFlashNormalizacao() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
   const [loading, setLoading] = useState(false); 
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
-  const [mappings, setMappings] = useState<CategoryMapping[]>([]);
-  const [categorias, setCategorias] = useState<ContaAzulOption[]>([]);
-  const [contas, setContas] = useState<ContaAzulOption[]>([]);
+  const [transactions, setTransactions] = useState<FlashTransactionRow[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.transactions : []);
+  const [mappings, setMappings] = useState<CategoryMapping[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.mappings : []);
+  const [categorias, setCategorias] = useState<ContaAzulOption[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.categorias : []);
+  const [contas, setContas] = useState<ContaAzulOption[]>(GLOBAL_CACHE.empresaId === empresaId ? GLOBAL_CACHE.contas : []);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
@@ -399,6 +419,17 @@ export function useFlashNormalizacao() {
       if (!empresaId) {
         console.log("fetchData skip: no empresaId");
         setLoading(false);
+        return;
+      }
+
+      // Se não for forceRefresh, verifica se temos cache válido
+      if (!forceRefresh && 
+          GLOBAL_CACHE.empresaId === empresaId && 
+          GLOBAL_CACHE.transactions.length > 0 && 
+          (Date.now() - GLOBAL_CACHE.lastFetch < CACHE_TTL)) {
+        console.log("[useFlashNormalizacao] Usando dados do cache global...");
+        setTransactions(GLOBAL_CACHE.transactions);
+        setMappings(GLOBAL_CACHE.mappings);
         return;
       }
       
@@ -562,6 +593,12 @@ export function useFlashNormalizacao() {
         setTransactions(rows);
         setMappings(mappingList);
 
+        // Atualiza o cache global
+        GLOBAL_CACHE.empresaId = empresaId;
+        GLOBAL_CACHE.transactions = rows;
+        GLOBAL_CACHE.mappings = mappingList;
+        GLOBAL_CACHE.lastFetch = Date.now();
+
         const UPSERT_LIMIT = 100;
         if (autoNormPayloads.length > 0) {
           for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
@@ -610,6 +647,10 @@ export function useFlashNormalizacao() {
       if (error) throw error;
       setCategorias(data?.categorias || []);
       setContas(data?.contas_financeiras || []);
+
+      // Atualiza o cache global de metadados
+      GLOBAL_CACHE.categorias = data?.categorias || [];
+      GLOBAL_CACHE.contas = data?.contas_financeiras || [];
       if (!(data?.categorias?.length || 0) && !(data?.contas_financeiras?.length || 0)) {
         setMetadataError("Nenhum dado retornado do Conta Azul. Verifique a conexão.");
       }
