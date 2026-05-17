@@ -894,15 +894,17 @@ Deno.serve(async (req) => {
           toIsoDate((tx as any).ocrData?.date) ||
           toIsoDate(tx.created_at);
 
+        // A Flash API retorna o valor em centavos (inteiro). 
+        // Ex: 3796 significa R$ 37,96. Dividimos por 100 para converter para decimal.
         const rawAmount =
           tx.amount ??
           (tx as any).transaction?.amount ??
           (tx as any).value ??
           0;
         const txAmount =
-          typeof rawAmount === "number"
+          (typeof rawAmount === "number"
             ? rawAmount
-            : parseFloat(String(rawAmount)) || 0;
+            : parseFloat(String(rawAmount)) || 0) / 100;
 
         // Deduplica por external_id. Mantém o último (que tem dados mais ricos).
         uniqueRowsMap.set(extId, {
