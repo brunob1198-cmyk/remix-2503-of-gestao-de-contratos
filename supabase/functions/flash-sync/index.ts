@@ -963,6 +963,11 @@ Deno.serve(async (req) => {
         };
 
         const normRows = (savedRows || []).map((r: any) => {
+          const existing = normMap.get(r.id);
+          
+          // Se já está enviado, não mexe na normalização via sync
+          if (existing?.status === "enviado") return null;
+
           const flash_type = pickFlashType(r.payload_json);
           const m = mappingIdx.get(flash_type);
           
@@ -975,6 +980,9 @@ Deno.serve(async (req) => {
           
           const hasFull = !!(categoryId && fixedAccountId);
           
+          // Se já existe e não é "pendente" e não temos novo mapping, mantém o que está lá
+          if (existing && existing.status !== "pendente" && !hasFull) return null;
+
           return {
             empresa_id: empresaId,
             flash_transaction_id: r.id,
@@ -990,7 +998,7 @@ Deno.serve(async (req) => {
               ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")` 
               : `Pendente: aguardando mapeamento para o tipo "${flash_type}"`,
           };
-        });
+        }).filter(Boolean);
 
         if (normRows.length > 0) {
           const chunk = 500;
