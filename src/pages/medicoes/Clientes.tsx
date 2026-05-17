@@ -136,6 +136,10 @@ export default function ClientesPage() {
       const publicUrl = await uploadImage(fileToUpload);
       
       if (publicUrl) {
+        // Delete old logo if it exists
+        if (logoUrl) {
+          await deleteImage(logoUrl);
+        }
         setLogoUrl(publicUrl);
         toast.success("Logo carregada com sucesso!");
       }
