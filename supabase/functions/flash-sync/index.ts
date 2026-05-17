@@ -309,6 +309,72 @@ async function getCostCenters(token: string): Promise<Map<string, { id: string; 
   return map;
 }
 
+/**
+ * Fetch all employees from Flash API (/core/v1/employees).
+ * Returns a Map from employeeId → { costCenterId, costCenterName }.
+ */
+async function getEmployees(token: string, costCenterMap: Map<string, any>): Promise<Map<string, { costCenterId?: string; costCenter?: any }>> {
+  const map = new Map<string, { costCenterId?: string; costCenter?: any }>();
+  let page = 1;
+  let pagesFetched = 0;
+
+  while (pagesFetched < 100) {
+    const url = new URL("/core/v1/employees", FLASH_API_BASE_URL);
+    url.searchParams.set("pageSize", "100");
+    url.searchParams.set("pageNumber", String(page));
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("limit", "100");
+
+    console.log(`[flash-sync] Fetching employees page ${page}: ${url.toString()}`);
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "x-flash-auth": token,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        console.warn(`[flash-sync] Employees fetch failed: HTTP ${res.status}`);
+        break;
+      }
+
+      const payload = await res.json();
+      const records = payload.records ?? payload.data ?? payload.items ?? payload.results ?? (Array.isArray(payload) ? payload : []);
+      
+      if (!Array.isArray(records) || records.length === 0) break;
+
+      for (const emp of records) {
+        if (emp.id) {
+          const ccId = emp.costCenterId ?? emp.cost_center_id ?? emp.costCenter?.id;
+          if (ccId) {
+            const cc = costCenterMap.get(ccId);
+            map.set(emp.id, {
+              costCenterId: ccId,
+              costCenter: cc || emp.costCenter,
+            });
+          }
+        }
+      }
+
+      pagesFetched++;
+      const totalPages = payload.metadata?.totalPages ?? payload.total_pages ?? payload.totalPages;
+      if (totalPages && page >= Number(totalPages)) break;
+      if (records.length < 100) break;
+      page++;
+    } catch (err) {
+      console.warn(`[flash-sync] Employees fetch error:`, err?.message ?? err);
+      break;
+    }
+  }
+
+  console.log(`[flash-sync] Fetched ${map.size} employees with cost centers from Flash API`);
+  return map;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
