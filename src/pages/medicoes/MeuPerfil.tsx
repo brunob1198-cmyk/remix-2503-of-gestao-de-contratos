@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { compressImage } from "@/lib/imageCompression";
 
 
