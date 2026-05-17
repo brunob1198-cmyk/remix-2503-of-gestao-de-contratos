@@ -3901,11 +3901,13 @@ export type Database = {
         Row: {
           area_nome: string | null
           cliente: string | null
+          cliente_cnpj: string | null
           custo_direto_orcado: number | null
           custo_direto_real: number | null
           custo_total_orcado: number | null
           custo_total_real: number | null
           delta_gerencia: number | null
+          empresa_nome: string | null
           gerencia_orcada: number | null
           gerencia_real: number | null
           indiretos: number | null
@@ -3918,12 +3920,17 @@ export type Database = {
           perc_gerencia_real: number | null
           perc_impostos: number | null
           perc_mb_mkp: number | null
+          perc_mb_orcada: number | null
+          perc_mb_real: number | null
           poc: number | null
           projeto_codigo: string | null
           projeto_id: string | null
           projeto_nome: string | null
+          projeto_status: string | null
           receita_liquida: number | null
+          referencia: string | null
           resultado_direto: number | null
+          resultado_gerencia: number | null
           resultado_total: number | null
           transporte: number | null
         }
