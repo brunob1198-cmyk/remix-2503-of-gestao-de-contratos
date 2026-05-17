@@ -11,6 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
+import { uploadImage } from "@/services/uploadImage";
+import { compressImage } from "@/lib/imageCompression";
+
 
 export default function MeuPerfilPage() {
   const { user, profile, role, refreshProfile } = useAuth();
@@ -55,23 +58,16 @@ export default function MeuPerfilPage() {
     if (!file || !user) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/avatar_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { 
-        upsert: true,
-        cacheControl: 'public, max-age=31536000, immutable'
-      });
-      if (upErr) throw upErr;
-      
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path, {
-        transform: {
-          width: 200,
-          height: 200,
-          resize: 'cover'
-        }
-      });
-      const url = urlData.publicUrl;
+      let fileToUpload = file;
+      try {
+        fileToUpload = await compressImage(file, 400, 0.8);
+      } catch (e) {
+        console.error("Compression failed", e);
+      }
+
+      const url = await uploadImage(fileToUpload);
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
+
       setAvatarUrl(url);
       toast({ title: "Foto atualizada!" });
       refreshProfile();

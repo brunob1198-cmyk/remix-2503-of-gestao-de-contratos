@@ -24,6 +24,8 @@ import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { addToUploadQueue, getUploadQueue, updateUploadStatus, removeFromUploadQueue, clearCompletedUploads, UploadItem } from "@/lib/db";
 import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+import { uploadImage } from "@/services/uploadImage";
+
 
 export default function DiarioCampoPage() {
   const { toast } = useToast();
@@ -77,28 +79,29 @@ export default function DiarioCampoPage() {
           setUploadQueue(await getUploadQueue());
 
           const timestamp = Date.now();
-          const path = item.path || `campo/${item.diarioId}/${timestamp}_${item.id}_${item.file.name}`;
+          
+          let fileToUpload = item.file;
+          try {
+            fileToUpload = await compressImage(item.file, 1200, 0.75);
+          } catch (e) {
+            console.error("Compression failed, using original", e);
+          }
 
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, item.file, { 
-            upsert: true,
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
-          if (uploadError) throw uploadError;
-
-          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          const publicUrl = await uploadImage(fileToUpload);
           
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
               diario_campo_id: item.diarioId, 
-              url: urlData.publicUrl,
-              thumb_url: `${urlData.publicUrl}?width=300&resize=contain&quality=70`,
-              thumb_600_url: `${urlData.publicUrl}?width=600&resize=contain&quality=70`
+              url: publicUrl,
+              thumb_url: publicUrl,
+              thumb_600_url: publicUrl
             }]);
           
           if (insertError) throw insertError;
 
-          await updateUploadStatus(item.id, 'completed', { url: urlData.publicUrl, path });
+          await updateUploadStatus(item.id, 'completed', { url: publicUrl });
+
         } catch (error: any) {
           console.error("Upload error:", error);
           await updateUploadStatus(item.id, 'failed', { error: error.message });

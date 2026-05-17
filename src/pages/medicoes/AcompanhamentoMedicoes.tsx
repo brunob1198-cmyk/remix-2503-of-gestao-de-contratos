@@ -15,6 +15,8 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
 import { GerarMedicaoDialog } from "@/components/medicoes/acompanhamento/GerarMedicaoDialog";
 import { RevisaoParcialDialog } from "@/components/medicoes/acompanhamento/RevisaoParcialDialog";
+import { uploadImage } from "@/services/uploadImage";
+
 
 const STATUS_OPTIONS = [
   { value: "pendente", label: "Pendente", color: "bg-gray-500" },
@@ -173,14 +175,13 @@ export default function AcompanhamentoMedicoesPage() {
   const handleEnviarMedicao = async (data: any) => {
     let capaUrl = null;
     if (data.capaFile) {
-      const ext = data.capaFile.name.split(".").pop() || "pdf";
-      const path = `capas/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { data: uploadData, error } = await supabase.storage.from("medicao-capas").upload(path, data.capaFile);
-      if (!error) {
-        const { data: urlData } = supabase.storage.from("medicao-capas").getPublicUrl(uploadData.path);
-        capaUrl = urlData.publicUrl;
+      try {
+        capaUrl = await uploadImage(data.capaFile);
+      } catch (err) {
+        console.error("Erro upload capa", err);
       }
     }
+
 
     const itemsWithCapa = data.items.map((item: any) => ({ ...item, capa_url: capaUrl }));
 
