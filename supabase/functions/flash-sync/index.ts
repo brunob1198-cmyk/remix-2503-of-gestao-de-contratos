@@ -942,10 +942,14 @@ Deno.serve(async (req) => {
       // Auto-normalization
       try {
         const externalIds = rows.map((r) => r.external_id);
-        const [{ data: savedRows }, { data: mappings }] = await Promise.all([
+        const [{ data: savedRows }, { data: mappings }, { data: existingNorms }] = await Promise.all([
           adminClient.from("flash_transactions_raw").select("id, external_id, payload_json").eq("empresa_id", empresaId).in("external_id", externalIds),
           adminClient.from("flash_category_mapping").select("*").eq("empresa_id", empresaId),
+          adminClient.from("flash_normalizacao").select("flash_transaction_id, status, conta_azul_payload").eq("empresa_id", empresaId).in("flash_transaction_id", rows.map(r => r.id).filter(Boolean).concat(transactions.map((t:any) => t.id).filter(Boolean))),
         ]);
+
+        const normMap = new Map();
+        (existingNorms || []).forEach(n => normMap.set(n.flash_transaction_id, n));
 
         const mappingIdx = new Map();
         (mappings || []).forEach((m) => mappingIdx.set(m.flash_type, m));
