@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { compressImage } from "@/lib/imageCompression";
 
 
