@@ -647,6 +647,8 @@ Deno.serve(async (req) => {
 
     // Enriquecer cada transação com centro de custo
     const txsWithoutCC: number[] = [];
+    const expenseDetailCache = new Map<string, any>();
+
 
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i] as any;
@@ -721,8 +723,18 @@ Deno.serve(async (req) => {
         const tx = transactions[idx] as any;
         const txId = tx.id ?? tx.external_id;
         if (!txId) continue;
+
         try {
-          const detail = await fetchExpenseDetail(flashToken, txId);
+          let detail = expenseDetailCache.get(txId);
+          if (!detail) {
+            detail = await fetchExpenseDetail(flashToken, txId);
+            if (detail) {
+              expenseDetailCache.set(txId, detail);
+              // Pequena pausa apenas se fizemos uma chamada real à API
+              await new Promise(r => setTimeout(r, 100));
+            }
+          }
+
           if (detail) {
             // Mescla campos do detalhe na transação original
             const detailCcId =
@@ -730,7 +742,7 @@ Deno.serve(async (req) => {
               detail.cost_center_id ??
               detail.costCenter?.id ??
               detail.employee?.costCenterId ??
-              detail.userId; // alguns endpoints retornam isso
+              detail.userId;
 
             if (detailCcId && costCenterMap.has(detailCcId)) {
               const cc = costCenterMap.get(detailCcId)!;
@@ -748,8 +760,6 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.warn(`[flash-sync] Falha no fetch individual para ${txId}:`, e?.message ?? e);
         }
-        // Pequena pausa para não estrangular a API
-        await new Promise(r => setTimeout(r, 100));
       }
     }
 
