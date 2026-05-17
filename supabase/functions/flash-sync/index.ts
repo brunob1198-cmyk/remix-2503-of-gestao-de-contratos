@@ -601,12 +601,16 @@ Deno.serve(async (req) => {
   const logId = logRow?.id;
 
   try {
-    // Buscar centros de custo do Flash para enriquecer as transações
+    // Buscar dados auxiliares do Flash para enriquecer as transações
     let costCenterMap = new Map<string, { id: string; name: string; code?: string; externalId?: string }>();
+    let employeeMap = new Map<string, { costCenterId?: string; costCenter?: any }>();
+    
     try {
       costCenterMap = await getCostCenters(flashToken);
+      // Busca funcionários para ter um fallback de centro de custo baseado no perfil do usuário
+      employeeMap = await getEmployees(flashToken, costCenterMap);
     } catch (err) {
-      console.warn(`[flash-sync] Falha ao buscar centros de custo:`, err?.message ?? err);
+      console.warn(`[flash-sync] Falha ao buscar dados auxiliares (CC/Emp):`, err?.message ?? err);
     }
 
     const { transactions, pagesFetched, lastResponse } = await getTransactions({
@@ -615,11 +619,12 @@ Deno.serve(async (req) => {
       token: flashToken,
     });
 
-    // Enriquecer cada transação com o centro de custo se tiver apenas o ID
+    // Enriquecer cada transação com o centro de custo
     for (const tx of transactions) {
       const ccId = (tx as any).costCenterId ?? (tx as any).cost_center_id ?? (tx as any).costCenter?.id ?? null;
-      const hasName = !!(tx as any).costCenter?.name;
+      let hasName = !!(tx as any).costCenter?.name;
       
+      // 1. Tenta enriquecer se já tiver o ID na transação
       if (ccId && !hasName && costCenterMap.has(ccId)) {
         const cc = costCenterMap.get(ccId)!;
         (tx as any).costCenter = {
@@ -628,12 +633,28 @@ Deno.serve(async (req) => {
           ...(cc.code ? { code: cc.code } : {}),
           ...(cc.externalId ? { externalId: cc.externalId } : {}),
         };
-      } else if (ccId && !hasName && !costCenterMap.has(ccId)) {
-        // Se temos o ID mas não encontramos no mapa, salvar o ID como nome temporário
-        (tx as any).costCenter = { id: ccId, name: ccId };
+        hasName = true;
+      }
+
+      // 2. Fallback: Se não tem centro de custo na transação, busca pelo funcionário
+      if (!ccId || !hasName) {
+        const empId = (tx as any).employeeId ?? (tx as any).employee_id ?? (tx as any).employee?.id;
+        if (empId && employeeMap.has(empId)) {
+          const empData = employeeMap.get(empId)!;
+          if (empData.costCenter) {
+            console.log(`[flash-sync] Aplicando fallback de CC para transação ${tx.id} baseada no funcionário ${empId}`);
+            (tx as any).costCenter = empData.costCenter;
+          }
+        }
       }
       
-      // Se a transação tem employee com costCenterId mas sem name, enriquecer também
+      // Se ainda assim temos apenas o ID mas sem nome, salvar o ID como nome temporário
+      const finalCcId = (tx as any).costCenterId ?? (tx as any).cost_center_id ?? (tx as any).costCenter?.id;
+      if (finalCcId && !(tx as any).costCenter?.name) {
+        (tx as any).costCenter = { id: finalCcId, name: finalCcId };
+      }
+      
+      // Se a transação tem employee com costCenterId mas sem name, enriquecer o objeto employee também
       const empCcId = (tx as any).employee?.costCenterId ?? (tx as any).employee?.costCenter?.id ?? null;
       const empHasName = !!(tx as any).employee?.costCenter?.name;
       if (empCcId && !empHasName && costCenterMap.has(empCcId)) {
@@ -645,6 +666,7 @@ Deno.serve(async (req) => {
         };
       }
     }
+
 
     // === DEBUG: Log dos primeiros 3 registros para diagnóstico ===
     if (transactions.length > 0) {
