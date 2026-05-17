@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { uploadImage } from '@/services/uploadImage';
+
 
 export interface ContratoExtraido {
   valor_total: string | null;
@@ -40,32 +42,17 @@ export function useContractExtraction() {
     let result: { data: ContratoExtraido, path: string } | null = null;
     
     try {
-      const cleanFileName = file.name
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
-        .replace(/[^a-zA-Z0-9._-]/g, '_') // only safe chars
-        .replace(/_+/g, '_'); // collapse multiple underscores
-      const fileName = `${Date.now()}-${cleanFileName}`;
-      const filePath = `uploads/${fileName}`;
-
-      console.log('Uploading file to storage:', filePath);
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('contratos')
-        .upload(filePath, file, {
-          cacheControl: 'public, max-age=31536000, immutable'
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error(`Erro ao salvar arquivo: ${uploadError.message}`);
-      }
+      console.log('Uploading file to R2...');
+      const publicUrl = await uploadImage(file);
 
       console.log('File uploaded, calling extraction function...');
       const { data, error } = await supabase.functions.invoke('extract-contract', {
         body: { 
-          filePath: uploadData.path, 
+          fileUrl: publicUrl, 
           fileName: file.name
         }
       });
+
 
       if (error) {
         throw new Error(error.message);
@@ -77,8 +64,9 @@ export function useContractExtraction() {
 
       result = { 
         data: data.data as ContratoExtraido, 
-        path: uploadData.path 
+        path: publicUrl 
       };
+
       
       toast({
         title: 'Leitura concluída',

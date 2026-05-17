@@ -53,6 +53,8 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
+import { uploadImage } from "@/services/uploadImage";
+
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -403,25 +405,14 @@ export default function DiarioObraPage() {
             fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
-          const timestamp = Date.now();
-          const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
+          // Upload to R2 via Worker
+          const publicUrl = await uploadImage(fileToUpload);
 
-          // Upload Original
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
-          
-          if (uploadError) {
-            toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-            return;
-          }
-
-          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
           await addFoto.mutateAsync({
             diario_id: diarioId,
-            url: urlData.publicUrl,
-            thumb_url: `${urlData.publicUrl}?width=300&resize=contain&quality=70`,
-            thumb_600_url: `${urlData.publicUrl}?width=600&resize=contain&quality=70`,
+            url: publicUrl,
+            thumb_url: publicUrl,
+            thumb_600_url: publicUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
@@ -430,6 +421,7 @@ export default function DiarioObraPage() {
           console.error(`Erro ao processar arquivo:`, err);
         }
       }));
+
     }
     setUploadProgress(null);
     setProdItemId("");
@@ -715,7 +707,6 @@ export default function DiarioObraPage() {
       const chunk = fileList.slice(i, i + CHUNK_SIZE);
       
       await Promise.all(chunk.map(async (file, index) => {
-        const fileIndex = i + index;
         try {
           // 1. Compress image if it's an image
           let fileToUpload = file;
@@ -723,27 +714,14 @@ export default function DiarioObraPage() {
             fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
-          // 2. Upload to Storage
-          const timestamp = Date.now();
-          const path = `${diarioId}/${timestamp}_${fileIndex}_${file.name}`;
-
-          const { error: uploadError } = await supabase.storage.from("diario-fotos").upload(path, fileToUpload, {
-            cacheControl: 'public, max-age=31536000, immutable'
-          });
-          
-          if (uploadError) {
-            console.error(`Erro no upload de ${file.name}:`, uploadError);
-            toast({ title: "Erro no upload", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-            return;
-          }
-
-          const { data: urlData } = supabase.storage.from("diario-fotos").getPublicUrl(path);
+          // 2. Upload to R2 via Worker
+          const publicUrl = await uploadImage(fileToUpload);
 
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
-            url: urlData.publicUrl, 
-            thumb_url: `${urlData.publicUrl}?width=300&resize=contain&quality=70`,
-            thumb_600_url: `${urlData.publicUrl}?width=600&resize=contain&quality=70`,
+            url: publicUrl, 
+            thumb_url: publicUrl,
+            thumb_600_url: publicUrl,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
@@ -753,6 +731,7 @@ export default function DiarioObraPage() {
           console.error(`Erro ao processar ${file.name}:`, err);
         }
       }));
+
     }
 
     toast({ title: `${totalFiles} arquivo(s) processado(s)!` });

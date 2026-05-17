@@ -12,6 +12,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { uploadImage } from "@/services/uploadImage";
+import { compressImage } from "@/lib/imageCompression";
+
 
 const columns = ["razao_social", "cnpj", "endereco_completo"] as const;
 type ColKey = typeof columns[number];
@@ -119,28 +122,20 @@ export default function ClientesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const fileExt = file.name.split(".").pop() || "png";
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, {
-        cacheControl: 'public, max-age=31536000, immutable'
-      });
-      
-      if (uploadError) throw uploadError;
+      let fileToUpload = file;
+      try {
+        fileToUpload = await compressImage(file, 200, 0.8);
+      } catch (e) {
+        console.error("Compression failed", e);
+      }
 
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath, {
-        transform: {
-          width: 150,
-          height: 150,
-          resize: 'contain'
-        }
-      });
+      const publicUrl = await uploadImage(fileToUpload);
       
-      if (data.publicUrl) {
-        setLogoUrl(data.publicUrl);
+      if (publicUrl) {
+        setLogoUrl(publicUrl);
         toast.success("Logo carregada com sucesso!");
       }
+
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erro ao fazer upload da logo");

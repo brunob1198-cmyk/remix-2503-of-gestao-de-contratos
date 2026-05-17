@@ -12,9 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication is now handled after creating the service client
-
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -23,6 +20,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader || '' } },
     }).auth.getUser();
+    
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -32,12 +30,21 @@ serve(async (req) => {
 
     console.log('Contract extraction requested by user:', user.id);
 
-    const { pdfBase64, fileName, contentType, filePath } = await req.json();
+    const { pdfBase64, fileName, contentType, filePath, fileUrl } = await req.json();
 
     let effectiveType = contentType || 'application/pdf';
     let contractDocument: { type: string; file?: { file_data: string; filename?: string }; image_url?: { url: string } } | null = null;
 
-    if (filePath) {
+    if (fileUrl) {
+      console.log('Using direct file URL for extraction:', fileUrl);
+      contractDocument = {
+        type: 'file',
+        file: {
+          file_data: fileUrl,
+          filename: fileName || 'contrato.pdf',
+        },
+      };
+    } else if (filePath) {
       console.log('Creating signed URL for file from storage:', filePath);
       const { data: signedData, error: signedError } = await supabase.storage
         .from('contratos')

@@ -13,6 +13,8 @@ import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadImage } from "@/services/uploadImage";
+
 
 interface Props {
   contratoToEdit: Contrato | null;
@@ -274,11 +276,9 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 size="sm" 
                 className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
                 onClick={async () => {
-                  const { data } = await supabase.storage.from('contratos').createSignedUrl(arquivoUrl, 31536000);
-                  if (data?.signedUrl) {
-                    window.open(data.signedUrl, '_blank');
-                  }
+                  window.open(arquivoUrl, '_blank');
                 }}
+
               >
                 Visualizar Arquivo Original
               </Button>
