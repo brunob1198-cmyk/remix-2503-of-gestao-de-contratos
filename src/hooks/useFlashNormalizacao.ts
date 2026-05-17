@@ -440,6 +440,9 @@ export function useFlashNormalizacao() {
       console.count("fetchData executado");
       
       if (forceRefresh) {
+        toast.info("Recarregando dados do banco...", { id: "refresh-flash" });
+        console.log("Forcing database refresh for empresaId:", empresaId);
+      }
       
       try {
         console.log("Fetching data for empresaId:", empresaId);
