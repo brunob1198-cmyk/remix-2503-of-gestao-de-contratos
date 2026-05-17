@@ -255,6 +255,20 @@ export function useDiarioObra(siteId?: string, data?: string) {
 
   const removeProducao = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Get associated photos first
+      const { data: fotosProd } = await supabase
+        .from("diario_fotos")
+        .select("id, url")
+        .eq("diario_producao_id", id);
+
+      if (fotosProd && fotosProd.length > 0) {
+        const { deleteImage } = await import("@/services/uploadImage");
+        for (const foto of fotosProd) {
+          await deleteImage(foto.url);
+          await supabase.from("diario_fotos").delete().eq("id", foto.id);
+        }
+      }
+
       const { error } = await supabase.from("diario_producao").delete().eq("id", id);
       if (error) throw error;
     },
@@ -262,6 +276,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
       queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
+      queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
     },
   });
 
