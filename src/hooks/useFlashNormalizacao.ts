@@ -590,6 +590,12 @@ export function useFlashNormalizacao() {
         setTransactions(rows);
         setMappings(mappingList);
 
+        // Atualiza o cache global
+        GLOBAL_CACHE.empresaId = empresaId;
+        GLOBAL_CACHE.transactions = rows;
+        GLOBAL_CACHE.mappings = mappingList;
+        GLOBAL_CACHE.lastFetch = Date.now();
+
         const UPSERT_LIMIT = 100;
         if (autoNormPayloads.length > 0) {
           for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
