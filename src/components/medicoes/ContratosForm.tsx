@@ -208,9 +208,13 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                   variant="ghost" 
                   size="sm" 
                   className="mt-1 h-6 text-[10px] text-blue-600 hover:text-blue-800 relative z-20"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
+                    if (arquivoUrl) {
+                      await deleteImage(arquivoUrl);
+                    }
                     setSelectedFile(null);
+                    setArquivoUrl("");
                     setStatusProcessamento("pendente");
                     const input = document.getElementById('contract-upload-input') as HTMLInputElement;
                     if (input) input.value = '';
