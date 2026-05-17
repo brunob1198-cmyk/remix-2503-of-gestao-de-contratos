@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { compressImage } from "@/lib/imageCompression";
 
 
@@ -97,6 +97,10 @@ export default function ClientesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
     try {
+      const cliente = clientes.find(c => c.id === id);
+      if (cliente?.logo_url) {
+        await deleteImage(cliente.logo_url);
+      }
       await deleteCliente.mutateAsync(id);
     } catch (e) {
       console.error(e);
@@ -132,6 +136,10 @@ export default function ClientesPage() {
       const publicUrl = await uploadImage(fileToUpload);
       
       if (publicUrl) {
+        // Delete old logo if it exists
+        if (logoUrl) {
+          await deleteImage(logoUrl);
+        }
         setLogoUrl(publicUrl);
         toast.success("Logo carregada com sucesso!");
       }
@@ -310,7 +318,10 @@ export default function ClientesPage() {
                           variant="destructive" 
                           size="sm" 
                           className="h-8 px-3" 
-                          onClick={() => setLogoUrl("")}
+                          onClick={async () => {
+                            if (logoUrl) await deleteImage(logoUrl);
+                            setLogoUrl("");
+                          }}
                         >
                           Remover
                         </Button>

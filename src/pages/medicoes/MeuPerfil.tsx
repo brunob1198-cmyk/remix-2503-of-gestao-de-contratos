@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { compressImage } from "@/lib/imageCompression";
 
 
@@ -66,6 +66,12 @@ export default function MeuPerfilPage() {
       }
 
       const url = await uploadImage(fileToUpload);
+      
+      // Delete old avatar if it exists
+      if (avatarUrl) {
+        await deleteImage(avatarUrl);
+      }
+
       await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id);
 
       setAvatarUrl(url);
