@@ -500,6 +500,12 @@ export function useFlashNormalizacao() {
             base.conta_azul_payload = n.conta_azul_payload;
             base.enviado_at = n.enviado_at;
 
+            // PRIORIDADE: Se o usuário editou o centro de custo manualmente, ele está no payload da normalização.
+            // Sobrescrevemos o valor extraído da Flash (base.flash_cost_center) pelo valor manual se ele existir.
+            if (n.conta_azul_payload?.cost_center) {
+              base.flash_cost_center = n.conta_azul_payload.cost_center;
+            }
+
             if (!base.conta_azul_account_id && flashAccount) {
               base.conta_azul_account_id = flashAccount.id;
               base.conta_azul_account_name = flashAccount.name;
