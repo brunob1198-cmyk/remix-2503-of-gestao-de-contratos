@@ -245,12 +245,38 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
     // Summary Styling (top of the sheet)
     ws["A1"].s = { font: { bold: true, size: 14 } };
+    
+    // Card Colors from UI
+    const cardColors = [
+      "DBEAFE", // Blue (Produção)
+      "E0E7FF", // Indigo (Custo Total)
+      "D1FAE5", // Emerald (Res. Direto)
+      "F3E8FF", // Purple (Res. Total)
+      "FEF3C7", // Amber (MB Orçada)
+      "DCFCE7", // Green (MB Real)
+      "F1F5F9", // Slate (% MB Orç)
+      "E0E7FF"  // Indigo (% MB Real)
+    ];
+
     for (let i = 5; i <= 12; i++) {
+      const colorIndex = i - 5;
       const addrL = XLSX.utils.encode_cell({ r: i, c: 0 });
       const addrV = XLSX.utils.encode_cell({ r: i, c: 1 });
-      const style = { font: { bold: true } };
-      if (ws[addrL]) ws[addrL].s = { ...ws[addrL].s, ...style };
+      
+      const style = { 
+        font: { bold: true },
+        fill: { fgColor: { rgb: cardColors[colorIndex] } },
+        border: {
+          top: { style: "thin" },
+          bottom: { style: "thin" },
+          left: { style: "thin" },
+          right: { style: "thin" }
+        }
+      };
+      
+      if (ws[addrL]) ws[addrL].s = style;
       if (ws[addrV]) {
+        ws[addrV].s = style;
         if (i >= 11) ws[addrV].z = "0.00%";
         else ws[addrV].z = '"R$ "#,##0.00';
       }
