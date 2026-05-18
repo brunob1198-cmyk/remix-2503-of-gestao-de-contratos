@@ -1974,50 +1974,52 @@ export default function NormalizacaoFlashPage() {
                   Nenhum mapeamento salvo ainda. Salve uma normalização na tabela acima para criar um.
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo Flash</TableHead>
-                      <TableHead>Categoria Flash</TableHead>
-                      <TableHead>Centro de Custo Flash</TableHead>
-                      <TableHead>Operação</TableHead>
-                      <TableHead>Categoria Conta Azul</TableHead>
-                      <TableHead>Conta financeira CA</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mappings.map((m: any) => (
-                      <TableRow key={m.id}>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-xs">
-                            {m.flash_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {m.flash_category ? (
-                            <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
-                              {m.flash_category}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {m.flash_cost_center ? (
-                            <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
-                              {m.flash_cost_center}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground italic text-[10px]">Todos</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
-                        <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
-                        <TableCell className="text-xs">{m.conta_azul_account_name || "—"}</TableCell>
+                <div className="overflow-x-auto relative max-h-[60vh] overflow-y-auto border rounded-md shadow-inner">
+                  <Table className="border-separate border-spacing-0">
+                    <TableHeader className="sticky top-0 z-20 bg-background shadow-md">
+                      <TableRow>
+                        <TableHead>Tipo Flash</TableHead>
+                        <TableHead>Categoria Flash</TableHead>
+                        <TableHead>Centro de Custo Flash</TableHead>
+                        <TableHead>Operação</TableHead>
+                        <TableHead>Categoria Conta Azul</TableHead>
+                        <TableHead>Conta financeira CA</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {mappings.map((m: any) => (
+                        <TableRow key={m.id}>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {m.flash_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {m.flash_category ? (
+                              <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
+                                {m.flash_category}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {m.flash_cost_center ? (
+                              <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
+                                {m.flash_cost_center}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground italic text-[10px]">Todos</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
+                          <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
+                          <TableCell className="text-xs">{m.conta_azul_account_name || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
