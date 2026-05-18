@@ -575,18 +575,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         size="icon" 
                         className="h-7 w-7 text-muted-foreground hover:text-primary"
                         onClick={() => {
-                          let mesRef = "";
-                          try {
-                            const date = parseISO(row.referencia);
-                            mesRef = format(date, 'yyyy-MM');
-                          } catch (e) {
-                            mesRef = format(new Date(), 'yyyy-MM');
-                          }
                           setFcaState({
                             open: true,
                             projetoId: row.projetoId,
                             projetoNome: row.projetoNome,
-                            mesReferencia: mesRef,
+                            mesReferencia: row.mesReferencia,
                             mesLabel: row.referencia
                           });
                         }}
