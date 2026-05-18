@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
-import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+
 import { useSites } from "@/hooks/useSites";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -1056,10 +1056,8 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <ResponsiveImage
+              <img
                 src={lightboxPhoto.url}
-                thumb300={lightboxPhoto.thumb_url}
-                thumb600={lightboxPhoto.thumb_600_url}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
               />
@@ -1166,10 +1164,8 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <ResponsiveImage 
+                <img 
                   src={f.url} 
-                  thumb300={f.thumb_url}
-                  thumb600={f.thumb_600_url}
                   alt="" 
                   className="w-full h-full object-cover" 
                 />
@@ -1385,10 +1381,8 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           onClick={() => onPhotoClick(f)}
                           className="block w-full relative group"
                         >
-                          <ResponsiveImage
+                          <img
                             src={f.url}
-                            thumb300={f.thumb_url}
-                            thumb600={f.thumb_600_url}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
                           />

@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
-import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
   AlertDialog,
@@ -128,7 +128,7 @@ export default function DiarioObraPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("STATE FINAL (FOTOS):", fotos);
+      console.log("PHOTO STATE:", fotos);
     }
   }, [fotos]);
 
@@ -415,6 +415,7 @@ export default function DiarioObraPage() {
 
           // Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
+          console.log("PHOTO URL:", publicUrl);
 
           // Verify URL accessibility
           const isAccessible = await verifyImageUrl(publicUrl);
@@ -1341,13 +1342,11 @@ export default function DiarioObraPage() {
                                           <DialogTrigger asChild>
                                             <div className="w-full h-full">
                                               {isFileImage(f.url) ? (
-                                                 <ResponsiveImage 
-                                                   src={f.url} 
-                                                   thumb300={f.thumb_url}
-                                                   thumb600={f.thumb_600_url}
-                                                   alt={f.legenda || "foto"} 
-                                                   className="w-full h-full object-cover" 
-                                                 />
+                                                  <img 
+                                                    src={f.url} 
+                                                    alt={f.legenda || "foto"} 
+                                                    className="w-full h-full object-cover" 
+                                                  />
                                               ) : (
                                                 <div className="w-full h-full flex items-center justify-center bg-muted text-[9px] text-center font-medium p-1">
                                                   {getFileIcon(f.url) || '📎'}
@@ -1915,10 +1914,8 @@ export default function DiarioObraPage() {
                               <DialogTrigger asChild>
                                 <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                   {isFileImage(f.url) ? (
-                                      <ResponsiveImage 
+                                      <img 
                                         src={f.url} 
-                                        thumb300={f.thumb_url}
-                                        thumb600={f.thumb_600_url}
                                         alt={f.legenda || "foto"} 
                                         className="w-full h-full object-cover" 
                                       />
@@ -2044,10 +2041,8 @@ export default function DiarioObraPage() {
                             <DialogTrigger asChild>
                               <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                 {isFileImage(f.url) ? (
-                                <ResponsiveImage 
+                                <img 
                                   src={f.url} 
-                                  thumb300={f.thumb_url}
-                                  thumb600={f.thumb_600_url}
                                   alt={f.legenda || "foto"} 
                                   className="w-full h-full object-cover" 
                                 />

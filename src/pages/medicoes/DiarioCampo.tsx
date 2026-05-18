@@ -23,7 +23,7 @@ import { compressImage } from "@/lib/imageCompression";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
-import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+
 import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
 
 
@@ -88,6 +88,7 @@ export default function DiarioCampoPage() {
           }
 
           const publicUrl = await uploadImage(fileToUpload);
+          console.log("PHOTO URL:", publicUrl);
           
           // Validation: Verify if the URL is accessible
           const isAccessible = await verifyImageUrl(publicUrl);
@@ -171,7 +172,7 @@ export default function DiarioCampoPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("STATE FINAL (FOTOS CAMPO):", fotos);
+      console.log("PHOTO STATE:", fotos);
     }
   }, [fotos]);
 
@@ -606,10 +607,8 @@ export default function DiarioCampoPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                          <ResponsiveImage
+                          <img
                             src={foto.url}
-                            thumb300={foto.thumb_url}
-                            thumb600={foto.thumb_600_url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
                           />
