@@ -7,6 +7,7 @@ import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filt
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
 import { Input } from "@/components/ui/input";
