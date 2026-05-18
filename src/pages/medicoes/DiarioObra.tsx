@@ -126,6 +126,12 @@ export default function DiarioObraPage() {
     previsoes = {}
   } = useDiarioObra(selectedSiteId, selectedDate);
 
+  useEffect(() => {
+    if (fotos && fotos.length > 0) {
+      console.log("STATE FINAL (FOTOS):", fotos);
+    }
+  }, [fotos]);
+
   // Diário de Campo data — fetch ALL activities for the project+date (ignore site filter)
   const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
 

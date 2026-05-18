@@ -24,7 +24,8 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   const data = await response.json();
-  console.log("UPLOAD RESPONSE:", data);
+  console.log("UPLOAD JSON:", data);
+  console.log("URL SALVA:", data.url);
 
   if (!data.success) {
     throw new Error(data.error || "Falha upload");
