@@ -181,8 +181,28 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       totals.mbOrcada, totals.mbRealizada, totals.percMbOrcada, totals.percMbReal
     ];
 
-    const worksheetData = [header, ...rows, totalRow];
+    const summaryHeaderRows = [
+      ["RESUMO EXECUTIVO - ANÁLISE DE CUSTOS E MARGENS"],
+      ["Data de Geração:", format(new Date(), "dd/MM/yyyy HH:mm")],
+      ["Período:", `${format(periodoInicio, "MM/yyyy")} a ${format(periodoFim, "MM/yyyy")}`],
+      [""],
+      ["MÉTRICA", "VALOR"],
+      ["Produção Total", totals.poc],
+      ["Custo Total", totals.custoTotalReal],
+      ["Resultado Direto", totals.custoDiretoOrcado - totals.custoDiretoReal],
+      ["Resultado Total", totals.resultadoTotal],
+      ["MB Orçada", totals.mbOrcada],
+      ["MB Real", totals.mbRealizada],
+      ["% MB Orç", totals.percMbOrcada],
+      ["% MB Real", totals.percMbReal],
+      [""],
+      ["DETALHAMENTO POR PROJETO"],
+      [""]
+    ];
+
+    const worksheetData = [...summaryHeaderRows, header, ...rows, totalRow];
     const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    const summaryRowsCount = summaryHeaderRows.length;
 
     const colors = {
       receita: "DCFCE7", // bg-green-100
