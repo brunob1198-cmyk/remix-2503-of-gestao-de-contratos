@@ -378,14 +378,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     
     // Fetch FCA events for all unique project+month combinations in the filtered rows
     const uniqueProjects = Array.from(new Set(analiseRows.map(r => r.projetoId)));
-    const uniqueMonths = Array.from(new Set(analiseRows.map(r => {
-      try {
-        const date = parseISO(r.referencia);
-        return format(date, 'yyyy-MM');
-      } catch (e) {
-        return null;
-      }
-    }))).filter(Boolean);
+    const uniqueMonths = Array.from(new Set(analiseRows.map(r => r.mesReferencia))).filter(Boolean);
 
     if (uniqueProjects.length > 0 && uniqueMonths.length > 0) {
       const { data: fcaEvents } = await supabase
