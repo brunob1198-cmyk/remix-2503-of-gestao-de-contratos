@@ -178,8 +178,14 @@ export default function AcompanhamentoMedicoesPage() {
     if (data.capaFile) {
       try {
         capaUrl = await uploadImage(data.capaFile);
+        const isAccessible = await verifyImageUrl(capaUrl);
+        if (!isAccessible) {
+          throw new Error("Falha ao verificar a acessibilidade da imagem de capa enviada.");
+        }
       } catch (err) {
         console.error("Erro upload capa", err);
+        toast({ title: "Erro no upload da capa", description: err instanceof Error ? err.message : "Erro desconhecido", variant: "destructive" });
+        return;
       }
     }
 
