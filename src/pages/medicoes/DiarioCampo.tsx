@@ -169,6 +169,12 @@ export default function DiarioCampoPage() {
 
   const { fotos, addFoto, removeFoto } = useDiarioCampoFotos(currentAtividade?.id);
 
+  useEffect(() => {
+    if (fotos && fotos.length > 0) {
+      console.log("STATE FINAL (FOTOS CAMPO):", fotos);
+    }
+  }, [fotos]);
+
   const { data: calendarRaw = [] } = useDiarioCampoCalendario(
     selectedProjetoId || undefined, selectedSiteId || undefined, periodoInicio, periodoFim
   );
