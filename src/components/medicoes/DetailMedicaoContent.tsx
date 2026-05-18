@@ -189,9 +189,8 @@ export function DetailMedicaoContent({
     // Now everything should be a full URL, but we'll check for legacy cases
     if (url.startsWith('http') || url.startsWith('data:')) return url;
     
-    // Legacy fallback: check if it might be a storage path (legacy)
-    const { data } = supabase.storage.from('empresa_logos').getPublicUrl(url);
-    return data?.publicUrl || url;
+    // No legacy fallback to Supabase Storage - we use the URL directly
+    return url;
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 
