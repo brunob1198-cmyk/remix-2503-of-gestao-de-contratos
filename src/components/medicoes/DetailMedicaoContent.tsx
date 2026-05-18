@@ -117,13 +117,24 @@ export function DetailMedicaoContent({
       if (error) throw error;
       if (!data) return null;
 
-      // Get signed URL for the existing storage path
-      const { data: signedData, error: sErr } = await supabase.storage
-        .from("medicoes-pdf")
-        .createSignedUrl(data.storage_path, 31536000);
-      
-      if (sErr) throw sErr;
-      return { ...data, signedUrl: signedData.signedUrl };
+      // The storage_path is now likely a direct URL or R2 URL, or it was a legacy path.
+      // If it looks like a full URL (http), return it as signedUrl (legacy name compatibility)
+      if (data.storage_path.startsWith('http')) {
+        return { ...data, signedUrl: data.storage_path };
+      }
+
+      // Legacy fallback: attempt to get signed URL from Supabase storage if it's not a full URL
+      try {
+        const { data: signedData, error: sErr } = await supabase.storage
+          .from("medicoes-pdf")
+          .createSignedUrl(data.storage_path, 31536000);
+        
+        if (sErr) throw sErr;
+        return { ...data, signedUrl: signedData.signedUrl };
+      } catch (e) {
+        console.warn("Legacy storage retrieval failed", e);
+        return { ...data, signedUrl: data.storage_path };
+      }
     },
     enabled: !!detailMedicao.id
   });
@@ -137,6 +148,7 @@ export function DetailMedicaoContent({
       setExportProgress(100);
     }
   }, [existingExport, addLog]);
+
 
 
   useEffect(() => {
@@ -181,20 +193,24 @@ export function DetailMedicaoContent({
   const site = sites.find(s => s.id === detailMedicao.site_id);
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
-  const getLogoUrl = useCallback((url: string | null | undefined, bucket: string = 'empresa_logos') => {
+  const getLogoUrl = useCallback((url: string | null | undefined) => {
     if (!url) return null;
+    // Now everything should be a full URL, but we'll check for legacy cases
     if (url.startsWith('http') || url.startsWith('data:')) return url;
-    const { data } = supabase.storage.from(bucket).getPublicUrl(url);
-    return data?.publicUrl || null;
+    
+    // Legacy fallback: check if it might be a storage path (legacy)
+    const { data } = supabase.storage.from('empresa_logos').getPublicUrl(url);
+    return data?.publicUrl || url;
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 
-    getLogoUrl(detailMedicao.logo_empresa_url, 'empresa_logos') || getLogoUrl(localStorage.getItem("custom_logo_url"), 'empresa_logos'),
+    getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url")),
   [detailMedicao.logo_empresa_url, getLogoUrl]);
 
   const finalClienteLogoUrl = useMemo(() => 
-    getLogoUrl(clienteLogoUrl, 'clientes_logos'),
+    getLogoUrl(clienteLogoUrl),
   [clienteLogoUrl, getLogoUrl]);
+
 
   // Pre-load logos into base64 to avoid CORS issues during PDF generation
   useEffect(() => {

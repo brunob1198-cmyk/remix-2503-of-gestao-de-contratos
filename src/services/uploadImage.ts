@@ -5,7 +5,7 @@ export async function uploadImage(file: File): Promise<string> {
   console.log("UPLOAD ATTEMPT:", file.name, file.size);
 
   const response = await fetch(
-    "https://obras-upload-api.bruno1198.workers.dev",
+    "https://obras-upload-api.bruno1198.workers.dev/",
     {
       method: "POST",
       body: formData,
@@ -15,14 +15,14 @@ export async function uploadImage(file: File): Promise<string> {
   if (!response.ok) {
     const errorText = await response.text();
     console.error("UPLOAD ERROR RESPONSE:", errorText);
-    throw new Error(`Erro no upload: ${response.status} ${response.statusText}`);
+    throw new Error(`Erro upload: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
   console.log("UPLOAD RESPONSE:", data);
 
   if (!data.success) {
-    throw new Error(data.error || "Erro no upload para o R2");
+    throw new Error(data.error || "Falha upload");
   }
 
   return data.url;
@@ -39,7 +39,6 @@ export async function verifyImageUrl(url: string): Promise<boolean> {
     return false;
   }
 }
-
 
 export async function deleteImage(url: string): Promise<boolean> {
   if (!url) return false;

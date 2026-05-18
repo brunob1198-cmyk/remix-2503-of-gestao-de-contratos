@@ -836,18 +836,17 @@ export async function exportMedicaoToPdf(
       options.onPreviewGenerated(previewUrl);
     }
 
-    addLog("Finalizando e enviando cópia para o servidor...", 'info');
+    addLog("Finalizando e enviando cópia para o servidor (R2)...", 'info');
     
     try {
-      const storagePath = `${medicaoId}/${options.filename}`;
-      await supabase.storage
-        .from("medicoes-pdf")
-        .upload(storagePath, finalBlob, { upsert: true });
+      const pdfFile = new File([finalBlob], options.filename, { type: 'application/pdf' });
+      const { uploadImage } = await import("@/services/uploadImage");
+      const publicUrl = await uploadImage(pdfFile);
 
       await supabase.from("medicao_exports").insert({
         medicao_id: medicaoId,
         filename: options.filename,
-        storage_path: storagePath,
+        storage_path: publicUrl,
         quality: options.quality
       });
 
@@ -863,7 +862,7 @@ export async function exportMedicaoToPdf(
       await clearPartialPDFs(medicaoId);
       await clearExportState(medicaoId);
     } catch (saveErr) {
-      addLog("Erro na etapa final de salvamento.", 'error');
+      addLog("Erro na etapa final de salvamento (R2).", 'error');
     }
     
     onProgress(100);
@@ -874,3 +873,4 @@ export async function exportMedicaoToPdf(
     }
   }
 }
+
