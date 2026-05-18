@@ -410,6 +410,12 @@ export default function DiarioObraPage() {
           // Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
 
+          // Verify URL accessibility
+          const isAccessible = await verifyImageUrl(publicUrl);
+          if (!isAccessible) {
+             throw new Error("A URL retornada pelo R2 não está acessível.");
+          }
+
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: publicUrl,
