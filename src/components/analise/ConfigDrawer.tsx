@@ -47,6 +47,8 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
   const [inss, setInss] = useState(0);
   const [dara, setDara] = useState(0);
   const [icms, setIcms] = useState(0);
+  const [irpj, setIrpj] = useState(0);
+  const [csll, setCsll] = useState(0);
 
   // --- MKP STATE ---
   const [obraCodigo, setObraCodigo] = useState("");
@@ -108,8 +110,10 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
       setInss(impostoData.perc_inss * 100);
       setDara(impostoData.perc_dara * 100);
       setIcms(impostoData.perc_icms * 100);
+      setIrpj((impostoData.perc_irpj || 0) * 100);
+      setCsll((impostoData.perc_csll || 0) * 100);
     } else {
-      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
+      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0); setIrpj(0); setCsll(0);
     }
   }, [impostoData]);
 
@@ -127,7 +131,7 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
     }
   }, [mkpData]);
 
-  const totalImpostos = (issqn + pis + cofins + inss + dara + icms) / 100;
+  const totalImpostos = (issqn + pis + cofins + inss + dara + icms + irpj + csll) / 100;
   const percTotalCustos = (percCustoDireto + percGerencia + percRisco + percTreinamento + percInflacao) / 100;
   const percMbEsperado = 1 - percTotalCustos - totalImpostos;
   const bdiVenda = 1 / (1 - totalImpostos);
@@ -142,6 +146,9 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
         perc_inss: inss / 100,
         perc_dara: dara / 100,
         perc_icms: icms / 100,
+        perc_irpj: irpj / 100,
+        perc_csll: csll / 100,
+        perc_total_impostos: totalImpostos,
       };
 
       if (impostoData?.id) {
@@ -238,6 +245,14 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
               <div className="space-y-2">
                 <Label>ICMS (%)</Label>
                 <Input type="number" step="0.01" value={icms} onChange={e => setIcms(Number(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>IRPJ (%)</Label>
+                <Input type="number" step="0.01" value={irpj} onChange={e => setIrpj(Number(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>CSLL (%)</Label>
+                <Input type="number" step="0.01" value={csll} onChange={e => setCsll(Number(e.target.value))} />
               </div>
             </div>
 

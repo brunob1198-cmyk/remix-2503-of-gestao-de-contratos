@@ -113,6 +113,7 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
         perc_icms: icms / 100,
         perc_irpj: irpj / 100,
         perc_csll: csll / 100,
+        perc_total_impostos: totalImpostos,
       };
 
       if (id) {
