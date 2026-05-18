@@ -14,6 +14,7 @@ export interface AnaliseCustosRow {
   area: string;
   cliente: string;
   referencia: string; // "Jan/2026"
+  mesReferencia: string; // "2026-01"
 
   // ── RECEITA ──────────────────────────────────────
   poc: number; // Produção bruta (POC do período)
