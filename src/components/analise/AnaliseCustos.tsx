@@ -116,7 +116,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return { ...sum, ...avg };
   }, [analiseRows]);
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const header = [
       "Referência", "Área", "Projeto", "Cliente", 
       "Produção (POC)", "% Impostos", "Receita Líquida",
@@ -299,9 +299,56 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     }
     wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
 
+    // FCA Sheet
+    const fcaHeader = ["Projeto", "Mês", "Fato", "Causa", "Ação"];
+    const fcaRows: any[] = [];
+    
+    // Fetch FCA events for all unique project+month combinations in the filtered rows
+    const uniqueProjects = Array.from(new Set(analiseRows.map(r => r.projetoId)));
+    const uniqueMonths = Array.from(new Set(analiseRows.map(r => {
+      try {
+        const date = parseISO(r.referencia);
+        return format(date, 'yyyy-MM');
+      } catch (e) {
+        return null;
+      }
+    }))).filter(Boolean);
+
+    if (uniqueProjects.length > 0 && uniqueMonths.length > 0) {
+      const { data: fcaEvents } = await supabase
+        .from("fca_eventos")
+        .select("projeto_id, mes_referencia, fato, causa, acao")
+        .in("projeto_id", uniqueProjects)
+        .in("mes_referencia", uniqueMonths as string[]);
+
+      if (fcaEvents && fcaEvents.length > 0) {
+        fcaEvents.forEach(evt => {
+          const projeto = analiseRows.find(r => r.projetoId === evt.projeto_id);
+          fcaRows.push([
+            projeto ? `${projeto.projetoCodigo} - ${projeto.projetoNome}` : evt.projeto_id,
+            evt.mes_referencia,
+            evt.fato,
+            evt.causa,
+            evt.acao
+          ]);
+        });
+      }
+    }
+
+    const wsFca = XLSX.utils.aoa_to_sheet([fcaHeader, ...fcaRows]);
+    wsFca["!cols"] = [{ wch: 30 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 40 }];
+    
+    // FCA Styling
+    const fcaRange = XLSX.utils.decode_range(wsFca["!ref"] || "A1");
+    for (let C = fcaRange.s.c; C <= fcaRange.e.c; ++C) {
+      const address = XLSX.utils.encode_col(C) + "1";
+      if (wsFca[address]) wsFca[address].s = headerStyle("FDE68A"); // Amber 200
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Análise de Custos");
     XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
+    XLSX.utils.book_append_sheet(wb, wsFca, "Eventos FCA");
 
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
