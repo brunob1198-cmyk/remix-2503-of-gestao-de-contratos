@@ -1414,10 +1414,10 @@ export default function NormalizacaoFlashPage() {
                 <TooltipProvider delayDuration={200}>
                   <div 
                     ref={parentRef}
-                    className="overflow-x-auto relative min-h-[500px] max-h-[70vh] overflow-y-auto"
+                    className="overflow-x-auto relative min-h-[500px] max-h-[75vh] overflow-y-auto border rounded-md shadow-inner"
                   >
-                    <Table className="table-fixed min-w-[2150px]">
-                      <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                    <Table className="table-fixed min-w-[2150px] border-separate border-spacing-0">
+                      <TableHeader className="sticky top-0 z-20 bg-background shadow-md">
                         <TableRow>
                           <TableHead className="w-[40px]">
                             <Checkbox 
