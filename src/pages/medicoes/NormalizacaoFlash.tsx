@@ -1890,9 +1890,9 @@ export default function NormalizacaoFlashPage() {
                 </div>
               ) : (
                 <TooltipProvider delayDuration={200}>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
+                  <div className="overflow-x-auto relative max-h-[60vh] overflow-y-auto border rounded-md shadow-inner">
+                    <Table className="border-separate border-spacing-0">
+                      <TableHeader className="sticky top-0 z-20 bg-background shadow-md">
                         <TableRow>
                           <TableHead className="w-[40px]">
                             <Checkbox
