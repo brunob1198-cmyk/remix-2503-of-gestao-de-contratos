@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
 import { useLancamentosMedicao } from "@/hooks/useLancamentos";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
