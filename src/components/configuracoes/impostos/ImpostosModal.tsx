@@ -105,9 +105,9 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
     mutationFn: async () => {
       const payload = {
         projeto_id: projetoId,
-        perc_issqn: issqn / 100,
-        perc_pis: pis / 100,
-        perc_cofins: cofins / 100,
+        perc_issqn: (issqn || 0) / 100,
+        perc_pis: (pis || 0) / 100,
+        perc_cofins: (cofins || 0) / 100,
         perc_inss: (inss || 0) / 100,
         perc_dara: (dara || 0) / 100,
         perc_icms: (icms || 0) / 100,
