@@ -377,29 +377,38 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const fcaHeader = ["Projeto", "Mês", "Fato", "Causa", "Ação"];
     const fcaRows: any[] = [];
     
-    // Fetch FCA events for all unique project+month combinations in the filtered rows
-    const uniqueProjects = Array.from(new Set(analiseRows.map(r => r.projetoId)));
-    const uniqueMonths = Array.from(new Set(analiseRows.map(r => r.mesReferencia))).filter(Boolean);
+    // Fetch ALL FCA events for the selected projects to be more comprehensive
+    const { data: fcaEvents } = await supabase
+      .from("fca_eventos")
+      .select("projeto_id, mes_referencia, fato, causa, acao")
+      .in("projeto_id", projetoIds);
 
-    if (uniqueProjects.length > 0 && uniqueMonths.length > 0) {
-      const { data: fcaEvents } = await supabase
-        .from("fca_eventos")
-        .select("projeto_id, mes_referencia, fato, causa, acao")
-        .in("projeto_id", uniqueProjects)
-        .in("mes_referencia", uniqueMonths as string[]);
+    if (fcaEvents && fcaEvents.length > 0) {
+      // Sort by month (descending)
+      const sortedEvents = [...fcaEvents].sort((a, b) => b.mes_referencia.localeCompare(a.mes_referencia));
+      
+      sortedEvents.forEach(evt => {
+        // Find project info from allRows (even if filtered out, as long as it was loaded)
+        const projectInfo = allRows.find(r => r.projetoId === evt.projeto_id);
+        
+        // Format month label (e.g., "2024-01" -> "Jan/2024")
+        let monthLabel = evt.mes_referencia;
+        try {
+          const [year, month] = evt.mes_referencia.split("-");
+          const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+          monthLabel = format(date, "MMM/yyyy", { locale: ptBR });
+        } catch (e) {
+          console.error("Error formatting month:", e);
+        }
 
-      if (fcaEvents && fcaEvents.length > 0) {
-        fcaEvents.forEach(evt => {
-          const matchingRow = analiseRows.find(r => r.projetoId === evt.projeto_id && r.mesReferencia === evt.mes_referencia);
-          fcaRows.push([
-            matchingRow ? `${matchingRow.projetoCodigo} - ${matchingRow.projetoNome}` : evt.projeto_id,
-            matchingRow ? matchingRow.referencia : evt.mes_referencia,
-            evt.fato,
-            evt.causa,
-            evt.acao
-          ]);
-        });
-      }
+        fcaRows.push([
+          projectInfo ? `${projectInfo.projetoCodigo} - ${projectInfo.projetoNome}` : evt.projeto_id,
+          monthLabel,
+          evt.fato,
+          evt.causa,
+          evt.acao
+        ]);
+      });
     }
 
     const wsFca = XLSX.utils.aoa_to_sheet([fcaHeader, ...fcaRows]);
