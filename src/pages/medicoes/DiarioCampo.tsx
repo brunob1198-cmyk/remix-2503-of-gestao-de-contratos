@@ -22,7 +22,7 @@ import {
 import { compressImage } from "@/lib/imageCompression";
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
-import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads } from "@/lib/db";
+import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { uploadImage } from "@/services/uploadImage";
 
