@@ -30,6 +30,7 @@ const STATUS_OPTIONS = [
 
 export default function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { projetos } = useProjetos();
   const { sites } = useSites();
