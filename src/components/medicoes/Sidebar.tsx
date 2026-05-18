@@ -71,7 +71,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "supply-chain", title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
   { id: "power-bi", title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
   { id: "audit-log", title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
-  { id: "monitoramento", title: "Monitoramento", url: "/medicoes/monitoramento", icon: Activity, adminOnly: true },
+  
   { id: "integracao", title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
   { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true },
   { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle },
