@@ -243,10 +243,19 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
               type="file" 
               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" 
               className="absolute inset-0 opacity-0 cursor-pointer z-10"
-              onChange={(e) => {
-                if(e.target.files?.[0]) {
-                  setSelectedFile(e.target.files[0]);
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if(file) {
+                  setSelectedFile(file);
                   setStatusProcessamento("pendente");
+                  try {
+                    toast({ title: "Fazendo upload do arquivo...", description: "Aguarde a conclusão para salvar ou extrair dados." });
+                    const url = await uploadImage(file);
+                    setArquivoUrl(url);
+                    toast({ title: "Upload concluído!", description: "Arquivo pronto para salvamento ou extração." });
+                  } catch (err: any) {
+                    toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+                  }
                 }
               }}
             />
