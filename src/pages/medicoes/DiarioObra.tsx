@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
-import { cn, safeFormat } from "@/lib/utils";
+import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
+import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
   AlertDialog,
