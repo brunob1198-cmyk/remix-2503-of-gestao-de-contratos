@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
@@ -30,16 +30,14 @@ const formatPercent = (val: number) =>
 
 function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
   return (
-    <Card className={`aspect-square flex flex-col justify-center items-center p-0 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md ${className}`}>
-      <CardContent className="p-2 flex flex-col items-center justify-between h-full w-full">
-        <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1">
-          {icon}
-        </div>
-        <div className="flex flex-col items-center gap-1 w-full">
-          <span className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground leading-none px-1 line-clamp-2">{title}</span>
-          <div className="text-sm font-black tracking-tighter truncate w-full px-1">{value}</div>
-        </div>
-      </CardContent>
+    <Card className={`flex flex-col justify-center items-center p-2 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md min-h-[85px] ${className}`}>
+      <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1.5">
+        {icon}
+      </div>
+      <div className="flex flex-col items-center gap-0.5 w-full">
+        <span className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground leading-tight px-1 line-clamp-2">{title}</span>
+        <div className="text-sm font-bold tracking-tighter truncate w-full px-1">{value}</div>
+      </div>
     </Card>
   );
 }
@@ -398,47 +396,47 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
         <MetricCard 
           title="Produção Total" 
           value={formatCurrency(totals.poc)} 
-          icon={<DollarSign className="h-3 w-3 text-blue-600" />}
+          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
           className="bg-blue-50/50 border-blue-200"
         />
         <MetricCard 
           title="Res. Direto" 
           value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
-          icon={<TrendingUp className="h-3 w-3 text-green-600" />}
+          icon={<ArrowUpRight className="h-4 w-4 text-green-600" />}
           className="bg-green-50/50 border-green-200"
         />
         <MetricCard 
           title="Res. Total" 
           value={formatCurrency(totals.resultadoTotal)} 
-          icon={<ClipboardList className="h-3 w-3 text-purple-600" />}
+          icon={<Target className="h-4 w-4 text-purple-600" />}
           className="bg-purple-50/50 border-purple-200"
         />
         <MetricCard 
           title="MB Orçada" 
           value={formatCurrency(totals.mbOrcada)} 
-          icon={<DollarSign className="h-3 w-3 text-amber-600" />}
+          icon={<Calculator className="h-4 w-4 text-amber-600" />}
           className="bg-amber-50/50 border-amber-200"
         />
         <MetricCard 
           title="MB Real" 
           value={formatCurrency(totals.mbRealizada)} 
-          icon={<DollarSign className="h-3 w-3 text-emerald-600" />}
+          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
           className="bg-emerald-50/50 border-emerald-200"
         />
         <MetricCard 
           title="% MB Orç" 
           value={formatPercent(totals.percMbOrcada)} 
-          icon={<Percent className="h-3 w-3 text-slate-600" />}
+          icon={<Percent className="h-4 w-4 text-slate-600" />}
           className="bg-slate-50/50 border-slate-200"
         />
         <MetricCard 
           title="% MB Real" 
           value={formatPercent(totals.percMbReal)} 
-          icon={<Percent className="h-3 w-3 text-indigo-600" />}
+          icon={<BarChart3 className="h-4 w-4 text-indigo-600" />}
           className="bg-indigo-50/50 border-indigo-200"
         />
       </div>
