@@ -34,6 +34,7 @@ import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
+import UploadTestPage from "./pages/debug/UploadTest";
 
 
 // Lazy Loaded Pages
