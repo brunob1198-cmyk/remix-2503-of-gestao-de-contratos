@@ -30,16 +30,14 @@ const formatPercent = (val: number) =>
 
 function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
   return (
-    <Card className={`aspect-square flex flex-col justify-center items-center p-0 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md ${className}`}>
-      <CardContent className="p-2 flex flex-col items-center justify-between h-full w-full">
-        <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1">
-          {icon}
-        </div>
-        <div className="flex flex-col items-center gap-1 w-full">
-          <span className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground leading-none px-1 line-clamp-2">{title}</span>
-          <div className="text-sm font-black tracking-tighter truncate w-full px-1">{value}</div>
-        </div>
-      </CardContent>
+    <Card className={`flex flex-col justify-center items-center p-2 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md min-h-[85px] ${className}`}>
+      <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1.5">
+        {icon}
+      </div>
+      <div className="flex flex-col items-center gap-0.5 w-full">
+        <span className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground leading-tight px-1 line-clamp-2">{title}</span>
+        <div className="text-sm font-bold tracking-tighter truncate w-full px-1">{value}</div>
+      </div>
     </Card>
   );
 }
