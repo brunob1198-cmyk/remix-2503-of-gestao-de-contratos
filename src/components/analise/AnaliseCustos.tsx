@@ -358,6 +358,51 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+        <MetricCard 
+          title="Produção Total" 
+          value={formatCurrency(totals.poc)} 
+          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
+          className="bg-blue-50/50"
+        />
+        <MetricCard 
+          title="Resultado Direto" 
+          value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
+          icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+          className="bg-green-50/50"
+        />
+        <MetricCard 
+          title="Resultado Total" 
+          value={formatCurrency(totals.resultadoTotal)} 
+          icon={<ClipboardList className="h-4 w-4 text-purple-600" />}
+          className="bg-purple-50/50"
+        />
+        <MetricCard 
+          title="MB Orçada" 
+          value={formatCurrency(totals.mbOrcada)} 
+          icon={<DollarSign className="h-4 w-4 text-amber-600" />}
+          className="bg-amber-50/50"
+        />
+        <MetricCard 
+          title="MB Real" 
+          value={formatCurrency(totals.mbRealizada)} 
+          icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
+          className="bg-emerald-50/50"
+        />
+        <MetricCard 
+          title="% MB Orç" 
+          value={formatPercent(totals.percMbOrcada)} 
+          icon={<Percent className="h-4 w-4 text-slate-600" />}
+          className="bg-slate-50/50"
+        />
+        <MetricCard 
+          title="% MB Real" 
+          value={formatPercent(totals.percMbReal)} 
+          icon={<Percent className="h-4 w-4 text-indigo-600" />}
+          className="bg-indigo-50/50"
+        />
+      </div>
+
       <Card>
         <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center justify-between">
