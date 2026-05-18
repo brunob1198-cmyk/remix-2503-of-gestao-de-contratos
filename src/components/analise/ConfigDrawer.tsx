@@ -301,6 +301,10 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
                 <Label>% Treinamento</Label>
                 <Input type="number" step="0.01" value={percTreinamento} onChange={e => setPercTreinamento(Number(e.target.value))} />
               </div>
+              <div className="space-y-2">
+                <Label>% Inflação</Label>
+                <Input type="number" step="0.01" value={percInflacao} onChange={e => setPercInflacao(Number(e.target.value))} />
+              </div>
             </div>
 
             <div className="p-4 rounded-lg bg-muted border space-y-2">
