@@ -148,7 +148,7 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
         perc_icms: icms / 100,
         perc_irpj: irpj / 100,
         perc_csll: csll / 100,
-        perc_total_impostos: totalImpostos,
+        // perc_total_impostos: totalImpostos, // Removido pois é coluna gerada no banco
       };
 
       if (impostoData?.id) {
