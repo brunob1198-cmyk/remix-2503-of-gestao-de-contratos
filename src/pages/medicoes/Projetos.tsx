@@ -60,10 +60,11 @@ export default function ProjetosPage() {
   // Dropdown selection filters
   const [dropdownFilters, setDropdownFilters] = useState<Record<string, string>>({});
 
-  const statusOptions = ["A Iniciar", "Execução", "Concluído", "Finalizado"] as const;
+  const statusOptions = ["A Iniciar", "Execução", "Analisado", "Concluído", "Finalizado"] as const;
   const statusColors: Record<string, string> = {
     "A Iniciar": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
     "Execução": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    "Analisado": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
     "Concluído": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
     "Finalizado": "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
   };
