@@ -117,24 +117,15 @@ export function DetailMedicaoContent({
       if (error) throw error;
       if (!data) return null;
 
-      // The storage_path is now likely a direct URL or R2 URL, or it was a legacy path.
-      // If it looks like a full URL (http), return it as signedUrl (legacy name compatibility)
+      // The storage_path is now likely a direct URL or R2 URL
+      // If it's already a full URL, just return it
       if (data.storage_path.startsWith('http')) {
         return { ...data, signedUrl: data.storage_path };
       }
 
-      // Legacy fallback: attempt to get signed URL from Supabase storage if it's not a full URL
-      try {
-        const { data: signedData, error: sErr } = await supabase.storage
-          .from("medicoes-pdf")
-          .createSignedUrl(data.storage_path, 31536000);
-        
-        if (sErr) throw sErr;
-        return { ...data, signedUrl: signedData.signedUrl };
-      } catch (e) {
-        console.warn("Legacy storage retrieval failed", e);
-        return { ...data, signedUrl: data.storage_path };
-      }
+      // Legacy records might just have a path, but we are moving away from Supabase Storage
+      // If it's not a URL, we return it as is (it might fail to load if it's just a path)
+      return { ...data, signedUrl: data.storage_path };
     },
     enabled: !!detailMedicao.id
   });
@@ -198,9 +189,8 @@ export function DetailMedicaoContent({
     // Now everything should be a full URL, but we'll check for legacy cases
     if (url.startsWith('http') || url.startsWith('data:')) return url;
     
-    // Legacy fallback: check if it might be a storage path (legacy)
-    const { data } = supabase.storage.from('empresa_logos').getPublicUrl(url);
-    return data?.publicUrl || url;
+    // No legacy fallback to Supabase Storage - we use the URL directly
+    return url;
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 

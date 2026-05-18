@@ -20,6 +20,7 @@ export async function runUploadSmokeTest() {
     // 2. Upload
     console.log("SMOKE TEST: Starting upload...");
     const url = await uploadImage(file);
+    console.log("SMOKE TEST: Uploaded URL:", url);
     results.url = url;
     results.upload = !!url;
 
