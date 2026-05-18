@@ -30,13 +30,13 @@ const formatPercent = (val: number) =>
 
 function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
   return (
-    <Card className={className}>
-      <CardContent className="p-4 flex flex-col gap-1">
-        <div className="flex items-center justify-between text-muted-foreground">
-          <span className="text-xs font-medium uppercase tracking-wider">{title}</span>
-          {icon}
+    <Card className={`h-full ${className}`}>
+      <CardContent className="p-3 flex flex-col justify-between h-full min-h-[90px]">
+        <div className="flex items-center justify-between text-muted-foreground mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider leading-none">{title}</span>
+          <div className="opacity-70">{icon}</div>
         </div>
-        <div className="text-lg font-bold tracking-tight">{value}</div>
+        <div className="text-base font-bold tracking-tight truncate">{value}</div>
       </CardContent>
     </Card>
   );
@@ -381,48 +381,48 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
         <MetricCard 
           title="Produção Total" 
           value={formatCurrency(totals.poc)} 
-          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
-          className="bg-blue-50/50"
+          icon={<DollarSign className="h-3 w-3 text-blue-600" />}
+          className="bg-blue-50/50 border-blue-100/50 shadow-sm"
         />
         <MetricCard 
-          title="Resultado Direto" 
+          title="Res. Direto" 
           value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
-          icon={<TrendingUp className="h-4 w-4 text-green-600" />}
-          className="bg-green-50/50"
+          icon={<TrendingUp className="h-3 w-3 text-green-600" />}
+          className="bg-green-50/50 border-green-100/50 shadow-sm"
         />
         <MetricCard 
-          title="Resultado Total" 
+          title="Res. Total" 
           value={formatCurrency(totals.resultadoTotal)} 
-          icon={<ClipboardList className="h-4 w-4 text-purple-600" />}
-          className="bg-purple-50/50"
+          icon={<ClipboardList className="h-3 w-3 text-purple-600" />}
+          className="bg-purple-50/50 border-purple-100/50 shadow-sm"
         />
         <MetricCard 
           title="MB Orçada" 
           value={formatCurrency(totals.mbOrcada)} 
-          icon={<DollarSign className="h-4 w-4 text-amber-600" />}
-          className="bg-amber-50/50"
+          icon={<DollarSign className="h-3 w-3 text-amber-600" />}
+          className="bg-amber-50/50 border-amber-100/50 shadow-sm"
         />
         <MetricCard 
           title="MB Real" 
           value={formatCurrency(totals.mbRealizada)} 
-          icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
-          className="bg-emerald-50/50"
+          icon={<DollarSign className="h-3 w-3 text-emerald-600" />}
+          className="bg-emerald-50/50 border-emerald-100/50 shadow-sm"
         />
         <MetricCard 
           title="% MB Orç" 
           value={formatPercent(totals.percMbOrcada)} 
-          icon={<Percent className="h-4 w-4 text-slate-600" />}
-          className="bg-slate-50/50"
+          icon={<Percent className="h-3 w-3 text-slate-600" />}
+          className="bg-slate-50/50 border-slate-100/50 shadow-sm"
         />
         <MetricCard 
           title="% MB Real" 
           value={formatPercent(totals.percMbReal)} 
-          icon={<Percent className="h-4 w-4 text-indigo-600" />}
-          className="bg-indigo-50/50"
+          icon={<Percent className="h-3 w-3 text-indigo-600" />}
+          className="bg-indigo-50/50 border-indigo-100/50 shadow-sm"
         />
       </div>
 
