@@ -108,12 +108,12 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
         perc_issqn: issqn / 100,
         perc_pis: pis / 100,
         perc_cofins: cofins / 100,
-        perc_inss: inss / 100,
-        perc_dara: dara / 100,
-        perc_icms: icms / 100,
-        perc_irpj: irpj / 100,
-        perc_csll: csll / 100,
-        perc_total_impostos: totalImpostos,
+        perc_inss: (inss || 0) / 100,
+        perc_dara: (dara || 0) / 100,
+        perc_icms: (icms || 0) / 100,
+        perc_irpj: (irpj || 0) / 100,
+        perc_csll: (csll || 0) / 100,
+        perc_total_impostos: Number(totalImpostos.toFixed(6)),
       };
 
       if (id) {
