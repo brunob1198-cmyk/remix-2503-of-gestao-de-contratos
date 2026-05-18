@@ -389,10 +389,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
       if (fcaEvents && fcaEvents.length > 0) {
         fcaEvents.forEach(evt => {
-          const projeto = analiseRows.find(r => r.projetoId === evt.projeto_id);
+          const matchingRow = analiseRows.find(r => r.projetoId === evt.projeto_id && r.mesReferencia === evt.mes_referencia);
           fcaRows.push([
-            projeto ? `${projeto.projetoCodigo} - ${projeto.projetoNome}` : evt.projeto_id,
-            evt.mes_referencia,
+            matchingRow ? `${matchingRow.projetoCodigo} - ${matchingRow.projetoNome}` : evt.projeto_id,
+            matchingRow ? matchingRow.referencia : evt.mes_referencia,
             evt.fato,
             evt.causa,
             evt.acao
