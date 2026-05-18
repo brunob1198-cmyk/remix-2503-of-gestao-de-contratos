@@ -174,7 +174,6 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       reajuste,
       observacoes,
       status_processamento: statusProcessamento,
-      // arquivo_url upload to supabase storage here if implemented. Storing empty or previous for now since base64 was used.
       arquivo_url: arquivoUrl,
     };
 
