@@ -279,26 +279,31 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     // Filters
     ws["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}${range.e.r - 1}` };
 
-    // Summary Sheet
+    // Summary Sheet (Now matches the visual cards)
     const summaryData = [
-      ["RESUMO GERAL - ANÁLISE DE CUSTOS E MARGENS"],
+      ["RESUMO EXECUTIVO - ANÁLISE DE CUSTOS E MARGENS"],
       [""],
       ["Data de Geração", format(new Date(), "dd/MM/yyyy HH:mm")],
       ["Período", `${format(periodoInicio, "MM/yyyy")} a ${format(periodoFim, "MM/yyyy")}`],
       [""],
-      ["Métrica", "Valor"],
+      ["MÉTRICA", "VALOR"],
+      ["Produção Total", totals.poc],
+      ["Resultado Direto", totals.custoDiretoOrcado - totals.custoDiretoReal],
+      ["Resultado Total", totals.resultadoTotal],
+      ["MB Orçada (R$)", totals.mbOrcada],
+      ["MB Real (R$)", totals.mbRealizada],
+      ["% MB Orçada", totals.percMbOrcada],
+      ["% MB Realizada", totals.percMbReal],
+      [""],
+      ["DETALHES COMPLEMENTARES"],
       ["Total de Projetos", analiseRows.length],
-      ["Produção Total (POC)", totals.poc],
       ["Receita Líquida Total", totals.producaoLiquida],
       ["Custo Direto Total (Real)", totals.custoDiretoReal],
       ["Custo Direto Total (Orçado)", totals.custoDiretoOrcado],
       ["Gerência Total (Real)", totals.gerenciaReal],
       ["Gerência Total (Orçada)", totals.gerenciaOrcada],
       ["Custo Total (Real)", totals.custoTotalReal],
-      ["Custo Total (Orçado)", totals.custoTotalOrcado],
-      ["Resultado Total", totals.resultadoTotal],
-      ["Margem Bruta Total (Real)", totals.mbRealizada],
-      ["% Margem Bruta (Real)", totals.percMbReal]
+      ["Custo Total (Orçado)", totals.custoTotalOrcado]
     ];
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
