@@ -256,7 +256,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     }
 
     // Apply data styles
-    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+    for (let R = headerRowIdx + 1; R <= range.e.r; ++R) {
       const isTotalRow = R === range.e.r;
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const address = XLSX.utils.encode_cell({ r: R, c: C });
