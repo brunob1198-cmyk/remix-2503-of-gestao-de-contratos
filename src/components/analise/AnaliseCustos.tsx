@@ -181,8 +181,28 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       totals.mbOrcada, totals.mbRealizada, totals.percMbOrcada, totals.percMbReal
     ];
 
-    const worksheetData = [header, ...rows, totalRow];
+    const summaryHeaderRows = [
+      ["RESUMO EXECUTIVO - ANÁLISE DE CUSTOS E MARGENS"],
+      ["Data de Geração:", format(new Date(), "dd/MM/yyyy HH:mm")],
+      ["Período:", `${format(periodoInicio, "MM/yyyy")} a ${format(periodoFim, "MM/yyyy")}`],
+      [""],
+      ["MÉTRICA", "VALOR"],
+      ["Produção Total", totals.poc],
+      ["Custo Total", totals.custoTotalReal],
+      ["Resultado Direto", totals.custoDiretoOrcado - totals.custoDiretoReal],
+      ["Resultado Total", totals.resultadoTotal],
+      ["MB Orçada", totals.mbOrcada],
+      ["MB Real", totals.mbRealizada],
+      ["% MB Orç", totals.percMbOrcada],
+      ["% MB Real", totals.percMbReal],
+      [""],
+      ["DETALHAMENTO POR PROJETO"],
+      [""]
+    ];
+
+    const worksheetData = [...summaryHeaderRows, header, ...rows, totalRow];
     const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    const summaryRowsCount = summaryHeaderRows.length;
 
     const colors = {
       receita: "DCFCE7", // bg-green-100
@@ -206,9 +226,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
     
-    // Apply Header styles
+    // Apply Header styles (now at row summaryRowsCount + 1)
+    const headerRowIdx = summaryRowsCount;
     for (let C = range.s.c; C <= range.e.c; ++C) {
-      const address = XLSX.utils.encode_col(C) + "1";
+      const address = XLSX.utils.encode_cell({ r: headerRowIdx, c: C });
       if (!ws[address]) continue;
       
       let color;
@@ -221,8 +242,21 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       ws[address].s = headerStyle(color);
     }
 
+    // Summary Styling (top of the sheet)
+    ws["A1"].s = { font: { bold: true, size: 14 } };
+    for (let i = 5; i <= 12; i++) {
+      const addrL = XLSX.utils.encode_cell({ r: i, c: 0 });
+      const addrV = XLSX.utils.encode_cell({ r: i, c: 1 });
+      const style = { font: { bold: true } };
+      if (ws[addrL]) ws[addrL].s = { ...ws[addrL].s, ...style };
+      if (ws[addrV]) {
+        if (i >= 11) ws[addrV].z = "0.00%";
+        else ws[addrV].z = '"R$ "#,##0.00';
+      }
+    }
+
     // Apply data styles
-    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+    for (let R = headerRowIdx + 1; R <= range.e.r; ++R) {
       const isTotalRow = R === range.e.r;
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const address = XLSX.utils.encode_cell({ r: R, c: C });
@@ -275,7 +309,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     ws["!cols"] = colWidths;
 
     // Filters
-    ws["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}${range.e.r - 1}` };
+    // Filters - now starts at the table header row
+    ws["!autofilter"] = { ref: `${XLSX.utils.encode_cell({ r: headerRowIdx, c: 0 })}:${XLSX.utils.encode_cell({ r: range.e.r - 1, c: range.e.c })}` };
 
     // Summary Sheet (Now matches the visual cards)
     const summaryData = [
@@ -344,14 +379,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     
     // Fetch FCA events for all unique project+month combinations in the filtered rows
     const uniqueProjects = Array.from(new Set(analiseRows.map(r => r.projetoId)));
-    const uniqueMonths = Array.from(new Set(analiseRows.map(r => {
-      try {
-        const date = parseISO(r.referencia);
-        return format(date, 'yyyy-MM');
-      } catch (e) {
-        return null;
-      }
-    }))).filter(Boolean);
+    const uniqueMonths = Array.from(new Set(analiseRows.map(r => r.mesReferencia))).filter(Boolean);
 
     if (uniqueProjects.length > 0 && uniqueMonths.length > 0) {
       const { data: fcaEvents } = await supabase
@@ -362,10 +390,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
       if (fcaEvents && fcaEvents.length > 0) {
         fcaEvents.forEach(evt => {
-          const projeto = analiseRows.find(r => r.projetoId === evt.projeto_id);
+          const matchingRow = analiseRows.find(r => r.projetoId === evt.projeto_id && r.mesReferencia === evt.mes_referencia);
           fcaRows.push([
-            projeto ? `${projeto.projetoCodigo} - ${projeto.projetoNome}` : evt.projeto_id,
-            evt.mes_referencia,
+            matchingRow ? `${matchingRow.projetoCodigo} - ${matchingRow.projetoNome}` : evt.projeto_id,
+            matchingRow ? matchingRow.referencia : evt.mes_referencia,
             evt.fato,
             evt.causa,
             evt.acao
@@ -575,18 +603,11 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                         size="icon" 
                         className="h-7 w-7 text-muted-foreground hover:text-primary"
                         onClick={() => {
-                          let mesRef = "";
-                          try {
-                            const date = parseISO(row.referencia);
-                            mesRef = format(date, 'yyyy-MM');
-                          } catch (e) {
-                            mesRef = format(new Date(), 'yyyy-MM');
-                          }
                           setFcaState({
                             open: true,
                             projetoId: row.projetoId,
                             projetoNome: row.projetoNome,
-                            mesReferencia: mesRef,
+                            mesReferencia: row.mesReferencia,
                             mesLabel: row.referencia
                           });
                         }}

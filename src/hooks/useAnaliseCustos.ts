@@ -14,6 +14,7 @@ export interface AnaliseCustosRow {
   area: string;
   cliente: string;
   referencia: string; // "Jan/2026"
+  mesReferencia: string; // "2026-01"
 
   // ── RECEITA ──────────────────────────────────────
   poc: number; // Produção bruta (POC do período)
@@ -701,6 +702,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           area: areaNome,
           cliente: clienteNome,
           referencia: monthLabel,
+          mesReferencia: format(monthStart, "yyyy-MM"),
           poc,
           impostos: {
             issqn: poc * (impostosProjeto?.perc_issqn ?? 0),
