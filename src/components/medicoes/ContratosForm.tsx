@@ -48,6 +48,12 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
+    if (arquivoUrl) {
+      console.log("URL SALVA (CONTRATO):", arquivoUrl);
+    }
+  }, [arquivoUrl]);
+
+  useEffect(() => {
     if (contratoToEdit) {
       setId(contratoToEdit.id);
       setNumeroContrato(contratoToEdit.numero_contrato || "");
