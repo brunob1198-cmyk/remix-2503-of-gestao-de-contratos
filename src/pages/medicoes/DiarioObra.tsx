@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -11,8 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronsUpDown } from "lucide-react";
-import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
-import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
+import { cn, safeFormat } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
   AlertDialog,
@@ -401,6 +400,7 @@ export default function DiarioObraPage() {
         const fileIndex = i + index;
         try {
           let fileToUpload = file;
+          const isFileImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
           if (isFileImage(file.name)) {
             fileToUpload = await compressImage(file, 1200, 0.75);
           }
