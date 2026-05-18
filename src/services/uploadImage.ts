@@ -2,15 +2,20 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
+  const workerUrl = "https://obras-upload-api.brunob1198.workers.dev/";
+  
   console.log("UPLOAD ATTEMPT:", file.name, file.size);
+  console.log("UPLOAD URL:", workerUrl);
 
   const response = await fetch(
-    "https://obras-upload-api.bruno1198.workers.dev/",
+    workerUrl,
     {
       method: "POST",
       body: formData,
     }
   );
+
+  console.log("UPLOAD STATUS:", response.status);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -43,9 +48,11 @@ export async function verifyImageUrl(url: string): Promise<boolean> {
 export async function deleteImage(url: string): Promise<boolean> {
   if (!url) return false;
   
+  const workerUrl = "https://obras-upload-api.brunob1198.workers.dev";
+  
   try {
     const response = await fetch(
-      `https://obras-upload-api.bruno1198.workers.dev?url=${encodeURIComponent(url)}`,
+      `${workerUrl}?url=${encodeURIComponent(url)}`,
       {
         method: "DELETE",
       }
