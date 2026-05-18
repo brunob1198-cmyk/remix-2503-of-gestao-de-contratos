@@ -401,9 +401,9 @@ export default function DiarioObraPage() {
         const fileIndex = i + index;
         try {
           let fileToUpload = file;
-          // isFileImage is defined at line 440ish but we'll re-define it here for safety or use a local one
-          const isImg = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
-          if (isImg(file.name)) {
+          // Local helper to avoid duplication conflicts
+          const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
+          if (checkIsImage(file.name)) {
             fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
