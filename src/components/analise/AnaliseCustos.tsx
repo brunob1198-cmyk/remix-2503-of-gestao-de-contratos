@@ -396,47 +396,47 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
         <MetricCard 
           title="Produção Total" 
           value={formatCurrency(totals.poc)} 
-          icon={<DollarSign className="h-3 w-3 text-blue-600" />}
+          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
           className="bg-blue-50/50 border-blue-200"
         />
         <MetricCard 
           title="Res. Direto" 
           value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
-          icon={<TrendingUp className="h-3 w-3 text-green-600" />}
+          icon={<ArrowUpRight className="h-4 w-4 text-green-600" />}
           className="bg-green-50/50 border-green-200"
         />
         <MetricCard 
           title="Res. Total" 
           value={formatCurrency(totals.resultadoTotal)} 
-          icon={<ClipboardList className="h-3 w-3 text-purple-600" />}
+          icon={<Target className="h-4 w-4 text-purple-600" />}
           className="bg-purple-50/50 border-purple-200"
         />
         <MetricCard 
           title="MB Orçada" 
           value={formatCurrency(totals.mbOrcada)} 
-          icon={<DollarSign className="h-3 w-3 text-amber-600" />}
+          icon={<Calculator className="h-4 w-4 text-amber-600" />}
           className="bg-amber-50/50 border-amber-200"
         />
         <MetricCard 
           title="MB Real" 
           value={formatCurrency(totals.mbRealizada)} 
-          icon={<DollarSign className="h-3 w-3 text-emerald-600" />}
+          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
           className="bg-emerald-50/50 border-emerald-200"
         />
         <MetricCard 
           title="% MB Orç" 
           value={formatPercent(totals.percMbOrcada)} 
-          icon={<Percent className="h-3 w-3 text-slate-600" />}
+          icon={<Percent className="h-4 w-4 text-slate-600" />}
           className="bg-slate-50/50 border-slate-200"
         />
         <MetricCard 
           title="% MB Real" 
           value={formatPercent(totals.percMbReal)} 
-          icon={<Percent className="h-3 w-3 text-indigo-600" />}
+          icon={<BarChart3 className="h-4 w-4 text-indigo-600" />}
           className="bg-indigo-50/50 border-indigo-200"
         />
       </div>
