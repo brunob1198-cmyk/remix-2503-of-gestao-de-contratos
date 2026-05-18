@@ -28,6 +28,19 @@ export async function uploadImage(file: File): Promise<string> {
   return data.url;
 }
 
+export async function verifyImageUrl(url: string): Promise<boolean> {
+  if (!url) return false;
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    console.log("URL VERIFICATION STATUS:", response.status, url);
+    return response.ok;
+  } catch (error) {
+    console.error("URL VERIFICATION FAILED:", error);
+    return false;
+  }
+}
+
+
 export async function deleteImage(url: string): Promise<boolean> {
   if (!url) return false;
   

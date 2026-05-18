@@ -53,7 +53,7 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
 
 
 const formatCurrency = (v: number) =>
@@ -410,6 +410,12 @@ export default function DiarioObraPage() {
           // Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
 
+          // Verify URL accessibility
+          const isAccessible = await verifyImageUrl(publicUrl);
+          if (!isAccessible) {
+             throw new Error("A URL retornada pelo R2 não está acessível.");
+          }
+
           await addFoto.mutateAsync({
             diario_id: diarioId,
             url: publicUrl,
@@ -718,6 +724,12 @@ export default function DiarioObraPage() {
 
           // 2. Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
+
+          // Verification: Check if URL is accessible
+          const isAccessible = await verifyImageUrl(publicUrl);
+          if (!isAccessible) {
+             throw new Error(`A URL retornada para ${file.name} não está acessível.`);
+          }
 
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 

@@ -34,6 +34,7 @@ import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
+import UploadTestPage from "./pages/debug/UploadTest";
 
 
 // Lazy Loaded Pages
@@ -119,6 +120,7 @@ const App = () => {
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
                 <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
+                <Route path="debug-upload" element={<UploadTestPage />} />
               </Route>
 
               {/* Extrator de PDF */}

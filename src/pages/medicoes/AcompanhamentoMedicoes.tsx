@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
+import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
 import { useLancamentosMedicao } from "@/hooks/useLancamentos";
+import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -15,7 +17,7 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
 import { GerarMedicaoDialog } from "@/components/medicoes/acompanhamento/GerarMedicaoDialog";
 import { RevisaoParcialDialog } from "@/components/medicoes/acompanhamento/RevisaoParcialDialog";
-import { uploadImage } from "@/services/uploadImage";
+
 
 
 const STATUS_OPTIONS = [
@@ -28,6 +30,7 @@ const STATUS_OPTIONS = [
 
 export default function AcompanhamentoMedicoesPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { lancamentos, isLoading, bulkCreateLancamento, bulkUpdateMedicaoFields, bulkDeleteMedicao } = useLancamentosMedicao();
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -177,8 +180,14 @@ export default function AcompanhamentoMedicoesPage() {
     if (data.capaFile) {
       try {
         capaUrl = await uploadImage(data.capaFile);
+        const isAccessible = await verifyImageUrl(capaUrl);
+        if (!isAccessible) {
+          throw new Error("Falha ao verificar a acessibilidade da imagem de capa enviada.");
+        }
       } catch (err) {
         console.error("Erro upload capa", err);
+        toast({ title: "Erro no upload da capa", description: err instanceof Error ? err.message : "Erro desconhecido", variant: "destructive" });
+        return;
       }
     }
 

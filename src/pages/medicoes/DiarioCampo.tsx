@@ -24,7 +24,7 @@ import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 import { ResponsiveImage } from "@/components/ui/ResponsiveImage";
-import { uploadImage } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
 
 
 export default function DiarioCampoPage() {
@@ -89,6 +89,12 @@ export default function DiarioCampoPage() {
 
           const publicUrl = await uploadImage(fileToUpload);
           
+          // Validation: Verify if the URL is accessible
+          const isAccessible = await verifyImageUrl(publicUrl);
+          if (!isAccessible) {
+            throw new Error("A URL retornada pelo R2 não está acessível no momento.");
+          }
+
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
@@ -96,9 +102,21 @@ export default function DiarioCampoPage() {
               url: publicUrl,
               thumb_url: publicUrl,
               thumb_600_url: publicUrl
-            }]);
+            }])
+            .select();
           
           if (insertError) throw insertError;
+
+          // Double check: verify row exists in DB
+          const { data: verifyData, error: verifyError } = await supabase
+            .from("diario_campo_fotos")
+            .select("id")
+            .eq("url", publicUrl)
+            .single();
+
+          if (verifyError || !verifyData) {
+            throw new Error("Falha ao confirmar salvamento da URL no banco de dados.");
+          }
 
           await updateUploadStatus(item.id, 'completed', { url: publicUrl });
 
