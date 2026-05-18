@@ -31,6 +31,12 @@ export function useContractExtraction() {
       console.log('Uploading file to R2...');
       const publicUrl = await uploadImage(file);
 
+      console.log('Verifying R2 URL...');
+      const isAccessible = await verifyImageUrl(publicUrl);
+      if (!isAccessible) {
+        throw new Error("O arquivo foi enviado mas a URL do R2 não está respondendo. Verifique sua conexão ou as configurações do Worker.");
+      }
+
       console.log('File uploaded, calling extraction function...');
       const { data, error } = await supabase.functions.invoke('extract-contract', {
         body: { 
