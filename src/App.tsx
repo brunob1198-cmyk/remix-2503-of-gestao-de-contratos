@@ -120,6 +120,7 @@ const App = () => {
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
                 <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
+                <Route path="debug-upload" element={<UploadTestPage />} />
               </Route>
 
               {/* Extrator de PDF */}
