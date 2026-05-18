@@ -226,9 +226,10 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
     
-    // Apply Header styles
+    // Apply Header styles (now at row summaryRowsCount + 1)
+    const headerRowIdx = summaryRowsCount;
     for (let C = range.s.c; C <= range.e.c; ++C) {
-      const address = XLSX.utils.encode_col(C) + "1";
+      const address = XLSX.utils.encode_cell({ r: headerRowIdx, c: C });
       if (!ws[address]) continue;
       
       let color;
@@ -239,6 +240,19 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       else if (C >= 22 && C <= 25) color = colors.mb;
       
       ws[address].s = headerStyle(color);
+    }
+
+    // Summary Styling (top of the sheet)
+    ws["A1"].s = { font: { bold: true, size: 14 } };
+    for (let i = 5; i <= 12; i++) {
+      const addrL = XLSX.utils.encode_cell({ r: i, c: 0 });
+      const addrV = XLSX.utils.encode_cell({ r: i, c: 1 });
+      const style = { font: { bold: true } };
+      if (ws[addrL]) ws[addrL].s = { ...ws[addrL].s, ...style };
+      if (ws[addrV]) {
+        if (i >= 11) ws[addrV].z = "0.00%";
+        else ws[addrV].z = '"R$ "#,##0.00';
+      }
     }
 
     // Apply data styles
