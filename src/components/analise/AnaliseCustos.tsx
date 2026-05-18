@@ -28,6 +28,20 @@ const formatCurrency = (val: number) =>
 const formatPercent = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
+function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
+  return (
+    <Card className={className}>
+      <CardContent className="p-4 flex flex-col gap-1">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-wider">{title}</span>
+          {icon}
+        </div>
+        <div className="text-lg font-bold tracking-tight">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
   const { analiseRows: allRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
   const [fcaState, setFcaState] = useState({
