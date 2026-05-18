@@ -30,13 +30,15 @@ const formatPercent = (val: number) =>
 
 function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
   return (
-    <Card className={`h-full ${className}`}>
-      <CardContent className="p-3 flex flex-col justify-between h-full min-h-[90px]">
-        <div className="flex items-center justify-between text-muted-foreground mb-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider leading-none">{title}</span>
-          <div className="opacity-70">{icon}</div>
+    <Card className={`aspect-square flex flex-col justify-center items-center p-0 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md ${className}`}>
+      <CardContent className="p-2 flex flex-col items-center justify-between h-full w-full">
+        <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1">
+          {icon}
         </div>
-        <div className="text-base font-bold tracking-tight truncate">{value}</div>
+        <div className="flex flex-col items-center gap-1 w-full">
+          <span className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground leading-none px-1 line-clamp-2">{title}</span>
+          <div className="text-sm font-black tracking-tighter truncate w-full px-1">{value}</div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -277,49 +279,64 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     // Filters
     ws["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}${range.e.r - 1}` };
 
-    // Summary Sheet
+    // Summary Sheet (Now matches the visual cards)
     const summaryData = [
-      ["RESUMO GERAL - ANÁLISE DE CUSTOS E MARGENS"],
+      ["RESUMO EXECUTIVO - ANÁLISE DE CUSTOS E MARGENS"],
       [""],
       ["Data de Geração", format(new Date(), "dd/MM/yyyy HH:mm")],
       ["Período", `${format(periodoInicio, "MM/yyyy")} a ${format(periodoFim, "MM/yyyy")}`],
       [""],
-      ["Métrica", "Valor"],
+      ["MÉTRICA", "VALOR"],
+      ["Produção Total", totals.poc],
+      ["Resultado Direto", totals.custoDiretoOrcado - totals.custoDiretoReal],
+      ["Resultado Total", totals.resultadoTotal],
+      ["MB Orçada (R$)", totals.mbOrcada],
+      ["MB Real (R$)", totals.mbRealizada],
+      ["% MB Orçada", totals.percMbOrcada],
+      ["% MB Realizada", totals.percMbReal],
+      [""],
+      ["DETALHES COMPLEMENTARES"],
       ["Total de Projetos", analiseRows.length],
-      ["Produção Total (POC)", totals.poc],
       ["Receita Líquida Total", totals.producaoLiquida],
       ["Custo Direto Total (Real)", totals.custoDiretoReal],
       ["Custo Direto Total (Orçado)", totals.custoDiretoOrcado],
       ["Gerência Total (Real)", totals.gerenciaReal],
       ["Gerência Total (Orçada)", totals.gerenciaOrcada],
       ["Custo Total (Real)", totals.custoTotalReal],
-      ["Custo Total (Orçado)", totals.custoTotalOrcado],
-      ["Resultado Total", totals.resultadoTotal],
-      ["Margem Bruta Total (Real)", totals.mbRealizada],
-      ["% Margem Bruta (Real)", totals.percMbReal]
+      ["Custo Total (Orçado)", totals.custoTotalOrcado]
     ];
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     
     // Summary styling
     wsSummary["A1"].s = { font: { bold: true, size: 14 } };
-    for (let i = 5; i <= 17; i++) {
+    for (let i = 5; i <= 22; i++) {
       const labelCell = XLSX.utils.encode_cell({ r: i, c: 0 });
       const valCell = XLSX.utils.encode_cell({ r: i, c: 1 });
       if (wsSummary[labelCell]) wsSummary[labelCell].s = { font: { bold: true } };
       if (wsSummary[valCell]) {
-        if (i === 17) wsSummary[valCell].z = "0.00%";
-        else if (i >= 7) wsSummary[valCell].z = '"R$ "#,##0.00';
+        // Formatos de porcentagem para as linhas 11 e 12 (0-indexed seriam 11 e 12)
+        if (i === 11 || i === 12) {
+          wsSummary[valCell].z = "0.00%";
+        } else if (i >= 6 && i !== 13 && i !== 14) { // Pula labels e total de projetos
+          wsSummary[valCell].z = '"R$ "#,##0.00';
+        }
       }
     }
 
-    // Apply exact formatting to summary data to match cards
-    const summaryRowsToFormat = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    summaryRowsToFormat.forEach(r => {
-      const cell = wsSummary[XLSX.utils.encode_cell({ r, c: 1 })];
-      if (cell) cell.z = '"R$ "#,##0.00';
-    });
-    wsSummary[XLSX.utils.encode_cell({ r: 17, c: 1 })].z = "0.00%";
+    // Cores para o Resumo Executivo (combinando com os cards da tela)
+    const summaryCardColors = ["DBEAFE", "DCFCE7", "F3E8FF", "FEF3C7", "D1FAE5", "F1F5F9", "E0E7FF"];
+    for (let i = 0; i < 7; i++) {
+      const r = i + 6;
+      const addrL = XLSX.utils.encode_cell({ r, c: 0 });
+      const addrV = XLSX.utils.encode_cell({ r, c: 1 });
+      const style = { 
+        fill: { fgColor: { rgb: summaryCardColors[i] } },
+        border: { top: {style: "thin"}, bottom: {style: "thin"}, left: {style: "thin"}, right: {style: "thin"} }
+      };
+      if (wsSummary[addrL]) wsSummary[addrL].s = { ...wsSummary[addrL].s, ...style };
+      if (wsSummary[addrV]) wsSummary[addrV].s = { ...wsSummary[addrV].s, ...style };
+    }
 
     wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
 
@@ -381,48 +398,48 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-7 lg:grid-cols-7 gap-1.5">
         <MetricCard 
           title="Produção Total" 
           value={formatCurrency(totals.poc)} 
           icon={<DollarSign className="h-3 w-3 text-blue-600" />}
-          className="bg-blue-50/50 border-blue-100/50 shadow-sm"
+          className="bg-blue-50/50 border-blue-200"
         />
         <MetricCard 
           title="Res. Direto" 
           value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
           icon={<TrendingUp className="h-3 w-3 text-green-600" />}
-          className="bg-green-50/50 border-green-100/50 shadow-sm"
+          className="bg-green-50/50 border-green-200"
         />
         <MetricCard 
           title="Res. Total" 
           value={formatCurrency(totals.resultadoTotal)} 
           icon={<ClipboardList className="h-3 w-3 text-purple-600" />}
-          className="bg-purple-50/50 border-purple-100/50 shadow-sm"
+          className="bg-purple-50/50 border-purple-200"
         />
         <MetricCard 
           title="MB Orçada" 
           value={formatCurrency(totals.mbOrcada)} 
           icon={<DollarSign className="h-3 w-3 text-amber-600" />}
-          className="bg-amber-50/50 border-amber-100/50 shadow-sm"
+          className="bg-amber-50/50 border-amber-200"
         />
         <MetricCard 
           title="MB Real" 
           value={formatCurrency(totals.mbRealizada)} 
           icon={<DollarSign className="h-3 w-3 text-emerald-600" />}
-          className="bg-emerald-50/50 border-emerald-100/50 shadow-sm"
+          className="bg-emerald-50/50 border-emerald-200"
         />
         <MetricCard 
           title="% MB Orç" 
           value={formatPercent(totals.percMbOrcada)} 
           icon={<Percent className="h-3 w-3 text-slate-600" />}
-          className="bg-slate-50/50 border-slate-100/50 shadow-sm"
+          className="bg-slate-50/50 border-slate-200"
         />
         <MetricCard 
           title="% MB Real" 
           value={formatPercent(totals.percMbReal)} 
           icon={<Percent className="h-3 w-3 text-indigo-600" />}
-          className="bg-indigo-50/50 border-indigo-100/50 shadow-sm"
+          className="bg-indigo-50/50 border-indigo-200"
         />
       </div>
 
