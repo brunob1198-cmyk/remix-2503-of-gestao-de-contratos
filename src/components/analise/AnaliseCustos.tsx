@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AnaliseCustosProps {
   projetoIds: string[];
@@ -26,6 +27,20 @@ const formatCurrency = (val: number) =>
 
 const formatPercent = (val: number) =>
   new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+
+function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
+  return (
+    <Card className={className}>
+      <CardContent className="p-4 flex flex-col gap-1">
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-wider">{title}</span>
+          {icon}
+        </div>
+        <div className="text-lg font-bold tracking-tight">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: AnaliseCustosProps) {
   const { analiseRows: allRows, loadCustos } = useAnaliseCustosMulti(projetoIds, periodoInicio, periodoFim);
@@ -116,7 +131,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     return { ...sum, ...avg };
   }, [analiseRows]);
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const header = [
       "Referência", "Área", "Projeto", "Cliente", 
       "Produção (POC)", "% Impostos", "Receita Líquida",
@@ -297,11 +312,67 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         else if (i >= 7) wsSummary[valCell].z = '"R$ "#,##0.00';
       }
     }
+
+    // Apply exact formatting to summary data to match cards
+    const summaryRowsToFormat = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    summaryRowsToFormat.forEach(r => {
+      const cell = wsSummary[XLSX.utils.encode_cell({ r, c: 1 })];
+      if (cell) cell.z = '"R$ "#,##0.00';
+    });
+    wsSummary[XLSX.utils.encode_cell({ r: 17, c: 1 })].z = "0.00%";
+
     wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
+
+    // FCA Sheet
+    const fcaHeader = ["Projeto", "Mês", "Fato", "Causa", "Ação"];
+    const fcaRows: any[] = [];
+    
+    // Fetch FCA events for all unique project+month combinations in the filtered rows
+    const uniqueProjects = Array.from(new Set(analiseRows.map(r => r.projetoId)));
+    const uniqueMonths = Array.from(new Set(analiseRows.map(r => {
+      try {
+        const date = parseISO(r.referencia);
+        return format(date, 'yyyy-MM');
+      } catch (e) {
+        return null;
+      }
+    }))).filter(Boolean);
+
+    if (uniqueProjects.length > 0 && uniqueMonths.length > 0) {
+      const { data: fcaEvents } = await supabase
+        .from("fca_eventos")
+        .select("projeto_id, mes_referencia, fato, causa, acao")
+        .in("projeto_id", uniqueProjects)
+        .in("mes_referencia", uniqueMonths as string[]);
+
+      if (fcaEvents && fcaEvents.length > 0) {
+        fcaEvents.forEach(evt => {
+          const projeto = analiseRows.find(r => r.projetoId === evt.projeto_id);
+          fcaRows.push([
+            projeto ? `${projeto.projetoCodigo} - ${projeto.projetoNome}` : evt.projeto_id,
+            evt.mes_referencia,
+            evt.fato,
+            evt.causa,
+            evt.acao
+          ]);
+        });
+      }
+    }
+
+    const wsFca = XLSX.utils.aoa_to_sheet([fcaHeader, ...fcaRows]);
+    wsFca["!cols"] = [{ wch: 30 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 40 }];
+    
+    // FCA Styling
+    const fcaRange = XLSX.utils.decode_range(wsFca["!ref"] || "A1");
+    for (let C = fcaRange.s.c; C <= fcaRange.e.c; ++C) {
+      const address = XLSX.utils.encode_col(C) + "1";
+      if (wsFca[address]) wsFca[address].s = headerStyle("FDE68A"); // Amber 200
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Análise de Custos");
     XLSX.utils.book_append_sheet(wb, wsSummary, "Resumo");
+    XLSX.utils.book_append_sheet(wb, wsFca, "Eventos FCA");
 
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
@@ -310,6 +381,51 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+        <MetricCard 
+          title="Produção Total" 
+          value={formatCurrency(totals.poc)} 
+          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
+          className="bg-blue-50/50"
+        />
+        <MetricCard 
+          title="Resultado Direto" 
+          value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
+          icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+          className="bg-green-50/50"
+        />
+        <MetricCard 
+          title="Resultado Total" 
+          value={formatCurrency(totals.resultadoTotal)} 
+          icon={<ClipboardList className="h-4 w-4 text-purple-600" />}
+          className="bg-purple-50/50"
+        />
+        <MetricCard 
+          title="MB Orçada" 
+          value={formatCurrency(totals.mbOrcada)} 
+          icon={<DollarSign className="h-4 w-4 text-amber-600" />}
+          className="bg-amber-50/50"
+        />
+        <MetricCard 
+          title="MB Real" 
+          value={formatCurrency(totals.mbRealizada)} 
+          icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
+          className="bg-emerald-50/50"
+        />
+        <MetricCard 
+          title="% MB Orç" 
+          value={formatPercent(totals.percMbOrcada)} 
+          icon={<Percent className="h-4 w-4 text-slate-600" />}
+          className="bg-slate-50/50"
+        />
+        <MetricCard 
+          title="% MB Real" 
+          value={formatPercent(totals.percMbReal)} 
+          icon={<Percent className="h-4 w-4 text-indigo-600" />}
+          className="bg-indigo-50/50"
+        />
+      </div>
+
       <Card>
         <CardHeader className="pb-3 border-b flex flex-row items-center justify-between space-y-0">
           <div className="flex flex-1 items-center justify-between">
