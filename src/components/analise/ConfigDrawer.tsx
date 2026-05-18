@@ -110,8 +110,10 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
       setInss(impostoData.perc_inss * 100);
       setDara(impostoData.perc_dara * 100);
       setIcms(impostoData.perc_icms * 100);
+      setIrpj((impostoData.perc_irpj || 0) * 100);
+      setCsll((impostoData.perc_csll || 0) * 100);
     } else {
-      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0);
+      setIssqn(0); setPis(0); setCofins(0); setInss(0); setDara(0); setIcms(0); setIrpj(0); setCsll(0);
     }
   }, [impostoData]);
 
