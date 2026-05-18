@@ -702,6 +702,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           area: areaNome,
           cliente: clienteNome,
           referencia: monthLabel,
+          mesReferencia: format(monthStart, "yyyy-MM"),
           poc,
           impostos: {
             issqn: poc * (impostosProjeto?.perc_issqn ?? 0),
