@@ -309,7 +309,8 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     ws["!cols"] = colWidths;
 
     // Filters
-    ws["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(range.e.c)}${range.e.r - 1}` };
+    // Filters - now starts at the table header row
+    ws["!autofilter"] = { ref: `${XLSX.utils.encode_cell({ r: headerRowIdx, c: 0 })}:${XLSX.utils.encode_cell({ r: range.e.r - 1, c: range.e.c })}` };
 
     // Summary Sheet (Now matches the visual cards)
     const summaryData = [
