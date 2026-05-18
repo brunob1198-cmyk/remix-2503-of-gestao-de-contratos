@@ -245,6 +245,14 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
                 <Label>ICMS (%)</Label>
                 <Input type="number" step="0.01" value={icms} onChange={e => setIcms(Number(e.target.value))} />
               </div>
+              <div className="space-y-2">
+                <Label>IRPJ (%)</Label>
+                <Input type="number" step="0.01" value={irpj} onChange={e => setIrpj(Number(e.target.value))} />
+              </div>
+              <div className="space-y-2">
+                <Label>CSLL (%)</Label>
+                <Input type="number" step="0.01" value={csll} onChange={e => setCsll(Number(e.target.value))} />
+              </div>
             </div>
 
             <div className="p-4 rounded-lg bg-muted border">
