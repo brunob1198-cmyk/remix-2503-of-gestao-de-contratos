@@ -312,6 +312,15 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
         else if (i >= 7) wsSummary[valCell].z = '"R$ "#,##0.00';
       }
     }
+
+    // Apply exact formatting to summary data to match cards
+    const summaryRowsToFormat = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    summaryRowsToFormat.forEach(r => {
+      const cell = wsSummary[XLSX.utils.encode_cell({ r, c: 1 })];
+      if (cell) cell.z = '"R$ "#,##0.00';
+    });
+    wsSummary[XLSX.utils.encode_cell({ r: 17, c: 1 })].z = "0.00%";
+
     wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
 
     // FCA Sheet
