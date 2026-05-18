@@ -16,7 +16,7 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
 import { GerarMedicaoDialog } from "@/components/medicoes/acompanhamento/GerarMedicaoDialog";
 import { RevisaoParcialDialog } from "@/components/medicoes/acompanhamento/RevisaoParcialDialog";
-import { uploadImage } from "@/services/uploadImage";
+
 
 
 const STATUS_OPTIONS = [
