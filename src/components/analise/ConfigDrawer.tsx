@@ -131,7 +131,7 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
     }
   }, [mkpData]);
 
-  const totalImpostos = (issqn + pis + cofins + inss + dara + icms) / 100;
+  const totalImpostos = (issqn + pis + cofins + inss + dara + icms + irpj + csll) / 100;
   const percTotalCustos = (percCustoDireto + percGerencia + percRisco + percTreinamento + percInflacao) / 100;
   const percMbEsperado = 1 - percTotalCustos - totalImpostos;
   const bdiVenda = 1 / (1 - totalImpostos);
