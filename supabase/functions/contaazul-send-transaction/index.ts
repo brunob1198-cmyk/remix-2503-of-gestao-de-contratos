@@ -257,10 +257,13 @@ async function sendOne(
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
+          valor: transactionValue,
+          situacao: "PAGO",
           baixa: {
             data_pagamento: transactionDate,
             conta_financeira: input.financial_account_id,
-            valor_pago: transactionValue
+            valor_pago: transactionValue,
+            metodo_pagamento: "OUTRO"
           },
           detalhe_valor: {
             valor_bruto: transactionValue,
@@ -578,6 +581,28 @@ serve(async (req) => {
       } catch (e) {}
     }
 
+    // Buscar mapeamento de centro de custo por funcionário
+    const employeeIds = norms
+      .map(n => rawsById.get(n.flash_transaction_id)?.payload_json?.employee?.id)
+      .filter(id => !!id);
+
+    const ccMap: Record<string, string> = {};
+    if (employeeIds.length > 0) {
+      try {
+        const { data: mappings, error: rpcErr } = await admin.rpc('get_employee_cc_map', { employee_ids: employeeIds });
+        if (rpcErr) {
+          console.error("[RPC ERROR] get_employee_cc_map:", rpcErr);
+        } else if (mappings) {
+          mappings.forEach((m: any) => {
+            if (m.cc_name) ccMap[m.employee_id] = m.cc_name;
+          });
+          console.log(`[DEBUG] Mapeamento de centro de custo carregado para ${Object.keys(ccMap).length} funcionários`);
+        }
+      } catch (e) {
+        console.error("[ERROR] Falha ao carregar ccMap:", e);
+      }
+    }
+
     const results = [];
     for (const n of norms) {
       const raw = rawsById.get(n.flash_transaction_id);
@@ -586,20 +611,30 @@ serve(async (req) => {
       // Sempre usa a conta "flash" se encontrada
       const financialAccountId = flashAccountId || n.conta_azul_account_id;
 
-      // Extrair comentários e centro de custo do payload_json ou do snapshot
+      // Extrair comentários do payload_json ou do snapshot
       const comentarios = snap.comentarios
         || raw?.payload_json?.comments
         || raw?.payload_json?.comment
         || raw?.payload_json?.observacao
+        || raw?.payload_json?.justification
         || null;
-      const costCenter = snap.cost_center
+
+      // Centro de custo: Prioridade 1: Snapshot/Payload, Prioridade 2: Mapping por funcionário
+      let costCenter = snap.cost_center
         || raw?.payload_json?.costCenter?.name
         || raw?.payload_json?.cost_center?.name
         || raw?.payload_json?.centro_custo
         || null;
 
+      if (!costCenter || costCenter === "—") {
+        const empId = raw?.payload_json?.employee?.id;
+        if (empId && ccMap[empId]) {
+          costCenter = ccMap[empId];
+          console.log(`[DEBUG] Aplicando centro de custo fallback para funcionário ${empId}: ${costCenter}`);
+        }
+      }
+
       // Valor: snap.amount já está em reais (dividido por 100 no frontend)
-      // O raw?.payload_json?.amount vem da API Flash em CENTAVOS, precisa dividir por 100
       const rawAmount = raw?.payload_json?.amount;
       const valueInReais = typeof snap.amount === "number"
         ? snap.amount
