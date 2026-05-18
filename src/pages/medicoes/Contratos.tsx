@@ -205,14 +205,14 @@ export default function ContratosPage() {
                                     {ad.arquivo_url && (
                                       <button
                                         className="text-blue-600 hover:text-blue-800"
-                                        onClick={async () => {
-                                          const { data } = await supabase.storage.from('contratos').createSignedUrl(ad.arquivo_url!, 31536000);
-                                          if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                        onClick={() => {
+                                          if (ad.arquivo_url) window.open(ad.arquivo_url, '_blank');
                                         }}
                                       >
                                         <FileText className="h-3 w-3" />
                                       </button>
                                     )}
+
                                     <button onClick={() => handleEdit(ad)} className="text-muted-foreground hover:text-primary">
                                       <Pencil className="h-3 w-3" />
                                     </button>
@@ -277,14 +277,14 @@ export default function ContratosPage() {
                                 variant="ghost"
                                 size="icon"
                                 title="Ver arquivo original"
-                                onClick={async () => {
-                                  const { data } = await supabase.storage.from('contratos').createSignedUrl(c.arquivo_url, 31536000);
-                                  if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                                onClick={() => {
+                                  if (c.arquivo_url) window.open(c.arquivo_url, '_blank');
                                 }}
                               >
                                 <FileText className="h-4 w-4 text-blue-600" />
                               </Button>
                             )}
+
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
