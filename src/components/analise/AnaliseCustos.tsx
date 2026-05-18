@@ -404,11 +404,16 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const fcaHeader = ["Projeto", "Mês", "Fato", "Causa", "Ação"];
     const fcaRows: any[] = [];
     
-    // Fetch ALL FCA events for the selected projects to be more comprehensive
+    // Fetch ALL FCA events for the selected projects within the period
+    const startMonth = format(periodoInicio, "yyyy-MM");
+    const endMonth = format(periodoFim, "yyyy-MM");
+    
     const { data: fcaEvents } = await supabase
       .from("fca_eventos")
       .select("projeto_id, mes_referencia, fato, causa, acao")
-      .in("projeto_id", projetoIds);
+      .in("projeto_id", projetoIds)
+      .gte("mes_referencia", startMonth)
+      .lte("mes_referencia", endMonth);
 
     if (fcaEvents && fcaEvents.length > 0) {
       // Sort by month (descending)
