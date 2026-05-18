@@ -47,6 +47,8 @@ export function ConfigDrawer({ projetoId, isOpen, onOpenChange }: ConfigDrawerPr
   const [inss, setInss] = useState(0);
   const [dara, setDara] = useState(0);
   const [icms, setIcms] = useState(0);
+  const [irpj, setIrpj] = useState(0);
+  const [csll, setCsll] = useState(0);
 
   // --- MKP STATE ---
   const [obraCodigo, setObraCodigo] = useState("");
