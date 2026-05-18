@@ -113,7 +113,7 @@ export function ImpostosModal({ isOpen, onClose, id }: ImpostosModalProps) {
         perc_icms: (icms || 0) / 100,
         perc_irpj: (irpj || 0) / 100,
         perc_csll: (csll || 0) / 100,
-        perc_total_impostos: Number(totalImpostos.toFixed(6)),
+        // perc_total_impostos: Number(totalImpostos.toFixed(6)), // Removido pois é coluna gerada no banco
       };
 
       if (id) {
