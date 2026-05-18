@@ -2,6 +2,8 @@ export async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
+  console.log("UPLOAD ATTEMPT:", file.name, file.size);
+
   const response = await fetch(
     "https://obras-upload-api.bruno1198.workers.dev",
     {
@@ -10,7 +12,14 @@ export async function uploadImage(file: File): Promise<string> {
     }
   );
 
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("UPLOAD ERROR RESPONSE:", errorText);
+    throw new Error(`Erro no upload: ${response.status} ${response.statusText}`);
+  }
+
   const data = await response.json();
+  console.log("UPLOAD RESPONSE:", data);
 
   if (!data.success) {
     throw new Error(data.error || "Erro no upload para o R2");
@@ -23,7 +32,6 @@ export async function deleteImage(url: string): Promise<boolean> {
   if (!url) return false;
   
   try {
-    // Standard approach for this worker pattern is usually DELETE with the URL or filename
     const response = await fetch(
       `https://obras-upload-api.bruno1198.workers.dev?url=${encodeURIComponent(url)}`,
       {

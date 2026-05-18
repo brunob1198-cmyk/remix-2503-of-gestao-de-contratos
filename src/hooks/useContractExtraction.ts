@@ -23,20 +23,6 @@ export function useContractExtraction() {
   const [isExtracting, setIsExtracting] = useState(false);
   const { toast } = useToast();
 
-  const fileToBase64 = (file: File): Promise<{ base64: string, type: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        const [meta, base64] = result.split(',');
-        const type = meta.split(':')[1].split(';')[0];
-        resolve({ base64, type });
-      };
-      reader.onerror = reject;
-    });
-  };
-
   const extrairContrato = useCallback(async (file: File): Promise<{ data: ContratoExtraido, path: string } | null> => {
     setIsExtracting(true);
     let result: { data: ContratoExtraido, path: string } | null = null;

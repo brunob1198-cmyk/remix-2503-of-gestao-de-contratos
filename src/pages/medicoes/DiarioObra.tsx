@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
@@ -401,7 +401,9 @@ export default function DiarioObraPage() {
         const fileIndex = i + index;
         try {
           let fileToUpload = file;
-          if (isFileImage(file.name)) {
+          // Local helper to avoid duplication conflicts
+          const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
+          if (checkIsImage(file.name)) {
             fileToUpload = await compressImage(file, 1200, 0.75);
           }
 
