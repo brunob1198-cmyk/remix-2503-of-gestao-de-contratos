@@ -30,13 +30,13 @@ const formatPercent = (val: number) =>
 
 function MetricCard({ title, value, icon, className }: { title: string, value: string, icon: React.ReactNode, className?: string }) {
   return (
-    <Card className={`flex flex-col justify-center items-center p-2 overflow-hidden text-center border shadow-sm transition-all hover:shadow-md min-h-[85px] ${className}`}>
-      <div className="flex items-center justify-center p-1.5 rounded-full bg-white/40 mb-1.5">
-        {icon}
+    <Card className={`relative flex flex-col p-3 overflow-hidden border shadow-sm transition-all hover:shadow-md min-h-[80px] ${className}`}>
+      <div className="flex flex-col justify-between h-full z-10">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 leading-tight line-clamp-1 mb-1">{title}</span>
+        <div className="text-base font-extrabold tracking-tight truncate">{value}</div>
       </div>
-      <div className="flex flex-col items-center gap-0.5 w-full">
-        <span className="text-[10px] font-semibold uppercase tracking-tight text-muted-foreground leading-tight px-1 line-clamp-2">{title}</span>
-        <div className="text-sm font-bold tracking-tighter truncate w-full px-1">{value}</div>
+      <div className="absolute right-1 bottom-1 opacity-15">
+        {icon}
       </div>
     </Card>
   );
@@ -286,6 +286,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       [""],
       ["MÉTRICA", "VALOR"],
       ["Produção Total", totals.poc],
+      ["Custo Total", totals.custoTotalReal],
       ["Resultado Direto", totals.custoDiretoOrcado - totals.custoDiretoReal],
       ["Resultado Total", totals.resultadoTotal],
       ["MB Orçada (R$)", totals.mbOrcada],
@@ -300,7 +301,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       ["Custo Direto Total (Orçado)", totals.custoDiretoOrcado],
       ["Gerência Total (Real)", totals.gerenciaReal],
       ["Gerência Total (Orçada)", totals.gerenciaOrcada],
-      ["Custo Total (Real)", totals.custoTotalReal],
       ["Custo Total (Orçado)", totals.custoTotalOrcado]
     ];
 
@@ -308,23 +308,23 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     
     // Summary styling
     wsSummary["A1"].s = { font: { bold: true, size: 14 } };
-    for (let i = 5; i <= 22; i++) {
+    for (let i = 5; i <= 23; i++) {
       const labelCell = XLSX.utils.encode_cell({ r: i, c: 0 });
       const valCell = XLSX.utils.encode_cell({ r: i, c: 1 });
       if (wsSummary[labelCell]) wsSummary[labelCell].s = { font: { bold: true } };
       if (wsSummary[valCell]) {
-        // Formatos de porcentagem para as linhas 11 e 12 (0-indexed seriam 11 e 12)
-        if (i === 11 || i === 12) {
+        // Formatos de porcentagem para as linhas de MB Orç e Real (agora i=12 e 13)
+        if (i === 12 || i === 13) {
           wsSummary[valCell].z = "0.00%";
-        } else if (i >= 6 && i !== 13 && i !== 14) { // Pula labels e total de projetos
+        } else if (i >= 6 && i !== 14 && i !== 15) { // Pula labels e total de projetos
           wsSummary[valCell].z = '"R$ "#,##0.00';
         }
       }
     }
 
     // Cores para o Resumo Executivo (combinando com os cards da tela)
-    const summaryCardColors = ["DBEAFE", "DCFCE7", "F3E8FF", "FEF3C7", "D1FAE5", "F1F5F9", "E0E7FF"];
-    for (let i = 0; i < 7; i++) {
+    const summaryCardColors = ["DBEAFE", "E0E7FF", "DCFCE7", "F3E8FF", "FEF3C7", "D1FAE5", "F1F5F9", "F8FAFC"];
+    for (let i = 0; i < 8; i++) {
       const r = i + 6;
       const addrL = XLSX.utils.encode_cell({ r, c: 0 });
       const addrV = XLSX.utils.encode_cell({ r, c: 1 });
