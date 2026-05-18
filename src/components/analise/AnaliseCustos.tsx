@@ -396,47 +396,53 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         <MetricCard 
           title="Produção Total" 
           value={formatCurrency(totals.poc)} 
-          icon={<DollarSign className="h-4 w-4 text-blue-600" />}
+          icon={<DollarSign className="h-10 w-10 text-blue-600" />}
           className="bg-blue-50/50 border-blue-200"
+        />
+        <MetricCard 
+          title="Custo Total" 
+          value={formatCurrency(totals.custoTotalReal)} 
+          icon={<Calculator className="h-10 w-10 text-indigo-600" />}
+          className="bg-indigo-50/50 border-indigo-200"
         />
         <MetricCard 
           title="Res. Direto" 
           value={formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)} 
-          icon={<ArrowUpRight className="h-4 w-4 text-green-600" />}
-          className="bg-green-50/50 border-green-200"
+          icon={<ArrowUpRight className="h-10 w-10 text-emerald-600" />}
+          className="bg-emerald-50/50 border-emerald-200"
         />
         <MetricCard 
           title="Res. Total" 
           value={formatCurrency(totals.resultadoTotal)} 
-          icon={<Target className="h-4 w-4 text-purple-600" />}
+          icon={<Target className="h-10 w-10 text-purple-600" />}
           className="bg-purple-50/50 border-purple-200"
         />
         <MetricCard 
           title="MB Orçada" 
           value={formatCurrency(totals.mbOrcada)} 
-          icon={<Calculator className="h-4 w-4 text-amber-600" />}
+          icon={<BarChart3 className="h-10 w-10 text-amber-600" />}
           className="bg-amber-50/50 border-amber-200"
         />
         <MetricCard 
           title="MB Real" 
           value={formatCurrency(totals.mbRealizada)} 
-          icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
-          className="bg-emerald-50/50 border-emerald-200"
+          icon={<TrendingUp className="h-10 w-10 text-green-600" />}
+          className="bg-green-50/50 border-green-200"
         />
         <MetricCard 
           title="% MB Orç" 
           value={formatPercent(totals.percMbOrcada)} 
-          icon={<Percent className="h-4 w-4 text-slate-600" />}
+          icon={<Percent className="h-10 w-10 text-slate-600" />}
           className="bg-slate-50/50 border-slate-200"
         />
         <MetricCard 
           title="% MB Real" 
           value={formatPercent(totals.percMbReal)} 
-          icon={<BarChart3 className="h-4 w-4 text-indigo-600" />}
+          icon={<Percent className="h-10 w-10 text-indigo-600" />}
           className="bg-indigo-50/50 border-indigo-200"
         />
       </div>
