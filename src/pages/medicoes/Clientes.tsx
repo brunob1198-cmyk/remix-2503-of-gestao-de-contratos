@@ -13,7 +13,7 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
-import { compressImage } from "@/lib/imageCompression";
+
 
 
 const columns = ["razao_social", "cnpj", "endereco_completo"] as const;
