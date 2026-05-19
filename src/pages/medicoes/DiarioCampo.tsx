@@ -161,7 +161,7 @@ export default function DiarioCampoPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("PHOTO STATE:", fotos);
+      console.log("PHOTO STATE:", fotos.map(f => ({ url: f.url, thumb: f.thumb_url, medium: f.thumb_600_url })));
     }
   }, [fotos]);
 

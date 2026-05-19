@@ -39,7 +39,7 @@ export async function normalizarUrlsContratos() {
     const { data: fotos, error: errFotos } = await supabase
       .from("diario_fotos")
       .select("id, url, thumb_url, thumb_600_url")
-      .or("url.ilike.%supabase.co%,url.not.ilike.http%");
+      .or("url.ilike.%supabase.co%,url.not.ilike.http%,thumb_url.ilike.%supabase.co%,thumb_600_url.ilike.%supabase.co%");
 
     if (errFotos) throw errFotos;
 
@@ -67,7 +67,7 @@ export async function normalizarUrlsContratos() {
     const { data: fotosCampo, error: errCampo } = await supabase
       .from("diario_campo_fotos")
       .select("id, url, thumb_url, thumb_600_url")
-      .or("url.ilike.%supabase.co%,url.not.ilike.http%");
+      .or("url.ilike.%supabase.co%,url.not.ilike.http%,thumb_url.ilike.%supabase.co%,thumb_600_url.ilike.%supabase.co%");
 
     if (!errCampo) {
       for (const f of (fotosCampo || [])) {
