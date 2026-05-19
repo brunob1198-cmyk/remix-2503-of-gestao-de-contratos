@@ -618,8 +618,8 @@ export function DetailMedicaoContent({
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
-          <img
-            src={resolveFileUrl(foto.thumb_600_url || foto.url)}
+          <SafeImage
+            src={foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             crossOrigin="anonymous"
