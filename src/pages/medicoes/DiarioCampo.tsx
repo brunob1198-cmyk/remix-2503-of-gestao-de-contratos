@@ -24,7 +24,7 @@ import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 
-import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, getPublicUrl } from "@/services/uploadImage";
 
 
 export default function DiarioCampoPage() {
