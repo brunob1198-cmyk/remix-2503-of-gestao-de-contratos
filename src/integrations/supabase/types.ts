@@ -3816,24 +3816,18 @@ export type Database = {
           cliente_cnpj: string | null
           cliente_id: string | null
           custo_direto_orcado: number | null
-          custo_equipamentos: number | null
-          custo_erp_total: number | null
+          custo_direto_real: number | null
           custo_financeiros: number | null
-          custo_indiretos: number | null
-          custo_mao_de_obra: number | null
-          custo_materiais: number | null
-          custo_outros: number | null
           custo_total_orcado: number | null
           custo_total_real: number | null
-          custo_transporte: number | null
           empresa_id: string | null
           empresa_nome: string | null
           equipamentos: number | null
           faturamento_bruto: number | null
           faturamento_liquido: number | null
-          financeiros: number | null
           gerencia_orcada: number | null
           gerencia_real: number | null
+          gerencia_resultado: number | null
           indiretos: number | null
           materiais: number | null
           mb_orcada: number | null
@@ -3841,8 +3835,12 @@ export type Database = {
           mes: string | null
           mes_numero: number | null
           mo_obra: number | null
+          outros: number | null
+          perc_gerencia_orcada: number | null
+          perc_gerencia_real: number | null
           perc_impostos: number | null
           perc_mb_mkp: number | null
+          perc_mb_orcada: number | null
           perc_mb_real: number | null
           poc: number | null
           projeto_codigo: string | null
@@ -3852,6 +3850,8 @@ export type Database = {
           qtd_faturas: number | null
           receita_liquida: number | null
           referencia: string | null
+          resultado_direto: number | null
+          resultado_total: number | null
           transporte: number | null
         }
         Relationships: [
