@@ -1,39 +1,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { encodeBase64 } from "https://deno.land/std@0.208.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Based on the logs, gemini-2.0-flash is invalid without the prefix, 
-// and gemini-2.5-flash is allowed. We'll use 2.5-flash as the primary.
+// Use the model explicitly allowed in previous logs
 const PRIMARY_MODEL = 'google/gemini-2.5-flash';
 
 async function fetchFileAsBase64(url: string): Promise<{ base64: string, contentType: string }> {
-  console.log(`Fetching file from URL: ${url}`);
+  console.log(`Fetching file: ${url}`);
   const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${response.statusText}`);
-  }
+  if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
   const contentType = response.headers.get('content-type') || 'application/octet-stream';
   const arrayBuffer = await response.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
-  let binary = '';
-  const len = uint8Array.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(uint8Array[i]);
-  }
   return {
-    base64: btoa(binary),
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
     contentType
   };
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -45,9 +35,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader || '' } },
     }).auth.getUser();
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const { pdfBase64, fileName, contentType, filePath, fileUrl } = await req.json();
     let fileData = pdfBase64;
@@ -59,21 +47,17 @@ serve(async (req) => {
       mimeType = fetched.contentType;
     } else if (filePath) {
       const { data: signedData, error: signedError } = await supabase.storage.from('contratos').createSignedUrl(filePath, 60 * 15);
-      if (signedError || !signedData?.signedUrl) {
-        throw new Error(`Failed to access storage: ${signedError?.message}`);
-      }
+      if (signedError || !signedData?.signedUrl) throw new Error(`Storage error: ${signedError?.message}`);
       const fetched = await fetchFileAsBase64(signedData.signedUrl);
       fileData = fetched.base64;
       mimeType = fetched.contentType;
     }
 
-    if (!fileData) {
-      return new Response(JSON.stringify({ error: 'Content is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    if (!fileData) return new Response(JSON.stringify({ error: 'Content is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const systemPrompt = `Você é um assistente especializado em extrair dados estruturados de Contratos e Aditivos contratuais de engenharia/serviços. Analise o documento rigorosamente. NUNCA INVENTE DADOS. Se um campo não for encontrado, retorne null.
-Retorne os dados em formato JSON estruturado.
+Retorne JSON:
 {
   "valor_total": "string ou null",
   "prazo_inicio": "string ou null",
@@ -90,8 +74,8 @@ Retorne os dados em formato JSON estruturado.
 }`;
 
     const makeAICall = async (document: any) => {
-      console.log(`Calling AI Gateway: model=${PRIMARY_MODEL}, type=${document.type}`);
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      console.log(`Trying AI call: model=${PRIMARY_MODEL}, type=${document.type}`);
+      return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -112,40 +96,38 @@ Retorne os dados em formato JSON estruturado.
           max_tokens: 1200,
         }),
       });
-      return response;
     };
 
-    // Try primary structure: type 'file' with base64 data
-    let doc = {
+    // Attempt 1: Standard 'file' type (no prefix in data)
+    let response = await makeAICall({
       type: 'file',
-      file: {
-        file_data: fileData,
-        filename: fileName || 'contrato.pdf',
-        mime_type: mimeType
-      }
-    };
+      file: { file_data: fileData, filename: fileName || 'doc.pdf', mime_type: mimeType }
+    });
 
-    let response = await makeAICall(doc);
-
-    // Fallback logic: if it's an image, try image_url
-    if (!response.ok && mimeType.startsWith('image/')) {
-      const errorText = await response.text();
-      console.warn(`Attempt 1 failed: ${errorText}. Retrying with image_url...`);
-      
-      doc = {
+    // Attempt 2: If failed, try 'image_url' with data prefix (works for many models including PDFs)
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`Attempt 1 failed: ${errText}. Trying Attempt 2 (image_url)...`);
+      response = await makeAICall({
         type: 'image_url',
-        image_url: {
-          url: `data:${mimeType};base64,${fileData}`
-        }
-      } as any;
-      
-      response = await makeAICall(doc);
+        image_url: { url: `data:${mimeType};base64,${fileData}` }
+      });
+    }
+
+    // Attempt 3: If still failed, try 'file' with just file_data
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`Attempt 2 failed: ${errText}. Trying Attempt 3 (minimal file)...`);
+      response = await makeAICall({
+        type: 'file',
+        file: { file_data: fileData }
+      });
     }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Final AI error:', response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
+      const finalErr = await response.text();
+      console.error('All AI attempts failed:', finalErr);
+      throw new Error(`AI Gateway error: ${response.status} - ${finalErr}`);
     }
 
     const data = await response.json();
@@ -153,8 +135,7 @@ Retorne os dados em formato JSON estruturado.
     if (!content) throw new Error('No content from AI');
 
     const jsonMatch = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
-    const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
-    const extractedData = JSON.parse(jsonString);
+    const extractedData = JSON.parse(jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content);
 
     return new Response(JSON.stringify({ success: true, data: extractedData, fileName }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
