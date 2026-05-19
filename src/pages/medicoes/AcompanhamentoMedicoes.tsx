@@ -11,7 +11,7 @@ import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileDown, Loader2, Plus } from "lucide-react";
-import { exportLancamentosToExcel, exportAcompanhamentoToExcel } from "@/lib/medicoesExport";
+import { exportAcompanhamentoToExcel } from "@/lib/medicoesExport";
 import { DetailMedicaoContent } from "@/components/medicoes/DetailMedicaoContent";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
