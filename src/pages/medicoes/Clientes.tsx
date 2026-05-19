@@ -127,11 +127,7 @@ export default function ClientesPage() {
       if (!user) throw new Error("Usuário não autenticado");
 
       let fileToUpload = file;
-      try {
-        fileToUpload = await compressImage(file, 200, 0.8);
-      } catch (e) {
-        console.error("Compression failed", e);
-      }
+      // Image will be compressed automatically in uploadImage
 
       const publicUrl = await uploadImage(fileToUpload);
       
