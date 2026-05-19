@@ -1,10 +1,14 @@
+import { compressImage } from "@/lib/compressImage";
+
 export async function uploadImage(file: File): Promise<string> {
+  const compressedFile = await compressImage(file);
+  
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", compressedFile);
 
   const workerUrl = "https://obras-upload-api.brunob1198.workers.dev/";
   
-  console.log("UPLOAD ATTEMPT:", file.name, file.size);
+  console.log("UPLOAD ATTEMPT:", compressedFile.name, (compressedFile.size / 1024).toFixed(2), "KB");
   console.log("UPLOAD URL:", workerUrl);
 
   const response = await fetch(
