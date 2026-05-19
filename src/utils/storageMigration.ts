@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { resolveFileUrl } from "./fileUrlResolver";
 
 const R2_WORKER_URL = "https://obras-upload-api.brunob1198.workers.dev/";
