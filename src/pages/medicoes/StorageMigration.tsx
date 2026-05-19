@@ -10,14 +10,14 @@ import { Loader2, Play, CheckCircle2, AlertCircle, SkipForward, Search } from "l
 import { toast } from "sonner";
 
 const TABLES_CONFIG = [
-  { name: "contratos", id: "id", columns: ["arquivo_url"] },
-  { name: "diario_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"] },
-  { name: "diario_campo_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"] },
-  { name: "profiles", id: "id", columns: ["avatar_url"] },
-  { name: "lancamentos_medicao", id: "id", columns: ["logo_empresa_url", "capa_url"] },
-  { name: "empresas", id: "id", columns: ["logo_url"] },
-  { name: "clientes", id: "id", columns: ["logo_url"] },
-  { name: "medicao_exports", id: "id", columns: ["storage_path"] },
+  { name: "contratos", id: "id", columns: ["arquivo_url"], label: "Contratos" },
+  { name: "diario_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"], label: "Diário de Obras (Fotos)" },
+  { name: "diario_campo_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"], label: "Diário de Campo (Fotos)" },
+  { name: "profiles", id: "id", columns: ["avatar_url"], label: "Perfis (Avatares)" },
+  { name: "lancamentos_medicao", id: "id", columns: ["logo_empresa_url", "capa_url"], label: "Lançamentos de Medição" },
+  { name: "empresas", id: "id", columns: ["logo_url"], label: "Empresas (Logos)" },
+  { name: "clientes", id: "id", columns: ["logo_url"], label: "Clientes (Logos)" },
+  { name: "medicao_exports", id: "id", columns: ["storage_path"], label: "Exportações de Medição" },
 ];
 
 const StorageMigrationPage = () => {
