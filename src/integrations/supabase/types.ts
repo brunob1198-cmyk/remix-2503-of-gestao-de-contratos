@@ -3828,9 +3828,9 @@ export type Database = {
           gerencia_orcada: number | null
           gerencia_real: number | null
           gerencia_resultado: number | null
+          id_unico: string | null
           indiretos: number | null
           materiais: number | null
-          mb_orcada: number | null
           mb_real: number | null
           mes: string | null
           mes_id: number | null
@@ -3838,12 +3838,7 @@ export type Database = {
           mo_obra: number | null
           outros: number | null
           perc_custo_direto_orcado: number | null
-          perc_custo_direto_real: number | null
-          perc_gerencia_orcada: number | null
-          perc_gerencia_real: number | null
           perc_impostos: number | null
-          perc_mb_mkp: number | null
-          perc_mb_orcada: number | null
           perc_mb_real: number | null
           poc: number | null
           projeto_codigo: string | null
