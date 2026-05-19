@@ -116,7 +116,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 }
 
 export async function migrateTableRecords(
-  tableName: string, 
+  tableName: any, 
   idColumn: string,
   columnsToMigrate: string[],
   onProgress?: (log: MigrationLog) => void
@@ -131,13 +131,15 @@ export async function migrateTableRecords(
     return;
   }
 
+  if (!records) return;
+
   for (const record of records) {
     let updatedData: any = {};
     let hasChanges = false;
 
     for (const column of columnsToMigrate) {
       const oldValue = record[column];
-      if (oldValue) {
+      if (oldValue && typeof oldValue === 'string') {
         const result = await migrateFileToR2(oldValue);
         
         if (result.status === 'success') {
@@ -148,7 +150,7 @@ export async function migrateTableRecords(
         if (onProgress) {
           onProgress({
             id: record[idColumn],
-            tableName,
+            tableName: String(tableName),
             columnName: column,
             oldValue,
             newValue: result.url,
@@ -171,3 +173,4 @@ export async function migrateTableRecords(
     }
   }
 }
+
