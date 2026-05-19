@@ -68,14 +68,13 @@ export function extractStorageInfo(pathOrUrl: string) {
   
   if (parts.length < 2) {
     // Pode ser um arquivo na raiz de algum bucket não identificado?
-    // Se não tem barra, é um path inválido para o nosso storage estruturado
     return null;
   }
 
   let bucket = parts[0];
   let filePath = parts.slice(1).join("/");
 
-  // Corrigir nomes de buckets legados
+  // Corrigir nomes de buckets legados (convertendo _ para -)
   const legacyBucketsMap: Record<string, string> = {
     "diario_fotos": "diario-fotos",
     "diario_campo_fotos": "diario-campo-fotos",
@@ -87,6 +86,9 @@ export function extractStorageInfo(pathOrUrl: string) {
 
   if (legacyBucketsMap[bucket]) {
     bucket = legacyBucketsMap[bucket];
+  } else if (bucket.includes("_")) {
+    // Tenta converter automaticamente underscore para hifen se não estiver no mapa
+    bucket = bucket.replace(/_/g, "-");
   }
 
   return {
@@ -111,28 +113,30 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
   const info = extractStorageInfo(pathOrUrl);
   
   if (!info) {
+    // Se for uma URL externa que não é R2 nem Supabase, ignoramos sem erro
     if (pathOrUrl.startsWith("http") && !pathOrUrl.includes("supabase") && !pathOrUrl.includes("r2.dev")) {
       return { url: pathOrUrl, status: 'skipped', message: "URL externa ignorada" };
     }
-    return { url: pathOrUrl, status: 'error', message: "Não foi possível detectar bucket/path" };
+    // Caso contrário, pode ser um erro de parser mas marcamos como skipped para não travar
+    return { url: pathOrUrl, status: 'skipped', message: `Parser: Formato de caminho não reconhecido: ${pathOrUrl}` };
   }
 
   const { bucket, filePath, isOriginal } = info;
 
   // 1. Ignorar thumbnails
   if (!isOriginal) {
-    return { url: pathOrUrl, status: 'skipped', message: "Thumbnail ignorada (apenas originais são migrados)" };
+    return { url: pathOrUrl, status: 'skipped', message: `Thumbnail ignorada: ${filePath}` };
   }
 
-  // 2. Verificar se já existe no R2 (opcional, mas bom para performance)
+  // 2. Verificar se já existe no R2
   if (pathOrUrl.includes(".r2.dev")) {
     try {
       const checkRes = await fetch(pathOrUrl, { method: 'HEAD' });
       if (checkRes.ok) {
-        return { url: pathOrUrl, status: 'verified', message: "Já existe no R2" };
+        return { url: pathOrUrl, status: 'verified', message: "Já existe no R2 (Verificado)" };
       }
     } catch (e) {
-      // Prossegue se der erro no check
+      // Prossegue
     }
   }
 
@@ -142,18 +146,27 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 
   while (attempt < maxAttempts) {
     try {
-      console.log(`[MIGRATION] Bucket: ${bucket} | Path: ${filePath} | Original: ${pathOrUrl}`);
+      console.log(`[MIGRATION] Bucket: ${bucket} | Path: ${filePath}`);
       
       const { data, error } = await supabase.storage.from(bucket).download(filePath);
       
       if (error || !data) {
         const errorMsg = error?.message || "Arquivo não encontrado";
-        if (errorMsg.includes("Object not found") || (error as any)?.status === 404) {
-          return { url: pathOrUrl, status: 'skipped', message: `Arquivo não existe no Supabase: ${bucket}/${filePath}` };
+        // Se o arquivo não existir, é um skip, não erro
+        if (errorMsg.includes("Object not found") || (error as any)?.status === 404 || errorMsg.includes("not found")) {
+          return { 
+            url: pathOrUrl, 
+            status: 'skipped', 
+            message: `Arquivo não existe no Supabase (404). Bucket: ${bucket}, Path: ${filePath}` 
+          };
         }
 
         if (attempt === maxAttempts - 1) {
-          return { url: pathOrUrl, status: 'error', message: `Erro Supabase (${bucket}/${filePath}): ${errorMsg}` };
+          return { 
+            url: pathOrUrl, 
+            status: 'error', 
+            message: `Erro Supabase (${bucket}/${filePath}): ${errorMsg}` 
+          };
         }
         attempt++;
         await new Promise(r => setTimeout(r, 1000));
@@ -166,9 +179,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
       const file = new File([data], fileName, { type: data.type });
       formData.append("file", file);
       
-      // Passar o path desejado para o Worker manter a estrutura (se o worker suportar)
-      // Se o worker não suportar path, ele vai gerar um novo. 
-      // Idealmente o worker deve receber o path completo.
+      // Passar o path desejado para o Worker manter a estrutura
       formData.append("path", `${bucket}/${filePath}`);
 
       const response = await fetch(R2_WORKER_URL, {
@@ -198,13 +209,17 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
       try {
         const verifyRes = await fetch(newUrl, { method: 'HEAD' });
         if (!verifyRes.ok) {
-          return { url: pathOrUrl, status: 'error', message: "Migrado, mas não acessível no R2 (404)" };
+          return { 
+            url: pathOrUrl, 
+            status: 'error', 
+            message: `Migrado para R2, mas retornou ${verifyRes.status} na verificação: ${newUrl}` 
+          };
         }
       } catch (e) {
         // Ignora erro de rede na verificação
       }
 
-      return { url: newUrl, status: 'success', message: "Migrado com sucesso" };
+      return { url: newUrl, status: 'success', message: `Migrado com sucesso! Bucket: ${bucket}, Path: ${filePath}` };
     } catch (err: any) {
       if (attempt === maxAttempts - 1) {
         return { url: pathOrUrl, status: 'error', message: `Exceção: ${err.message}` };
@@ -223,10 +238,13 @@ export async function migrateTableRecords(
   columnsToMigrate: string[],
   onProgress?: (log: MigrationLog) => void
 ) {
-  // Buscar registros que não estão no R2 ou que precisam de verificação
+  console.log(`[MIGRATION] Iniciando tabela: ${tableName}`);
   const { data: records, error } = await supabase.from(tableName).select(`*`);
 
-  if (error || !records) return;
+  if (error || !records) {
+    console.error(`[MIGRATION] Erro ao buscar registros da tabela ${tableName}:`, error);
+    return;
+  }
 
   for (const record of records) {
     let updatedData: any = {};
@@ -235,7 +253,6 @@ export async function migrateTableRecords(
     for (const column of columnsToMigrate) {
       const oldValue = record[column];
       
-      // Se já for uma URL do R2 válida, podemos pular ou apenas verificar
       if (oldValue && typeof oldValue === 'string' && oldValue.trim() !== "") {
         const result = await migrateFileToR2(oldValue);
         
@@ -265,7 +282,7 @@ export async function migrateTableRecords(
         .eq(idColumn, record[idColumn]);
       
       if (updateError) {
-        console.error(`Erro ao atualizar registro ${record[idColumn]} na tabela ${tableName}:`, updateError);
+        console.error(`[MIGRATION] Erro ao atualizar registro ${record[idColumn]} na tabela ${tableName}:`, updateError);
       }
     }
   }
