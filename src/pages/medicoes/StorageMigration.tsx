@@ -155,8 +155,9 @@ const StorageMigrationPage = () => {
                       </TableCell>
                       <TableCell className="font-medium">{log.tableName}</TableCell>
                       <TableCell className="text-xs">{log.columnName}</TableCell>
-                      <TableCell className="text-xs max-w-xs truncate" title={log.message || log.oldValue}>
-                        {log.message || log.oldValue}
+                      <TableCell className="text-xs max-w-xs break-all" title={log.message || log.oldValue}>
+                        <div className="font-semibold text-red-500">{log.status === 'error' ? log.message : ''}</div>
+                        <div className="opacity-70">{log.oldValue}</div>
                       </TableCell>
                     </TableRow>
                   ))}
