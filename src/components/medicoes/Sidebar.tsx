@@ -43,6 +43,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis, restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { cn } from "@/lib/utils";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 interface MenuItem {
   id: string;
@@ -234,7 +235,7 @@ export function MedicoesSidebar() {
         <div className="border-t p-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
-              {avatarUrl && <AvatarImage src={avatarUrl} key={avatarUrl} />}
+              {avatarUrl && <AvatarImage src={resolveFileUrl(avatarUrl)} key={avatarUrl} />}
               <AvatarFallback className="text-xs bg-primary/10 text-primary">
                 {initials}
               </AvatarFallback>
