@@ -1,49 +1,92 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicUrl } from "@/services/uploadImage";
 
 /**
- * Script utilitário para normalizar URLs de contratos antigos
- * que ainda estão com o caminho relativo (uploads/...)
+ * Script utilitário para normalizar URLs de contratos e fotos antigos
+ * que ainda estão com o caminho relativo ou URLs do Supabase
  * para URLs absolutas do Cloudflare R2.
  */
 export async function normalizarUrlsContratos() {
-  console.log("Iniciando normalização de URLs de contratos...");
-  const R2_BASE = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
-
+  console.log("Iniciando normalização profunda de URLs...");
+  
   try {
-    const { data: contratos, error } = await supabase
+    // 1. Normalizar Contratos
+    const { data: contratos, error: errContratos } = await supabase
       .from("contratos")
       .select("id, arquivo_url")
       .not("arquivo_url", "is", null)
       .not("arquivo_url", "eq", "");
 
-    if (error) throw error;
-    if (!contratos || contratos.length === 0) {
-      console.log("Nenhum contrato com arquivo_url encontrado.");
-      return;
-    }
-
-    let atualizados = 0;
-    for (const c of contratos) {
-      if (!c.arquivo_url.startsWith("http")) {
-        const novaUrl = `${R2_BASE}/${c.arquivo_url.startsWith('/') ? c.arquivo_url.slice(1) : c.arquivo_url}`;
-        
-        const { error: updateError } = await supabase
+    if (errContratos) throw errContratos;
+    
+    let contratosAtu = 0;
+    for (const c of (contratos || [])) {
+      const novaUrl = getPublicUrl(c.arquivo_url);
+      if (novaUrl !== c.arquivo_url) {
+        const { error: updErr } = await supabase
           .from("contratos")
           .update({ arquivo_url: novaUrl })
           .eq("id", c.id);
+        if (!updErr) contratosAtu++;
+      }
+    }
 
-        if (updateError) {
-          console.error(`Erro ao atualizar contrato ${c.id}:`, updateError);
-        } else {
-          atualizados++;
+    // 2. Normalizar Fotos do Diário (diario_fotos)
+    const { data: fotos, error: errFotos } = await supabase
+      .from("diario_fotos")
+      .select("id, url, thumb_url, thumb_600_url")
+      .or("url.ilike.%supabase.co%,thumb_url.ilike.%supabase.co%,thumb_600_url.ilike.%supabase.co%,url.not.ilike.http%,thumb_url.not.ilike.http%");
+
+    if (errFotos) throw errFotos;
+
+    let fotosAtu = 0;
+    for (const f of (fotos || [])) {
+      const updates: any = {};
+      const novaUrl = getPublicUrl(f.url);
+      const novaThumb = f.thumb_url ? getPublicUrl(f.thumb_url) : null;
+      const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
+
+      if (novaUrl !== f.url) updates.url = novaUrl;
+      if (novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
+      if (novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
+
+      if (Object.keys(updates).length > 0) {
+        const { error: updErr } = await supabase
+          .from("diario_fotos")
+          .update(updates)
+          .eq("id", f.id);
+        if (!updErr) fotosAtu++;
+      }
+    }
+
+    // 3. Normalizar Fotos de Campo (diario_campo_fotos)
+    const { data: fotosCampo, error: errCampo } = await supabase
+      .from("diario_campo_fotos")
+      .select("id, url, thumb_url, thumb_600_url")
+      .or("url.ilike.%supabase.co%,thumb_url.ilike.%supabase.co%,url.not.ilike.http%");
+
+    if (!errCampo) {
+      for (const f of (fotosCampo || [])) {
+        const updates: any = {};
+        const novaUrl = getPublicUrl(f.url);
+        const novaThumb = f.thumb_url ? getPublicUrl(f.thumb_url) : null;
+        const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
+
+        if (novaUrl !== f.url) updates.url = novaUrl;
+        if (novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
+        if (novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("diario_campo_fotos").update(updates).eq("id", f.id);
         }
       }
     }
 
-    console.log(`Normalização concluída. ${atualizados} contratos atualizados.`);
-    return atualizados;
+    console.log(`Normalização concluída: ${contratosAtu} contratos e ${fotosAtu} fotos atualizados.`);
+    return { contratosAtu, fotosAtu };
   } catch (err) {
     console.error("Erro na normalização:", err);
     throw err;
   }
 }
+
