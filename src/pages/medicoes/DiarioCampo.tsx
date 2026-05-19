@@ -101,14 +101,14 @@ export default function DiarioCampoPage() {
           const { data: verifyData, error: verifyError } = await supabase
             .from("diario_campo_fotos")
             .select("id")
-            .eq("url", publicUrl)
+            .eq("url", originalUrl)
             .single();
 
           if (verifyError || !verifyData) {
             throw new Error("Falha ao confirmar salvamento da URL no banco de dados.");
           }
 
-          await updateUploadStatus(item.id, 'completed', { url: publicUrl });
+          await updateUploadStatus(item.id, 'completed', { url: originalUrl });
 
         } catch (error: any) {
           console.error("Upload error:", error);
