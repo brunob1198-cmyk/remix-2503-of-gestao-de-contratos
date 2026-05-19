@@ -7,10 +7,11 @@ import { getPublicUrl } from "@/services/uploadImage";
  * para URLs absolutas do Cloudflare R2.
  */
 export async function normalizarUrlsContratos() {
-  console.log("Iniciando normalização profunda de URLs...");
+  console.log("Iniciando normalização PROFUNDA de URLs...");
   
   try {
     // 1. Normalizar Contratos
+    // Buscamos TODOS os contratos que tenham arquivo_url preenchido
     const { data: contratos, error: errContratos } = await supabase
       .from("contratos")
       .select("id, arquivo_url")
@@ -21,13 +22,22 @@ export async function normalizarUrlsContratos() {
     
     let contratosAtu = 0;
     for (const c of (contratos || [])) {
+      // getPublicUrl já remove o prefixo 'uploads/' se necessário
       const novaUrl = getPublicUrl(c.arquivo_url);
+      
+      // Atualizamos apenas se a URL mudou (ex: era caminho relativo ou era Supabase)
       if (novaUrl !== c.arquivo_url) {
+        console.log(`Normalizando Contrato ${c.id}: ${c.arquivo_url} -> ${novaUrl}`);
         const { error: updErr } = await supabase
           .from("contratos")
           .update({ arquivo_url: novaUrl })
           .eq("id", c.id);
-        if (!updErr) contratosAtu++;
+        
+        if (!updErr) {
+          contratosAtu++;
+        } else {
+          console.error(`Erro ao atualizar contrato ${c.id}:`, updErr);
+        }
       }
     }
 
@@ -35,7 +45,7 @@ export async function normalizarUrlsContratos() {
     const { data: fotos, error: errFotos } = await supabase
       .from("diario_fotos")
       .select("id, url, thumb_url, thumb_600_url")
-      .or("url.ilike.%supabase.co%,thumb_url.ilike.%supabase.co%,thumb_600_url.ilike.%supabase.co%,url.not.ilike.http%,thumb_url.not.ilike.http%");
+      .or("url.ilike.%supabase.co%,url.not.ilike.http%");
 
     if (errFotos) throw errFotos;
 
@@ -47,8 +57,8 @@ export async function normalizarUrlsContratos() {
       const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
 
       if (novaUrl !== f.url) updates.url = novaUrl;
-      if (novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
-      if (novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
+      if (novaThumb && novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
+      if (novaMedium && novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
 
       if (Object.keys(updates).length > 0) {
         const { error: updErr } = await supabase
@@ -63,7 +73,7 @@ export async function normalizarUrlsContratos() {
     const { data: fotosCampo, error: errCampo } = await supabase
       .from("diario_campo_fotos")
       .select("id, url, thumb_url, thumb_600_url")
-      .or("url.ilike.%supabase.co%,thumb_url.ilike.%supabase.co%,url.not.ilike.http%");
+      .or("url.ilike.%supabase.co%,url.not.ilike.http%");
 
     if (!errCampo) {
       for (const f of (fotosCampo || [])) {
@@ -73,8 +83,8 @@ export async function normalizarUrlsContratos() {
         const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
 
         if (novaUrl !== f.url) updates.url = novaUrl;
-        if (novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
-        if (novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
+        if (novaThumb && novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
+        if (novaMedium && novaMedium !== f.thumb_600_url) updates.thumb_600_url = novaMedium;
 
         if (Object.keys(updates).length > 0) {
           await supabase.from("diario_campo_fotos").update(updates).eq("id", f.id);
@@ -82,11 +92,10 @@ export async function normalizarUrlsContratos() {
       }
     }
 
-    console.log(`Normalização concluída: ${contratosAtu} contratos e ${fotosAtu} fotos atualizados.`);
+    console.log(`Normalização finalizada: ${contratosAtu} contratos e ${fotosAtu} fotos.`);
     return { contratosAtu, fotosAtu };
   } catch (err) {
-    console.error("Erro na normalização:", err);
+    console.error("Erro crítico na normalização:", err);
     throw err;
   }
 }
-
