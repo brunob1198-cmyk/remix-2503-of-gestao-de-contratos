@@ -92,7 +92,7 @@ const StorageMigrationPage = () => {
           {isMigrating && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Processando tabela: <strong>{currentTable}</strong></span>
+                <span>Processando: <strong>{TABLES_CONFIG.find(t => t.name === currentTable)?.label || currentTable}</strong></span>
                 <span>{progress}%</span>
               </div>
               <Progress value={progress} />
