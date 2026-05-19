@@ -14,9 +14,61 @@ export interface MigrationLog {
   message?: string;
 }
 
+// Index para mapeamento: filename -> { bucket, filePath }
+let storageIndex: Map<string, { bucket: string, filePath: string }> = new Map();
+
 /**
- * Detecta se o path é de uma thumbnail histórica
+ * Scan inicial dos buckets para criar índice
  */
+export async function buildStorageIndex() {
+  const buckets = [
+    "diario-fotos",
+    "contratos",
+    "medicoes-pdf",
+    "avatars",
+    "timeline-evidencias",
+    "medicao-capas",
+    "diario-campo-fotos"
+  ];
+  
+  storageIndex = new Map();
+  console.log("[MIGRATION] Iniciando escaneamento recursivo de buckets Supabase...");
+  
+  async function listRecursive(bucket: string, path: string = "") {
+    try {
+      const { data, error } = await supabase.storage.from(bucket).list(path, {
+        limit: 1000
+      });
+
+      if (error) {
+        console.error(`Erro ao listar bucket ${bucket} em ${path}:`, error.message);
+        return;
+      }
+      
+      if (!data) return;
+
+      for (const item of data) {
+        const fullPath = path ? `${path}/${item.name}` : item.name;
+        if (item.id) { // É um arquivo
+          // Priorizamos o nome do arquivo para o index
+          storageIndex.set(item.name, { bucket, filePath: fullPath });
+        } else {
+          // É uma pasta, recursão
+          await listRecursive(bucket, fullPath);
+        }
+      }
+    } catch (e) {
+      console.error(`Exceção ao listar bucket ${bucket}:`, e);
+    }
+  }
+
+  for (const bucket of buckets) {
+    await listRecursive(bucket);
+  }
+  
+  console.log(`[MIGRATION] Index construído com ${storageIndex.size} arquivos.`);
+}
+
 function isThumbnail(path: string): boolean {
   const lowercasePath = path.toLowerCase();
   return (
@@ -28,15 +80,37 @@ function isThumbnail(path: string): boolean {
     lowercasePath.includes("/thumbs") ||
     lowercasePath.startsWith("thumbs/") ||
     lowercasePath.startsWith("thumb_") ||
-    // Regex para capturar padrões como 600/arquivo.jpg ou thumbs/600/
     /\/(300|600|900)\//.test(lowercasePath) ||
     /^(300|600|900)\//.test(lowercasePath)
   );
 }
 
 /**
- * Parser robusto para extrair bucket e path do arquivo
+ * Busca o caminho real no storage usando o índice
  */
+export function findRealStoragePath(pathOrUrl: string) {
+  // Pega apenas o nome do arquivo final
+  const parts = pathOrUrl.split("/");
+  const filename = parts.pop();
+  
+  if (filename && storageIndex.has(filename)) {
+    return storageIndex.get(filename);
+  }
+
+  // Tenta também com o penúltimo part se for UUID/file.jpg
+  if (parts.length > 0) {
+    const lastTwo = `${parts[parts.length-1]}/${filename}`;
+    // Busca parcial no index
+    for (const [key, value] of storageIndex.entries()) {
+      if (value.filePath.endsWith(lastTwo)) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
 export function extractStorageInfo(pathOrUrl: string) {
   let cleaned = pathOrUrl.trim();
   
@@ -45,21 +119,26 @@ export function extractStorageInfo(pathOrUrl: string) {
     cleaned = cleaned.replace(`${SUPABASE_STORAGE_BASE}/`, "");
   }
   
-  // 2. Tratar URLs do R2 (se já migrado ou se for o domínio do R2)
+  // 2. Tratar URLs do R2
   if (cleaned.includes(".r2.dev")) {
     try {
       const urlObj = new URL(cleaned);
       cleaned = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
-    } catch (e) {
-      // Se falhar o parse da URL, mantém o original
-    }
+    } catch (e) {}
   }
 
-  // 3. Normalizar separadores
   cleaned = cleaned.replace(/\\/g, "/");
 
-  // 4. Mapeamento de caminhos relativos órfãos
-  // Se começa com uploads/, assume bucket contratos
+  // 3. Tentar encontrar via index antes de fazer o parser manual
+  const foundInIndex = findRealStoragePath(cleaned);
+  if (foundInIndex) {
+    return {
+      ...foundInIndex,
+      isOriginal: !isThumbnail(cleaned)
+    };
+  }
+
+  // 4. Parser manual como fallback
   if (cleaned.startsWith("uploads/")) {
     cleaned = `contratos/${cleaned}`;
   }
@@ -67,14 +146,12 @@ export function extractStorageInfo(pathOrUrl: string) {
   const parts = cleaned.split("/").filter(p => p !== "");
   
   if (parts.length < 2) {
-    // Pode ser um arquivo na raiz de algum bucket não identificado?
     return null;
   }
 
   let bucket = parts[0];
   let filePath = parts.slice(1).join("/");
 
-  // Corrigir nomes de buckets legados (convertendo _ para -)
   const legacyBucketsMap: Record<string, string> = {
     "diario_fotos": "diario-fotos",
     "diario_campo_fotos": "diario-campo-fotos",
@@ -87,7 +164,6 @@ export function extractStorageInfo(pathOrUrl: string) {
   if (legacyBucketsMap[bucket]) {
     bucket = legacyBucketsMap[bucket];
   } else if (bucket.includes("_")) {
-    // Tenta converter automaticamente underscore para hifen se não estiver no mapa
     bucket = bucket.replace(/_/g, "-");
   }
 
@@ -98,9 +174,6 @@ export function extractStorageInfo(pathOrUrl: string) {
   };
 }
 
-/**
- * Tenta migrar um arquivo do Supabase para o R2.
- */
 export async function migrateFileToR2(pathOrUrl: string | null | undefined): Promise<{ 
   url: string; 
   status: 'success' | 'error' | 'skipped' | 'verified'; 
@@ -113,51 +186,43 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
   const info = extractStorageInfo(pathOrUrl);
   
   if (!info) {
-    // Se for uma URL externa que não é R2 nem Supabase, ignoramos sem erro
     if (pathOrUrl.startsWith("http") && !pathOrUrl.includes("supabase") && !pathOrUrl.includes("r2.dev")) {
       return { url: pathOrUrl, status: 'skipped', message: "URL externa ignorada" };
     }
-    // Caso contrário, pode ser um erro de parser mas marcamos como skipped para não travar
-    return { url: pathOrUrl, status: 'skipped', message: `Parser: Formato de caminho não reconhecido: ${pathOrUrl}` };
+    return { url: pathOrUrl, status: 'skipped', message: `Parser: Formato não reconhecido: ${pathOrUrl}` };
   }
 
   const { bucket, filePath, isOriginal } = info;
 
-  // 1. Ignorar thumbnails
   if (!isOriginal) {
     return { url: pathOrUrl, status: 'skipped', message: `Thumbnail ignorada: ${filePath}` };
   }
 
-  // 2. Verificar se já existe no R2
+  // Verificar se já existe no R2
   if (pathOrUrl.includes(".r2.dev")) {
     try {
       const checkRes = await fetch(pathOrUrl, { method: 'HEAD' });
       if (checkRes.ok) {
         return { url: pathOrUrl, status: 'verified', message: "Já existe no R2 (Verificado)" };
       }
-    } catch (e) {
-      // Prossegue
-    }
+    } catch (e) {}
   }
 
-  // 3. Tentar download do Supabase
   let attempt = 0;
   const maxAttempts = 2;
 
   while (attempt < maxAttempts) {
     try {
-      console.log(`[MIGRATION] Bucket: ${bucket} | Path: ${filePath}`);
-      
+      console.log(`[MIGRATION] Tentando download: ${bucket}/${filePath}`);
       const { data, error } = await supabase.storage.from(bucket).download(filePath);
       
       if (error || !data) {
         const errorMsg = error?.message || "Arquivo não encontrado";
-        // Se o arquivo não existir, é um skip, não erro
         if (errorMsg.includes("Object not found") || (error as any)?.status === 404 || errorMsg.includes("not found")) {
           return { 
             url: pathOrUrl, 
             status: 'skipped', 
-            message: `Arquivo não existe no Supabase (404). Bucket: ${bucket}, Path: ${filePath}` 
+            message: `404 no Supabase: ${bucket}/${filePath}` 
           };
         }
 
@@ -165,7 +230,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
           return { 
             url: pathOrUrl, 
             status: 'error', 
-            message: `Erro Supabase (${bucket}/${filePath}): ${errorMsg}` 
+            message: `Erro download: ${errorMsg}` 
           };
         }
         attempt++;
@@ -173,13 +238,10 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
         continue;
       }
 
-      // 4. Upload para R2 via Worker
       const formData = new FormData();
       const fileName = filePath.split("/").pop() || "file";
       const file = new File([data], fileName, { type: data.type });
       formData.append("file", file);
-      
-      // Passar o path desejado para o Worker manter a estrutura
       formData.append("path", `${bucket}/${filePath}`);
 
       const response = await fetch(R2_WORKER_URL, {
@@ -190,7 +252,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
       if (!response.ok) {
         const errorText = await response.text();
         if (attempt === maxAttempts - 1) {
-          return { url: pathOrUrl, status: 'error', message: `Erro R2 Worker (${response.status}): ${errorText}` };
+          return { url: pathOrUrl, status: 'error', message: `Erro R2: ${errorText}` };
         }
         attempt++;
         await new Promise(r => setTimeout(r, 1000));
@@ -202,24 +264,21 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
         return { url: pathOrUrl, status: 'error', message: result.error || "Falha R2" };
       }
 
-      // Validar URL retornada
       const newUrl = resolveFileUrl(result.url);
       
-      // 5. Validação final: Verificar se o arquivo realmente está acessível no R2
+      // Validação final
       try {
         const verifyRes = await fetch(newUrl, { method: 'HEAD' });
         if (!verifyRes.ok) {
           return { 
             url: pathOrUrl, 
             status: 'error', 
-            message: `Migrado para R2, mas retornou ${verifyRes.status} na verificação: ${newUrl}` 
+            message: `Migrado, mas 404 no R2: ${newUrl}` 
           };
         }
-      } catch (e) {
-        // Ignora erro de rede na verificação
-      }
+      } catch (e) {}
 
-      return { url: newUrl, status: 'success', message: `Migrado com sucesso! Bucket: ${bucket}, Path: ${filePath}` };
+      return { url: newUrl, status: 'success', message: `Sucesso! Path: ${bucket}/${filePath}` };
     } catch (err: any) {
       if (attempt === maxAttempts - 1) {
         return { url: pathOrUrl, status: 'error', message: `Exceção: ${err.message}` };
@@ -229,7 +288,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     }
   }
   
-  return { url: pathOrUrl, status: 'error', message: "Esgotado após tentativas" };
+  return { url: pathOrUrl, status: 'error', message: "Esgotado" };
 }
 
 export async function migrateTableRecords(
@@ -238,13 +297,9 @@ export async function migrateTableRecords(
   columnsToMigrate: string[],
   onProgress?: (log: MigrationLog) => void
 ) {
-  console.log(`[MIGRATION] Iniciando tabela: ${tableName}`);
   const { data: records, error } = await supabase.from(tableName).select(`*`);
 
-  if (error || !records) {
-    console.error(`[MIGRATION] Erro ao buscar registros da tabela ${tableName}:`, error);
-    return;
-  }
+  if (error || !records) return;
 
   for (const record of records) {
     let updatedData: any = {};
@@ -276,14 +331,10 @@ export async function migrateTableRecords(
     }
 
     if (hasChanges) {
-      const { error: updateError } = await supabase
+      await supabase
         .from(tableName)
         .update(updatedData)
         .eq(idColumn, record[idColumn]);
-      
-      if (updateError) {
-        console.error(`[MIGRATION] Erro ao atualizar registro ${record[idColumn]} na tabela ${tableName}:`, updateError);
-      }
     }
   }
 }
