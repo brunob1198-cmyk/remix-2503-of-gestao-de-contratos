@@ -53,7 +53,7 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
-import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, getPublicUrl } from "@/services/uploadImage";
 
 
 const formatCurrency = (v: number) =>
