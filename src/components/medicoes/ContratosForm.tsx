@@ -293,10 +293,11 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 variant="outline" 
                 size="sm" 
                 className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
-                onClick={async () => {
-                  window.open(getPublicUrl(arquivoUrl), '_blank');
+                onClick={() => {
+                  const url = getPublicUrl(arquivoUrl);
+                  console.log("Opening contract URL:", url);
+                  window.open(url, '_blank');
                 }}
-
               >
                 Visualizar Arquivo Original
               </Button>
