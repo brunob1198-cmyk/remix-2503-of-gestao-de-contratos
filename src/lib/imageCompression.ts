@@ -22,11 +22,11 @@ export async function compressImage(file: File, maxWidth?: number, quality?: num
   };
 
   try {
-    console.log("ORIGINAL SIZE:", (file.size / 1024).toFixed(2), "KB");
+    console.log("ORIGINAL SIZE:", file.size);
     
     const compressedFile = await imageCompression(file, options);
     
-    console.log("COMPRESSED SIZE:", (compressedFile.size / 1024).toFixed(2), "KB");
+    console.log("COMPRESSED SIZE:", compressedFile.size);
     
     // Create a new file with the .webp extension
     const baseName = file.name.split('.').slice(0, -1).join('.');
