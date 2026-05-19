@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users, FileDown } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
+import { getPublicUrl } from "@/services/uploadImage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";

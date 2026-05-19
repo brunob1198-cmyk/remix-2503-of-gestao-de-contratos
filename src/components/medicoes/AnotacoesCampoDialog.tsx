@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getPublicUrl } from "@/services/uploadImage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -323,7 +324,7 @@ export function AnotacoesCampoDialog({
                             return (
                               <div key={f.id} className="flex items-center gap-3 border rounded-lg p-2 bg-muted/30">
                                 <a href={f.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                                  <img src={f.url} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
+                                  <img src={getPublicUrl(f.url)} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
                                 </a>
                                 <div className="flex-1 min-w-0 space-y-1.5">
                                   <Select

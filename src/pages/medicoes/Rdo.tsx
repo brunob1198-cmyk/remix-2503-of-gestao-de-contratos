@@ -1058,7 +1058,7 @@ export default function RdoPage() {
           {lightboxPhoto && (
             <div className="relative">
               <img
-                src={lightboxPhoto.url}
+                src={getPublicUrl(lightboxPhoto.url)}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
               />
@@ -1166,7 +1166,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
                 <img 
-                  src={f.url} 
+                  src={getPublicUrl(f.url)}
                   alt="" 
                   className="w-full h-full object-cover" 
                 />
@@ -1383,7 +1383,7 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           className="block w-full relative group"
                         >
                           <img
-                            src={f.url}
+                            src={getPublicUrl(f.url)}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
                           />
