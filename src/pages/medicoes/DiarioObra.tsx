@@ -1786,23 +1786,40 @@ export default function DiarioObraPage() {
                     value={newGroupName}
                     onChange={e => setNewGroupName(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === "Enter" && newGroupName.trim()) {
+                      if (e.key === "Enter") {
                         const name = newGroupName.trim();
-                        if (!photoGroups.includes(name)) setPhotoGroups(prev => [...prev, name]);
+                        if (!name) {
+                          toast({ title: "Nome do grupo obrigatório", variant: "destructive" });
+                          return;
+                        }
+                        if (!photoGroups.includes(name)) {
+                          setPhotoGroups(prev => [...prev, name]);
+                          toast({ title: `Grupo "${name}" criado` });
+                        } else {
+                          toast({ title: "Este grupo já existe", variant: "destructive" });
+                        }
                         setNewGroupName("");
                       }
                     }}
-                    placeholder="Nome do grupo..."
+                    placeholder="Nome do novo grupo..."
                     className="h-8 w-[160px] text-xs"
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-8 text-xs"
-                    disabled={!newGroupName.trim()}
+                    className="h-8 text-xs whitespace-nowrap"
                     onClick={() => {
                       const name = newGroupName.trim();
-                      if (name && !photoGroups.includes(name)) setPhotoGroups(prev => [...prev, name]);
+                      if (!name) {
+                        toast({ title: "Digite um nome para o grupo", variant: "destructive" });
+                        return;
+                      }
+                      if (!photoGroups.includes(name)) {
+                        setPhotoGroups(prev => [...prev, name]);
+                        toast({ title: `Grupo "${name}" criado` });
+                      } else {
+                        toast({ title: "Este grupo já existe", variant: "destructive" });
+                      }
                       setNewGroupName("");
                     }}
                   >
