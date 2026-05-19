@@ -12,7 +12,7 @@ import { toast } from "sonner";
 const TABLES_CONFIG = [
   { name: "contratos", id: "id", columns: ["arquivo_url"], label: "Contratos" },
   { name: "diario_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"], label: "Diário de Obras (Fotos)" },
-  { name: "diario_campo_fotos", id: "id", columns: ["url", "thumb_url", "thumb_600_url"], label: "Diário de Campo (Fotos)" },
+  { name: "diario_campo_fotos", id: "id", columns: ["url", "thumb_url"], label: "Diário de Campo (Fotos)" },
   { name: "profiles", id: "id", columns: ["avatar_url"], label: "Perfis (Avatares)" },
   { name: "lancamentos_medicao", id: "id", columns: ["logo_empresa_url", "capa_url"], label: "Lançamentos de Medição" },
   { name: "empresas", id: "id", columns: ["logo_url"], label: "Empresas (Logos)" },
@@ -155,8 +155,9 @@ const StorageMigrationPage = () => {
                       </TableCell>
                       <TableCell className="font-medium">{log.tableName}</TableCell>
                       <TableCell className="text-xs">{log.columnName}</TableCell>
-                      <TableCell className="text-xs max-w-xs truncate" title={log.message || log.oldValue}>
-                        {log.message || log.oldValue}
+                      <TableCell className="text-xs max-w-xs break-all" title={log.message || log.oldValue}>
+                        <div className="font-semibold text-red-500">{log.status === 'error' ? log.message : ''}</div>
+                        <div className="opacity-70">{log.oldValue}</div>
                       </TableCell>
                     </TableRow>
                   ))}

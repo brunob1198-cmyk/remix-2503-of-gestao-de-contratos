@@ -32,6 +32,7 @@ export function resolveFileUrl(path: string | null | undefined): string {
   // 3. Buckets conhecidos do Supabase (arquivos antigos)
   const supabasePrefixes = [
     "diario-fotos/",
+    "diario-campo-fotos/",
     "timeline-evidencias/",
     "avatars/",
     "medicao-capas/",
