@@ -15,7 +15,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
 import { toast } from "sonner";
-import { getPublicUrl } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 interface GeracaoItem {
   site_id: string;
