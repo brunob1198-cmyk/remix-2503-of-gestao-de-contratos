@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getPublicUrl } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 /**
  * Script utilitário para normalizar URLs de contratos e fotos antigos.
@@ -20,7 +20,7 @@ export async function normalizarUrlsContratos() {
     
     let contratosAtu = 0;
     for (const c of (contratos || [])) {
-      const novaUrl = getPublicUrl(c.arquivo_url);
+      const novaUrl = resolveFileUrl(c.arquivo_url);
       
       // Atualizamos SE a URL mudou OU se ainda for um caminho relativo (não começa com http)
       if (novaUrl !== c.arquivo_url || !c.arquivo_url.startsWith("http")) {
@@ -46,9 +46,9 @@ export async function normalizarUrlsContratos() {
     let fotosAtu = 0;
     for (const f of (fotos || [])) {
       const updates: any = {};
-      const novaUrl = getPublicUrl(f.url);
-      const novaThumb = f.thumb_url ? getPublicUrl(f.thumb_url) : null;
-      const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
+      const novaUrl = resolveFileUrl(f.url);
+      const novaThumb = f.thumb_url ? resolveFileUrl(f.thumb_url) : null;
+      const novaMedium = f.thumb_600_url ? resolveFileUrl(f.thumb_600_url) : null;
 
       if (novaUrl !== f.url) updates.url = novaUrl;
       if (novaThumb && novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;
@@ -72,9 +72,9 @@ export async function normalizarUrlsContratos() {
     if (!errCampo) {
       for (const f of (fotosCampo || [])) {
         const updates: any = {};
-        const novaUrl = getPublicUrl(f.url);
-        const novaThumb = f.thumb_url ? getPublicUrl(f.thumb_url) : null;
-        const novaMedium = f.thumb_600_url ? getPublicUrl(f.thumb_600_url) : null;
+        const novaUrl = resolveFileUrl(f.url);
+        const novaThumb = f.thumb_url ? resolveFileUrl(f.thumb_url) : null;
+        const novaMedium = f.thumb_600_url ? resolveFileUrl(f.thumb_600_url) : null;
 
         if (novaUrl !== f.url) updates.url = novaUrl;
         if (novaThumb && novaThumb !== f.thumb_url) updates.thumb_url = novaThumb;

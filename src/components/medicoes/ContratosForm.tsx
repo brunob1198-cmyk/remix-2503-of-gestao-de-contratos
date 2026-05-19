@@ -13,7 +13,8 @@ import { Loader2, UploadCloud, FileType2, BrainCircuit, ExternalLink } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadImage, deleteImage, getPublicUrl } from "@/services/uploadImage";
+import { uploadImage, deleteImage } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 
 interface Props {
@@ -294,7 +295,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 size="sm" 
                 className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
                 onClick={() => {
-                  const url = getPublicUrl(arquivoUrl);
+                  const url = resolveFileUrl(arquivoUrl);
                   console.log("Opening contract URL:", url);
                   window.open(url, '_blank');
                 }}

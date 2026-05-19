@@ -1,4 +1,5 @@
 import { compressImage } from "@/lib/imageCompression";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
 
@@ -6,52 +7,13 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
  * Converte qualquer URL ou caminho relativo para a URL absoluta final no R2,
  * removendo prefixos de buckets antigos do Supabase que não existem mais na estrutura do R2.
  */
+/**
+ * @deprecated Use resolveFileUrl from "@/utils/fileUrlResolver" instead.
+ * Esta função está mantida temporariamente para evitar quebras durante a transição,
+ * mas delega a lógica para o novo resolver centralizado.
+ */
 export function getPublicUrl(url: string | null | undefined): string {
-  if (!url || url.trim() === "") return "";
-
-  let cleanPath = url.trim();
-
-  // 1. Extrai o caminho relativo se for uma URL completa
-  if (cleanPath.includes(R2_PUBLIC_BASE_URL)) {
-    cleanPath = cleanPath.replace(R2_PUBLIC_BASE_URL, "");
-  } else if (cleanPath.includes("supabase.co/storage/v1/object/public/")) {
-    const parts = cleanPath.split("/public/");
-    if (parts.length > 1) {
-      cleanPath = parts[1];
-    }
-  }
-
-  // 2. Remove / inicial se houver
-  if (cleanPath.startsWith("/")) {
-    cleanPath = cleanPath.slice(1);
-  }
-
-  // 3. Remove prefixos de buckets conhecidos (recursivamente ou via regex para garantir limpeza)
-  // No R2, os arquivos migrados costumam estar na raiz do bucket.
-  const prefixesToRemove = [
-    /^uploads\//,
-    /^diario-fotos\//,
-    /^dsl-uploads\//,
-    /^contratos\//,
-    /^clientes\//,
-    /^logos\//,
-    /^diario-fotos\/[a-f0-9-]+\//, // Novo: Remove pastas de UUID dentro de diario-fotos
-    /^[a-f0-9-]+\// // Novo: Remove qualquer UUID inicial (folder do usuário/empresa)
-  ];
-
-  let pathChanged = true;
-  while (pathChanged) {
-    pathChanged = false;
-    for (const prefix of prefixesToRemove) {
-      if (prefix.test(cleanPath)) {
-        cleanPath = cleanPath.replace(prefix, "");
-        pathChanged = true;
-      }
-    }
-  }
-  
-  // 4. Retorna a URL absoluta final no R2
-  return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
+  return resolveFileUrl(url);
 }
 
 export function getAbsoluteUrl(url: string | null | undefined): string {
@@ -94,8 +56,8 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
     throw new Error(data.error || "Falha upload");
   }
 
-  // O worker retorna o path relativo (ex: "arquivo.pdf"). getPublicUrl gera a URL final.
-  return getPublicUrl(data.url);
+  // O worker retorna o path relativo (ex: "arquivo.pdf"). resolveFileUrl gera a URL final para novos arquivos (R2).
+  return resolveFileUrl(data.url);
 }
 
 export interface UploadedVariants {

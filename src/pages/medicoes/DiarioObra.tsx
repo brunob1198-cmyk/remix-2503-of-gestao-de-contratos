@@ -53,7 +53,8 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
-import { uploadImage, verifyImageUrl, getPublicUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 
 const formatCurrency = (v: number) =>
@@ -128,7 +129,7 @@ export default function DiarioObraPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("PHOTO STATE:", fotos.map(f => ({ url: f.url, thumb: f.thumb_url, medium: f.thumb_600_url })));
+      console.log("PHOTO STATE:", fotos.map(f => ({ url: resolveFileUrl(f.url), thumb: resolveFileUrl(f.thumb_url), medium: resolveFileUrl(f.thumb_600_url) })));
     }
   }, [fotos]);
 
@@ -1325,7 +1326,8 @@ export default function DiarioObraPage() {
                                             <div className="w-full h-full">
                                               {isFileImage(f.url) ? (
                                                   <img 
-                                                    src={getPublicUrl(f.thumb_url || f.url)} 
+                                                    src={resolveFileUrl(f.thumb_url || f.url)} 
+
                                                     alt={f.legenda || "foto"} 
                                                     className="w-full h-full object-cover" 
                                                   />
@@ -1340,7 +1342,8 @@ export default function DiarioObraPage() {
                                             <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                               {isFileImage(f.url) ? (
                                                 <img 
-                                                  src={getPublicUrl(f.thumb_600_url || f.url)} 
+                                                  src={resolveFileUrl(f.thumb_600_url || f.url)} 
+
                                                   alt={f.legenda || "Visualização ampliada"} 
                                                   className="max-w-full max-h-full object-contain"
                                                 />
@@ -1349,7 +1352,8 @@ export default function DiarioObraPage() {
                                                   <div className="text-6xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</div>
                                                   <p className="text-xl">{f.legenda || "Arquivo de documento"}</p>
                                                   <Button asChild variant="secondary">
-                                                    <a href={getPublicUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+                                                    <a href={resolveFileUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+
                                                   </Button>
                                                 </div>
                                               )}
@@ -1914,7 +1918,8 @@ export default function DiarioObraPage() {
                                 <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                   {isFileImage(f.url) ? (
                                       <img 
-                                        src={getPublicUrl(f.thumb_url || f.url)} 
+                                        src={resolveFileUrl(f.thumb_url || f.url)} 
+
                                         alt={f.legenda || "foto"} 
                                         className="w-full h-full object-cover" 
                                       />
@@ -1930,7 +1935,8 @@ export default function DiarioObraPage() {
                                 <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                   {isFileImage(f.url) ? (
                                     <img 
-                                      src={getPublicUrl(f.thumb_600_url || f.url)} 
+                                      src={resolveFileUrl(f.thumb_600_url || f.url)} 
+
                                       alt={f.legenda || "Visualização ampliada"} 
                                       className="max-w-full max-h-full object-contain"
                                     />
@@ -1939,7 +1945,8 @@ export default function DiarioObraPage() {
                                       <div className="text-6xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</div>
                                       <p className="text-xl">{f.legenda || "Arquivo de documento"}</p>
                                       <Button asChild variant="secondary">
-                                        <a href={getPublicUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+                                        <a href={resolveFileUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+
                                       </Button>
                                     </div>
                                   )}
@@ -2041,7 +2048,7 @@ export default function DiarioObraPage() {
                               <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                 {isFileImage(f.url) ? (
                                 <img 
-                                  src={getPublicUrl(f.thumb_url || f.url)} 
+                                  src={resolveFileUrl(f.thumb_url || f.url)} 
                                   alt={f.legenda || "foto"} 
                                   className="w-full h-full object-cover" 
                                 />
@@ -2057,7 +2064,7 @@ export default function DiarioObraPage() {
                               <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                 {isFileImage(f.url) ? (
                                   <img 
-                                    src={getPublicUrl(f.thumb_600_url || f.url)} 
+                                    src={resolveFileUrl(f.thumb_600_url || f.url)} 
                                     alt={f.legenda || "Visualização ampliada"} 
                                     className="max-w-full max-h-full object-contain"
                                   />
@@ -2066,7 +2073,7 @@ export default function DiarioObraPage() {
                                     <div className="text-6xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</div>
                                     <p className="text-xl">{f.legenda || "Arquivo de documento"}</p>
                                     <Button asChild variant="secondary">
-                                      <a href={getPublicUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
+                                      <a href={resolveFileUrl(f.url)} target="_blank" rel="noopener noreferrer">Baixar Arquivo</a>
                                     </Button>
                                   </div>
                                 )}
