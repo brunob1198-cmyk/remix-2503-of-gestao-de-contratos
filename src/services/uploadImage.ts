@@ -13,11 +13,13 @@ export function getPublicUrl(url: string | null | undefined): string {
     const parts = url.split("/public/");
     if (parts.length > 1) {
       const bucketAndPath = parts[1];
-      // Se o bucket era 'uploads', remove o prefixo pois no R2 os arquivos estão na raiz
-      if (bucketAndPath.startsWith("uploads/")) {
-        return `${R2_PUBLIC_BASE_URL}/${bucketAndPath.replace("uploads/", "")}`;
-      }
-      return `${R2_PUBLIC_BASE_URL}/${bucketAndPath}`;
+      // Remove prefixos de buckets conhecidos do Supabase pois no R2 os arquivos costumam estar na raiz
+      const cleanPath = bucketAndPath
+        .replace(/^uploads\//, "")
+        .replace(/^diario-fotos\//, "")
+        .replace(/^dsl-uploads\//, "");
+        
+      return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
     }
   }
 
@@ -27,10 +29,11 @@ export function getPublicUrl(url: string | null | undefined): string {
   // Trata caminhos relativos
   let path = url.startsWith("/") ? url.slice(1) : url;
   
-  // Se o caminho começa com 'uploads/', remove o prefixo pois no R2 os arquivos estão na raiz
-  if (path.startsWith("uploads/")) {
-    path = path.replace("uploads/", "");
-  }
+  // Remove prefixos de buckets conhecidos para caminhos relativos
+  path = path
+    .replace(/^uploads\//, "")
+    .replace(/^diario-fotos\//, "")
+    .replace(/^dsl-uploads\//, "");
   
   return `${R2_PUBLIC_BASE_URL}/${path}`;
 }
