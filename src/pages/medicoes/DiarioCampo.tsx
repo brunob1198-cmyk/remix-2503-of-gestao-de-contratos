@@ -89,12 +89,7 @@ export default function DiarioCampoPage() {
 
           const publicUrl = await uploadImage(fileToUpload);
           console.log("PHOTO URL:", publicUrl);
-          
-          // Validation: Verify if the URL is accessible
-          const isAccessible = await verifyImageUrl(publicUrl);
-          if (!isAccessible) {
-            throw new Error("A URL retornada pelo R2 não está acessível no momento.");
-          }
+
 
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
