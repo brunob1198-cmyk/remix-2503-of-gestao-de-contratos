@@ -13,8 +13,15 @@ export function getPublicUrl(url: string | null | undefined): string {
 }
 
 export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
+  let fileToUpload = file;
+  
+  // Se não for um upload de variante e for uma imagem, aplica a compressão padrão
+  if (!folder && file.type.startsWith('image/')) {
+    fileToUpload = await compressImage(file);
+  }
+
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", fileToUpload);
   if (folder) {
     formData.append("folder", folder);
   }
