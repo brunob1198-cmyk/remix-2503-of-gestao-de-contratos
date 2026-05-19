@@ -279,7 +279,7 @@ export default function ContratosPage() {
                                 size="icon"
                                 title="Ver arquivo original"
                                 onClick={() => {
-                                  if (c.arquivo_url) window.open(c.arquivo_url, '_blank');
+                                  if (c.arquivo_url) window.open(getPublicUrl(c.arquivo_url), '_blank');
                                 }}
                               >
                                 <FileText className="h-4 w-4 text-blue-600" />
