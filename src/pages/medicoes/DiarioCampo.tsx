@@ -81,11 +81,7 @@ export default function DiarioCampoPage() {
           const timestamp = Date.now();
           
           let fileToUpload = item.file;
-          try {
-            fileToUpload = await compressImage(item.file, 1200, 0.75);
-          } catch (e) {
-            console.error("Compression failed, using original", e);
-          }
+          // Image will be compressed automatically in uploadImage
 
           const publicUrl = await uploadImage(fileToUpload);
           console.log("PHOTO URL:", publicUrl);
