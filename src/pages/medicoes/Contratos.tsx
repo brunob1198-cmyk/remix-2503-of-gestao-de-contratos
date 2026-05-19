@@ -14,6 +14,7 @@ import { differenceInDays, parseISO, isBefore, startOfDay } from "date-fns";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { getPublicUrl } from "@/services/uploadImage";
 
 const COLUMNS = ["numero", "objeto", "clientes", "projetos", "valor", "vigencia", "status"] as const;
 type ColKey = typeof COLUMNS[number];
