@@ -294,7 +294,7 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
                 size="sm" 
                 className="w-full bg-white hover:bg-blue-100 border-blue-200 text-blue-700"
                 onClick={async () => {
-                  window.open(arquivoUrl, '_blank');
+                  window.open(getPublicUrl(arquivoUrl), '_blank');
                 }}
 
               >
