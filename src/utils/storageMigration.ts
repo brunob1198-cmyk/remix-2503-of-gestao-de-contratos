@@ -56,15 +56,23 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     return { url: trimmed, status: 'skipped', message: "URL externa ignorada" };
   }
 
-  // Se o path especial "uploads/" for usado, adicionar o prefixo "contratos/"
+  // Corrigir nomes de buckets mapeados incorretamente ou caminhos legados
   if (supabasePath.startsWith("uploads/")) {
     supabasePath = `contratos/${supabasePath}`;
+  } else if (supabasePath.startsWith("diario_fotos/")) {
+    supabasePath = supabasePath.replace("diario_fotos/", "diario-fotos/");
+  } else if (supabasePath.startsWith("diario_campo_fotos/")) {
+    supabasePath = supabasePath.replace("diario_campo_fotos/", "diario-campo-fotos/");
   }
 
   // Tentar baixar do Supabase (com retry básico)
   const parts = supabasePath.split("/");
-  const bucket = parts[0];
+  let bucket = parts[0];
   const filePath = parts.slice(1).join("/");
+
+  // Normalização adicional de buckets
+  if (bucket === "diario_fotos") bucket = "diario-fotos";
+  if (bucket === "diario_campo_fotos") bucket = "diario-campo-fotos";
 
   if (!bucket || !filePath) {
     return { url: trimmed, status: 'error', message: `Path inválido: ${supabasePath}` };
