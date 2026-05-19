@@ -16,7 +16,6 @@ export interface MigrationLog {
 
 /**
  * Tenta migrar um arquivo do Supabase para o R2.
- * Retorna a nova URL se migrado com sucesso, ou a mesma URL se já estiver ok.
  */
 export async function migrateFileToR2(pathOrUrl: string | null | undefined): Promise<{ 
   url: string; 
@@ -29,72 +28,79 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 
   const trimmed = pathOrUrl.trim();
   
-  // Identificar o path real no Supabase
+  // 1. Identificar o path real no Supabase
   let supabasePath = "";
   if (trimmed.startsWith(SUPABASE_STORAGE_BASE)) {
     supabasePath = trimmed.replace(`${SUPABASE_STORAGE_BASE}/`, "");
   } else if (trimmed.includes(".r2.dev")) {
-    // Se já é R2, precisamos verificar se o arquivo existe fisicamente.
-    // Se não existir, tentamos recuperar do Supabase usando o mesmo path.
     const urlObj = new URL(trimmed);
     supabasePath = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
     
-    // Verificar se existe no R2 (opcional, mas recomendado pelo usuário)
     try {
       const checkRes = await fetch(trimmed, { method: 'HEAD' });
       if (checkRes.ok) {
         return { url: trimmed, status: 'verified', message: "Já existe no R2" };
       }
     } catch (e) {
-      // Se falhar o HEAD, prosseguimos para tentar baixar do Supabase
+      // Prossegue
     }
   } else if (!trimmed.startsWith("http")) {
-    // É um path relativo
     supabasePath = trimmed;
   } else {
-    // Outra URL absoluta (ex: Google)
     return { url: trimmed, status: 'skipped', message: "URL externa ignorada" };
   }
 
-  // Corrigir nomes de buckets mapeados incorretamente ou caminhos legados
+  // 2. Normalizar o path (remoção de thumbs, correção de buckets)
+  if (supabasePath.includes("/thumbs/")) {
+    supabasePath = supabasePath.replace(/\/thumbs\/(300|600|900)\//, "/");
+  }
+
   if (supabasePath.startsWith("uploads/")) {
     supabasePath = `contratos/${supabasePath}`;
-  } else if (supabasePath.startsWith("diario_fotos/")) {
-    supabasePath = supabasePath.replace("diario_fotos/", "diario-fotos/");
-  } else if (supabasePath.startsWith("diario_campo_fotos/")) {
-    supabasePath = supabasePath.replace("diario_campo_fotos/", "diario-campo-fotos/");
   }
 
-  // Tentar baixar do Supabase (com retry básico)
+  // Corrigir nomes de buckets com underscore para hifen (comum em erros de mapeamento)
+  const legacyBucketsMap: Record<string, string> = {
+    "diario_fotos": "diario-fotos",
+    "diario_campo_fotos": "diario-campo-fotos",
+    "medicao_capas": "medicao-capas",
+    "medicoes_pdf": "medicoes-pdf",
+    "dsl_uploads": "dsl-uploads",
+    "timeline_evidencias": "timeline-evidencias"
+  };
+
   const parts = supabasePath.split("/");
   let bucket = parts[0];
-  const filePath = parts.slice(1).join("/");
+  let filePath = parts.slice(1).join("/");
 
-  // Normalização adicional de buckets
-  if (bucket === "diario_fotos") bucket = "diario-fotos";
-  if (bucket === "diario_campo_fotos") bucket = "diario-campo-fotos";
-
-  if (!bucket || !filePath) {
-    return { url: trimmed, status: 'error', message: `Path inválido: ${supabasePath}` };
+  if (legacyBucketsMap[bucket]) {
+    bucket = legacyBucketsMap[bucket];
+    supabasePath = `${bucket}/${filePath}`;
   }
 
+  if (!bucket || !filePath) {
+    return { url: trimmed, status: 'error', message: `Path incompleto: ${supabasePath}` };
+  }
+
+  // 3. Tentar download do Supabase
   let attempt = 0;
   const maxAttempts = 2;
 
   while (attempt < maxAttempts) {
     try {
+      console.log(`Tentando baixar do bucket: ${bucket}, path: ${filePath}`);
       const { data, error } = await supabase.storage.from(bucket).download(filePath);
       
       if (error || !data) {
         if (attempt === maxAttempts - 1) {
-          return { url: trimmed, status: 'error', message: `Erro download Supabase: ${error?.message || "Sem dados"}` };
+          return { url: trimmed, status: 'error', message: `Supabase 404/Erro: ${bucket}/${filePath}` };
         }
         attempt++;
         await new Promise(r => setTimeout(r, 1000));
         continue;
       }
 
-      // Upload para R2 via Worker
+      // 4. Upload para R2
       const formData = new FormData();
       const fileName = parts[parts.length - 1];
       const file = new File([data], fileName, { type: data.type });
@@ -108,7 +114,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
       if (!response.ok) {
         const errorText = await response.text();
         if (attempt === maxAttempts - 1) {
-          return { url: trimmed, status: 'error', message: `Erro upload R2: ${response.status} - ${errorText}` };
+          return { url: trimmed, status: 'error', message: `Erro R2 Worker: ${response.status}` };
         }
         attempt++;
         await new Promise(r => setTimeout(r, 1000));
@@ -117,21 +123,21 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 
       const result = await response.json();
       if (!result.success) {
-        return { url: trimmed, status: 'error', message: result.error || "Falha upload R2" };
+        return { url: trimmed, status: 'error', message: result.error || "Falha R2" };
       }
 
       const newUrl = resolveFileUrl(result.url);
       return { url: newUrl, status: 'success', message: "Migrado com sucesso" };
     } catch (err: any) {
       if (attempt === maxAttempts - 1) {
-        return { url: trimmed, status: 'error', message: `Erro inesperado: ${err.message}` };
+        return { url: trimmed, status: 'error', message: `Exceção: ${err.message}` };
       }
       attempt++;
       await new Promise(r => setTimeout(r, 1000));
     }
   }
   
-  return { url: trimmed, status: 'error', message: "Falha após múltiplas tentativas" };
+  return { url: trimmed, status: 'error', message: "Esgotado" };
 }
 
 export async function migrateTableRecords(
@@ -140,17 +146,9 @@ export async function migrateTableRecords(
   columnsToMigrate: string[],
   onProgress?: (log: MigrationLog) => void
 ) {
-  // Buscar registros
-  const { data: records, error } = await supabase
-    .from(tableName)
-    .select(`*`);
+  const { data: records, error } = await supabase.from(tableName).select(`*`);
 
-  if (error) {
-    console.error(`Erro ao buscar dados de ${tableName}:`, error);
-    return;
-  }
-
-  if (!records) return;
+  if (error || !records) return;
 
   for (const record of records) {
     let updatedData: any = {};
@@ -181,15 +179,7 @@ export async function migrateTableRecords(
     }
 
     if (hasChanges) {
-      const { error: updateError } = await supabase
-        .from(tableName)
-        .update(updatedData)
-        .eq(idColumn, record[idColumn]);
-
-      if (updateError) {
-        console.error(`Erro ao atualizar registro ${record[idColumn]} em ${tableName}:`, updateError);
-      }
+      await supabase.from(tableName).update(updatedData).eq(idColumn, record[idColumn]);
     }
   }
 }
-
