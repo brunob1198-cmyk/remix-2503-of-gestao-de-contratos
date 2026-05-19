@@ -3836,6 +3836,8 @@ export type Database = {
           mes_numero: number | null
           mo_obra: number | null
           outros: number | null
+          perc_custo_direto_orcado: number | null
+          perc_custo_direto_real: number | null
           perc_gerencia_orcada: number | null
           perc_gerencia_real: number | null
           perc_impostos: number | null

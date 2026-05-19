@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Power BI Export Schema - view_bi_analise_obras",
+  "type": "object",
+  "properties": {
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "projeto_id": { "type": "string", "format": "uuid" },
+        "mes": { "type": "string", "format": "date" },
+        "ano": { "type": "integer" },
+        "mes_numero": { "type": "integer" },
+        "ano_mes": { "type": "string" },
+        "referencia": { "type": "string" },
+        "projeto_codigo": { "type": "string" },
+        "projeto_nome": { "type": "string" },
+        "projeto_status": { "type": "string" },
+        "area_nome": { "type": "string" },
+        "cliente": { "type": "string" },
+        "empresa_nome": { "type": "string" }
+      }
+    },
+    "measures": {
+      "type": "object",
+      "properties": {
+        "poc": { "type": "number", "description": "Produção Bruta" },
+        "receita_liquida": { "type": "number" },
+        "custo_direto_orcado": { "type": "number" },
+        "custo_direto_real": { "type": "number" },
+        "resultado_direto": { "type": "number" },
+        "gerencia_orcada": { "type": "number" },
+        "gerencia_real": { "type": "number" },
+        "gerencia_resultado": { "type": "number" },
+        "custo_total_orcado": { "type": "number" },
+        "custo_total_real": { "type": "number" },
+        "resultado_total": { "type": "number" },
+        "mb_orcada": { "type": "number" },
+        "mb_real": { "type": "number" },
+        "perc_mb_orcada": { "type": "number", "format": "percentage" },
+        "perc_mb_real": { "type": "number", "format": "percentage" },
+        "perc_mb_mkp": { "type": "number", "format": "percentage" },
+        "faturamento_bruto": { "type": "number" }
+      }
+    }
+  }
+}
