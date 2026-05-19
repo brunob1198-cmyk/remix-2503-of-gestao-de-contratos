@@ -15,6 +15,20 @@ export function usePersistedState<T>(key: string, defaultValue: T): [T, (value: 
     }
   });
 
+  // Update state when key changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored !== null) {
+        setState(JSON.parse(stored) as T);
+      } else {
+        setState(defaultValue);
+      }
+    } catch {
+      setState(defaultValue);
+    }
+  }, [key]);
+
   useEffect(() => {
     try {
       if (state === defaultValue || state === "" || (Array.isArray(state) && state.length === 0)) {
