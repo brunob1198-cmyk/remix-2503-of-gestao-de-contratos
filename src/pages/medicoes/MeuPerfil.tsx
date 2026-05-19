@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
-import { compressImage } from "@/lib/imageCompression";
+
 
 
 export default function MeuPerfilPage() {
