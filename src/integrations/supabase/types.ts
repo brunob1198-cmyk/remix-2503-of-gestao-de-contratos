@@ -3833,6 +3833,7 @@ export type Database = {
           mb_orcada: number | null
           mb_real: number | null
           mes: string | null
+          mes_id: number | null
           mes_numero: number | null
           mo_obra: number | null
           outros: number | null
