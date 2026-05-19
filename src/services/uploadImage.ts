@@ -12,16 +12,16 @@ export function getPublicUrl(url: string | null | undefined): string {
   return `${R2_PUBLIC_BASE_URL}/${path}`;
 }
 
-export async function uploadImage(file: File): Promise<string> {
-  const compressedFile = await compressImage(file);
-  
+export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
   const formData = new FormData();
-  formData.append("file", compressedFile);
+  formData.append("file", file);
+  if (folder) {
+    formData.append("folder", folder);
+  }
 
   const workerUrl = "https://obras-upload-api.brunob1198.workers.dev/";
   
-  console.log("UPLOAD ATTEMPT:", compressedFile.name, (compressedFile.size / 1024).toFixed(2), "KB");
-  console.log("UPLOAD URL:", workerUrl);
+  console.log("UPLOAD ATTEMPT:", file.name, (file.size / 1024).toFixed(2), "KB", folder ? `FOLDER: ${folder}` : "");
 
   const response = await fetch(
     workerUrl,
@@ -31,8 +31,6 @@ export async function uploadImage(file: File): Promise<string> {
     }
   );
 
-  console.log("UPLOAD STATUS:", response.status);
-
   if (!response.ok) {
     const errorText = await response.text();
     console.error("UPLOAD ERROR RESPONSE:", errorText);
@@ -40,7 +38,6 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   const data = await response.json();
-  console.log("UPLOAD SUCCESS:", data.url);
   
   if (!data.success) {
     throw new Error(data.error || "Falha upload");
@@ -51,6 +48,26 @@ export async function uploadImage(file: File): Promise<string> {
   console.log("IMAGE SAVED:", uploadedUrl);
 
   return uploadedUrl;
+}
+
+export interface UploadedVariants {
+  thumbUrl: string;
+  mediumUrl: string;
+  originalUrl: string;
+}
+
+export async function uploadImageWithVariants(file: File): Promise<UploadedVariants> {
+  const { generateImageVariants } = await import("@/lib/generateImageVariants");
+  
+  const variants = await generateImageVariants(file);
+  
+  const [thumbUrl, mediumUrl, originalUrl] = await Promise.all([
+    uploadImage(variants.thumb, "thumb"),
+    uploadImage(variants.medium, "medium"),
+    uploadImage(variants.original, "original")
+  ]);
+
+  return { thumbUrl, mediumUrl, originalUrl };
 }
 
 export async function verifyImageUrl(url: string): Promise<boolean> {
