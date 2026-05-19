@@ -169,6 +169,7 @@ export function exportAcompanhamentoToExcel(medicoes: any[]) {
     "Status",
     "Nº PO",
     "Observação",
+    "Data Resposta",
   ];
 
   const data = [
@@ -186,6 +187,7 @@ export function exportAcompanhamentoToExcel(medicoes: any[]) {
       m.status || "",
       m.numero_po || "",
       m.observacao_acompanhamento || "",
+      m.data_resposta ? parseLocalDate(m.data_resposta).toLocaleDateString("pt-BR") : "-",
     ])
   ];
 
