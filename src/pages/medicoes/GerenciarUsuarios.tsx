@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CheckCircle, XCircle, Clock, Shield, Eye, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 interface UserRow {
   id: string;
@@ -163,7 +164,7 @@ export default function GerenciarUsuariosPage() {
               <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    {u.avatar_url && <AvatarImage src={u.avatar_url} />}
+                    {u.avatar_url && <AvatarImage src={resolveFileUrl(u.avatar_url)} />}
                     <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
                   </Avatar>
                   <div>
@@ -199,7 +200,7 @@ export default function GerenciarUsuariosPage() {
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      {u.avatar_url && <AvatarImage src={u.avatar_url} />}
+                      {u.avatar_url && <AvatarImage src={resolveFileUrl(u.avatar_url)} />}
                       <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
                     </Avatar>
                     <div>
