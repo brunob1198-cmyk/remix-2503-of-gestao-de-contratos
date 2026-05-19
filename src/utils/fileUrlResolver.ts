@@ -16,14 +16,20 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
 export function resolveFileUrl(path: string | null | undefined): string {
   if (!path || path.trim() === "") return "";
   
-  const trimmedPath = path.trim();
+  let trimmedPath = path.trim();
 
-  // 1. Se já for uma URL absoluta (R2, Supabase ou externa), retorna sem alteração
+  // 1. Corrigir caminhos de thumbnails antigos (removendo /thumbs/300/, /thumbs/600/, /thumbs/900/)
+  // Isso garante que se uma thumbnail antiga for solicitada, redirecionamos para o arquivo original
+  if (trimmedPath.includes("/thumbs/")) {
+    trimmedPath = trimmedPath.replace(/\/thumbs\/(300|600|900)\//, "/");
+  }
+
+  // 2. Se já for uma URL absoluta (R2, Supabase ou externa), retorna sem alteração
   if (trimmedPath.startsWith("http://") || trimmedPath.startsWith("https://")) {
     return trimmedPath;
   }
 
-  // 2. Buckets conhecidos do Supabase (arquivos antigos)
+  // 3. Buckets conhecidos do Supabase (arquivos antigos)
   const supabasePrefixes = [
     "diario-fotos/",
     "timeline-evidencias/",
@@ -41,17 +47,17 @@ export function resolveFileUrl(path: string | null | undefined): string {
     return `${SUPABASE_BASE}/${trimmedPath}`;
   }
 
-  // 3. Regra especial para "uploads/" -> prepend "contratos/" (legado Supabase)
+  // 4. Regra especial para "uploads/" -> prepend "contratos/" (legado Supabase)
   if (trimmedPath.startsWith("uploads/")) {
     return `${SUPABASE_BASE}/contratos/${trimmedPath}`;
   }
 
-  // 4. Se contiver .r2.dev (garante que URLs do R2 não sejam alteradas se passadas como path parcial)
+  // 5. Se contiver .r2.dev (garante que URLs do R2 não sejam alteradas se passadas como path parcial)
   if (trimmedPath.includes(".r2.dev")) {
     return trimmedPath.startsWith("/") ? `https://${trimmedPath.slice(1)}` : `https://${trimmedPath}`;
   }
 
-  // 5. Caso padrão: tratar como arquivo novo no R2
+  // 6. Caso padrão: tratar como arquivo novo no R2
   const cleanPath = trimmedPath.startsWith("/") ? trimmedPath.slice(1) : trimmedPath;
   return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
 }
