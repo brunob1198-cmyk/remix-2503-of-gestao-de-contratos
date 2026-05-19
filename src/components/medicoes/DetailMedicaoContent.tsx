@@ -623,7 +623,7 @@ export function DetailMedicaoContent({
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <img
-            src={foto.url}
+            src={getPublicUrl(foto.thumb_600_url || foto.url)}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             crossOrigin="anonymous"
