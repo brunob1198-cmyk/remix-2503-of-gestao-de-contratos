@@ -717,15 +717,14 @@ export default function DiarioObraPage() {
           // 1. Image will be compressed automatically in uploadImage
           let fileToUpload = file;
 
-          // 2. Upload to R2 via Worker
-          const publicUrl = await uploadImage(fileToUpload);
-
+          // 2. Upload to R2 via Worker with variants
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
 
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
-            url: publicUrl, 
-            thumb_url: publicUrl,
-            thumb_600_url: publicUrl,
+            url: originalUrl, 
+            thumb_url: thumbUrl,
+            thumb_600_url: mediumUrl,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
