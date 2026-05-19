@@ -81,19 +81,17 @@ export default function DiarioCampoPage() {
           const timestamp = Date.now();
           
           let fileToUpload = item.file;
-          // Image will be compressed automatically in uploadImage
-
-          const publicUrl = await uploadImage(fileToUpload);
-          console.log("PHOTO URL:", publicUrl);
-
+          
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
+          console.log("PHOTO VARIANTS:", { thumbUrl, mediumUrl, originalUrl });
 
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
               diario_campo_id: item.diarioId, 
-              url: publicUrl,
-              thumb_url: publicUrl,
-              thumb_600_url: publicUrl
+              url: originalUrl,
+              thumb_url: thumbUrl,
+              thumb_600_url: mediumUrl
             }])
             .select();
           
