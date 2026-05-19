@@ -5,7 +5,7 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
 export function getPublicUrl(url: string | null | undefined): string {
   if (!url) return "";
 
-  // Se já for uma URL do R2, retorna como está
+  // Se já for uma URL do R2 correta (já normalizada e absoluta)
   if (url.startsWith(R2_PUBLIC_BASE_URL)) return url;
   
   // Se for uma URL do Supabase, tenta converter para R2
@@ -14,6 +14,7 @@ export function getPublicUrl(url: string | null | undefined): string {
     if (parts.length > 1) {
       const bucketAndPath = parts[1];
       // Remove prefixos de buckets conhecidos do Supabase pois no R2 os arquivos costumam estar na raiz
+      // OU em subpastas específicas se o upload foi via worker
       const cleanPath = bucketAndPath
         .replace(/^uploads\//, "")
         .replace(/^diario-fotos\//, "")
@@ -23,10 +24,10 @@ export function getPublicUrl(url: string | null | undefined): string {
     }
   }
 
-  // Se já for outra URL absoluta (http), retorna como está
+  // Se for uma URL absoluta externa que não seja R2 nem Supabase, mantém
   if (url.startsWith("http")) return url;
   
-  // Trata caminhos relativos
+  // Trata caminhos relativos (ex: uploads/arquivo.pdf ou arquivo.pdf)
   let path = url.startsWith("/") ? url.slice(1) : url;
   
   // Remove prefixos de buckets conhecidos para caminhos relativos
@@ -36,6 +37,13 @@ export function getPublicUrl(url: string | null | undefined): string {
     .replace(/^dsl-uploads\//, "");
   
   return `${R2_PUBLIC_BASE_URL}/${path}`;
+}
+
+/**
+ * Retorna a URL absoluta garantida, mesmo que venha do banco sem prefixo
+ */
+export function getAbsoluteUrl(url: string | null | undefined): string {
+  return getPublicUrl(url);
 }
 
 export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
@@ -76,7 +84,7 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
     throw new Error(data.error || "Falha upload");
   }
 
-  // Garantir que retornamos uma URL absoluta
+  // O worker retorna um caminho relativo. getPublicUrl converte para absoluto.
   const uploadedUrl = getPublicUrl(data.url);
   console.log("IMAGE SAVED:", uploadedUrl);
 
