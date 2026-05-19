@@ -598,7 +598,7 @@ export default function DiarioCampoPage() {
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
                           <img
-                            src={getPublicUrl(foto.thumb_url || foto.url)}
+                            src={resolveFileUrl(foto.thumb_url || foto.url)}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
                           />
