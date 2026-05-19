@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users, FileDown } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
+import { getPublicUrl } from "@/services/uploadImage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1540,7 +1541,7 @@ export function DetailMedicaoContent({
                     Este documento será anexado como as primeiras páginas do relatório final gerado.
                   </p>
                   <Button variant="outline" size="sm" className="mt-4" asChild>
-                    <a href={detailMedicao.capa_url} target="_blank" rel="noopener noreferrer">
+                    <a href={getPublicUrl(detailMedicao.capa_url)} target="_blank" rel="noopener noreferrer">
                       Visualizar Capa em Nova Aba
                     </a>
                   </Button>
@@ -1548,7 +1549,7 @@ export function DetailMedicaoContent({
               ) : (
                 <div className="w-full flex justify-center">
                   <img 
-                    src={detailMedicao.capa_url!} 
+                    src={getPublicUrl(detailMedicao.capa_url!)} 
                     alt="Capa da Medição" 
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     style={{ maxHeight: '800px', objectFit: 'contain' }}

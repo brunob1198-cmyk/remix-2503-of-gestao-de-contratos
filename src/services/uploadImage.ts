@@ -1,5 +1,17 @@
 import { compressImage } from "@/lib/imageCompression";
 
+const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
+
+export function getPublicUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  
+  // Se for um caminho relativo que começa com uploads/, anexa o domínio base do R2
+  // Caso contrário, assume que é um caminho na raiz do bucket
+  const path = url.startsWith("/") ? url.slice(1) : url;
+  return `${R2_PUBLIC_BASE_URL}/${path}`;
+}
+
 export async function uploadImage(file: File): Promise<string> {
   const compressedFile = await compressImage(file);
   
@@ -34,15 +46,15 @@ export async function uploadImage(file: File): Promise<string> {
     throw new Error(data.error || "Falha upload");
   }
 
-  const uploadedUrl = data.url;
+  // Garantir que retornamos uma URL absoluta
+  const uploadedUrl = getPublicUrl(data.url);
   console.log("IMAGE SAVED:", uploadedUrl);
 
   return uploadedUrl;
 }
 
 export async function verifyImageUrl(url: string): Promise<boolean> {
-  // REMOVED: CORS HEAD check as requested by user.
-  // We trust the Worker's response.
+  if (!url) return false;
   return true;
 }
 
