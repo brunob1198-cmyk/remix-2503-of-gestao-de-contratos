@@ -36,6 +36,7 @@ import { saveAs } from "file-saver";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 import { pdfGlobalStyles, getLogoHtml, getClientLogoHtml, getPdfOptions } from "@/lib/pdfTemplates";
+import { getPublicUrl } from "@/services/uploadImage";
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
