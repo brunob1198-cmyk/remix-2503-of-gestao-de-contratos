@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Model to use based on logs showing gemini-2.0-flash is invalid
+const PRIMARY_MODEL = 'google/gemini-2.5-flash';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,23 +34,22 @@ serve(async (req) => {
     console.log('Contract extraction requested by user:', user.id);
 
     const { pdfBase64, fileName, contentType, filePath, fileUrl } = await req.json();
-
     let effectiveType = contentType || 'application/pdf';
-    let contractDocument: { type: string; file?: { file_data: string; filename?: string }; image_url?: { url: string } } | null = null;
+    
+    // Determine the initial document structure
+    let initialDocument: any = null;
+    let isImage = false;
 
     if (fileUrl) {
       console.log('Using direct file URL for extraction:', fileUrl);
-      const isImage = /\.(jpg|jpeg|png|webp)$/i.test(fileUrl);
-      
+      isImage = /\.(jpg|jpeg|png|webp)$/i.test(fileUrl);
       if (isImage) {
-        contractDocument = {
+        initialDocument = {
           type: 'image_url',
-          image_url: {
-            url: fileUrl,
-          },
+          image_url: { url: fileUrl },
         };
       } else {
-        contractDocument = {
+        initialDocument = {
           type: 'file',
           file: {
             file_data: fileUrl,
@@ -62,11 +64,10 @@ serve(async (req) => {
         .createSignedUrl(filePath, 60 * 15);
 
       if (signedError || !signedData?.signedUrl) {
-        console.error('Error creating signed URL:', signedError);
         throw new Error(`Failed to access file from storage: ${signedError?.message || 'signed URL not generated'}`);
       }
 
-      contractDocument = {
+      initialDocument = {
         type: 'file',
         file: {
           file_data: signedData.signedUrl,
@@ -74,15 +75,13 @@ serve(async (req) => {
         },
       };
     } else if (pdfBase64) {
-      contractDocument = {
+      initialDocument = {
         type: 'image_url',
-        image_url: {
-          url: `data:${effectiveType};base64,${pdfBase64}`,
-        },
+        image_url: { url: `data:${effectiveType};base64,${pdfBase64}` },
       };
     }
 
-    if (!contractDocument) {
+    if (!initialDocument) {
       return new Response(
         JSON.stringify({ error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -101,7 +100,7 @@ Extraia todos os dados solicitados, organizados nas seguintes propriedades:
 
 1. DADOS DO CONTRATO:
    - valor_total: Retorne O VALOR como número ou string com a moeda (ex: 150000.00). Use null se não achar.
-   - prazo_inicio: Formato ISO (YYYY-MM-DD) ou null. Tente deduzir da  data de assinatura ou um termo explícito de vigência inicial.
+   - prazo_inicio: Formato ISO (YYYY-MM-DD) ou null. Tente deduzir da data de assinatura ou um termo explícito de vigência inicial.
    - prazo_fim: Formato ISO (YYYY-MM-DD) ou null. Deduzido com base no início e a vigência, ou término expresso.
    
 2. LISTA DE CLIENTES: (Múltiplos clientes ou contratantes)
@@ -135,47 +134,62 @@ O JSON deve seguir exatamente este formato:
   "observacoes": "string ou null"
 }`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gemini-2.0-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { 
-            role: 'user', 
-            content: [
-              {
-                type: 'text',
-                text: `Analise este documento de Contrato/Aditivo e extraia todos os dados estruturados conforme as regras. Nome do arquivo: ${fileName}`
-              },
-              contractDocument
-            ]
-          }
-        ],
-        max_tokens: 1200,
-      }),
-    });
+    const makeAICall = async (document: any) => {
+      console.log(`Attempting AI call with model ${PRIMARY_MODEL} and type ${document.type}`);
+      return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: PRIMARY_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { 
+              role: 'user', 
+              content: [
+                {
+                  type: 'text',
+                  text: `Analise este documento de Contrato/Aditivo e extraia todos os dados estruturados conforme as regras. Nome do arquivo: ${fileName}`
+                },
+                document
+              ]
+            }
+          ],
+          max_tokens: 1200,
+        }),
+      });
+    };
+
+    let response = await makeAICall(initialDocument);
+
+    // Fallback logic
+    if (!response.ok && initialDocument.type === 'image_url') {
+      const errorText = await response.text();
+      console.warn(`Initial call failed (Status ${response.status}). Error: ${errorText}. Retrying with type 'file'...`);
+      
+      const fallbackDocument = {
+        type: 'file',
+        file: {
+          file_data: initialDocument.image_url.url,
+          filename: fileName || (isImage ? 'imagem.png' : 'documento.pdf'),
+        },
+      };
+      
+      response = await makeAICall(fallbackDocument);
+    }
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Limite de requisições excedido.' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Créditos insuficientes. Adicione créditos ao seu workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ error: 'Créditos insuficientes.' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
-      throw new Error(`AI Gateway error: ${response.status}`);
+      console.error('AI Gateway final error:', response.status, errorText);
+      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -196,11 +210,7 @@ O JSON deve seguir exatamente este formato:
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: extractedData,
-        fileName 
-      }),
+      JSON.stringify({ success: true, data: extractedData, fileName }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
