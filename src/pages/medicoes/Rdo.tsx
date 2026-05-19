@@ -1383,7 +1383,7 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           className="block w-full relative group"
                         >
                           <img
-                            src={getPublicUrl(f.url)}
+                            src={getPublicUrl(f.thumb_url || f.url)}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
                           />
