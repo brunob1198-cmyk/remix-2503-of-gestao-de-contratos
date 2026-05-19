@@ -2,16 +2,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPublicUrl } from "@/services/uploadImage";
 
 /**
- * Script utilitário para normalizar URLs de contratos e fotos antigos
- * que ainda estão com o caminho relativo ou URLs do Supabase
- * para URLs absolutas do Cloudflare R2.
+ * Script utilitário para normalizar URLs de contratos e fotos antigos.
+ * Força a limpeza de prefixos antigos e converte para URLs absolutas do R2.
  */
 export async function normalizarUrlsContratos() {
-  console.log("Iniciando normalização PROFUNDA de URLs...");
+  console.log("Iniciando normalização PROFUNDA de URLs (v2)...");
   
   try {
     // 1. Normalizar Contratos
-    // Buscamos TODOS os contratos que tenham arquivo_url preenchido
     const { data: contratos, error: errContratos } = await supabase
       .from("contratos")
       .select("id, arquivo_url")
@@ -22,12 +20,10 @@ export async function normalizarUrlsContratos() {
     
     let contratosAtu = 0;
     for (const c of (contratos || [])) {
-      // getPublicUrl já remove o prefixo 'uploads/' se necessário
       const novaUrl = getPublicUrl(c.arquivo_url);
       
-      // Atualizamos apenas se a URL mudou (ex: era caminho relativo ou era Supabase)
-      if (novaUrl !== c.arquivo_url) {
-        console.log(`Normalizando Contrato ${c.id}: ${c.arquivo_url} -> ${novaUrl}`);
+      // Atualizamos SE a URL mudou OU se ainda for um caminho relativo (não começa com http)
+      if (novaUrl !== c.arquivo_url || !c.arquivo_url.startsWith("http")) {
         const { error: updErr } = await supabase
           .from("contratos")
           .update({ arquivo_url: novaUrl })
@@ -35,13 +31,11 @@ export async function normalizarUrlsContratos() {
         
         if (!updErr) {
           contratosAtu++;
-        } else {
-          console.error(`Erro ao atualizar contrato ${c.id}:`, updErr);
         }
       }
     }
 
-    // 2. Normalizar Fotos do Diário (diario_fotos)
+    // 2. Normalizar Fotos do Diário
     const { data: fotos, error: errFotos } = await supabase
       .from("diario_fotos")
       .select("id, url, thumb_url, thumb_600_url")
@@ -69,7 +63,7 @@ export async function normalizarUrlsContratos() {
       }
     }
 
-    // 3. Normalizar Fotos de Campo (diario_campo_fotos)
+    // 3. Normalizar Fotos de Campo
     const { data: fotosCampo, error: errCampo } = await supabase
       .from("diario_campo_fotos")
       .select("id, url, thumb_url, thumb_600_url")

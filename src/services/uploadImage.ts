@@ -2,46 +2,56 @@ import { compressImage } from "@/lib/imageCompression";
 
 const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
 
+/**
+ * Converte qualquer URL ou caminho relativo para a URL absoluta final no R2,
+ * removendo prefixos de buckets antigos do Supabase que não existem mais na estrutura do R2.
+ */
 export function getPublicUrl(url: string | null | undefined): string {
-  if (!url) return "";
+  if (!url || url.trim() === "") return "";
 
-  // Se já for uma URL do R2 correta (já normalizada e absoluta)
-  if (url.startsWith(R2_PUBLIC_BASE_URL)) return url;
-  
-  // Se for uma URL do Supabase, tenta converter para R2
-  if (url.includes("supabase.co/storage/v1/object/public/")) {
-    const parts = url.split("/public/");
+  let cleanPath = url.trim();
+
+  // 1. Extrai o caminho relativo se for uma URL completa
+  if (cleanPath.includes(R2_PUBLIC_BASE_URL)) {
+    cleanPath = cleanPath.replace(R2_PUBLIC_BASE_URL, "");
+  } else if (cleanPath.includes("supabase.co/storage/v1/object/public/")) {
+    const parts = cleanPath.split("/public/");
     if (parts.length > 1) {
-      const bucketAndPath = parts[1];
-      // Remove prefixos de buckets conhecidos do Supabase pois no R2 os arquivos costumam estar na raiz
-      // OU em subpastas específicas se o upload foi via worker
-      const cleanPath = bucketAndPath
-        .replace(/^uploads\//, "")
-        .replace(/^diario-fotos\//, "")
-        .replace(/^dsl-uploads\//, "");
-        
-      return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
+      cleanPath = parts[1];
     }
   }
 
-  // Se for uma URL absoluta externa que não seja R2 nem Supabase, mantém
-  if (url.startsWith("http")) return url;
+  // 2. Remove / inicial se houver
+  if (cleanPath.startsWith("/")) {
+    cleanPath = cleanPath.slice(1);
+  }
+
+  // 3. Remove prefixos de buckets conhecidos (recursivamente ou via regex para garantir limpeza)
+  // No R2, os arquivos migrados costumam estar na raiz do bucket.
+  const prefixesToRemove = [
+    /^uploads\//,
+    /^diario-fotos\//,
+    /^dsl-uploads\//,
+    /^contratos\//,
+    /^clientes\//,
+    /^logos\//
+  ];
+
+  let pathChanged = true;
+  while (pathChanged) {
+    pathChanged = false;
+    for (const prefix of prefixesToRemove) {
+      if (prefix.test(cleanPath)) {
+        cleanPath = cleanPath.replace(prefix, "");
+        pathChanged = true;
+      }
+    }
+  }
   
-  // Trata caminhos relativos (ex: uploads/arquivo.pdf ou arquivo.pdf)
-  let path = url.startsWith("/") ? url.slice(1) : url;
-  
-  // Remove prefixos de buckets conhecidos para caminhos relativos
-  path = path
-    .replace(/^uploads\//, "")
-    .replace(/^diario-fotos\//, "")
-    .replace(/^dsl-uploads\//, "");
-  
-  return `${R2_PUBLIC_BASE_URL}/${path}`;
+  // 4. Retorna a URL absoluta final no R2
+  return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
 }
 
-/**
- * Retorna a URL absoluta garantida, mesmo que venha do banco sem prefixo
- */
 export function getAbsoluteUrl(url: string | null | undefined): string {
   return getPublicUrl(url);
 }
@@ -49,7 +59,6 @@ export function getAbsoluteUrl(url: string | null | undefined): string {
 export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
   let fileToUpload = file;
   
-  // Se não for um upload de variante e for uma imagem, aplica a compressão padrão
   if (!folder && file.type.startsWith('image/')) {
     fileToUpload = await compressImage(file);
   }
@@ -74,7 +83,6 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("UPLOAD ERROR RESPONSE:", errorText);
     throw new Error(`Erro upload: ${response.status} - ${errorText}`);
   }
 
@@ -84,11 +92,8 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
     throw new Error(data.error || "Falha upload");
   }
 
-  // O worker retorna um caminho relativo. getPublicUrl converte para absoluto.
-  const uploadedUrl = getPublicUrl(data.url);
-  console.log("IMAGE SAVED:", uploadedUrl);
-
-  return uploadedUrl;
+  // O worker retorna o path relativo (ex: "arquivo.pdf"). getPublicUrl gera a URL final.
+  return getPublicUrl(data.url);
 }
 
 export interface UploadedVariants {
@@ -99,7 +104,6 @@ export interface UploadedVariants {
 
 export async function uploadImageWithVariants(file: File): Promise<UploadedVariants> {
   const { generateImageVariants } = await import("@/lib/generateImageVariants");
-  
   const variants = await generateImageVariants(file);
   
   const [thumbUrl, mediumUrl, originalUrl] = await Promise.all([
@@ -118,17 +122,12 @@ export async function verifyImageUrl(url: string): Promise<boolean> {
 
 export async function deleteImage(url: string): Promise<boolean> {
   if (!url) return false;
-  
   const workerUrl = "https://obras-upload-api.brunob1198.workers.dev";
-  
   try {
     const response = await fetch(
       `${workerUrl}?url=${encodeURIComponent(url)}`,
-      {
-        method: "DELETE",
-      }
+      { method: "DELETE" }
     );
-
     const data = await response.json();
     return data.success;
   } catch (error) {
