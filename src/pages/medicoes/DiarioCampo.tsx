@@ -24,7 +24,8 @@ import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 
-import { uploadImage, verifyImageUrl, getPublicUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 
 export default function DiarioCampoPage() {
@@ -161,7 +162,7 @@ export default function DiarioCampoPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("PHOTO STATE:", fotos.map(f => ({ url: f.url, thumb: f.thumb_url, medium: f.thumb_600_url })));
+      console.log("PHOTO STATE:", fotos.map(f => ({ url: resolveFileUrl(f.url), thumb: resolveFileUrl(f.thumb_url), medium: resolveFileUrl(f.thumb_600_url) })));
     }
   }, [fotos]);
 

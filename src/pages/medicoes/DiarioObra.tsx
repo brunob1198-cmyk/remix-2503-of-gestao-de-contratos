@@ -53,7 +53,8 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
-import { uploadImage, verifyImageUrl, getPublicUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 
 const formatCurrency = (v: number) =>
@@ -128,7 +129,7 @@ export default function DiarioObraPage() {
 
   useEffect(() => {
     if (fotos && fotos.length > 0) {
-      console.log("PHOTO STATE:", fotos.map(f => ({ url: f.url, thumb: f.thumb_url, medium: f.thumb_600_url })));
+      console.log("PHOTO STATE:", fotos.map(f => ({ url: resolveFileUrl(f.url), thumb: resolveFileUrl(f.thumb_url), medium: resolveFileUrl(f.thumb_600_url) })));
     }
   }, [fotos]);
 
