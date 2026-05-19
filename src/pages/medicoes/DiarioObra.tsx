@@ -409,9 +409,6 @@ export default function DiarioObraPage() {
           let fileToUpload = file;
           // Local helper to avoid duplication conflicts
           const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
-          if (checkIsImage(file.name)) {
-            fileToUpload = await compressImage(file, 1200, 0.75);
-          }
 
           // Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
