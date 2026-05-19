@@ -115,11 +115,11 @@ export default function ContratosPage() {
             variant="outline" 
             size="sm"
             onClick={async () => {
-              if (confirm("Deseja normalizar os links de arquivos de contratos antigos? Isso garantirá que todos apontem para o novo endereço do R2.")) {
+              if (confirm("Deseja normalizar os links de arquivos de contratos e fotos antigos? Isso garantirá que todos apontem para o novo endereço do R2.")) {
                 try {
                   const { normalizarUrlsContratos } = await import("@/utils/normalizeContractUrls");
-                  const count = await normalizarUrlsContratos();
-                  alert(`${count} contratos foram normalizados com sucesso!`);
+                  const result = await normalizarUrlsContratos();
+                  alert(`${result.contratosAtu} contratos e ${result.fotosAtu} fotos foram normalizados com sucesso!`);
                 } catch (err) {
                   alert("Erro ao normalizar URLs. Verifique o console.");
                 }
