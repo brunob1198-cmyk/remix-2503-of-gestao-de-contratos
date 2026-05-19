@@ -4,14 +4,37 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
 
 export function getPublicUrl(url: string | null | undefined): string {
   if (!url) return "";
+
+  // Se já for uma URL do R2, retorna como está
+  if (url.startsWith(R2_PUBLIC_BASE_URL)) return url;
+  
+  // Se for uma URL do Supabase, tenta converter para R2
+  if (url.includes("supabase.co/storage/v1/object/public/")) {
+    const parts = url.split("/public/");
+    if (parts.length > 1) {
+      const bucketAndPath = parts[1];
+      // Remove prefixos de buckets conhecidos do Supabase pois no R2 os arquivos costumam estar na raiz
+      const cleanPath = bucketAndPath
+        .replace(/^uploads\//, "")
+        .replace(/^diario-fotos\//, "")
+        .replace(/^dsl-uploads\//, "");
+        
+      return `${R2_PUBLIC_BASE_URL}/${cleanPath}`;
+    }
+  }
+
+  // Se já for outra URL absoluta (http), retorna como está
   if (url.startsWith("http")) return url;
   
-  // Se for um caminho relativo que começa com uploads/, anexa o domínio base do R2
-  // Caso contrário, assume que é um caminho na raiz do bucket
-  // Se for um caminho relativo que começa com uploads/ ou é um nome de arquivo puro
+  // Trata caminhos relativos
   let path = url.startsWith("/") ? url.slice(1) : url;
   
-  // Garantir que caminhos que deveriam estar no bucket R2 mas não são URLs absolutas sejam formatados
+  // Remove prefixos de buckets conhecidos para caminhos relativos
+  path = path
+    .replace(/^uploads\//, "")
+    .replace(/^diario-fotos\//, "")
+    .replace(/^dsl-uploads\//, "");
+  
   return `${R2_PUBLIC_BASE_URL}/${path}`;
 }
 
