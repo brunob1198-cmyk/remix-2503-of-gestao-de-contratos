@@ -1057,8 +1057,8 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <img
-                src={getPublicUrl(lightboxPhoto.url)}
+              <img 
+                src={getPublicUrl(lightboxPhoto.thumb_600_url || lightboxPhoto.url)}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
               />
