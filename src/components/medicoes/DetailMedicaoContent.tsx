@@ -8,6 +8,7 @@ import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, C
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -617,8 +618,8 @@ export function DetailMedicaoContent({
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
-          <img
-            src={resolveFileUrl(foto.thumb_600_url || foto.url)}
+          <SafeImage
+            src={foto.url}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
             crossOrigin="anonymous"
@@ -1267,7 +1268,7 @@ export function DetailMedicaoContent({
             }
           </div>
         ` : `
-          <img src="${forZip ? `capa/capa_medicao.${detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'jpg'}` : resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+          <SafeImage src={detailMedicao.capa_url} alt="Capa da Medição" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
         `}
       </div>
     </div>
@@ -1543,8 +1544,8 @@ export function DetailMedicaoContent({
                 </div>
               ) : (
                 <div className="w-full flex justify-center">
-                  <img 
-                    src={resolveFileUrl(detailMedicao.capa_url!)} 
+                  <SafeImage 
+                    src={detailMedicao.capa_url!} 
                     alt="Capa da Medição" 
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     style={{ maxHeight: '800px', objectFit: 'contain' }}

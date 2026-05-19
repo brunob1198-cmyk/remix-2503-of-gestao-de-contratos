@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
 import { pdfGlobalStyles, getLogoHtml, getClientLogoHtml, getPdfOptions } from "@/lib/pdfTemplates";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -198,7 +199,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
             : (first.classificacao && first.classificacao !== '__geral__' ? first.classificacao : 'Geral');
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
-                <img src="${resolveFileUrl(f.thumb_600_url || f.url)}" alt="foto" loading="lazy" />
+                <img src="${resolveFileUrl(f.url)}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
                   <span class="foto-label-badge">${title}</span>
                 </div>
@@ -1057,8 +1058,8 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <img 
-                src={resolveFileUrl(lightboxPhoto.thumb_600_url || lightboxPhoto.url)}
+              <SafeImage 
+                src={lightboxPhoto.url}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
               />
@@ -1165,8 +1166,8 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <img 
-                  src={resolveFileUrl(f.thumb_url || f.url)}
+                <SafeImage 
+                  src={f.url}
                   alt="" 
                   className="w-full h-full object-cover" 
                 />

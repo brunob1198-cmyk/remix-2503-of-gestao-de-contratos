@@ -55,6 +55,7 @@ import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
 import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 
 const formatCurrency = (v: number) =>
@@ -2047,11 +2048,11 @@ export default function DiarioObraPage() {
                             <DialogTrigger asChild>
                               <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                 {isFileImage(f.url) ? (
-                                <img 
-                                  src={resolveFileUrl(f.thumb_url || f.url)} 
-                                  alt={f.legenda || "foto"} 
-                                  className="w-full h-full object-cover" 
-                                />
+                                      <SafeImage 
+                                        src={f.thumb_url || f.url} 
+                                        alt={f.legenda || "foto"} 
+                                        className="w-full h-full object-cover" 
+                                      />
                                 ) : (
                                   <div className="w-full h-full flex flex-col items-center justify-center bg-muted text-sm font-medium gap-1">
                                     <span className="text-2xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</span>
@@ -2063,11 +2064,11 @@ export default function DiarioObraPage() {
                             <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-none">
                               <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                 {isFileImage(f.url) ? (
-                                  <img 
-                                    src={resolveFileUrl(f.thumb_600_url || f.url)} 
-                                    alt={f.legenda || "Visualização ampliada"} 
-                                    className="max-w-full max-h-full object-contain"
-                                  />
+                                    <SafeImage 
+                                      src={f.thumb_600_url || f.url} 
+                                      alt={f.legenda || "Visualização ampliada"} 
+                                      className="max-w-full max-h-full object-contain"
+                                    />
                                 ) : (
                                   <div className="p-20 text-white text-center space-y-4">
                                     <div className="text-6xl">{getFileIcon(f.url)?.split(' ')[0] || '📎'}</div>

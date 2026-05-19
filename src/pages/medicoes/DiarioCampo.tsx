@@ -26,6 +26,7 @@ import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clear
 
 import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 
 export default function DiarioCampoPage() {
@@ -597,8 +598,8 @@ export default function DiarioCampoPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
-                          <img
-                            src={resolveFileUrl(foto.thumb_url || foto.url)}
+                          <SafeImage
+                            src={foto.thumb_url || foto.url}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
                           />
