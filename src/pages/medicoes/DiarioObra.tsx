@@ -1327,7 +1327,7 @@ export default function DiarioObraPage() {
                                             <div className="w-full h-full">
                                               {isFileImage(f.url) ? (
                                                   <img 
-                                                    src={f.url} 
+                                                    src={getPublicUrl(f.url)} 
                                                     alt={f.legenda || "foto"} 
                                                     className="w-full h-full object-cover" 
                                                   />
