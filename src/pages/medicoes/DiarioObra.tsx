@@ -715,11 +715,8 @@ export default function DiarioObraPage() {
       
       await Promise.all(chunk.map(async (file, index) => {
         try {
-          // 1. Compress image if it's an image
+          // 1. Image will be compressed automatically in uploadImage
           let fileToUpload = file;
-          if (isFileImage(file.name)) {
-            fileToUpload = await compressImage(file, 1200, 0.75);
-          }
 
           // 2. Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
