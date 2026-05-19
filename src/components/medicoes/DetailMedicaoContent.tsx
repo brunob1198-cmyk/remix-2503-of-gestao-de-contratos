@@ -186,12 +186,7 @@ export function DetailMedicaoContent({
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
   const getLogoUrl = useCallback((url: string | null | undefined) => {
-    if (!url) return null;
-    // Now everything should be a full URL, but we'll check for legacy cases
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    
-    // No legacy fallback to Supabase Storage - we use the URL directly
-    return url;
+    return resolveFileUrl(url);
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 
@@ -1268,11 +1263,11 @@ export function DetailMedicaoContent({
             <p style="color: #64748b; margin: 10px 0 20px;">Este documento foi anexado como as primeiras páginas do relatório.</p>
             ${forZip ? 
               `<a href="capa/capa_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Local</a>` :
-              `<a href="${detailMedicao.capa_url}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Online</a>`
+              `<a href="${resolveFileUrl(detailMedicao.capa_url)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Online</a>`
             }
           </div>
         ` : `
-          <img src="${forZip ? `capa/capa_medicao.${detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'jpg'}` : detailMedicao.capa_url}" alt="Capa da Medição" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+          <img src="${forZip ? `capa/capa_medicao.${detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'jpg'}` : resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
         `}
       </div>
     </div>
