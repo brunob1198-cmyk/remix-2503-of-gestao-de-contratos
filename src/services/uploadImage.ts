@@ -8,7 +8,10 @@ export function getPublicUrl(url: string | null | undefined): string {
   
   // Se for um caminho relativo que começa com uploads/, anexa o domínio base do R2
   // Caso contrário, assume que é um caminho na raiz do bucket
-  const path = url.startsWith("/") ? url.slice(1) : url;
+  // Se for um caminho relativo que começa com uploads/ ou é um nome de arquivo puro
+  let path = url.startsWith("/") ? url.slice(1) : url;
+  
+  // Garantir que caminhos que deveriam estar no bucket R2 mas não são URLs absolutas sejam formatados
   return `${R2_PUBLIC_BASE_URL}/${path}`;
 }
 
