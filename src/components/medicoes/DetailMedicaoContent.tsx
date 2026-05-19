@@ -8,6 +8,7 @@ import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, C
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SafeImage } from "@/components/ui/SafeImage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1267,7 +1268,7 @@ export function DetailMedicaoContent({
             }
           </div>
         ` : `
-          <img src="${forZip ? `capa/capa_medicao.${detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'jpg'}` : resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+          <SafeImage src={detailMedicao.capa_url} alt="Capa da Medição" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
         `}
       </div>
     </div>
