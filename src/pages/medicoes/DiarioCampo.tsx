@@ -19,7 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus, AlertCircle, RefreshCw
 } from "lucide-react";
-import { compressImage } from "@/lib/imageCompression";
+
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
