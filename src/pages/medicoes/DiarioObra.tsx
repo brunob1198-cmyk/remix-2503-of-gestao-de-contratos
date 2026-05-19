@@ -2057,7 +2057,7 @@ export default function DiarioObraPage() {
                               <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                 {isFileImage(f.url) ? (
                                   <img 
-                                    src={getPublicUrl(f.url)} 
+                                    src={getPublicUrl(f.thumb_600_url || f.url)} 
                                     alt={f.legenda || "Visualização ampliada"} 
                                     className="max-w-full max-h-full object-contain"
                                   />
