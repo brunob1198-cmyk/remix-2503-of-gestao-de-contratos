@@ -1,4 +1,4 @@
-import { compressImage } from "@/lib/compressImage";
+import { compressImage } from "@/lib/imageCompression";
 
 export async function uploadImage(file: File): Promise<string> {
   const compressedFile = await compressImage(file);
