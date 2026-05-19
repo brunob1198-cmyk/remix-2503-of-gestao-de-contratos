@@ -1166,7 +1166,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
                 <img 
-                  src={getPublicUrl(f.url)}
+                  src={getPublicUrl(f.thumb_url || f.url)}
                   alt="" 
                   className="w-full h-full object-cover" 
                 />
