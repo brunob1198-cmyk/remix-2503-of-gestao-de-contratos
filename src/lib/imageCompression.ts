@@ -3,20 +3,22 @@ import imageCompression from 'browser-image-compression';
 /**
  * Compresses an image file before upload using browser-image-compression library.
  * Outputs WebP.
+ * Arguments kept for compatibility with existing code but defaults follow the new standard.
  */
-export async function compressImage(file: File): Promise<File> {
+export async function compressImage(file: File, maxWidth?: number, quality?: number): Promise<File> {
   // If it's not an image, return original file
   if (!file.type.startsWith('image/')) {
     console.log("SKIP COMPRESSION (NOT AN IMAGE):", file.name, file.type);
     return file;
   }
 
+  // Use provided values or defaults from user request
   const options = {
     maxSizeMB: 0.7,
-    maxWidthOrHeight: 1600,
+    maxWidthOrHeight: maxWidth || 1600,
     useWebWorker: true,
     fileType: "image/webp" as string,
-    initialQuality: 0.7,
+    initialQuality: quality || 0.7,
   };
 
   try {
