@@ -61,7 +61,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     supabasePath = `contratos/${supabasePath}`;
   }
 
-  // Tentar baixar do Supabase
+  // Tentar baixar do Supabase (com retry básico)
   const parts = supabasePath.split("/");
   const bucket = parts[0];
   const filePath = parts.slice(1).join("/");
@@ -70,49 +70,60 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     return { url: trimmed, status: 'error', message: `Path inválido: ${supabasePath}` };
   }
 
-  try {
-    const { data, error } = await supabase.storage.from(bucket).download(filePath);
-    
-    if (error || !data) {
-      return { url: trimmed, status: 'error', message: `Erro download Supabase: ${error?.message || "Sem dados"}` };
+  let attempt = 0;
+  const maxAttempts = 2;
+
+  while (attempt < maxAttempts) {
+    try {
+      const { data, error } = await supabase.storage.from(bucket).download(filePath);
+      
+      if (error || !data) {
+        if (attempt === maxAttempts - 1) {
+          return { url: trimmed, status: 'error', message: `Erro download Supabase: ${error?.message || "Sem dados"}` };
+        }
+        attempt++;
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+
+      // Upload para R2 via Worker
+      const formData = new FormData();
+      const fileName = parts[parts.length - 1];
+      const file = new File([data], fileName, { type: data.type });
+      formData.append("file", file);
+      
+      const response = await fetch(R2_WORKER_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (attempt === maxAttempts - 1) {
+          return { url: trimmed, status: 'error', message: `Erro upload R2: ${response.status} - ${errorText}` };
+        }
+        attempt++;
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        return { url: trimmed, status: 'error', message: result.error || "Falha upload R2" };
+      }
+
+      const newUrl = resolveFileUrl(result.url);
+      return { url: newUrl, status: 'success', message: "Migrado com sucesso" };
+    } catch (err: any) {
+      if (attempt === maxAttempts - 1) {
+        return { url: trimmed, status: 'error', message: `Erro inesperado: ${err.message}` };
+      }
+      attempt++;
+      await new Promise(r => setTimeout(r, 1000));
     }
-
-    // Upload para R2 via Worker
-    const formData = new FormData();
-    // Reconstruir o nome do arquivo a partir do path
-    const fileName = parts[parts.length - 1];
-    const file = new File([data], fileName, { type: data.type });
-    formData.append("file", file);
-
-    // Se houver subpastas (como UUID), podemos tentar passar como 'folder' 
-    // ou deixar o worker resolver. O worker atual parece esperar apenas um arquivo 
-    // e retorna um novo path. Mas para migração queremos MANTER o path se possível.
-    // No entanto, o worker do usuário parece gerar novos paths.
-    // Vamos ver se o worker aceita o path original.
-    
-    const response = await fetch(R2_WORKER_URL, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { url: trimmed, status: 'error', message: `Erro upload R2: ${response.status} - ${errorText}` };
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      return { url: trimmed, status: 'error', message: result.error || "Falha upload R2" };
-    }
-
-    // O worker retorna a URL do R2.
-    // Importante: Garantir que a URL retornada seja absoluta.
-    const newUrl = resolveFileUrl(result.url);
-    
-    return { url: newUrl, status: 'success', message: "Migrado com sucesso" };
-  } catch (err: any) {
-    return { url: trimmed, status: 'error', message: `Erro inesperado: ${err.message}` };
   }
+  
+  return { url: trimmed, status: 'error', message: "Falha após múltiplas tentativas" };
 }
 
 export async function migrateTableRecords(
