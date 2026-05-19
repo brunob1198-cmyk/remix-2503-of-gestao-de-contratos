@@ -207,7 +207,7 @@ export default function ContratosPage() {
                                       <button
                                         className="text-blue-600 hover:text-blue-800"
                                         onClick={() => {
-                                          if (ad.arquivo_url) window.open(ad.arquivo_url, '_blank');
+                                          if (ad.arquivo_url) window.open(getPublicUrl(ad.arquivo_url), '_blank');
                                         }}
                                       >
                                         <FileText className="h-3 w-3" />
