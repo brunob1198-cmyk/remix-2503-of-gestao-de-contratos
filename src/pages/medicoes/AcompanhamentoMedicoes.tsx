@@ -294,7 +294,7 @@ export default function AcompanhamentoMedicoesPage() {
             Gerar Medição do Período
           </Button>
           {tableMedicoes.processedItems.length > 0 && (
-            <Button variant="outline" onClick={() => exportLancamentosToExcel(lancamentos, "medicao")}>
+            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)}>
               <FileDown className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
