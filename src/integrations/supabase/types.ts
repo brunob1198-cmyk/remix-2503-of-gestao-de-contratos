@@ -3812,15 +3812,20 @@ export type Database = {
           ano_mes: string | null
           area_id: string | null
           area_nome: string | null
-          categoria_erp: string | null
-          categoria_interna: string | null
           cliente: string | null
           cliente_cnpj: string | null
           cliente_id: string | null
           custo_direto_orcado: number | null
+          custo_equipamentos: number | null
           custo_erp_total: number | null
+          custo_financeiros: number | null
+          custo_indiretos: number | null
+          custo_mao_de_obra: number | null
+          custo_materiais: number | null
+          custo_outros: number | null
           custo_total_orcado: number | null
           custo_total_real: number | null
+          custo_transporte: number | null
           empresa_id: string | null
           empresa_nome: string | null
           equipamentos: number | null
@@ -3847,7 +3852,6 @@ export type Database = {
           qtd_faturas: number | null
           receita_liquida: number | null
           referencia: string | null
-          tipo_registro: string | null
           transporte: number | null
         }
         Relationships: [
