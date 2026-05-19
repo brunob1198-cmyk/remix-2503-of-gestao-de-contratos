@@ -59,11 +59,7 @@ export default function MeuPerfilPage() {
     setUploading(true);
     try {
       let fileToUpload = file;
-      try {
-        fileToUpload = await compressImage(file, 400, 0.8);
-      } catch (e) {
-        console.error("Compression failed", e);
-      }
+      // Image will be compressed automatically in uploadImage
 
       const url = await uploadImage(fileToUpload);
       
