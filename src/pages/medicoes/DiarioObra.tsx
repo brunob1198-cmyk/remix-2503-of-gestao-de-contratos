@@ -410,16 +410,15 @@ export default function DiarioObraPage() {
           // Local helper to avoid duplication conflicts
           const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
 
-          // Upload to R2 via Worker
-          const publicUrl = await uploadImage(fileToUpload);
-          console.log("PHOTO URL:", publicUrl);
-
+          // Upload to R2 via Worker with variants
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
+          console.log("PHOTO VARIANTS:", { thumbUrl, mediumUrl, originalUrl });
 
           await addFoto.mutateAsync({
             diario_id: diarioId,
-            url: publicUrl,
-            thumb_url: publicUrl,
-            thumb_600_url: publicUrl,
+            url: originalUrl,
+            thumb_url: thumbUrl,
+            thumb_600_url: mediumUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
