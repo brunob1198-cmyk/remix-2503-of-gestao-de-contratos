@@ -19,7 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   ClipboardEdit, Camera, Upload, Trash2, Users, MapPin, Check, Plus, AlertCircle, RefreshCw
 } from "lucide-react";
-import { compressImage } from "@/lib/imageCompression";
+
 import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
@@ -81,11 +81,7 @@ export default function DiarioCampoPage() {
           const timestamp = Date.now();
           
           let fileToUpload = item.file;
-          try {
-            fileToUpload = await compressImage(item.file, 1200, 0.75);
-          } catch (e) {
-            console.error("Compression failed, using original", e);
-          }
+          // Image will be compressed automatically in uploadImage
 
           const publicUrl = await uploadImage(fileToUpload);
           console.log("PHOTO URL:", publicUrl);

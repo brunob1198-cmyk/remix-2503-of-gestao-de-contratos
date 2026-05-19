@@ -13,7 +13,7 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
-import { compressImage } from "@/lib/imageCompression";
+
 
 
 const columns = ["razao_social", "cnpj", "endereco_completo"] as const;
@@ -127,11 +127,7 @@ export default function ClientesPage() {
       if (!user) throw new Error("Usuário não autenticado");
 
       let fileToUpload = file;
-      try {
-        fileToUpload = await compressImage(file, 200, 0.8);
-      } catch (e) {
-        console.error("Compression failed", e);
-      }
+      // Image will be compressed automatically in uploadImage
 
       const publicUrl = await uploadImage(fileToUpload);
       

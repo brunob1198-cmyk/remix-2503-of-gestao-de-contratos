@@ -47,7 +47,7 @@ import {
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
   CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag, Loader2,
 } from "lucide-react";
-import { compressImage } from "@/lib/imageCompression";
+
 import { Progress } from "@/components/ui/progress";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -409,9 +409,6 @@ export default function DiarioObraPage() {
           let fileToUpload = file;
           // Local helper to avoid duplication conflicts
           const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
-          if (checkIsImage(file.name)) {
-            fileToUpload = await compressImage(file, 1200, 0.75);
-          }
 
           // Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);
@@ -718,11 +715,8 @@ export default function DiarioObraPage() {
       
       await Promise.all(chunk.map(async (file, index) => {
         try {
-          // 1. Compress image if it's an image
+          // 1. Image will be compressed automatically in uploadImage
           let fileToUpload = file;
-          if (isFileImage(file.name)) {
-            fileToUpload = await compressImage(file, 1200, 0.75);
-          }
 
           // 2. Upload to R2 via Worker
           const publicUrl = await uploadImage(fileToUpload);

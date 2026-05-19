@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
-import { compressImage } from "@/lib/imageCompression";
+
 
 
 export default function MeuPerfilPage() {
@@ -59,11 +59,7 @@ export default function MeuPerfilPage() {
     setUploading(true);
     try {
       let fileToUpload = file;
-      try {
-        fileToUpload = await compressImage(file, 400, 0.8);
-      } catch (e) {
-        console.error("Compression failed", e);
-      }
+      // Image will be compressed automatically in uploadImage
 
       const url = await uploadImage(fileToUpload);
       
