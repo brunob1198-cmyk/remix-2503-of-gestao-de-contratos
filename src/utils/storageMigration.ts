@@ -24,7 +24,13 @@ function isThumbnail(path: string): boolean {
     lowercasePath.includes("thumb_") ||
     lowercasePath.includes("/600/") ||
     lowercasePath.includes("/300/") ||
-    lowercasePath.includes("/900/")
+    lowercasePath.includes("/900/") ||
+    lowercasePath.includes("/thumbs") ||
+    lowercasePath.startsWith("thumbs/") ||
+    lowercasePath.startsWith("thumb_") ||
+    // Regex para capturar padrões como 600/arquivo.jpg ou thumbs/600/
+    /\/(300|600|900)\//.test(lowercasePath) ||
+    /^(300|600|900)\//.test(lowercasePath)
   );
 }
 
