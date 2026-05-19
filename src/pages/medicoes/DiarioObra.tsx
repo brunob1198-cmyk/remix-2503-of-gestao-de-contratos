@@ -47,7 +47,7 @@ import {
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
   CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag, Loader2,
 } from "lucide-react";
-import { compressImage } from "@/lib/imageCompression";
+
 import { Progress } from "@/components/ui/progress";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
