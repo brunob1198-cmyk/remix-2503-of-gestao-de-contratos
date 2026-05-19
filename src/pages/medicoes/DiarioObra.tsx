@@ -53,7 +53,7 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
-import { uploadImage, verifyImageUrl, getPublicUrl } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, getPublicUrl, uploadImageWithVariants } from "@/services/uploadImage";
 
 
 const formatCurrency = (v: number) =>
@@ -410,16 +410,15 @@ export default function DiarioObraPage() {
           // Local helper to avoid duplication conflicts
           const checkIsImage = (name: string) => /\.(jpe?g|png|gif|webp)$/i.test(name);
 
-          // Upload to R2 via Worker
-          const publicUrl = await uploadImage(fileToUpload);
-          console.log("PHOTO URL:", publicUrl);
-
+          // Upload to R2 via Worker with variants
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
+          console.log("PHOTO VARIANTS:", { thumbUrl, mediumUrl, originalUrl });
 
           await addFoto.mutateAsync({
             diario_id: diarioId,
-            url: publicUrl,
-            thumb_url: publicUrl,
-            thumb_600_url: publicUrl,
+            url: originalUrl,
+            thumb_url: thumbUrl,
+            thumb_600_url: mediumUrl,
             classificacao: "execucao",
             diario_producao_id: prodData.id,
           });
@@ -718,15 +717,14 @@ export default function DiarioObraPage() {
           // 1. Image will be compressed automatically in uploadImage
           let fileToUpload = file;
 
-          // 2. Upload to R2 via Worker
-          const publicUrl = await uploadImage(fileToUpload);
-
+          // 2. Upload to R2 via Worker with variants
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
 
           await addFoto.mutateAsync({ 
             diario_id: diarioId, 
-            url: publicUrl, 
-            thumb_url: publicUrl,
-            thumb_600_url: publicUrl,
+            url: originalUrl, 
+            thumb_url: thumbUrl,
+            thumb_600_url: mediumUrl,
             classificacao,
             ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
           });
@@ -1916,7 +1914,7 @@ export default function DiarioObraPage() {
                                 <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                   {isFileImage(f.url) ? (
                                       <img 
-                                        src={getPublicUrl(f.url)} 
+                                        src={getPublicUrl(f.thumb_url || f.url)} 
                                         alt={f.legenda || "foto"} 
                                         className="w-full h-full object-cover" 
                                       />
@@ -1932,7 +1930,7 @@ export default function DiarioObraPage() {
                                 <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                   {isFileImage(f.url) ? (
                                     <img 
-                                      src={getPublicUrl(f.url)} 
+                                      src={getPublicUrl(f.thumb_600_url || f.url)} 
                                       alt={f.legenda || "Visualização ampliada"} 
                                       className="max-w-full max-h-full object-contain"
                                     />
@@ -2043,7 +2041,7 @@ export default function DiarioObraPage() {
                               <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                 {isFileImage(f.url) ? (
                                 <img 
-                                  src={getPublicUrl(f.url)} 
+                                  src={getPublicUrl(f.thumb_url || f.url)} 
                                   alt={f.legenda || "foto"} 
                                   className="w-full h-full object-cover" 
                                 />
@@ -2059,7 +2057,7 @@ export default function DiarioObraPage() {
                               <div className="flex flex-col items-center justify-center h-full max-h-[90vh]">
                                 {isFileImage(f.url) ? (
                                   <img 
-                                    src={getPublicUrl(f.url)} 
+                                    src={getPublicUrl(f.thumb_600_url || f.url)} 
                                     alt={f.legenda || "Visualização ampliada"} 
                                     className="max-w-full max-h-full object-contain"
                                   />

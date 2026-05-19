@@ -24,7 +24,7 @@ import { format, subMonths } from "date-fns";
 import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendario";
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 
-import { uploadImage, verifyImageUrl, getPublicUrl } from "@/services/uploadImage";
+import { uploadImage, verifyImageUrl, getPublicUrl, uploadImageWithVariants } from "@/services/uploadImage";
 
 
 export default function DiarioCampoPage() {
@@ -81,19 +81,17 @@ export default function DiarioCampoPage() {
           const timestamp = Date.now();
           
           let fileToUpload = item.file;
-          // Image will be compressed automatically in uploadImage
-
-          const publicUrl = await uploadImage(fileToUpload);
-          console.log("PHOTO URL:", publicUrl);
-
+          
+          const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(fileToUpload);
+          console.log("PHOTO VARIANTS:", { thumbUrl, mediumUrl, originalUrl });
 
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
             .insert([{ 
               diario_campo_id: item.diarioId, 
-              url: publicUrl,
-              thumb_url: publicUrl,
-              thumb_600_url: publicUrl
+              url: originalUrl,
+              thumb_url: thumbUrl,
+              thumb_600_url: mediumUrl
             }])
             .select();
           
@@ -103,14 +101,14 @@ export default function DiarioCampoPage() {
           const { data: verifyData, error: verifyError } = await supabase
             .from("diario_campo_fotos")
             .select("id")
-            .eq("url", publicUrl)
+            .eq("url", originalUrl)
             .single();
 
           if (verifyError || !verifyData) {
             throw new Error("Falha ao confirmar salvamento da URL no banco de dados.");
           }
 
-          await updateUploadStatus(item.id, 'completed', { url: publicUrl });
+          await updateUploadStatus(item.id, 'completed', { url: originalUrl });
 
         } catch (error: any) {
           console.error("Upload error:", error);
@@ -599,7 +597,7 @@ export default function DiarioCampoPage() {
                       {fotos.map(foto => (
                         <div key={foto.id} className="relative group rounded-lg overflow-hidden border">
                           <img
-                            src={getPublicUrl(foto.url)}
+                            src={getPublicUrl(foto.thumb_url || foto.url)}
                             alt={foto.legenda || "Foto de campo"}
                             className="w-full h-32 object-cover"
                           />
