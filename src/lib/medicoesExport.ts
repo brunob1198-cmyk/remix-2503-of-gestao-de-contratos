@@ -154,3 +154,46 @@ export function exportLancamentosToExcel(
   const tipoName = tipo.charAt(0).toUpperCase() + tipo.slice(1);
   XLSX.writeFile(workbook, `Lancamentos_${tipoName}_${date}.xlsx`);
 }
+
+export function exportAcompanhamentoToExcel(medicoes: any[]) {
+  const workbook = XLSX.utils.book_new();
+
+  const headers = [
+    "Projeto",
+    "Site",
+    "UF",
+    "Data",
+    "Período",
+    "Nº Medição",
+    "Valor Total",
+    "Status",
+    "Nº PO",
+    "Observação",
+    "Data Resposta",
+  ];
+
+  const data = [
+    ["ACOMPANHAMENTO DE MEDIÇÕES"],
+    [""],
+    headers,
+    ...medicoes.map(m => [
+      m.projeto_codigo || "",
+      `${m.site_codigo} - ${m.site_nome}`,
+      m.uf || "",
+      m.data_medicao ? parseLocalDate(m.data_medicao).toLocaleDateString("pt-BR") : "-",
+      m.periodo_inicio ? `${m.periodo_inicio} a ${m.periodo_fim}` : "",
+      m.numero_medicao || "",
+      m.total_valor || 0,
+      m.status || "",
+      m.numero_po || "",
+      m.observacao_acompanhamento || "",
+      m.data_resposta ? parseLocalDate(m.data_resposta).toLocaleDateString("pt-BR") : "-",
+    ])
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(workbook, ws, "Medições");
+
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(workbook, `Acompanhamento_Medicoes_${date}.xlsx`);
+}

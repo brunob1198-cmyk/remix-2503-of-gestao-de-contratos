@@ -11,7 +11,7 @@ import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileDown, Loader2, Plus } from "lucide-react";
-import { exportLancamentosToExcel } from "@/lib/medicoesExport";
+import { exportAcompanhamentoToExcel } from "@/lib/medicoesExport";
 import { DetailMedicaoContent } from "@/components/medicoes/DetailMedicaoContent";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { MedicoesTable } from "@/components/medicoes/acompanhamento/MedicoesTable";
@@ -294,7 +294,7 @@ export default function AcompanhamentoMedicoesPage() {
             Gerar Medição do Período
           </Button>
           {tableMedicoes.processedItems.length > 0 && (
-            <Button variant="outline" onClick={() => exportLancamentosToExcel(lancamentos, "medicao")}>
+            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)}>
               <FileDown className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
