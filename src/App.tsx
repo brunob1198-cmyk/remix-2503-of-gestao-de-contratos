@@ -35,6 +35,7 @@ import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
 import UploadTestPage from "./pages/debug/UploadTest";
+import StorageMigrationPage from "./pages/medicoes/StorageMigration";
 
 
 // Lazy Loaded Pages
@@ -121,6 +122,7 @@ const App = () => {
                 <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
                 <Route path="debug-upload" element={<UploadTestPage />} />
+                <Route path="migracao-storage" element={<StorageMigrationPage />} />
               </Route>
 
               {/* Extrator de PDF */}
