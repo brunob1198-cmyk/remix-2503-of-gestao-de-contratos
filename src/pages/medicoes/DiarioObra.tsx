@@ -2043,7 +2043,7 @@ export default function DiarioObraPage() {
                               <button className="w-full h-32 text-left focus:outline-none focus:ring-2 focus:ring-primary rounded-md overflow-hidden">
                                 {isFileImage(f.url) ? (
                                 <img 
-                                  src={f.url} 
+                                  src={getPublicUrl(f.url)} 
                                   alt={f.legenda || "foto"} 
                                   className="w-full h-full object-cover" 
                                 />
