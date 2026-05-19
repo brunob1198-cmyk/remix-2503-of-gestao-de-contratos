@@ -34,7 +34,9 @@ export function getPublicUrl(url: string | null | undefined): string {
     /^dsl-uploads\//,
     /^contratos\//,
     /^clientes\//,
-    /^logos\//
+    /^logos\//,
+    /^diario-fotos\/[a-f0-9-]+\//, // Novo: Remove pastas de UUID dentro de diario-fotos
+    /^[a-f0-9-]+\// // Novo: Remove qualquer UUID inicial (folder do usuário/empresa)
   ];
 
   let pathChanged = true;
