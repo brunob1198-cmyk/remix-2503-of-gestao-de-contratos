@@ -37,13 +37,24 @@ serve(async (req) => {
 
     if (fileUrl) {
       console.log('Using direct file URL for extraction:', fileUrl);
-      contractDocument = {
-        type: 'file',
-        file: {
-          file_data: fileUrl,
-          filename: fileName || 'contrato.pdf',
-        },
-      };
+      const isImage = /\.(jpg|jpeg|png|webp)$/i.test(fileUrl);
+      
+      if (isImage) {
+        contractDocument = {
+          type: 'image_url',
+          image_url: {
+            url: fileUrl,
+          },
+        };
+      } else {
+        contractDocument = {
+          type: 'file',
+          file: {
+            file_data: fileUrl,
+            filename: fileName || 'contrato.pdf',
+          },
+        };
+      }
     } else if (filePath) {
       console.log('Creating signed URL for file from storage:', filePath);
       const { data: signedData, error: signedError } = await supabase.storage
