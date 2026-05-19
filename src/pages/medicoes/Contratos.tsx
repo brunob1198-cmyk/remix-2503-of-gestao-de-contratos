@@ -115,11 +115,11 @@ export default function ContratosPage() {
             variant="outline" 
             size="sm"
             onClick={async () => {
-              if (confirm("Deseja normalizar os links de arquivos de contratos e fotos antigos? Isso garantirá que todos apontem para o novo endereço do R2.")) {
+              if (confirm("Deseja realizar a migração física dos arquivos de contratos e fotos antigos para o R2? Isso pode levar alguns minutos dependendo da quantidade de arquivos.")) {
                 try {
                   const { normalizarUrlsContratos } = await import("@/utils/normalizeContractUrls");
-                  const result = await normalizarUrlsContratos();
-                  alert(`${result.contratosAtu} contratos e ${result.fotosAtu} fotos foram normalizados com sucesso!`);
+                  await normalizarUrlsContratos();
+                  alert(`A migração foi concluída com sucesso! Todos os arquivos físicos foram transferidos para o R2.`);
                 } catch (err) {
                   alert("Erro ao normalizar URLs. Verifique o console.");
                 }

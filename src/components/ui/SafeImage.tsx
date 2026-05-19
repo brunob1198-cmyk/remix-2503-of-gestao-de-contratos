@@ -37,7 +37,21 @@ export const SafeImage: React.FC<SafeImageProps> = ({
         }
       }
 
-      // 2. Se houver um fallback explícito
+      // 2. Se falhar no R2, tentar no Supabase como fallback de emergência
+      if (currentSrc.includes(".r2.dev")) {
+        const SUPABASE_BASE = 'https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public';
+        const urlObj = new URL(currentSrc);
+        const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
+        const supabaseFallback = `${SUPABASE_BASE}/${path}`;
+        
+        if (supabaseFallback !== currentSrc) {
+          console.warn("Fallback R2 -> Supabase para:", path);
+          setCurrentSrc(supabaseFallback);
+          return;
+        }
+      }
+
+      // 3. Se houver um fallback explícito
       if (fallbackSrc) {
         setCurrentSrc(resolveFileUrl(fallbackSrc));
         return;
