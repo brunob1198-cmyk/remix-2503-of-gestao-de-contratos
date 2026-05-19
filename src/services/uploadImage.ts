@@ -24,26 +24,22 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   const data = await response.json();
-  console.log("UPLOAD JSON:", data);
-  console.log("URL SALVA:", data.url);
-
+  console.log("UPLOAD SUCCESS:", data.url);
+  
   if (!data.success) {
     throw new Error(data.error || "Falha upload");
   }
 
-  return data.url;
+  const uploadedUrl = data.url;
+  console.log("IMAGE SAVED:", uploadedUrl);
+
+  return uploadedUrl;
 }
 
 export async function verifyImageUrl(url: string): Promise<boolean> {
-  if (!url) return false;
-  try {
-    const response = await fetch(url, { method: "HEAD" });
-    console.log("URL VERIFICATION STATUS:", response.status, url);
-    return response.ok;
-  } catch (error) {
-    console.error("URL VERIFICATION FAILED:", error);
-    return false;
-  }
+  // REMOVED: CORS HEAD check as requested by user.
+  // We trust the Worker's response.
+  return true;
 }
 
 export async function deleteImage(url: string): Promise<boolean> {
