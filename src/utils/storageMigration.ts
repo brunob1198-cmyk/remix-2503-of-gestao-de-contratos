@@ -32,45 +32,40 @@ export async function buildStorageIndex() {
   ];
   
   storageIndex = new Map();
-  console.log("[MIGRATION] Iniciando escaneamento de buckets Supabase...");
+  console.log("[MIGRATION] Iniciando escaneamento recursivo de buckets Supabase...");
   
-  for (const bucket of buckets) {
+  async function listRecursive(bucket: string, path: string = "") {
     try {
-      // O Supabase storage.list não suporta recursividade profunda facilmente via API JS 
-      // sem listar pasta por pasta. Vamos tentar listar a raiz e algumas subpastas comuns.
-      const { data, error } = await supabase.storage.from(bucket).list("", {
+      const { data, error } = await supabase.storage.from(bucket).list(path, {
         limit: 1000
       });
 
       if (error) {
-        console.error(`Erro ao listar bucket ${bucket}:`, error.message);
-        continue;
+        console.error(`Erro ao listar bucket ${bucket} em ${path}:`, error.message);
+        return;
       }
       
-      if (!data) continue;
+      if (!data) return;
 
       for (const item of data) {
+        const fullPath = path ? `${path}/${item.name}` : item.name;
         if (item.id) { // É um arquivo
-          storageIndex.set(item.name, { bucket, filePath: item.name });
+          // Priorizamos o nome do arquivo para o index
+          storageIndex.set(item.name, { bucket, filePath: fullPath });
         } else {
-          // É uma pasta, vamos tentar listar o conteúdo (1 nível de profundidade)
-          const { data: subData } = await supabase.storage.from(bucket).list(item.name, {
-            limit: 1000
-          });
-          
-          if (subData) {
-            for (const subItem of subData) {
-              if (subItem.id) {
-                storageIndex.set(subItem.name, { bucket, filePath: `${item.name}/${subItem.name}` });
-              }
-            }
-          }
+          // É uma pasta, recursão
+          await listRecursive(bucket, fullPath);
         }
       }
     } catch (e) {
       console.error(`Exceção ao listar bucket ${bucket}:`, e);
     }
   }
+
+  for (const bucket of buckets) {
+    await listRecursive(bucket);
+  }
+  
   console.log(`[MIGRATION] Index construído com ${storageIndex.size} arquivos.`);
 }
 
