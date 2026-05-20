@@ -31,6 +31,7 @@ const StorageMigrationPage = () => {
     error: logs.filter(l => l.status === 'error').length,
     skipped: logs.filter(l => l.status === 'skipped').length,
     verified: logs.filter(l => l.status === 'verified').length,
+    reconciled: logs.filter(l => l.status === 'success' && l.matchType && l.matchType !== 'exact' && l.matchType !== 'parser').length,
   };
 
   const runMigration = async () => {
@@ -102,11 +103,17 @@ const StorageMigrationPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             <Card className="bg-green-50 dark:bg-green-950/20">
               <CardContent className="pt-4 text-center">
                 <div className="text-2xl font-bold text-green-600">{stats.success}</div>
                 <div className="text-xs text-muted-foreground">Migrados</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200">
+              <CardContent className="pt-4 text-center">
+                <div className="text-2xl font-bold text-purple-600">{stats.reconciled}</div>
+                <div className="text-xs text-muted-foreground">Reconciliados ✨</div>
               </CardContent>
             </Card>
             <Card className="bg-blue-50 dark:bg-blue-950/20">
@@ -151,16 +158,25 @@ const StorageMigrationPage = () => {
                   {logs.map((log, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        {log.status === 'success' && <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" /> Migrado</Badge>}
-                        {log.status === 'verified' && <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-200"><Search className="h-3 w-3 mr-1" /> OK</Badge>}
-                        {log.status === 'skipped' && <Badge variant="secondary" className="bg-gray-100"><SkipForward className="h-3 w-3 mr-1" /> Ignorado</Badge>}
-                        {log.status === 'error' && <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Erro</Badge>}
+                        <div className="flex flex-col gap-1">
+                          {log.status === 'success' && <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" /> Migrado</Badge>}
+                          {log.status === 'verified' && <Badge variant="outline" className="text-blue-600 bg-blue-50 border-blue-200"><Search className="h-3 w-3 mr-1" /> OK</Badge>}
+                          {log.status === 'skipped' && <Badge variant="secondary" className="bg-gray-100"><SkipForward className="h-3 w-3 mr-1" /> Ignorado</Badge>}
+                          {log.status === 'error' && <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> Erro</Badge>}
+                          
+                          {log.matchType && log.matchType !== 'exact' && log.matchType !== 'parser' && log.matchType !== 'verified' && (
+                            <Badge variant="outline" className="text-purple-600 bg-purple-50 border-purple-200 text-[10px] py-0">
+                              Reconciliado: {log.matchType}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="font-medium">{log.tableName}</TableCell>
                       <TableCell className="text-xs">{log.columnName}</TableCell>
                       <TableCell className="text-xs max-w-xs break-all" title={log.message || log.oldValue}>
                         <div className="font-semibold text-red-500">{log.status === 'error' ? log.message : ''}</div>
                         <div className="opacity-70">{log.oldValue}</div>
+                        {log.status === 'success' && <div className="text-[10px] text-green-600 mt-1 truncate">{log.message}</div>}
                       </TableCell>
                     </TableRow>
                   ))}
