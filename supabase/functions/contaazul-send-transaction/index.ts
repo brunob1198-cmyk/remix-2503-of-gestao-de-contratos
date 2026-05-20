@@ -651,6 +651,7 @@ serve(async (req) => {
         type: (n.tipo_operacao as any) || "despesa",
         observacao: comentarios,
         cost_center: costCenter,
+        force_pago: snap.force_pago !== false, // Default true
       }, true, defaultContactId); 
       results.push(r);
     }
