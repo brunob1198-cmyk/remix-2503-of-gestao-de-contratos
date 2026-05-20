@@ -3,8 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight, BarChart, ChevronDown } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
+import { exportAnaliseCustosPowerBI } from "@/lib/medicoesExport";
+import { AnaliseCustosRow } from "@/types/analise";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -533,10 +542,32 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
                 />
               </div>
-              <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Exportar Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Exportar
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                    <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
+                    <span>Padrão Excel (Completo)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => exportAnaliseCustosPowerBI(analiseRows, `${format(periodoInicio, "MMM-yyyy", { locale: ptBR })} a ${format(periodoFim, "MMM-yyyy", { locale: ptBR })}`)} 
+                    className="cursor-pointer"
+                  >
+                    <BarChart className="mr-2 h-4 w-4 text-indigo-600" />
+                    <div className="flex flex-col">
+                      <span>Otimizado Power BI</span>
+                      <span className="text-[10px] text-muted-foreground">Tabela flat + Dimensões</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>
