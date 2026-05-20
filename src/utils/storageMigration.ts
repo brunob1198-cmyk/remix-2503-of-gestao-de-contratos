@@ -12,6 +12,7 @@ export interface MigrationLog {
   newValue: string;
   status: 'success' | 'error' | 'skipped' | 'verified';
   message?: string;
+  matchType?: string;
 }
 
 // Index para mapeamento global de arquivos
@@ -25,7 +26,28 @@ interface StorageIndexItem {
 let storageIndex: StorageIndexItem[] = [];
 
 /**
- * Normaliza o nome do arquivo para comparação inteligente
+ * Função utilitária para identificar thumbnails e arquivos derivados
+ */
+function isThumbnail(path: string): boolean {
+  const lowercasePath = path.toLowerCase();
+  return (
+    lowercasePath.includes("/thumbs/") ||
+    lowercasePath.includes("thumb_") ||
+    lowercasePath.includes("/600/") ||
+    lowercasePath.includes("/300/") ||
+    lowercasePath.includes("/900/") ||
+    lowercasePath.includes("/medium/") ||
+    lowercasePath.includes("/small/") ||
+    lowercasePath.includes("/thumbs") ||
+    lowercasePath.startsWith("thumbs/") ||
+    lowercasePath.startsWith("thumb_") ||
+    /\/(300|600|900)\//.test(lowercasePath) ||
+    /^(300|600|900)\//.test(lowercasePath)
+  );
+}
+
+/**
+ * Normaliza o nome do arquivo para comparação inteligente (Reconciliação)
  */
 export function normalizeFileName(filename: string): string {
   if (!filename) return "";
@@ -37,8 +59,8 @@ export function normalizeFileName(filename: string): string {
     // Remover extensões (.jpeg, .jpg, .png, .pdf, .docx, etc.)
     name = name.replace(/\.[^/.]+$/, "");
     
-    // Remover prefixos numéricos históricos comuns (ex: timestamps)
-    name = name.replace(/^\d+(_| )/, "");
+    // Remover prefixos numéricos históricos comuns (ex: timestamps de 13 dígitos)
+    name = name.replace(/^\d{10,13}(_|-| )/, "");
     
     // Normalização agressiva
     name = name.toLowerCase()
@@ -55,6 +77,7 @@ export function normalizeFileName(filename: string): string {
 
 /**
  * Scan inicial dos buckets para criar índice global em memória
+ * Isso permite encontrar arquivos mesmo que o path no banco esteja incompleto.
  */
 export async function buildStorageIndex() {
   const buckets = [
@@ -64,7 +87,9 @@ export async function buildStorageIndex() {
     "avatars",
     "timeline-evidencias",
     "medicao-capas",
-    "diario-campo-fotos"
+    "diario-campo-fotos",
+    "empresas",
+    "clientes"
   ];
   
   storageIndex = [];
@@ -86,7 +111,7 @@ export async function buildStorageIndex() {
       for (const item of data) {
         const fullPath = path ? `${path}/${item.name}` : item.name;
         
-        // Ignorar pastas de thumbnails e derivados
+        // Ignorar pastas de thumbnails e derivados durante o scan
         if (isThumbnail(fullPath)) continue;
 
         if (item.id) { // É um arquivo
@@ -110,7 +135,7 @@ export async function buildStorageIndex() {
     await listRecursive(bucket);
   }
   
-  console.log(`[MIGRATION] Index construído com ${storageIndex.length} arquivos.`);
+  console.log(`[MIGRATION] Index construído com ${storageIndex.length} arquivos reais.`);
 }
 
 /**
@@ -128,7 +153,6 @@ export function findRealStoragePath(pathOrUrl: string): { bucket: string, filePa
   if (!originalFilename) return null;
 
   // 2. Tentar Match Exato (Caminho completo ou final do path)
-  // Alguns registros podem ter o path relativo que bate exatamente
   for (const item of storageIndex) {
     if (cleaned.endsWith(item.filePath)) {
       return { bucket: item.bucket, filePath: item.filePath, matchType: 'exact' };
@@ -152,7 +176,6 @@ export function findRealStoragePath(pathOrUrl: string): { bucket: string, filePa
   }
 
   // 5. Match Fuzzy / Parcial (includes)
-  // Útil quando o path salvo é um fragmento do path real
   for (const item of storageIndex) {
     if (item.filePath.includes(originalFilename) || cleaned.includes(item.filename)) {
       return { bucket: item.bucket, filePath: item.filePath, matchType: 'fuzzy' };
@@ -180,7 +203,7 @@ export function extractStorageInfo(pathOrUrl: string) {
 
   cleaned = cleaned.replace(/\\/g, "/");
 
-  // 3. Tentar encontrar via index antes de fazer o parser manual
+  // 3. Tentar encontrar via index inteligente (Reconciliação)
   const foundInIndex = findRealStoragePath(cleaned);
   if (foundInIndex) {
     return {
@@ -189,7 +212,7 @@ export function extractStorageInfo(pathOrUrl: string) {
     };
   }
 
-  // 4. Parser manual como fallback
+  // 4. Parser manual como fallback para caminhos que podem não estar no index (ex: novos uploads)
   if (cleaned.startsWith("uploads/")) {
     cleaned = `contratos/${cleaned}`;
   }
@@ -221,6 +244,7 @@ export function extractStorageInfo(pathOrUrl: string) {
   return {
     bucket,
     filePath,
+    matchType: 'parser',
     isOriginal: !isThumbnail(cleaned)
   };
 }
@@ -229,6 +253,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
   url: string; 
   status: 'success' | 'error' | 'skipped' | 'verified'; 
   message?: string;
+  matchType?: string;
 }> {
   if (!pathOrUrl || pathOrUrl.trim() === "") {
     return { url: "", status: 'skipped', message: "Caminho vazio" };
@@ -240,21 +265,21 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     if (pathOrUrl.startsWith("http") && !pathOrUrl.includes("supabase") && !pathOrUrl.includes("r2.dev")) {
       return { url: pathOrUrl, status: 'skipped', message: "URL externa ignorada" };
     }
-    return { url: pathOrUrl, status: 'skipped', message: `Parser: Formato não reconhecido: ${pathOrUrl}` };
+    return { url: pathOrUrl, status: 'skipped', message: `Parser: Formato não reconhecido` };
   }
 
-  const { bucket, filePath, isOriginal } = info;
+  const { bucket, filePath, isOriginal, matchType } = info;
 
   if (!isOriginal) {
-    return { url: pathOrUrl, status: 'skipped', message: `Thumbnail ignorada: ${filePath}` };
+    return { url: pathOrUrl, status: 'skipped', message: `Thumbnail ignorada` };
   }
 
-  // Verificar se já existe no R2
+  // Verificar se já existe no R2 e está acessível
   if (pathOrUrl.includes(".r2.dev")) {
     try {
       const checkRes = await fetch(pathOrUrl, { method: 'HEAD' });
       if (checkRes.ok) {
-        return { url: pathOrUrl, status: 'verified', message: "Já existe no R2 (Verificado)" };
+        return { url: pathOrUrl, status: 'verified', message: "Já no R2", matchType: 'verified' };
       }
     } catch (e) {}
   }
@@ -264,16 +289,16 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 
   while (attempt < maxAttempts) {
     try {
-      console.log(`[MIGRATION] Tentando download: ${bucket}/${filePath}`);
+      console.log(`[MIGRATION] [${matchType}] Tentando download: ${bucket}/${filePath}`);
       const { data, error } = await supabase.storage.from(bucket).download(filePath);
       
       if (error || !data) {
         const errorMsg = error?.message || "Arquivo não encontrado";
-        if (errorMsg.includes("Object not found") || (error as any)?.status === 404 || errorMsg.includes("not found")) {
+        if (errorMsg.includes("Object not found") || (error as any)?.status === 404) {
           return { 
             url: pathOrUrl, 
             status: 'skipped', 
-            message: `404 no Supabase: ${bucket}/${filePath}` 
+            message: `404 no Supabase` 
           };
         }
 
@@ -317,19 +342,24 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
 
       const newUrl = resolveFileUrl(result.url);
       
-      // Validação final
+      // Validação final de existência no R2
       try {
         const verifyRes = await fetch(newUrl, { method: 'HEAD' });
         if (!verifyRes.ok) {
           return { 
             url: pathOrUrl, 
             status: 'error', 
-            message: `Migrado, mas 404 no R2: ${newUrl}` 
+            message: `Upload falhou na validação 404 R2` 
           };
         }
       } catch (e) {}
 
-      return { url: newUrl, status: 'success', message: `Sucesso! Path: ${bucket}/${filePath}` };
+      return { 
+        url: newUrl, 
+        status: 'success', 
+        message: `Sucesso! (${bucket}/${filePath})`,
+        matchType
+      };
     } catch (err: any) {
       if (attempt === maxAttempts - 1) {
         return { url: pathOrUrl, status: 'error', message: `Exceção: ${err.message}` };
@@ -339,7 +369,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     }
   }
   
-  return { url: pathOrUrl, status: 'error', message: "Esgotado" };
+  return { url: pathOrUrl, status: 'error', message: "Timeout/Esgotado" };
 }
 
 export async function migrateTableRecords(
@@ -375,7 +405,8 @@ export async function migrateTableRecords(
             oldValue,
             newValue: result.url,
             status: result.status,
-            message: result.message
+            message: result.message,
+            matchType: result.matchType
           });
         }
       }
