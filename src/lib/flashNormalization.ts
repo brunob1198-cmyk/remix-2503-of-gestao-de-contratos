@@ -107,7 +107,8 @@ const pickNumber = (payload: any, paths: string[]): number => {
     }
     if (typeof cur === "number") return cur;
     if (typeof cur === "string") {
-      const n = Number(cur.replace(/[^0-9.,-]/g, "").replace(",", "."));
+      const clean = cur.replace(/[^0-9.,-]/g, "").replace(",", ".");
+      const n = parseFloat(clean);
       if (!isNaN(n)) return n;
     }
   }
