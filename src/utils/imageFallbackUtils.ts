@@ -10,18 +10,18 @@ export function buildPossibleImageUrls(
   altUrls: (string | null | undefined)[] = []
 ): string[] {
   const urls = new Set<string>();
-  const addUrl = (u: string | null | undefined) => {
+  const addUrl = (u: string | null | undefined, preserveThumbs = true) => {
     if (u && typeof u === 'string' && u.trim() !== "") {
-      const resolved = resolveFileUrl(u.trim());
+      const resolved = resolveFileUrl(u.trim(), preserveThumbs);
       if (resolved) urls.add(resolved);
     }
   };
 
   // 1. Adicionar primarySrc (geralmente thumb_url se passado)
-  addUrl(primarySrc);
+  addUrl(primarySrc, true);
 
   // 2. Adicionar alternativas passadas (url, medium_url, etc)
-  altUrls.forEach(addUrl);
+  altUrls.forEach(u => addUrl(u, true));
 
   // 3. Tentar reconstruções automáticas para cada URL já coletada
   const currentUrls = Array.from(urls);
