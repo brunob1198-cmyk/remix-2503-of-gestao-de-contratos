@@ -27,6 +27,8 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const view = url.searchParams.get("view");
+    console.log(`Recebido view: "${view}"`);
+    console.log(`Está no ALLOWED_VIEWS? ${view ? ALLOWED_VIEWS.includes(view) : 'não'}`);
 
     if (!view || !ALLOWED_VIEWS.includes(view)) {
       return new Response(
