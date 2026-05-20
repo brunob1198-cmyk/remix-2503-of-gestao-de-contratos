@@ -3808,16 +3808,35 @@ export type Database = {
     Views: {
       view_bi_analise_obras: {
         Row: {
+          "% Gerência Orç.": number | null
+          "% Gerência Real": number | null
+          "% Impostos": number | null
+          "% MB Orç.": number | null
+          "% MB Real": number | null
           Ano: number | null
-          Categoria: string | null
-          Contrato: string | null
-          Fornecedor: string | null
-          "ID Contrato": string | null
+          Área: string | null
+          Cliente: string | null
+          "Custo Direto Orçado": number | null
+          "Custo Direto Real": number | null
+          "Custo Total Orçado": number | null
+          "Custo Total Real": number | null
+          "Gerência Orçada": number | null
+          "Gerência Real": number | null
           "ID Projeto": string | null
-          Mês: string | null
+          "Indir.": number | null
+          "Mat.": number | null
+          "MB Orç. (R$)": number | null
+          "MB Real (R$)": number | null
           "Mês Num": number | null
+          MO: number | null
+          "Produção (POC)": number | null
           Projeto: string | null
-          Valor: number | null
+          "Receita Líquida": number | null
+          Referência: string | null
+          "Resultado Direto": number | null
+          "Resultado Gerência": number | null
+          "Resultado Total": number | null
+          "Transp.": number | null
         }
         Relationships: []
       }
@@ -4385,16 +4404,35 @@ export type Database = {
       get_bi_analise_obras: {
         Args: never
         Returns: {
+          "% Gerência Orç.": number
+          "% Gerência Real": number
+          "% Impostos": number
+          "% MB Orç.": number
+          "% MB Real": number
           Ano: number
-          Categoria: string
-          Contrato: string
-          Fornecedor: string
-          "ID Contrato": string
+          Área: string
+          Cliente: string
+          "Custo Direto Orçado": number
+          "Custo Direto Real": number
+          "Custo Total Orçado": number
+          "Custo Total Real": number
+          "Gerência Orçada": number
+          "Gerência Real": number
           "ID Projeto": string
-          Mês: string
+          "Indir.": number
+          "Mat.": number
+          "MB Orç. (R$)": number
+          "MB Real (R$)": number
           "Mês Num": number
+          MO: number
+          "Produção (POC)": number
           Projeto: string
-          Valor: number
+          "Receita Líquida": number
+          Referência: string
+          "Resultado Direto": number
+          "Resultado Gerência": number
+          "Resultado Total": number
+          "Transp.": number
         }[]
       }
       get_employee_cc_map: {
