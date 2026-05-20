@@ -326,7 +326,7 @@ export function AnotacoesCampoDialog({
                             return (
                               <div key={f.id} className="flex items-center gap-3 border rounded-lg p-2 bg-muted/30">
                                 <a href={f.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                                  <SmartImage src={f.thumb_url || f.url} fallbackUrls={[f.url]} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
+                                  <SmartImage src={f.thumb_url || f.url} context="diario_campo_fotos" fallbackUrls={[f.thumb_600_url, f.url]} alt={f.legenda || "Foto"} className="w-20 h-20 object-cover rounded-md border" />
                                 </a>
                                 <div className="flex-1 min-w-0 space-y-1.5">
                                   <Select
