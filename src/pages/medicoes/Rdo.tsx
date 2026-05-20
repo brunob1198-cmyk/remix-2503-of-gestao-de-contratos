@@ -496,7 +496,7 @@ export default function RdoPage() {
         const fotosFolder = zip.folder("fotos");
         for (let i = 0; i < diario.fotos.length; i++) {
           const f = diario.fotos[i];
-          const blob = await fetchImageAsBlob(f.url);
+          const blob = await fetchImageAsBlob(f.url, 'diario_fotos');
           if (blob && fotosFolder) {
             const cls = classificacaoLabel[f.classificacao] || f.classificacao;
             const itemLabel = f.item_evidencia ? `_${f.item_evidencia.codigo}` : "";
@@ -554,7 +554,7 @@ export default function RdoPage() {
           const fotosFolder = dayFolder.folder("fotos");
           for (let i = 0; i < diario.fotos.length; i++) {
             const f = diario.fotos[i];
-            const blob = await fetchImageAsBlob(f.url);
+            const blob = await fetchImageAsBlob(f.url, 'diario_fotos');
             if (blob && fotosFolder) {
               const cls = classificacaoLabel[f.classificacao] || f.classificacao;
               const itemLabel = f.item_evidencia ? `_${f.item_evidencia.codigo}` : "";
