@@ -336,7 +336,7 @@ export const buildContaAzulPayload = (params: {
     flash_type: params.flash_type,
     comentarios: params.comentarios ?? null,
     cost_center: params.cost_center ?? null,
-    force_pago: params.force_pago ?? true,
+    force_pago: true,
   };
 };
 
