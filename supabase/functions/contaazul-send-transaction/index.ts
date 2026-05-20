@@ -176,6 +176,7 @@ interface TransactionInput {
   type: "receita" | "despesa";
   observacao?: string | null;
   cost_center?: string | null;
+  force_pago?: boolean;
 }
 
 async function sendOne(
