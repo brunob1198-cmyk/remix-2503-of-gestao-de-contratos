@@ -9,6 +9,7 @@ interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackUrls?: (string | null | undefined)[];
   containerClassName?: string;
   showSkeleton?: boolean;
+  context?: string; // Tabela/contexto para resolução de bucket
 }
 
 /**
@@ -23,6 +24,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   containerClassName,
   showSkeleton = true,
   alt = "Imagem",
+  context,
   ...props
 }) => {
   const [possibleUrls, setPossibleUrls] = useState<string[]>([]);
@@ -31,12 +33,12 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   const [hasFailedAll, setHasFailedAll] = useState(false);
 
   useEffect(() => {
-    const urls = buildPossibleImageUrls(src, fallbackUrls);
+    const urls = buildPossibleImageUrls(src, fallbackUrls, context);
     setPossibleUrls(urls);
     setCurrentIndex(0);
     setIsLoading(true);
     setHasFailedAll(urls.length === 0);
-  }, [src, JSON.stringify(fallbackUrls)]);
+  }, [src, JSON.stringify(fallbackUrls), context]);
 
   const handleError = () => {
     const nextIndex = currentIndex + 1;

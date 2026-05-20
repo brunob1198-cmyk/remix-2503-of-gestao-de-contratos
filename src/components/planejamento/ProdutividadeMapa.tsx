@@ -491,7 +491,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
                               <div className="grid grid-cols-4 gap-1">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                  <SmartImage key={i} src={url} className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
+                                  <SmartImage key={i} src={url} context="diario_fotos" className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (

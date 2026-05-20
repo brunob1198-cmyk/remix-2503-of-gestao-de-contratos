@@ -188,17 +188,28 @@ export function findRealStoragePath(pathOrUrl: string): { bucket: string, filePa
 export function extractStorageInfo(pathOrUrl: string, context?: string) {
   let cleaned = pathOrUrl.trim();
   
-  // 1. Corrigir caminhos sem bucket usando o contexto antes de processar
-  if (context) {
-    cleaned = normalizeLegacyStoragePath(cleaned, context);
+  // 1. Extração de bucket baseada estritamente no mapeamento fixo (Objetivo 1 e 2)
+  const TABLE_BUCKET_MAP: Record<string, string> = {
+    "diario_fotos": "diario-fotos",
+    "diario_campo_fotos": "diario-fotos",
+    "contratos": "contratos",
+    "profiles": "avatars",
+    "timeline": "timeline-evidencias",
+    "medicoes": "medicoes-pdf",
+    "empresas": "medicao-capas",
+    "clientes": "medicao-capas"
+  };
+
+  let bucket = "";
+  if (context && TABLE_BUCKET_MAP[context]) {
+    bucket = TABLE_BUCKET_MAP[context];
   }
 
-  // 2. Remover base do Supabase se presente
+  // 2. Limpar path (remover base Supabase ou R2)
   if (cleaned.startsWith(SUPABASE_STORAGE_BASE)) {
     cleaned = cleaned.replace(`${SUPABASE_STORAGE_BASE}/`, "");
   }
   
-  // 3. Tratar URLs do R2
   if (cleaned.includes(".r2.dev")) {
     try {
       const urlObj = new URL(cleaned);
@@ -211,47 +222,40 @@ export function extractStorageInfo(pathOrUrl: string, context?: string) {
   // 3. Tentar encontrar via index inteligente (Reconciliação)
   const foundInIndex = findRealStoragePath(cleaned);
   if (foundInIndex) {
+    console.log(`[MIGRATION] Bucket fixo/inferido por reconciliação: ${foundInIndex.bucket}`);
     return {
       ...foundInIndex,
       isOriginal: !isThumbnail(cleaned)
     };
   }
 
-  // 4. Parser manual como fallback para caminhos que podem não estar no index (ex: novos uploads)
-  if (cleaned.startsWith("uploads/")) {
-    cleaned = `contratos/${cleaned}`;
+  // 4. Fallback: Se não encontramos no index, usamos o bucket do contexto
+  if (bucket) {
+    let filePath = cleaned;
+    // Se o path já começa com o bucket, removemos para evitar duplicação no envio
+    if (filePath.startsWith(`${bucket}/`)) {
+      filePath = filePath.slice(bucket.length + 1);
+    }
+    
+    // Se o path começa com um UUID, tratamos como pasta (Objetivo 5 e 6)
+    // Não permitimos que um UUID seja o bucket
+    const parts = filePath.split("/");
+    if (parts[0].length === 36 && parts[0].includes("-")) {
+      // É um UUID, mantemos no filePath
+    } else if (parts[0] === bucket) {
+       filePath = parts.slice(1).join("/");
+    }
+
+    console.log(`[MIGRATION] Usando bucket fixo por contexto: ${bucket} para path: ${filePath}`);
+    return {
+      bucket,
+      filePath,
+      matchType: 'context-fixed',
+      isOriginal: !isThumbnail(cleaned)
+    };
   }
 
-  const parts = cleaned.split("/").filter(p => p !== "");
-  
-  if (parts.length < 2) {
-    return null;
-  }
-
-  let bucket = parts[0];
-  let filePath = parts.slice(1).join("/");
-
-  const legacyBucketsMap: Record<string, string> = {
-    "diario_fotos": "diario-fotos",
-    "diario_campo_fotos": "diario-campo-fotos",
-    "medicao_capas": "medicao-capas",
-    "medicoes_pdf": "medicoes-pdf",
-    "dsl_uploads": "dsl-uploads",
-    "timeline_evidencias": "timeline-evidencias"
-  };
-
-  if (legacyBucketsMap[bucket]) {
-    bucket = legacyBucketsMap[bucket];
-  } else if (bucket.includes("_")) {
-    bucket = bucket.replace(/_/g, "-");
-  }
-
-  return {
-    bucket,
-    filePath,
-    matchType: 'parser',
-    isOriginal: !isThumbnail(cleaned)
-  };
+  return null;
 }
 
 export async function migrateFileToR2(pathOrUrl: string | null | undefined, context?: string): Promise<{ 

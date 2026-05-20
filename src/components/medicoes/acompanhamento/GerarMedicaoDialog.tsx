@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
 import { toast } from "sonner";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 interface GeracaoItem {
   site_id: string;
@@ -734,7 +735,7 @@ export function GerarMedicaoDialog({
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {geracaoFotos.map((foto, idx) => (
                   <div key={foto.id} className="relative group rounded-md overflow-hidden border aspect-square bg-muted">
-                    <img src={resolveFileUrl(foto.url)} className="w-full h-full object-cover" alt="" />
+                    <SmartImage src={foto.url} context="diario_fotos" className="w-full h-full object-cover" alt="" />
                     <div className="absolute top-1 right-1">
                       <Checkbox checked={foto.selected} onCheckedChange={(checked) => { const next = [...geracaoFotos]; next[idx].selected = !!checked; setGeracaoFotos(next); }} className="bg-white/80" />
                     </div>

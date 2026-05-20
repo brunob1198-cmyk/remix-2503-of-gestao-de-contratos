@@ -228,7 +228,7 @@ export default function ContratosPage() {
                                       <button
                                         className="text-blue-600 hover:text-blue-800"
                                         onClick={() => {
-                                          if (ad.arquivo_url) window.open(resolveFileUrl(ad.arquivo_url), '_blank');
+                                          if (ad.arquivo_url) window.open(resolveFileUrl(ad.arquivo_url, false, "contratos"), '_blank');
                                         }}
                                       >
                                         <FileText className="h-3 w-3" />
@@ -300,7 +300,7 @@ export default function ContratosPage() {
                                 size="icon"
                                 title="Ver arquivo original"
                                 onClick={() => {
-                                  if (c.arquivo_url) window.open(resolveFileUrl(c.arquivo_url), '_blank');
+                                  if (c.arquivo_url) window.open(resolveFileUrl(c.arquivo_url, false, "contratos"), '_blank');
                                 }}
                               >
                                 <FileText className="h-4 w-4 text-blue-600" />
