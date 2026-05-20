@@ -3819,64 +3819,7 @@ export type Database = {
           Projeto: string | null
           Valor: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["ID Projeto"]
-            isOneToOne: false
-            referencedRelation: "projetos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["ID Projeto"]
-            isOneToOne: false
-            referencedRelation: "view_bi_producao"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["ID Projeto"]
-            isOneToOne: false
-            referencedRelation: "view_flash_transactions"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["ID Projeto"]
-            isOneToOne: false
-            referencedRelation: "view_producao"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["ID Projeto"]
-            isOneToOne: false
-            referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projetos_contrato_id_fkey"
-            columns: ["ID Contrato"]
-            isOneToOne: false
-            referencedRelation: "contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projetos_contrato_id_fkey"
-            columns: ["ID Contrato"]
-            isOneToOne: false
-            referencedRelation: "view_bi_contratos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projetos_contrato_id_fkey"
-            columns: ["ID Contrato"]
-            isOneToOne: false
-            referencedRelation: "view_contratos"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       view_bi_contratos: {
         Row: {
@@ -4439,6 +4382,21 @@ export type Database = {
               error: true
             } & "Could not choose the best candidate function between: public.first_of_month(d => date), public.first_of_month(d => timestamptz). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
           }
+      get_bi_analise_obras: {
+        Args: never
+        Returns: {
+          Ano: number
+          Categoria: string
+          Contrato: string
+          Fornecedor: string
+          "ID Contrato": string
+          "ID Projeto": string
+          Mês: string
+          "Mês Num": number
+          Projeto: string
+          Valor: number
+        }[]
+      }
       get_employee_cc_map: {
         Args: { employee_ids: string[] }
         Returns: {
