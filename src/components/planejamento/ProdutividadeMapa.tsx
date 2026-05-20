@@ -11,6 +11,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
 import { MapPin, BarChart3, TrendingUp, AlertTriangle, Info } from "lucide-react";
+import { SmartImage } from "@/components/ui/SmartImage";
 import { resolveCoordsFromPhotos } from "@/lib/photoGeolocation";
 import { isPointInUF } from "@/lib/geoUtils";
 
@@ -490,7 +491,7 @@ export function ProdutividadeMapa({ projetoId, siteFilter }: ProdutividadeMapaPr
                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Fotos do Diário</p>
                               <div className="grid grid-cols-4 gap-1">
                                 {r.photos.slice(0, 4).map((url, i) => (
-                                  <img key={i} src={url} className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
+                                  <SmartImage key={i} src={url} className="w-full h-10 object-cover rounded shadow-sm border" alt={`Foto do diário em ${r.municipio}`} />
                                 ))}
                               </div>
                               {r.photos.length > 4 && (
