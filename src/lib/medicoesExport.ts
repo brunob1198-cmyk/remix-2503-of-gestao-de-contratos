@@ -203,7 +203,7 @@ export function exportAcompanhamentoToExcel(medicoes: any[]) {
  * Exportação da Análise de Custos — otimizada para Power BI
  */
 export function exportAnaliseCustosPowerBI(
-  rows: any[],
+  rows: AnaliseCustosRow[],
   periodoLabel?: string
 ): void {
   const wb = XLSX.utils.book_new();
