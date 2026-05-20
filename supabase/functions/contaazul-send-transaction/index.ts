@@ -265,7 +265,7 @@ async function sendOne(
             conta_financeira: input.financial_account_id,
             valor_pago: transactionValue,
             metodo_pagamento: "OUTRO"
-          },
+          } : undefined,
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue,
