@@ -47,11 +47,12 @@ export function buildPossibleImageUrls(
   const supabaseBase = "https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public";
   
   Array.from(urls).forEach(u => {
-    if (u.includes(r2Base)) {
+    if (u.includes(r2Base) && !u.includes("supabase.co")) {
       try {
         const urlObj = new URL(u);
         const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
-        urls.add(`${supabaseBase}/${path}`);
+        // Adicionamos via addUrl para que o resolveFileUrl aplique as correções de bucket/contexto
+        addUrl(`${supabaseBase}/${path}`, true);
       } catch (e) {}
     }
   });

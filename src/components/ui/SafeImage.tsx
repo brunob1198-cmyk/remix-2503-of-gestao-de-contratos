@@ -5,6 +5,7 @@ interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string | null | undefined;
   fallbackSrc?: string;
   containerClassName?: string;
+  context?: string;
 }
 
 /**

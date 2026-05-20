@@ -199,7 +199,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
             : (first.classificacao && first.classificacao !== '__geral__' ? first.classificacao : 'Geral');
           const renderCard = (f: RdoFoto) => `
               <div class="foto-card">
-                <img src="${resolveFileUrl(f.url)}" alt="foto" loading="lazy" />
+                <img src="${resolveFileUrl(f.url, false, 'diario_fotos')}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
                   <span class="foto-label-badge">${title}</span>
                 </div>
@@ -226,9 +226,9 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
   `;
 }
 
-async function fetchImageAsBlob(url: string): Promise<Blob | null> {
+async function fetchImageAsBlob(url: string, context?: string): Promise<Blob | null> {
   try {
-    const res = await fetch(resolveFileUrl(url));
+    const res = await fetch(resolveFileUrl(url, false, context));
     if (!res.ok) return null;
     return await res.blob();
   } catch {
@@ -496,7 +496,7 @@ export default function RdoPage() {
         const fotosFolder = zip.folder("fotos");
         for (let i = 0; i < diario.fotos.length; i++) {
           const f = diario.fotos[i];
-          const blob = await fetchImageAsBlob(f.url);
+          const blob = await fetchImageAsBlob(f.url, 'diario_fotos');
           if (blob && fotosFolder) {
             const cls = classificacaoLabel[f.classificacao] || f.classificacao;
             const itemLabel = f.item_evidencia ? `_${f.item_evidencia.codigo}` : "";
@@ -554,7 +554,7 @@ export default function RdoPage() {
           const fotosFolder = dayFolder.folder("fotos");
           for (let i = 0; i < diario.fotos.length; i++) {
             const f = diario.fotos[i];
-            const blob = await fetchImageAsBlob(f.url);
+            const blob = await fetchImageAsBlob(f.url, 'diario_fotos');
             if (blob && fotosFolder) {
               const cls = classificacaoLabel[f.classificacao] || f.classificacao;
               const itemLabel = f.item_evidencia ? `_${f.item_evidencia.codigo}` : "";

@@ -5,7 +5,7 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
 // Mapeamento FIXO por contexto/tabela conforme solicitado
 const TABLE_BUCKET_MAP: Record<string, string> = {
   "diario_fotos": "diario-fotos",
-  "diario_campo_fotos": "diario-fotos",
+  "diario_campo_fotos": "diario-fotos/campo",
   "contratos": "contratos",
   "profiles": "avatars",
   "timeline": "timeline-evidencias",
@@ -26,9 +26,27 @@ export function resolveFileUrl(
   if (!path || path.trim() === "") return "";
   
   let trimmedPath = path.trim();
+  const isSupabaseUrl = trimmedPath.startsWith(SUPABASE_BASE);
 
-  // 1. Se já for uma URL absoluta (externa ou R2 já completo), retorna sem alteração
-  if (trimmedPath.startsWith("http://") || trimmedPath.startsWith("https://")) {
+  // 1. Se for uma URL absoluta, mas do Supabase, verificamos se o bucket está correto se houver contexto
+  if (isSupabaseUrl && context && TABLE_BUCKET_MAP[context]) {
+    const bucket = TABLE_BUCKET_MAP[context];
+    const urlContent = trimmedPath.replace(`${SUPABASE_BASE}/`, "");
+    const segments = urlContent.split("/");
+    const currentBucket = segments[0];
+
+    // Se o bucket atual for um UUID ou diferente do bucket esperado do contexto, forçamos a reconstrução
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentBucket);
+    
+    if (isUuid || currentBucket !== bucket.split('/')[0]) {
+      console.log(`[RESOLVER] Corrigindo URL Supabase com bucket inválido (${currentBucket}). Contexto: ${context}`);
+      // Se for UUID, o UUID é o início do path real (pasta da obra)
+      trimmedPath = urlContent; 
+    } else {
+      return trimmedPath;
+    }
+  } else if (trimmedPath.startsWith("http://") || (trimmedPath.startsWith("https://") && !isSupabaseUrl)) {
+    // URL externa não Supabase ou sem contexto para validar
     return trimmedPath;
   }
 
@@ -52,8 +70,9 @@ export function resolveFileUrl(
     bucket = TABLE_BUCKET_MAP[context];
   } else if (!context) {
      // Sem contexto, tentamos identificar se o path já começa com um bucket conhecido
-     const knownBuckets = Object.values(TABLE_BUCKET_MAP);
-     if (!knownBuckets.some(b => trimmedPath.startsWith(`${b}/`))) {
+     const knownBuckets = Object.values(TABLE_BUCKET_MAP).map(b => b.split('/')[0]);
+     const uniqueBuckets = Array.from(new Set(knownBuckets));
+     if (!uniqueBuckets.some(b => trimmedPath.startsWith(`${b}/`))) {
        console.warn(`[RESOLVER] Sem contexto e bucket não detectado: ${trimmedPath}`);
      }
   }
@@ -66,8 +85,9 @@ export function resolveFileUrl(
   // 5. Construção da URL Final
   if (bucket) {
     // Remove o bucket do início do path se ele já estiver lá (para não duplicar)
-    if (trimmedPath.startsWith(`${bucket}/`)) {
-      trimmedPath = trimmedPath.slice(bucket.length + 1);
+    const bucketPrefix = bucket.split('/')[0];
+    if (trimmedPath.startsWith(`${bucketPrefix}/`)) {
+      trimmedPath = trimmedPath.slice(bucketPrefix.length + 1);
     }
     
     // Garantir que não estamos tratando UUID como bucket

@@ -187,7 +187,7 @@ export function DetailMedicaoContent({
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
   const getLogoUrl = useCallback((url: string | null | undefined) => {
-    return resolveFileUrl(url);
+    return resolveFileUrl(url, false, "empresas"); // Usa o bucket medicao-capas
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 
@@ -620,6 +620,7 @@ export function DetailMedicaoContent({
         <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
           <SmartImage
             src={foto.url}
+            context="diario_fotos"
             fallbackUrls={[foto.thumb_600_url, foto.thumb_url]}
             alt={foto.item_descricao || foto.site_nome || "foto"}
             className="h-full w-full object-contain"
