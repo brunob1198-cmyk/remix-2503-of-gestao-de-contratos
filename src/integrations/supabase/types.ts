@@ -3808,70 +3808,72 @@ export type Database = {
     Views: {
       view_bi_analise_obras: {
         Row: {
-          ano: number | null
-          ano_mes: string | null
-          area_id: string | null
-          area_nome: string | null
-          cliente: string | null
-          cliente_cnpj: string | null
-          cliente_id: string | null
-          custo_direto_orcado: number | null
-          custo_direto_real: number | null
-          custo_financeiros: number | null
-          custo_total_orcado: number | null
-          custo_total_real: number | null
-          empresa_id: string | null
-          empresa_nome: string | null
-          equipamentos: number | null
-          faturamento_bruto: number | null
-          faturamento_liquido: number | null
-          gerencia_orcada: number | null
-          gerencia_real: number | null
-          gerencia_resultado: number | null
-          id_unico: string | null
-          indiretos: number | null
-          materiais: number | null
-          mb_real: number | null
-          mes: string | null
-          mes_id: number | null
-          mes_numero: number | null
-          mo_obra: number | null
-          outros: number | null
-          perc_custo_direto_orcado: number | null
-          perc_impostos: number | null
-          perc_mb_real: number | null
-          poc: number | null
-          projeto_codigo: string | null
-          projeto_id: string | null
-          projeto_nome: string | null
-          projeto_status: string | null
-          qtd_faturas: number | null
-          receita_liquida: number | null
-          referencia: string | null
-          resultado_direto: number | null
-          resultado_total: number | null
-          transporte: number | null
+          Ano: number | null
+          Categoria: string | null
+          Contrato: string | null
+          Fornecedor: string | null
+          "ID Contrato": string | null
+          "ID Projeto": string | null
+          Mês: string | null
+          "Mês Num": number | null
+          Projeto: string | null
+          Valor: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "projetos_area_id_fkey"
-            columns: ["area_id"]
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["ID Projeto"]
             isOneToOne: false
-            referencedRelation: "areas"
+            referencedRelation: "projetos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projetos_cliente_id_fkey"
-            columns: ["cliente_id"]
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["ID Projeto"]
             isOneToOne: false
-            referencedRelation: "clientes"
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["ID Projeto"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["ID Projeto"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "custo_real_erp_projeto_id_fkey"
+            columns: ["ID Projeto"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["ID Contrato"]
+            isOneToOne: false
+            referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projetos_empresa_id_fkey"
-            columns: ["empresa_id"]
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["ID Contrato"]
             isOneToOne: false
-            referencedRelation: "empresas"
+            referencedRelation: "view_bi_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projetos_contrato_id_fkey"
+            columns: ["ID Contrato"]
+            isOneToOne: false
+            referencedRelation: "view_contratos"
             referencedColumns: ["id"]
           },
         ]
