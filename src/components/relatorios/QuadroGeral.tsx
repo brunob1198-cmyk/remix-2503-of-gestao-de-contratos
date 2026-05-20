@@ -301,13 +301,19 @@ export default function QuadroGeral() {
 
     // Contracts Map for summing multiple contracts per project
     const allContratosMap = new Map<string, number>();
+    const parentToTotalMap = new Map<string, number>();
+    
     parentsContratos.forEach(c => {
+      let parentTotal = Number(c.valor_total) || 0;
       allContratosMap.set(c.id, Number(c.valor_total) || 0);
+      
       if (c.aditivos) {
         c.aditivos.forEach(a => {
           allContratosMap.set(a.id, Number(a.valor_total) || 0);
+          parentTotal += Number(a.valor_total) || 0;
         });
       }
+      parentToTotalMap.set(c.id, parentTotal);
     });
 
     const projetoRows: ProjetoRow[] = projetos.map(p => {
@@ -315,8 +321,30 @@ export default function QuadroGeral() {
       
       // If project has multiple contracts linked via contrato_ids, sum their values
       if (p.contrato_ids && p.contrato_ids.length > 0) {
-        const sum = p.contrato_ids.reduce((acc, cid) => acc + (allContratosMap.get(cid) || 0), 0);
-        valor_contrato = Math.round(sum * 100) / 100;
+        const uniqueParentIds = new Set<string>();
+        let totalVal = 0;
+        
+        p.contrato_ids.forEach(cid => {
+          // Find if this ID is a parent or belongs to a parent contract
+          const parent = parentsContratos.find(pc => 
+            pc.id === cid || (pc.aditivos && pc.aditivos.some(a => a.id === cid))
+          );
+          
+          if (parent) {
+            if (!uniqueParentIds.has(parent.id)) {
+              uniqueParentIds.add(parent.id);
+              totalVal += parentToTotalMap.get(parent.id) || 0;
+            }
+          } else {
+            // Fallback for contracts not found in parents hierarchy
+            totalVal += allContratosMap.get(cid) || 0;
+          }
+        });
+        
+        // Only overwrite if the contract sum is greater than 0
+        if (totalVal > 0) {
+          valor_contrato = Math.round(totalVal * 100) / 100;
+        }
       }
 
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
