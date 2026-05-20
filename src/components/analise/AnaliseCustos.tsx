@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight, BarChart, ChevronDown } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
 import { exportAnaliseCustosPowerBI } from "@/lib/medicoesExport";
+import { AnaliseCustosRow } from "@/types/analise";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
