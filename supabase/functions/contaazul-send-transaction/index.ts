@@ -259,8 +259,8 @@ async function sendOne(
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
           valor: transactionValue,
-          situacao: "LIQUIDADO", // Status "Liquidado" para garantir que apareça como Pago no Conta Azul
-          baixa: {
+          situacao: input.force_pago !== false ? "LIQUIDADO" : "PENDENTE",
+          baixa: input.force_pago !== false ? {
             data_pagamento: transactionDate,
             conta_financeira: input.financial_account_id,
             valor_pago: transactionValue,
