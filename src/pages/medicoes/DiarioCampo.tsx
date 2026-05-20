@@ -26,7 +26,7 @@ import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clear
 
 import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
-import { SafeImage } from "@/components/ui/SafeImage";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 
 export default function DiarioCampoPage() {

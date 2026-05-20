@@ -450,7 +450,7 @@ export default function DiarioObraPage() {
         </TabsList>
 
         <TabsContent value="calendario">
-          <DiarioCalendario entries={calendarEntries.map(e => ({ ...e, totalProducao: 0, totalEquipe: e.totalFotos }))} onDayClick={handleCalendarDayClick} periodoInicio={periodoInicio} periodoFim={periodoFim} onPeriodoChange={(ini, fim) => { setPeriodoInicio(ini); setPeriodoFim(fim); }} />
+          <DiarioCalendario entries={calendarEntries.map(e => ({ ...e, totalProducao: e.totalProducao, totalEquipe: e.totalEquipe }))} onDayClick={handleCalendarDayClick} periodoInicio={periodoInicio} periodoFim={periodoFim} onPeriodoChange={(ini, fim) => { setPeriodoInicio(ini); setPeriodoFim(fim); }} />
         </TabsContent>
 
         <TabsContent value="lancamento">
