@@ -38,6 +38,7 @@ import html2pdf from "html2pdf.js";
 import { pdfGlobalStyles, getLogoHtml, getClientLogoHtml, getPdfOptions } from "@/lib/pdfTemplates";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SafeImage } from "@/components/ui/SafeImage";
+import { SmartImage } from "@/components/ui/SmartImage";
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -1058,8 +1059,9 @@ export default function RdoPage() {
         <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {lightboxPhoto && (
             <div className="relative">
-              <SafeImage 
+              <SmartImage 
                 src={lightboxPhoto.url}
+                fallbackUrls={[lightboxPhoto.thumb_600_url, lightboxPhoto.thumb_url]}
                 alt={lightboxPhoto.legenda || "Foto do diário"}
                 className="w-full max-h-[80vh] object-contain bg-black"
               />
@@ -1166,8 +1168,8 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
           <div className="flex -space-x-2 shrink-0">
             {thumbs.map(f => (
               <div key={f.id} className="w-8 h-8 rounded border-2 border-background overflow-hidden">
-                <SafeImage 
-                  src={f.url}
+                <SmartImage 
+                  src={f.thumb_url || f.url}
                   alt="" 
                   className="w-full h-full object-cover" 
                 />
@@ -1383,8 +1385,9 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           onClick={() => onPhotoClick(f)}
                           className="block w-full relative group"
                         >
-                          <img
-                            src={resolveFileUrl(f.thumb_600_url || f.url)}
+                          <SmartImage
+                            src={f.thumb_600_url || f.url}
+                            fallbackUrls={[f.thumb_url, f.url]}
                             alt={f.legenda || label}
                             className="w-full object-cover aspect-[4/3]"
                           />
