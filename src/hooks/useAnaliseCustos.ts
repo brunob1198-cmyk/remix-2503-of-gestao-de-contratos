@@ -6,72 +6,10 @@ import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { calculateCustoDiretoOrcado } from "@/lib/custoUtils";
+import { AnaliseCustosRow } from "@/types/analise";
 
-export interface AnaliseCustosRow {
-  projetoId: string;
-  projetoCodigo: string;
-  projetoNome: string;
-  area: string;
-  cliente: string;
-  referencia: string; // "Jan/2026"
-  mesReferencia: string; // "2026-01"
+export type { AnaliseCustosRow };
 
-  // ── RECEITA ──────────────────────────────────────
-  poc: number; // Produção bruta (POC do período)
-  impostos: {
-    // detalhamento por tipo
-    issqn: number;
-    pis: number;
-    cofins: number;
-    inss: number;
-    dara: number;
-    icms: number;
-    irpj: number;
-    csll: number;
-    totalPerc: number; // soma dos percentuais
-    totalReais: number; // poc * totalPerc
-  };
-  producaoLiquida: number; // poc * (1 - impostos.totalPerc)
-
-  // ── CUSTO DIRETO (categoria_analise = 'DIRETO') ──
-  moObra: number;
-  materiais: number;
-  transporte: number;
-  // equipamentos removed
-
-  indiretos: number;
-  custoDiretoReal: number; // soma dos três acima — SEM gerência
-  custoDiretoOrcado: number; // poc * (mkp.perc_custo_direto + mkp.perc_risco + mkp.perc_inflacao)
-  deltaDireto: number; // orcado - real (+ = favorável)
-  percCustoDiretoOrcado: number;
-  percCustoDiretoReal: number;
-
-  // ── GERÊNCIA (categoria_analise = 'GERENCIA') ────
-  gerenciaReal: number; // soma dos lançamentos IA-categorizados como GERENCIA
-  gerenciaOrcada: number; // custoDiretoOrcado * mkp.perc_gerencia
-  deltaGerencia: number; // orcado - real
-  percGerenciaOrcada: number;
-  percGerenciaReal: number;
-  pendentesCategorizacao: number; // qtd. lançamentos ainda sem categoria confirmada
-
-  // ── CUSTO TOTAL ──────────────────────────────────
-  custoTotalReal: number; // custoDiretoReal + gerenciaReal
-  custoTotalOrcado: number; // custoDiretoOrcado + formula complexa
-  resultadoTotal: number; // custoTotalOrcado - custoTotalReal
-
-  // ── MB ───────────────────────────────────────────
-  mbOrcada: number;
-  mbRealizada: number;
-  percMbOrcada: number;
-  percMbReal: number;
-  percMbMkp: number; // benchmark: mkp.perc_mb_esperado
-
-  // ── FLAGS ────────────────────────────────────────
-  alertaMb: boolean; // percMbReal < percMbMkp * 0.85
-  alertaGerencia: boolean; // gerenciaReal > gerenciaOrcada * 1.15
-  semMkp: boolean; // não tem mkp_parametros cadastrado
-  semImpostos: boolean; // não tem projeto_impostos cadastrado
-}
 
 export interface MapeamentoErp {
   id: string;
