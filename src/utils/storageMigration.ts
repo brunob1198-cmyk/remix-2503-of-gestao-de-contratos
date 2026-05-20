@@ -14,11 +14,47 @@ export interface MigrationLog {
   message?: string;
 }
 
-// Index para mapeamento: filename -> { bucket, filePath }
-let storageIndex: Map<string, { bucket: string, filePath: string }> = new Map();
+// Index para mapeamento global de arquivos
+interface StorageIndexItem {
+  bucket: string;
+  filePath: string;
+  filename: string;
+  normalizedFilename: string;
+}
+
+let storageIndex: StorageIndexItem[] = [];
 
 /**
- * Scan inicial dos buckets para criar índice
+ * Normaliza o nome do arquivo para comparação inteligente
+ */
+export function normalizeFileName(filename: string): string {
+  if (!filename) return "";
+  
+  try {
+    // Decodificar %20 e outros caracteres de URL
+    let name = decodeURIComponent(filename);
+    
+    // Remover extensões (.jpeg, .jpg, .png, .pdf, .docx, etc.)
+    name = name.replace(/\.[^/.]+$/, "");
+    
+    // Remover prefixos numéricos históricos comuns (ex: timestamps)
+    name = name.replace(/^\d+(_| )/, "");
+    
+    // Normalização agressiva
+    name = name.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remover acentos
+      .replace(/[^a-z0-9]/g, "") // Remover tudo que não for alfanumérico
+      .trim();
+      
+    return name;
+  } catch (e) {
+    return filename.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+}
+
+/**
+ * Scan inicial dos buckets para criar índice global em memória
  */
 export async function buildStorageIndex() {
   const buckets = [
@@ -31,7 +67,7 @@ export async function buildStorageIndex() {
     "diario-campo-fotos"
   ];
   
-  storageIndex = new Map();
+  storageIndex = [];
   console.log("[MIGRATION] Iniciando escaneamento recursivo de buckets Supabase...");
   
   async function listRecursive(bucket: string, path: string = "") {
@@ -49,9 +85,17 @@ export async function buildStorageIndex() {
 
       for (const item of data) {
         const fullPath = path ? `${path}/${item.name}` : item.name;
+        
+        // Ignorar pastas de thumbnails e derivados
+        if (isThumbnail(fullPath)) continue;
+
         if (item.id) { // É um arquivo
-          // Priorizamos o nome do arquivo para o index
-          storageIndex.set(item.name, { bucket, filePath: fullPath });
+          storageIndex.push({
+            bucket,
+            filePath: fullPath,
+            filename: item.name,
+            normalizedFilename: normalizeFileName(item.name)
+          });
         } else {
           // É uma pasta, recursão
           await listRecursive(bucket, fullPath);
@@ -66,45 +110,52 @@ export async function buildStorageIndex() {
     await listRecursive(bucket);
   }
   
-  console.log(`[MIGRATION] Index construído com ${storageIndex.size} arquivos.`);
-}
-
-function isThumbnail(path: string): boolean {
-  const lowercasePath = path.toLowerCase();
-  return (
-    lowercasePath.includes("/thumbs/") ||
-    lowercasePath.includes("thumb_") ||
-    lowercasePath.includes("/600/") ||
-    lowercasePath.includes("/300/") ||
-    lowercasePath.includes("/900/") ||
-    lowercasePath.includes("/thumbs") ||
-    lowercasePath.startsWith("thumbs/") ||
-    lowercasePath.startsWith("thumb_") ||
-    /\/(300|600|900)\//.test(lowercasePath) ||
-    /^(300|600|900)\//.test(lowercasePath)
-  );
+  console.log(`[MIGRATION] Index construído com ${storageIndex.length} arquivos.`);
 }
 
 /**
- * Busca o caminho real no storage usando o índice
+ * Busca o caminho real no storage usando reconciliação inteligente
  */
-export function findRealStoragePath(pathOrUrl: string) {
-  // Pega apenas o nome do arquivo final
-  const parts = pathOrUrl.split("/");
-  const filename = parts.pop();
-  
-  if (filename && storageIndex.has(filename)) {
-    return storageIndex.get(filename);
+export function findRealStoragePath(pathOrUrl: string): { bucket: string, filePath: string, matchType: string } | null {
+  if (!pathOrUrl) return null;
+
+  // 1. Limpar e extrair o nome do arquivo original
+  let cleaned = pathOrUrl.replace(/\\/g, "/");
+  const parts = cleaned.split("/");
+  const originalFilename = parts[parts.length - 1];
+  const normalizedOriginal = normalizeFileName(originalFilename);
+
+  if (!originalFilename) return null;
+
+  // 2. Tentar Match Exato (Caminho completo ou final do path)
+  // Alguns registros podem ter o path relativo que bate exatamente
+  for (const item of storageIndex) {
+    if (cleaned.endsWith(item.filePath)) {
+      return { bucket: item.bucket, filePath: item.filePath, matchType: 'exact' };
+    }
   }
 
-  // Tenta também com o penúltimo part se for UUID/file.jpg
-  if (parts.length > 0) {
-    const lastTwo = `${parts[parts.length-1]}/${filename}`;
-    // Busca parcial no index
-    for (const [key, value] of storageIndex.entries()) {
-      if (value.filePath.endsWith(lastTwo)) {
-        return value;
+  // 3. Tentar Match por Nome de Arquivo Exato
+  for (const item of storageIndex) {
+    if (item.filename === originalFilename) {
+      return { bucket: item.bucket, filePath: item.filePath, matchType: 'filename' };
+    }
+  }
+
+  // 4. Tentar Match por Nome Normalizado (Inteligente)
+  if (normalizedOriginal) {
+    for (const item of storageIndex) {
+      if (item.normalizedFilename === normalizedOriginal) {
+        return { bucket: item.bucket, filePath: item.filePath, matchType: 'normalized' };
       }
+    }
+  }
+
+  // 5. Match Fuzzy / Parcial (includes)
+  // Útil quando o path salvo é um fragmento do path real
+  for (const item of storageIndex) {
+    if (item.filePath.includes(originalFilename) || cleaned.includes(item.filename)) {
+      return { bucket: item.bucket, filePath: item.filePath, matchType: 'fuzzy' };
     }
   }
 
