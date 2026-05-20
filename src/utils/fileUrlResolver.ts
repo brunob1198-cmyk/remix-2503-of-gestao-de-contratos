@@ -70,8 +70,9 @@ export function resolveFileUrl(
     bucket = TABLE_BUCKET_MAP[context];
   } else if (!context) {
      // Sem contexto, tentamos identificar se o path já começa com um bucket conhecido
-     const knownBuckets = Object.values(TABLE_BUCKET_MAP);
-     if (!knownBuckets.some(b => trimmedPath.startsWith(`${b}/`))) {
+     const knownBuckets = Object.values(TABLE_BUCKET_MAP).map(b => b.split('/')[0]);
+     const uniqueBuckets = Array.from(new Set(knownBuckets));
+     if (!uniqueBuckets.some(b => trimmedPath.startsWith(`${b}/`))) {
        console.warn(`[RESOLVER] Sem contexto e bucket não detectado: ${trimmedPath}`);
      }
   }
@@ -84,8 +85,9 @@ export function resolveFileUrl(
   // 5. Construção da URL Final
   if (bucket) {
     // Remove o bucket do início do path se ele já estiver lá (para não duplicar)
-    if (trimmedPath.startsWith(`${bucket}/`)) {
-      trimmedPath = trimmedPath.slice(bucket.length + 1);
+    const bucketPrefix = bucket.split('/')[0];
+    if (trimmedPath.startsWith(`${bucketPrefix}/`)) {
+      trimmedPath = trimmedPath.slice(bucketPrefix.length + 1);
     }
     
     // Garantir que não estamos tratando UUID como bucket
