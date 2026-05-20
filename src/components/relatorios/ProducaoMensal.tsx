@@ -126,6 +126,22 @@ export default function ProducaoMensal() {
   });
 
   const rows = useMemo(() => {
+    // 0. Build a map of full contract values (parent + additives)
+    const contractFullTotalMap = new Map<string, number>();
+    const allContratosMap = new Map<string, number>();
+    
+    contratos.forEach(c => {
+      let total = Number(c.valor_total) || 0;
+      allContratosMap.set(c.id, Number(c.valor_total) || 0);
+      if (c.aditivos) {
+        c.aditivos.forEach(a => {
+          total += Number(a.valor_total) || 0;
+          allContratosMap.set(a.id, Number(a.valor_total) || 0);
+        });
+      }
+      contractFullTotalMap.set(c.id, total);
+    });
+
     // 1. Agrupar produção por projeto e mês
     const projetoMonthMap = new Map<string, number>();
     const projetoSet = new Set<string>();
@@ -156,7 +172,29 @@ export default function ProducaoMensal() {
       const areaObj = areas.find((a) => a.id === (projeto as any).area_id);
       const areaName = areaObj?.nome || producaoData.find(p => p.projeto_id === projeto.id)?.area_nome || "-";
       const clienteObj = projeto.clienteObj || clientes.find((c) => c.id === projeto.cliente_id);
-      const contratoObj = projeto.contratoObj || contratos.find((c) => c.id === projeto.contrato_id);
+      
+      // Calculate full contract value including additives
+      let valor_contrato = Number(projeto.valor_total || 0);
+      const linkedContratoIds = projeto.contrato_ids && projeto.contrato_ids.length > 0 
+        ? projeto.contrato_ids 
+        : (projeto.contrato_id ? [projeto.contrato_id] : []);
+
+      if (linkedContratoIds.length > 0) {
+        const uniqueParentIds = new Set<string>();
+        let sum = 0;
+        linkedContratoIds.forEach(cid => {
+          const parent = contratos.find(pc => pc.id === cid || (pc.aditivos && pc.aditivos.some(a => a.id === cid)));
+          if (parent) {
+            if (!uniqueParentIds.has(parent.id)) {
+              uniqueParentIds.add(parent.id);
+              sum += contractFullTotalMap.get(parent.id) || 0;
+            }
+          } else {
+            sum += allContratosMap.get(cid) || 0;
+          }
+        });
+        if (sum > 0) valor_contrato = sum;
+      }
 
       let acumuladoAnterior = 0;
 
