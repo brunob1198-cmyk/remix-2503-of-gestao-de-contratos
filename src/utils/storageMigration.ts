@@ -185,15 +185,20 @@ export function findRealStoragePath(pathOrUrl: string): { bucket: string, filePa
   return null;
 }
 
-export function extractStorageInfo(pathOrUrl: string) {
+export function extractStorageInfo(pathOrUrl: string, context?: string) {
   let cleaned = pathOrUrl.trim();
   
-  // 1. Remover base do Supabase se presente
+  // 1. Corrigir caminhos sem bucket usando o contexto antes de processar
+  if (context) {
+    cleaned = normalizeLegacyStoragePath(cleaned, context);
+  }
+
+  // 2. Remover base do Supabase se presente
   if (cleaned.startsWith(SUPABASE_STORAGE_BASE)) {
     cleaned = cleaned.replace(`${SUPABASE_STORAGE_BASE}/`, "");
   }
   
-  // 2. Tratar URLs do R2
+  // 3. Tratar URLs do R2
   if (cleaned.includes(".r2.dev")) {
     try {
       const urlObj = new URL(cleaned);
@@ -249,7 +254,7 @@ export function extractStorageInfo(pathOrUrl: string) {
   };
 }
 
-export async function migrateFileToR2(pathOrUrl: string | null | undefined): Promise<{ 
+export async function migrateFileToR2(pathOrUrl: string | null | undefined, context?: string): Promise<{ 
   url: string; 
   status: 'success' | 'error' | 'skipped' | 'verified'; 
   message?: string;
@@ -259,7 +264,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
     return { url: "", status: 'skipped', message: "Caminho vazio" };
   }
 
-  const info = extractStorageInfo(pathOrUrl);
+  const info = extractStorageInfo(pathOrUrl, context);
   
   if (!info) {
     if (pathOrUrl.startsWith("http") && !pathOrUrl.includes("supabase") && !pathOrUrl.includes("r2.dev")) {
@@ -340,7 +345,7 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined): Pro
         return { url: pathOrUrl, status: 'error', message: result.error || "Falha R2" };
       }
 
-      const newUrl = resolveFileUrl(result.url);
+      const newUrl = resolveFileUrl(result.url, false, context);
       
       // Validação final de existência no R2
       try {
@@ -390,7 +395,7 @@ export async function migrateTableRecords(
       const oldValue = record[column];
       
       if (oldValue && typeof oldValue === 'string' && oldValue.trim() !== "") {
-        const result = await migrateFileToR2(oldValue);
+        const result = await migrateFileToR2(oldValue, String(tableName));
         
         if (result.status === 'success') {
           updatedData[column] = result.url;
@@ -408,6 +413,20 @@ export async function migrateTableRecords(
             message: result.message,
             matchType: result.matchType
           });
+        }
+      }
+    }
+
+    // Sempre verificar se o path original estava incompleto e precisa de saneamento no banco
+    // Mesmo que não tenha migrado para o R2 (skipped), podemos sanear o path Supabase
+    for (const column of columnsToMigrate) {
+      const val = record[column];
+      if (val && typeof val === 'string' && !val.includes('http') && !val.includes('.r2.dev')) {
+        const normalized = normalizeLegacyStoragePath(val, String(tableName));
+        if (normalized !== val) {
+          updatedData[column] = normalized;
+          hasChanges = true;
+          console.log(`[SANITY] Saneando path no banco (${tableName}.${column}): ${val} -> ${normalized}`);
         }
       }
     }
