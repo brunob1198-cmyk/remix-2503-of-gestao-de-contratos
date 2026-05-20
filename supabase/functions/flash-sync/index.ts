@@ -907,10 +907,24 @@ Deno.serve(async (req) => {
           (tx as any).transaction?.amount ??
           (tx as any).value ??
           0;
-        const txAmount =
-          (typeof rawAmount === "number"
-            ? rawAmount
-            : parseFloat(String(rawAmount)) || 0) / 100;
+        
+        // Flash values are integers representing cents (e.g., 4290 = R$42.90)
+        let txAmount: number;
+        if (typeof rawAmount === "string") {
+          // If it's a string, it might be already formatted "42.90" or "4290"
+          const clean = rawAmount.replace(/[^0-9.,-]/g, "").replace(",", ".");
+          const parsed = parseFloat(clean);
+          if (clean.includes(".") || clean.includes(",")) {
+             // If it has decimal separators, assume it's already in BRL (not cents)
+             txAmount = isNaN(parsed) ? 0 : parsed;
+          } else {
+             // No decimal separator, assume it's cents
+             txAmount = isNaN(parsed) ? 0 : parsed / 100;
+          }
+        } else {
+          // It's a number, assume it's cents (Flash standard)
+          txAmount = (typeof rawAmount === "number" ? rawAmount : 0) / 100;
+        }
 
         // Deduplica por external_id. Mantém o último (que tem dados mais ricos).
         uniqueRowsMap.set(extId, {
