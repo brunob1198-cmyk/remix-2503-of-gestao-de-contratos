@@ -3,8 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight } from "lucide-react";
+import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight, BarChart } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
+import { exportAnaliseCustosPowerBI } from "@/lib/medicoesExport";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { FCAModal } from "./FCAModal";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
