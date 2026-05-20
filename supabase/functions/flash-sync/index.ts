@@ -838,9 +838,13 @@ Deno.serve(async (req) => {
       console.log(`[flash-sync] Consultando DB para ${empIdsAindaSemCC.length} funcionários ainda sem CC...`);
       
       // Busca o CC mais recente de cada funcionário no banco
-      const { data: ccFromDB } = await adminClient
-        .rpc('get_employee_cc_map', { employee_ids: empIdsAindaSemCC })
-        .catch(() => ({ data: null }));
+      const { data: ccFromDB, error: rpcError } = await adminClient
+        .rpc('get_employee_cc_map', { employee_ids: empIdsAindaSemCC });
+
+      if (rpcError) {
+        console.warn(`[flash-sync] Erro ao chamar RPC get_employee_cc_map:`, rpcError);
+      }
+
 
       if (ccFromDB && Array.isArray(ccFromDB)) {
         const dbCCMap = new Map<string, any>(
