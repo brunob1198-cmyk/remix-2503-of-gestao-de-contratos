@@ -220,7 +220,7 @@ export default function ProducaoMensal() {
           projeto_codigo: projeto.codigo,
           projeto_descricao: projeto.nome,
           coordenador: projeto.coordenador || "-",
-          valor_contrato: Number(contratoObj?.valor_total || projeto.valor_total || 0),
+          valor_contrato: valor_contrato,
           producao_acum_anterior: acumuladoAnterior,
           producao_mes: producaoMes,
           producao_total_atual: acumuladoAnterior + producaoMes,
