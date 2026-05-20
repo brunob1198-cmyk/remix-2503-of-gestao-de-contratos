@@ -104,7 +104,11 @@ const pickPayloadNumber = (payload: any, paths: string[]): number => {
     }
     if (typeof cur === "number") return cur;
     if (typeof cur === "string") {
-      const n = Number(cur.replace(/[^0-9.,-]/g, "").replace(",", "."));
+      // Flash API returns values in cents (integers) in most fields (amount, value, total).
+      // However, if the value comes from a string already formatted, we handle it carefully.
+      // If the string contains dots and commas like "42,90", parseFloat might fail or interpret wrongly.
+      const clean = cur.replace(/[^0-9.,-]/g, "").replace(",", ".");
+      const n = parseFloat(clean);
       if (!isNaN(n)) return n;
     }
   }
