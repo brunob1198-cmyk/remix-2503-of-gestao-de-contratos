@@ -54,7 +54,7 @@ import { format, subMonths } from "date-fns";
 import { UfMunicipioSelector } from "@/components/medicoes/UfMunicipioSelector";
 import * as XLSX from "xlsx";
 import { uploadImageWithVariants } from "@/services/uploadImage";
-import { resolveFileUrl } from "@/utils/fileUrlResolver";
+// resolveFileUrl removido pois agora usamos SmartImage diretamente
 
 
 const formatCurrency = (v: number) =>
