@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ClipboardList, ArrowDown, ArrowUp, Minus, FileSpreadsheet, Search, Filter, X, TrendingUp, TrendingDown, DollarSign, Percent, Target, Calculator, BarChart3, ArrowUpRight, BarChart, ChevronDown } from "lucide-react";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
-import { exportAnaliseCustosPowerBI } from "@/lib/medicoesExport";
+
 import { AnaliseCustosRow } from "@/types/analise";
 import { 
   DropdownMenu, 
@@ -554,17 +554,6 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                   <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
                     <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
                     <span>Padrão Excel (Completo)</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => exportAnaliseCustosPowerBI(analiseRows, `${format(periodoInicio, "MMM-yyyy", { locale: ptBR })} a ${format(periodoFim, "MMM-yyyy", { locale: ptBR })}`)} 
-                    className="cursor-pointer"
-                  >
-                    <BarChart className="mr-2 h-4 w-4 text-indigo-600" />
-                    <div className="flex flex-col">
-                      <span>Otimizado Power BI</span>
-                      <span className="text-[10px] text-muted-foreground">Tabela flat + Dimensões</span>
-                    </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
