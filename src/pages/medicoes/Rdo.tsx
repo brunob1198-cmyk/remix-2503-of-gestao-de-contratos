@@ -226,9 +226,9 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
   `;
 }
 
-async function fetchImageAsBlob(url: string): Promise<Blob | null> {
+async function fetchImageAsBlob(url: string, context?: string): Promise<Blob | null> {
   try {
-    const res = await fetch(resolveFileUrl(url));
+    const res = await fetch(resolveFileUrl(url, false, context));
     if (!res.ok) return null;
     return await res.blob();
   } catch {
