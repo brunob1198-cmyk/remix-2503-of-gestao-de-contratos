@@ -107,7 +107,8 @@ const pickNumber = (payload: any, paths: string[]): number => {
     }
     if (typeof cur === "number") return cur;
     if (typeof cur === "string") {
-      const n = Number(cur.replace(/[^0-9.,-]/g, "").replace(",", "."));
+      const clean = cur.replace(/[^0-9.,-]/g, "").replace(",", ".");
+      const n = parseFloat(clean);
       if (!isNaN(n)) return n;
     }
   }
@@ -191,7 +192,8 @@ export const normalizeFlashTransaction = (
     "receipt.comments", "accounting.comments"
   ]) || null;
   
-  const valor = typeof transaction.valor === "number" ? transaction.valor : pickNumber(payload, ["amount", "value", "valor", "total"]);
+  const valorRaw = typeof transaction.valor === "number" ? transaction.valor * 100 : pickNumber(payload, ["amount", "value", "valor", "total"]);
+  const valor = valorRaw / 100;
   const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   // A conta financeira correta para o Conta Azul é apenas "Flash"
