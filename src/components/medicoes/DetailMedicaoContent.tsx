@@ -8,7 +8,6 @@ import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, C
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
-import { SafeImage } from "@/components/ui/SafeImage";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1546,8 +1545,9 @@ export function DetailMedicaoContent({
                 </div>
               ) : (
                 <div className="w-full flex justify-center">
-                  <SafeImage 
+                  <SmartImage 
                     src={detailMedicao.capa_url!} 
+                    context="medicoes"
                     alt="Capa da Medição" 
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     style={{ maxHeight: '800px', objectFit: 'contain' }}
