@@ -824,6 +824,7 @@ export function useFlashNormalizacao() {
           flash_type: row.flash_type,
           comentarios: row.comentarios !== "—" ? row.comentarios : null,
           cost_center: row.flash_cost_center !== "—" ? row.flash_cost_center : null,
+          force_pago: true, // Adicionado para indicar que deve ser sempre pago
         });
 
         const upsertPayload: any = {
