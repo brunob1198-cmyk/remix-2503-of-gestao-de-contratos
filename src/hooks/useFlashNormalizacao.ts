@@ -1245,7 +1245,7 @@ export function useFlashNormalizacao() {
           toast.info(`${skipped} lançamento(s) ignorado(s).`);
         }
 
-        await fetchData();
+        await fetchDataRaw(true);
         return data;
       } catch (e: any) {
         console.error(e);

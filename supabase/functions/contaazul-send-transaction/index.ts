@@ -647,7 +647,7 @@ serve(async (req) => {
         value: valueInReais,
         category_id: n.conta_azul_category_id,
         financial_account_id: financialAccountId,
-        date: snap.date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
+        date: snap.date || raw?.payload_json?.transaction_date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
         type: (n.tipo_operacao as any) || "despesa",
         observacao: comentarios,
         cost_center: costCenter,
