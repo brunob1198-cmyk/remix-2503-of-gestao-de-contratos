@@ -320,6 +320,7 @@ export const buildContaAzulPayload = (params: {
   flash_type: string;
   comentarios?: string | null;
   cost_center?: string | null;
+  force_pago?: boolean;
 }) => {
   if (!params.conta_azul_category_id || !params.conta_azul_account_id) return null;
   return {
