@@ -13,14 +13,14 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
  * 5. Se contiver ".r2.dev": retornar sem alteração.
  * 6. Caso contrário: usar R2 por padrão.
  */
-export function resolveFileUrl(path: string | null | undefined): string {
+export function resolveFileUrl(path: string | null | undefined, preserveThumbs = false): string {
   if (!path || path.trim() === "") return "";
   
   let trimmedPath = path.trim();
 
   // 1. Corrigir caminhos de thumbnails antigos (removendo /thumbs/300/, /thumbs/600/, /thumbs/900/)
   // Isso garante que se uma thumbnail antiga for solicitada, redirecionamos para o arquivo original
-  if (trimmedPath.includes("/thumbs/")) {
+  if (!preserveThumbs && trimmedPath.includes("/thumbs/")) {
     trimmedPath = trimmedPath.replace(/\/thumbs\/(300|600|900)\//, "/");
   }
 
