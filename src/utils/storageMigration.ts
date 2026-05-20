@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { resolveFileUrl } from "./fileUrlResolver";
+import { resolveFileUrl, normalizeLegacyStoragePath } from "./fileUrlResolver";
 
 const R2_WORKER_URL = "https://obras-upload-api.brunob1198.workers.dev/";
 const SUPABASE_STORAGE_BASE = "https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public";
