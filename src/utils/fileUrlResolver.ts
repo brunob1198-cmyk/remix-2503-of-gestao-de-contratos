@@ -50,6 +50,12 @@ export function resolveFileUrl(
   let bucket = "";
   if (context && TABLE_BUCKET_MAP[context]) {
     bucket = TABLE_BUCKET_MAP[context];
+  } else if (!context) {
+     // Sem contexto, tentamos identificar se o path já começa com um bucket conhecido
+     const knownBuckets = Object.values(TABLE_BUCKET_MAP);
+     if (!knownBuckets.some(b => trimmedPath.startsWith(`${b}/`))) {
+       console.warn(`[RESOLVER] Sem contexto e bucket não detectado: ${trimmedPath}`);
+     }
   }
 
   // 4. Se o path contiver ".r2.dev", tratamos como R2
@@ -58,21 +64,18 @@ export function resolveFileUrl(
   }
 
   // 5. Construção da URL Final
-  // Se tivermos um bucket e o path não começar com ele, adicionamos
   if (bucket) {
     // Remove o bucket do início do path se ele já estiver lá (para não duplicar)
     if (trimmedPath.startsWith(`${bucket}/`)) {
       trimmedPath = trimmedPath.slice(bucket.length + 1);
     }
     
-    // Garantir que não estamos tratando UUID como bucket (objetivo 5)
-    // Se o primeiro segmento for um UUID, ele deve ser mantido como pasta
+    // Garantir que não estamos tratando UUID como bucket
+    // Se o path começa com um UUID, mantemos como pasta
     
     const fullPath = `${bucket}/${trimmedPath}`;
     console.log(`[RESOLVER] Context: ${context}, Bucket: ${bucket}, Original: ${path}, Result: ${fullPath}`);
     
-    // Por padrão, se não for explicitamente R2, usamos Supabase Base (compatibilidade histórica)
-    // A migração mudará os registros no banco para URLs R2 completas.
     return `${SUPABASE_BASE}/${fullPath}`;
   }
 
