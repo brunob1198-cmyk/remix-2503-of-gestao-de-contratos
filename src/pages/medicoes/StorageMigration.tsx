@@ -103,35 +103,92 @@ const StorageMigrationPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Card className="bg-green-50 dark:bg-green-950/20">
-              <CardContent className="pt-4 text-center">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
                 <div className="text-2xl font-bold text-green-600">{stats.success}</div>
                 <div className="text-xs text-muted-foreground">Migrados</div>
               </CardContent>
             </Card>
             <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200">
-              <CardContent className="pt-4 text-center">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
                 <div className="text-2xl font-bold text-purple-600">{stats.reconciled}</div>
                 <div className="text-xs text-muted-foreground">Reconciliados ✨</div>
               </CardContent>
             </Card>
             <Card className="bg-blue-50 dark:bg-blue-950/20">
-              <CardContent className="pt-4 text-center">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
                 <div className="text-2xl font-bold text-blue-600">{stats.verified}</div>
-                <div className="text-xs text-muted-foreground">Já no R2 (OK)</div>
+                <div className="text-xs text-muted-foreground">No R2 (OK)</div>
               </CardContent>
             </Card>
             <Card className="bg-yellow-50 dark:bg-yellow-950/20">
-              <CardContent className="pt-4 text-center">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
                 <div className="text-2xl font-bold text-yellow-600">{stats.skipped}</div>
                 <div className="text-xs text-muted-foreground">Ignorados</div>
               </CardContent>
             </Card>
             <Card className="bg-red-50 dark:bg-red-950/20">
-              <CardContent className="pt-4 text-center">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
                 <div className="text-2xl font-bold text-red-600">{stats.error}</div>
                 <div className="text-xs text-muted-foreground">Erros</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200">
+              <CardContent className="pt-4 text-center p-2 md:p-4">
+                <div className="text-2xl font-bold text-indigo-600">
+                  {stats.success + stats.verified + stats.reconciled}
+                </div>
+                <div className="text-xs text-muted-foreground text-indigo-600 font-medium">Total Online ✅</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Diagnóstico de Buckets</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs space-y-1">
+                  {Array.from(new Set(logs.map(l => l.tableName))).map(table => {
+                    const tableLogs = logs.filter(l => l.tableName === table);
+                    const errs = tableLogs.filter(l => l.status === 'error').length;
+                    return (
+                      <div key={table} className="flex justify-between items-center py-1 border-b last:border-0">
+                        <span>{TABLES_CONFIG.find(t => t.name === table)?.label || table}</span>
+                        <div className="flex gap-2">
+                          {errs > 0 && <Badge variant="destructive" className="text-[10px]">{errs} erros</Badge>}
+                          <Badge variant="outline" className="text-[10px]">{tableLogs.length} total</Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Origens de Caminhos Quebrados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs space-y-1">
+                   {(() => {
+                     const paths = logs.filter(l => l.status === 'skipped' || l.status === 'error').map(l => {
+                       if (l.oldValue?.includes('/thumbs/')) return 'Thumbnails legadas';
+                       if (l.oldValue?.includes('/600/') || l.oldValue?.includes('/medium/')) return 'Arquivos redimensionados';
+                       if (!l.oldValue?.includes('/')) return 'Apenas nome de arquivo (sem path)';
+                       return 'Caminho incompleto/inválido';
+                     });
+                     const counts = paths.reduce((acc, p) => ({...acc, [p]: (acc[p] || 0) + 1}), {} as Record<string, number>);
+                     return Object.entries(counts).sort((a,b) => b[1] - a[1]).map(([p, count]) => (
+                       <div key={p} className="flex justify-between items-center py-1 border-b last:border-0">
+                         <span>{p}</span>
+                         <Badge variant="secondary" className="text-[10px]">{count}</Badge>
+                       </div>
+                     ));
+                   })()}
+                </div>
               </CardContent>
             </Card>
           </div>
