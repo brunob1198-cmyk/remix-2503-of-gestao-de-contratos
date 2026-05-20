@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { ResumoProjeto, ResumoItem } from "@/types/medicoes";
 import { parseLocalDate } from "./utils";
+import { AnaliseCustosRow } from "@/types/analise";
 
 export function exportDashboardToExcel(
   resumoProjetos: ResumoProjeto[],
