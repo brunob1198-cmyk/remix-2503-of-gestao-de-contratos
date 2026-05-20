@@ -288,7 +288,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
     created_at: raw.created_at,
     data: parseFlashDate(rawDate),
     descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—",
-    valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
+    valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100, // Flash values are in cents (integers)
     usuario:
       pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type,
