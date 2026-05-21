@@ -664,7 +664,7 @@ export default function DiarioObraPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Observações</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Relatório Descritivo / Observações</CardTitle></CardHeader>
               <CardContent>
                 <Textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="Observações do dia..." />
               </CardContent>
