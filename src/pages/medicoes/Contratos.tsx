@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen, FilterX, RefreshCw } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen, FilterX } from "lucide-react";
 import ContratosForm from "@/components/medicoes/ContratosForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
@@ -111,25 +111,6 @@ export default function ContratosPage() {
           <p className="text-sm text-muted-foreground">Gerencie todos os contratos da empresa.</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={async () => {
-              if (confirm("Deseja realizar a migração física dos arquivos de contratos e fotos antigos para o R2? Isso pode levar alguns minutos dependendo da quantidade de arquivos.")) {
-                try {
-                  const { normalizarUrlsContratos } = await import("@/utils/normalizeContractUrls");
-                  await normalizarUrlsContratos();
-                  alert(`A migração foi concluída com sucesso! Todos os arquivos físicos foram transferidos para o R2.`);
-                } catch (err) {
-                  alert("Erro ao normalizar URLs. Verifique o console.");
-                }
-              }
-            }}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Normalizar Links
-          </Button>
-
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setEditingContrato(null); }}>
             <DialogTrigger asChild>
               <Button>
