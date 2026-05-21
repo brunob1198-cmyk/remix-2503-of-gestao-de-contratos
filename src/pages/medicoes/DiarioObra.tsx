@@ -464,7 +464,7 @@ export default function DiarioObraPage() {
                 </SelectContent>
               </Select>
               <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-              <Button onClick={handleSaveHeader}>Salvar Cabeçalho</Button>
+              <Button onClick={handleSaveHeader}>Salvar</Button>
             </div>
 
             <Card>
