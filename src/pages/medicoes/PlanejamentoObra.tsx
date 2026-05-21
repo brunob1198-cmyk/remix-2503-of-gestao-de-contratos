@@ -17,9 +17,8 @@ import { FrenteForm } from "@/components/planejamento/FrenteForm";
 
 // SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
-import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
 import { ProducaoTab } from "@/components/analise/ProducaoTab";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2, Sparkles, ClipboardList } from "lucide-react";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, Trash2, Sparkles, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -202,9 +201,6 @@ export default function PlanejamentoObra() {
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
-            <TabsTrigger value="curvas" className="gap-1.5">
-              <TrendingUp className="h-4 w-4" /> Curva S
-            </TabsTrigger>
             <TabsTrigger value="producao" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Produção
             </TabsTrigger>
@@ -353,9 +349,6 @@ export default function PlanejamentoObra() {
 
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} siteFilter={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} />
-          </TabsContent>
-          <TabsContent value="curvas" className="mt-4">
-            <CurvaSDashboard atividades={filteredAtividades} frentes={selectedSiteIds.length > 0 ? frentes.filter(f => selectedSiteIds.includes((f as any).site_id)) : frentes} />
           </TabsContent>
 
           <TabsContent value="producao" className="mt-4">
