@@ -601,7 +601,7 @@ export default function RelatoriosPage() {
                                   onClick={() => {
                                     navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
                                     toast({
-                                      description: "Observações copiadas para a área de transferência",
+                                      description: "Relatório Descritivo / Observações copiados para a área de transferência",
                                     });
                                   }}
                                 >
