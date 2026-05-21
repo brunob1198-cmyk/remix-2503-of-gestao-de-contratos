@@ -19,7 +19,7 @@ export default function AuthPage() {
   const { toast } = useToast();
 
   if (loading) return null;
-  if (session) return <Navigate to="/medicoes/dashboard" replace />;
+  if (session) return <Navigate to="/medicoes/acompanhamento" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
