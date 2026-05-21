@@ -82,7 +82,7 @@ export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEn
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-auto justify-start gap-2 font-normal">
+        <Button variant="outline" className={cn("w-auto justify-start gap-2 font-normal", className)}>
           <CalendarDays className="h-4 w-4" />
           <span className="capitalize">{labelStart}</span>
           <span className="text-muted-foreground">a</span>
