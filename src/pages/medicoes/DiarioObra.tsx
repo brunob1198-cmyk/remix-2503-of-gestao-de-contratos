@@ -131,6 +131,8 @@ export default function DiarioObraPage() {
   const [obs, setObs] = useState("");
 
   useEffect(() => {
+    // Adiciona atividadesCampo como dependência para carregar as observações quando os dados chegarem
+
     if (diario && diario.id !== lastDiarioId.current) {
       lastDiarioId.current = diario.id;
       const d = diario as any;
@@ -155,7 +157,7 @@ export default function DiarioObraPage() {
       setDiarioClima("");
       setHeaderSaved(false);
     }
-  }, [diario?.id, setDiarioUf, setDiarioMunicipio]);
+  }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
