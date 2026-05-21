@@ -30,12 +30,11 @@ import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
 export default function DashboardPage() {
-  const [periodo, setPeriodo] = useState<string>("2026");
+  const [periodo, setPeriodo] = useState<string>("all");
   
-  // Set default year to current year on mount
+  // Set default to "all" to show all historical data initially
   useEffect(() => {
-    const currentYear = new Date().getFullYear().toString();
-    setPeriodo(currentYear);
+    setPeriodo("all");
   }, []);
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -46,24 +45,48 @@ export default function DashboardPage() {
   const { data: diarioProducoes = [] } = useQuery({
     queryKey: ["diario_producao_dashboard"],
     queryFn: async () => {
-      const query = supabase
-        .from("diario_producao")
-        .select(`
-          quantidade, 
-          valor_total, 
-          item_lpu:itens_lpu(preco_unitario), 
-          diario:diarios_obra!inner(
-            data, 
-            site_id, 
-            site:sites(
-              area_id, 
-              gestor:usuarios(nome)
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select(`
+            quantidade, 
+            valor_total, 
+            item_lpu:itens_lpu(preco_unitario), 
+            diario:diarios_obra!inner(
+              data, 
+              site_id, 
+              site:sites(
+                area_id, 
+                gestor:usuarios(nome)
+              )
             )
-          )
-        `);
-      
-      const data = await fetchAllPages<any>(query);
-      return data.map(p => ({
+          `)
+          .range(from, from + step - 1);
+        
+        if (error) {
+          console.error("Error fetching diario_producao:", error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
+      }
+
+      console.log(`[Dashboard] Fetched ${allData.length} RDO production records`);
+      return allData.map(p => ({
         quantidade: Number(p.quantidade),
         valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
         data: p.diario.data,
@@ -75,7 +98,7 @@ export default function DashboardPage() {
 
   // Unificar dados de produção
   const allProducao = useMemo(() => {
-    const manualProd = producao.map(p => ({
+    const manualProd = (producao || []).map(p => ({
       quantidade: Number(p.quantidade),
       valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
       data: p.data_producao,
@@ -89,7 +112,13 @@ export default function DashboardPage() {
   const filteredProducao = useMemo(() => {
     if (periodo === "all") return allProducao;
     const year = parseInt(periodo);
-    return allProducao.filter(p => p.data && new Date(p.data).getFullYear() === year);
+    return allProducao.filter(p => {
+      if (!p.data) return false;
+      const dateStr = String(p.data);
+      // Handles both "YYYY-MM-DD" and Full ISO strings
+      const prodYear = new Date(dateStr).getFullYear();
+      return prodYear === year;
+    });
   }, [allProducao, periodo]);
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -97,7 +126,7 @@ export default function DashboardPage() {
     const yearsMap = new Map<number, { year: number, total: number }>();
     allProducao.forEach(p => {
       if (!p.data) return;
-      const year = new Date(p.data).getFullYear();
+      const year = new Date(String(p.data)).getFullYear();
       const current = yearsMap.get(year) || { year, total: 0 };
       current.total += p.valor_total;
       yearsMap.set(year, current);
@@ -168,7 +197,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <LayoutDashboard className="h-8 w-8 text-primary" />
-            Dashboard
+            Dashboard (Produção: {formatCurrency(filteredProducao.reduce((acc, p) => acc + p.valor_total, 0))})
           </h1>
           <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
@@ -183,6 +212,7 @@ export default function DashboardPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
               <SelectItem value="2026">2026</SelectItem>
               <SelectItem value="2025">2025</SelectItem>
               <SelectItem value="2024">2024</SelectItem>
