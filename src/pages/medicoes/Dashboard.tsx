@@ -34,6 +34,10 @@ import { cn } from "@/lib/utils";
 export default function DashboardPage() {
   const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfYear(new Date()));
   const [periodoFim, setPeriodoFim] = useState<Date>(endOfYear(new Date()));
+  
+  // Estados para o filtro específico do primeiro gráfico
+  const [periodoInicioAnual, setPeriodoInicioAnual] = useState<Date>(startOfYear(new Date()));
+  const [periodoFimAnual, setPeriodoFimAnual] = useState<Date>(endOfYear(new Date()));
 
   // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
