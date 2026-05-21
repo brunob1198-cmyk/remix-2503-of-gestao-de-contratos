@@ -205,7 +205,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
               <div class="foto-card">
                 <img src="${resolveFileUrl(f.url, false, 'diario_fotos')}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
-                  <span class="foto-label-badge">${title}</span>
+                  <span class="foto-label-badge" style="background-color: ${classificacaoColors[first.classificacao || ''] || '#6b7280'}; color: white;">${title}</span>
                 </div>
               </div>`;
           
