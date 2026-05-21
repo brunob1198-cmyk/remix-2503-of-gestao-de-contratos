@@ -201,9 +201,6 @@ export default function PlanejamentoObra() {
             <TabsTrigger value="produtividade" className="gap-1.5">
               <MapPin className="h-4 w-4" /> Produtividade
             </TabsTrigger>
-            <TabsTrigger value="curvas" className="gap-1.5">
-              <TrendingUp className="h-4 w-4" /> Curva S
-            </TabsTrigger>
             <TabsTrigger value="producao" className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Produção
             </TabsTrigger>
