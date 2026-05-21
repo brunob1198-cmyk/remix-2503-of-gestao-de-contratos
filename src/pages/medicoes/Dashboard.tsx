@@ -33,12 +33,36 @@ import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
-  const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfYear(new Date()));
-  const [periodoFim, setPeriodoFim] = useState<Date>(endOfYear(new Date()));
+  // Estados para o filtro principal com persistência no localStorage
+  const [periodoInicio, setPeriodoInicio] = useState<Date>(() => {
+    const saved = localStorage.getItem("dashboard_periodoInicio");
+    return saved ? new Date(saved) : startOfYear(new Date());
+  });
+  const [periodoFim, setPeriodoFim] = useState<Date>(() => {
+    const saved = localStorage.getItem("dashboard_periodoFim");
+    return saved ? new Date(saved) : endOfYear(new Date());
+  });
   
-  // Estados para o filtro específico do primeiro gráfico
-  const [periodoInicioAnual, setPeriodoInicioAnual] = useState<Date>(startOfYear(new Date()));
-  const [periodoFimAnual, setPeriodoFimAnual] = useState<Date>(endOfYear(new Date()));
+  // Estados para o filtro específico do primeiro gráfico com persistência
+  const [periodoInicioAnual, setPeriodoInicioAnual] = useState<Date>(() => {
+    const saved = localStorage.getItem("dashboard_periodoInicioAnual");
+    return saved ? new Date(saved) : startOfYear(new Date());
+  });
+  const [periodoFimAnual, setPeriodoFimAnual] = useState<Date>(() => {
+    const saved = localStorage.getItem("dashboard_periodoFimAnual");
+    return saved ? new Date(saved) : endOfYear(new Date());
+  });
+
+  // Efeito para salvar filtros no localStorage
+  useEffect(() => {
+    localStorage.setItem("dashboard_periodoInicio", periodoInicio.toISOString());
+    localStorage.setItem("dashboard_periodoFim", periodoFim.toISOString());
+  }, [periodoInicio, periodoFim]);
+
+  useEffect(() => {
+    localStorage.setItem("dashboard_periodoInicioAnual", periodoInicioAnual.toISOString());
+    localStorage.setItem("dashboard_periodoFimAnual", periodoFimAnual.toISOString());
+  }, [periodoInicioAnual, periodoFimAnual]);
 
   // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
@@ -157,7 +181,7 @@ export default function DashboardPage() {
   const formatCompactNumber = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
-    return value.toString();
+    return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -218,11 +242,12 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={annualData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '12px', fontWeight: '500' }} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
                     tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`} 
+                    style={{ fontSize: '12px' }}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
@@ -234,7 +259,7 @@ export default function DashboardPage() {
                       dataKey="Produção Total" 
                       position="top" 
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '11px', fontWeight: '600', fill: 'hsl(var(--foreground))' }}
+                      style={{ fontSize: '13px', fontWeight: '700', fill: 'hsl(var(--foreground))' }}
                     />
                   </Bar>
                   <Bar dataKey="MB Real" fill="#10b981" radius={[4, 4, 0, 0]} barSize={50}>
@@ -242,7 +267,7 @@ export default function DashboardPage() {
                       dataKey="MB Real" 
                       position="top" 
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '11px', fontWeight: '600', fill: '#10b981' }}
+                      style={{ fontSize: '13px', fontWeight: '700', fill: '#059669' }}
                     />
                   </Bar>
                 </BarChart>
@@ -267,11 +292,12 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyEvolutionData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '12px', fontWeight: '500' }} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
                     tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`}
+                    style={{ fontSize: '12px' }}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
@@ -288,9 +314,9 @@ export default function DashboardPage() {
                     <LabelList 
                       dataKey="Produção" 
                       position="top" 
-                      offset={10}
+                      offset={12}
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '11px', fontWeight: '600', fill: 'hsl(var(--primary))' }}
+                      style={{ fontSize: '13px', fontWeight: '700', fill: 'hsl(var(--primary))' }}
                     />
                   </Line>
                 </LineChart>
@@ -355,7 +381,7 @@ export default function DashboardPage() {
                         dataKey="value" 
                         position="right" 
                         formatter={(value: number) => formatCompactNumber(value)}
-                        style={{ fontSize: '11px', fontWeight: '600' }}
+                        style={{ fontSize: '12px', fontWeight: '700' }}
                       />
                     </Bar>
                   </BarChart>
