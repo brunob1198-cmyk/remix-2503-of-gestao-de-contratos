@@ -219,54 +219,17 @@ export default function DashboardPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
-          <div className="flex items-center gap-2">
-            <Label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-              <Filter className="h-4 w-4" /> Anos:
-            </Label>
-            <MultiSelectFilter
-              label="Anos"
-              options={["2024", "2025", "2026", "2027"]}
-              selected={periodos}
-              onToggle={(val) => {
-                setPeriodos(prev => {
-                  const next = new Set(prev);
-                  if (val === "all") {
-                    return new Set(["all"]);
-                  }
-                  next.delete("all");
-                  if (next.has(val)) next.delete(val);
-                  else next.add(val);
-                  return next.size === 0 ? new Set(["all"]) : next;
-                });
-              }}
-              onSelectAll={() => setPeriodos(new Set(["2024", "2025", "2026", "2027"]))}
-              onClearAll={() => setPeriodos(new Set(["all"]))}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 border-l pl-3">
-            <Label className="text-sm font-medium">Meses:</Label>
-            <MultiSelectFilter
-              label="Meses"
-              options={["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]}
-              selected={meses}
-              onToggle={(val) => {
-                setMeses(prev => {
-                  const next = new Set(prev);
-                  if (val === "all") {
-                    return new Set(["all"]);
-                  }
-                  next.delete("all");
-                  if (next.has(val)) next.delete(val);
-                  else next.add(val);
-                  return next.size === 0 ? new Set(["all"]) : next;
-                });
-              }}
-              onSelectAll={() => setMeses(new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]))}
-              onClearAll={() => setMeses(new Set(["all"]))}
-            />
-          </div>
+          <Label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+            <Filter className="h-4 w-4" /> Período:
+          </Label>
+          <MonthRangePicker
+            startDate={periodoInicio}
+            endDate={periodoFim}
+            onChangeStart={setPeriodoInicio}
+            onChangeEnd={(d) => setPeriodoFim(endOfMonth(d))}
+          />
         </div>
+
 
 
       </div>
