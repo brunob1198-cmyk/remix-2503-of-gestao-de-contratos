@@ -166,6 +166,63 @@ async function isAlreadyIntegrated(supabase: any, flashTransactionId: string): P
   return !!data;
 }
 
+function normalizeText(value: string | null | undefined): string {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreMatch(target: string, candidate: string): number {
+  if (!target || !candidate) return 0;
+  if (target === candidate) return 1000 + candidate.length;
+  if (target.startsWith(candidate)) return 500 + candidate.length;
+  if (target.includes(candidate)) return 100 + candidate.length;
+  return 0;
+}
+
+function findBestCostCenterMatch(costCenterName: string, costCenters: any[]): string | null {
+  if (!costCenterName || !costCenters.length) return null;
+  
+  const targetNorm = normalizeText(costCenterName);
+  if (!targetNorm) return null;
+  
+  let bestMatch: any = null;
+  let bestScore = 0;
+  
+  for (const cc of costCenters) {
+    const ccId = cc.id || cc.uuid;
+    const ccName = cc.nome || cc.name || cc.descricao || "";
+    if (!ccId || !ccName) continue;
+    
+    const ccNorm = normalizeText(ccName);
+    
+    if (targetNorm === ccNorm) {
+      return ccId;
+    }
+    
+    const score = Math.max(
+      scoreMatch(targetNorm, ccNorm),
+      scoreMatch(ccNorm, targetNorm)
+    );
+    
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = cc;
+    }
+  }
+  
+  if (bestScore >= 100 && bestMatch) {
+    console.log(`[MATCH] Centro de Custo "${costCenterName}" mapeado para "${bestMatch.nome || bestMatch.name}" (Score: ${bestScore})`);
+    return bestMatch.id || bestMatch.uuid;
+  }
+  
+  return null;
+}
+
 interface TransactionInput {
   flash_transaction_id: string;
   description: string;
@@ -176,6 +233,7 @@ interface TransactionInput {
   type: "receita" | "despesa";
   observacao?: string | null;
   cost_center?: string | null;
+  cost_center_id?: string | null;
   force_pago?: boolean;
 }
 
@@ -239,8 +297,16 @@ async function sendOne(
     }
   };
   
-  // No Conta Azul, o centro de custo no rateio deve ser o NOME (string)
-  if (input.cost_center && input.cost_center.trim()) {
+  if (input.cost_center_id) {
+    rateioItem.rateio_centro_custo = [
+      {
+        id_centro_custo: input.cost_center_id,
+        valor: transactionValue
+      }
+    ];
+  } else if (input.cost_center && input.cost_center.trim()) {
+    // No Conta Azul v1, o rateio exige o ID do Centro de Custo no array rateio_centro_custo.
+    // Mantemos o campo de texto como fallback retrocompatível se o ID não for localizado.
     rateioItem.centro_custo = input.cost_center.trim();
   }
 
@@ -582,6 +648,37 @@ serve(async (req) => {
       } catch (e) {}
     }
 
+    // Buscar todos os centros de custo do Conta Azul (com paginação)
+    let costCenters: any[] = [];
+    try {
+      let page = 1;
+      let hasMore = true;
+      const pageSize = 100;
+      while (hasMore && page <= 10) {
+        const url = `${CONTAAZUL_API}/v1/centro-de-custo?pagina=${page}&tamanho_pagina=${pageSize}`;
+        const ccResp = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        if (ccResp.ok) {
+          const ccData = await ccResp.json();
+          const list = Array.isArray(ccData) ? ccData : (ccData?.itens || ccData?.data || ccData?.items || []);
+          if (!list.length) break;
+          costCenters.push(...list);
+          if (list.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          console.error(`[ERROR] Falha ao carregar centros de custo (Pág ${page}): HTTP ${ccResp.status}`);
+          break;
+        }
+      }
+      console.log(`[DEBUG] Total de centros de custo carregados: ${costCenters.length}`);
+    } catch (e) {
+      console.error("[ERROR] Erro ao carregar centros de custo:", e);
+    }
+
     // Buscar mapeamento de centro de custo por funcionário
     const employeeIds = norms
       .map(n => rawsById.get(n.flash_transaction_id)?.payload_json?.employee?.id)
@@ -659,6 +756,17 @@ serve(async (req) => {
       if (costCenter === "—" || costCenter === "") costCenter = null;
       console.log(`[DEBUG] CC final para ${n.flash_transaction_id}: "${costCenter || '(vazio)'}"`);
 
+      // Mapear centro de custo no Conta Azul
+      let costCenterId: string | null = null;
+      if (costCenter) {
+        costCenterId = findBestCostCenterMatch(costCenter, costCenters);
+        if (costCenterId) {
+          console.log(`[DEBUG] CC mapeado com sucesso para o ID: ${costCenterId}`);
+        } else {
+          console.warn(`[WARN] CC "${costCenter}" não encontrado no Conta Azul.`);
+        }
+      }
+
       // Valor: snap.amount deveria estar em reais, mas snapshots antigos podem ter
       // o valor em centavos (bug anterior). Detectamos comparando com o payload cru.
       const rawAmountCents = raw?.payload_json?.amount; // Valor em centavos da Flash
@@ -708,6 +816,7 @@ serve(async (req) => {
         type: (n.tipo_operacao as any) || "despesa",
         observacao: comentarios,
         cost_center: costCenter,
+        cost_center_id: costCenterId,
         force_pago: snap.force_pago !== false, // Default true
       }, true, defaultContactId); 
       results.push(r);
