@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/supabasePagination";
@@ -30,7 +30,13 @@ import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
 export default function DashboardPage() {
-  const [periodo, setPeriodo] = useState<string>("all");
+  const [periodo, setPeriodo] = useState<string>("2026");
+  
+  // Set default year to current year on mount
+  useEffect(() => {
+    const currentYear = new Date().getFullYear().toString();
+    setPeriodo(currentYear);
+  }, []);
   const { projetos } = useProjetos();
   const { sites } = useSites();
   const { areas } = useAreas();
