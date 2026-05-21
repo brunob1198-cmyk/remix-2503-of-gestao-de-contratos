@@ -15,6 +15,7 @@ const ALLOWED_VIEWS = [
   "view_producao_diario",
   "view_contratos",
   "view_bi_analise_obras",
+  "view_quadro_geral_bi",
 ];
 
 const PAGE_SIZE = 1000;
