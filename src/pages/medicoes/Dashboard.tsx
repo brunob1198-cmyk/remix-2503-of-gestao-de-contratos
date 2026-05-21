@@ -30,12 +30,11 @@ import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
 export default function DashboardPage() {
-  const [periodo, setPeriodo] = useState<string>("2026");
+  const [periodo, setPeriodo] = useState<string>("all");
   
-  // Set default year to current year on mount
+  // Set default to "all" to show all historical data initially
   useEffect(() => {
-    const currentYear = new Date().getFullYear().toString();
-    setPeriodo(currentYear);
+    setPeriodo("all");
   }, []);
   const { projetos } = useProjetos();
   const { sites } = useSites();
@@ -46,24 +45,48 @@ export default function DashboardPage() {
   const { data: diarioProducoes = [] } = useQuery({
     queryKey: ["diario_producao_dashboard"],
     queryFn: async () => {
-      const query = supabase
-        .from("diario_producao")
-        .select(`
-          quantidade, 
-          valor_total, 
-          item_lpu:itens_lpu(preco_unitario), 
-          diario:diarios_obra!inner(
-            data, 
-            site_id, 
-            site:sites(
-              area_id, 
-              gestor:usuarios(nome)
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select(`
+            quantidade, 
+            valor_total, 
+            item_lpu:itens_lpu(preco_unitario), 
+            diario:diarios_obra!inner(
+              data, 
+              site_id, 
+              site:sites(
+                area_id, 
+                gestor:usuarios(nome)
+              )
             )
-          )
-        `);
-      
-      const data = await fetchAllPages<any>(query);
-      return data.map(p => ({
+          `)
+          .range(from, from + step - 1);
+        
+        if (error) {
+          console.error("Error fetching diario_producao:", error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
+      }
+
+      console.log(`[Dashboard] Fetched ${allData.length} RDO production records`);
+      return allData.map(p => ({
         quantidade: Number(p.quantidade),
         valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
         data: p.diario.data,
@@ -75,7 +98,7 @@ export default function DashboardPage() {
 
   // Unificar dados de produção
   const allProducao = useMemo(() => {
-    const manualProd = producao.map(p => ({
+    const manualProd = (producao || []).map(p => ({
       quantidade: Number(p.quantidade),
       valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
       data: p.data_producao,
@@ -183,6 +206,7 @@ export default function DashboardPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
               <SelectItem value="2026">2026</SelectItem>
               <SelectItem value="2025">2025</SelectItem>
               <SelectItem value="2024">2024</SelectItem>
