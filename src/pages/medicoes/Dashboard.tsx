@@ -27,17 +27,73 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
-import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
+import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+
+function MultiSelectFilter({ label, options, selected, onToggle, onSelectAll, onClearAll }: {
+  label: string;
+  options: string[];
+  selected: Set<string>;
+  onToggle: (v: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = options.filter(v => v.toLowerCase().includes(search.toLowerCase()));
+  const isActive = selected.size > 0;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs h-9 justify-start px-3 min-w-[140px]", isActive && "border-primary text-primary")}>
+          <Filter className="h-4 w-4 shrink-0 opacity-70" />
+          <span className="truncate">{label}</span>
+          {isActive && <span className="ml-auto bg-primary text-primary-foreground rounded-full px-1.5 text-[10px]">{selected.size}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 space-y-2" align="start">
+        <Input
+          placeholder={`Pesquisar ${label.toLowerCase()}...`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <div className="flex gap-2 text-xs">
+          <button onClick={onSelectAll} className="text-primary hover:underline">Todos</button>
+          <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
+        </div>
+        <div className="max-h-48 overflow-y-auto space-y-1">
+          {filtered.map(v => (
+            <label key={v} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-1 py-0.5">
+              <Checkbox
+                checked={selected.has(v)}
+                onCheckedChange={() => onToggle(v)}
+                className="h-3.5 w-3.5"
+              />
+              <span className="truncate">{v}</span>
+            </label>
+          ))}
+          {filtered.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum resultado</p>}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function DashboardPage() {
-  const [periodo, setPeriodo] = useState<string>("all");
-  const [mes, setMes] = useState<string>("all");
+  const [periodos, setPeriodos] = useState<Set<string>>(new Set(["all"]));
+  const [meses, setMeses] = useState<Set<string>>(new Set(["all"]));
 
-  
-  // Set default to "all" to show all historical data initially
+  // Reset to "all" if empty
   useEffect(() => {
-    setPeriodo("all");
-  }, []);
+    if (periodos.size === 0) setPeriodos(new Set(["all"]));
+    if (meses.size === 0) setMeses(new Set(["all"]));
+  }, [periodos, meses]);
+
 
   // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
@@ -59,18 +115,17 @@ export default function DashboardPage() {
   const filteredData = useMemo(() => {
     let data = biAnalise;
     
-    if (periodo !== "all") {
-      const year = parseInt(periodo);
-      data = data.filter((p: any) => p.Ano === year);
+    if (!periodos.has("all")) {
+      data = data.filter((p: any) => periodos.has(p.Ano?.toString()));
     }
     
-    if (mes !== "all") {
-      const monthNum = parseInt(mes);
-      data = data.filter((p: any) => p["Mês Num"] === monthNum);
+    if (!meses.has("all")) {
+      data = data.filter((p: any) => meses.has(p["Mês Num"]?.toString()));
     }
     
     return data;
-  }, [biAnalise, periodo, mes]);
+  }, [biAnalise, periodos, meses]);
+
 
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -112,14 +167,17 @@ export default function DashboardPage() {
   const monthlyEvolutionData = useMemo(() => {
     const monthsMap = new Map<string, number>();
     
-    // Se um ano estiver selecionado, garantir que todos os meses apareçam
-    if (periodo !== "all") {
-      const year = parseInt(periodo);
-      for (let i = 1; i <= 12; i++) {
-        const monthKey = `${year}-${i.toString().padStart(2, '0')}`;
-        monthsMap.set(monthKey, 0);
-      }
+    // Se anos específicos estiverem selecionados, garantir que os meses apareçam para esses anos
+    if (!periodos.has("all")) {
+      const selectedYears = Array.from(periodos).map(y => parseInt(y));
+      selectedYears.forEach(year => {
+        for (let i = 1; i <= 12; i++) {
+          const monthKey = `${year}-${i.toString().padStart(2, '0')}`;
+          monthsMap.set(monthKey, 0);
+        }
+      });
     }
+
 
     filteredData.forEach((p: any) => {
       const year = p.Ano;
@@ -140,7 +198,7 @@ export default function DashboardPage() {
           "Produção": value
         };
       });
-  }, [filteredData, periodo]);
+  }, [filteredData, periodos]);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
@@ -160,47 +218,54 @@ export default function DashboardPage() {
         
         <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
           <div className="flex items-center gap-2">
-            <Label htmlFor="period-filter" className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
-              <Filter className="h-4 w-4" /> Ano:
+            <Label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+              <Filter className="h-4 w-4" /> Anos:
             </Label>
-            <Select value={periodo} onValueChange={(val) => { setPeriodo(val); if (val === "all") setMes("all"); }}>
-              <SelectTrigger id="period-filter" className="w-[140px] h-9">
-                <SelectValue placeholder="Ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="2027">2027</SelectItem>
-                <SelectItem value="2026">2026</SelectItem>
-                <SelectItem value="2025">2025</SelectItem>
-                <SelectItem value="2024">2024</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              label="Anos"
+              options={["2024", "2025", "2026", "2027"]}
+              selected={periodos}
+              onToggle={(val) => {
+                setPeriodos(prev => {
+                  const next = new Set(prev);
+                  if (val === "all") {
+                    return new Set(["all"]);
+                  }
+                  next.delete("all");
+                  if (next.has(val)) next.delete(val);
+                  else next.add(val);
+                  return next.size === 0 ? new Set(["all"]) : next;
+                });
+              }}
+              onSelectAll={() => setPeriodos(new Set(["2024", "2025", "2026", "2027"]))}
+              onClearAll={() => setPeriodos(new Set(["all"]))}
+            />
           </div>
 
           <div className="flex items-center gap-2 border-l pl-3">
-            <Label htmlFor="month-filter" className="text-sm font-medium">Mês:</Label>
-            <Select value={mes} onValueChange={setMes}>
-              <SelectTrigger id="month-filter" className="w-[140px] h-9">
-                <SelectValue placeholder="Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="1">Janeiro</SelectItem>
-                <SelectItem value="2">Fevereiro</SelectItem>
-                <SelectItem value="3">Março</SelectItem>
-                <SelectItem value="4">Abril</SelectItem>
-                <SelectItem value="5">Maio</SelectItem>
-                <SelectItem value="6">Junho</SelectItem>
-                <SelectItem value="7">Julho</SelectItem>
-                <SelectItem value="8">Agosto</SelectItem>
-                <SelectItem value="9">Setembro</SelectItem>
-                <SelectItem value="10">Outubro</SelectItem>
-                <SelectItem value="11">Novembro</SelectItem>
-                <SelectItem value="12">Dezembro</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="text-sm font-medium">Meses:</Label>
+            <MultiSelectFilter
+              label="Meses"
+              options={["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]}
+              selected={meses}
+              onToggle={(val) => {
+                setMeses(prev => {
+                  const next = new Set(prev);
+                  if (val === "all") {
+                    return new Set(["all"]);
+                  }
+                  next.delete("all");
+                  if (next.has(val)) next.delete(val);
+                  else next.add(val);
+                  return next.size === 0 ? new Set(["all"]) : next;
+                });
+              }}
+              onSelectAll={() => setMeses(new Set(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]))}
+              onClearAll={() => setMeses(new Set(["all"]))}
+            />
           </div>
         </div>
+
 
       </div>
 
