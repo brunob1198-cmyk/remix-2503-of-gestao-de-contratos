@@ -13,6 +13,7 @@ interface MonthRangePickerProps {
   endDate: Date;
   onChangeStart: (d: Date) => void;
   onChangeEnd: (d: Date) => void;
+  className?: string;
 }
 
 function MonthGrid({ label, year, onYearChange, selectedMonth, selectedYear, onSelect }: {
