@@ -4463,6 +4463,24 @@ export type Database = {
           employee_id: string
         }[]
       }
+      get_quadro_geral_bi: {
+        Args: never
+        Returns: {
+          "% Evolução": number
+          Área: string
+          Cliente: string
+          "Projeto Código": string
+          "Projeto Nome": string
+          "Saldo Contrato": number
+          "Site Código": string
+          "Site Nome": string
+          "Status Projeto": string
+          "Valor Contrato": number
+          "Valor Executado": number
+          "Valor Faturado": number
+          "Valor Não Faturado": number
+        }[]
+      }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
