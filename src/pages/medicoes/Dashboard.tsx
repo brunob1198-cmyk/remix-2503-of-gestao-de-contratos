@@ -23,7 +23,9 @@ import {
   PieChart,
   Pie
 } from "recharts";
-import { format, ptBR } from "date-fns/locale";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
