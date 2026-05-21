@@ -350,9 +350,6 @@ export default function PlanejamentoObra() {
           <TabsContent value="produtividade" className="mt-4">
             <ProdutividadeMapa projetoId={projetoId} siteFilter={selectedSiteIds.length === 1 ? selectedSiteIds[0] : undefined} />
           </TabsContent>
-          <TabsContent value="curvas" className="mt-4">
-            <CurvaSDashboard atividades={filteredAtividades} frentes={selectedSiteIds.length > 0 ? frentes.filter(f => selectedSiteIds.includes((f as any).site_id)) : frentes} />
-          </TabsContent>
 
           <TabsContent value="producao" className="mt-4">
             <ProducaoTab 
