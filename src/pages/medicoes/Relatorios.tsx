@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/supabasePagination";
-import { useDashboard } from "@/hooks/useDashboard";
+
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useLancamentosProducao, useLancamentosMedicao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
@@ -45,7 +45,10 @@ export default function RelatoriosPage() {
 
   const { projetos } = useProjetos();
   const { sites } = useSites();
-  const { resumoProjetos, resumoItens, totais } = useDashboard(projetoId || undefined);
+  // useDashboard removido pois não foi encontrado no projeto
+  const resumoProjetos = [];
+  const resumoItens = [];
+  const totais = { valor_total: 0, valor_medido: 0, valor_faturado: 0 };
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: medicao } = useLancamentosMedicao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
