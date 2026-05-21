@@ -41,72 +41,38 @@ export default function DashboardPage() {
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
 
-  // Buscar produções do Diário de Obra (RDO)
-  const { data: diarioProducoes = [] } = useQuery({
-    queryKey: ["diario_producao_dashboard"],
+  // Buscar produções consolidadas da VIEW de BI (mais performático e cacheado)
+  const { data: biProducao = [], isLoading: isLoadingBI } = useQuery({
+    queryKey: ["bi_producao_dashboard"],
+    staleTime: 1000 * 60 * 30, // 30 minutos de cache
+    gcTime: 1000 * 60 * 60, // 1 hora
     queryFn: async () => {
-      let allData: any[] = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("diario_producao")
-          .select(`
-            quantidade, 
-            valor_total, 
-            item_lpu:itens_lpu(preco_unitario), 
-            diario:diarios_obra!inner(
-              data, 
-              site_id, 
-              site:sites(
-                area_id, 
-                gestor:usuarios(nome)
-              )
-            )
-          `)
-          .range(from, from + step - 1);
-        
-        if (error) {
-          console.error("Error fetching diario_producao:", error);
-          throw error;
-        }
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...data];
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            from += step;
-          }
-        }
-      }
-
-      console.log(`[Dashboard] Fetched ${allData.length} RDO production records`);
-      return allData.map(p => ({
-        quantidade: Number(p.quantidade),
-        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
-        data: p.diario.data,
-        area_id: p.diario.site?.area_id,
-        gestor_nome: p.diario.site?.gestor?.nome || "Sem gestor"
-      }));
+      console.log("[Dashboard] Fetching BI production data...");
+      const query = supabase
+        .from("view_bi_producao")
+        .select("*")
+        .order("data_producao", { ascending: false });
+      
+      const data = await fetchAllPages<any>(query);
+      console.log(`[Dashboard] Fetched ${data.length} BI production records`);
+      return data;
     }
   });
 
-  // Unificar dados de produção
+  // Unificar dados de produção (View de BI já traz o consolidado do RDO e lançamentos manuais)
   const allProducao = useMemo(() => {
-    const manualProd = (producao || []).map(p => ({
+    return (biProducao || []).map(p => ({
+      id: p.id,
       quantidade: Number(p.quantidade),
-      valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
+      valor_total: Number(p.valor_total),
       data: p.data_producao,
-      area_id: (p.site as any)?.area_id
+      area_id: p.area_id,
+      area_nome: p.area_nome,
+      ano: p.ano,
+      mes: p.mes
     }));
+  }, [biProducao]);
 
-    return [...manualProd, ...diarioProducoes];
-  }, [producao, diarioProducoes]);
 
   // Filtrar dados por período
   const filteredProducao = useMemo(() => {

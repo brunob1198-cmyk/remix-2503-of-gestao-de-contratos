@@ -22,6 +22,9 @@ export function useAreas() {
 
   const { data: areas = [], isLoading } = useQuery({
     queryKey: ["areas"],
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
+
     queryFn: async () => {
       const { data, error } = await supabase
         .from("areas")
