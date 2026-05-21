@@ -22,13 +22,22 @@ function buildEmbedUrl(rawUrl: string, cacheKey: number): string {
     if (!url.searchParams.has("pageView")) {
       url.searchParams.set("pageView", "fitToWidth");
     }
-    // cache-busting controlado para o botão Atualizar
-    url.searchParams.set("_t", String(cacheKey));
+    
+    // Só adicionamos o cache-busting se a key for maior que 0 (ou seja, se o usuário clicou em Atualizar)
+    // Caso contrário, usamos uma key estática para permitir que o navegador use o cache longo.
+    if (cacheKey > 0) {
+      url.searchParams.set("_t", String(cacheKey));
+    } else {
+      // Usamos uma chave de cache estática baseada na data de instalação ou algo fixo
+      url.searchParams.set("_t", "stable_cache");
+    }
+    
     return url.toString();
   } catch {
     // Fallback caso a URL seja inválida como URL absoluta
     const sep = rawUrl.includes("?") ? "&" : "?";
-    return `${rawUrl}${sep}pageView=fitToWidth&_t=${cacheKey}`;
+    const cacheParam = cacheKey > 0 ? `&_t=${cacheKey}` : "&_t=stable_cache";
+    return `${rawUrl}${sep}pageView=fitToWidth${cacheParam}`;
   }
 }
 
@@ -58,7 +67,7 @@ export default function PowerBIPage() {
   const [showConfig, setShowConfig] = useState(dashboards.length === 0);
   const [novoDash, setNovoDash] = useState<Partial<DashboardConfig>>({ categoria: "financeiro" });
   const [activeDash, setActiveDash] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey] = usePersistedState<number>("powerbi_refresh_key", 0);
   const [lastUpdated, setLastUpdated] = usePersistedState<string | null>("powerbi_last_updated", null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
