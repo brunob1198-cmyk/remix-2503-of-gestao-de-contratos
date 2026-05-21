@@ -48,7 +48,13 @@ export default function RelatoriosPage() {
   // useDashboard removido pois não foi encontrado no projeto
   const resumoProjetos = [];
   const resumoItens = [];
-  const totais = { valor_total: 0, valor_medido: 0, valor_faturado: 0 };
+  const totais = { 
+    totalProduzido: 0, 
+    totalMedido: 0, 
+    totalFaturado: 0, 
+    totalAMedir: 0, 
+    totalAFaturar: 0 
+  };
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: medicao } = useLancamentosMedicao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
