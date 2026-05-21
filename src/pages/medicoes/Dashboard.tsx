@@ -70,7 +70,18 @@ export default function DashboardPage() {
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number, mb: number }>();
-    biAnalise.forEach((p: any) => {
+    
+    // Filtro específico para o gráfico anual
+    const filteredForAnnual = biAnalise.filter((p: any) => {
+      if (!p.Ano || !p["Mês Num"]) return false;
+      const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
+      return isWithinInterval(dataProducao, { 
+        start: startOfMonth(periodoInicioAnual), 
+        end: endOfMonth(periodoFimAnual) 
+      });
+    });
+
+    filteredForAnnual.forEach((p: any) => {
       const year = p.Ano;
       if (!year) return;
       const current = yearsMap.get(year) || { year, total: 0, mb: 0 };
@@ -86,7 +97,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
