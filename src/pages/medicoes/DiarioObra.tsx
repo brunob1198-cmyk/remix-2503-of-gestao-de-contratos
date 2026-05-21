@@ -131,13 +131,25 @@ export default function DiarioObraPage() {
   const [obs, setObs] = useState("");
 
   useEffect(() => {
+    // Adiciona atividadesCampo como dependência para carregar as observações quando os dados chegarem
+
     if (diario && diario.id !== lastDiarioId.current) {
       lastDiarioId.current = diario.id;
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
-      setObs(diario.observacoes || "");
+      
+      // Se não houver observações no diário de obra, mas houver no campo, sugere importar
+      if (!diario.observacoes && atividadesCampo.length > 0) {
+        const obsCampo = atividadesCampo
+          .map((a, i) => `Atividade ${i + 1}: ${a.descricao_servico || ""}${a.observacoes ? `\nObs: ${a.observacoes}` : ""}`)
+          .join("\n\n");
+        setObs(obsCampo);
+      } else {
+        setObs(diario.observacoes || "");
+      }
+      
       setHeaderSaved(false);
     } else if (!diario && lastDiarioId.current !== null) {
       lastDiarioId.current = null;
@@ -145,7 +157,7 @@ export default function DiarioObraPage() {
       setDiarioClima("");
       setHeaderSaved(false);
     }
-  }, [diario?.id, setDiarioUf, setDiarioMunicipio]);
+  }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
@@ -460,16 +472,33 @@ export default function DiarioObraPage() {
 
         <TabsContent value="lancamento">
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
-              <Select value={diarioClima} onValueChange={setDiarioClima}>
-                <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
-                <SelectContent>
-                  {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-              <Button onClick={handleSaveHeader}>Salvar</Button>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
+                <Select value={diarioClima} onValueChange={setDiarioClima}>
+                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
+                  <SelectContent>
+                    {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
+                <Button onClick={handleSaveHeader}>Salvar</Button>
+              </div>
+
+              <div className="flex-1" />
+
+              <AnotacoesCampoDialog
+                atividadesCampo={atividadesCampo}
+                diarioObraId={diario?.id || null}
+                itensDisponiveis={itensDisponiveis}
+                producoes={producoes}
+                fotosObra={fotos}
+                onFotoTransferred={() => {
+                  queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+                }}
+                ensureDiario={ensureDiario}
+                selectedDate={selectedDate}
+              />
             </div>
 
             <Card>
@@ -608,6 +637,8 @@ export default function DiarioObraPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">KM Inicial</TableHead>
+                      <TableHead className="text-right">KM Final</TableHead>
                       <TableHead className="text-right">KM Rodados</TableHead>
                       <TableHead className="text-right">Custo</TableHead>
                       <TableHead />
@@ -617,44 +648,140 @@ export default function DiarioObraPage() {
                     {veiculos.map(v => (
                       <TableRow key={v.id}>
                         <TableCell>{v.descricao}</TableCell>
-                        <TableCell className="text-right">{v.km_rodados}</TableCell>
+                        <TableCell className="text-right">{v.km_inicial}</TableCell>
+                        <TableCell className="text-right">{v.km_final}</TableCell>
+                        <TableCell className="text-right font-medium">{v.km_rodados}</TableCell>
                         <TableCell className="text-right">{formatCurrency(v.custo_diaria)}</TableCell>
                         <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                       </TableRow>
                     ))}
+                    {veiculos.length > 0 && (
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right">{veiculos.reduce((sum, v) => sum + (v.km_rodados || 0), 0)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(veiculos.reduce((sum, v) => sum + (v.custo_diaria || 0), 0))}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Fotos Gerais</CardTitle></CardHeader>
-              <CardContent>
-                <input type="file" multiple accept="image/*" className="hidden" id="geral-foto" onChange={e => e.target.files && handleUploadFoto(e, "execucao")} />
-                <Button variant="outline" onClick={() => document.getElementById("geral-foto")?.click()}>
-                  <Camera className="h-4 w-4 mr-2" /> Adicionar Fotos
-                </Button>
-                <div className="grid grid-cols-4 gap-4 mt-4">
-                  {fotos.filter(f => !f.diario_producao_id).map(f => (
-                    <div key={f.id} className="relative group rounded overflow-hidden border">
-                      <SmartImage 
-                        src={f.thumb_url || f.url} 
-                        context="diario_fotos"
-                        fallbackUrls={[f.thumb_600_url, f.url]}
-                        className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
-                        onClick={() => setPhotoView(f)}
-                      />
-                      <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFoto.mutate(f.id)}><Trash2 className="h-3 w-3" /></Button>
-                    </div>
-                  ))}
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Fotos Gerais</CardTitle>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Novo grupo..." 
+                    value={newGroupName} 
+                    onChange={e => setNewGroupName(e.target.value)} 
+                    className="h-8 w-32" 
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newGroupName.trim()) {
+                        setPhotoGroups(prev => [...prev, newGroupName.trim()]);
+                        setNewGroupName("");
+                      }
+                    }}
+                  />
+                  <Button size="sm" variant="outline" className="h-8" onClick={() => {
+                    if (newGroupName.trim()) {
+                      setPhotoGroups(prev => [...prev, newGroupName.trim()]);
+                      setNewGroupName("");
+                    }
+                  }}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {photoGroups.map(group => (
+                  <div key={group} className="space-y-3">
+                    <div className="flex items-center justify-between border-b pb-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{group}</h3>
+                        <Badge variant="outline" className="text-[10px]">{fotos.filter(f => !f.diario_producao_id && f.classificacao === group).length}</Badge>
+                      </div>
+                      <div className="flex gap-1">
+                        <input 
+                          type="file" 
+                          multiple 
+                          accept="image/*" 
+                          className="hidden" 
+                          id={`foto-${group}`} 
+                          ref={el => photoGroupUploadRefs.current[group] = el}
+                          onChange={e => handleUploadFoto(e, group)} 
+                        />
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
+                          <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos
+                        </Button>
+                        {!["Execução", "Vistoria"].includes(group) && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-destructive" 
+                            onClick={() => setPhotoGroups(prev => prev.filter(g => g !== group))}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      {fotos.filter(f => !f.diario_producao_id && f.classificacao === group).map(f => (
+                        <div key={f.id} className="relative group rounded overflow-hidden border">
+                          <SmartImage 
+                            src={f.thumb_url || f.url} 
+                            context="diario_fotos"
+                            fallbackUrls={[f.thumb_600_url, f.url]}
+                            className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => setPhotoView(f)}
+                          />
+                          <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFoto.mutate(f.id)}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      {fotos.filter(f => !f.diario_producao_id && f.classificacao === group).length === 0 && (
+                        <div className="col-span-4 py-4 text-center text-xs text-muted-foreground border border-dashed rounded italic">
+                          Nenhuma foto neste grupo
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Grupo Geral para fotos sem classificação ou com classificações não listadas */}
+                {(() => {
+                  const unlistedPhotos = fotos.filter(f => !f.diario_producao_id && (!f.classificacao || !photoGroups.includes(f.classificacao)));
+                  if (unlistedPhotos.length === 0) return null;
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-b pb-1">
+                        <h3 className="font-semibold text-sm">Outras / Geral</h3>
+                      </div>
+                      <div className="grid grid-cols-4 gap-4">
+                        {unlistedPhotos.map(f => (
+                          <div key={f.id} className="relative group rounded overflow-hidden border">
+                            <SmartImage 
+                              src={f.thumb_url || f.url} 
+                              context="diario_fotos"
+                              fallbackUrls={[f.thumb_600_url, f.url]}
+                              className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => setPhotoView(f)}
+                            />
+                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFoto.mutate(f.id)}><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Observações</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Relatório Descritivo / Observações</CardTitle></CardHeader>
               <CardContent>
-                <Textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="Observações do dia..." />
+                <Textarea value={obs} onChange={e => setObs(e.target.value)} placeholder="Relatório Descritivo / Observações do dia..." />
               </CardContent>
             </Card>
           </div>

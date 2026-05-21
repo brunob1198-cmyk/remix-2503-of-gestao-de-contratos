@@ -91,7 +91,8 @@ const App = () => {
               {/* Gestão de Contratos - Protected */}
               <Route path="/medicoes" element={<ProtectedRoute><MedicoesLayout /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/medicoes/dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="dashboard" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+
                 <Route path="cadastros" element={<CadastrosPage />} />
                 <Route path="projetos" element={<Navigate to="/medicoes/cadastros" replace />} />
                 <Route path="sites" element={<Navigate to="/medicoes/cadastros" replace />} />
@@ -100,7 +101,7 @@ const App = () => {
                 <Route path="diario" element={<ErrorBoundary><DiarioObraPage /></ErrorBoundary>} />
                 <Route path="diario-campo" element={<DiarioCampoPage />} />
                 <Route path="analise" element={<AnaliseObraPage />} />
-                <Route path="producao" element={<Navigate to="/medicoes/dashboard" replace />} />
+                <Route path="producao" element={<Navigate to="/medicoes/acompanhamento" replace />} />
                 <Route path="medicao" element={<ErrorBoundary><MedicaoPage /></ErrorBoundary>} />
                 <Route path="faturamento" element={<ErrorBoundary><FaturamentoPage /></ErrorBoundary>} />
                 <Route path="acompanhamento" element={<ErrorBoundary><AcompanhamentoMedicoesPage /></ErrorBoundary>} />

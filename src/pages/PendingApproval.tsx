@@ -23,7 +23,7 @@ export default function PendingApprovalPage() {
     }
 
     if (aprovado) {
-      navigate("/medicoes/dashboard", { replace: true });
+      navigate("/medicoes/acompanhamento", { replace: true });
     }
   }, [loading, session, empresaId, aprovado, navigate]);
 

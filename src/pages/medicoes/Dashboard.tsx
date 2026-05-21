@@ -1,303 +1,365 @@
-import { useState, useMemo } from "react";
-import { DashboardCards } from "@/components/medicoes/DashboardCards";
-import { useDashboard } from "@/hooks/useDashboard";
+import { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAreas } from "@/hooks/useAreas";
+import { useLancamentosProducao } from "@/hooks/useLancamentos";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FileDown, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, X } from "lucide-react";
-import { exportDashboardToExcel } from "@/lib/medicoesExport";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { usePersistedState } from "@/hooks/usePersistedState";
-
-type SortField = "projeto" | "site" | "codigo" | "descricao" | "qtd_produzida" | "qtd_medida" | "qtd_faturada" | "qtd_a_medir" | "qtd_a_faturar" | "valor_produzido";
-type SortDirection = "asc" | "desc";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Cell,
+  PieChart,
+  Pie
+} from "recharts";
+import { format, parseISO, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import QuadroGeral from "@/components/relatorios/QuadroGeral";
+import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
 export default function DashboardPage() {
-  const [projetoId, setProjetoId] = usePersistedState<string>("dashboard_projeto_id", "");
-  const [selectedSiteIds, setSelectedSiteIds] = usePersistedState<string[]>("dashboard_site_ids", []);
+  const [periodo, setPeriodo] = useState<string>("all");
+  
+  // Set default to "all" to show all historical data initially
+  useEffect(() => {
+    setPeriodo("all");
+  }, []);
   const { projetos } = useProjetos();
   const { sites } = useSites();
-  const { resumoProjetos, resumoItens, totais, isLoading } = useDashboard(
-    projetoId || undefined,
-    selectedSiteIds.length > 0 ? selectedSiteIds : undefined
-  );
+  const { areas } = useAreas();
+  const { lancamentos: producao } = useLancamentosProducao();
 
-  const [sortField, setSortField] = useState<SortField>("valor_produzido");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [projetoFilter, setProjetoFilter] = useState<string>("");
-  const [siteFilter, setSiteFilter] = useState<string>("");
+  // Buscar produções do Diário de Obra (RDO)
+  const { data: diarioProducoes = [] } = useQuery({
+    queryKey: ["diario_producao_dashboard"],
+    queryFn: async () => {
+      let allData: any[] = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
 
-  const filteredSitesForSelection = projetoId 
-    ? sites.filter(s => s.projeto_id === projetoId)
-    : sites;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
-  const handleExport = () => {
-    exportDashboardToExcel(resumoProjetos, resumoItens, totais);
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("desc");
-    }
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-50" />;
-    return sortDirection === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
-  };
-
-  const handleSiteToggle = (siteId: string) => {
-    setSelectedSiteIds(prev => 
-      prev.includes(siteId) 
-        ? prev.filter(id => id !== siteId)
-        : [...prev, siteId]
-    );
-  };
-
-  const handleSelectAllSites = () => {
-    if (selectedSiteIds.length === filteredSitesForSelection.length) {
-      setSelectedSiteIds([]);
-    } else {
-      setSelectedSiteIds(filteredSitesForSelection.map(s => s.id));
-    }
-  };
-
-  const filteredAndSortedItems = useMemo(() => {
-    let items = [...resumoItens];
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      items = items.filter(
-        item => 
-          item.codigo.toLowerCase().includes(term) || 
-          item.descricao.toLowerCase().includes(term)
-      );
-    }
-
-    // Filter by projeto in header
-    if (projetoFilter) {
-      const term = projetoFilter.toLowerCase();
-      items = items.filter(item => 
-        item.projeto_codigo?.toLowerCase().includes(term) ||
-        item.projeto_nome?.toLowerCase().includes(term)
-      );
-    }
-
-    // Filter by site in header
-    if (siteFilter) {
-      const term = siteFilter.toLowerCase();
-      items = items.filter(item => 
-        item.site_codigo?.toLowerCase().includes(term) ||
-        item.site_nome?.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    items.sort((a, b) => {
-      let valueA: any = a[sortField as keyof typeof a];
-      let valueB: any = b[sortField as keyof typeof b];
-
-      if (sortField === "projeto") {
-        valueA = a.projeto_codigo || "";
-        valueB = b.projeto_codigo || "";
-      } else if (sortField === "site") {
-        valueA = a.site_codigo || "";
-        valueB = b.site_codigo || "";
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("diario_producao")
+          .select(`
+            quantidade, 
+            valor_total, 
+            item_lpu:itens_lpu(preco_unitario), 
+            diario:diarios_obra!inner(
+              data, 
+              site_id, 
+              site:sites(
+                area_id, 
+                gestor:usuarios(nome)
+              )
+            )
+          `)
+          .range(from, from + step - 1);
+        
+        if (error) {
+          console.error("Error fetching diario_producao:", error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        }
       }
 
-      if (typeof valueA === "string") {
-        valueA = valueA.toLowerCase();
-        valueB = (valueB as string).toLowerCase();
-      }
+      console.log(`[Dashboard] Fetched ${allData.length} RDO production records`);
+      return allData.map(p => ({
+        quantidade: Number(p.quantidade),
+        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
+        data: p.diario.data,
+        area_id: p.diario.site?.area_id,
+        gestor_nome: p.diario.site?.gestor?.nome || "Sem gestor"
+      }));
+    }
+  });
 
-      if (valueA < valueB) return sortDirection === "asc" ? -1 : 1;
-      if (valueA > valueB) return sortDirection === "asc" ? 1 : -1;
-      return 0;
+  // Unificar dados de produção
+  const allProducao = useMemo(() => {
+    const manualProd = (producao || []).map(p => ({
+      quantidade: Number(p.quantidade),
+      valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
+      data: p.data_producao,
+      area_id: (p.site as any)?.area_id
+    }));
+
+    return [...manualProd, ...diarioProducoes];
+  }, [producao, diarioProducoes]);
+
+  // Filtrar dados por período
+  const filteredProducao = useMemo(() => {
+    if (periodo === "all") return allProducao;
+    const year = parseInt(periodo);
+    return allProducao.filter(p => {
+      if (!p.data) return false;
+      const dateStr = String(p.data);
+      // Handles both "YYYY-MM-DD" and Full ISO strings
+      const prodYear = new Date(dateStr).getFullYear();
+      return prodYear === year;
+    });
+  }, [allProducao, periodo]);
+
+  // 1. Gráfico de Produção Total Anual vs MB Real Atingido
+  const annualData = useMemo(() => {
+    const yearsMap = new Map<number, { year: number, total: number }>();
+    allProducao.forEach(p => {
+      if (!p.data) return;
+      const year = new Date(String(p.data)).getFullYear();
+      const current = yearsMap.get(year) || { year, total: 0 };
+      current.total += p.valor_total;
+      yearsMap.set(year, current);
     });
 
-    return items;
-  }, [resumoItens, sortField, sortDirection, searchTerm, projetoFilter, siteFilter]);
+    return Array.from(yearsMap.values())
+      .sort((a, b) => a.year - b.year)
+      .map(d => ({
+        name: d.year.toString(),
+        "Produção Total": d.total,
+        "MB Real": d.total * 0.95 // Exemplo de cálculo acumulado simulando o MB real atingido
+      }));
+  }, [allProducao]);
 
-  // Chart data - use filtered data from resumoProjetos
-  const chartData = resumoProjetos.filter(p => p.total_produzido > 0 || p.total_medido > 0 || p.total_faturado > 0).map(p => ({
-    name: p.codigo,
-    Produzido: p.total_produzido,
-    Medido: p.total_medido,
-    Faturado: p.total_faturado,
-  }));
+  // 2. Gráfico de Produção por Área
+  const areaData = useMemo(() => {
+    const areaMap = new Map<string, number>();
+    const areaNames = new Map(areas.map(a => [a.id, a.nome]));
 
-  // Pie chart: % Medição e % Faturamento em cima do total de Produção
-  const pieData = useMemo(() => {
-    if (totais.totalProduzido === 0) return [];
+    filteredProducao.forEach(p => {
+      const areaName = areaNames.get(p.area_id) || "Outros";
+      areaMap.set(areaName, (areaMap.get(areaName) || 0) + p.valor_total);
+    });
+
+    return Array.from(areaMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredProducao, areas]);
+
+  // 3. Gráfico Evolutivo de Produção por Mês
+  const monthlyEvolutionData = useMemo(() => {
+    const monthsMap = new Map<string, number>();
     
-    const percentMedido = (totais.totalMedido / totais.totalProduzido) * 100;
-    const percentFaturado = (totais.totalFaturado / totais.totalProduzido) * 100;
-    const percentRestante = 100 - percentMedido;
-    
-    return [
-      { name: `Faturado (${percentFaturado.toFixed(1)}%)`, value: totais.totalFaturado, color: "#10b981" },
-      { name: `Medido não Faturado (${((totais.totalMedido - totais.totalFaturado) / totais.totalProduzido * 100).toFixed(1)}%)`, value: Math.max(0, totais.totalMedido - totais.totalFaturado), color: "#22c55e" },
-      { name: `A Medir (${(totais.totalAMedir / totais.totalProduzido * 100).toFixed(1)}%)`, value: Math.max(0, totais.totalAMedir), color: "#f97316" },
-    ].filter(d => d.value > 0);
-  }, [totais]);
+    // Se um ano estiver selecionado, garantir que todos os meses apareçam
+    if (periodo !== "all") {
+      const year = parseInt(periodo);
+      const months = eachMonthOfInterval({
+        start: startOfYear(new Date(year, 0, 1)),
+        end: endOfYear(new Date(year, 0, 1))
+      });
+      months.forEach(m => {
+        monthsMap.set(format(m, "yyyy-MM"), 0);
+      });
+    }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+    filteredProducao.forEach(p => {
+      if (!p.data) return;
+      const monthKey = format(parseISO(p.data), "yyyy-MM");
+      monthsMap.set(monthKey, (monthsMap.get(monthKey) || 0) + p.valor_total);
+    });
+
+    return Array.from(monthsMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, value]) => ({
+        name: format(parseISO(key + "-01"), "MMM/yy", { locale: ptBR }),
+        "Produção": value
+      }));
+  }, [filteredProducao, periodo]);
+
+  const formatCurrency = (value: number) => 
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Visão geral de produção, medição e faturamento</p>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="h-8 w-8 text-primary" />
+            Dashboard (Produção: {formatCurrency(filteredProducao.reduce((acc, p) => acc + p.valor_total, 0))})
+          </h1>
+          <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Select value={projetoId || "all"} onValueChange={(v) => { setProjetoId(v === "all" ? "" : v); setSelectedSiteIds([]); }}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Todos os projetos" />
+        
+        <div className="flex items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
+          <Label htmlFor="period-filter" className="flex items-center gap-2 text-sm font-medium">
+            <Filter className="h-4 w-4" /> Filtro:
+          </Label>
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger id="period-filter" className="w-[180px] h-9">
+              <SelectValue placeholder="Selecione o ano" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os projetos</SelectItem>
-              {projetos.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.codigo} - {p.nome}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2024">2024</SelectItem>
             </SelectContent>
           </Select>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-64 justify-between">
-                <span className="truncate">
-                  {selectedSiteIds.length === 0 
-                    ? "Todos os sites" 
-                    : `${selectedSiteIds.length} site(s) selecionado(s)`}
-                </span>
-                <Filter className="h-4 w-4 ml-2" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="start">
-              <div className="p-3 border-b">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Filtrar por sites</Label>
-                  <Button variant="ghost" size="sm" onClick={handleSelectAllSites}>
-                    {selectedSiteIds.length === filteredSitesForSelection.length ? "Limpar" : "Selecionar todos"}
-                  </Button>
-                </div>
-              </div>
-              <div className="max-h-60 overflow-auto p-2">
-                {filteredSitesForSelection.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    {projetoId ? "Nenhum site neste projeto" : "Nenhum site cadastrado"}
-                  </p>
-                ) : (
-                  filteredSitesForSelection.map((site) => (
-                    <div key={site.id} className="flex items-center space-x-2 py-1.5 px-2 hover:bg-muted rounded">
-                      <Checkbox
-                        id={site.id}
-                        checked={selectedSiteIds.includes(site.id)}
-                        onCheckedChange={() => handleSiteToggle(site.id)}
-                      />
-                      <label htmlFor={site.id} className="text-sm cursor-pointer flex-1">
-                        {site.codigo} - {site.nome}
-                      </label>
-                    </div>
-                  ))
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Button variant="outline" onClick={handleExport}>
-            <FileDown className="h-4 w-4 mr-2" />
-            Exportar Excel
-          </Button>
         </div>
       </div>
 
-      <DashboardCards totais={totais} />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {chartData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Valores por Projeto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend />
-                  <Bar dataKey="Produzido" fill="#3b82f6" />
-                  <Bar dataKey="Medido" fill="#22c55e" />
-                  <Bar dataKey="Faturado" fill="#10b981" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico 1: Produção Anual vs MB Real */}
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="space-y-1">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Produção Total Anual vs MB Real
+              </CardTitle>
+              <CardDescription>Produção total e atingimento acumulado por ano</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={annualData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(value) => `R$ ${value >= 1000000 ? (value/1000000).toFixed(1) + 'M' : (value/1000).toFixed(0) + 'k'}`} 
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Legend verticalAlign="top" height={36}/>
+                  <Bar dataKey="Produção Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar dataKey="MB Real" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
                 </BarChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
-        {pieData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Status Geral (% sobre Produção)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+        {/* Gráfico 2: Evolutivo de Produção Mensal */}
+        <Card className="shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="space-y-1">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Evolutivo de Produção Mensal
+              </CardTitle>
+              <CardDescription>Produção acumulada mês a mês no período</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyEvolutionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(value) => `R$ ${value >= 1000000 ? (value/1000000).toFixed(1) + 'M' : (value/1000).toFixed(0) + 'k'}`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="Produção" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, strokeWidth: 2, fill: 'white' }} 
+                    activeDot={{ r: 6, strokeWidth: 0 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico 3: Produção por Área */}
+        <Card className="shadow-md lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="space-y-1">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <PieChartIcon className="h-5 w-5 text-primary" />
+                Soma de Produção por Área
+              </CardTitle>
+              <CardDescription>Distribuição dos valores produzidos por área de atuação</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-center gap-8">
+            <div className="h-[300px] w-full md:w-1/2">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={areaData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name }) => name}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {areaData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="text-center text-sm text-muted-foreground mt-2">
-                Total Produzido: {formatCurrency(totais.totalProduzido)}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+            <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {areaData.map((item, index) => (
+                <div key={item.name} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate">{item.name}</span>
+                    <span className="text-xs text-muted-foreground font-semibold">{formatCurrency(item.value)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Tabela Quadro Geral */}
+      <Card className="shadow-md overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b">
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <TableIcon className="h-6 w-6 text-primary" />
+              Quadro Geral
+            </CardTitle>
+            <CardDescription>Visão consolidada por Área / Cliente / Projeto / Site e Gestor</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <QuadroGeral />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export default function EmpresaSetupPage() {
   // Redirect when empresaId becomes available
   useEffect(() => {
     if (!loading && empresaId) {
-      navigate("/medicoes/dashboard", { replace: true });
+      navigate("/medicoes/acompanhamento", { replace: true });
     }
   }, [loading, empresaId, navigate]);
 
@@ -40,7 +40,7 @@ export default function EmpresaSetupPage() {
 
       toast({ title: "Empresa criada com sucesso!" });
       await refreshProfile();
-      navigate("/medicoes/dashboard", { replace: true });
+      navigate("/medicoes/acompanhamento", { replace: true });
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {

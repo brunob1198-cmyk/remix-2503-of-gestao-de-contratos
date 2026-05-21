@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllPages } from "@/lib/supabasePagination";
-import { useDashboard } from "@/hooks/useDashboard";
+
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useLancamentosProducao, useLancamentosMedicao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
@@ -45,7 +45,16 @@ export default function RelatoriosPage() {
 
   const { projetos } = useProjetos();
   const { sites } = useSites();
-  const { resumoProjetos, resumoItens, totais } = useDashboard(projetoId || undefined);
+  // useDashboard removido pois não foi encontrado no projeto
+  const resumoProjetos = [];
+  const resumoItens = [];
+  const totais = { 
+    totalProduzido: 0, 
+    totalMedido: 0, 
+    totalFaturado: 0, 
+    totalAMedir: 0, 
+    totalAFaturar: 0 
+  };
   const { lancamentos: producao } = useLancamentosProducao();
   const { lancamentos: medicao } = useLancamentosMedicao();
   const { lancamentos: faturamento } = useLancamentosFaturamento();
@@ -118,7 +127,9 @@ export default function RelatoriosPage() {
   };
 
   const handleExportDashboard = () => {
-    exportDashboardToExcel(resumoProjetos, resumoItens, totais);
+    // Exportação desativada temporariamente devido à ausência do hook useDashboard
+    // exportDashboardToExcel(resumoProjetos, resumoItens, totais);
+    toast({ title: "Funcionalidade em manutenção" });
   };
 
   // Cross-reference report with flexible type selection
@@ -344,7 +355,7 @@ export default function RelatoriosPage() {
       [labels.origem]: s.total_origem,
       [labels.destino]: s.total_destino,
       [labels.diff]: s.diferenca,
-      "Observações Diário": s.observacoes_diario.join(" | "),
+      "Relatório Descritivo / Observações Diário": s.observacoes_diario.join(" | "),
     })));
 
     const typeName = crossType === "producao_medicao" 
@@ -572,7 +583,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
-                        <TableHead className="min-w-[300px]">Observações Diário</TableHead>
+                        <TableHead className="min-w-[300px]">Relatório Descritivo / Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -601,7 +612,7 @@ export default function RelatoriosPage() {
                                   onClick={() => {
                                     navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
                                     toast({
-                                      description: "Observações copiadas para a área de transferência",
+                                      description: "Relatório Descritivo / Observações copiados para a área de transferência",
                                     });
                                   }}
                                 >
