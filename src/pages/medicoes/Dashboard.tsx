@@ -5,7 +5,7 @@ import { fetchAllPages } from "@/lib/supabasePagination";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
-import { useLancamentosProducao } from "@/hooks/useLancamentos";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
