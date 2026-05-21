@@ -39,7 +39,7 @@ export default function DashboardPage() {
   const { projetos } = useProjetos();
   const { sites } = useSites();
   const { areas } = useAreas();
-  const { lancamentos: producao } = useLancamentosProducao();
+  
 
   // Buscar produções consolidadas da VIEW de BI (mais performático e cacheado)
   const { data: biProducao = [], isLoading: isLoadingBI } = useQuery({
@@ -86,12 +86,13 @@ export default function DashboardPage() {
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number }>();
     allProducao.forEach(p => {
-      if (!p.data) return;
-      const year = new Date(String(p.data)).getFullYear();
+      const year = p.ano;
+      if (!year) return;
       const current = yearsMap.get(year) || { year, total: 0 };
       current.total += p.valor_total;
       yearsMap.set(year, current);
     });
+
 
     return Array.from(yearsMap.values())
       .sort((a, b) => a.year - b.year)
@@ -106,6 +107,7 @@ export default function DashboardPage() {
   const areaData = useMemo(() => {
     const areaMap = new Map<string, number>();
     const areaNames = new Map(areas.map(a => [a.id, a.nome]));
+
 
     filteredProducao.forEach(p => {
       const areaName = areaNames.get(p.area_id) || "Outros";
