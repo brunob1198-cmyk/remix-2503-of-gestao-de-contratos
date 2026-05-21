@@ -608,6 +608,8 @@ export default function DiarioObraPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">KM Inicial</TableHead>
+                      <TableHead className="text-right">KM Final</TableHead>
                       <TableHead className="text-right">KM Rodados</TableHead>
                       <TableHead className="text-right">Custo</TableHead>
                       <TableHead />
@@ -617,11 +619,21 @@ export default function DiarioObraPage() {
                     {veiculos.map(v => (
                       <TableRow key={v.id}>
                         <TableCell>{v.descricao}</TableCell>
-                        <TableCell className="text-right">{v.km_rodados}</TableCell>
+                        <TableCell className="text-right">{v.km_inicial}</TableCell>
+                        <TableCell className="text-right">{v.km_final}</TableCell>
+                        <TableCell className="text-right font-medium">{v.km_rodados}</TableCell>
                         <TableCell className="text-right">{formatCurrency(v.custo_diaria)}</TableCell>
                         <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                       </TableRow>
                     ))}
+                    {veiculos.length > 0 && (
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right">{veiculos.reduce((sum, v) => sum + (v.km_rodados || 0), 0)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(veiculos.reduce((sum, v) => sum + (v.custo_diaria || 0), 0))}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
