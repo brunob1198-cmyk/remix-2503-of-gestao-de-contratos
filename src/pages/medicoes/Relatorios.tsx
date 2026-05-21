@@ -121,7 +121,9 @@ export default function RelatoriosPage() {
   };
 
   const handleExportDashboard = () => {
-    exportDashboardToExcel(resumoProjetos, resumoItens, totais);
+    // Exportação desativada temporariamente devido à ausência do hook useDashboard
+    // exportDashboardToExcel(resumoProjetos, resumoItens, totais);
+    toast({ title: "Funcionalidade em manutenção" });
   };
 
   // Cross-reference report with flexible type selection

@@ -42,7 +42,7 @@ export default function DashboardPage() {
     queryFn: async () => {
       const query = supabase
         .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(data, site_id, site:sites(area_id))");
+        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(data, site_id, site:sites(area_id, gestor:usuarios(nome)))");
       
       const data = await fetchAllPages<any>(query);
       return data.map(p => ({
