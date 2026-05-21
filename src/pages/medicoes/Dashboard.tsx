@@ -34,6 +34,10 @@ import { cn } from "@/lib/utils";
 export default function DashboardPage() {
   const [periodoInicio, setPeriodoInicio] = useState<Date>(startOfYear(new Date()));
   const [periodoFim, setPeriodoFim] = useState<Date>(endOfYear(new Date()));
+  
+  // Estados para o filtro específico do primeiro gráfico
+  const [periodoInicioAnual, setPeriodoInicioAnual] = useState<Date>(startOfYear(new Date()));
+  const [periodoFimAnual, setPeriodoFimAnual] = useState<Date>(endOfYear(new Date()));
 
   // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
@@ -66,7 +70,18 @@ export default function DashboardPage() {
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number, mb: number }>();
-    biAnalise.forEach((p: any) => {
+    
+    // Filtro específico para o gráfico anual
+    const filteredForAnnual = biAnalise.filter((p: any) => {
+      if (!p.Ano || !p["Mês Num"]) return false;
+      const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
+      return isWithinInterval(dataProducao, { 
+        start: startOfMonth(periodoInicioAnual), 
+        end: endOfMonth(periodoFimAnual) 
+      });
+    });
+
+    filteredForAnnual.forEach((p: any) => {
       const year = p.Ano;
       if (!year) return;
       const current = yearsMap.get(year) || { year, total: 0, mb: 0 };
@@ -82,7 +97,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
@@ -167,13 +182,28 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico 1: Produção Anual vs MB Real */}
         <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Produção Total Anual vs MB Real
-              </CardTitle>
-              <CardDescription>Produção total e atingimento acumulado por ano</CardDescription>
+          <CardHeader className="flex flex-col space-y-4 pb-2">
+            <div className="flex flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Produção Total Anual vs MB Real
+                </CardTitle>
+                <CardDescription>Produção total e atingimento acumulado por ano</CardDescription>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-md border w-fit">
+              <Label className="text-xs font-medium flex items-center gap-1">
+                <Filter className="h-3 w-3" /> Filtrar:
+              </Label>
+              <MonthRangePicker
+                startDate={periodoInicioAnual}
+                endDate={periodoFimAnual}
+                onChangeStart={setPeriodoInicioAnual}
+                onChangeEnd={(d) => setPeriodoFimAnual(endOfMonth(d))}
+                className="scale-90 origin-left"
+              />
             </div>
           </CardHeader>
           <CardContent className="pt-4">

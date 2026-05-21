@@ -13,6 +13,7 @@ interface MonthRangePickerProps {
   endDate: Date;
   onChangeStart: (d: Date) => void;
   onChangeEnd: (d: Date) => void;
+  className?: string;
 }
 
 function MonthGrid({ label, year, onYearChange, selectedMonth, selectedYear, onSelect }: {
@@ -55,7 +56,7 @@ function MonthGrid({ label, year, onYearChange, selectedMonth, selectedYear, onS
   );
 }
 
-export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEnd }: MonthRangePickerProps) {
+export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEnd, className }: MonthRangePickerProps) {
   const [startYear, setStartYear] = useState(startDate.getFullYear());
   const [endYear, setEndYear] = useState(endDate.getFullYear());
   const [open, setOpen] = useState(false);
@@ -81,7 +82,7 @@ export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEn
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-auto justify-start gap-2 font-normal">
+        <Button variant="outline" className={cn("w-auto justify-start gap-2 font-normal", className)}>
           <CalendarDays className="h-4 w-4" />
           <span className="capitalize">{labelStart}</span>
           <span className="text-muted-foreground">a</span>
