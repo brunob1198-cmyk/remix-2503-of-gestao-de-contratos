@@ -112,7 +112,13 @@ export default function DashboardPage() {
   const filteredProducao = useMemo(() => {
     if (periodo === "all") return allProducao;
     const year = parseInt(periodo);
-    return allProducao.filter(p => p.data && new Date(p.data).getFullYear() === year);
+    return allProducao.filter(p => {
+      if (!p.data) return false;
+      const dateStr = String(p.data);
+      // Handles both "YYYY-MM-DD" and Full ISO strings
+      const prodYear = new Date(dateStr).getFullYear();
+      return prodYear === year;
+    });
   }, [allProducao, periodo]);
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -120,7 +126,7 @@ export default function DashboardPage() {
     const yearsMap = new Map<number, { year: number, total: number }>();
     allProducao.forEach(p => {
       if (!p.data) return;
-      const year = new Date(p.data).getFullYear();
+      const year = new Date(String(p.data)).getFullYear();
       const current = yearsMap.get(year) || { year, total: 0 };
       current.total += p.valor_total;
       yearsMap.set(year, current);
@@ -191,7 +197,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <LayoutDashboard className="h-8 w-8 text-primary" />
-            Dashboard
+            Dashboard (Produção: {formatCurrency(filteredProducao.reduce((acc, p) => acc + p.valor_total, 0))})
           </h1>
           <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
