@@ -216,21 +216,35 @@ export default function DashboardPage() {
           <CardContent className="pt-4">
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={annualData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={annualData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tickFormatter={(value) => `R$ ${value >= 1000000 ? (value/1000000).toFixed(1) + 'M' : (value/1000).toFixed(0) + 'k'}`} 
+                    tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`} 
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
                   <Legend verticalAlign="top" height={36}/>
-                  <Bar dataKey="Produção Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
-                  <Bar dataKey="MB Real" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
+                  <Bar dataKey="Produção Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={50}>
+                    <LabelList 
+                      dataKey="Produção Total" 
+                      position="top" 
+                      formatter={(value: number) => formatCompactNumber(value)}
+                      style={{ fontSize: '11px', fontWeight: '600', fill: 'hsl(var(--foreground))' }}
+                    />
+                  </Bar>
+                  <Bar dataKey="MB Real" fill="#10b981" radius={[4, 4, 0, 0]} barSize={50}>
+                    <LabelList 
+                      dataKey="MB Real" 
+                      position="top" 
+                      formatter={(value: number) => formatCompactNumber(value)}
+                      style={{ fontSize: '11px', fontWeight: '600', fill: '#10b981' }}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
