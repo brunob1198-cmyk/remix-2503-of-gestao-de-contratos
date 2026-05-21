@@ -21,7 +21,8 @@ import {
   Line,
   Cell,
   PieChart,
-  Pie
+  Pie,
+  LabelList
 } from "recharts";
 import { format, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
