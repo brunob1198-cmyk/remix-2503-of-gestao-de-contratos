@@ -419,7 +419,12 @@ export default function DiarioObraPage() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-between" disabled={!selectedProjetoId}>
-                  {selectedSiteId ? sites.find(s => s.id === selectedSiteId)?.nome : "Selecione o site"}
+                  {selectedSiteId ? (
+                    (() => {
+                      const s = sites.find(s => s.id === selectedSiteId);
+                      return s ? `${s.codigo} — ${s.nome}` : "Selecione o site";
+                    })()
+                  ) : "Selecione o site"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
