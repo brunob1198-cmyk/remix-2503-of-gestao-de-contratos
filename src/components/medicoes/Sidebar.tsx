@@ -57,7 +57,7 @@ interface MenuItem {
 }
 
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
-  { id: "dashboard", title: "Dashboard", url: "/medicoes/dashboard", icon: LayoutDashboard, telaId: "dashboard" },
+  
   { id: "acompanhamento", title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento" },
   { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
   { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },

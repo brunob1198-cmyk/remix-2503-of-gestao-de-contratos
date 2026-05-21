@@ -21,7 +21,7 @@ import PendingApprovalPage from "./pages/PendingApproval";
 
 // Medicoes Portal
 import MedicoesLayout from "./pages/medicoes/Layout";
-import DashboardPage from "./pages/medicoes/Dashboard";
+// DashboardPage removido por solicitação do usuário
 import CadastrosPage from "./pages/medicoes/Cadastros";
 import MedicaoPage from "./pages/medicoes/Medicao";
 import FaturamentoPage from "./pages/medicoes/Faturamento";
@@ -59,7 +59,7 @@ const RootRedirect = () => {
     return <Navigate to={`/medicoes/integracao?tab=erp${location.search.replace('?', '&')}`} replace />;
   }
 
-  return <Navigate to="/medicoes/dashboard" replace />;
+  return <Navigate to="/medicoes/acompanhamento" replace />;
 };
 
 const App = () => {
@@ -90,8 +90,8 @@ const App = () => {
 
               {/* Gestão de Contratos - Protected */}
               <Route path="/medicoes" element={<ProtectedRoute><MedicoesLayout /></ProtectedRoute>}>
-                <Route index element={<Navigate to="/medicoes/dashboard" replace />} />
-                <Route path="dashboard" element={<DashboardPage />} />
+                <Route index element={<Navigate to="/medicoes/acompanhamento" replace />} />
+
                 <Route path="cadastros" element={<CadastrosPage />} />
                 <Route path="projetos" element={<Navigate to="/medicoes/cadastros" replace />} />
                 <Route path="sites" element={<Navigate to="/medicoes/cadastros" replace />} />
@@ -100,7 +100,7 @@ const App = () => {
                 <Route path="diario" element={<ErrorBoundary><DiarioObraPage /></ErrorBoundary>} />
                 <Route path="diario-campo" element={<DiarioCampoPage />} />
                 <Route path="analise" element={<AnaliseObraPage />} />
-                <Route path="producao" element={<Navigate to="/medicoes/dashboard" replace />} />
+                <Route path="producao" element={<Navigate to="/medicoes/acompanhamento" replace />} />
                 <Route path="medicao" element={<ErrorBoundary><MedicaoPage /></ErrorBoundary>} />
                 <Route path="faturamento" element={<ErrorBoundary><FaturamentoPage /></ErrorBoundary>} />
                 <Route path="acompanhamento" element={<ErrorBoundary><AcompanhamentoMedicoesPage /></ErrorBoundary>} />
