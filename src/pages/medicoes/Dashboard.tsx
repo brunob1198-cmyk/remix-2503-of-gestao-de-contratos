@@ -42,14 +42,27 @@ export default function DashboardPage() {
     queryFn: async () => {
       const query = supabase
         .from("diario_producao")
-        .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(data, site_id, site:sites(area_id, gestor:usuarios(nome)))");
+        .select(`
+          quantidade, 
+          valor_total, 
+          item_lpu:itens_lpu(preco_unitario), 
+          diario:diarios_obra!inner(
+            data, 
+            site_id, 
+            site:sites(
+              area_id, 
+              gestor:usuarios(nome)
+            )
+          )
+        `);
       
       const data = await fetchAllPages<any>(query);
       return data.map(p => ({
         quantidade: Number(p.quantidade),
         valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
         data: p.diario.data,
-        area_id: p.diario.site?.area_id
+        area_id: p.diario.site?.area_id,
+        gestor_nome: p.diario.site?.gestor?.nome || "Sem gestor"
       }));
     }
   });
