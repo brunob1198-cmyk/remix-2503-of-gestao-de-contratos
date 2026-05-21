@@ -344,7 +344,7 @@ export default function RelatoriosPage() {
       [labels.origem]: s.total_origem,
       [labels.destino]: s.total_destino,
       [labels.diff]: s.diferenca,
-      "Observações Diário": s.observacoes_diario.join(" | "),
+      "Relatório Descritivo / Observações Diário": s.observacoes_diario.join(" | "),
     })));
 
     const typeName = crossType === "producao_medicao" 
