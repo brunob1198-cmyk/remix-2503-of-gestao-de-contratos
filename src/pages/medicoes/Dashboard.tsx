@@ -31,6 +31,8 @@ import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIco
 
 export default function DashboardPage() {
   const [periodo, setPeriodo] = useState<string>("all");
+  const [mes, setMes] = useState<string>("all");
+
   
   // Set default to "all" to show all historical data initially
   useEffect(() => {
@@ -53,12 +55,23 @@ export default function DashboardPage() {
     }
   });
 
-  // Filtrar dados por período
+  // Filtrar dados por período (Ano e Mês)
   const filteredData = useMemo(() => {
-    if (periodo === "all") return biAnalise;
-    const year = parseInt(periodo);
-    return biAnalise.filter((p: any) => p.Ano === year);
-  }, [biAnalise, periodo]);
+    let data = biAnalise;
+    
+    if (periodo !== "all") {
+      const year = parseInt(periodo);
+      data = data.filter((p: any) => p.Ano === year);
+    }
+    
+    if (mes !== "all") {
+      const monthNum = parseInt(mes);
+      data = data.filter((p: any) => p["Mês Num"] === monthNum);
+    }
+    
+    return data;
+  }, [biAnalise, periodo, mes]);
+
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
@@ -145,23 +158,50 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
         
-        <div className="flex items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
-          <Label htmlFor="period-filter" className="flex items-center gap-2 text-sm font-medium">
-            <Filter className="h-4 w-4" /> Filtro:
-          </Label>
-          <Select value={periodo} onValueChange={setPeriodo}>
-            <SelectTrigger id="period-filter" className="w-[180px] h-9">
-              <SelectValue placeholder="Selecione o ano" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo o período</SelectItem>
-              <SelectItem value="2027">2027</SelectItem>
-              <SelectItem value="2026">2026</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-              <SelectItem value="2024">2024</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="period-filter" className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+              <Filter className="h-4 w-4" /> Ano:
+            </Label>
+            <Select value={periodo} onValueChange={(val) => { setPeriodo(val); if (val === "all") setMes("all"); }}>
+              <SelectTrigger id="period-filter" className="w-[140px] h-9">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="2027">2027</SelectItem>
+                <SelectItem value="2026">2026</SelectItem>
+                <SelectItem value="2025">2025</SelectItem>
+                <SelectItem value="2024">2024</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 border-l pl-3">
+            <Label htmlFor="month-filter" className="text-sm font-medium">Mês:</Label>
+            <Select value={mes} onValueChange={setMes}>
+              <SelectTrigger id="month-filter" className="w-[140px] h-9">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="1">Janeiro</SelectItem>
+                <SelectItem value="2">Fevereiro</SelectItem>
+                <SelectItem value="3">Março</SelectItem>
+                <SelectItem value="4">Abril</SelectItem>
+                <SelectItem value="5">Maio</SelectItem>
+                <SelectItem value="6">Junho</SelectItem>
+                <SelectItem value="7">Julho</SelectItem>
+                <SelectItem value="8">Agosto</SelectItem>
+                <SelectItem value="9">Setembro</SelectItem>
+                <SelectItem value="10">Outubro</SelectItem>
+                <SelectItem value="11">Novembro</SelectItem>
+                <SelectItem value="12">Dezembro</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
