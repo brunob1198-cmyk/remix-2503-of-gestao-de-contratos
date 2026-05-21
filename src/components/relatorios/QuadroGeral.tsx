@@ -2,7 +2,9 @@ import { useState, useMemo, useCallback, Fragment } from "react";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllPages } from "@/lib/supabasePagination";
 import { useProjetos } from "@/hooks/useProjetos";
+
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
 import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
