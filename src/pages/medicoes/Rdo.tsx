@@ -54,6 +54,8 @@ const classificacaoBadgeClass: Record<string, string> = {
   execucao: "bg-emerald-100 text-emerald-800",
   depois: "bg-purple-100 text-purple-800",
   problema: "bg-red-100 text-red-800",
+  Vistoria: "bg-amber-100 text-amber-800",
+  Execução: "bg-emerald-100 text-emerald-800",
 };
 
 const classificacaoColors: Record<string, string> = {
@@ -61,6 +63,8 @@ const classificacaoColors: Record<string, string> = {
   execucao: "#10b981",
   depois: "#a855f7",
   problema: "#ef4444",
+  Vistoria: "#f59e0b",
+  Execução: "#10b981",
 };
 
 const htmlCache = new Map<string, string>();
@@ -201,7 +205,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
               <div class="foto-card">
                 <img src="${resolveFileUrl(f.url, false, 'diario_fotos')}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
-                  <span class="foto-label-badge">${title}</span>
+                  <span class="foto-label-badge" style="background-color: ${classificacaoColors[first.classificacao || ''] || '#6b7280'}; color: white;">${title}</span>
                 </div>
               </div>`;
           
@@ -1402,7 +1406,10 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           {f.legenda && (
                             <p className="text-xs font-medium text-foreground leading-snug">{f.legenda}</p>
                           )}
-                          <span className="inline-block rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2.5 py-0.5">
+                          <span className={cn(
+                            "inline-block rounded-full text-[10px] font-semibold px-2.5 py-0.5",
+                            classificacaoBadgeClass[f.classificacao || ''] || "bg-gray-100 text-gray-800"
+                          )}>
                             {label}
                           </span>
                         </div>
