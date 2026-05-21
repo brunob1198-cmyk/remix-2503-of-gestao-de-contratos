@@ -137,7 +137,17 @@ export default function DiarioObraPage() {
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
-      setObs(diario.observacoes || "");
+      
+      // Se não houver observações no diário de obra, mas houver no campo, sugere importar
+      if (!diario.observacoes && atividadesCampo.length > 0) {
+        const obsCampo = atividadesCampo
+          .map((a, i) => `Atividade ${i + 1}: ${a.descricao_servico || ""}${a.observacoes ? `\nObs: ${a.observacoes}` : ""}`)
+          .join("\n\n");
+        setObs(obsCampo);
+      } else {
+        setObs(diario.observacoes || "");
+      }
+      
       setHeaderSaved(false);
     } else if (!diario && lastDiarioId.current !== null) {
       lastDiarioId.current = null;
