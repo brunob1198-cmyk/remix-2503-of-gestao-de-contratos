@@ -242,24 +242,24 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={annualData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '12px', fontWeight: '500' }} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '13px', fontWeight: '500' }} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
                     tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`} 
-                    style={{ fontSize: '12px' }}
+                    style={{ fontSize: '13px' }}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   />
-                  <Legend verticalAlign="top" height={36}/>
+                  <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '13px', fontWeight: '500' }}/>
                   <Bar dataKey="Produção Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={50}>
                     <LabelList 
                       dataKey="Produção Total" 
                       position="top" 
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '13px', fontWeight: '700', fill: 'hsl(var(--foreground))' }}
+                      style={{ fontSize: '14px', fontWeight: '700', fill: 'hsl(var(--foreground))' }}
                     />
                   </Bar>
                   <Bar dataKey="MB Real" fill="#10b981" radius={[4, 4, 0, 0]} barSize={50}>
@@ -267,7 +267,7 @@ export default function DashboardPage() {
                       dataKey="MB Real" 
                       position="top" 
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '13px', fontWeight: '700', fill: '#059669' }}
+                      style={{ fontSize: '14px', fontWeight: '700', fill: '#059669' }}
                     />
                   </Bar>
                 </BarChart>
@@ -292,12 +292,12 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyEvolutionData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '12px', fontWeight: '500' }} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '13px', fontWeight: '500' }} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
                     tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`}
-                    style={{ fontSize: '12px' }}
+                    style={{ fontSize: '13px' }}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
@@ -316,7 +316,7 @@ export default function DashboardPage() {
                       position="top" 
                       offset={12}
                       formatter={(value: number) => formatCompactNumber(value)}
-                      style={{ fontSize: '13px', fontWeight: '700', fill: 'hsl(var(--primary))' }}
+                      style={{ fontSize: '14px', fontWeight: '700', fill: 'hsl(var(--primary))' }}
                     />
                   </Line>
                 </LineChart>
@@ -370,7 +370,7 @@ export default function DashboardPage() {
                       width={100} 
                       axisLine={false} 
                       tickLine={false}
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: '13px' }}
                     />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
@@ -381,7 +381,7 @@ export default function DashboardPage() {
                         dataKey="value" 
                         position="right" 
                         formatter={(value: number) => formatCompactNumber(value)}
-                        style={{ fontSize: '12px', fontWeight: '700' }}
+                        style={{ fontSize: '13px', fontWeight: '700' }}
                       />
                     </Bar>
                   </BarChart>
