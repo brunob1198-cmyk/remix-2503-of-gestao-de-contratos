@@ -54,6 +54,8 @@ const classificacaoBadgeClass: Record<string, string> = {
   execucao: "bg-emerald-100 text-emerald-800",
   depois: "bg-purple-100 text-purple-800",
   problema: "bg-red-100 text-red-800",
+  Vistoria: "bg-amber-100 text-amber-800",
+  Execução: "bg-emerald-100 text-emerald-800",
 };
 
 const classificacaoColors: Record<string, string> = {
@@ -61,6 +63,8 @@ const classificacaoColors: Record<string, string> = {
   execucao: "#10b981",
   depois: "#a855f7",
   problema: "#ef4444",
+  Vistoria: "#f59e0b",
+  Execução: "#10b981",
 };
 
 const htmlCache = new Map<string, string>();
