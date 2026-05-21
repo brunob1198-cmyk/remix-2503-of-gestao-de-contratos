@@ -265,13 +265,13 @@ export default function DashboardPage() {
           <CardContent className="pt-4">
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyEvolutionData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={monthlyEvolutionData} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tickFormatter={(value) => `R$ ${value >= 1000000 ? (value/1000000).toFixed(1) + 'M' : (value/1000).toFixed(0) + 'k'}`}
+                    tickFormatter={(value) => `R$ ${formatCompactNumber(value)}`}
                   />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
@@ -284,7 +284,15 @@ export default function DashboardPage() {
                     strokeWidth={3} 
                     dot={{ r: 4, strokeWidth: 2, fill: 'white' }} 
                     activeDot={{ r: 6, strokeWidth: 0 }} 
-                  />
+                  >
+                    <LabelList 
+                      dataKey="Produção" 
+                      position="top" 
+                      offset={10}
+                      formatter={(value: number) => formatCompactNumber(value)}
+                      style={{ fontSize: '11px', fontWeight: '600', fill: 'hsl(var(--primary))' }}
+                    />
+                  </Line>
                 </LineChart>
               </ResponsiveContainer>
             </div>
