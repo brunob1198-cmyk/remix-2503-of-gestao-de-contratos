@@ -41,45 +41,28 @@ export default function DashboardPage() {
   const { areas } = useAreas();
   
 
-  // Buscar produções consolidadas da VIEW de BI (mais performático e cacheado)
-  const { data: biProducao = [], isLoading: isLoadingBI } = useQuery({
-    queryKey: ["bi_producao_dashboard"],
+  // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado)
+  const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
+    queryKey: ["bi_analise_dashboard"],
     staleTime: 1000 * 60 * 30, // 30 minutos de cache
-    gcTime: 1000 * 60 * 60, // 1 hora
     queryFn: async () => {
-      console.log("[Dashboard] Fetching BI production data...");
-      const query = supabase
-        .from("view_bi_producao")
-        .select("*")
-        .order("data_producao", { ascending: false });
+      console.log("[Dashboard] Fetching BI Analysis data...");
+      const { data, error } = await supabase
+        .from("view_bi_analise_obras")
+        .select("*");
       
-      const data = await fetchAllPages<any>(query);
-      console.log(`[Dashboard] Fetched ${data.length} BI production records`);
-      return data;
+      if (error) throw error;
+      console.log(`[Dashboard] Fetched ${data?.length || 0} BI analysis records`);
+      return data || [];
     }
   });
 
-  // Unificar dados de produção (View de BI já traz o consolidado do RDO e lançamentos manuais)
-  const allProducao = useMemo(() => {
-    return (biProducao || []).map(p => ({
-      id: p.id,
-      quantidade: Number(p.quantidade),
-      valor_total: Number(p.valor_total),
-      data: p.data_producao,
-      area_id: p.area_id,
-      area_nome: p.area_nome,
-      ano: p.ano,
-      mes: p.mes
-    }));
-  }, [biProducao]);
-
-
   // Filtrar dados por período
-  const filteredProducao = useMemo(() => {
-    if (periodo === "all") return allProducao;
+  const filteredData = useMemo(() => {
+    if (periodo === "all") return biAnalise;
     const year = parseInt(periodo);
-    return allProducao.filter(p => p.ano === year);
-  }, [allProducao, periodo]);
+    return biAnalise.filter(p => p.Ano === year);
+  }, [biAnalise, periodo]);
 
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -160,7 +143,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <LayoutDashboard className="h-8 w-8 text-primary" />
-            Dashboard (Produção: {formatCurrency(filteredProducao.reduce((acc, p) => acc + p.valor_total, 0))})
+            Dashboard (Produção: {formatCurrency(filteredData.reduce((acc, p) => acc + Number(p["Produção (POC)"] || 0), 0))})
           </h1>
           <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
