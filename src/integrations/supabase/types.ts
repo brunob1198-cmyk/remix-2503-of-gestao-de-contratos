@@ -4027,6 +4027,8 @@ export type Database = {
           area_id: string | null
           area_nome: string | null
           clima: string | null
+          custo_total_orcado: number | null
+          custo_unitario_orcado: number | null
           data_producao: string | null
           id: string | null
           item_codigo: string | null
