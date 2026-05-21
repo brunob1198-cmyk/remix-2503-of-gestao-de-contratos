@@ -24,8 +24,9 @@ export function useProjetos() {
   const { data, isLoading } = useQuery({
     queryKey: ["projetos"],
     ...QUERY_DEFAULTS,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 1000 * 60 * 30, // 30 min por ser um cadastro lento
+    gcTime: 1000 * 60 * 60, // 1 hora
+
     queryFn: async () => {
       console.log("Fetching projetos...");
       const { data, error } = await supabase

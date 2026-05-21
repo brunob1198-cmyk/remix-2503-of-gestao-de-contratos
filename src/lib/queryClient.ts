@@ -8,8 +8,9 @@ import { PersistedClient, Persister } from "@tanstack/react-query-persist-client
  * gcTime: 10 minutos (tempo que os dados permanecem em cache sem uso)
  */
 export const QUERY_DEFAULTS = {
-  staleTime: 0,
-  gcTime: 0,
+  staleTime: 1000 * 60 * 5, // 5 minutos por padrão
+  gcTime: 1000 * 60 * 15, // 15 minutos em cache sem uso
+
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
   refetchInterval: false as const,

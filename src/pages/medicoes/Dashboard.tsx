@@ -5,7 +5,7 @@ import { fetchAllPages } from "@/lib/supabasePagination";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
-import { useLancamentosProducao } from "@/hooks/useLancamentos";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -39,98 +39,60 @@ export default function DashboardPage() {
   const { projetos } = useProjetos();
   const { sites } = useSites();
   const { areas } = useAreas();
-  const { lancamentos: producao } = useLancamentosProducao();
+  
 
-  // Buscar produções do Diário de Obra (RDO)
-  const { data: diarioProducoes = [] } = useQuery({
-    queryKey: ["diario_producao_dashboard"],
+  // Buscar produções consolidadas da VIEW de BI (mais performático e cacheado)
+  const { data: biProducao = [], isLoading: isLoadingBI } = useQuery({
+    queryKey: ["bi_producao_dashboard"],
+    staleTime: 1000 * 60 * 30, // 30 minutos de cache
+    gcTime: 1000 * 60 * 60, // 1 hora
     queryFn: async () => {
-      let allData: any[] = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("diario_producao")
-          .select(`
-            quantidade, 
-            valor_total, 
-            item_lpu:itens_lpu(preco_unitario), 
-            diario:diarios_obra!inner(
-              data, 
-              site_id, 
-              site:sites(
-                area_id, 
-                gestor:usuarios(nome)
-              )
-            )
-          `)
-          .range(from, from + step - 1);
-        
-        if (error) {
-          console.error("Error fetching diario_producao:", error);
-          throw error;
-        }
-        
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...data];
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            from += step;
-          }
-        }
-      }
-
-      console.log(`[Dashboard] Fetched ${allData.length} RDO production records`);
-      return allData.map(p => ({
-        quantidade: Number(p.quantidade),
-        valor_total: Number(p.valor_total || (Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0))),
-        data: p.diario.data,
-        area_id: p.diario.site?.area_id,
-        gestor_nome: p.diario.site?.gestor?.nome || "Sem gestor"
-      }));
+      console.log("[Dashboard] Fetching BI production data...");
+      const query = supabase
+        .from("view_bi_producao")
+        .select("*")
+        .order("data_producao", { ascending: false });
+      
+      const data = await fetchAllPages<any>(query);
+      console.log(`[Dashboard] Fetched ${data.length} BI production records`);
+      return data;
     }
   });
 
-  // Unificar dados de produção
+  // Unificar dados de produção (View de BI já traz o consolidado do RDO e lançamentos manuais)
   const allProducao = useMemo(() => {
-    const manualProd = (producao || []).map(p => ({
+    return (biProducao || []).map(p => ({
+      id: p.id,
       quantidade: Number(p.quantidade),
-      valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0),
+      valor_total: Number(p.valor_total),
       data: p.data_producao,
-      area_id: (p.site as any)?.area_id
+      area_id: p.area_id,
+      area_nome: p.area_nome,
+      ano: p.ano,
+      mes: p.mes
     }));
+  }, [biProducao]);
 
-    return [...manualProd, ...diarioProducoes];
-  }, [producao, diarioProducoes]);
 
   // Filtrar dados por período
   const filteredProducao = useMemo(() => {
     if (periodo === "all") return allProducao;
     const year = parseInt(periodo);
-    return allProducao.filter(p => {
-      if (!p.data) return false;
-      const dateStr = String(p.data);
-      // Handles both "YYYY-MM-DD" and Full ISO strings
-      const prodYear = new Date(dateStr).getFullYear();
-      return prodYear === year;
-    });
+    return allProducao.filter(p => p.ano === year);
   }, [allProducao, periodo]);
+
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number }>();
     allProducao.forEach(p => {
-      if (!p.data) return;
-      const year = new Date(String(p.data)).getFullYear();
+      const year = p.ano;
+      if (!year) return;
       const current = yearsMap.get(year) || { year, total: 0 };
       current.total += p.valor_total;
       yearsMap.set(year, current);
     });
+
 
     return Array.from(yearsMap.values())
       .sort((a, b) => a.year - b.year)
@@ -145,6 +107,7 @@ export default function DashboardPage() {
   const areaData = useMemo(() => {
     const areaMap = new Map<string, number>();
     const areaNames = new Map(areas.map(a => [a.id, a.nome]));
+
 
     filteredProducao.forEach(p => {
       const areaName = areaNames.get(p.area_id) || "Outros";
