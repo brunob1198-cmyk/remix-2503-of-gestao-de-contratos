@@ -626,6 +626,14 @@ export default function DiarioObraPage() {
                         <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                       </TableRow>
                     ))}
+                    {veiculos.length > 0 && (
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right">{veiculos.reduce((sum, v) => sum + (v.km_rodados || 0), 0)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(veiculos.reduce((sum, v) => sum + (v.custo_diaria || 0), 0))}</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
