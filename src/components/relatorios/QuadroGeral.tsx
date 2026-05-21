@@ -267,9 +267,10 @@ export default function QuadroGeral() {
       executadoBySite.set(p.site_id, (executadoBySite.get(p.site_id) || 0) + valor);
     }
     for (const dp of diarioProducoes) {
-      const valor = (dp as any).valor_total || (dp.quantidade * dp.preco_unitario);
+      const valor = Number(dp.valor_total || 0);
       executadoBySite.set(dp.site_id, (executadoBySite.get(dp.site_id) || 0) + valor);
     }
+
 
     // Per-site faturado
     const faturadoBySite = new Map<string, number>();
