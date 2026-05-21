@@ -174,7 +174,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
       ` : ''}
 
       ${diario.observacoes ? `
-        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Observações Gerais</h2>
+        <h2><svg class="icon-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Relatório Descritivo / Observações Gerais</h2>
         <div class="observations-box">${diario.observacoes}</div>
       ` : ''}
 
@@ -1420,7 +1420,7 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-amber-600" />
-                Observações
+                Relatório Descritivo / Observações
               </CardTitle>
             </CardHeader>
             <CardContent>

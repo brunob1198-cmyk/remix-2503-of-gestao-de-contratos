@@ -344,7 +344,7 @@ export default function RelatoriosPage() {
       [labels.origem]: s.total_origem,
       [labels.destino]: s.total_destino,
       [labels.diff]: s.diferenca,
-      "Observações Diário": s.observacoes_diario.join(" | "),
+      "Relatório Descritivo / Observações Diário": s.observacoes_diario.join(" | "),
     })));
 
     const typeName = crossType === "producao_medicao" 
@@ -572,7 +572,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
-                        <TableHead className="min-w-[300px]">Observações Diário</TableHead>
+                        <TableHead className="min-w-[300px]">Relatório Descritivo / Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -601,7 +601,7 @@ export default function RelatoriosPage() {
                                   onClick={() => {
                                     navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
                                     toast({
-                                      description: "Observações copiadas para a área de transferência",
+                                      description: "Relatório Descritivo / Observações copiados para a área de transferência",
                                     });
                                   }}
                                 >
