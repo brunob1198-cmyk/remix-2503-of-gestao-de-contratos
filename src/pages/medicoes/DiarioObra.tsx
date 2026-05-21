@@ -131,13 +131,25 @@ export default function DiarioObraPage() {
   const [obs, setObs] = useState("");
 
   useEffect(() => {
+    // Adiciona atividadesCampo como dependência para carregar as observações quando os dados chegarem
+
     if (diario && diario.id !== lastDiarioId.current) {
       lastDiarioId.current = diario.id;
       const d = diario as any;
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
-      setObs(diario.observacoes || "");
+      
+      // Se não houver observações no diário de obra, mas houver no campo, sugere importar
+      if (!diario.observacoes && atividadesCampo.length > 0) {
+        const obsCampo = atividadesCampo
+          .map((a, i) => `Atividade ${i + 1}: ${a.descricao_servico || ""}${a.observacoes ? `\nObs: ${a.observacoes}` : ""}`)
+          .join("\n\n");
+        setObs(obsCampo);
+      } else {
+        setObs(diario.observacoes || "");
+      }
+      
       setHeaderSaved(false);
     } else if (!diario && lastDiarioId.current !== null) {
       lastDiarioId.current = null;
@@ -145,7 +157,7 @@ export default function DiarioObraPage() {
       setDiarioClima("");
       setHeaderSaved(false);
     }
-  }, [diario?.id, setDiarioUf, setDiarioMunicipio]);
+  }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
@@ -460,16 +472,33 @@ export default function DiarioObraPage() {
 
         <TabsContent value="lancamento">
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
-              <Select value={diarioClima} onValueChange={setDiarioClima}>
-                <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
-                <SelectContent>
-                  {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-              <Button onClick={handleSaveHeader}>Salvar</Button>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
+                <Select value={diarioClima} onValueChange={setDiarioClima}>
+                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
+                  <SelectContent>
+                    {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
+                <Button onClick={handleSaveHeader}>Salvar</Button>
+              </div>
+
+              <div className="flex-1" />
+
+              <AnotacoesCampoDialog
+                atividadesCampo={atividadesCampo}
+                diarioObraId={diario?.id || null}
+                itensDisponiveis={itensDisponiveis}
+                producoes={producoes}
+                fotosObra={fotos}
+                onFotoTransferred={() => {
+                  queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+                }}
+                ensureDiario={ensureDiario}
+                selectedDate={selectedDate}
+              />
             </div>
 
             <Card>
