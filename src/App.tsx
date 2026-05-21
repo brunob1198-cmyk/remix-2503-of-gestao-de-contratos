@@ -21,7 +21,7 @@ import PendingApprovalPage from "./pages/PendingApproval";
 
 // Medicoes Portal
 import MedicoesLayout from "./pages/medicoes/Layout";
-// DashboardPage removido por solicitação do usuário
+import DashboardPage from "./pages/medicoes/Dashboard";
 import CadastrosPage from "./pages/medicoes/Cadastros";
 import MedicaoPage from "./pages/medicoes/Medicao";
 import FaturamentoPage from "./pages/medicoes/Faturamento";
@@ -59,7 +59,7 @@ const RootRedirect = () => {
     return <Navigate to={`/medicoes/integracao?tab=erp${location.search.replace('?', '&')}`} replace />;
   }
 
-  return <Navigate to="/medicoes/acompanhamento" replace />;
+  return <Navigate to="/medicoes/dashboard" replace />;
 };
 
 const App = () => {
@@ -90,7 +90,8 @@ const App = () => {
 
               {/* Gestão de Contratos - Protected */}
               <Route path="/medicoes" element={<ProtectedRoute><MedicoesLayout /></ProtectedRoute>}>
-                <Route index element={<Navigate to="/medicoes/acompanhamento" replace />} />
+                <Route index element={<Navigate to="/medicoes/dashboard" replace />} />
+                <Route path="dashboard" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
 
                 <Route path="cadastros" element={<CadastrosPage />} />
                 <Route path="projetos" element={<Navigate to="/medicoes/cadastros" replace />} />
