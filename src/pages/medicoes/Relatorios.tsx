@@ -572,7 +572,7 @@ export default function RelatoriosPage() {
                             {labels.diff} {getCrossSortIcon("diferenca")}
                           </Button>
                         </TableHead>
-                        <TableHead className="min-w-[300px]">Observações Diário</TableHead>
+                        <TableHead className="min-w-[300px]">Relatório Descritivo / Observações Diário</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
