@@ -13,6 +13,20 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+// Cache em memória global (warm container cache)
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const globalCache = {
+  flashAccountId: new Map<string, CacheEntry<string>>(), // key: empresaId
+  defaultContactId: new Map<string, CacheEntry<string>>(), // key: empresaId
+  costCenters: new Map<string, CacheEntry<any[]>>(), // key: empresaId
+};
+
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutos em milissegundos
+
 const json = (payload: unknown, status = 200) =>
   new Response(JSON.stringify(payload), {
     status,
@@ -81,41 +95,68 @@ async function getValidAccessToken(supabase: any, empresaId: string): Promise<st
   return await refreshAccessToken(supabase, empresaId, data);
 }
 
-async function realizarBaixa(accessToken: string, contaAzulId: string, input: TransactionInput, transactionDate: string) {
+async function realizarBaixa(
+  accessToken: string,
+  contaAzulId: string,
+  input: TransactionInput,
+  transactionDate: string,
+  responseJson: any
+): Promise<{ success: boolean; error?: string }> {
   try {
     const transactionValue = Math.abs(Number(input.value) || 0);
     console.log(`[BAIXA] Iniciando baixa para evento ${contaAzulId}, valor: ${transactionValue}, data: ${transactionDate}`);
 
-    // Aguardar um momento para o evento ser processado antes de buscar parcelas
-    await new Promise((r) => setTimeout(r, 2000));
-
-    // Tentar buscar parcelas com retry
     let parcelas: any[] = [];
-    for (let tentativa = 0; tentativa < 3; tentativa++) {
-      const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (parcelasResp.ok) {
-        const respData = await parcelasResp.json();
-        parcelas = Array.isArray(respData) ? respData : (respData?.itens || respData?.data || []);
-        if (parcelas.length > 0) break;
-      } else {
-        console.warn(`[BAIXA] Tentativa ${tentativa + 1}/3 falhou ao buscar parcelas: HTTP ${parcelasResp.status}`);
+    
+    // 1. Tentar extrair do responseJson síncrono da criação
+    if (responseJson) {
+      const responseParcelas = responseJson.parcelas || responseJson.condicao_pagamento?.parcelas;
+      if (Array.isArray(responseParcelas) && responseParcelas.length > 0) {
+        parcelas = responseParcelas;
+        console.log(`[BAIXA] Parcelas obtidas diretamente da resposta de criação (${parcelas.length} parcelas)`);
       }
-      if (tentativa < 2) await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    // 2. Se não encontrou no responseJson, busca via API com retry resiliente
+    if (parcelas.length === 0) {
+      console.log(`[BAIXA] Nenhuma parcela no payload de criação. Buscando via API para evento ${contaAzulId}...`);
+      // Aguardar um momento para o evento ser indexado no Conta Azul
+      await new Promise((r) => setTimeout(r, 2000));
+      
+      for (let tentativa = 0; tentativa < 5; tentativa++) {
+        const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (parcelasResp.ok) {
+          const respData = await parcelasResp.json();
+          parcelas = Array.isArray(respData) ? respData : (respData?.itens || respData?.data || []);
+          if (parcelas.length > 0) break;
+        } else {
+          console.warn(`[BAIXA] Tentativa ${tentativa + 1}/5 falhou ao buscar parcelas: HTTP ${parcelasResp.status}`);
+        }
+        if (tentativa < 4) await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     if (parcelas.length === 0) {
-      console.error(`[BAIXA] Nenhuma parcela encontrada para o evento ${contaAzulId} após 3 tentativas`);
-      return;
+      const errMsg = `Nenhuma parcela encontrada para o evento ${contaAzulId} após retries.`;
+      console.error(`[BAIXA] ${errMsg}`);
+      return { success: false, error: errMsg };
     }
+
+    let baixadasComSucesso = 0;
+    let totalParcelasValidas = 0;
+    let ultimoErro: string | undefined;
 
     // Processar todas as parcelas não baixadas
     for (const parcela of parcelas) {
       const parcelaId = parcela?.id;
       if (!parcelaId) continue;
+      totalParcelasValidas++;
+
       if (parcela?.baixado || parcela?.liquidado || parcela?.situacao === "PAGO" || parcela?.situacao === "LIQUIDADO") {
         console.log(`[BAIXA] Parcela ${parcelaId} já baixada/liquidada, pulando.`);
+        baixadasComSucesso++;
         continue;
       }
 
@@ -141,12 +182,25 @@ async function realizarBaixa(accessToken: string, contaAzulId: string, input: Tr
       const baixaText = await baixaResp.text();
       if (baixaResp.ok) {
         console.log(`[BAIXA] Sucesso na baixa da parcela ${parcelaId}: ${baixaText.substring(0, 200)}`);
+        baixadasComSucesso++;
       } else {
-        console.error(`[BAIXA] Erro na baixa da parcela ${parcelaId} (HTTP ${baixaResp.status}): ${baixaText.substring(0, 500)}`);
+        ultimoErro = `Falha na baixa da parcela ${parcelaId} (HTTP ${baixaResp.status}): ${baixaText.substring(0, 300)}`;
+        console.error(`[BAIXA] ${ultimoErro}`);
       }
     }
-  } catch (e) {
-    console.error(`[BAIXA] Erro inesperado:`, e);
+
+    if (totalParcelasValidas > 0 && baixadasComSucesso === totalParcelasValidas) {
+      return { success: true };
+    } else {
+      return { 
+        success: false, 
+        error: ultimoErro || `Falhou ao baixar todas as parcelas (${baixadasComSucesso}/${totalParcelasValidas} sucesso)` 
+      };
+    }
+  } catch (e: any) {
+    const errMsg = e?.message || String(e);
+    console.error(`[BAIXA] Erro inesperado:`, errMsg);
+    return { success: false, error: errMsg };
   }
 }
 
@@ -483,7 +537,13 @@ async function sendOne(
     }
 
     if (status === "ENVIADO" && contaAzulId) {
-      await realizarBaixa(accessToken, contaAzulId, input, transactionDate);
+      const baixaResult = await realizarBaixa(accessToken, contaAzulId, input, transactionDate, responseJson);
+      if (!baixaResult.success) {
+        errorMsg = errorMsg 
+          ? `${errorMsg} | Erro na Baixa: ${baixaResult.error}` 
+          : `Erro na Baixa: ${baixaResult.error}`;
+        console.warn(`[BAIXA FALHA] Lançamento criado mas baixa falhou: ${baixaResult.error}`);
+      }
     }
   } catch (e: any) {
     errorMsg = e?.message || String(e);
@@ -491,7 +551,7 @@ async function sendOne(
 
   const duracao = Date.now() - startedAt;
 
-  await supabase.from("flash_integration_logs").insert({
+  const logEntry = {
     empresa_id: empresaId,
     flash_transaction_id: input.flash_transaction_id,
     conta_azul_transaction_id: contaAzulId,
@@ -504,7 +564,7 @@ async function sendOne(
     response: responseJson,
     erro: errorMsg,
     reconciliado: status === "ENVIADO" && !!contaAzulId,
-  });
+  };
 
   if (status === "ENVIADO") {
     // Lançamento confirmado pelo ContaAzul — marca como enviado
@@ -541,7 +601,7 @@ async function sendOne(
       .eq("empresa_id", empresaId);
   }
 
-  return { flash_transaction_id: input.flash_transaction_id, status, error: errorMsg };
+  return { flash_transaction_id: input.flash_transaction_id, status, error: errorMsg, logEntry };
 }
 
 serve(async (req) => {
@@ -580,43 +640,64 @@ serve(async (req) => {
     const { data: raws } = await admin.from("flash_transactions_raw").select("id, payload_json").eq("empresa_id", empresaId).in("id", ids);
     const rawsById = new Map((raws || []).map((r) => [r.id, r]));
 
+    // Verificar duplicidade em lote
+    const { data: existingLogs, error: logsErr } = await admin
+      .from("flash_integration_logs")
+      .select("flash_transaction_id")
+      .in("flash_transaction_id", ids)
+      .eq("status", "ENVIADO");
+    
+    if (logsErr) {
+      console.error("[WARN] Erro ao verificar duplicidade em lote:", logsErr);
+    }
+    const integratedIds = new Set(existingLogs?.map((l: any) => l.flash_transaction_id) || []);
+
     const accessToken = await getValidAccessToken(admin, empresaId);
     
-    // Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos)
-    let flashAccountId: string | undefined;
-    const accountEndpoints = [
-      `${CONTAAZUL_API}/v1/conta-financeira`,
-      `${CONTAAZUL_API}/v1/contas-financeiras`,
-      `${CONTAAZUL_API}/v1/bank-accounts`,
-      `${CONTAAZUL_API}/v2/bank-accounts`,
-      `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`
-    ];
+    const cacheKey = empresaId;
+    const now = Date.now();
 
-    for (const url of accountEndpoints) {
-      try {
-        const resp = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-        });
-        const text = await resp.text();
-        console.log(`[DEBUG] Tentando endpoint ${url} (HTTP ${resp.status})`);
-        
-        if (resp.ok) {
-          const data = JSON.parse(text);
-          // A API v1 pode retornar um array direto ou { itens: [] } ou { items: [] }
-          const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || data?.content || []);
-          console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
+    // 1. Buscar a conta bancária "flash" no Conta Azul (tentando endpoints conhecidos ou cache)
+    let flashAccountId: string | undefined;
+    const cachedAccount = globalCache.flashAccountId.get(cacheKey);
+    if (cachedAccount && cachedAccount.expiresAt > now) {
+      flashAccountId = cachedAccount.data;
+      console.log(`[CACHE] Conta "flash" recuperada do cache: ${flashAccountId}`);
+    } else {
+      const accountEndpoints = [
+        `${CONTAAZUL_API}/v1/conta-financeira`,
+        `${CONTAAZUL_API}/v1/contas-financeiras`,
+        `${CONTAAZUL_API}/v1/bank-accounts`,
+        `${CONTAAZUL_API}/v2/bank-accounts`,
+        `${CONTAAZUL_API}/v1/financeiro/contas-financeiras`
+      ];
+
+      for (const url of accountEndpoints) {
+        try {
+          const resp = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          const text = await resp.text();
+          console.log(`[DEBUG] Tentando endpoint ${url} (HTTP ${resp.status})`);
           
-          const found = accounts.find((a: any) => 
-            (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
-          );
-          if (found) {
-            flashAccountId = found.id;
-            console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
-            break;
+          if (resp.ok) {
+            const data = JSON.parse(text);
+            const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || data?.content || []);
+            console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
+            
+            const found = accounts.find((a: any) => 
+              (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
+            );
+            if (found) {
+              flashAccountId = found.id;
+              console.log(`[DEBUG] Conta "flash" encontrada: ${flashAccountId}`);
+              globalCache.flashAccountId.set(cacheKey, { data: flashAccountId, expiresAt: now + CACHE_TTL });
+              break;
+            }
           }
+        } catch (e) {
+          console.error(`[ERROR] Falha ao consultar ${url}:`, e);
         }
-      } catch (e) {
-        console.error(`[ERROR] Falha ao consultar ${url}:`, e);
       }
     }
 
@@ -624,59 +705,75 @@ serve(async (req) => {
        console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados. A função continuará mas pode falhar no CA.");
     }
 
-    // Buscar um contato padrão
+    // 2. Buscar um contato padrão (tentando endpoints conhecidos ou cache)
     let defaultContactId: string | undefined;
-    const contactEndpoints = [
-      `${CONTAAZUL_API}/v1/customers?limit=1`,
-      `${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`,
-      `${CONTAAZUL_API}/v1/contatos?limit=1`
-    ];
+    const cachedContact = globalCache.defaultContactId.get(cacheKey);
+    if (cachedContact && cachedContact.expiresAt > now) {
+      defaultContactId = cachedContact.data;
+      console.log(`[CACHE] Contato padrão recuperado do cache: ${defaultContactId}`);
+    } else {
+      const contactEndpoints = [
+        `${CONTAAZUL_API}/v1/customers?limit=1`,
+        `${CONTAAZUL_API}/v1/financeiro/contatos?limit=1`,
+        `${CONTAAZUL_API}/v1/contatos?limit=1`
+      ];
 
-    for (const url of contactEndpoints) {
+      for (const url of contactEndpoints) {
+        try {
+          const resp = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0] || data?.content?.[0]);
+            if (contact?.id) {
+              defaultContactId = contact.id;
+              globalCache.defaultContactId.set(cacheKey, { data: defaultContactId, expiresAt: now + CACHE_TTL });
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. Buscar todos os centros de custo do Conta Azul (com paginação ou cache)
+    let costCenters: any[] = [];
+    const cachedCC = globalCache.costCenters.get(cacheKey);
+    if (cachedCC && cachedCC.expiresAt > now) {
+      costCenters = cachedCC.data;
+      console.log(`[CACHE] Centros de custo (${costCenters.length}) recuperados do cache`);
+    } else {
       try {
-        const resp = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          const contact = Array.isArray(data) ? data[0] : (data?.itens?.[0] || data?.data?.[0] || data?.items?.[0] || data?.content?.[0]);
-          if (contact?.id) {
-            defaultContactId = contact.id;
+        let page = 1;
+        let hasMore = true;
+        const pageSize = 100;
+        while (hasMore && page <= 10) {
+          const url = `${CONTAAZUL_API}/v1/centro-de-custo?pagina=${page}&tamanho_pagina=${pageSize}`;
+          const ccResp = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          if (ccResp.ok) {
+            const ccData = await ccResp.json();
+            const list = Array.isArray(ccData) ? ccData : (ccData?.itens || ccData?.data || ccData?.items || []);
+            if (!list.length) break;
+            costCenters.push(...list);
+            if (list.length < pageSize) {
+              hasMore = false;
+            } else {
+              page++;
+            }
+          } else {
+            console.error(`[ERROR] Falha ao carregar centros de custo (Pág ${page}): HTTP ${ccResp.status}`);
             break;
           }
         }
-      } catch (e) {}
-    }
-
-    // Buscar todos os centros de custo do Conta Azul (com paginação)
-    let costCenters: any[] = [];
-    try {
-      let page = 1;
-      let hasMore = true;
-      const pageSize = 100;
-      while (hasMore && page <= 10) {
-        const url = `${CONTAAZUL_API}/v1/centro-de-custo?pagina=${page}&tamanho_pagina=${pageSize}`;
-        const ccResp = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-        });
-        if (ccResp.ok) {
-          const ccData = await ccResp.json();
-          const list = Array.isArray(ccData) ? ccData : (ccData?.itens || ccData?.data || ccData?.items || []);
-          if (!list.length) break;
-          costCenters.push(...list);
-          if (list.length < pageSize) {
-            hasMore = false;
-          } else {
-            page++;
-          }
-        } else {
-          console.error(`[ERROR] Falha ao carregar centros de custo (Pág ${page}): HTTP ${ccResp.status}`);
-          break;
+        console.log(`[DEBUG] Total de centros de custo carregados: ${costCenters.length}`);
+        if (costCenters.length > 0) {
+          globalCache.costCenters.set(cacheKey, { data: costCenters, expiresAt: now + CACHE_TTL });
         }
+      } catch (e) {
+        console.error("[ERROR] Erro ao carregar centros de custo:", e);
       }
-      console.log(`[DEBUG] Total de centros de custo carregados: ${costCenters.length}`);
-    } catch (e) {
-      console.error("[ERROR] Erro ao carregar centros de custo:", e);
     }
 
     // Buscar mapeamento de centro de custo por funcionário
@@ -702,7 +799,18 @@ serve(async (req) => {
     }
 
     const results = [];
+    const logsToInsert: any[] = [];
+
     for (const n of norms) {
+      if (integratedIds.has(n.flash_transaction_id)) {
+        results.push({
+          flash_transaction_id: n.flash_transaction_id,
+          status: "skipped",
+          error: "Transação já integrada anteriormente (controle de duplicidade em lote)",
+        });
+        continue;
+      }
+
       const raw = rawsById.get(n.flash_transaction_id);
       const snap = (n.conta_azul_payload || {}) as any;
       
@@ -817,9 +925,24 @@ serve(async (req) => {
         observacao: comentarios,
         cost_center: costCenter,
         cost_center_id: costCenterId,
-        force_pago: snap.force_pago !== false, // Default true
+        force_pago: true, // Forçar sempre verdadeiro (Pago)
       }, true, defaultContactId); 
+
+      if (r.logEntry) {
+        logsToInsert.push(r.logEntry);
+        delete r.logEntry;
+      }
       results.push(r);
+    }
+
+    // Realizar o insert em lote dos logs
+    if (logsToInsert.length > 0) {
+      const { error: bulkInsertErr } = await admin.from("flash_integration_logs").insert(logsToInsert);
+      if (bulkInsertErr) {
+        console.error("[ERROR] Erro ao fazer insert em lote dos logs no banco:", bulkInsertErr);
+      } else {
+        console.log(`[OK] Inseridos em lote ${logsToInsert.length} logs de integração.`);
+      }
     }
 
     return json({ ok: true, results });
