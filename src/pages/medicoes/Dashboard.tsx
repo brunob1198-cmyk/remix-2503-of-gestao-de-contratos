@@ -182,13 +182,28 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico 1: Produção Anual vs MB Real */}
         <Card className="shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="space-y-1">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Produção Total Anual vs MB Real
-              </CardTitle>
-              <CardDescription>Produção total e atingimento acumulado por ano</CardDescription>
+          <CardHeader className="flex flex-col space-y-4 pb-2">
+            <div className="flex flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Produção Total Anual vs MB Real
+                </CardTitle>
+                <CardDescription>Produção total e atingimento acumulado por ano</CardDescription>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-md border w-fit">
+              <Label className="text-xs font-medium flex items-center gap-1">
+                <Filter className="h-3 w-3" /> Filtrar:
+              </Label>
+              <MonthRangePicker
+                startDate={periodoInicioAnual}
+                endDate={periodoFimAnual}
+                onChangeStart={setPeriodoInicioAnual}
+                onChangeEnd={(d) => setPeriodoFimAnual(endOfMonth(d))}
+                className="scale-90 origin-left"
+              />
             </div>
           </CardHeader>
           <CardContent className="pt-4">
