@@ -619,7 +619,9 @@ export default function DiarioObraPage() {
                     {veiculos.map(v => (
                       <TableRow key={v.id}>
                         <TableCell>{v.descricao}</TableCell>
-                        <TableCell className="text-right">{v.km_rodados}</TableCell>
+                        <TableCell className="text-right">{v.km_inicial}</TableCell>
+                        <TableCell className="text-right">{v.km_final}</TableCell>
+                        <TableCell className="text-right font-medium">{v.km_rodados}</TableCell>
                         <TableCell className="text-right">{formatCurrency(v.custo_diaria)}</TableCell>
                         <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                       </TableRow>
