@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllPages } from "@/lib/supabasePagination";
 import { useProjetos } from "@/hooks/useProjetos";
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
@@ -24,8 +23,7 @@ import {
   PieChart,
   Pie
 } from "recharts";
-import { format, parseISO, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, ptBR } from "date-fns/locale";
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import { LayoutDashboard, Filter, TrendingUp, BarChart3, PieChart as PieChartIcon, Table as TableIcon } from "lucide-react";
 
@@ -36,12 +34,8 @@ export default function DashboardPage() {
   useEffect(() => {
     setPeriodo("all");
   }, []);
-  const { projetos } = useProjetos();
-  const { sites } = useSites();
-  const { areas } = useAreas();
-  
 
-  // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado)
+  // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
     queryKey: ["bi_analise_dashboard"],
     staleTime: 1000 * 60 * 30, // 30 minutos de cache
@@ -61,46 +55,43 @@ export default function DashboardPage() {
   const filteredData = useMemo(() => {
     if (periodo === "all") return biAnalise;
     const year = parseInt(periodo);
-    return biAnalise.filter(p => p.Ano === year);
+    return biAnalise.filter((p: any) => p.Ano === year);
   }, [biAnalise, periodo]);
-
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
-    const yearsMap = new Map<number, { year: number, total: number }>();
-    allProducao.forEach(p => {
-      const year = p.ano;
+    const yearsMap = new Map<number, { year: number, total: number, mb: number }>();
+    biAnalise.forEach((p: any) => {
+      const year = p.Ano;
       if (!year) return;
-      const current = yearsMap.get(year) || { year, total: 0 };
-      current.total += p.valor_total;
+      const current = yearsMap.get(year) || { year, total: 0, mb: 0 };
+      current.total += Number(p["Produção (POC)"] || 0);
+      current.mb += Number(p["MB Real (R$)"] || 0);
       yearsMap.set(year, current);
     });
-
 
     return Array.from(yearsMap.values())
       .sort((a, b) => a.year - b.year)
       .map(d => ({
         name: d.year.toString(),
         "Produção Total": d.total,
-        "MB Real": d.total * 0.95 // Exemplo de cálculo acumulado simulando o MB real atingido
+        "MB Real": d.mb
       }));
-  }, [allProducao]);
+  }, [biAnalise]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
     const areaMap = new Map<string, number>();
-    const areaNames = new Map(areas.map(a => [a.id, a.nome]));
-
-
-    filteredProducao.forEach(p => {
-      const areaName = areaNames.get(p.area_id) || "Outros";
-      areaMap.set(areaName, (areaMap.get(areaName) || 0) + p.valor_total);
+    
+    filteredData.forEach((p: any) => {
+      const areaName = p["Área"] || "Outros";
+      areaMap.set(areaName, (areaMap.get(areaName) || 0) + Number(p["Produção (POC)"] || 0));
     });
 
     return Array.from(areaMap.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [filteredProducao, areas]);
+  }, [filteredData]);
 
   // 3. Gráfico Evolutivo de Produção por Mês
   const monthlyEvolutionData = useMemo(() => {
@@ -109,28 +100,32 @@ export default function DashboardPage() {
     // Se um ano estiver selecionado, garantir que todos os meses apareçam
     if (periodo !== "all") {
       const year = parseInt(periodo);
-      const months = eachMonthOfInterval({
-        start: startOfYear(new Date(year, 0, 1)),
-        end: endOfYear(new Date(year, 0, 1))
-      });
-      months.forEach(m => {
-        monthsMap.set(format(m, "yyyy-MM"), 0);
-      });
+      for (let i = 1; i <= 12; i++) {
+        const monthKey = `${year}-${i.toString().padStart(2, '0')}`;
+        monthsMap.set(monthKey, 0);
+      }
     }
 
-    filteredProducao.forEach(p => {
-      if (!p.data) return;
-      const monthKey = format(parseISO(p.data), "yyyy-MM");
-      monthsMap.set(monthKey, (monthsMap.get(monthKey) || 0) + p.valor_total);
+    filteredData.forEach((p: any) => {
+      const year = p.Ano;
+      const month = p["Mês Num"];
+      if (!year || !month) return;
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+      monthsMap.set(monthKey, (monthsMap.get(monthKey) || 0) + Number(p["Produção (POC)"] || 0));
     });
 
     return Array.from(monthsMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([key, value]) => ({
-        name: format(parseISO(key + "-01"), "MMM/yy", { locale: ptBR }),
-        "Produção": value
-      }));
-  }, [filteredProducao, periodo]);
+      .map(([key, value]) => {
+        const [y, m] = key.split('-');
+        const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+        const name = new Intl.DateTimeFormat('pt-BR', { month: 'short', year: '2-digit' }).format(date);
+        return {
+          name,
+          "Produção": value
+        };
+      });
+  }, [filteredData, periodo]);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
@@ -143,7 +138,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <LayoutDashboard className="h-8 w-8 text-primary" />
-            Dashboard (Produção: {formatCurrency(filteredData.reduce((acc, p) => acc + Number(p["Produção (POC)"] || 0), 0))})
+            Dashboard (Produção: {formatCurrency(filteredData.reduce((acc, p: any) => acc + Number(p["Produção (POC)"] || 0), 0))})
           </h1>
           <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
         </div>
@@ -266,7 +261,7 @@ export default function DashboardPage() {
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {areaData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
