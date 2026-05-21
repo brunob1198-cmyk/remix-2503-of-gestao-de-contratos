@@ -4326,6 +4326,24 @@ export type Database = {
           },
         ]
       }
+      view_quadro_geral_bi: {
+        Row: {
+          "% Evolução": number | null
+          Área: string | null
+          Cliente: string | null
+          "Projeto Código": string | null
+          "Projeto Nome": string | null
+          "Saldo Contrato": number | null
+          "Site Código": string | null
+          "Site Nome": string | null
+          "Status Projeto": string | null
+          "Valor Contrato": number | null
+          "Valor Executado": number | null
+          "Valor Faturado": number | null
+          "Valor Não Faturado": number | null
+        }
+        Relationships: []
+      }
       vw_resumo_financeiro_site_item: {
         Row: {
           item_codigo: string | null
