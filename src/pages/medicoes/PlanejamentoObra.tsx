@@ -17,9 +17,8 @@ import { FrenteForm } from "@/components/planejamento/FrenteForm";
 
 // SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
-import { CurvaSDashboard } from "@/components/planejamento/CurvaSDashboard";
 import { ProducaoTab } from "@/components/analise/ProducaoTab";
-import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, TrendingUp, Trash2, Sparkles, ClipboardList } from "lucide-react";
+import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, Trash2, Sparkles, ClipboardList } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
