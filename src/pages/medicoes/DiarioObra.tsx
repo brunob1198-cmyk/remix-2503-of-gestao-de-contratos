@@ -608,6 +608,8 @@ export default function DiarioObraPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">KM Inicial</TableHead>
+                      <TableHead className="text-right">KM Final</TableHead>
                       <TableHead className="text-right">KM Rodados</TableHead>
                       <TableHead className="text-right">Custo</TableHead>
                       <TableHead />
