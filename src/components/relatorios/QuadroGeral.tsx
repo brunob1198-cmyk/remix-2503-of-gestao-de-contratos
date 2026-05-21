@@ -178,7 +178,10 @@ export default function QuadroGeral() {
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
     queryKey: ["escopo_itens_all"],
+    staleTime: 1000 * 60 * 30, // 30 min cache
+    gcTime: 1000 * 60 * 60,
     queryFn: async () => {
+
       const { data, error } = await supabase
         .from("escopo_itens")
         .select("site_id, quantidade, valor_unitario")
@@ -190,41 +193,25 @@ export default function QuadroGeral() {
 
   const { data: diarioProducoes = [], isLoading: loadingDiario } = useQuery({
     queryKey: ["diario_producao_quadro"],
+    staleTime: 1000 * 60 * 30, // 30 min cache
+    gcTime: 1000 * 60 * 60,
     queryFn: async () => {
-      let allData: any[] = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("diario_producao")
-          .select("quantidade, valor_total, item_lpu:itens_lpu(preco_unitario), diario:diarios_obra!inner(site_id)")
-          .order("id")
-          .range(from, from + step - 1);
-        
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...data];
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            from += step;
-          }
-        }
-      }
-
-      console.log(`[QuadroGeral] Fetched ${allData.length} production records`);
-      return allData.map(p => ({
-        site_id: (p as any).diario?.site_id || "",
+      console.log("[QuadroGeral] Fetching BI production data...");
+      const query = supabase
+        .from("view_bi_producao")
+        .select("site_id, quantidade, valor_total");
+      
+      const data = await fetchAllPages<any>(query);
+      console.log(`[QuadroGeral] Fetched ${data.length} records from view_bi_producao`);
+      
+      return data.map(p => ({
+        site_id: p.site_id || "",
         quantidade: Number(p.quantidade),
-        preco_unitario: Number((p as any).item_lpu?.preco_unitario || 0),
-        valor_total: Math.round(Number(p.valor_total || (Number(p.quantidade) * Number((p as any).item_lpu?.preco_unitario || 0))) * 100) / 100,
+        valor_total: Math.round(Number(p.valor_total) * 100) / 100,
       }));
     },
   });
+
 
   const [filterAreaArr, setFilterAreaArr] = usePersistedState<string[]>("quadro-geral-filter-area", []);
   const [filterClienteArr, setFilterClienteArr] = usePersistedState<string[]>("quadro-geral-filter-cliente", []);

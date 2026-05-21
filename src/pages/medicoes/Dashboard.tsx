@@ -78,14 +78,9 @@ export default function DashboardPage() {
   const filteredProducao = useMemo(() => {
     if (periodo === "all") return allProducao;
     const year = parseInt(periodo);
-    return allProducao.filter(p => {
-      if (!p.data) return false;
-      const dateStr = String(p.data);
-      // Handles both "YYYY-MM-DD" and Full ISO strings
-      const prodYear = new Date(dateStr).getFullYear();
-      return prodYear === year;
-    });
+    return allProducao.filter(p => p.ano === year);
   }, [allProducao, periodo]);
+
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
