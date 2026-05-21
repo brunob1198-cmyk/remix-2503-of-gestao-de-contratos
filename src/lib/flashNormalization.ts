@@ -192,8 +192,12 @@ export const normalizeFlashTransaction = (
     "receipt.comments", "accounting.comments"
   ]) || null;
   
-  const valorRaw = typeof transaction.valor === "number" ? transaction.valor * 100 : pickNumber(payload, ["amount", "value", "valor", "total"]);
-  const valor = valorRaw / 100;
+  // Flash API retorna amounts em centavos (inteiros). Ex: 4680 = R$46,80.
+  // Se transaction.valor já foi pré-processado (dividido por 100 no hook), usamos direto.
+  // Caso contrário, pegamos do payload (centavos) e dividimos por 100.
+  const valor = typeof transaction.valor === "number"
+    ? transaction.valor  // Já está em reais (pré-processado pelo hook)
+    : pickNumber(payload, ["amount", "value", "valor", "total"]) / 100;  // Centavos → reais
   const data = transaction.data || pickValue(payload, ["date", "data", "transaction_date", "created_at", "datetime"]);
 
   // A conta financeira correta para o Conta Azul é apenas "Flash"

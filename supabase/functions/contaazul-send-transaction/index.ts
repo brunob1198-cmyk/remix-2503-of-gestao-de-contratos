@@ -620,26 +620,83 @@ serve(async (req) => {
         || raw?.payload_json?.justification
         || null;
 
-      // Centro de custo: Prioridade 1: Snapshot/Payload, Prioridade 2: Mapping por funcionário
-      let costCenter = snap.cost_center
-        || raw?.payload_json?.costCenter?.name
-        || raw?.payload_json?.cost_center?.name
-        || raw?.payload_json?.centro_custo
-        || null;
+      // Centro de custo: Cadeia completa de fallbacks
+      // Prioridade 1: Valor editado manualmente (snapshot)
+      // Prioridade 2: Campos do payload_json da Flash
+      // Prioridade 3: Mapping por funcionário (DB)
+      let costCenter = snap.cost_center || null;
 
-      if (!costCenter || costCenter === "—") {
-        const empId = raw?.payload_json?.employee?.id;
-        if (empId && ccMap[empId]) {
-          costCenter = ccMap[empId];
-          console.log(`[DEBUG] Aplicando centro de custo fallback para funcionário ${empId}: ${costCenter}`);
+      // Se não veio do snapshot, buscar do payload Flash
+      if (!costCenter || costCenter === "—" || costCenter === "") {
+        const pj = raw?.payload_json;
+        costCenter = pj?.costCenter?.name
+          || pj?.costCenter?.code
+          || pj?.cost_center?.name
+          || pj?.cost_center?.code
+          || pj?.centro_custo
+          || pj?.centroCusto
+          || pj?.employee?.costCenter?.name
+          || pj?.employee?.costCenter?.code
+          || pj?.employee?.cost_center?.name
+          || pj?.user?.costCenter?.name
+          || pj?.user?.costCenter?.code
+          || null;
+        if (costCenter) {
+          console.log(`[DEBUG] CC extraído do payload_json: "${costCenter}"`);
         }
       }
 
-      // Valor: snap.amount já está em reais (dividido por 100 no frontend)
-      const rawAmount = raw?.payload_json?.amount;
-      const valueInReais = typeof snap.amount === "number"
-        ? snap.amount
-        : (typeof rawAmount === "number" ? rawAmount / 100 : 0);
+      // Fallback: mapping por funcionário (via RPC)
+      if (!costCenter || costCenter === "—" || costCenter === "") {
+        const empId = raw?.payload_json?.employee?.id;
+        if (empId && ccMap[empId]) {
+          costCenter = ccMap[empId];
+          console.log(`[DEBUG] CC via fallback funcionário ${empId}: "${costCenter}"`);
+        }
+      }
+
+      // Limpar valor inválido
+      if (costCenter === "—" || costCenter === "") costCenter = null;
+      console.log(`[DEBUG] CC final para ${n.flash_transaction_id}: "${costCenter || '(vazio)'}"`);
+
+      // Valor: snap.amount deveria estar em reais, mas snapshots antigos podem ter
+      // o valor em centavos (bug anterior). Detectamos comparando com o payload cru.
+      const rawAmountCents = raw?.payload_json?.amount; // Valor em centavos da Flash
+      let valueInReais: number;
+      if (typeof snap.amount === "number" && snap.amount > 0) {
+        // Heurística: comparar com o valor bruto em centavos do payload
+        // Se snap.amount === rawAmountCents, o snap está em centavos → dividir por 100
+        // Se snap.amount === rawAmountCents / 100, o snap já está em reais
+        if (typeof rawAmountCents === "number" && rawAmountCents > 0) {
+          if (Math.abs(snap.amount - rawAmountCents) < 0.01) {
+            // snap.amount ≈ centavos → converter para reais
+            valueInReais = snap.amount / 100;
+            console.log(`[VALUE FIX] snap.amount ${snap.amount} = centavos (raw=${rawAmountCents}), convertendo: R$${valueInReais}`);
+          } else if (Math.abs(snap.amount - rawAmountCents / 100) < 0.01) {
+            // snap.amount ≈ reais → usar direto
+            valueInReais = snap.amount;
+          } else {
+            // Não conseguimos determinar; assume reais se < rawAmountCents, senão centavos
+            if (snap.amount >= rawAmountCents && Number.isInteger(snap.amount)) {
+              valueInReais = snap.amount / 100;
+              console.log(`[VALUE FIX] snap.amount ${snap.amount} parece centavos (heurística), convertendo: R$${valueInReais}`);
+            } else {
+              valueInReais = snap.amount;
+            }
+          }
+        } else {
+          // Sem rawAmountCents para comparar; heurística simples
+          // Se é inteiro e >= 100, provavelmente centavos
+          if (Number.isInteger(snap.amount) && snap.amount >= 100) {
+            valueInReais = snap.amount / 100;
+            console.log(`[VALUE FIX] snap.amount ${snap.amount} parece centavos (sem raw para comparar), convertendo: R$${valueInReais}`);
+          } else {
+            valueInReais = snap.amount;
+          }
+        }
+      } else {
+        valueInReais = typeof rawAmountCents === "number" ? rawAmountCents / 100 : 0;
+      }
 
       const r = await sendOne(admin, empresaId, accessToken, {
         flash_transaction_id: n.flash_transaction_id,
