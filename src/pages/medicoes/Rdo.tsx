@@ -1406,7 +1406,10 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           {f.legenda && (
                             <p className="text-xs font-medium text-foreground leading-snug">{f.legenda}</p>
                           )}
-                          <span className="inline-block rounded-full bg-emerald-600 text-white text-[10px] font-semibold px-2.5 py-0.5">
+                          <span className={cn(
+                            "inline-block rounded-full text-[10px] font-semibold px-2.5 py-0.5",
+                            classificacaoBadgeClass[f.classificacao || ''] || "bg-gray-100 text-gray-800"
+                          )}>
                             {label}
                           </span>
                         </div>
