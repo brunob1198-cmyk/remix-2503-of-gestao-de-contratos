@@ -332,16 +332,46 @@ export default function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-full md:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {areaData.map((item, index) => (
-                <div key={item.name} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
-                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium truncate">{item.name}</span>
-                    <span className="text-xs text-muted-foreground font-semibold">{formatCurrency(item.value)}</span>
+            <div className="w-full md:w-1/2 flex flex-col gap-6">
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={areaData} margin={{ top: 20, right: 30, left: 40, bottom: 5 }} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} opacity={0.2} />
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={100} 
+                      axisLine={false} 
+                      tickLine={false}
+                      style={{ fontSize: '12px' }}
+                    />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+                      {areaData.map((entry, index) => (
+                        <Cell key={`cell-bar-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                      <LabelList 
+                        dataKey="value" 
+                        position="right" 
+                        formatter={(value: number) => formatCompactNumber(value)}
+                        style={{ fontSize: '11px', fontWeight: '600' }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {areaData.map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-3 p-2 rounded-lg border bg-muted/20">
+                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-medium truncate">{item.name}</span>
+                      <span className="text-xs text-muted-foreground font-semibold">{formatCurrency(item.value)}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
