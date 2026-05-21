@@ -56,7 +56,7 @@ function MonthGrid({ label, year, onYearChange, selectedMonth, selectedYear, onS
   );
 }
 
-export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEnd }: MonthRangePickerProps) {
+export function MonthRangePicker({ startDate, endDate, onChangeStart, onChangeEnd, className }: MonthRangePickerProps) {
   const [startYear, setStartYear] = useState(startDate.getFullYear());
   const [endYear, setEndYear] = useState(endDate.getFullYear());
   const [open, setOpen] = useState(false);
