@@ -284,21 +284,32 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
 
-      const dids = allDiarios.map((d) => d.id);
+      const BATCH = 500;
+      let eqData: any[] = [];
+      let equipData: any[] = [];
+      let veicData: any[] = [];
+      let prodsData: any[] = [];
 
-      const [eq, equip, veic, prods] = await Promise.all([
-        supabase.from("diario_equipe").select("custo_total").in("diario_id", dids),
-        supabase.from("diario_equipamentos").select("custo_total").in("diario_id", dids),
-        supabase.from("diario_veiculos").select("custo_diaria").in("diario_id", dids),
-        supabase.from("diario_producao").select("valor_total").in("diario_id", dids),
-      ]);
+      for (let i = 0; i < dids.length; i += BATCH) {
+        const chunk = dids.slice(i, i + BATCH);
+        const [eq, equip, veic, prods] = await Promise.all([
+          supabase.from("diario_equipe").select("custo_total").in("diario_id", chunk),
+          supabase.from("diario_equipamentos").select("custo_total").in("diario_id", chunk),
+          supabase.from("diario_veiculos").select("custo_diaria").in("diario_id", chunk),
+          supabase.from("diario_producao").select("valor_total").in("diario_id", chunk),
+        ]);
+        eqData = [...eqData, ...(eq.data || [])];
+        equipData = [...equipData, ...(equip.data || [])];
+        veicData = [...veicData, ...(veic.data || [])];
+        prodsData = [...prodsData, ...(prods.data || [])];
+      }
 
       return {
-        maoDeObra: (eq.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
-        equipamentos: (equip.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
-        transporte: (veic.data || []).reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
+        maoDeObra: eqData.reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
+        equipamentos: equipData.reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
+        transporte: veicData.reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
         materiais: 0,
-        total_produzido: (prods.data || []).reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0),
+        total_produzido: prodsData.reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0),
       };
     },
     enabled: !!projetoId && !!siteId,
