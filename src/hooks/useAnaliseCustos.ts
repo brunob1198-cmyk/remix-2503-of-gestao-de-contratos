@@ -524,15 +524,25 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const diarioIds = allDiarios.map((d) => d.id);
       const diarioSiteMap = Object.fromEntries(allDiarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
 
-      const BATCH = 500;
+      const BATCH = 200;
       let allProducao: any[] = [];
       for (let i = 0; i < diarioIds.length; i += BATCH) {
         const chunk = diarioIds.slice(i, i + BATCH);
-        const { data } = await supabase
-          .from("diario_producao")
-          .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
-          .in("diario_id", chunk);
-        allProducao = [...allProducao, ...(data || [])];
+        
+        let hasMore = true;
+        let offset = 0;
+        while (hasMore) {
+          const { data } = await supabase
+            .from("diario_producao")
+            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
+            .in("diario_id", chunk)
+            .range(offset, offset + 999);
+          
+          const rows = data || [];
+          allProducao = [...allProducao, ...rows];
+          hasMore = rows.length === 1000;
+          offset += 1000;
+        }
       }
 
       const siteToProjetoMap = Object.fromEntries((sitesData || []).map((s) => [s.id, s.projeto_id]));
