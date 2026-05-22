@@ -259,13 +259,28 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
     staleTime: Infinity,
     queryFn: async () => {
-      let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
-      if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
-      else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+      let allDiarios: any[] = [];
+      let offset = 0;
+      let hasMore = true;
 
-      const { data: diariosIdList } = await qDiarios;
+      while (hasMore) {
+        let qDiarios = supabase
+          .from("diarios_obra")
+          .select("id")
+          .eq("site_id", siteId)
+          .range(offset, offset + 999);
 
-      if (!diariosIdList || diariosIdList.length === 0) {
+        if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+        else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+
+        const { data: batch } = await qDiarios;
+        const rows = batch || [];
+        allDiarios = [...allDiarios, ...rows];
+        hasMore = rows.length === 1000;
+        offset += 1000;
+      }
+
+      if (allDiarios.length === 0) {
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
 
