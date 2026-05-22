@@ -167,6 +167,7 @@ async function realizarBaixa(
         body: JSON.stringify({
           data_pagamento: transactionDate,
           conta_financeira: input.financial_account_id,
+          valor_pago: transactionValue, // Força o valor pago correto na raiz do JSON para o ERP Conta Azul!
           metodo_pagamento: "OUTRO",
           composicao_valor: {
             valor_bruto: transactionValue,
@@ -536,9 +537,12 @@ async function sendOne(
       }
     }
 
+    let baixaSucesso = false;
     if (status === "ENVIADO" && contaAzulId) {
       const baixaResult = await realizarBaixa(accessToken, contaAzulId, input, transactionDate, responseJson);
-      if (!baixaResult.success) {
+      if (baixaResult.success) {
+        baixaSucesso = true;
+      } else {
         errorMsg = errorMsg 
           ? `${errorMsg} | Erro na Baixa: ${baixaResult.error}` 
           : `Erro na Baixa: ${baixaResult.error}`;
@@ -563,7 +567,7 @@ async function sendOne(
     request: { flash_transaction_id: input.flash_transaction_id, payload },
     response: responseJson,
     erro: errorMsg,
-    reconciliado: status === "ENVIADO" && !!contaAzulId,
+    reconciliado: status === "ENVIADO" && !!contaAzulId && baixaSucesso,
   };
 
   if (status === "ENVIADO") {

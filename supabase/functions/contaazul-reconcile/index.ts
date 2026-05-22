@@ -227,8 +227,16 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       body: JSON.stringify({
         data_pagamento: transactionDate,
         conta_financeira: normFinal.conta_azul_account_id,
+        valor_pago: transactionValue, // Força o valor pago correto na raiz do JSON para o ERP Conta Azul!
         metodo_pagamento: "OUTRO",
-        composicao_valor: { valor_bruto: transactionValue }
+        composicao_valor: {
+          valor_bruto: transactionValue,
+          valor_liquido: transactionValue,
+          multa: 0,
+          juros: 0,
+          desconto: 0,
+          taxa: 0
+        }
       })
     });
 

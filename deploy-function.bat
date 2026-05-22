@@ -20,7 +20,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo [2/3] Fazendo deploy da funcao contaazul-send-transaction...
+echo [2/4] Fazendo deploy da funcao contaazul-send-transaction...
 cmd /c npx supabase@latest functions deploy contaazul-send-transaction --project-ref xqdhyukmeklfczwiipen --no-verify-jwt
 if %ERRORLEVEL% neq 0 (
     echo ERRO no deploy da funcao contaazul-send-transaction!
@@ -29,7 +29,16 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo [3/3] Fazendo deploy da funcao contaazul-metadata (lista as contas financeiras atualizadas na tela)...
+echo [3/4] Fazendo deploy da funcao contaazul-reconcile (reprocessa as baixas em segundo plano)...
+cmd /c npx supabase@latest functions deploy contaazul-reconcile --project-ref xqdhyukmeklfczwiipen --no-verify-jwt
+if %ERRORLEVEL% neq 0 (
+    echo ERRO no deploy da funcao contaazul-reconcile!
+    pause
+    exit /b 1
+)
+
+echo.
+echo [4/4] Fazendo deploy da funcao contaazul-metadata (lista as contas financeiras atualizadas na tela)...
 cmd /c npx supabase@latest functions deploy contaazul-metadata --project-ref xqdhyukmeklfczwiipen --no-verify-jwt
 if %ERRORLEVEL% neq 0 (
     echo ERRO no deploy da funcao contaazul-metadata!
