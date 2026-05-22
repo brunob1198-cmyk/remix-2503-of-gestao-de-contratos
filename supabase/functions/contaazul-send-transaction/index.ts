@@ -107,7 +107,7 @@ async function realizarBaixa(
     console.log(`[BAIXA] Iniciando baixa para evento ${contaAzulId}, valor: ${transactionValue}, data: ${transactionDate}`);
 
     let parcelas: any[] = [];
-    
+
     // 1. Tentar extrair do responseJson síncrono da criação
     if (responseJson) {
       const responseParcelas = responseJson.parcelas || responseJson.condicao_pagamento?.parcelas;
@@ -122,7 +122,7 @@ async function realizarBaixa(
       console.log(`[BAIXA] Nenhuma parcela no payload de criação. Buscando via API para evento ${contaAzulId}...`);
       // Aguardar um momento para o evento ser indexado no Conta Azul
       await new Promise((r) => setTimeout(r, 2000));
-      
+
       for (let tentativa = 0; tentativa < 5; tentativa++) {
         const parcelasResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${contaAzulId}/parcelas`, {
           headers: { Authorization: `Bearer ${accessToken}` }
@@ -191,9 +191,9 @@ async function realizarBaixa(
     if (totalParcelasValidas > 0 && baixadasComSucesso === totalParcelasValidas) {
       return { success: true };
     } else {
-      return { 
-        success: false, 
-        error: ultimoErro || `Falhou ao baixar todas as parcelas (${baixadasComSucesso}/${totalParcelasValidas} sucesso)` 
+      return {
+        success: false,
+        error: ultimoErro || `Falhou ao baixar todas as parcelas (${baixadasComSucesso}/${totalParcelasValidas} sucesso)`
       };
     }
   } catch (e: any) {
@@ -239,40 +239,40 @@ function scoreMatch(target: string, candidate: string): number {
 
 function findBestCostCenterMatch(costCenterName: string, costCenters: any[]): string | null {
   if (!costCenterName || !costCenters.length) return null;
-  
+
   const targetNorm = normalizeText(costCenterName);
   if (!targetNorm) return null;
-  
+
   let bestMatch: any = null;
   let bestScore = 0;
-  
+
   for (const cc of costCenters) {
     const ccId = cc.id || cc.uuid;
     const ccName = cc.nome || cc.name || cc.descricao || "";
     if (!ccId || !ccName) continue;
-    
+
     const ccNorm = normalizeText(ccName);
-    
+
     if (targetNorm === ccNorm) {
       return ccId;
     }
-    
+
     const score = Math.max(
       scoreMatch(targetNorm, ccNorm),
       scoreMatch(ccNorm, targetNorm)
     );
-    
+
     if (score > bestScore) {
       bestScore = score;
       bestMatch = cc;
     }
   }
-  
+
   if (bestScore >= 100 && bestMatch) {
     console.log(`[MATCH] Centro de Custo "${costCenterName}" mapeado para "${bestMatch.nome || bestMatch.name}" (Score: ${bestScore})`);
     return bestMatch.id || bestMatch.uuid;
   }
-  
+
   return null;
 }
 
@@ -299,7 +299,7 @@ async function sendOne(
   contatoId?: string
 ) {
   const startedAt = Date.now();
-  
+
   if (!force) {
     const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
     if (alreadySent) {
@@ -349,7 +349,7 @@ async function sendOne(
       valor_liquido: transactionValue
     }
   };
-  
+
   if (input.cost_center_id) {
     rateioItem.rateio_centro_custo = [
       {
@@ -408,7 +408,7 @@ async function sendOne(
   let status: string = "erro";
 
   try {
-    const endpoint = input.type === "receita" 
+    const endpoint = input.type === "receita"
       ? `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-receber`
       : `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/contas-a-pagar`;
 
@@ -443,12 +443,12 @@ async function sendOne(
         contaAzulId = responseJson.id || responseJson.uuid;
         console.log(`[OK] Evento criado imediatamente com ID: ${contaAzulId}`);
 
-      // CASO 2: ContaAzul processando de forma assíncrona (retorna PENDING + protocolo)
-      // IMPORTANTE: NÃO usar fire-and-forget em Edge Functions — o processo Deno é encerrado
-      // junto com a resposta HTTP. Usamos polling SÍNCRONO com até 8 tentativas de 5s (40s total).
+        // CASO 2: ContaAzul processando de forma assíncrona (retorna PENDING + protocolo)
+        // IMPORTANTE: NÃO usar fire-and-forget em Edge Functions — o processo Deno é encerrado
+        // junto com a resposta HTTP. Usamos polling SÍNCRONO com até 8 tentativas de 5s (40s total).
       } else if (responseJson?.status === "PENDING" && contaAzulProtocolo) {
         console.log(`[ASYNC] ContaAzul processando protocolo ${contaAzulProtocolo}. Iniciando polling síncrono...`);
-        
+
         const pollUrls = [
           `${CONTAAZUL_API}/v1/protocolo/${contaAzulProtocolo}`,
           `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/${input.type === "receita" ? "contas-a-receber" : "contas-a-pagar"}/importacao/${contaAzulProtocolo}`,
@@ -456,11 +456,11 @@ async function sendOne(
           `${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/protocolo/${contaAzulProtocolo}`,
           `${CONTAAZUL_API}/v1/importacao/${contaAzulProtocolo}`
         ];
-        
+
         let pollResolved = false;
         for (let i = 0; i < 8; i++) {
           await new Promise(r => setTimeout(r, 5000));
-          
+
           let pollResp = null;
           let pollText = "";
           let currentUrl = "";
@@ -472,7 +472,7 @@ async function sendOne(
               pollResp = await fetch(currentUrl, {
                 headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
               });
-              
+
               if (pollResp.status !== 404) {
                 break; // Achou a URL correta (ou pelo menos uma que não é 404)
               }
@@ -489,15 +489,15 @@ async function sendOne(
               if (pollResp.ok) {
                 let pollData: any = null;
                 try { pollData = JSON.parse(pollText); } catch { pollData = { raw: pollText }; }
-                
+
                 responseJson = { ...responseJson, last_poll_data: pollData, last_poll_url: currentUrl };
 
                 if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                   status = "ENVIADO";
-                  contaAzulId = pollData?.evento_financeiro_id || pollData?.evento_id || pollData?.resourceId || pollData?.id || null;
+                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || pollData?.evento_financeiro_id || null;
                   errorMsg = null;
                   pollResolved = true;
-                  console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
+                  console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID final: ${contaAzulId}`);
                   break;
                 } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
                   status = "erro";
@@ -535,15 +535,20 @@ async function sendOne(
     }
 
     let baixaSucesso = false;
+    // IMPORTANTE: Mesmo se a baixa falhar, o status deve ser "ENVIADO" se o lançamento foi criado.
+    // O status na tabela flash_normalizacao depende desse valor.
     if (status === "ENVIADO" && contaAzulId) {
+      console.log(`[BAIXA] Iniciando tentativa de baixa para o evento ${contaAzulId}`);
       const baixaResult = await realizarBaixa(accessToken, contaAzulId, input, transactionDate, responseJson);
       if (baixaResult.success) {
         baixaSucesso = true;
+        console.log(`[BAIXA] Baixa realizada com sucesso para o evento ${contaAzulId}`);
       } else {
-        errorMsg = errorMsg 
-          ? `${errorMsg} | Erro na Baixa: ${baixaResult.error}` 
+        // Não alteramos o status principal para erro, apenas concatenamos a mensagem de erro da baixa
+        errorMsg = errorMsg
+          ? `${errorMsg} | Erro na Baixa: ${baixaResult.error}`
           : `Erro na Baixa: ${baixaResult.error}`;
-        console.warn(`[BAIXA FALHA] Lançamento criado mas baixa falhou: ${baixaResult.error}`);
+        console.warn(`[BAIXA FALHA] Lançamento criado mas baixa falhou: ${baixaResult.error}. O status continuará como ENVIADO.`);
       }
     }
   } catch (e: any) {
@@ -658,14 +663,14 @@ serve(async (req) => {
       .select("flash_transaction_id")
       .in("flash_transaction_id", ids)
       .eq("status", "ENVIADO");
-    
+
     if (logsErr) {
       console.error("[WARN] Erro ao verificar duplicidade em lote:", logsErr);
     }
     const integratedIds = new Set(existingLogs?.map((l: any) => l.flash_transaction_id) || []);
 
     const accessToken = await getValidAccessToken(admin, empresaId);
-    
+
     const cacheKey = empresaId;
     const now = Date.now();
 
@@ -691,13 +696,13 @@ serve(async (req) => {
           });
           const text = await resp.text();
           console.log(`[DEBUG] Tentando endpoint ${url} (HTTP ${resp.status})`);
-          
+
           if (resp.ok) {
             const data = JSON.parse(text);
             const accounts = Array.isArray(data) ? data : (data?.itens || data?.data || data?.items || data?.content || []);
             console.log(`[DEBUG] Contas encontradas: ${accounts.length}`);
-            
-            const found = accounts.find((a: any) => 
+
+            const found = accounts.find((a: any) =>
               (a.nome || a.name || a.description || "").toLowerCase().includes("flash")
             );
             if (found) {
@@ -714,7 +719,7 @@ serve(async (req) => {
     }
 
     if (!flashAccountId) {
-       console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados. A função continuará mas pode falhar no CA.");
+      console.warn("[WARN] Nenhuma conta 'flash' encontrada nos endpoints testados. A função continuará mas pode falhar no CA.");
     }
 
     // 2. Buscar um contato padrão (tentando endpoints conhecidos ou cache)
@@ -744,7 +749,7 @@ serve(async (req) => {
               break;
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -825,7 +830,7 @@ serve(async (req) => {
 
       const raw = rawsById.get(n.flash_transaction_id);
       const snap = (n.conta_azul_payload || {}) as any;
-      
+
       // Sempre usa a conta "flash" se encontrada
       const financialAccountId = flashAccountId || n.conta_azul_account_id;
 
@@ -938,7 +943,7 @@ serve(async (req) => {
         cost_center: costCenter,
         cost_center_id: costCenterId,
         force_pago: true, // Forçar sempre verdadeiro (Pago)
-      }, true, defaultContactId); 
+      }, true, defaultContactId);
 
       if (r.logEntry) {
         logsToInsert.push(r.logEntry);
