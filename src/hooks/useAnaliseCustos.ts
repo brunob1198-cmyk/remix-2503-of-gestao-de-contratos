@@ -284,7 +284,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
 
-      const dids = diariosIdList.map((d) => d.id);
+      const dids = allDiarios.map((d) => d.id);
 
       const [eq, equip, veic, prods] = await Promise.all([
         supabase.from("diario_equipe").select("custo_total").in("diario_id", dids),
