@@ -470,16 +470,31 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const siteIds = (sitesData || []).map((s) => s.id);
       if (siteIds.length === 0) return [];
 
-      let diariosQuery = supabase.from("diarios_obra").select("id, data, site_id").in("site_id", siteIds);
+      let allDiarios: any[] = [];
+      let offset = 0;
+      let hasMore = true;
 
-      if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
-      if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
+      while (hasMore) {
+        let diariosQuery = supabase
+          .from("diarios_obra")
+          .select("id, data, site_id")
+          .in("site_id", siteIds)
+          .range(offset, offset + 999);
 
-      const { data: diarios } = await diariosQuery;
-      if (!diarios || diarios.length === 0) return [];
+        if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
+        if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
 
-      const diarioIds = diarios.map((d) => d.id);
-      const diarioSiteMap = Object.fromEntries(diarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
+        const { data: batch } = await diariosQuery;
+        const rows = batch || [];
+        allDiarios = [...allDiarios, ...rows];
+        hasMore = rows.length === 1000;
+        offset += 1000;
+      }
+
+      if (allDiarios.length === 0) return [];
+
+      const diarioIds = allDiarios.map((d) => d.id);
+      const diarioSiteMap = Object.fromEntries(allDiarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
 
       const BATCH = 500;
       let allProducao: any[] = [];
