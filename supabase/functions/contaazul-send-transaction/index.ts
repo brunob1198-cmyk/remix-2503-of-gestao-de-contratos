@@ -494,12 +494,11 @@ async function sendOne(
 
                 if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                   status = "ENVIADO";
-                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || pollData?.evento_financeiro_id || null;
+                  contaAzulId = pollData?.evento_financeiro_id || pollData?.evento_id || pollData?.resourceId || pollData?.id || null;
                   errorMsg = null;
                   pollResolved = true;
                   console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
                   break;
-
                 } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
                   status = "erro";
                   errorMsg = `ContaAzul rejeitou o lançamento: ${JSON.stringify(pollData?.errors || pollData?.message || pollData)}`;
