@@ -218,34 +218,37 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         for (let i = 0; i < diarioIds.length; i += 100) {
           const chunk = diarioIds.slice(i, i + 100);
           
-          const fetchAll = async (table: string, select: string) => {
-            let all: any[] = [];
-            let offset = 0;
+          const [eqRes, eqpRes, vecRes, dprodRes, ftsRes] = await Promise.all([
+            supabase.from("diario_equipe").select("*").in("diario_id", chunk),
+            supabase.from("diario_equipamentos").select("*").in("diario_id", chunk),
+            supabase.from("diario_veiculos").select("*").in("diario_id", chunk),
+            supabase.from("diario_producao").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("diario_id", chunk),
+            supabase.from("diario_fotos").select("*, diario:diarios_obra(data)").in("diario_id", chunk),
+          ]);
+          
+          equipeData = [...equipeData, ...(eqRes.data || [])];
+          equipamentosData = [...equipamentosData, ...(eqpRes.data || [])];
+          veiculosData = [...veiculosData, ...(vecRes.data || [])];
+          diarioProducaoData = [...diarioProducaoData, ...(dprodRes.data || [])];
+          fotosData = [...fotosData, ...(ftsRes.data || [])];
+
+          // If any of them reached 1000, we should probably fetch more, 
+          // but given 100 diaries per chunk, it's very unlikely unless a single diary has > 100 entries.
+          // For production data, we'll double check just in case.
+          if ((dprodRes.data?.length || 0) === 1000) {
             let hasMore = true;
+            let offset = 1000;
             while (hasMore) {
-              const { data, error } = await supabase.from(table).select(select).in("diario_id", chunk).range(offset, offset + 999);
-              if (error) break;
+              const { data } = await supabase.from("diario_producao")
+                .select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)")
+                .in("diario_id", chunk)
+                .range(offset, offset + 999);
               const rows = data || [];
-              all = [...all, ...rows];
+              diarioProducaoData = [...diarioProducaoData, ...rows];
               hasMore = rows.length === 1000;
               offset += 1000;
             }
-            return all;
-          };
-
-          const [eq, eqp, vec, dprod, fts] = await Promise.all([
-            fetchAll("diario_equipe", "*"),
-            fetchAll("diario_equipamentos", "*"),
-            fetchAll("diario_veiculos", "*"),
-            fetchAll("diario_producao", "*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)"),
-            fetchAll("diario_fotos", "*, diario:diarios_obra(data)"),
-          ]);
-          
-          equipeData = [...equipeData, ...eq];
-          equipamentosData = [...equipamentosData, ...eqp];
-          veiculosData = [...veiculosData, ...vec];
-          diarioProducaoData = [...diarioProducaoData, ...dprod];
-          fotosData = [...fotosData, ...fts];
+          }
         }
       }
 
