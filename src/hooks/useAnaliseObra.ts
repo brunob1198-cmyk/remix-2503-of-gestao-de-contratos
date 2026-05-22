@@ -121,18 +121,37 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       }
 
       if (siteIds.length > 0) {
+        const startDateStr = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
+        const endDateStr = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
+
         for (let i = 0; i < siteIds.length; i += 50) {
           const chunk = siteIds.slice(i, i + 50);
-          const [escopoRes, medicaoRes, faturamentoRes, diariosRes] = await Promise.all([
+          
+          // Fetch escopo, medicao, faturamento without date filter as they are cumulative
+          const [escopoRes, medicaoRes, faturamentoRes] = await Promise.all([
             supabase.from("escopo_itens").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("site_id", chunk),
             supabase.from("lancamentos_medicao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
             supabase.from("lancamentos_faturamento").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
-            supabase.from("diarios_obra").select("id, data").in("site_id", chunk).order("data", { ascending: true }),
           ]);
+          
           escopo = [...escopo, ...(escopoRes.data || [])];
           medicao = [...medicao, ...(medicaoRes.data || [])];
           faturamento = [...faturamento, ...(faturamentoRes.data || [])];
-          diarios = [...diarios, ...(diariosRes.data || [])];
+
+          // Fetch diarios_obra with pagination and date filter
+          let hasMoreDiarios = true;
+          let offsetDiarios = 0;
+          while (hasMoreDiarios) {
+            let q = supabase.from("diarios_obra").select("id, data").in("site_id", chunk).order("data", { ascending: true }).range(offsetDiarios, offsetDiarios + 999);
+            if (startDateStr) q = q.gte("data", startDateStr);
+            if (endDateStr) q = q.lte("data", endDateStr);
+            
+            const { data: batch } = await q;
+            const rows = batch || [];
+            diarios = [...diarios, ...rows];
+            hasMoreDiarios = rows.length === 1000;
+            offsetDiarios += 1000;
+          }
         }
       }
 
