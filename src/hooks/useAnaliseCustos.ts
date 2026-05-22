@@ -299,7 +299,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
           let offset = 0;
           let hasMore = true;
           while (hasMore) {
-            const { data } = await supabase.from(table).select(select).in(column, chunk).range(offset, offset + 999);
+            const { data } = await (supabase.from(table as any) as any).select(select).in(column, chunk).range(offset, offset + 999);
             const rows = data || [];
             all = [...all, ...rows];
             hasMore = rows.length === 1000;
