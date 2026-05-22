@@ -284,6 +284,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
 
+      const dids = allDiarios.map((d) => d.id);
       const BATCH = 500;
       let eqData: any[] = [];
       let equipData: any[] = [];
