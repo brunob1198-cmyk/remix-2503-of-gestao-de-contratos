@@ -217,18 +217,35 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
           const chunk = diarioIds.slice(i, i + 100);
+          
+          const fetchAll = async (table: string, select: string) => {
+            let all: any[] = [];
+            let offset = 0;
+            let hasMore = true;
+            while (hasMore) {
+              const { data, error } = await supabase.from(table).select(select).in("diario_id", chunk).range(offset, offset + 999);
+              if (error) break;
+              const rows = data || [];
+              all = [...all, ...rows];
+              hasMore = rows.length === 1000;
+              offset += 1000;
+            }
+            return all;
+          };
+
           const [eq, eqp, vec, dprod, fts] = await Promise.all([
-            supabase.from("diario_equipe").select("*").in("diario_id", chunk),
-            supabase.from("diario_equipamentos").select("*").in("diario_id", chunk),
-            supabase.from("diario_veiculos").select("*").in("diario_id", chunk),
-            supabase.from("diario_producao").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("diario_id", chunk),
-            supabase.from("diario_fotos").select("*, diario:diarios_obra(data)").in("diario_id", chunk),
+            fetchAll("diario_equipe", "*"),
+            fetchAll("diario_equipamentos", "*"),
+            fetchAll("diario_veiculos", "*"),
+            fetchAll("diario_producao", "*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)"),
+            fetchAll("diario_fotos", "*, diario:diarios_obra(data)"),
           ]);
-          equipeData = [...equipeData, ...(eq.data || [])];
-          equipamentosData = [...equipamentosData, ...(eqp.data || [])];
-          veiculosData = [...veiculosData, ...(vec.data || [])];
-          diarioProducaoData = [...diarioProducaoData, ...(dprod.data || [])];
-          fotosData = [...fotosData, ...(fts.data || [])];
+          
+          equipeData = [...equipeData, ...eq];
+          equipamentosData = [...equipamentosData, ...eqp];
+          veiculosData = [...veiculosData, ...vec];
+          diarioProducaoData = [...diarioProducaoData, ...dprod];
+          fotosData = [...fotosData, ...fts];
         }
       }
 
