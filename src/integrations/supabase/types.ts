@@ -4521,6 +4521,7 @@ export type Database = {
           total_valor: number
         }[]
       }
+      url_encode: { Args: { "": string }; Returns: string }
       user_can_access_diario: {
         Args: { _diario_id: string; _user_id: string }
         Returns: boolean
