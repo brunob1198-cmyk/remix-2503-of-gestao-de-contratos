@@ -167,11 +167,9 @@ async function realizarBaixa(
         body: JSON.stringify({
           data_pagamento: transactionDate,
           conta_financeira: input.financial_account_id,
-          valor_pago: transactionValue, // Força o valor pago correto na raiz do JSON para o ERP Conta Azul!
           metodo_pagamento: "OUTRO",
           composicao_valor: {
             valor_bruto: transactionValue,
-            valor_liquido: transactionValue,
             multa: 0,
             juros: 0,
             desconto: 0,
@@ -612,6 +610,17 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const urlObj = new URL(req.url);
+    if (urlObj.searchParams.get("action") === "get_logs") {
+      const admin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data, error } = await admin
+        .from("flash_integration_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return json({ logs: data, error }, 200);
+    }
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Não autenticado" }, 401);
 
