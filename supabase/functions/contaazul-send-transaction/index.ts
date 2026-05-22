@@ -494,10 +494,11 @@ async function sendOne(
 
                 if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                   status = "ENVIADO";
-                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || pollData?.evento_financeiro_id || null;
+                  // Priorizar o ID do recurso criado retornado pelo protocolo
+                  contaAzulId = pollData?.evento_financeiro_id || pollData?.resourceId || pollData?.id || pollData?.evento_id || null;
                   errorMsg = null;
                   pollResolved = true;
-                  console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID: ${contaAzulId}`);
+                  console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID final: ${contaAzulId}`);
                   break;
 
                 } else if (pollData?.status === "ERROR" || pollData?.status === "FAILED" || pollData?.status === "REJECTED") {
@@ -536,15 +537,20 @@ async function sendOne(
     }
 
     let baixaSucesso = false;
+    // IMPORTANTE: Mesmo se a baixa falhar, o status deve ser "ENVIADO" se o lançamento foi criado.
+    // O status na tabela flash_normalizacao depende desse valor.
     if (status === "ENVIADO" && contaAzulId) {
+      console.log(`[BAIXA] Iniciando tentativa de baixa para o evento ${contaAzulId}`);
       const baixaResult = await realizarBaixa(accessToken, contaAzulId, input, transactionDate, responseJson);
       if (baixaResult.success) {
         baixaSucesso = true;
+        console.log(`[BAIXA] Baixa realizada com sucesso para o evento ${contaAzulId}`);
       } else {
+        // Não alteramos o status principal para erro, apenas concatenamos a mensagem de erro da baixa
         errorMsg = errorMsg 
           ? `${errorMsg} | Erro na Baixa: ${baixaResult.error}` 
           : `Erro na Baixa: ${baixaResult.error}`;
-        console.warn(`[BAIXA FALHA] Lançamento criado mas baixa falhou: ${baixaResult.error}`);
+        console.warn(`[BAIXA FALHA] Lançamento criado mas baixa falhou: ${baixaResult.error}. O status continuará como ENVIADO.`);
       }
     }
   } catch (e: any) {
