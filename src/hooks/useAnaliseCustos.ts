@@ -259,31 +259,74 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
     staleTime: Infinity,
     queryFn: async () => {
-      let qDiarios = supabase.from("diarios_obra").select("id").eq("site_id", siteId);
-      if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
-      else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+      let allDiarios: any[] = [];
+      let offset = 0;
+      let hasMore = true;
 
-      const { data: diariosIdList } = await qDiarios;
+      while (hasMore) {
+        let qDiarios = supabase
+          .from("diarios_obra")
+          .select("id")
+          .eq("site_id", siteId)
+          .range(offset, offset + 999);
 
-      if (!diariosIdList || diariosIdList.length === 0) {
+        if (startDate && endDate) qDiarios = qDiarios.gte("data", startDate).lte("data", endDate);
+        else if (startDate) qDiarios = qDiarios.gte("data", startDate);
+
+        const { data: batch } = await qDiarios;
+        const rows = batch || [];
+        allDiarios = [...allDiarios, ...rows];
+        hasMore = rows.length === 1000;
+        offset += 1000;
+      }
+
+      if (allDiarios.length === 0) {
         return { maoDeObra: 0, materiais: 0, transporte: 0, equipamentos: 0, total_produzido: 0 };
       }
 
-      const dids = diariosIdList.map((d) => d.id);
+      const dids = allDiarios.map((d) => d.id);
+      const BATCH = 200;
+      let eqData: any[] = [];
+      let equipData: any[] = [];
+      let veicData: any[] = [];
+      let prodsData: any[] = [];
 
-      const [eq, equip, veic, prods] = await Promise.all([
-        supabase.from("diario_equipe").select("custo_total").in("diario_id", dids),
-        supabase.from("diario_equipamentos").select("custo_total").in("diario_id", dids),
-        supabase.from("diario_veiculos").select("custo_diaria").in("diario_id", dids),
-        supabase.from("diario_producao").select("valor_total").in("diario_id", dids),
-      ]);
+      for (let i = 0; i < dids.length; i += BATCH) {
+        const chunk = dids.slice(i, i + BATCH);
+        
+        const fetchAll = async (table: string, select: string, column: string = "diario_id") => {
+          let all: any[] = [];
+          let offset = 0;
+          let hasMore = true;
+          while (hasMore) {
+            const { data } = await (supabase.from(table as any) as any).select(select).in(column, chunk).range(offset, offset + 999);
+            const rows = data || [];
+            all = [...all, ...rows];
+            hasMore = rows.length === 1000;
+            offset += 1000;
+          }
+          return all;
+        };
+
+        const [eq, equip, veic, prods] = await Promise.all([
+          fetchAll("diario_equipe", "custo_total"),
+          fetchAll("diario_equipamentos", "custo_total"),
+          fetchAll("diario_veiculos", "custo_diaria"),
+          fetchAll("diario_producao", "valor_total"),
+        ]);
+
+        eqData = [...eqData, ...eq];
+        equipData = [...equipData, ...equip];
+        veicData = [...veicData, ...veic];
+        prodsData = [...prodsData, ...prods];
+      }
 
       return {
-        maoDeObra: (eq.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
-        equipamentos: (equip.data || []).reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
-        transporte: (veic.data || []).reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
+        maoDeObra: eqData.reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
+        equipamentos: equipData.reduce((acc, curr) => acc + Number(curr.custo_total || 0), 0),
+        transporte: veicData.reduce((acc, curr) => acc + Number(curr.custo_diaria || 0), 0),
         materiais: 0,
-        total_produzido: (prods.data || []).reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0),
+        total_produzido: prodsData.reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0),
       };
     },
     enabled: !!projetoId && !!siteId,
@@ -455,26 +498,51 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
       const siteIds = (sitesData || []).map((s) => s.id);
       if (siteIds.length === 0) return [];
 
-      let diariosQuery = supabase.from("diarios_obra").select("id, data, site_id").in("site_id", siteIds);
+      let allDiarios: any[] = [];
+      let offset = 0;
+      let hasMore = true;
 
-      if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
-      if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
+      while (hasMore) {
+        let diariosQuery = supabase
+          .from("diarios_obra")
+          .select("id, data, site_id")
+          .in("site_id", siteIds)
+          .range(offset, offset + 999);
 
-      const { data: diarios } = await diariosQuery;
-      if (!diarios || diarios.length === 0) return [];
+        if (startDate) diariosQuery = diariosQuery.gte("data", startDate);
+        if (endDate) diariosQuery = diariosQuery.lte("data", endDate);
 
-      const diarioIds = diarios.map((d) => d.id);
-      const diarioSiteMap = Object.fromEntries(diarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
+        const { data: batch } = await diariosQuery;
+        const rows = batch || [];
+        allDiarios = [...allDiarios, ...rows];
+        hasMore = rows.length === 1000;
+        offset += 1000;
+      }
 
-      const BATCH = 500;
+      if (allDiarios.length === 0) return [];
+
+      const diarioIds = allDiarios.map((d) => d.id);
+      const diarioSiteMap = Object.fromEntries(allDiarios.map((d) => [d.id, { site_id: d.site_id, data: d.data }]));
+
+      const BATCH = 200;
       let allProducao: any[] = [];
       for (let i = 0; i < diarioIds.length; i += BATCH) {
         const chunk = diarioIds.slice(i, i + BATCH);
-        const { data } = await supabase
-          .from("diario_producao")
-          .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
-          .in("diario_id", chunk);
-        allProducao = [...allProducao, ...(data || [])];
+        
+        let hasMore = true;
+        let offset = 0;
+        while (hasMore) {
+          const { data } = await supabase
+            .from("diario_producao")
+            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
+            .in("diario_id", chunk)
+            .range(offset, offset + 999);
+          
+          const rows = data || [];
+          allProducao = [...allProducao, ...rows];
+          hasMore = rows.length === 1000;
+          offset += 1000;
+        }
       }
 
       const siteToProjetoMap = Object.fromEntries((sitesData || []).map((s) => [s.id, s.projeto_id]));

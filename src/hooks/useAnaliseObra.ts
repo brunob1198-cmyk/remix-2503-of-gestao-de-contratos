@@ -121,18 +121,37 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       }
 
       if (siteIds.length > 0) {
+        const startDateStr = periodoInicio ? format(startOfMonth(periodoInicio), "yyyy-MM-dd") : null;
+        const endDateStr = periodoFim ? format(endOfMonth(periodoFim), "yyyy-MM-dd") : null;
+
         for (let i = 0; i < siteIds.length; i += 50) {
           const chunk = siteIds.slice(i, i + 50);
-          const [escopoRes, medicaoRes, faturamentoRes, diariosRes] = await Promise.all([
+          
+          // Fetch escopo, medicao, faturamento without date filter as they are cumulative
+          const [escopoRes, medicaoRes, faturamentoRes] = await Promise.all([
             supabase.from("escopo_itens").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("site_id", chunk),
             supabase.from("lancamentos_medicao").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
             supabase.from("lancamentos_faturamento").select("*, item_lpu:itens_lpu(codigo, descricao, unidade, preco_unitario)").in("site_id", chunk),
-            supabase.from("diarios_obra").select("id, data").in("site_id", chunk).order("data", { ascending: true }),
           ]);
+          
           escopo = [...escopo, ...(escopoRes.data || [])];
           medicao = [...medicao, ...(medicaoRes.data || [])];
           faturamento = [...faturamento, ...(faturamentoRes.data || [])];
-          diarios = [...diarios, ...(diariosRes.data || [])];
+
+          // Fetch diarios_obra with pagination and date filter
+          let hasMoreDiarios = true;
+          let offsetDiarios = 0;
+          while (hasMoreDiarios) {
+            let q = supabase.from("diarios_obra").select("id, data").in("site_id", chunk).order("data", { ascending: true }).range(offsetDiarios, offsetDiarios + 999);
+            if (startDateStr) q = q.gte("data", startDateStr);
+            if (endDateStr) q = q.lte("data", endDateStr);
+            
+            const { data: batch } = await q;
+            const rows = batch || [];
+            diarios = [...diarios, ...rows];
+            hasMoreDiarios = rows.length === 1000;
+            offsetDiarios += 1000;
+          }
         }
       }
 
@@ -196,21 +215,39 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         .sort((a, b) => b.value - a.value);
 
       if (diarioIds.length > 0) {
+      if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
           const chunk = diarioIds.slice(i, i + 100);
+          
+          const fetchAll = async (table: string, select: string) => {
+            let all: any[] = [];
+            let offset = 0;
+            let hasMore = true;
+            while (hasMore) {
+              const { data } = await (supabase.from(table as any) as any).select(select).in("diario_id", chunk).range(offset, offset + 999);
+              const rows = data || [];
+              all = [...all, ...rows];
+              hasMore = rows.length === 1000;
+              offset += 1000;
+            }
+            return all;
+          };
+
           const [eq, eqp, vec, dprod, fts] = await Promise.all([
-            supabase.from("diario_equipe").select("*").in("diario_id", chunk),
-            supabase.from("diario_equipamentos").select("*").in("diario_id", chunk),
-            supabase.from("diario_veiculos").select("*").in("diario_id", chunk),
-            supabase.from("diario_producao").select("*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)").in("diario_id", chunk),
-            supabase.from("diario_fotos").select("*, diario:diarios_obra(data)").in("diario_id", chunk),
+            fetchAll("diario_equipe", "*"),
+            fetchAll("diario_equipamentos", "*"),
+            fetchAll("diario_veiculos", "*"),
+            fetchAll("diario_producao", "*, item_lpu:itens_lpu(id, codigo, descricao, unidade, preco_unitario, bdi)"),
+            fetchAll("diario_fotos", "*, diario:diarios_obra(data)"),
           ]);
-          equipeData = [...equipeData, ...(eq.data || [])];
-          equipamentosData = [...equipamentosData, ...(eqp.data || [])];
-          veiculosData = [...veiculosData, ...(vec.data || [])];
-          diarioProducaoData = [...diarioProducaoData, ...(dprod.data || [])];
-          fotosData = [...fotosData, ...(fts.data || [])];
+          
+          equipeData = [...equipeData, ...eq];
+          equipamentosData = [...equipamentosData, ...eqp];
+          veiculosData = [...veiculosData, ...vec];
+          diarioProducaoData = [...diarioProducaoData, ...dprod];
+          fotosData = [...fotosData, ...fts];
         }
+      }
       }
 
       const diarioMap = new Map(diarios?.map(d => [d.id, d.data]) || []);

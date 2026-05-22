@@ -4027,6 +4027,8 @@ export type Database = {
           area_id: string | null
           area_nome: string | null
           clima: string | null
+          custo_total_orcado: number | null
+          custo_unitario_orcado: number | null
           data_producao: string | null
           id: string | null
           item_codigo: string | null
@@ -4324,6 +4326,24 @@ export type Database = {
           },
         ]
       }
+      view_quadro_geral_bi: {
+        Row: {
+          "% Evolução": number | null
+          Área: string | null
+          Cliente: string | null
+          "Projeto Código": string | null
+          "Projeto Nome": string | null
+          "Saldo Contrato": number | null
+          "Site Código": string | null
+          "Site Nome": string | null
+          "Status Projeto": string | null
+          "Valor Contrato": number | null
+          "Valor Executado": number | null
+          "Valor Faturado": number | null
+          "Valor Não Faturado": number | null
+        }
+        Relationships: []
+      }
       vw_resumo_financeiro_site_item: {
         Row: {
           item_codigo: string | null
@@ -4443,6 +4463,24 @@ export type Database = {
           employee_id: string
         }[]
       }
+      get_quadro_geral_bi: {
+        Args: never
+        Returns: {
+          "% Evolução": number
+          Área: string
+          Cliente: string
+          "Projeto Código": string
+          "Projeto Nome": string
+          "Saldo Contrato": number
+          "Site Código": string
+          "Site Nome": string
+          "Status Projeto": string
+          "Valor Contrato": number
+          "Valor Executado": number
+          "Valor Faturado": number
+          "Valor Não Faturado": number
+        }[]
+      }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -4483,6 +4521,7 @@ export type Database = {
           total_valor: number
         }[]
       }
+      url_encode: { Args: { "": string }; Returns: string }
       user_can_access_diario: {
         Args: { _diario_id: string; _user_id: string }
         Returns: boolean
