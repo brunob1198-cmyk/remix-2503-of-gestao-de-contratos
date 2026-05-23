@@ -215,8 +215,61 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
     if (!normFinal) return { status: "norm_not_found" };
 
+    let financialAccountId = normFinal.conta_azul_account_id;
+    if (!financialAccountId) {
+      console.log(`[Reconcile] conta_azul_account_id is null, attempting to find 'flash' account via API...`);
+      try {
+        const accResp = await fetch(`${CONTAAZUL_API}/v1/conta-financeira`, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+        });
+        if (accResp.ok) {
+          const accData = await accResp.json();
+          const accounts = Array.isArray(accData) ? accData : (accData?.itens || accData?.data || []);
+          const found = accounts.find((a: any) => (a.nome || a.name || a.description || "").toLowerCase().includes("flash"));
+          if (found) {
+            financialAccountId = found.id;
+            console.log(`[Reconcile] Found 'flash' account: ${financialAccountId}`);
+          }
+        } else {
+          // try v1/contas-financeiras
+          const accResp2 = await fetch(`${CONTAAZUL_API}/v1/contas-financeiras`, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+          });
+          if (accResp2.ok) {
+            const accData = await accResp2.json();
+            const accounts = Array.isArray(accData) ? accData : (accData?.itens || accData?.data || []);
+            const found = accounts.find((a: any) => (a.nome || a.name || a.description || "").toLowerCase().includes("flash"));
+            if (found) {
+              financialAccountId = found.id;
+              console.log(`[Reconcile] Found 'flash' account: ${financialAccountId}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`[Reconcile] Error fetching accounts:`, e);
+      }
+    }
+
+    if (!financialAccountId) {
+      // try to extract from parcela
+      if (parcela.conta_financeira && typeof parcela.conta_financeira === 'object') {
+        financialAccountId = parcela.conta_financeira.id;
+      } else if (typeof parcela.conta_financeira === 'string') {
+        financialAccountId = parcela.conta_financeira;
+      }
+    }
+
     const transactionDate = normFinal.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
     const transactionValue = normFinal.conta_azul_payload?.amount || 0;
+
+    const payload = {
+      data_pagamento: transactionDate,
+      conta_financeira: financialAccountId,
+      metodo_pagamento: "OUTRO",
+      valor_pago: transactionValue
+    };
+
+    console.log(`[Reconcile] Sending baixa with payload:`, JSON.stringify(payload));
 
     const baixaResp = await fetch(`${CONTAAZUL_API}/v1/financeiro/eventos-financeiros/parcelas/${parcela.id}/baixa`, {
       method: "POST",
@@ -224,12 +277,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        data_pagamento: transactionDate,
-        conta_financeira: normFinal.conta_azul_account_id,
-        metodo_pagamento: "OUTRO",
-        valor_pago: transactionValue
-      })
+      body: JSON.stringify(payload)
     });
 
     if (baixaResp.ok) {
@@ -248,7 +296,17 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       return { status: "reconciled_with_baixa" };
     } else {
       const errText = await baixaResp.text();
-      return { status: "baixa_failed", reason: errText, status_code: baixaResp.status };
+      return { 
+        status: "baixa_failed", 
+        reason: errText, 
+        status_code: baixaResp.status,
+        payload_sent: {
+          data_pagamento: transactionDate,
+          conta_financeira: normFinal.conta_azul_account_id,
+          metodo_pagamento: "OUTRO",
+          valor_pago: transactionValue
+        }
+      };
     }
   } catch (e: any) {
     return { status: "error", error: e.message };
