@@ -405,7 +405,7 @@ async function sendOne(
   let errorMsg: string | null = null;
   let contaAzulId: string | null = null;
   let contaAzulProtocolo: string | null = null;
-  let status: string = "erro";
+  let status: string = "normalizado";
 
   try {
     const endpoint = input.type === "receita"
@@ -572,6 +572,9 @@ async function sendOne(
     reconciliado: status === "ENVIADO" && !!contaAzulId && baixaSucesso,
   };
 
+  // Se o envio foi bem sucedido, atualizamos para "enviado". 
+  // Caso contrário, mantemos como "normalizado" (valor inicial ou resetado nos blocos else if) 
+  // para permitir que o usuário tente novamente sem perder a normalização.
   if (status === "ENVIADO") {
     // Lançamento confirmado pelo ContaAzul — marca como enviado
     await supabase

@@ -983,7 +983,7 @@ Deno.serve(async (req) => {
         const normRows = (savedRows || []).map((r: any) => {
           const existing = normMap.get(r.id);
           
-          // Se já está enviado, não mexe na normalização via sync
+          // Se já está enviado ou reconciliado, não mexe na normalização via sync
           if (existing?.status === "enviado") return null;
 
           const flash_type = pickFlashType(r.payload_json);
