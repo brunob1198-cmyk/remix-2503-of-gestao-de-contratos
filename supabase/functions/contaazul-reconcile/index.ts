@@ -216,39 +216,42 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     if (!normFinal) return { status: "norm_not_found" };
 
     let financialAccountId = normFinal.conta_azul_account_id;
-    if (!financialAccountId) {
-      console.log(`[Reconcile] conta_azul_account_id is null, attempting to find 'flash' account via API...`);
-      try {
-        const accResp = await fetch(`${CONTAAZUL_API}/v1/conta-financeira`, {
+    let fetchedFlashId = null;
+
+    console.log(`[Reconcile] Attempting to find 'flash' account via API...`);
+    try {
+      const accResp = await fetch(`${CONTAAZUL_API}/v1/conta-financeira`, {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
+      });
+      if (accResp.ok) {
+        const accData = await accResp.json();
+        const accounts = Array.isArray(accData) ? accData : (accData?.itens || accData?.data || []);
+        const found = accounts.find((a: any) => (a.nome || a.name || a.description || "").toLowerCase().includes("flash"));
+        if (found) {
+          fetchedFlashId = found.id;
+          console.log(`[Reconcile] Found 'flash' account: ${fetchedFlashId}`);
+        }
+      } else {
+        // try v1/contas-financeiras
+        const accResp2 = await fetch(`${CONTAAZUL_API}/v1/contas-financeiras`, {
           headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
         });
-        if (accResp.ok) {
-          const accData = await accResp.json();
+        if (accResp2.ok) {
+          const accData = await accResp2.json();
           const accounts = Array.isArray(accData) ? accData : (accData?.itens || accData?.data || []);
           const found = accounts.find((a: any) => (a.nome || a.name || a.description || "").toLowerCase().includes("flash"));
           if (found) {
-            financialAccountId = found.id;
-            console.log(`[Reconcile] Found 'flash' account: ${financialAccountId}`);
-          }
-        } else {
-          // try v1/contas-financeiras
-          const accResp2 = await fetch(`${CONTAAZUL_API}/v1/contas-financeiras`, {
-            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" }
-          });
-          if (accResp2.ok) {
-            const accData = await accResp2.json();
-            const accounts = Array.isArray(accData) ? accData : (accData?.itens || accData?.data || []);
-            const found = accounts.find((a: any) => (a.nome || a.name || a.description || "").toLowerCase().includes("flash"));
-            if (found) {
-              financialAccountId = found.id;
-              console.log(`[Reconcile] Found 'flash' account: ${financialAccountId}`);
-            }
+            fetchedFlashId = found.id;
+            console.log(`[Reconcile] Found 'flash' account: ${fetchedFlashId}`);
           }
         }
-      } catch (e) {
-        console.error(`[Reconcile] Error fetching accounts:`, e);
       }
+    } catch (e) {
+      console.error(`[Reconcile] Error fetching accounts:`, e);
     }
+
+    // Always prioritize the currently valid flash account ID from the API over the potentially stale DB one
+    financialAccountId = fetchedFlashId || financialAccountId;
 
     if (!financialAccountId) {
       // try to extract from parcela
