@@ -264,7 +264,12 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
     let rawDate = normFinal.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
     const transactionDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
-    const transactionValue = normFinal.conta_azul_payload?.amount || 0;
+    
+    // Use the value directly from the Conta Azul parcela object to prevent "exceeding nominal value" errors
+    // Conta Azul uses either `valor`, `valor_bruto`, or `detalhe_valor.valor_bruto`
+    const transactionValue = parcela.valor || parcela.valor_bruto || (parcela.detalhe_valor && parcela.detalhe_valor.valor_bruto) || (normFinal.conta_azul_payload?.amount || 0);
+
+    console.log(`[Reconcile] Parcela original API value: ${parcela.valor}, det_valor: ${parcela.detalhe_valor?.valor_bruto}. Usando: ${transactionValue}`);
 
     const payload = {
       data_pagamento: transactionDate,
