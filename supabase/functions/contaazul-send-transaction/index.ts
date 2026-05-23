@@ -154,7 +154,7 @@ async function realizarBaixa(
       if (!parcelaId) continue;
       totalParcelasValidas++;
 
-      if (parcela?.baixado || parcela?.liquidado || parcela?.situacao === "PAGO" || parcela?.situacao === "LIQUIDADO") {
+      if (parcela?.baixado || parcela?.liquidado || parcela?.situacao === "PAGO" || parcela?.situacao === "LIQUIDADO" || parcela?.status === "QUITADO") {
         console.log(`[BAIXA] Parcela ${parcelaId} já baixada/liquidada, pulando.`);
         baixadasComSucesso++;
         continue;
