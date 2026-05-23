@@ -191,7 +191,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     const parcela = parcelas[0];
     if (!parcela) return { status: "no_parcela" };
 
-    if (parcela.status === "PAID" || parcela.baixado) {
+    if (parcela?.baixado || parcela?.liquidado || parcela?.situacao === "PAGO" || parcela?.situacao === "LIQUIDADO" || parcela?.status === "PAID") {
        await supabase.from("flash_integration_logs").update({ 
          status: "ENVIADO", 
          reconciliado: true, 
