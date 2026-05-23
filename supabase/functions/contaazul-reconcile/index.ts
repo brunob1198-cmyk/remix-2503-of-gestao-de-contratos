@@ -266,7 +266,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
     const payload = {
       data_pagamento: transactionDate,
       conta_financeira: financialAccountId,
-      metodo_pagamento: "TRANSFERENCIA",
+      metodo_pagamento: "TRANSFERENCIA_BANCARIA",
       composicao_valor: {
         valor_bruto: transactionValue,
         multa: 0,
