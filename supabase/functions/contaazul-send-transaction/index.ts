@@ -494,7 +494,7 @@ async function sendOne(
 
                 if (pollData?.status === "SUCCESS" || pollData?.status === "PROCESSED" || pollData?.status === "COMPLETED") {
                   status = "ENVIADO";
-                  contaAzulId = pollData?.resourceId || pollData?.id || pollData?.evento_id || pollData?.evento_financeiro_id || null;
+                  contaAzulId = pollData?.evento_financeiro_id || pollData?.evento_id || pollData?.resourceId || pollData?.id || null;
                   errorMsg = null;
                   pollResolved = true;
                   console.log(`[OK] Protocolo ${contaAzulProtocolo} processado! ID final: ${contaAzulId}`);
@@ -623,6 +623,23 @@ serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(20);
       return json({ logs: data, error }, 200);
+    }
+    if (urlObj.searchParams.get("action") === "fix_stuck") {
+      const admin = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: logs, error: err1 } = await admin
+        .from("flash_integration_logs")
+        .select("id, reconciliado, erro")
+        .like("erro", "%Erro na Baixa%")
+        .eq("reconciliado", true);
+        
+      if (err1) return json({ error: err1.message }, 500);
+      
+      const updated = [];
+      for (const log of logs || []) {
+        await admin.from("flash_integration_logs").update({ reconciliado: false }).eq("id", log.id);
+        updated.push(log.id);
+      }
+      return json({ message: `Fixed ${updated.length} logs`, ids: updated }, 200);
     }
 
     const authHeader = req.headers.get("Authorization");

@@ -69,7 +69,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
   
   try {
     // 1. Tentar resolver ID via protocolo
-    if (!conta_azul_transaction_id && conta_azul_protocolo) {
+    if ((!conta_azul_transaction_id || conta_azul_transaction_id === conta_azul_protocolo) && conta_azul_protocolo) {
       console.log(`[Reconcile] Buscando ID para protocolo ${conta_azul_protocolo}...`);
       // Descobrir se é pagar ou receber para usar o endpoint correto do protocolo
       const { data: normType } = await supabase
