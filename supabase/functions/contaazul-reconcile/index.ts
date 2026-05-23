@@ -265,15 +265,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
     const payload = {
       data_pagamento: transactionDate,
-      conta_financeira: financialAccountId,
-      metodo_pagamento: "OUTRO",
-      composicao_valor: {
-        valor_pago: transactionValue,
-        multa: 0,
-        juros: 0,
-        desconto: 0,
-        taxa: 0
-      }
+      conta_financeira: financialAccountId
     };
 
     console.log(`[Reconcile] Sending baixa with payload:`, JSON.stringify(payload));
