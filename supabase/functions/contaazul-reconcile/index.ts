@@ -259,7 +259,8 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       }
     }
 
-    const transactionDate = normFinal.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
+    let rawDate = normFinal.conta_azul_payload?.date || new Date().toISOString().split("T")[0];
+    const transactionDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
     const transactionValue = normFinal.conta_azul_payload?.amount || 0;
 
     const payload = {
