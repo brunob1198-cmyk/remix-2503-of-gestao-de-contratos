@@ -247,7 +247,8 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
 
       return { status: "reconciled_with_baixa" };
     } else {
-      return { status: "baixa_failed" };
+      const errText = await baixaResp.text();
+      return { status: "baixa_failed", reason: errText, status_code: baixaResp.status };
     }
   } catch (e: any) {
     return { status: "error", error: e.message };
