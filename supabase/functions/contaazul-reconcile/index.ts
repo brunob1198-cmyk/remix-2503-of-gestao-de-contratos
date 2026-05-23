@@ -317,9 +317,10 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         status_code: baixaResp.status,
         payload_sent: {
           data_pagamento: transactionDate,
-          conta_financeira: normFinal.conta_azul_account_id,
-          metodo_pagamento: "OUTRO",
-          valor_pago: transactionValue
+          conta_financeira: financialAccountId,
+          metodo_pagamento: "TRANSFERENCIA_BANCARIA",
+          valor_pago_sent: transactionValue,
+          parcela_original: parcela
         }
       };
     }
