@@ -268,7 +268,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
       conta_financeira: financialAccountId,
       metodo_pagamento: "OUTRO",
       composicao_valor: {
-        valor_bruto: transactionValue,
+        valor_pago: transactionValue,
         multa: 0,
         juros: 0,
         desconto: 0,

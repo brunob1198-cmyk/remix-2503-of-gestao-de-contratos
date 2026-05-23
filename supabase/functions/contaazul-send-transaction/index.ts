@@ -169,7 +169,7 @@ async function realizarBaixa(
           conta_financeira: input.financial_account_id,
           metodo_pagamento: "OUTRO",
           composicao_valor: {
-            valor_bruto: transactionValue,
+            valor_pago: transactionValue,
             multa: 0,
             juros: 0,
             desconto: 0,
