@@ -228,13 +228,7 @@ async function verifyAndReconcile(supabase: any, log: any, accessToken: string) 
         data_pagamento: transactionDate,
         conta_financeira: normFinal.conta_azul_account_id,
         metodo_pagamento: "OUTRO",
-        composicao_valor: {
-          valor_bruto: transactionValue,
-          multa: 0,
-          juros: 0,
-          desconto: 0,
-          taxa: 0
-        }
+        valor_pago: transactionValue
       })
     });
 
