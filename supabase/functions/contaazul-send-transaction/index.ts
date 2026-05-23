@@ -166,7 +166,15 @@ async function realizarBaixa(
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           data_pagamento: transactionDate,
-          conta_financeira: input.financial_account_id
+          conta_financeira: input.financial_account_id,
+          metodo_pagamento: "TRANSFERENCIA",
+          composicao_valor: {
+            valor_bruto: transactionValue,
+            multa: 0,
+            juros: 0,
+            desconto: 0,
+            taxa: 0
+          }
         })
       });
 
