@@ -713,9 +713,61 @@ export default function DiarioObraPage() {
                     {equipe.map(e => (
                       <TableRow key={e.id}>
                         <TableCell>{e.nome}</TableCell>
-                        <TableCell className="text-right">{e.horas}</TableCell>
+                        <TableCell className="text-right">
+                          {editingEquipeId === e.id ? (
+                            <div className="flex flex-col gap-1 items-end">
+                              <Input
+                                type="number"
+                                value={editEquipeHoras}
+                                onChange={ev => setEditEquipeHoras(ev.target.value)}
+                                className="w-20 h-8"
+                                placeholder="Horas"
+                              />
+                              <Input
+                                type="number"
+                                value={editEquipeCustoHora}
+                                onChange={ev => setEditEquipeCustoHora(ev.target.value)}
+                                className="w-20 h-8 text-xs"
+                                placeholder="Custo/h"
+                              />
+                            </div>
+                          ) : (
+                            e.horas
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(e.custo_total)}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingEquipeId === e.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateEquipe(e.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingEquipeId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingEquipeId(e.id);
+                                    setEditEquipeHoras(String(e.horas));
+                                    setEditEquipeCustoHora(String(e.custo_hora));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
