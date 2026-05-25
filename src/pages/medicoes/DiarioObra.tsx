@@ -894,11 +894,76 @@ export default function DiarioObraPage() {
                     {veiculos.map(v => (
                       <TableRow key={v.id}>
                         <TableCell>{v.descricao}</TableCell>
-                        <TableCell className="text-right">{v.km_inicial}</TableCell>
-                        <TableCell className="text-right">{v.km_final}</TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicKmInicial}
+                              onChange={e => setEditVeicKmInicial(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            v.km_inicial
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicKmFinal}
+                              onChange={e => setEditVeicKmFinal(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            v.km_final
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium">{v.km_rodados}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(v.custo_diaria)}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicCusto}
+                              onChange={e => setEditVeicCusto(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            formatCurrency(v.custo_diaria)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingVeicId === v.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateVeiculo(v.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingVeicId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingVeicId(v.id);
+                                    setEditVeicKmInicial(String(v.km_inicial));
+                                    setEditVeicKmFinal(String(v.km_final));
+                                    setEditVeicCusto(String(v.custo_diaria));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {veiculos.length > 0 && (
