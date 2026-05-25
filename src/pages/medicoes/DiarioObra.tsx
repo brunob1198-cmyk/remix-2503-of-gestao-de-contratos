@@ -629,7 +629,18 @@ export default function DiarioObraPage() {
                     {producoes.map(p => (
                       <TableRow key={p.id}>
                         <TableCell>{p.item_lpu?.descricao}</TableCell>
-                        <TableCell className="text-right">{p.quantidade}</TableCell>
+                        <TableCell className="text-right">
+                          {editingProducaoId === p.id ? (
+                            <Input
+                              type="number"
+                              value={editProducaoQtd}
+                              onChange={e => setEditProducaoQtd(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            p.quantidade
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(p.valor_total)}</TableCell>
                         <TableCell>
                           <input type="file" multiple accept="image/*" className="hidden" id={`prod-foto-${p.id}`} onChange={e => e.target.files && handleUploadFoto(e, "execucao", p.id)} />
@@ -637,7 +648,37 @@ export default function DiarioObraPage() {
                             <Camera className="h-4 w-4 mr-1" /> Foto
                           </Button>
                         </TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingProducaoId === p.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateProducao(p.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingProducaoId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingProducaoId(p.id);
+                                    setEditProducaoQtd(String(p.quantidade));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
