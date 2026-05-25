@@ -216,7 +216,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   // 2. Custos Pagos (ERP) - filtra categorias desativadas
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp", projetoId, siteId, startDate, categoriasDesativadas],
-    staleTime: Infinity,
+    staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       const BATCH_SIZE = 1000;
       const allData: CustoErp[] = [];
@@ -562,7 +562,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .filter((p) => p.projeto_id);
     },
     enabled: projetoIds.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const { data: projetosData = [] } = useQuery({
