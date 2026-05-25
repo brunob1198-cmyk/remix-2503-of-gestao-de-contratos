@@ -530,7 +530,19 @@ export default function DiarioObraPage() {
                     </SelectContent>
                   </Select>
                   <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-                  <Button onClick={handleSaveHeader}>Salvar</Button>
+                  <Button 
+                    onClick={handleSaveHeader}
+                    className={cn(headerSaved && \"bg-green-600 hover:bg-green-700\")}
+                  >
+                    {headerSaved ? (
+                      <>
+                        <Check className=\"mr-2 h-4 w-4\" />
+                        Salvo
+                      </>
+                    ) : (
+                      \"Salvar\"
+                    )}
+                  </Button>
                 </div>
               </div>
 
