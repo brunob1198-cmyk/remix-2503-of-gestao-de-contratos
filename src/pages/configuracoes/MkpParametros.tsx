@@ -16,11 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { MkpParametrosModal } from "@/components/configuracoes/mkp/MkpParametrosModal";
 import { MkpImportModal } from "@/components/configuracoes/mkp/MkpImportModal";
 import { format } from "date-fns";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 export default function MkpParametrosPage() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -200,29 +201,14 @@ export default function MkpParametrosPage() {
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Anterior
-          </Button>
-          <div className="text-sm font-medium">
-            Página {currentPage} de {totalPages}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={setItemsPerPage}
+        totalItems={filteredParametros?.length || 0}
+      />
 
       <MkpParametrosModal
         isOpen={isModalOpen}
