@@ -477,33 +477,35 @@ export default function DiarioObraPage() {
 
         <TabsContent value="lancamento">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
-                <Select value={diarioClima} onValueChange={setDiarioClima}>
-                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
-                  <SelectContent>
-                    {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-                <Button onClick={handleSaveHeader}>Salvar</Button>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
+                  <Select value={diarioClima} onValueChange={setDiarioClima}>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
+                    <SelectContent>
+                      {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
+                  <Button onClick={handleSaveHeader}>Salvar</Button>
+                </div>
               </div>
 
-              <div className="flex-1" />
-
-              <AnotacoesCampoDialog
-                atividadesCampo={atividadesCampo}
-                diarioObraId={diario?.id || null}
-                itensDisponiveis={itensDisponiveis}
-                producoes={producoes}
-                fotosObra={fotos}
-                onFotoTransferred={() => {
-                  queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
-                }}
-                ensureDiario={ensureDiario}
-                selectedDate={selectedDate}
-              />
+              <div>
+                <AnotacoesCampoDialog
+                  atividadesCampo={atividadesCampo}
+                  diarioObraId={diario?.id || null}
+                  itensDisponiveis={itensDisponiveis}
+                  producoes={producoes}
+                  fotosObra={fotos}
+                  onFotoTransferred={() => {
+                    queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+                  }}
+                  ensureDiario={ensureDiario}
+                  selectedDate={selectedDate}
+                />
+              </div>
             </div>
 
             <Card>
