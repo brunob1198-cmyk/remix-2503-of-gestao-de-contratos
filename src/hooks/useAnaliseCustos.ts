@@ -195,19 +195,23 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const custoOrcado = escopoData.custoOrcado;
   const valorProduzido = escopoData.valorProduzido;
 
-  // Fetch disabled ERP categories
-  const { data: categoriasDesativadas = [] } = useQuery({
-    queryKey: ["categorias_erp_desativadas"],
+  // Fetch all mappings to identify disabled ones
+  const { data: categoriasMapeamento = [] } = useQuery({
+    queryKey: ["mapeamento_categorias_erp_all"],
     staleTime: Infinity,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
-        .select("categoria_erp")
-        .eq("ativo", false);
+        .select("categoria_erp, categoria_interna, ativo");
       if (error) throw error;
-      return (data || []).map((d) => d.categoria_erp);
+      return data || [];
     },
   });
+
+  const categoriasDesativadas = useMemo(
+    () => categoriasMapeamento.filter((c) => !c.ativo).map((c) => c.categoria_erp),
+    [categoriasMapeamento],
+  );
 
   // 2. Custos Pagos (ERP) - filtra categorias desativadas
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
