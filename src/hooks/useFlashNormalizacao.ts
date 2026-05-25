@@ -1311,7 +1311,9 @@ export function useFlashNormalizacao() {
     isAlreadyIntegrated,
     updateCostCenter,
     updateStatus: async (row: FlashTransactionRow, status: "pendente" | "normalizado" | "enviado") => {
-      await saveNormalization(row, { status }, { allowEditEnviado: true });
+      // Quando o status é alterado manualmente, marcamos mapping_id_usado como null 
+      // para que a sincronização automática não o mude de volta.
+      await saveNormalization(row, { status, mapping_id_usado: null }, { allowEditEnviado: true });
     },
     saasCostCenters,
     bulkUpdateCostCenter,
