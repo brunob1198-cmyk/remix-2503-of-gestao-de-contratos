@@ -1226,23 +1226,32 @@ export function useFlashNormalizacao() {
         );
         if (error) throw error;
 
-        const sucesso = data?.sucesso ?? 0;
-        const erro = data?.erro ?? 0;
-        const skipped = data?.skipped ?? 0;
+        // Force a fresh fetch from DB to see updated statuses immediately
+        // The edge function updates flash_normalizacao status to 'enviado' or 'normalizado' (on error)
+        await fetchDataRaw(true);
+
+        const sucesso = data?.results?.filter((r: any) => r.status === "ENVIADO")?.length || 0;
+        const erro = data?.results?.filter((r: any) => r.status === "erro")?.length || 0;
+        const pendingCa = data?.results?.filter((r: any) => r.status === "pendente_ca")?.length || 0;
+        const skipped = data?.results?.filter((r: any) => r.status === "skipped")?.length || 0;
 
         if (sucesso > 0) {
           toast.success(`${sucesso} lançamento(s) enviado(s) ao Conta Azul.`);
+        }
+        if (pendingCa > 0) {
+          toast.warning(`${pendingCa} lançamento(s) ainda processando no Conta Azul.`, {
+            description: "Eles permanecerão como Normalizados até que o processamento termine ou sejam reenviados.",
+          });
         }
         if (erro > 0) {
           toast.error(`${erro} lançamento(s) falharam`, {
             description: "Veja a aba 'Logs' ou os detalhes da linha.",
           });
         }
-        if (skipped > 0 && sucesso === 0 && erro === 0) {
+        if (skipped > 0 && sucesso === 0 && erro === 0 && pendingCa === 0) {
           toast.info(`${skipped} lançamento(s) ignorado(s).`);
         }
 
-        await fetchDataRaw(true);
         return data;
       } catch (e: any) {
         console.error(e);
