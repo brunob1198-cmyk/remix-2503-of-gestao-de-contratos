@@ -834,7 +834,7 @@ export function useFlashNormalizacao() {
           ...merged,
           motivo,
           flash_type_detectado: row.flash_type,
-          mapping_id_usado: opts?.saveMapping ? null : row.mapping_id_usado ?? null,
+          mapping_id_usado: merged.mapping_id_usado,
           conta_azul_payload: payloadSnapshot,
           normalizado_at:
             merged.status === "normalizado" || merged.status === "enviado"
