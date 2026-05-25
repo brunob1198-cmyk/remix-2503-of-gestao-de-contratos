@@ -525,6 +525,8 @@ export function useFlashNormalizacao() {
             base.conta_azul_account_id = n.conta_azul_account_id;
             base.conta_azul_account_name = n.conta_azul_account_name;
             base.tipo_operacao = n.tipo_operacao;
+            // PRIORIDADE: Se o status foi editado manualmente (não é automático de mapeamento), mantemos.
+            // Para isso, verificamos se existe mapping_id_usado nulo e se o status é diferente do que o normalizeFlashTransaction daria.
             base.status = n.status;
             base.motivo = n.motivo;
             base.flash_type_detectado = n.flash_type_detectado || base.flash_type;
@@ -748,6 +750,7 @@ export function useFlashNormalizacao() {
         tipo_operacao: "receita" | "despesa";
         status: "pendente" | "normalizado" | "enviado";
         motivo: string | null;
+        mapping_id_usado: string | null;
       }>,
       opts?: { saveMapping?: boolean; allowEditEnviado?: boolean }
     ) => {
@@ -771,6 +774,7 @@ export function useFlashNormalizacao() {
           conta_azul_account_name: flashAccount?.name ?? patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
           tipo_operacao: patch.tipo_operacao ?? row.tipo_operacao ?? "despesa",
           status: patch.status ?? row.status ?? "pendente",
+          mapping_id_usado: patch.mapping_id_usado !== undefined ? patch.mapping_id_usado : row.mapping_id_usado ?? null,
         };
 
         // Auto-promote para normalizado quando categoria + conta estão definidas
@@ -830,7 +834,7 @@ export function useFlashNormalizacao() {
           ...merged,
           motivo,
           flash_type_detectado: row.flash_type,
-          mapping_id_usado: opts?.saveMapping ? null : row.mapping_id_usado ?? null,
+          mapping_id_usado: merged.mapping_id_usado,
           conta_azul_payload: payloadSnapshot,
           normalizado_at:
             merged.status === "normalizado" || merged.status === "enviado"
@@ -1309,7 +1313,9 @@ export function useFlashNormalizacao() {
     isAlreadyIntegrated,
     updateCostCenter,
     updateStatus: async (row: FlashTransactionRow, status: "pendente" | "normalizado" | "enviado") => {
-      await saveNormalization(row, { status }, { allowEditEnviado: true });
+      // Quando o status é alterado manualmente, marcamos mapping_id_usado como null 
+      // para que a sincronização automática não o mude de volta.
+      await saveNormalization(row, { status, mapping_id_usado: null }, { allowEditEnviado: true });
     },
     saasCostCenters,
     bulkUpdateCostCenter,
