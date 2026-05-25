@@ -17,6 +17,8 @@ import { ImpostosModal } from "@/components/configuracoes/impostos/ImpostosModal
 
 export default function ConfigImpostosPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -70,6 +72,12 @@ export default function ConfigImpostosPage() {
       p.projetos?.codigo?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.ceil((filteredImpostos?.length || 0) / itemsPerPage);
+  const paginatedImpostos = filteredImpostos?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const formatPerc = (val: number) => 
     new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 }).format(val);
@@ -137,7 +145,7 @@ export default function ConfigImpostosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredImpostos?.map((p) => (
+              paginatedImpostos?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.projetos?.nome}</div>
@@ -191,6 +199,30 @@ export default function ConfigImpostosPage() {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          <div className="text-sm font-medium">
+            Página {currentPage} de {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
 
       <ImpostosModal
         isOpen={isModalOpen}
