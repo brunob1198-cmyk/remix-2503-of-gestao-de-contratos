@@ -504,6 +504,7 @@ export default function DiarioObraPage() {
                   }}
                   ensureDiario={ensureDiario}
                   selectedDate={selectedDate}
+                  photoGroups={photoGroups}
                 />
               </div>
             </div>
