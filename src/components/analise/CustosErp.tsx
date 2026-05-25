@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth, isValid } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnaliseCustosMulti } from "@/hooks/useAnaliseCustos";
-import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X, AlertCircle, CheckCircle2, Wand2, GripHorizontal } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Filter, Download, X, AlertCircle, CheckCircle2, Wand2, GripHorizontal, ChevronRight, ChevronDown } from "lucide-react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 import * as XLSX from "xlsx";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface CustosErpProps {
   projetoIds: string[];
