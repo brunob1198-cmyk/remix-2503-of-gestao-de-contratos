@@ -636,8 +636,7 @@ export default function DiarioObraPage() {
                     {producoes.map(p => (
                       <TableRow key={p.id}>
                         <TableCell>
-                          {p.item_lpu?.codigo && <Badge variant="outline" className="mr-2 text-[10px] font-mono">{p.item_lpu.codigo}</Badge>}
-                          {p.item_lpu?.descricao}
+                          {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
                         </TableCell>
                         <TableCell className="text-right">
                           {editingProducaoId === p.id ? (
