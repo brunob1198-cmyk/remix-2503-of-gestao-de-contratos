@@ -587,19 +587,10 @@ async function sendOne(
       .eq("flash_transaction_id", input.flash_transaction_id)
       .eq("empresa_id", empresaId);
 
-  } else if (status === "pendente_ca") {
-    // ContaAzul ainda processando após timeout — volta para normalizado para reenvio
-    await supabase
-      .from("flash_normalizacao")
-      .update({
-        status: "normalizado",
-        motivo: errorMsg || `Aguardando processamento no ContaAzul. Tente reenviar em alguns minutos.`,
-      })
-      .eq("flash_transaction_id", input.flash_transaction_id)
-      .eq("empresa_id", empresaId);
-
-  } else if (status === "erro") {
-    // Erro real — volta para normalizado para o usuário poder revisar e reenviar
+  } else if (status === "erro" || status === "pendente_ca") {
+    // Erro real ou timeout — volta para normalizado para o usuário poder revisar e reenviar.
+    // IMPORTANTE: Se o status for pendente_ca, ele continuará aparecendo como "normalizado" na UI,
+    // o que condiz com o relato do usuário de que "permanecem apenas como normalizado" mesmo após o envio.
     await supabase
       .from("flash_normalizacao")
       .update({
