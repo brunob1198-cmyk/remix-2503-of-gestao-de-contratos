@@ -70,12 +70,68 @@ interface ColumnHeaderFilterProps {
   onToggleValue: (v: string) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
+  isCompetencia?: boolean;
 }
 
-function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange, uniqueValues, selectedValues, onToggleValue, onSelectAll, onClearAll }: ColumnHeaderFilterProps) {
+function ColumnHeaderFilter({ 
+  label, 
+  sortDir, 
+  onSort, 
+  searchText, 
+  onSearchChange, 
+  uniqueValues, 
+  selectedValues, 
+  onToggleValue, 
+  onSelectAll, 
+  onClearAll,
+  isCompetencia 
+}: ColumnHeaderFilterProps) {
   const isFiltered = searchText !== "" || selectedValues.size > 0;
   const SortIcon = sortDir === "asc" ? ArrowUp : sortDir === "desc" ? ArrowDown : ArrowUpDown;
   const [width, setWidth] = useState(350);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  const hierarchicalData = useMemo(() => {
+    if (!isCompetencia) return null;
+    
+    const months: Record<string, { label: string; days: string[] }> = {};
+    
+    uniqueValues.forEach(val => {
+      if (val === "-") return;
+      const [day, month, year] = val.split("/");
+      const monthKey = `${year}-${month}`;
+      const monthLabel = format(new Date(Number(year), Number(month) - 1), "MMMM 'de' yyyy", { locale: ptBR });
+      
+      if (!months[monthKey]) {
+        months[monthKey] = { label: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1), days: [] };
+      }
+      months[monthKey].days.push(val);
+    });
+
+    // Ordenar meses decrescente
+    return Object.entries(months).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [uniqueValues, isCompetencia]);
+
+  const toggleMonth = (monthKey: string) => {
+    const next = new Set(expandedMonths);
+    if (next.has(monthKey)) next.delete(monthKey);
+    else next.add(monthKey);
+    setExpandedMonths(next);
+  };
+
+  const isMonthSelected = (days: string[]) => days.every(d => selectedValues.has(d));
+  const isMonthIndeterminate = (days: string[]) => days.some(d => selectedValues.has(d)) && !isMonthSelected(days);
+
+  const toggleMonthSelection = (days: string[]) => {
+    const allSelected = isMonthSelected(days);
+    days.forEach(d => {
+      if (allSelected) {
+        if (selectedValues.has(d)) onToggleValue(d);
+      } else {
+        if (!selectedValues.has(d)) onToggleValue(d);
+      }
+    });
+  };
 
   return (
     <div className="flex items-center gap-1">
@@ -92,9 +148,9 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
         <PopoverContent className="p-0 border-none bg-transparent shadow-none w-auto overflow-visible" align="start" sideOffset={8}>
           <ResizableBox
             width={width}
-            height={320}
+            height={400}
             minConstraints={[280, 250]}
-            maxConstraints={[800, 600]}
+            maxConstraints={[800, 800]}
             axis="both"
             onResize={(e, data) => setWidth(data.size.width)}
             handle={
@@ -118,16 +174,69 @@ function ColumnHeaderFilter({ label, sortDir, onSort, searchText, onSearchChange
                 <button onClick={onClearAll} className="text-primary hover:underline">Limpar</button>
               </div>
               <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-                {uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
-                  <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1.5 transition-colors">
+                {isCompetencia && hierarchicalData ? (
+                  hierarchicalData.map(([monthKey, data]) => {
+                    const filteredDays = data.days.filter(d => d.toLowerCase().includes(searchText.toLowerCase()));
+                    if (filteredDays.length === 0) return null;
+                    
+                    const isExpanded = expandedMonths.has(monthKey) || searchText !== "";
+                    
+                    return (
+                      <div key={monthKey} className="space-y-1">
+                        <div className="flex items-center gap-1 hover:bg-accent rounded px-1 py-1 transition-colors group">
+                          <button 
+                            onClick={() => toggleMonth(monthKey)}
+                            className="p-0.5 hover:bg-muted rounded"
+                          >
+                            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          </button>
+                          <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => toggleMonthSelection(data.days)}>
+                            <Checkbox 
+                              checked={isMonthSelected(data.days)}
+                              className={cn("h-4 w-4", isMonthIndeterminate(data.days) && "opacity-50")}
+                            />
+                            <span className="text-sm font-medium">{data.label}</span>
+                          </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="ml-6 space-y-1">
+                            {filteredDays.map(day => (
+                              <label key={day} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1 transition-colors">
+                                <Checkbox 
+                                  checked={selectedValues.has(day)} 
+                                  onCheckedChange={() => onToggleValue(day)} 
+                                  className="h-4 w-4" 
+                                />
+                                <span className="break-words leading-tight flex-1">{day}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  uniqueValues.filter(v => v.toLowerCase().includes(searchText.toLowerCase())).map(v => (
+                    <label key={v} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1.5 transition-colors">
+                      <Checkbox 
+                        checked={selectedValues.has(v)} 
+                        onCheckedChange={() => onToggleValue(v)} 
+                        className="h-4 w-4 mt-0.5" 
+                      />
+                      <span className="break-words leading-tight flex-1">{v || "(vazio)"}</span>
+                    </label>
+                  ))
+                )}
+                {isCompetencia && uniqueValues.includes("-") && (
+                   <label className="flex items-start gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1.5 transition-colors">
                     <Checkbox 
-                      checked={selectedValues.has(v)} 
-                      onCheckedChange={() => onToggleValue(v)} 
+                      checked={selectedValues.has("-")} 
+                      onCheckedChange={() => onToggleValue("-")} 
                       className="h-4 w-4 mt-0.5" 
                     />
-                    <span className="break-words leading-tight flex-1">{v || "(vazio)"}</span>
+                    <span className="break-words leading-tight flex-1">(vazio)</span>
                   </label>
-                ))}
+                )}
               </div>
             </div>
           </ResizableBox>
