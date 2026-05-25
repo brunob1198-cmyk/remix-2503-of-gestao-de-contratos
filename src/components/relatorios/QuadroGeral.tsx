@@ -157,11 +157,17 @@ function MiniProgressBar({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-2 min-w-[140px]">
       <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden relative">
+        {value > 100 && (
+          <div
+            className="absolute h-full bg-emerald-700/30 rounded-sm z-0"
+            style={{ width: '100%' }}
+          />
+        )}
         <div
-          className={cn("h-full rounded-sm transition-all duration-500", color)}
+          className={cn("h-full rounded-sm transition-all duration-500 relative z-10", color)}
           style={{ width: `${clamped}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold tabular-nums mix-blend-difference text-white">
+        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold tabular-nums mix-blend-difference text-white z-20">
           {formatPercent(value)}
         </span>
       </div>
