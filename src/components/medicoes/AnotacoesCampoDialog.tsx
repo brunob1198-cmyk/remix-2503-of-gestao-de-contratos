@@ -27,6 +27,7 @@ interface AnotacoesCampoDialogProps {
   onFotoTransferred: () => void;
   ensureDiario: () => Promise<string | null>;
   selectedDate: string;
+  photoGroups?: string[];
 }
 
 export function AnotacoesCampoDialog({
@@ -38,6 +39,7 @@ export function AnotacoesCampoDialog({
   onFotoTransferred,
   ensureDiario,
   selectedDate,
+  photoGroups = ["Execução", "Vistoria"],
 }: AnotacoesCampoDialogProps) {
   const { toast } = useToast();
   const [transferring, setTransferring] = useState<Record<string, boolean>>({});
@@ -65,7 +67,8 @@ export function AnotacoesCampoDialog({
 
   const handleTransferFoto = async (foto: DiarioCampoFoto) => {
     const fotoId = foto.id;
-    const target = selectedTarget[fotoId] || "geral";
+    const target = selectedTarget[fotoId] || "Execução";
+    const isProductionTarget = !photoGroups.includes(target);
     setTransferring((p) => ({ ...p, [fotoId]: true }));
 
     try {
@@ -77,11 +80,11 @@ export function AnotacoesCampoDialog({
         url: foto.url,
         thumb_url: foto.thumb_url,
         thumb_600_url: foto.thumb_600_url,
-        classificacao: "execucao",
+        classificacao: isProductionTarget ? "execucao" : target.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
         legenda: foto.legenda || "Transferido do Diário de Campo",
       };
 
-      if (target !== "geral") {
+      if (isProductionTarget) {
         insertData.diario_producao_id = target;
       }
 
@@ -138,16 +141,17 @@ export function AnotacoesCampoDialog({
 
     try {
       const inserts = untransferred.map(foto => {
-        const target = selectedTarget[foto.id] || "geral";
+        const target = selectedTarget[foto.id] || "Execução";
+        const isProductionTarget = !photoGroups.includes(target);
         const data: any = {
           diario_id: diarioId,
           url: foto.url,
           thumb_url: foto.thumb_url,
           thumb_600_url: foto.thumb_600_url,
-          classificacao: "execucao",
+          classificacao: isProductionTarget ? "execucao" : target.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
           legenda: foto.legenda || "Transferido do Diário de Campo",
         };
-        if (target !== "geral") data.diario_producao_id = target;
+        if (isProductionTarget) data.diario_producao_id = target;
         return data;
       });
 
@@ -207,10 +211,10 @@ export function AnotacoesCampoDialog({
   };
 
   const targetOptions = [
-    { value: "geral", label: "📷 Geral (sem item LPU)" },
+    ...photoGroups.map(group => ({ value: group, label: `📷 ${group}` })),
     ...producoes.map((p) => {
       const item = itensDisponiveis.find((i) => i.item_lpu_id === p.item_lpu_id);
-      return { value: p.id, label: item?.nome || p.item_lpu_id };
+      return { value: p.id, label: `📦 ${item?.nome || p.item_lpu_id}` };
     }),
   ];
 
@@ -353,7 +357,7 @@ export function AnotacoesCampoDialog({
                                     <div className="space-y-1">
                                       <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Destino no Diário</p>
                                       <Select
-                                        value={selectedTarget[f.id] || (fotoNoDiario?.diario_producao_id || "geral")}
+                                        value={selectedTarget[f.id] || (fotoNoDiario?.diario_producao_id || (fotoNoDiario?.classificacao === "vistoria" ? "Vistoria" : "Execução"))}
                                         onValueChange={(v) => setSelectedTarget((p) => ({ ...p, [f.id]: v }))}
                                         disabled={isTransferred}
                                       >
