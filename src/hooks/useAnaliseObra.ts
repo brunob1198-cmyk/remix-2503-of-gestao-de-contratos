@@ -215,7 +215,6 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         .sort((a, b) => b.value - a.value);
 
       if (diarioIds.length > 0) {
-      if (diarioIds.length > 0) {
         for (let i = 0; i < diarioIds.length; i += 100) {
           const chunk = diarioIds.slice(i, i + 100);
           
@@ -247,7 +246,6 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           diarioProducaoData = [...diarioProducaoData, ...dprod];
           fotosData = [...fotosData, ...fts];
         }
-      }
       }
 
       const diarioMap = new Map(diarios?.map(d => [d.id, d.data]) || []);
