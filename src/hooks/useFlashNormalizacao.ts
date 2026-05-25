@@ -774,6 +774,7 @@ export function useFlashNormalizacao() {
           conta_azul_account_name: flashAccount?.name ?? patch.conta_azul_account_name ?? row.conta_azul_account_name ?? null,
           tipo_operacao: patch.tipo_operacao ?? row.tipo_operacao ?? "despesa",
           status: patch.status ?? row.status ?? "pendente",
+          mapping_id_usado: patch.mapping_id_usado !== undefined ? patch.mapping_id_usado : row.mapping_id_usado ?? null,
         };
 
         // Auto-promote para normalizado quando categoria + conta estão definidas
