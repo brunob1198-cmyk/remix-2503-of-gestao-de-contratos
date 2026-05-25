@@ -484,6 +484,7 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                         }}
                         onSelectAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set(uniqueValues[col]) }))}
                         onClearAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set() }))}
+                        isCompetencia={col === "competencia"}
                       />
                     </th>
                   ))}
