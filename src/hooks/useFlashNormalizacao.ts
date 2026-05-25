@@ -750,6 +750,7 @@ export function useFlashNormalizacao() {
         tipo_operacao: "receita" | "despesa";
         status: "pendente" | "normalizado" | "enviado";
         motivo: string | null;
+        mapping_id_usado: string | null;
       }>,
       opts?: { saveMapping?: boolean; allowEditEnviado?: boolean }
     ) => {
