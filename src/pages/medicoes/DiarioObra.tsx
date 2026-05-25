@@ -509,6 +509,59 @@ export default function DiarioObraPage() {
               </div>
             </div>
 
+            {diario && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Produção Total</p>
+                        <p className="text-2xl font-bold text-green-600">{formatCurrency(totalProducao)}</p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-green-500 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Custo Total</p>
+                        <p className="text-2xl font-bold text-red-600">{formatCurrency(custoTotal)}</p>
+                      </div>
+                      <TrendingDown className="h-8 w-8 text-red-500 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Resultado</p>
+                        <p className={cn("text-2xl font-bold", margem >= 0 ? "text-green-600" : "text-red-600")}>
+                          {formatCurrency(margem)}
+                        </p>
+                      </div>
+                      <DollarSign className="h-8 w-8 text-primary opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-muted-foreground">Margem %</p>
+                        <p className={cn("text-2xl font-bold", margem >= 0 ? "text-green-600" : "text-red-600")}>
+                          {totalProducao > 0 ? ((margem / totalProducao) * 100).toFixed(1) : "0"}%
+                        </p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-primary opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <Card>
               <CardHeader><CardTitle>Produção</CardTitle></CardHeader>
               <CardContent className="space-y-4">
