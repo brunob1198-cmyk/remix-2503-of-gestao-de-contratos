@@ -387,6 +387,48 @@ export default function DiarioObraPage() {
     setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
+  const handleUpdateProducao = async (id: string) => {
+    if (!editProducaoQtd) return;
+    const qtd = Number(editProducaoQtd);
+    const prod = producoes.find(p => p.id === id);
+    if (!prod) return;
+    const valor_total = qtd * (prod.preco_unitario_congelado || 0);
+    await updateProducao.mutateAsync({ id, quantidade: qtd, valor_total });
+    setEditingProducaoId(null);
+  };
+
+  const handleUpdateEquipe = async (id: string) => {
+    const horas = Number(editEquipeHoras);
+    const custo_hora = Number(editEquipeCustoHora);
+    const e = equipe.find(x => x.id === id);
+    if (!e) return;
+    const recurso = recursos.find(r => r.nome === e.nome && r.tipo === 'pessoa');
+    const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
+    await updateEquipe.mutateAsync({ id, horas, custo_hora, custo_total });
+    setEditingEquipeId(null);
+  };
+
+  const handleUpdateEquipamento = async (id: string) => {
+    const horas = Number(editEquipHoras);
+    const custo_hora = Number(editEquipCustoHora);
+    const eq = equipamentos.find(x => x.id === id);
+    if (!eq) return;
+    const recurso = recursos.find(r => r.nome === eq.descricao && r.tipo === 'equipamento');
+    const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
+    await updateEquipamento.mutateAsync({ id, horas, custo_hora, custo_total });
+    setEditingEquipId(null);
+  };
+
+  const handleUpdateVeiculo = async (id: string) => {
+    const km_inicial = Number(editVeicKmInicial);
+    const km_final = Number(editVeicKmFinal);
+    const custo_diaria = Number(editVeicCusto);
+    const km_rodados = Math.max(0, km_final - km_inicial);
+    await updateVeiculo.mutateAsync({ id, km_inicial, km_final, km_rodados, custo_diaria });
+    setEditingVeicId(null);
+  };
+
+
   const getUnidadeLabel = (nome: string, tipo: "pessoa" | "equipamento") => {
     const recurso = recursos.find(r => r.nome === nome && r.tipo === tipo);
     return recurso?.unidade === "dia" ? "diária" : "hora";
