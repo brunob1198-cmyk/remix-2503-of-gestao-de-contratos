@@ -103,14 +103,14 @@ export default function DiarioObraPage() {
         return {
           id: i.item_lpu_id || i.id,
           item_lpu_id: i.item_lpu_id || "",
-          nome: itemLpu ? `${itemLpu.codigo} - ${itemLpu.descricao}` : i.nome,
+          nome: itemLpu ? `${itemLpu.codigo} — ${itemLpu.descricao}` : i.nome,
           valor_unitario: i.valor_unitario,
         };
       })
     : itensLpu.map(i => ({
         id: i.id,
         item_lpu_id: i.id,
-        nome: `${i.codigo} - ${i.descricao}`,
+        nome: `${i.codigo} — ${i.descricao}`,
         valor_unitario: i.preco_unitario,
       }));
 
