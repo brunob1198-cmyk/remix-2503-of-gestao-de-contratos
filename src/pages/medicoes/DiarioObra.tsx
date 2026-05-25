@@ -98,12 +98,15 @@ export default function DiarioObraPage() {
 
   const hasEscopo = itensEscopo.length > 0;
   const itensDisponiveis = hasEscopo
-    ? itensEscopo.map(i => ({
-        id: i.item_lpu_id || i.id,
-        item_lpu_id: i.item_lpu_id || "",
-        nome: i.nome,
-        valor_unitario: i.valor_unitario,
-      }))
+    ? itensEscopo.map(i => {
+        const itemLpu = i.item_lpu_id ? itensLpu.find(l => l.id === i.item_lpu_id) : null;
+        return {
+          id: i.item_lpu_id || i.id,
+          item_lpu_id: i.item_lpu_id || "",
+          nome: itemLpu ? `${itemLpu.codigo} - ${itemLpu.descricao}` : i.nome,
+          valor_unitario: i.valor_unitario,
+        };
+      })
     : itensLpu.map(i => ({
         id: i.id,
         item_lpu_id: i.id,
@@ -632,7 +635,10 @@ export default function DiarioObraPage() {
                   <TableBody>
                     {producoes.map(p => (
                       <TableRow key={p.id}>
-                        <TableCell>{p.item_lpu?.descricao}</TableCell>
+                        <TableCell>
+                          {p.item_lpu?.codigo && <Badge variant="outline" className="mr-2 text-[10px] font-mono">{p.item_lpu.codigo}</Badge>}
+                          {p.item_lpu?.descricao}
+                        </TableCell>
                         <TableCell className="text-right">
                           {editingProducaoId === p.id ? (
                             <Input
