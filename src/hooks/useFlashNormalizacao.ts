@@ -1308,6 +1308,9 @@ export function useFlashNormalizacao() {
     sendToContaAzul,
     isAlreadyIntegrated,
     updateCostCenter,
+    updateStatus: async (row, status) => {
+      await saveNormalization(row, { status }, { allowEditEnviado: true });
+    },
     saasCostCenters,
     bulkUpdateCostCenter,
     reprocessAll: async () => {

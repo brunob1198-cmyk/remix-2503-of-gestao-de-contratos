@@ -320,6 +320,7 @@ export default function NormalizacaoFlashPage() {
     saasCostCenters,
     reprocessAll,
     bulkUpdateCostCenter,
+    updateStatus,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -1725,7 +1726,29 @@ export default function NormalizacaoFlashPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {statusBadge(row.status)}
+                                <Select
+                                  value={row.status || "pendente"}
+                                  onValueChange={(v: "pendente" | "normalizado" | "enviado") => {
+                                    if (v === "enviado" && row.status !== "enviado") {
+                                      if (!window.confirm("Alterar o status para 'Enviado' manualmente não enviará os dados ao Conta Azul, apenas marcará como enviado no sistema. Deseja continuar?")) {
+                                        return;
+                                      }
+                                    }
+                                    updateStatus(row, v);
+                                  }}
+                                  disabled={loadingMetadata}
+                                >
+                                  <SelectTrigger className="h-7 w-fit min-w-[100px] border-none bg-transparent hover:bg-accent p-0 focus:ring-0">
+                                    <div className="flex items-center">
+                                      {statusBadge(row.status)}
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pendente" className="text-xs">Pendente</SelectItem>
+                                    <SelectItem value="normalizado" className="text-xs">Normalizado</SelectItem>
+                                    <SelectItem value="enviado" className="text-xs">Enviado</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </TableCell>
                               <TableCell>
                                 {row.flash_prestacao_contas && row.flash_prestacao_contas !== "—" ? (
