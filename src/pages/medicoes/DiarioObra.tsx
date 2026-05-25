@@ -457,8 +457,13 @@ export default function DiarioObraPage() {
               </PopoverContent>
             </Popover>
           </div>
+          <CriarSiteDialog
+            projetoId={selectedProjetoId}
+            onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
+          />
         </div>
       </div>
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
