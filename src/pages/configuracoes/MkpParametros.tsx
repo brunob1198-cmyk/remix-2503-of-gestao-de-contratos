@@ -19,6 +19,8 @@ import { format } from "date-fns";
 
 export default function MkpParametrosPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,6 +75,12 @@ export default function MkpParametrosPage() {
       p.area?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.ceil((filteredParametros?.length || 0) / itemsPerPage);
+  const paginatedParametros = filteredParametros?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const formatPerc = (val: number) => 
     new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 }).format(val);
@@ -141,7 +149,7 @@ export default function MkpParametrosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredParametros?.map((p) => (
+              paginatedParametros?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.projetos?.nome}</div>
@@ -191,6 +199,30 @@ export default function MkpParametrosPage() {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          <div className="text-sm font-medium">
+            Página {currentPage} de {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
 
       <MkpParametrosModal
         isOpen={isModalOpen}
