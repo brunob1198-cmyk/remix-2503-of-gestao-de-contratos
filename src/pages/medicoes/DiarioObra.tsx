@@ -140,15 +140,7 @@ export default function DiarioObraPage() {
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
       
-      // Se não houver observações no diário de obra, mas houver no campo, sugere importar
-      if (!diario.observacoes && atividadesCampo.length > 0) {
-        const obsCampo = atividadesCampo
-          .map((a, i) => `Atividade ${i + 1}: ${a.descricao_servico || ""}${a.observacoes ? `\nObs: ${a.observacoes}` : ""}`)
-          .join("\n\n");
-        setObs(obsCampo);
-      } else {
-        setObs(diario.observacoes || "");
-      }
+      setObs(diario.observacoes || "");
       
       setHeaderSaved(false);
     } else if (!diario && lastDiarioId.current !== null) {
