@@ -525,6 +525,8 @@ export function useFlashNormalizacao() {
             base.conta_azul_account_id = n.conta_azul_account_id;
             base.conta_azul_account_name = n.conta_azul_account_name;
             base.tipo_operacao = n.tipo_operacao;
+            // PRIORIDADE: Se o status foi editado manualmente (não é automático de mapeamento), mantemos.
+            // Para isso, verificamos se existe mapping_id_usado nulo e se o status é diferente do que o normalizeFlashTransaction daria.
             base.status = n.status;
             base.motivo = n.motivo;
             base.flash_type_detectado = n.flash_type_detectado || base.flash_type;
