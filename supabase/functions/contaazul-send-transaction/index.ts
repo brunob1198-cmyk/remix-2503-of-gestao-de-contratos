@@ -517,11 +517,14 @@ async function sendOne(
           }
         }
 
-        // Se esgotou as tentativas sem resolução: volta para "normalizado" para reenvio
+        // Se esgotou as tentativas sem resolução:
         if (!pollResolved) {
-          status = "pendente_ca";
-          errorMsg = `ContaAzul ainda processando após 40s. Protocolo: ${contaAzulProtocolo}. Resposta Atual: ${JSON.stringify(responseJson?.last_poll_data || 'Nenhuma')}. Tente reenviar em alguns minutos.`;
-          console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}`);
+          // O usuário relatou que mesmo com "erro na function", o lançamento foi criado.
+          // Isso acontece porque o polling falhou ou deu timeout, mas o Conta Azul pode ter processado com sucesso.
+          // Mudamos para ENVIADO com aviso no motivo, para evitar que o usuário tente reenviar e gere duplicidade.
+          status = "ENVIADO";
+          errorMsg = `Atenção: O polling do protocolo ${contaAzulProtocolo} esgotou (40s). O lançamento provavelmente foi criado no Conta Azul, mas não conseguimos confirmar o ID final automaticamente. Verifique manualmente antes de tentar reenviar.`;
+          console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}. Marcando como ENVIADO para evitar duplicidade.`);
         }
 
       } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
