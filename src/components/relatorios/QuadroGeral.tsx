@@ -144,7 +144,7 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 const formatPercent = (value: number) =>
-  `${Math.min(value, 100).toFixed(1)}%`;
+  `${value.toFixed(1)}%`;
 
 function MiniProgressBar({ value }: { value: number }) {
   const clamped = Math.min(Math.max(value, 0), 100);
