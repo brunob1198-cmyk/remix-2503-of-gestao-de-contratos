@@ -1595,9 +1595,39 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead className="w-[200px]">Categoria CA</TableHead>
+                          <TableHead className="w-[200px]">
+                            <div className="flex items-center gap-1">
+                              <span>Categoria CA</span>
+                              <ColumnHeaderFilter
+                                title="Categoria CA"
+                                options={filterOptions.caCategories}
+                                selected={searchParams.get("ca_cat")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_cat", val.join(","));
+                                  else params.delete("ca_cat");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">Conta financeira CA</TableHead>
-                          <TableHead className="w-[160px]">Status CA</TableHead>
+                          <TableHead className="w-[160px]">
+                            <div className="flex items-center gap-1">
+                              <span>Status CA</span>
+                              <ColumnHeaderFilter
+                                title="Status CA"
+                                options={filterOptions.caStatus}
+                                selected={searchParams.get("ca_status")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_status", val.join(","));
+                                  else params.delete("ca_status");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">
                             <div className="flex items-center gap-1">
                               <button
