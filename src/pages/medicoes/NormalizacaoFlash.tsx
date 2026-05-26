@@ -400,7 +400,7 @@ export default function NormalizacaoFlashPage() {
     if (!params.get("page")) {
       setCurrentPage(1);
     }
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, searchParams]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -492,7 +492,11 @@ export default function NormalizacaoFlashPage() {
     const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
     const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
     
-    return { users, types, categories, costCenters, prestacaoContas };
+    // Novas opções para filtros CA
+    const caCategories = Array.from(new Set(transactions.map(t => t.conta_azul_category_name))).filter(Boolean).sort();
+    const caStatus = ["pendente", "normalizado", "enviado"];
+    
+    return { users, types, categories, costCenters, prestacaoContas, caCategories, caStatus };
   }, [transactions]);
 
   const filtered = useMemo(() => {
@@ -527,6 +531,13 @@ export default function NormalizacaoFlashPage() {
 
       const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
       if (ccHeaderFilter.length > 0 && !ccHeaderFilter.includes(t.flash_cost_center)) return false;
+
+      // Filtros CA
+      const caCatFilter = searchParams.get("ca_cat")?.split(",").filter(Boolean) || [];
+      if (caCatFilter.length > 0 && !caCatFilter.includes(t.conta_azul_category_name || "")) return false;
+
+      const caStatusFilter = searchParams.get("ca_status")?.split(",").filter(Boolean) || [];
+      if (caStatusFilter.length > 0 && !caStatusFilter.includes(t.status || "pendente")) return false;
 
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
@@ -1584,9 +1595,39 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead className="w-[200px]">Categoria CA</TableHead>
+                          <TableHead className="w-[200px]">
+                            <div className="flex items-center gap-1">
+                              <span>Categoria CA</span>
+                              <ColumnHeaderFilter
+                                title="Categoria CA"
+                                options={filterOptions.caCategories}
+                                selected={searchParams.get("ca_cat")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_cat", val.join(","));
+                                  else params.delete("ca_cat");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">Conta financeira CA</TableHead>
-                          <TableHead className="w-[160px]">Status CA</TableHead>
+                          <TableHead className="w-[160px]">
+                            <div className="flex items-center gap-1">
+                              <span>Status CA</span>
+                              <ColumnHeaderFilter
+                                title="Status CA"
+                                options={filterOptions.caStatus}
+                                selected={searchParams.get("ca_status")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_status", val.join(","));
+                                  else params.delete("ca_status");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">
                             <div className="flex items-center gap-1">
                               <button
