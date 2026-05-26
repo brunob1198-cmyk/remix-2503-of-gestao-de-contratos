@@ -219,17 +219,31 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       const BATCH_SIZE = 1000;
-      const allData: CustoErp[] = [];
-      let offset = 0;
-      let hasMore = true;
+      
+      let countQuery = supabase
+        .from("custo_real_erp")
+        .select("*", { count: "exact", head: true });
+      
+      if (projetoId) countQuery = countQuery.eq("projeto_id", projetoId);
+      if (siteId) countQuery = countQuery.eq("site_id", siteId);
+      if (startDate && endDate) {
+        countQuery = countQuery.gte("data_competencia", startDate).lte("data_competencia", endDate);
+      } else if (startDate) {
+        countQuery = countQuery.gte("data_competencia", startDate);
+      }
 
-      while (hasMore) {
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      const totalPages = Math.ceil((count || 0) / BATCH_SIZE);
+      const pagePromises = Array.from({ length: totalPages }, (_, i) => {
         let q = supabase
           .from("custo_real_erp")
           .select(
             "id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id",
           )
-          .range(offset, offset + BATCH_SIZE - 1);
+          .range(i * BATCH_SIZE, (i + 1) * BATCH_SIZE - 1);
+        
         if (projetoId) q = q.eq("projeto_id", projetoId);
         if (siteId) q = q.eq("site_id", siteId);
         if (startDate && endDate) {
@@ -237,14 +251,11 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
         } else if (startDate) {
           q = q.gte("data_competencia", startDate);
         }
+        return q;
+      });
 
-        const { data, error } = await q;
-        if (error) throw error;
-        const batch = (data || []) as CustoErp[];
-        allData.push(...batch);
-        hasMore = batch.length === BATCH_SIZE;
-        offset += BATCH_SIZE;
-      }
+      const results = await Promise.all(pagePromises);
+      const allData = results.flatMap((r) => (r.data || []) as CustoErp[]);
 
       return allData.filter(
         (item) =>
@@ -456,31 +467,41 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       const BATCH_SIZE = 1000;
-      const allData: CustoErp[] = [];
-      let offset = 0;
-      let hasMore = true;
+      
+      let countQuery = supabase
+        .from("custo_real_erp")
+        .select("*", { count: "exact", head: true })
+        .in("projeto_id", projetoIds);
+      
+      if (startDate && endDate) {
+        countQuery = countQuery.gte("data_competencia", startDate).lte("data_competencia", endDate);
+      } else if (startDate) {
+        countQuery = countQuery.gte("data_competencia", startDate);
+      }
 
-      while (hasMore) {
+      const { count, error: countError } = await countQuery;
+      if (countError) throw countError;
+
+      const totalPages = Math.ceil((count || 0) / BATCH_SIZE);
+      const pagePromises = Array.from({ length: totalPages }, (_, i) => {
         let q = supabase
           .from("custo_real_erp")
           .select(
             "id, erp_id, descricao, valor, data_competencia, data_pagamento, status_erp, categoria_erp, categoria_interna, categoria_analise, categoria_sugerida_ia, categoria_confirmada, centro_custo, projeto_id, site_id",
           )
-          .range(offset, offset + BATCH_SIZE - 1);
-        q = q.in("projeto_id", projetoIds);
+          .range(i * BATCH_SIZE, (i + 1) * BATCH_SIZE - 1)
+          .in("projeto_id", projetoIds);
+
         if (startDate && endDate) {
           q = q.gte("data_competencia", startDate).lte("data_competencia", endDate);
         } else if (startDate) {
           q = q.gte("data_competencia", startDate);
         }
+        return q;
+      });
 
-        const { data, error } = await q;
-        if (error) throw error;
-        const batch = (data || []) as CustoErp[];
-        allData.push(...batch);
-        hasMore = batch.length === BATCH_SIZE;
-        offset += BATCH_SIZE;
-      }
+      const results = await Promise.all(pagePromises);
+      const allData = results.flatMap((r) => (r.data || []) as CustoErp[]);
 
       return allData.filter(
         (item) =>
