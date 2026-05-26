@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
@@ -34,35 +35,36 @@ import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   // Estados para o filtro principal com persistência no localStorage
-  const [periodoInicio, setPeriodoInicio] = useState<Date>(() => {
-    const saved = localStorage.getItem("dashboard_periodoInicio");
-    return saved ? new Date(saved) : startOfYear(new Date());
-  });
-  const [periodoFim, setPeriodoFim] = useState<Date>(() => {
-    const saved = localStorage.getItem("dashboard_periodoFim");
-    return saved ? new Date(saved) : endOfYear(new Date());
-  });
+  const [periodoInicioStr, setPeriodoInicioStr] = usePersistedState<string>(
+    "dashboard_periodoInicio",
+    startOfYear(new Date()).toISOString()
+  );
+  const [periodoFimStr, setPeriodoFimStr] = usePersistedState<string>(
+    "dashboard_periodoFim",
+    endOfYear(new Date()).toISOString()
+  );
   
+  const periodoInicio = useMemo(() => new Date(periodoInicioStr), [periodoInicioStr]);
+  const periodoFim = useMemo(() => new Date(periodoFimStr), [periodoFimStr]);
+
+  const setPeriodoInicio = (d: Date) => setPeriodoInicioStr(d.toISOString());
+  const setPeriodoFim = (d: Date) => setPeriodoFimStr(d.toISOString());
+
   // Estados para o filtro específico do primeiro gráfico com persistência
-  const [periodoInicioAnual, setPeriodoInicioAnual] = useState<Date>(() => {
-    const saved = localStorage.getItem("dashboard_periodoInicioAnual");
-    return saved ? new Date(saved) : startOfYear(new Date());
-  });
-  const [periodoFimAnual, setPeriodoFimAnual] = useState<Date>(() => {
-    const saved = localStorage.getItem("dashboard_periodoFimAnual");
-    return saved ? new Date(saved) : endOfYear(new Date());
-  });
+  const [periodoInicioAnualStr, setPeriodoInicioAnualStr] = usePersistedState<string>(
+    "dashboard_periodoInicioAnual",
+    startOfYear(new Date()).toISOString()
+  );
+  const [periodoFimAnualStr, setPeriodoFimAnualStr] = usePersistedState<string>(
+    "dashboard_periodoFimAnual",
+    endOfYear(new Date()).toISOString()
+  );
 
-  // Efeito para salvar filtros no localStorage
-  useEffect(() => {
-    localStorage.setItem("dashboard_periodoInicio", periodoInicio.toISOString());
-    localStorage.setItem("dashboard_periodoFim", periodoFim.toISOString());
-  }, [periodoInicio, periodoFim]);
+  const periodoInicioAnual = useMemo(() => new Date(periodoInicioAnualStr), [periodoInicioAnualStr]);
+  const periodoFimAnual = useMemo(() => new Date(periodoFimAnualStr), [periodoFimAnualStr]);
 
-  useEffect(() => {
-    localStorage.setItem("dashboard_periodoInicioAnual", periodoInicioAnual.toISOString());
-    localStorage.setItem("dashboard_periodoFimAnual", periodoFimAnual.toISOString());
-  }, [periodoInicioAnual, periodoFimAnual]);
+  const setPeriodoInicioAnual = (d: Date) => setPeriodoInicioAnualStr(d.toISOString());
+  const setPeriodoFimAnual = (d: Date) => setPeriodoFimAnualStr(d.toISOString());
 
   // Buscar dados consolidados da VIEW de BI Analise (contém MB Real calculado corretamente)
   const { data: biAnalise = [], isLoading: isLoadingBI } = useQuery({
