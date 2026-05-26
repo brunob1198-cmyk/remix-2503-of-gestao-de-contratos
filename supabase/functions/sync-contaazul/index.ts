@@ -127,14 +127,14 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
     return "Transporte";
   }
 
-  // Indiretos
+  // Direto (anteriormente Indiretos)
   if (
     map.includes("aluguel de container") || map.includes("água") || map.includes("luz") || 
     map.includes("internet") || map.includes("telefone") || map.includes("limpeza") || 
     map.includes("segurança") || map.includes("vigilância") || map.includes("sede") || 
     map.includes("escritório") || map.includes("canteiro") || map.includes("seguro") ||
     map.includes("taxa") || map.includes("imposto") || map.includes("alvará") || map.includes("iss")
-  ) return "Indiretos";
+  ) return "Direto";
 
   // Financeiros (Fallback for specific finance cases)
   if (
@@ -142,7 +142,7 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
     map.includes("multa") || map.includes("banco")
   ) return "Financeiros";
 
-  return "Indiretos";
+  return "Direto";
 }
 
 type ProjetoLookup = {
