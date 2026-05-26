@@ -492,7 +492,11 @@ export default function NormalizacaoFlashPage() {
     const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
     const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
     
-    return { users, types, categories, costCenters, prestacaoContas };
+    // Novas opções para filtros CA
+    const caCategories = Array.from(new Set(transactions.map(t => t.conta_azul_category_name))).filter(Boolean).sort();
+    const caStatus = ["pendente", "normalizado", "enviado"];
+    
+    return { users, types, categories, costCenters, prestacaoContas, caCategories, caStatus };
   }, [transactions]);
 
   const filtered = useMemo(() => {
@@ -527,6 +531,13 @@ export default function NormalizacaoFlashPage() {
 
       const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
       if (ccHeaderFilter.length > 0 && !ccHeaderFilter.includes(t.flash_cost_center)) return false;
+
+      // Filtros CA
+      const caCatFilter = searchParams.get("ca_cat")?.split(",").filter(Boolean) || [];
+      if (caCatFilter.length > 0 && !caCatFilter.includes(t.conta_azul_category_name || "")) return false;
+
+      const caStatusFilter = searchParams.get("ca_status")?.split(",").filter(Boolean) || [];
+      if (caStatusFilter.length > 0 && !caStatusFilter.includes(t.status || "pendente")) return false;
 
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
