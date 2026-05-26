@@ -365,7 +365,6 @@ export function useFlashNormalizacao() {
   }, [empresaId, contas, queryClient]);
 
   const sendToContaAzul = async (ids: string[]) => {
-    // Implementação de envio simplificada para o hook
     toast.info(`Enviando ${ids.length} lançamentos...`);
     const { data, error } = await supabase.functions.invoke("contaazul-sync-flash", { body: { ids } });
     if (error) throw error;
@@ -388,10 +387,51 @@ export function useFlashNormalizacao() {
     }
   };
 
+  const reopenEnviado = async (row: FlashTransactionRow) => {
+    await saveNormalization(row, { status: "normalizado" }, { allowEditEnviado: true });
+  };
+
+  const bulkUpdateCostCenter = async (ids: string[], costCenter: string) => {
+    for (const id of ids) {
+      const row = transactions.find(t => t.id === id);
+      if (row) {
+        await saveNormalization(row, { flash_cost_center: costCenter }, { allowEditEnviado: true });
+      }
+    }
+  };
+
+  const bulkApplyToPending = async (ids: string[], params: any) => {
+    for (const id of ids) {
+      const row = transactions.find(t => t.id === id);
+      if (row) {
+        await saveNormalization(row, params);
+      }
+    }
+  };
+
+  const applyMappingToAllPending = async () => {
+    const pending = transactions.filter(t => t.status === "pendente");
+    for (const row of pending) {
+      const normalized = normalizeFlashTransaction({
+        id: row.id, flash_type: row.flash_type, flash_category: row.flash_category,
+        flash_cost_center: row.flash_cost_center, descricao: row.descricao
+      }, mappings as any[]);
+      if (normalized.status === "normalizado") {
+        await saveNormalization(row, normalized);
+      }
+    }
+  };
+
+  const reprocessAll = async () => {
+    processedRef.current.clear();
+    await refetchRaw();
+  };
+
   return {
-    loading: loadingRaw || loadingMappings, savingId, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
+    loading: loadingRaw || loadingMappings, savingId, sending: false, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
-    updateStatus, mappingByType: new Map(), // Simplificado para compatibilidade
-    applyMappingToAllPending: () => {}, bulkApplyToPending: () => {}, reopenEnviado: () => {}, reprocessAll: () => {}, bulkUpdateCostCenter: () => {}
+    updateStatus, mappingByType: new Map(),
+    applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter
   };
 }
+
