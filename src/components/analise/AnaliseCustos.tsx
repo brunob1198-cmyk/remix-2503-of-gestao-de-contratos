@@ -866,6 +866,23 @@ function FilterPopover({
           <Separator />
           <ScrollArea className="h-48">
             <div className="space-y-1">
+              <div 
+                className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded-sm cursor-pointer"
+                onClick={() => {
+                  if (selected.length === options.length) {
+                    onSelect([]);
+                  } else {
+                    onSelect([...options]);
+                  }
+                }}
+              >
+                <Checkbox 
+                  checked={selected.length === options.length && options.length > 0} 
+                  className={selected.length > 0 && selected.length < options.length ? "opacity-50" : ""}
+                />
+                <span className="text-xs font-semibold">Selecionar Todos</span>
+              </div>
+              <Separator className="my-1" />
               {filteredOptions.length === 0 ? (
                 <div className="py-2 text-center text-xs text-muted-foreground">Nenhuma opção encontrada</div>
               ) : (
