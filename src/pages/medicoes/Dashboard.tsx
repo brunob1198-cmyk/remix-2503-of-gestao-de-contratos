@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjetos } from "@/hooks/useProjetos";
