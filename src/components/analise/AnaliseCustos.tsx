@@ -78,13 +78,32 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   }, [filters]);
 
   const filterOptions = useMemo(() => {
-    return {
-      referencia: Array.from(new Set(allRows.map(r => r.referencia))).sort(),
-      area: Array.from(new Set(allRows.map(r => r.area))).sort(),
-      projeto: Array.from(new Set(allRows.map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
-      cliente: Array.from(new Set(allRows.map(r => r.cliente))).sort(),
+    const getFilteredRowsExcluding = (excludedKey: string) => {
+      return allRows.filter(row => {
+        const matchesReferencia = excludedKey === "referencia" || filters.referencia.length === 0 || filters.referencia.includes(row.referencia);
+        const matchesArea = excludedKey === "area" || filters.area.length === 0 || filters.area.includes(row.area);
+        const projetoStr = `${row.projetoCodigo} - ${row.projetoNome}`;
+        const matchesProjeto = excludedKey === "projeto" || filters.projeto.length === 0 || filters.projeto.includes(projetoStr);
+        const matchesCliente = excludedKey === "cliente" || filters.cliente.length === 0 || filters.cliente.includes(row.cliente);
+        
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = !filters.search || 
+          row.referencia.toLowerCase().includes(searchLower) ||
+          row.area.toLowerCase().includes(searchLower) ||
+          projetoStr.toLowerCase().includes(searchLower) ||
+          row.cliente.toLowerCase().includes(searchLower);
+
+        return matchesReferencia && matchesArea && matchesProjeto && matchesCliente && matchesSearch;
+      });
     };
-  }, [allRows]);
+
+    return {
+      referencia: Array.from(new Set(getFilteredRowsExcluding("referencia").map(r => r.referencia))).sort(),
+      area: Array.from(new Set(getFilteredRowsExcluding("area").map(r => r.area))).sort(),
+      projeto: Array.from(new Set(getFilteredRowsExcluding("projeto").map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
+      cliente: Array.from(new Set(getFilteredRowsExcluding("cliente").map(r => r.cliente))).sort(),
+    };
+  }, [allRows, filters]);
 
   const analiseRows = useMemo(() => {
     return allRows.filter(row => {
