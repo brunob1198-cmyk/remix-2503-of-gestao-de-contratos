@@ -98,8 +98,9 @@ export function useTableFilters<T, ColKey extends string>(
   };
 
   useEffect(() => {
+    const timeouts = searchTimeoutRef.current;
     return () => {
-      Object.values(searchTimeoutRef.current).forEach(clearTimeout);
+      Object.values(timeouts).forEach(clearTimeout);
     };
   }, []);
   const toggleValue = (col: ColKey, v: string) => {
