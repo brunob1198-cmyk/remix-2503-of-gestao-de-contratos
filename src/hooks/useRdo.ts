@@ -38,6 +38,7 @@ export interface RdoDiarioResumo {
   veiculos: Array<{ id: string; descricao: string; placa: string | null; km_inicial: number; km_final: number; km_rodados: number; custo_diaria: number }>;
   fotos: RdoFoto[];
   custoTotal: number;
+  hasMorePhotos?: boolean;
 }
 
 export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string, itemLpuId?: string, busca?: string, sitesMap?: Map<string, { codigo: string; nome: string }>) {
