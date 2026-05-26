@@ -227,6 +227,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_producao", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase
