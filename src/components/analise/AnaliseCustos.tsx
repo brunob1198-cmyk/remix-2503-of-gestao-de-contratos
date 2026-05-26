@@ -131,7 +131,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       moObra: acc.moObra + r.moObra,
       materiais: acc.materiais + r.materiais,
       transporte: acc.transporte + r.transporte,
-      indiretos: acc.indiretos + r.indiretos,
+      direto: acc.direto + r.direto,
       custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
       gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
@@ -143,7 +143,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
       poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
-      indiretos: 0,
+      direto: 0,
       custoDiretoReal: 0, custoDiretoOrcado: 0,
       gerenciaReal: 0, gerenciaOrcada: 0, 
       custoTotalReal: 0, custoTotalOrcado: 0, resultadoTotal: 0,
@@ -164,7 +164,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const header = [
       "Referência", "Área", "Projeto", "Cliente", 
       "Produção (POC)", "% Impostos", "Receita Líquida",
-      "MO", "Mat.", "Transp.", "Indir.", "Custo Direto Real", "Custo Direto Orçado", "Resultado Direto",
+      "MO", "Mat.", "Transp.", "Direto", "Custo Direto Real", "Custo Direto Orçado", "Resultado Direto",
       "Gerência Real", "Gerência Orçada", "Resultado Gerência", "% Gerência Real", "% Gerência Orç.",
       "Custo Total Real", "Custo Total Orçado", "Resultado Total",
       "MB Orç. (R$)", "MB Real (R$)", "% MB Orç.", "% MB Real"
@@ -181,7 +181,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       row.moObra,
       row.materiais,
       row.transporte,
-      row.indiretos,
+      row.direto,
       row.custoDiretoReal,
       row.custoDiretoOrcado,
       row.deltaDireto,
@@ -202,7 +202,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const totalRow = [
       "TOTAL", "", "", "",
       totals.poc, "", totals.producaoLiquida,
-      totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
+      totals.moObra, totals.materiais, totals.transporte, totals.direto,
       totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
       totals.gerenciaReal, totals.gerenciaOrcada, totals.gerenciaOrcada - totals.gerenciaReal,
       totals.gerenciaReal / (totals.custoDiretoReal || 1), totals.gerenciaOrcada / (totals.custoDiretoOrcado || 1),
@@ -647,7 +647,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">MO</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Mat.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Transp.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Indir.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Direto</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800/60 font-normal">Orçado</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Resultado Direto</th>
@@ -738,7 +738,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.moObra)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.materiais)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.transporte)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.indiretos)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.direto)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 font-bold text-blue-700">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700/60">{formatCurrency(row.custoDiretoOrcado)}</td>
                     <td className={`py-2 px-4 border-b border-r bg-blue-50/50 font-bold ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
@@ -797,7 +797,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.moObra)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.materiais)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.transporte)}</td>
-                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.indiretos)}</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.direto)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoReal)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80 text-slate-900/60">{formatCurrency(totals.custoDiretoOrcado)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)}</td>
