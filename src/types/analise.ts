@@ -27,7 +27,7 @@ export interface AnaliseCustosRow {
   moObra: number;
   materiais: number;
   transporte: number;
-  indiretos: number;
+  direto: number;
   custoDiretoReal: number;
   custoDiretoOrcado: number;
   deltaDireto: number;

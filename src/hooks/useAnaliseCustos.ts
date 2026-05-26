@@ -43,9 +43,9 @@ export interface OrcamentoProjeto {
   mao_de_obra: number;
   materiais: number;
   equipamentos: number;
-  transporte: number;
-  indiretos: number;
-  financeiros: number;
+    transporte: number;
+    direto: number;
+    financeiros: number;
 }
 
 export function useContaAzulConnection() {
@@ -724,8 +724,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const transporte = (projetoCustosMes || [])
           .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Transporte")
           .reduce((s, c) => s + Number(c.valor || 0), 0);
-        const indiretos = (projetoCustosMes || [])
-          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Indiretos")
+        const direto = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Direto")
           .reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const percRisco = mkp?.perc_risco ?? 0;
@@ -783,7 +783,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           materiais,
           transporte,
           // equipamentos column removed as per user request
-          indiretos,
+          direto,
           custoDiretoReal,
           custoDiretoOrcado,
           deltaDireto: custoDiretoOrcado - custoDiretoReal,

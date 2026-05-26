@@ -29,7 +29,7 @@ const CATEGORIAS_PADRAO = [
   "Materiais",
   "Transporte",
   "Equipamentos",
-  "Indiretos",
+  "Direto",
   "Financeiros",
   "Gerência",
 ];
