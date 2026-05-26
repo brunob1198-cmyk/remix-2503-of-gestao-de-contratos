@@ -16,9 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { MkpParametrosModal } from "@/components/configuracoes/mkp/MkpParametrosModal";
 import { MkpImportModal } from "@/components/configuracoes/mkp/MkpImportModal";
 import { format } from "date-fns";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 export default function MkpParametrosPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,6 +76,12 @@ export default function MkpParametrosPage() {
       p.area?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.ceil((filteredParametros?.length || 0) / itemsPerPage);
+  const paginatedParametros = filteredParametros?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const formatPerc = (val: number) => 
     new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 }).format(val);
@@ -141,7 +150,7 @@ export default function MkpParametrosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredParametros?.map((p) => (
+              paginatedParametros?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.projetos?.nome}</div>
@@ -191,6 +200,15 @@ export default function MkpParametrosPage() {
           </TableBody>
         </Table>
       </div>
+
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={setItemsPerPage}
+        totalItems={filteredParametros?.length || 0}
+      />
 
       <MkpParametrosModal
         isOpen={isModalOpen}

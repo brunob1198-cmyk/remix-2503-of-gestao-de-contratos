@@ -320,6 +320,7 @@ export default function NormalizacaoFlashPage() {
     saasCostCenters,
     reprocessAll,
     bulkUpdateCostCenter,
+    updateStatus,
   } = useFlashNormalizacao();
 
   const handleRefresh = async () => {
@@ -399,7 +400,7 @@ export default function NormalizacaoFlashPage() {
     if (!params.get("page")) {
       setCurrentPage(1);
     }
-  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao]);
+  }, [statusFilter, search, selectedUsers, selectedTypes, selectedCategories, selectedCostCenters, selectedPrestacao, searchParams]);
 
   // Update URL search params when filters change
   useEffect(() => {
@@ -491,7 +492,11 @@ export default function NormalizacaoFlashPage() {
     const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
     const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
     
-    return { users, types, categories, costCenters, prestacaoContas };
+    // Novas opções para filtros CA
+    const caCategories = Array.from(new Set(transactions.map(t => t.conta_azul_category_name))).filter(Boolean).sort();
+    const caStatus = ["pendente", "normalizado", "enviado"];
+    
+    return { users, types, categories, costCenters, prestacaoContas, caCategories, caStatus };
   }, [transactions]);
 
   const filtered = useMemo(() => {
@@ -526,6 +531,13 @@ export default function NormalizacaoFlashPage() {
 
       const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
       if (ccHeaderFilter.length > 0 && !ccHeaderFilter.includes(t.flash_cost_center)) return false;
+
+      // Filtros CA
+      const caCatFilter = searchParams.get("ca_cat")?.split(",").filter(Boolean) || [];
+      if (caCatFilter.length > 0 && !caCatFilter.includes(t.conta_azul_category_name || "")) return false;
+
+      const caStatusFilter = searchParams.get("ca_status")?.split(",").filter(Boolean) || [];
+      if (caStatusFilter.length > 0 && !caStatusFilter.includes(t.status || "pendente")) return false;
 
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
@@ -1583,9 +1595,39 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead className="w-[200px]">Categoria CA</TableHead>
+                          <TableHead className="w-[200px]">
+                            <div className="flex items-center gap-1">
+                              <span>Categoria CA</span>
+                              <ColumnHeaderFilter
+                                title="Categoria CA"
+                                options={filterOptions.caCategories}
+                                selected={searchParams.get("ca_cat")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_cat", val.join(","));
+                                  else params.delete("ca_cat");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">Conta financeira CA</TableHead>
-                          <TableHead className="w-[160px]">Status CA</TableHead>
+                          <TableHead className="w-[160px]">
+                            <div className="flex items-center gap-1">
+                              <span>Status CA</span>
+                              <ColumnHeaderFilter
+                                title="Status CA"
+                                options={filterOptions.caStatus}
+                                selected={searchParams.get("ca_status")?.split(",").filter(Boolean) || []}
+                                onSelect={(val) => {
+                                  const params = new URLSearchParams(searchParams);
+                                  if (val.length > 0) params.set("ca_status", val.join(","));
+                                  else params.delete("ca_status");
+                                  setSearchParams(params, { replace: true });
+                                }}
+                              />
+                            </div>
+                          </TableHead>
                           <TableHead className="w-[180px]">
                             <div className="flex items-center gap-1">
                               <button
@@ -1725,7 +1767,29 @@ export default function NormalizacaoFlashPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                {statusBadge(row.status)}
+                                <Select
+                                  value={row.status || "pendente"}
+                                  onValueChange={(v: "pendente" | "normalizado" | "enviado") => {
+                                    if (v === "enviado" && row.status !== "enviado") {
+                                      if (!window.confirm("Alterar o status para 'Enviado' manualmente não enviará os dados ao Conta Azul, apenas marcará como enviado no sistema. Deseja continuar?")) {
+                                        return;
+                                      }
+                                    }
+                                    updateStatus(row, v);
+                                  }}
+                                  disabled={loadingMetadata}
+                                >
+                                  <SelectTrigger className="h-7 w-fit min-w-[100px] border-none bg-transparent hover:bg-accent p-0 focus:ring-0">
+                                    <div className="flex items-center">
+                                      {statusBadge(row.status)}
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pendente" className="text-xs">Pendente</SelectItem>
+                                    <SelectItem value="normalizado" className="text-xs">Normalizado</SelectItem>
+                                    <SelectItem value="enviado" className="text-xs">Enviado</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </TableCell>
                               <TableCell>
                                 {row.flash_prestacao_contas && row.flash_prestacao_contas !== "—" ? (

@@ -98,16 +98,19 @@ export default function DiarioObraPage() {
 
   const hasEscopo = itensEscopo.length > 0;
   const itensDisponiveis = hasEscopo
-    ? itensEscopo.map(i => ({
-        id: i.item_lpu_id || i.id,
-        item_lpu_id: i.item_lpu_id || "",
-        nome: i.nome,
-        valor_unitario: i.valor_unitario,
-      }))
+    ? itensEscopo.map(i => {
+        const itemLpu = i.item_lpu_id ? itensLpu.find(l => l.id === i.item_lpu_id) : null;
+        return {
+          id: i.item_lpu_id || i.id,
+          item_lpu_id: i.item_lpu_id || "",
+          nome: itemLpu ? `${itemLpu.codigo} — ${itemLpu.descricao}` : i.nome,
+          valor_unitario: i.valor_unitario,
+        };
+      })
     : itensLpu.map(i => ({
         id: i.id,
         item_lpu_id: i.id,
-        nome: `${i.codigo} - ${i.descricao}`,
+        nome: `${i.codigo} — ${i.descricao}`,
         valor_unitario: i.preco_unitario,
       }));
 
@@ -140,15 +143,7 @@ export default function DiarioObraPage() {
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
       
-      // Se não houver observações no diário de obra, mas houver no campo, sugere importar
-      if (!diario.observacoes && atividadesCampo.length > 0) {
-        const obsCampo = atividadesCampo
-          .map((a, i) => `Atividade ${i + 1}: ${a.descricao_servico || ""}${a.observacoes ? `\nObs: ${a.observacoes}` : ""}`)
-          .join("\n\n");
-        setObs(obsCampo);
-      } else {
-        setObs(diario.observacoes || "");
-      }
+      setObs(diario.observacoes || "");
       
       setHeaderSaved(false);
     } else if (!diario && lastDiarioId.current !== null) {
@@ -387,6 +382,48 @@ export default function DiarioObraPage() {
     setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
+  const handleUpdateProducao = async (id: string) => {
+    if (!editProducaoQtd) return;
+    const qtd = Number(editProducaoQtd);
+    const prod = producoes.find(p => p.id === id);
+    if (!prod) return;
+    const valor_total = qtd * (prod.preco_unitario_congelado || 0);
+    await updateProducao.mutateAsync({ id, quantidade: qtd, valor_total });
+    setEditingProducaoId(null);
+  };
+
+  const handleUpdateEquipe = async (id: string) => {
+    const horas = Number(editEquipeHoras);
+    const custo_hora = Number(editEquipeCustoHora);
+    const e = equipe.find(x => x.id === id);
+    if (!e) return;
+    const recurso = recursos.find(r => r.nome === e.nome && r.tipo === 'pessoa');
+    const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
+    await updateEquipe.mutateAsync({ id, horas, custo_hora, custo_total });
+    setEditingEquipeId(null);
+  };
+
+  const handleUpdateEquipamento = async (id: string) => {
+    const horas = Number(editEquipHoras);
+    const custo_hora = Number(editEquipCustoHora);
+    const eq = equipamentos.find(x => x.id === id);
+    if (!eq) return;
+    const recurso = recursos.find(r => r.nome === eq.descricao && r.tipo === 'equipamento');
+    const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
+    await updateEquipamento.mutateAsync({ id, horas, custo_hora, custo_total });
+    setEditingEquipId(null);
+  };
+
+  const handleUpdateVeiculo = async (id: string) => {
+    const km_inicial = Number(editVeicKmInicial);
+    const km_final = Number(editVeicKmFinal);
+    const custo_diaria = Number(editVeicCusto);
+    const km_rodados = Math.max(0, km_final - km_inicial);
+    await updateVeiculo.mutateAsync({ id, km_inicial, km_final, km_rodados, custo_diaria });
+    setEditingVeicId(null);
+  };
+
+
   const getUnidadeLabel = (nome: string, tipo: "pessoa" | "equipamento") => {
     const recurso = recursos.find(r => r.nome === nome && r.tipo === tipo);
     return recurso?.unidade === "dia" ? "diária" : "hora";
@@ -457,8 +494,13 @@ export default function DiarioObraPage() {
               </PopoverContent>
             </Popover>
           </div>
+          <CriarSiteDialog
+            projetoId={selectedProjetoId}
+            onSiteCreated={(siteId) => setSelectedSiteId(siteId)}
+          />
         </div>
       </div>
+
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
@@ -472,33 +514,99 @@ export default function DiarioObraPage() {
 
         <TabsContent value="lancamento">
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
-                <Select value={diarioClima} onValueChange={setDiarioClima}>
-                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
-                  <SelectContent>
-                    {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-                <Button onClick={handleSaveHeader}>Salvar</Button>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
+                  <Select value={diarioClima} onValueChange={setDiarioClima}>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
+                    <SelectContent>
+                      {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
+                  <Button 
+                    onClick={handleSaveHeader}
+                    className={cn(headerSaved && "bg-green-600 hover:bg-green-700")}
+                  >
+                    {headerSaved ? (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Salvo
+                      </>
+                    ) : (
+                      "Salvar"
+                    )}
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex-1" />
+              <div>
+                <AnotacoesCampoDialog
+                  atividadesCampo={atividadesCampo}
+                  diarioObraId={diario?.id || null}
+                  itensDisponiveis={itensDisponiveis}
+                  producoes={producoes}
+                  fotosObra={fotos}
+                  onFotoTransferred={() => {
+                    queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+                  }}
+                  ensureDiario={ensureDiario}
+                  selectedDate={selectedDate}
+                  photoGroups={photoGroups}
+                />
+              </div>
+            </div>
 
-              <AnotacoesCampoDialog
-                atividadesCampo={atividadesCampo}
-                diarioObraId={diario?.id || null}
-                itensDisponiveis={itensDisponiveis}
-                producoes={producoes}
-                fotosObra={fotos}
-                onFotoTransferred={() => {
-                  queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
-                }}
-                ensureDiario={ensureDiario}
-                selectedDate={selectedDate}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Produção Total</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(totalProducao)}</p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Custo Total</p>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(custoTotal)}</p>
+                    </div>
+                    <TrendingDown className="h-8 w-8 text-red-500 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Resultado</p>
+                      <p className={cn("text-2xl font-bold", margem >= 0 ? "text-green-600" : "text-red-600")}>
+                        {formatCurrency(margem)}
+                      </p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-primary opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Margem %</p>
+                      <p className={cn("text-2xl font-bold", margem >= 0 ? "text-green-600" : "text-red-600")}>
+                        {totalProducao > 0 ? ((margem / totalProducao) * 100).toFixed(1) : "0"}%
+                      </p>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-primary opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
@@ -527,8 +635,21 @@ export default function DiarioObraPage() {
                   <TableBody>
                     {producoes.map(p => (
                       <TableRow key={p.id}>
-                        <TableCell>{p.item_lpu?.descricao}</TableCell>
-                        <TableCell className="text-right">{p.quantidade}</TableCell>
+                        <TableCell>
+                          {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingProducaoId === p.id ? (
+                            <Input
+                              type="number"
+                              value={editProducaoQtd}
+                              onChange={e => setEditProducaoQtd(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            p.quantidade
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(p.valor_total)}</TableCell>
                         <TableCell>
                           <input type="file" multiple accept="image/*" className="hidden" id={`prod-foto-${p.id}`} onChange={e => e.target.files && handleUploadFoto(e, "execucao", p.id)} />
@@ -536,7 +657,37 @@ export default function DiarioObraPage() {
                             <Camera className="h-4 w-4 mr-1" /> Foto
                           </Button>
                         </TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingProducaoId === p.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateProducao(p.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingProducaoId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingProducaoId(p.id);
+                                    setEditProducaoQtd(String(p.quantidade));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -571,9 +722,61 @@ export default function DiarioObraPage() {
                     {equipe.map(e => (
                       <TableRow key={e.id}>
                         <TableCell>{e.nome}</TableCell>
-                        <TableCell className="text-right">{e.horas}</TableCell>
+                        <TableCell className="text-right">
+                          {editingEquipeId === e.id ? (
+                            <div className="flex flex-col gap-1 items-end">
+                              <Input
+                                type="number"
+                                value={editEquipeHoras}
+                                onChange={ev => setEditEquipeHoras(ev.target.value)}
+                                className="w-20 h-8"
+                                placeholder="Horas"
+                              />
+                              <Input
+                                type="number"
+                                value={editEquipeCustoHora}
+                                onChange={ev => setEditEquipeCustoHora(ev.target.value)}
+                                className="w-20 h-8 text-xs"
+                                placeholder="Custo/h"
+                              />
+                            </div>
+                          ) : (
+                            e.horas
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(e.custo_total)}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingEquipeId === e.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateEquipe(e.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingEquipeId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingEquipeId(e.id);
+                                    setEditEquipeHoras(String(e.horas));
+                                    setEditEquipeCustoHora(String(e.custo_hora));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -608,9 +811,61 @@ export default function DiarioObraPage() {
                     {equipamentos.map(eq => (
                       <TableRow key={eq.id}>
                         <TableCell>{eq.descricao}</TableCell>
-                        <TableCell className="text-right">{eq.horas}</TableCell>
+                        <TableCell className="text-right">
+                          {editingEquipId === eq.id ? (
+                            <div className="flex flex-col gap-1 items-end">
+                              <Input
+                                type="number"
+                                value={editEquipHoras}
+                                onChange={ev => setEditEquipHoras(ev.target.value)}
+                                className="w-20 h-8"
+                                placeholder="Horas"
+                              />
+                              <Input
+                                type="number"
+                                value={editEquipCustoHora}
+                                onChange={ev => setEditEquipCustoHora(ev.target.value)}
+                                className="w-20 h-8 text-xs"
+                                placeholder="Custo/h"
+                              />
+                            </div>
+                          ) : (
+                            eq.horas
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(eq.custo_total)}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeEquipamento.mutate(eq.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingEquipId === eq.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateEquipamento(eq.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingEquipId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingEquipId(eq.id);
+                                    setEditEquipHoras(String(eq.horas));
+                                    setEditEquipCustoHora(String(eq.custo_hora));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeEquipamento.mutate(eq.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -648,11 +903,76 @@ export default function DiarioObraPage() {
                     {veiculos.map(v => (
                       <TableRow key={v.id}>
                         <TableCell>{v.descricao}</TableCell>
-                        <TableCell className="text-right">{v.km_inicial}</TableCell>
-                        <TableCell className="text-right">{v.km_final}</TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicKmInicial}
+                              onChange={e => setEditVeicKmInicial(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            v.km_inicial
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicKmFinal}
+                              onChange={e => setEditVeicKmFinal(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            v.km_final
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium">{v.km_rodados}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(v.custo_diaria)}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
+                        <TableCell className="text-right">
+                          {editingVeicId === v.id ? (
+                            <Input
+                              type="number"
+                              value={editVeicCusto}
+                              onChange={e => setEditVeicCusto(e.target.value)}
+                              className="w-20 ml-auto h-8"
+                            />
+                          ) : (
+                            formatCurrency(v.custo_diaria)
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 justify-end">
+                            {editingVeicId === v.id ? (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleUpdateVeiculo(v.id)} className="h-8 w-8 text-green-600">
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingVeicId(null)} className="h-8 w-8 text-red-600">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingVeicId(v.id);
+                                    setEditVeicKmInicial(String(v.km_inicial));
+                                    setEditVeicKmFinal(String(v.km_final));
+                                    setEditVeicCusto(String(v.custo_diaria));
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => removeVeiculo.mutate(v.id)} className="h-8 w-8 text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {veiculos.length > 0 && (

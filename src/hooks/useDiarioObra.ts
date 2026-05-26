@@ -227,6 +227,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_producao", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase
@@ -491,6 +492,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_equipe", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_equipe").select("*").eq("diario_id", diario.id);
@@ -541,6 +543,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_equipamentos", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_equipamentos").select("*").eq("diario_id", diario.id);
@@ -591,6 +594,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_veiculos", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       const { data: d, error } = await supabase.from("diario_veiculos").select("*").eq("diario_id", diario.id);
@@ -646,6 +650,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     queryKey: ["diario_fotos", diario?.id],
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 20,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!diario?.id) return [];
       

@@ -14,9 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Edit2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImpostosModal } from "@/components/configuracoes/impostos/ImpostosModal";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 
 export default function ConfigImpostosPage() {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -70,6 +73,12 @@ export default function ConfigImpostosPage() {
       p.projetos?.codigo?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.ceil((filteredImpostos?.length || 0) / itemsPerPage);
+  const paginatedImpostos = filteredImpostos?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const formatPerc = (val: number) => 
     new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2 }).format(val);
@@ -137,7 +146,7 @@ export default function ConfigImpostosPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredImpostos?.map((p) => (
+              paginatedImpostos?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="font-medium">{p.projetos?.nome}</div>
@@ -191,6 +200,15 @@ export default function ConfigImpostosPage() {
           </TableBody>
         </Table>
       </div>
+
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+        onPageChange={setCurrentPage}
+        onItemsPerPageChange={setItemsPerPage}
+        totalItems={filteredImpostos?.length || 0}
+      />
 
       <ImpostosModal
         isOpen={isModalOpen}

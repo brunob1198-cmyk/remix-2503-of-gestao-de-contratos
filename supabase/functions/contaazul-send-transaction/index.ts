@@ -405,7 +405,7 @@ async function sendOne(
   let errorMsg: string | null = null;
   let contaAzulId: string | null = null;
   let contaAzulProtocolo: string | null = null;
-  let status: string = "erro";
+  let status: string = "normalizado";
 
   try {
     const endpoint = input.type === "receita"
@@ -517,11 +517,14 @@ async function sendOne(
           }
         }
 
-        // Se esgotou as tentativas sem resolução: volta para "normalizado" para reenvio
+        // Se esgotou as tentativas sem resolução:
         if (!pollResolved) {
-          status = "pendente_ca";
-          errorMsg = `ContaAzul ainda processando após 40s. Protocolo: ${contaAzulProtocolo}. Resposta Atual: ${JSON.stringify(responseJson?.last_poll_data || 'Nenhuma')}. Tente reenviar em alguns minutos.`;
-          console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}`);
+          // O usuário relatou que mesmo com "erro na function", o lançamento foi criado.
+          // Isso acontece porque o polling falhou ou deu timeout, mas o Conta Azul pode ter processado com sucesso.
+          // Mudamos para ENVIADO com aviso no motivo, para evitar que o usuário tente reenviar e gere duplicidade.
+          status = "ENVIADO";
+          errorMsg = `Atenção: O polling do protocolo ${contaAzulProtocolo} esgotou (40s). O lançamento provavelmente foi criado no Conta Azul, mas não conseguimos confirmar o ID final automaticamente. Verifique manualmente antes de tentar reenviar.`;
+          console.warn(`[TIMEOUT] Polling esgotado para protocolo ${contaAzulProtocolo}. Marcando como ENVIADO para evitar duplicidade.`);
         }
 
       } else if (responseJson?.status === "PENDING" && !contaAzulProtocolo) {
@@ -572,6 +575,9 @@ async function sendOne(
     reconciliado: status === "ENVIADO" && !!contaAzulId && baixaSucesso,
   };
 
+  // Se o envio foi bem sucedido, atualizamos para "enviado". 
+  // Caso contrário, mantemos como "normalizado" (valor inicial ou resetado nos blocos else if) 
+  // para permitir que o usuário tente novamente sem perder a normalização.
   if (status === "ENVIADO") {
     // Lançamento confirmado pelo ContaAzul — marca como enviado
     await supabase
@@ -584,19 +590,10 @@ async function sendOne(
       .eq("flash_transaction_id", input.flash_transaction_id)
       .eq("empresa_id", empresaId);
 
-  } else if (status === "pendente_ca") {
-    // ContaAzul ainda processando após timeout — volta para normalizado para reenvio
-    await supabase
-      .from("flash_normalizacao")
-      .update({
-        status: "normalizado",
-        motivo: errorMsg || `Aguardando processamento no ContaAzul. Tente reenviar em alguns minutos.`,
-      })
-      .eq("flash_transaction_id", input.flash_transaction_id)
-      .eq("empresa_id", empresaId);
-
-  } else if (status === "erro") {
-    // Erro real — volta para normalizado para o usuário poder revisar e reenviar
+  } else if (status === "erro" || status === "pendente_ca") {
+    // Erro real ou timeout — volta para normalizado para o usuário poder revisar e reenviar.
+    // IMPORTANTE: Se o status for pendente_ca, ele continuará aparecendo como "normalizado" na UI,
+    // o que condiz com o relato do usuário de que "permanecem apenas como normalizado" mesmo após o envio.
     await supabase
       .from("flash_normalizacao")
       .update({
