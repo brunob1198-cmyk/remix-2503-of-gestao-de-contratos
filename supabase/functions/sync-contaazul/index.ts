@@ -1245,7 +1245,7 @@ serve(async (req) => {
             data_competencia: dataCompetencia,
             status_erp: statusNormalizado,
             categoria_erp: categoriaErp,
-            categoria_interna: categoriaInterna || "Indiretos",
+            categoria_interna: categoriaInterna || "Direto",
             categoria_confirmada: existingInfo?.categoria_confirmada || false,
             centro_custo: allocation.centroCusto,
             projeto_id: projetoId,
