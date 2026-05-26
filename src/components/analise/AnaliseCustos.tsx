@@ -181,7 +181,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       row.moObra,
       row.materiais,
       row.transporte,
-      row.indiretos,
+      row.direto,
       row.custoDiretoReal,
       row.custoDiretoOrcado,
       row.deltaDireto,
@@ -202,7 +202,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const totalRow = [
       "TOTAL", "", "", "",
       totals.poc, "", totals.producaoLiquida,
-      totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
+      totals.moObra, totals.materiais, totals.transporte, totals.direto,
       totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
       totals.gerenciaReal, totals.gerenciaOrcada, totals.gerenciaOrcada - totals.gerenciaReal,
       totals.gerenciaReal / (totals.custoDiretoReal || 1), totals.gerenciaOrcada / (totals.custoDiretoOrcado || 1),
