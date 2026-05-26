@@ -834,139 +834,136 @@ serve(async (req) => {
 
     const results = [];
     const logsToInsert: any[] = [];
+    
+    let sucesso = 0;
+    let erro = 0;
+    let skipped = 0;
 
-    for (const n of norms) {
-      if (integratedIds.has(n.flash_transaction_id)) {
-        results.push({
-          flash_transaction_id: n.flash_transaction_id,
-          status: "skipped",
-          error: "Transação já integrada anteriormente (controle de duplicidade em lote)",
-        });
-        continue;
+    // Processar em chunks para evitar rate limit do Conta Azul
+    const chunkArray = <T>(arr: T[], size: number): T[][] => {
+      const chunked = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunked.push(arr.slice(i, i + size));
       }
+      return chunked;
+    };
 
-      const raw = rawsById.get(n.flash_transaction_id);
-      const snap = (n.conta_azul_payload || {}) as any;
+    const chunks = chunkArray(norms, 10); // 10 por vez
 
-      // Sempre usa a conta "flash" se encontrada
-      const financialAccountId = flashAccountId || n.conta_azul_account_id;
+    for (const chunk of chunks) {
+      const chunkPromises = chunk.map(async (n) => {
+        if (integratedIds.has(n.flash_transaction_id)) {
+          return {
+            flash_transaction_id: n.flash_transaction_id,
+            status: "skipped",
+            error: "Transação já integrada anteriormente (controle de duplicidade em lote)",
+          };
+        }
 
-      // Extrair comentários do payload_json ou do snapshot
-      const comentarios = snap.comentarios
-        || raw?.payload_json?.comments
-        || raw?.payload_json?.comment
-        || raw?.payload_json?.observacao
-        || raw?.payload_json?.justification
-        || null;
+        const raw = rawsById.get(n.flash_transaction_id);
+        const snap = (n.conta_azul_payload || {}) as any;
 
-      // Centro de custo: Cadeia completa de fallbacks
-      // Prioridade 1: Valor editado manualmente (snapshot)
-      // Prioridade 2: Campos do payload_json da Flash
-      // Prioridade 3: Mapping por funcionário (DB)
-      let costCenter = snap.cost_center || null;
+        const financialAccountId = flashAccountId || n.conta_azul_account_id;
 
-      // Se não veio do snapshot, buscar do payload Flash
-      if (!costCenter || costCenter === "—" || costCenter === "") {
-        const pj = raw?.payload_json;
-        costCenter = pj?.costCenter?.name
-          || pj?.costCenter?.code
-          || pj?.cost_center?.name
-          || pj?.cost_center?.code
-          || pj?.centro_custo
-          || pj?.centroCusto
-          || pj?.employee?.costCenter?.name
-          || pj?.employee?.costCenter?.code
-          || pj?.employee?.cost_center?.name
-          || pj?.user?.costCenter?.name
-          || pj?.user?.costCenter?.code
+        const comentarios = snap.comentarios
+          || raw?.payload_json?.comments
+          || raw?.payload_json?.comment
+          || raw?.payload_json?.observacao
+          || raw?.payload_json?.justification
           || null;
+
+        let costCenter = snap.cost_center || null;
+
+        if (!costCenter || costCenter === "—" || costCenter === "") {
+          const pj = raw?.payload_json;
+          costCenter = pj?.costCenter?.name
+            || pj?.costCenter?.code
+            || pj?.cost_center?.name
+            || pj?.cost_center?.code
+            || pj?.centro_custo
+            || pj?.centroCusto
+            || pj?.employee?.costCenter?.name
+            || pj?.employee?.costCenter?.code
+            || pj?.employee?.cost_center?.name
+            || pj?.user?.costCenter?.name
+            || pj?.user?.costCenter?.code
+            || null;
+        }
+
+        if (!costCenter || costCenter === "—" || costCenter === "") {
+          const empId = raw?.payload_json?.employee?.id;
+          if (empId && ccMap[empId]) {
+            costCenter = ccMap[empId];
+          }
+        }
+
+        if (costCenter === "—" || costCenter === "") costCenter = null;
+
+        let costCenterId: string | null = null;
         if (costCenter) {
-          console.log(`[DEBUG] CC extraído do payload_json: "${costCenter}"`);
+          costCenterId = findBestCostCenterMatch(costCenter, costCenters);
         }
-      }
 
-      // Fallback: mapping por funcionário (via RPC)
-      if (!costCenter || costCenter === "—" || costCenter === "") {
-        const empId = raw?.payload_json?.employee?.id;
-        if (empId && ccMap[empId]) {
-          costCenter = ccMap[empId];
-          console.log(`[DEBUG] CC via fallback funcionário ${empId}: "${costCenter}"`);
-        }
-      }
-
-      // Limpar valor inválido
-      if (costCenter === "—" || costCenter === "") costCenter = null;
-      console.log(`[DEBUG] CC final para ${n.flash_transaction_id}: "${costCenter || '(vazio)'}"`);
-
-      // Mapear centro de custo no Conta Azul
-      let costCenterId: string | null = null;
-      if (costCenter) {
-        costCenterId = findBestCostCenterMatch(costCenter, costCenters);
-        if (costCenterId) {
-          console.log(`[DEBUG] CC mapeado com sucesso para o ID: ${costCenterId}`);
-        } else {
-          console.warn(`[WARN] CC "${costCenter}" não encontrado no Conta Azul.`);
-        }
-      }
-
-      // Valor: snap.amount deveria estar em reais, mas snapshots antigos podem ter
-      // o valor em centavos (bug anterior). Detectamos comparando com o payload cru.
-      const rawAmountCents = raw?.payload_json?.amount; // Valor em centavos da Flash
-      let valueInReais: number;
-      if (typeof snap.amount === "number" && snap.amount > 0) {
-        // Heurística: comparar com o valor bruto em centavos do payload
-        // Se snap.amount === rawAmountCents, o snap está em centavos → dividir por 100
-        // Se snap.amount === rawAmountCents / 100, o snap já está em reais
-        if (typeof rawAmountCents === "number" && rawAmountCents > 0) {
-          if (Math.abs(snap.amount - rawAmountCents) < 0.01) {
-            // snap.amount ≈ centavos → converter para reais
-            valueInReais = snap.amount / 100;
-            console.log(`[VALUE FIX] snap.amount ${snap.amount} = centavos (raw=${rawAmountCents}), convertendo: R$${valueInReais}`);
-          } else if (Math.abs(snap.amount - rawAmountCents / 100) < 0.01) {
-            // snap.amount ≈ reais → usar direto
-            valueInReais = snap.amount;
-          } else {
-            // Não conseguimos determinar; assume reais se < rawAmountCents, senão centavos
-            if (snap.amount >= rawAmountCents && Number.isInteger(snap.amount)) {
+        const rawAmountCents = raw?.payload_json?.amount;
+        let valueInReais: number;
+        if (typeof snap.amount === "number" && snap.amount > 0) {
+          if (typeof rawAmountCents === "number" && rawAmountCents > 0) {
+            if (Math.abs(snap.amount - rawAmountCents) < 0.01) {
               valueInReais = snap.amount / 100;
-              console.log(`[VALUE FIX] snap.amount ${snap.amount} parece centavos (heurística), convertendo: R$${valueInReais}`);
+            } else if (Math.abs(snap.amount - rawAmountCents / 100) < 0.01) {
+              valueInReais = snap.amount;
+            } else {
+              if (snap.amount >= rawAmountCents && Number.isInteger(snap.amount)) {
+                valueInReais = snap.amount / 100;
+              } else {
+                valueInReais = snap.amount;
+              }
+            }
+          } else {
+            if (Number.isInteger(snap.amount) && snap.amount >= 100) {
+              valueInReais = snap.amount / 100;
             } else {
               valueInReais = snap.amount;
             }
           }
         } else {
-          // Sem rawAmountCents para comparar; heurística simples
-          // Se é inteiro e >= 100, provavelmente centavos
-          if (Number.isInteger(snap.amount) && snap.amount >= 100) {
-            valueInReais = snap.amount / 100;
-            console.log(`[VALUE FIX] snap.amount ${snap.amount} parece centavos (sem raw para comparar), convertendo: R$${valueInReais}`);
-          } else {
-            valueInReais = snap.amount;
-          }
+          valueInReais = typeof rawAmountCents === "number" ? rawAmountCents / 100 : 0;
         }
-      } else {
-        valueInReais = typeof rawAmountCents === "number" ? rawAmountCents / 100 : 0;
-      }
 
-      const r = await sendOne(admin, empresaId, accessToken, {
-        flash_transaction_id: n.flash_transaction_id,
-        description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
-        value: valueInReais,
-        category_id: n.conta_azul_category_id,
-        financial_account_id: financialAccountId,
-        date: snap.date || raw?.payload_json?.transaction_date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
-        type: (n.tipo_operacao as any) || "despesa",
-        observacao: comentarios,
-        cost_center: costCenter,
-        cost_center_id: costCenterId,
-        force_pago: true, // Forçar sempre verdadeiro (Pago)
-      }, true, defaultContactId);
+        const r = await sendOne(admin, empresaId, accessToken, {
+          flash_transaction_id: n.flash_transaction_id,
+          description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
+          value: valueInReais,
+          category_id: n.conta_azul_category_id,
+          financial_account_id: financialAccountId,
+          date: snap.date || raw?.payload_json?.transaction_date || raw?.payload_json?.date || new Date().toISOString().split("T")[0],
+          type: (n.tipo_operacao as any) || "despesa",
+          observacao: comentarios,
+          cost_center: costCenter,
+          cost_center_id: costCenterId,
+          force_pago: true,
+        }, true, defaultContactId);
 
-      if (r.logEntry) {
-        logsToInsert.push(r.logEntry);
-        delete r.logEntry;
+        return r;
+      });
+
+      const chunkResults = await Promise.all(chunkPromises);
+      
+      for (const r of chunkResults) {
+        if (r.logEntry) {
+          logsToInsert.push(r.logEntry);
+          delete r.logEntry;
+        }
+        results.push(r);
+        
+        if (r.status === "ENVIADO") {
+          sucesso++;
+        } else if (r.status === "skipped") {
+          skipped++;
+        } else {
+          erro++;
+        }
       }
-      results.push(r);
     }
 
     // Realizar o insert em lote dos logs
@@ -979,7 +976,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ ok: true, results });
+    return json({ ok: true, results, sucesso, erro, skipped });
   } catch (e: any) {
     return json({ error: e.message }, 500);
   }
