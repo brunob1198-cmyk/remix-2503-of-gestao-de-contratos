@@ -67,12 +67,13 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
       // Usamos paginação manual para garantir que TODAS as fotos sejam carregadas,
       // contornando o limite de 1000 registros por requisição do Supabase.
       const fetchAllPhotos = async (ids: string[]) => {
-        if (ids.length === 0) return [];
+        if (ids.length === 0) return { photos: [], hasMore: false };
         
         // Processar em chunks de 200 diários por vez para evitar URLs gigantes
         const CHUNK_SIZE = 200;
-        const MAX_PHOTOS = 2000; // limite de segurança para evitar requests infinitos
+        const MAX_PHOTOS = 5000; // limite de segurança para evitar requests infinitos
         let all: any[] = [];
+        let hasMore = false;
         
         for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
           const chunk = ids.slice(i, i + CHUNK_SIZE);
@@ -85,18 +86,29 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           if (error) throw error;
           
           all = [...all, ...(data || [])];
-          if (all.length >= MAX_PHOTOS) break;
+          if (all.length >= MAX_PHOTOS) {
+            hasMore = true;
+            console.warn(
+              `[useRdo] Limite de ${MAX_PHOTOS} fotos atingido. ` +
+              `Algumas fotos podem não estar visíveis. ` +
+              `Reduza o período de busca para ver todas.`
+            );
+            break;
+          }
         }
-        return all;
+        return { photos: all, hasMore };
       };
 
-      const [prodRes, equipeRes, equipRes, veicRes, allFotos] = await Promise.all([
+      const [prodRes, equipeRes, equipRes, veicRes, photosResult] = await Promise.all([
         supabase.from("diario_producao").select("id, diario_id, quantidade, preco_unitario_congelado, valor_total, item_lpu_id, item_lpu:itens_lpu(codigo, descricao, unidade)").in("diario_id", diarioIds),
         supabase.from("diario_equipe").select("id, diario_id, nome, funcao, horas, custo_hora, custo_total").in("diario_id", diarioIds),
         supabase.from("diario_equipamentos").select("id, diario_id, descricao, horas, custo_hora, custo_total").in("diario_id", diarioIds),
         supabase.from("diario_veiculos").select("id, diario_id, descricao, placa, km_inicial, km_final, km_rodados, custo_diaria").in("diario_id", diarioIds),
         fetchAllPhotos(diarioIds),
       ]);
+
+      const allFotos = photosResult.photos;
+      const hasMorePhotos = photosResult.hasMore;
 
       const allProd = prodRes.data || [];
       const allEquipe = equipeRes.data || [];
