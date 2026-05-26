@@ -158,6 +158,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           veiculos: veics as any,
           fotos,
           custoTotal: custoEquipe + custoEquipamentos + custoVeiculos,
+          hasMorePhotos,
         };
       }).filter(d =>
         d.totalItens > 0 || d.totalFotos > 0 || d.equipe.length > 0 ||
