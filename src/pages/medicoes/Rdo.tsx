@@ -820,6 +820,17 @@ export default function RdoPage() {
             </CardContent>
           </Card>
 
+          {diarios.some(d => d.hasMorePhotos) && (
+            <Alert variant="warning" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Limite de fotos atingido</AlertTitle>
+              <AlertDescription>
+                Alguns registros podem não estar exibindo todas as fotos devido ao grande volume de dados no período.
+                Reduza o período de busca ou filtre por sites específicos para ver todas as evidências.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-3">
             <div className="flex flex-wrap items-start gap-3">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
