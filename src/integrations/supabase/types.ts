@@ -4463,6 +4463,14 @@ export type Database = {
           employee_id: string
         }[]
       }
+      get_my_profile_pii: {
+        Args: never
+        Returns: {
+          cpf: string
+          data_nascimento: string
+          sexo: string
+        }[]
+      }
       get_quadro_geral_bi: {
         Args: never
         Returns: {

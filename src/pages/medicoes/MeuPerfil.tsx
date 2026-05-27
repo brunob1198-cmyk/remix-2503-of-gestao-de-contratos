@@ -40,20 +40,25 @@ export default function MeuPerfilPage() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, nome, avatar_url, cargo")
         .eq("id", user.id)
         .single();
       if (data) {
         setNome(data.nome || "");
-        setCpf((data as any).cpf || "");
-        setDataNascimento((data as any).data_nascimento || "");
-        setSexo((data as any).sexo || "");
         setCargo((data as any).cargo || "");
         setAvatarUrl(data.avatar_url);
+      }
+      const { data: piiData } = await supabase.rpc("get_my_profile_pii");
+      const pii = Array.isArray(piiData) ? piiData[0] : piiData;
+      if (pii) {
+        setCpf(pii.cpf || "");
+        setDataNascimento(pii.data_nascimento || "");
+        setSexo(pii.sexo || "");
       }
     };
     loadProfile();
   }, [user]);
+
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
