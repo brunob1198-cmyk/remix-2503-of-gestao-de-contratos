@@ -87,7 +87,12 @@ export default function DashboardPage() {
     return biAnalise.filter((p: any) => {
       // Desconsiderar centros de custo "Comercial" e "Administrativo"
       const projetoNome = p.Projeto || "";
-      if (projetoNome === "Comercial" || projetoNome === "Administrativo") return false;
+      if (
+        projetoNome.toLowerCase().trim() === "administrativo" || 
+        projetoNome.toLowerCase().trim() === "comercial" ||
+        projetoNome.startsWith("Comercial -") ||
+        projetoNome.startsWith("Administrativo -")
+      ) return false;
 
       if (!p.Ano || !p["Mês Num"]) return false;
       const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
