@@ -196,9 +196,14 @@ function ColumnHeaderFilter({
                           >
                             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                           </button>
-                          <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => toggleMonthSelection(data.days)}>
+                          <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleMonthSelection(data.days);
+                          }}>
                             <Checkbox 
                               checked={isMonthSelected(data.days)}
+                              onCheckedChange={() => toggleMonthSelection(data.days)}
                               className={cn("h-4 w-4", isMonthIndeterminate(data.days) && "opacity-50")}
                             />
                             <span className="text-sm font-medium">{data.label}</span>
