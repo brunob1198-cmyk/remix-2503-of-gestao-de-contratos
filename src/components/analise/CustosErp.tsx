@@ -85,6 +85,7 @@ function ColumnHeaderFilter({
   onToggleValue, 
   onSelectAll, 
   onClearAll,
+  onToggleValues,
   isCompetencia 
 }: ColumnHeaderFilterProps) {
   const isFiltered = searchText !== "" || selectedValues.size > 0;
