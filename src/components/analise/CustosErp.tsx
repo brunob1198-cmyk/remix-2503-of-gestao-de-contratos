@@ -68,6 +68,7 @@ interface ColumnHeaderFilterProps {
   uniqueValues: string[];
   selectedValues: Set<string>;
   onToggleValue: (v: string) => void;
+  onToggleValues?: (vals: string[], shouldSelect: boolean) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
   isCompetencia?: boolean;
