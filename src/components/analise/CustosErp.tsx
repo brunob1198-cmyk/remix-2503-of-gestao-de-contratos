@@ -493,6 +493,13 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                           next.has(v) ? next.delete(v) : next.add(v);
                           setSelectedFilters(prev => ({ ...prev, [col]: next }));
                         }}
+                        onToggleValues={(vals, shouldSelect) => {
+                          setSelectedFilters(prev => {
+                            const next = new Set(prev[col]);
+                            vals.forEach(v => shouldSelect ? next.add(v) : next.delete(v));
+                            return { ...prev, [col]: next };
+                          });
+                        }}
                         onSelectAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set(uniqueValues[col]) }))}
                         onClearAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set() }))}
                         isCompetencia={col === "competencia"}
