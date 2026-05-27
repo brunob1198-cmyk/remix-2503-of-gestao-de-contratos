@@ -126,13 +126,17 @@ function ColumnHeaderFilter({
 
   const toggleMonthSelection = (days: string[]) => {
     const allSelected = isMonthSelected(days);
-    days.forEach(d => {
-      if (allSelected) {
-        if (selectedValues.has(d)) onToggleValue(d);
-      } else {
-        if (!selectedValues.has(d)) onToggleValue(d);
-      }
-    });
+    if (onToggleValues) {
+      onToggleValues(days, !allSelected);
+    } else {
+      days.forEach(d => {
+        if (allSelected) {
+          if (selectedValues.has(d)) onToggleValue(d);
+        } else {
+          if (!selectedValues.has(d)) onToggleValue(d);
+        }
+      });
+    }
   };
 
   return (
