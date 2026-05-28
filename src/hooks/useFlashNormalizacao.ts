@@ -351,6 +351,7 @@ export function useFlashNormalizacao() {
         status: merged.status ?? "pendente",
         conta_azul_payload: payload,
         normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null,
+        enviado_at: merged.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : row.enviado_at),
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
@@ -374,7 +375,10 @@ export function useFlashNormalizacao() {
 
   const sendToContaAzul = async (ids: string[]) => {
     toast.info(`Enviando ${ids.length} lançamentos...`);
-    const { data, error } = await supabase.functions.invoke("contaazul-sync-flash", { body: { ids } });
+    // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
+    const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
+      body: { flash_transaction_ids: ids } 
+    });
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
     toast.success("Envio concluído!");
