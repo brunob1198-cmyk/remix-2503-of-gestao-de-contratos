@@ -175,6 +175,7 @@ export function useFlashNormalizacao() {
   const empresaId = profile?.empresa_id;
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
@@ -374,14 +375,27 @@ export function useFlashNormalizacao() {
   }, [empresaId, contas, queryClient]);
 
   const sendToContaAzul = async (ids: string[]) => {
-    toast.info(`Enviando ${ids.length} lançamentos...`);
-    // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
-    const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
-      body: { flash_transaction_ids: ids } 
-    });
-    if (error) throw error;
-    queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
-    toast.success("Envio concluído!");
+    setSending(true);
+    try {
+      toast.info(`Enviando ${ids.length} lançamentos...`);
+      // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
+      const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
+        body: { flash_transaction_ids: ids } 
+      });
+      if (error) throw error;
+      
+      if (data?.error) {
+        toast.error("Erro no envio", { description: data.error });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
+        toast.success("Envio concluído!");
+      }
+    } catch (e: any) {
+      console.error("Erro sendToContaAzul:", e);
+      toast.error("Falha ao enviar", { description: e.message || "Erro desconhecido" });
+    } finally {
+      setSending(false);
+    }
   };
 
   const updateCostCenter = async (row: FlashTransactionRow, newVal: string) => {
@@ -440,7 +454,7 @@ export function useFlashNormalizacao() {
   };
 
   return {
-    loading: loadingRaw || loadingMappings, savingId, sending: false, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
+    loading: loadingRaw || loadingMappings, savingId, sending, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
     updateStatus, mappingByType: new Map(),
     applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter
