@@ -341,8 +341,16 @@ export function useFlashNormalizacao() {
       });
 
       const { data: normData, error } = await supabase.from("flash_normalizacao").upsert({
-        empresa_id: empresaId, flash_transaction_id: row.id, ...merged, conta_azul_payload: payload,
-        normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null
+        empresa_id: empresaId,
+        flash_transaction_id: row.id,
+        conta_azul_category_id: merged.conta_azul_category_id ?? null,
+        conta_azul_category_name: merged.conta_azul_category_name ?? null,
+        conta_azul_account_id: merged.conta_azul_account_id ?? null,
+        conta_azul_account_name: merged.conta_azul_account_name ?? null,
+        tipo_operacao: merged.tipo_operacao ?? "despesa",
+        status: merged.status ?? "pendente",
+        conta_azul_payload: payload,
+        normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null,
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
