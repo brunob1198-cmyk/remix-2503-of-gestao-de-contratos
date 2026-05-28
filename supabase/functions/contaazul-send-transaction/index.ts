@@ -597,7 +597,7 @@ async function sendOne(
     await supabase
       .from("flash_normalizacao")
       .update({
-        status: "normalizado",
+        status: (status === "ENVIADO" || errorMsg?.includes("polling")) ? "enviado" : "normalizado",
         motivo: errorMsg || "Erro no envio ao ContaAzul. Verifique e tente novamente.",
       })
       .eq("flash_transaction_id", input.flash_transaction_id)
