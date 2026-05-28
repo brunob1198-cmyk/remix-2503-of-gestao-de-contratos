@@ -328,7 +328,12 @@ export function useFlashNormalizacao() {
     setSavingId(row.id);
     try {
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
-      const merged = { ...row, ...patch, conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id };
+      const merged = { 
+        ...row, 
+        ...patch, 
+        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id,
+        enviado_at: patch.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : row.enviado_at)
+      };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
       const payload = buildContaAzulPayload({
