@@ -238,6 +238,7 @@ export function useFlashNormalizacao() {
     const rows = tx.map((rawTx: any) => {
       const base = mapTransactionRow(rawTx);
       const n = normByTx.get(rawTx.id);
+      
       if (n) {
         base.norm_id = n.id;
         base.conta_azul_category_id = n.conta_azul_category_id;
@@ -251,10 +252,16 @@ export function useFlashNormalizacao() {
         base.mapping_id_usado = n.mapping_id_usado;
         base.conta_azul_payload = n.conta_azul_payload;
         base.enviado_at = n.enviado_at;
-        if (n.conta_azul_payload?.cost_center) base.flash_cost_center = n.conta_azul_payload.cost_center;
+        
+        // Se já existe uma normalização no banco, ela TEM prioridade sobre o mapeamento automático
+        // para garantir que edições manuais persistam.
+        if (n.conta_azul_payload?.cost_center) {
+          base.flash_cost_center = n.conta_azul_payload.cost_center;
+        }
         return base;
       }
 
+      // Se NÃO existe no banco, aí sim aplicamos o mapeamento automático
       const normalized = normalizeFlashTransaction({
         id: rawTx.id, external_id: rawTx.external_id, payload_json: rawTx.payload_json,
         flash_type: base.flash_type, flash_category: base.flash_category,
@@ -274,7 +281,15 @@ export function useFlashNormalizacao() {
 
       if (!processedRef.current.has(rawTx.id)) {
         autoNormPayloads.push({
-          empresa_id: empresaId, flash_transaction_id: rawTx.id, ...base,
+          empresa_id: empresaId, 
+          flash_transaction_id: rawTx.id,
+          conta_azul_category_id: base.conta_azul_category_id ?? null,
+          conta_azul_category_name: base.conta_azul_category_name ?? null,
+          conta_azul_account_id: base.conta_azul_account_id ?? null,
+          conta_azul_account_name: base.conta_azul_account_name ?? null,
+          tipo_operacao: base.tipo_operacao ?? "despesa",
+          status: base.status ?? "pendente",
+          conta_azul_payload: base.conta_azul_payload,
           normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
         });
         processedRef.current.add(rawTx.id);
@@ -285,10 +300,13 @@ export function useFlashNormalizacao() {
     setTransactions(rows);
 
     if (autoNormPayloads.length > 0) {
-      const UPSERT_LIMIT = 100;
-      for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
-        supabase.from("flash_normalizacao").upsert(autoNormPayloads.slice(i, i + UPSERT_LIMIT), { onConflict: "flash_transaction_id" });
-      }
+      const UPSERT_LIMIT = 50;
+      const runUpserts = async () => {
+        for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
+          await supabase.from("flash_normalizacao").upsert(autoNormPayloads.slice(i, i + UPSERT_LIMIT), { onConflict: "flash_transaction_id" });
+        }
+      };
+      runUpserts();
     }
   }, [rawData, mappings, empresaId, contas, loadingRaw, loadingMappings]);
 
