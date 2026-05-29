@@ -366,7 +366,7 @@ export function useFlashNormalizacao() {
 
   const sendToContaAzul = async (ids: string[]) => {
     toast.info(`Enviando ${ids.length} lançamentos...`);
-    const { data, error } = await supabase.functions.invoke("contaazul-sync-flash", { body: { ids } });
+    const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { body: { flash_transaction_ids: ids } });
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
     toast.success("Envio concluído!");
