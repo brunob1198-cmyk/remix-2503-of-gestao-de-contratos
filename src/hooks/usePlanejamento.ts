@@ -189,61 +189,59 @@ export function useAtividades(projetoId?: string) {
         .order("ordem");
       if (aErr) throw aErr;
 
-      // Get dependencies
+      // Get dependencies AND project sites in parallel — both depend only on
+      // already-known IDs and are independent of each other.
       const atIds = (atividades ?? []).map((a) => a.id);
-      let deps: DependenciaAtividade[] = [];
-      if (atIds.length) {
-        const { data: dData } = await supabase
-          .from("dependencias_atividade")
-          .select("*")
-          .in("atividade_id", atIds);
-        deps = (dData ?? []) as DependenciaAtividade[];
-      }
-
-      // Get real production per item_lpu_id from lancamentos_producao
       const itemLpuIds = (atividades ?? [])
         .filter((a) => a.item_lpu_id)
         .map((a) => a.item_lpu_id!);
 
+      const [depsResult, sitesResult] = await Promise.all([
+        atIds.length
+          ? supabase
+              .from("dependencias_atividade")
+              .select("*")
+              .in("atividade_id", atIds)
+          : Promise.resolve({ data: [] as DependenciaAtividade[] }),
+        itemLpuIds.length
+          ? supabase.from("sites").select("id").eq("projeto_id", projetoId)
+          : Promise.resolve({ data: [] as { id: string }[] }),
+      ]);
+
+      const deps = (depsResult.data ?? []) as DependenciaAtividade[];
+      const siteIds = (sitesResult.data ?? []).map((s: any) => s.id);
+
       let prodMap: Record<string, number> = {};
       let matrizGeral: Record<string, Record<string, number>> = {};
-      
-      if (itemLpuIds.length) {
-        // Get sites for this project
-        const { data: sites } = await supabase
-          .from("sites")
-          .select("id")
-          .eq("projeto_id", projetoId);
-        const siteIds = (sites ?? []).map((s) => s.id);
 
-        if (siteIds.length) {
-          // Busca os diários desse site
-          const { data: diariosDoSite } = await supabase
-            .from("diarios_obra")
-            .select("id, data")
-            .in("site_id", siteIds);
+      // Diarios depend on siteIds, prods depend on diarioIds — keep sequential
+      // but short-circuit when there's nothing to fetch.
+      if (itemLpuIds.length && siteIds.length) {
+        const { data: diariosDoSite } = await supabase
+          .from("diarios_obra")
+          .select("id, data")
+          .in("site_id", siteIds);
 
-          if (diariosDoSite && diariosDoSite.length > 0) {
-            const diarioIds = diariosDoSite.map(d => d.id);
-            const dataDiarioMap = Object.fromEntries(diariosDoSite.map(d => [d.id, d.data]));
+        if (diariosDoSite && diariosDoSite.length > 0) {
+          const diarioIds = diariosDoSite.map(d => d.id);
+          const dataDiarioMap = Object.fromEntries(diariosDoSite.map(d => [d.id, d.data]));
 
-            const { data: prods } = await supabase
-              .from("diario_producao")
-              .select("item_lpu_id, quantidade, diario_id")
-              .in("diario_id", diarioIds)
-              .in("item_lpu_id", itemLpuIds);
-              
-            (prods ?? []).forEach((p) => {
-              const qtd = Number(p.quantidade) || 0;
-              const dataRealizada = dataDiarioMap[p.diario_id];
-              prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + qtd;
-              // Matriz diária:
-              if (dataRealizada) {
-                if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
-                matrizGeral[p.item_lpu_id][dataRealizada] = (matrizGeral[p.item_lpu_id][dataRealizada] || 0) + qtd;
-              }
-            });
-          }
+          const { data: prods } = await supabase
+            .from("diario_producao")
+            .select("item_lpu_id, quantidade, diario_id")
+            .in("diario_id", diarioIds)
+            .in("item_lpu_id", itemLpuIds);
+
+          (prods ?? []).forEach((p) => {
+            const qtd = Number(p.quantidade) || 0;
+            const dataRealizada = dataDiarioMap[p.diario_id];
+            prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + qtd;
+            // Matriz diária:
+            if (dataRealizada) {
+              if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
+              matrizGeral[p.item_lpu_id][dataRealizada] = (matrizGeral[p.item_lpu_id][dataRealizada] || 0) + qtd;
+            }
+          });
         }
       }
 
