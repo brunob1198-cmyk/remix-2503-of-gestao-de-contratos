@@ -241,7 +241,7 @@ export default function DiarioObraPage() {
     return { custo_hora: custoUnitario, custo_total: horas * custoUnitario };
   };
 
-  const handleAddProducao = async () => {
+  const handleAddProducao = useCallback(async (prodItemId: string, prodQtd: string, pendingProdFiles: File[]) => {
     if (!prodItemId || !prodQtd) return;
     if (!diarioUf || !diarioMunicipio) {
       toast({ title: "Localização obrigatória", description: "Selecione UF e Município antes de lançar produção.", variant: "destructive" });
@@ -269,10 +269,10 @@ export default function DiarioObraPage() {
       toast({ title: "Erro", description: prodError.message, variant: "destructive" });
       return;
     }
-    
+
     const totalFiles = pendingProdFiles.length;
     setUploadProgress({ current: 0, total: totalFiles });
-    
+
     for (let i = 0; i < pendingProdFiles.length; i++) {
       const file = pendingProdFiles[i];
       try {
@@ -291,10 +291,9 @@ export default function DiarioObraPage() {
       }
     }
     setUploadProgress(null);
-    setProdItemId(""); setProdQtd(""); setPendingProdFiles([]);
     queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
     toast({ title: "Produção adicionada com fotos!" });
-  };
+  }, [diarioUf, diarioMunicipio, itensDisponiveis, ensureDiario, toast, addFoto, queryClient]);
 
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => {
     const files = e.target.files;
