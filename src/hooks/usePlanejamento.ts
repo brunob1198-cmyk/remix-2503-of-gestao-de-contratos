@@ -165,7 +165,10 @@ export function useAtividades(projetoId?: string) {
 
   const query = useQuery({
     queryKey: ["atividades_planejamento", projetoId],
-    staleTime: 20 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       if (!projetoId) return [];
       // Get frentes for this project
