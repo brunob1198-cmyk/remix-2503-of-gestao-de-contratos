@@ -49,7 +49,10 @@ export function useFrentes(projetoId?: string) {
 
   const query = useQuery({
     queryKey: ["frentes_obra", projetoId],
-    staleTime: 20 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       if (!projetoId) return [];
       const { data, error } = await supabase
