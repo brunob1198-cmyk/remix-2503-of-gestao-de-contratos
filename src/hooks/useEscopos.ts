@@ -30,6 +30,9 @@ export function useEscopos(siteId?: string, projetoId?: string) {
       return data as EscopoItem[];
     },
     enabled: !!siteId || !!projetoId,
+    staleTime: 1000 * 60 * 15,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
   });
 
   const saveEscopo = useMutation({
