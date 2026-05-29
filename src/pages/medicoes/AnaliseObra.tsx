@@ -201,7 +201,7 @@ export default function AnaliseObraPage() {
               Atualizar Dados
             </Button>
 
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate()} disabled={syncErp.isPending}>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => syncErp.mutate({ start_date: format(periodoInicio, "yyyy-MM-dd"), end_date: format(periodoFim, "yyyy-MM-dd") })} disabled={syncErp.isPending}>
               <RefreshCw className={`h-3.5 w-3.5 ${syncErp.isPending ? "animate-spin" : ""}`} />
               Sincronizar Conta Azul
             </Button>
