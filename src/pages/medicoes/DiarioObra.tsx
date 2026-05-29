@@ -295,6 +295,10 @@ export default function DiarioObraPage() {
     toast({ title: "Produção adicionada com fotos!" });
   }, [diarioUf, diarioMunicipio, itensDisponiveis, ensureDiario, toast, addFoto, queryClient]);
 
+  const handleRemoveFoto = useCallback((id: string) => {
+    removeFoto.mutate(id);
+  }, [removeFoto]);
+
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -825,7 +829,7 @@ export default function DiarioObraPage() {
               photoGroups={photoGroups}
               setPhotoGroups={setPhotoGroups}
               onUpload={(e, group) => handleUploadFoto(e, group)}
-              onRemove={(id) => removeFoto.mutate(id)}
+              onRemove={handleRemoveFoto}
               setPhotoView={setPhotoView}
             />
 
