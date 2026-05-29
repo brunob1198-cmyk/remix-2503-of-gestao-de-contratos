@@ -84,7 +84,7 @@ export function useTableFilters<T, ColKey extends string>(
     }
   };
 
-  const setSearchText = (col: ColKey, v: string) => {
+  const setSearchText = useCallback((col: ColKey, v: string) => {
     setSearchTexts(prev => ({ ...prev, [col]: v }));
     
     if (searchTimeoutRef.current[col]) {
@@ -95,11 +95,12 @@ export function useTableFilters<T, ColKey extends string>(
       setDebouncedSearchTexts(prev => ({ ...prev, [col]: v }));
       setCurrentPage(1);
     }, 500);
-  };
+  }, []);
 
   useEffect(() => {
+    const timeouts = searchTimeoutRef.current;
     return () => {
-      Object.values(searchTimeoutRef.current).forEach(clearTimeout);
+      Object.values(timeouts).forEach(clearTimeout);
     };
   }, []);
   const toggleValue = (col: ColKey, v: string) => {

@@ -49,6 +49,9 @@ export function useErpConfig() {
 
   const configQuery = useQuery({
     queryKey: ["erp_config", empresaId],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("integracoes_erp_config")
@@ -120,6 +123,9 @@ export function useErpLogs() {
 
   return useQuery({
     queryKey: ["erp_logs", empresaId],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("integracoes_erp_log")

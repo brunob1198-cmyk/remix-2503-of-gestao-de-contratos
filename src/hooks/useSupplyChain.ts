@@ -34,6 +34,9 @@ export function useFornecedores() {
 
   const { data: fornecedores = [], isLoading } = useQuery({
     queryKey: ["fornecedores"],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("fornecedores")
@@ -108,6 +111,9 @@ export function useScItens() {
 
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ["sc_itens"],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase.from("sc_itens").select("*").order("codigo");
       if (error) throw error;
@@ -179,6 +185,9 @@ export function useRequisicoes() {
 
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ["requisicoes_compra"],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("requisicoes_compra")
@@ -257,6 +266,9 @@ export function useCotacoes(requisicaoId?: string) {
 
   const { data: cotacoes = [], isLoading } = useQuery({
     queryKey: ["cotacoes", requisicaoId],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       let q = supabase
         .from("cotacoes")
@@ -324,6 +336,9 @@ export function usePedidosCompra() {
 
   const { data: pedidos = [], isLoading } = useQuery({
     queryKey: ["pedidos_compra"],
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedidos_compra")

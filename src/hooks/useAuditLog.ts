@@ -49,6 +49,9 @@ export function useAuditLog(filters?: { tabela?: string; limit?: number }) {
 
   return useQuery({
     queryKey: ["audit_log", filters?.tabela, limit],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       let query = supabase
         .from("audit_log")

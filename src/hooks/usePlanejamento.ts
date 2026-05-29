@@ -49,6 +49,10 @@ export function useFrentes(projetoId?: string) {
 
   const query = useQuery({
     queryKey: ["frentes_obra", projetoId],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       if (!projetoId) return [];
       const { data, error } = await supabase
@@ -161,6 +165,10 @@ export function useAtividades(projetoId?: string) {
 
   const query = useQuery({
     queryKey: ["atividades_planejamento", projetoId],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       if (!projetoId) return [];
       // Get frentes for this project

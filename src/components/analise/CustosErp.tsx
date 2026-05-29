@@ -29,7 +29,7 @@ const CATEGORIAS_PADRAO = [
   "Materiais",
   "Transporte",
   "Equipamentos",
-  "Indiretos",
+  "Direto",
   "Financeiros",
   "Gerência",
 ];
@@ -68,6 +68,7 @@ interface ColumnHeaderFilterProps {
   uniqueValues: string[];
   selectedValues: Set<string>;
   onToggleValue: (v: string) => void;
+  onToggleValues?: (vals: string[], shouldSelect: boolean) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
   isCompetencia?: boolean;
@@ -84,6 +85,7 @@ function ColumnHeaderFilter({
   onToggleValue, 
   onSelectAll, 
   onClearAll,
+  onToggleValues,
   isCompetencia 
 }: ColumnHeaderFilterProps) {
   const isFiltered = searchText !== "" || selectedValues.size > 0;
@@ -124,13 +126,17 @@ function ColumnHeaderFilter({
 
   const toggleMonthSelection = (days: string[]) => {
     const allSelected = isMonthSelected(days);
-    days.forEach(d => {
-      if (allSelected) {
-        if (selectedValues.has(d)) onToggleValue(d);
-      } else {
-        if (!selectedValues.has(d)) onToggleValue(d);
-      }
-    });
+    if (onToggleValues) {
+      onToggleValues(days, !allSelected);
+    } else {
+      days.forEach(d => {
+        if (allSelected) {
+          if (selectedValues.has(d)) onToggleValue(d);
+        } else {
+          if (!selectedValues.has(d)) onToggleValue(d);
+        }
+      });
+    }
   };
 
   return (
@@ -190,13 +196,17 @@ function ColumnHeaderFilter({
                           >
                             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                           </button>
-                          <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => toggleMonthSelection(data.days)}>
+                          <label 
+                            className="flex items-center gap-2 flex-1 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Checkbox 
                               checked={isMonthSelected(data.days)}
+                              onCheckedChange={() => toggleMonthSelection(data.days)}
                               className={cn("h-4 w-4", isMonthIndeterminate(data.days) && "opacity-50")}
                             />
                             <span className="text-sm font-medium">{data.label}</span>
-                          </div>
+                          </label>
                         </div>
                         {isExpanded && (
                           <div className="ml-6 space-y-1">
@@ -481,6 +491,13 @@ export function CustosErp({ projetoIds, periodoInicio, periodoFim }: CustosErpPr
                           const next = new Set(selectedFilters[col]);
                           next.has(v) ? next.delete(v) : next.add(v);
                           setSelectedFilters(prev => ({ ...prev, [col]: next }));
+                        }}
+                        onToggleValues={(vals, shouldSelect) => {
+                          setSelectedFilters(prev => {
+                            const next = new Set(prev[col]);
+                            vals.forEach(v => shouldSelect ? next.add(v) : next.delete(v));
+                            return { ...prev, [col]: next };
+                          });
                         }}
                         onSelectAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set(uniqueValues[col]) }))}
                         onClearAll={() => setSelectedFilters(prev => ({ ...prev, [col]: new Set() }))}

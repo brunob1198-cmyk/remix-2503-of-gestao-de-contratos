@@ -78,13 +78,32 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
   }, [filters]);
 
   const filterOptions = useMemo(() => {
-    return {
-      referencia: Array.from(new Set(allRows.map(r => r.referencia))).sort(),
-      area: Array.from(new Set(allRows.map(r => r.area))).sort(),
-      projeto: Array.from(new Set(allRows.map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
-      cliente: Array.from(new Set(allRows.map(r => r.cliente))).sort(),
+    const getFilteredRowsExcluding = (excludedKey: string) => {
+      return allRows.filter(row => {
+        const matchesReferencia = excludedKey === "referencia" || filters.referencia.length === 0 || filters.referencia.includes(row.referencia);
+        const matchesArea = excludedKey === "area" || filters.area.length === 0 || filters.area.includes(row.area);
+        const projetoStr = `${row.projetoCodigo} - ${row.projetoNome}`;
+        const matchesProjeto = excludedKey === "projeto" || filters.projeto.length === 0 || filters.projeto.includes(projetoStr);
+        const matchesCliente = excludedKey === "cliente" || filters.cliente.length === 0 || filters.cliente.includes(row.cliente);
+        
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch = !filters.search || 
+          row.referencia.toLowerCase().includes(searchLower) ||
+          row.area.toLowerCase().includes(searchLower) ||
+          projetoStr.toLowerCase().includes(searchLower) ||
+          row.cliente.toLowerCase().includes(searchLower);
+
+        return matchesReferencia && matchesArea && matchesProjeto && matchesCliente && matchesSearch;
+      });
     };
-  }, [allRows]);
+
+    return {
+      referencia: Array.from(new Set(getFilteredRowsExcluding("referencia").map(r => r.referencia))).sort(),
+      area: Array.from(new Set(getFilteredRowsExcluding("area").map(r => r.area))).sort(),
+      projeto: Array.from(new Set(getFilteredRowsExcluding("projeto").map(r => `${r.projetoCodigo} - ${r.projetoNome}`))).sort(),
+      cliente: Array.from(new Set(getFilteredRowsExcluding("cliente").map(r => r.cliente))).sort(),
+    };
+  }, [allRows, filters]);
 
   const analiseRows = useMemo(() => {
     return allRows.filter(row => {
@@ -112,7 +131,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       moObra: acc.moObra + r.moObra,
       materiais: acc.materiais + r.materiais,
       transporte: acc.transporte + r.transporte,
-      indiretos: acc.indiretos + r.indiretos,
+      direto: acc.direto + r.direto,
       custoDiretoReal: acc.custoDiretoReal + r.custoDiretoReal,
       custoDiretoOrcado: acc.custoDiretoOrcado + r.custoDiretoOrcado,
       gerenciaReal: acc.gerenciaReal + r.gerenciaReal,
@@ -124,7 +143,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       mbRealizada: acc.mbRealizada + r.mbRealizada,
     }), {
       poc: 0, producaoLiquida: 0, moObra: 0, materiais: 0, transporte: 0,
-      indiretos: 0,
+      direto: 0,
       custoDiretoReal: 0, custoDiretoOrcado: 0,
       gerenciaReal: 0, gerenciaOrcada: 0, 
       custoTotalReal: 0, custoTotalOrcado: 0, resultadoTotal: 0,
@@ -145,7 +164,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const header = [
       "Referência", "Área", "Projeto", "Cliente", 
       "Produção (POC)", "% Impostos", "Receita Líquida",
-      "MO", "Mat.", "Transp.", "Indir.", "Custo Direto Real", "Custo Direto Orçado", "Resultado Direto",
+      "MO", "Mat.", "Transp.", "Direto", "Custo Direto Real", "Custo Direto Orçado", "Resultado Direto",
       "Gerência Real", "Gerência Orçada", "Resultado Gerência", "% Gerência Real", "% Gerência Orç.",
       "Custo Total Real", "Custo Total Orçado", "Resultado Total",
       "MB Orç. (R$)", "MB Real (R$)", "% MB Orç.", "% MB Real"
@@ -162,7 +181,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
       row.moObra,
       row.materiais,
       row.transporte,
-      row.indiretos,
+      row.direto,
       row.custoDiretoReal,
       row.custoDiretoOrcado,
       row.deltaDireto,
@@ -183,7 +202,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
     const totalRow = [
       "TOTAL", "", "", "",
       totals.poc, "", totals.producaoLiquida,
-      totals.moObra, totals.materiais, totals.transporte, totals.indiretos,
+      totals.moObra, totals.materiais, totals.transporte, totals.direto,
       totals.custoDiretoReal, totals.custoDiretoOrcado, totals.custoDiretoOrcado - totals.custoDiretoReal,
       totals.gerenciaReal, totals.gerenciaOrcada, totals.gerenciaOrcada - totals.gerenciaReal,
       totals.gerenciaReal / (totals.custoDiretoReal || 1), totals.gerenciaOrcada / (totals.custoDiretoOrcado || 1),
@@ -628,7 +647,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">MO</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Mat.</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Transp.</th>
-                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Indir.</th>
+                <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800">Direto</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Real</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800/60 font-normal">Orçado</th>
                 <th className="py-3 px-4 border-b border-r bg-blue-100/50 text-blue-800 font-bold">Resultado Direto</th>
@@ -719,7 +738,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.moObra)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.materiais)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.transporte)}</td>
-                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.indiretos)}</td>
+                    <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.direto)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 font-bold text-blue-700">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700/60">{formatCurrency(row.custoDiretoOrcado)}</td>
                     <td className={`py-2 px-4 border-b border-r bg-blue-50/50 font-bold ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
@@ -778,7 +797,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.moObra)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.materiais)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.transporte)}</td>
-                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.indiretos)}</td>
+                <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.direto)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoReal)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80 text-slate-900/60">{formatCurrency(totals.custoDiretoOrcado)}</td>
                 <td className="py-3 px-4 border-r bg-blue-100/80">{formatCurrency(totals.custoDiretoOrcado - totals.custoDiretoReal)}</td>
@@ -866,6 +885,23 @@ function FilterPopover({
           <Separator />
           <ScrollArea className="h-48">
             <div className="space-y-1">
+              <div 
+                className="flex items-center space-x-2 px-2 py-1 hover:bg-muted rounded-sm cursor-pointer"
+                onClick={() => {
+                  if (selected.length === options.length) {
+                    onSelect([]);
+                  } else {
+                    onSelect([...options]);
+                  }
+                }}
+              >
+                <Checkbox 
+                  checked={selected.length === options.length && options.length > 0} 
+                  className={selected.length > 0 && selected.length < options.length ? "opacity-50" : ""}
+                />
+                <span className="text-xs font-semibold">Selecionar Todos</span>
+              </div>
+              <Separator className="my-1" />
               {filteredOptions.length === 0 ? (
                 <div className="py-2 text-center text-xs text-muted-foreground">Nenhuma opção encontrada</div>
               ) : (

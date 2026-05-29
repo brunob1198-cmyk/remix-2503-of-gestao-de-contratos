@@ -3820,10 +3820,10 @@ export type Database = {
           "Custo Direto Real": number | null
           "Custo Total Orçado": number | null
           "Custo Total Real": number | null
+          Direto: number | null
           "Gerência Orçada": number | null
           "Gerência Real": number | null
           "ID Projeto": string | null
-          "Indir.": number | null
           "Mat.": number | null
           "MB Orç. (R$)": number | null
           "MB Real (R$)": number | null
@@ -4436,10 +4436,10 @@ export type Database = {
           "Custo Direto Real": number
           "Custo Total Orçado": number
           "Custo Total Real": number
+          Direto: number
           "Gerência Orçada": number
           "Gerência Real": number
           "ID Projeto": string
-          "Indir.": number
           "Mat.": number
           "MB Orç. (R$)": number
           "MB Real (R$)": number
@@ -4461,6 +4461,14 @@ export type Database = {
           cc_id: string
           cc_name: string
           employee_id: string
+        }[]
+      }
+      get_my_profile_pii: {
+        Args: never
+        Returns: {
+          cpf: string
+          data_nascimento: string
+          sexo: string
         }[]
       }
       get_quadro_geral_bi: {

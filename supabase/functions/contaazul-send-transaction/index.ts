@@ -578,6 +578,7 @@ async function sendOne(
   // Se o envio foi bem sucedido, atualizamos para "enviado". 
   // Caso contrário, mantemos como "normalizado" (valor inicial ou resetado nos blocos else if) 
   // para permitir que o usuário tente novamente sem perder a normalização.
+  // Se o envio foi bem sucedido, atualizamos para "enviado". 
   if (status === "ENVIADO") {
     // Lançamento confirmado pelo ContaAzul — marca como enviado
     await supabase
@@ -590,10 +591,13 @@ async function sendOne(
       .eq("flash_transaction_id", input.flash_transaction_id)
       .eq("empresa_id", empresaId);
 
-  } else if (status === "erro" || status === "pendente_ca") {
-    // Erro real ou timeout — volta para normalizado para o usuário poder revisar e reenviar.
-    // IMPORTANTE: Se o status for pendente_ca, ele continuará aparecendo como "normalizado" na UI,
-    // o que condiz com o relato do usuário de que "permanecem apenas como normalizado" mesmo após o envio.
+  } else {
+    // Caso de erro ou pendência não resolvida.
+    // Se o erro foi timeout de polling, nós já marcamos como ENVIADO no bloco if acima
+    // porque o timeout agora define status = "ENVIADO" com mensagem de atenção.
+    
+    // Se for erro real (ex: categoria inválida, erro 400), volta para normalizado
+    // para permitir que o usuário tente novamente sem perder a normalização.
     await supabase
       .from("flash_normalizacao")
       .update({

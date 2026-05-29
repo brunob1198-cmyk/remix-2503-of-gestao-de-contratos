@@ -175,6 +175,7 @@ export function useFlashNormalizacao() {
   const empresaId = profile?.empresa_id;
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const [transactions, setTransactions] = useState<FlashTransactionRow[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [metadataError, setMetadataError] = useState<string | null>(null);
@@ -237,6 +238,7 @@ export function useFlashNormalizacao() {
     const rows = tx.map((rawTx: any) => {
       const base = mapTransactionRow(rawTx);
       const n = normByTx.get(rawTx.id);
+      
       if (n) {
         base.norm_id = n.id;
         base.conta_azul_category_id = n.conta_azul_category_id;
@@ -250,10 +252,16 @@ export function useFlashNormalizacao() {
         base.mapping_id_usado = n.mapping_id_usado;
         base.conta_azul_payload = n.conta_azul_payload;
         base.enviado_at = n.enviado_at;
-        if (n.conta_azul_payload?.cost_center) base.flash_cost_center = n.conta_azul_payload.cost_center;
+        
+        // Se já existe uma normalização no banco, ela TEM prioridade sobre o mapeamento automático
+        // para garantir que edições manuais persistam.
+        if (n.conta_azul_payload?.cost_center) {
+          base.flash_cost_center = n.conta_azul_payload.cost_center;
+        }
         return base;
       }
 
+      // Se NÃO existe no banco, aí sim aplicamos o mapeamento automático
       const normalized = normalizeFlashTransaction({
         id: rawTx.id, external_id: rawTx.external_id, payload_json: rawTx.payload_json,
         flash_type: base.flash_type, flash_category: base.flash_category,
@@ -273,7 +281,15 @@ export function useFlashNormalizacao() {
 
       if (!processedRef.current.has(rawTx.id)) {
         autoNormPayloads.push({
-          empresa_id: empresaId, flash_transaction_id: rawTx.id, ...base,
+          empresa_id: empresaId, 
+          flash_transaction_id: rawTx.id,
+          conta_azul_category_id: base.conta_azul_category_id ?? null,
+          conta_azul_category_name: base.conta_azul_category_name ?? null,
+          conta_azul_account_id: base.conta_azul_account_id ?? null,
+          conta_azul_account_name: base.conta_azul_account_name ?? null,
+          tipo_operacao: base.tipo_operacao ?? "despesa",
+          status: base.status ?? "pendente",
+          conta_azul_payload: base.conta_azul_payload,
           normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
         });
         processedRef.current.add(rawTx.id);
@@ -284,10 +300,13 @@ export function useFlashNormalizacao() {
     setTransactions(rows);
 
     if (autoNormPayloads.length > 0) {
-      const UPSERT_LIMIT = 100;
-      for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
-        supabase.from("flash_normalizacao").upsert(autoNormPayloads.slice(i, i + UPSERT_LIMIT), { onConflict: "flash_transaction_id" });
-      }
+      const UPSERT_LIMIT = 50;
+      const runUpserts = async () => {
+        for (let i = 0; i < autoNormPayloads.length; i += UPSERT_LIMIT) {
+          await supabase.from("flash_normalizacao").upsert(autoNormPayloads.slice(i, i + UPSERT_LIMIT), { onConflict: "flash_transaction_id" });
+        }
+      };
+      runUpserts();
     }
   }, [rawData, mappings, empresaId, contas, loadingRaw, loadingMappings]);
 
@@ -327,7 +346,12 @@ export function useFlashNormalizacao() {
     setSavingId(row.id);
     try {
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
-      const merged = { ...row, ...patch, conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id };
+      const merged = { 
+        ...row, 
+        ...patch, 
+        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id,
+        enviado_at: patch.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : row.enviado_at)
+      };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
       const payload = buildContaAzulPayload({
@@ -341,8 +365,17 @@ export function useFlashNormalizacao() {
       });
 
       const { data: normData, error } = await supabase.from("flash_normalizacao").upsert({
-        empresa_id: empresaId, flash_transaction_id: row.id, ...merged, conta_azul_payload: payload,
-        normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null
+        empresa_id: empresaId,
+        flash_transaction_id: row.id,
+        conta_azul_category_id: merged.conta_azul_category_id ?? null,
+        conta_azul_category_name: merged.conta_azul_category_name ?? null,
+        conta_azul_account_id: merged.conta_azul_account_id ?? null,
+        conta_azul_account_name: merged.conta_azul_account_name ?? null,
+        tipo_operacao: merged.tipo_operacao ?? "despesa",
+        status: merged.status ?? "pendente",
+        conta_azul_payload: payload,
+        normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null,
+        enviado_at: merged.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : row.enviado_at),
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
@@ -365,11 +398,27 @@ export function useFlashNormalizacao() {
   }, [empresaId, contas, queryClient]);
 
   const sendToContaAzul = async (ids: string[]) => {
-    toast.info(`Enviando ${ids.length} lançamentos...`);
-    const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { body: { flash_transaction_ids: ids } });
-    if (error) throw error;
-    queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
-    toast.success("Envio concluído!");
+    setSending(true);
+    try {
+      toast.info(`Enviando ${ids.length} lançamentos...`);
+      // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
+      const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
+        body: { flash_transaction_ids: ids } 
+      });
+      if (error) throw error;
+      
+      if (data?.error) {
+        toast.error("Erro no envio", { description: data.error });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
+        toast.success("Envio concluído!");
+      }
+    } catch (e: any) {
+      console.error("Erro sendToContaAzul:", e);
+      toast.error("Falha ao enviar", { description: e.message || "Erro desconhecido" });
+    } finally {
+      setSending(false);
+    }
   };
 
   const updateCostCenter = async (row: FlashTransactionRow, newVal: string) => {
@@ -428,7 +477,7 @@ export function useFlashNormalizacao() {
   };
 
   return {
-    loading: loadingRaw || loadingMappings, savingId, sending: false, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
+    loading: loadingRaw || loadingMappings, savingId, sending, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
     updateStatus, mappingByType: new Map(),
     applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter

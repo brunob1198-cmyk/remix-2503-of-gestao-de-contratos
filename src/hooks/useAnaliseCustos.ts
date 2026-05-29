@@ -43,9 +43,9 @@ export interface OrcamentoProjeto {
   mao_de_obra: number;
   materiais: number;
   equipamentos: number;
-  transporte: number;
-  indiretos: number;
-  financeiros: number;
+    transporte: number;
+    direto: number;
+    financeiros: number;
 }
 
 export function useContaAzulConnection() {
@@ -598,6 +598,35 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     enabled: projetoIds.length > 0,
   });
 
+  const custosErpPorProjeto = useMemo(() => {
+    const map = new Map<string, CustoErp[]>();
+    custosErp.forEach(c => {
+      if (!c.projeto_id) return;
+      const key = c.projeto_id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(c);
+    });
+    return map;
+  }, [custosErp]);
+
+  const producaoPorProjeto = useMemo(() => {
+    const map = new Map<string, typeof producaoData>();
+    producaoData.forEach(p => {
+      if (!p.projeto_id) return;
+      if (!map.has(p.projeto_id)) map.set(p.projeto_id, []);
+      map.get(p.projeto_id)!.push(p);
+    });
+    return map;
+  }, [producaoData]);
+
+  const mkpParamsPorProjeto = useMemo(() => 
+    new Map(mkpParams.map(m => [m.projeto_id, m])),
+  [mkpParams]);
+
+  const impostosPorProjeto = useMemo(() =>
+    new Map(impostosData.map(i => [i.projeto_id, i])),
+  [impostosData]);
+
   const analiseRows = useMemo(() => {
     if (!startDate || !endDate || projetosData.length === 0) return [];
 
@@ -626,12 +655,15 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
     (projetosData || []).forEach((projeto) => {
       const projetoId = projeto.id;
-      const mkp = (mkpParams || []).find((m) => m.projeto_id === projetoId);
-      const impostosProjeto = (impostosData || []).find((i) => i.projeto_id === projetoId);
+      const mkp = mkpParamsPorProjeto.get(projetoId);
+      const impostosProjeto = impostosPorProjeto.get(projetoId);
       const clienteNome =
         (projeto as any).clientes?.nome || (projeto as any).cliente || (projeto as any).cliente_id || "N/A";
       const areaNome =
         (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
+
+      const projetoProducaoTotal = producaoPorProjeto.get(projetoId) || [];
+      const projetoCustosTotal = custosErpPorProjeto.get(projetoId) || [];
 
       (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
@@ -639,8 +671,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const monthLabel = format(monthStart, "MMM/yyyy", { locale: ptBR });
 
         // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
-        const producaoItensMes = (producaoData || []).filter((p) => {
-          if (p.projeto_id !== projetoId) return false;
+        const producaoItensMes = projetoProducaoTotal.filter((p) => {
           try {
             const dStr = p.data_producao;
             if (!dStr) return false;
@@ -658,8 +689,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const custoDiretoOrcado = calculateCustoDiretoOrcado(producaoItensMes, mkp);
 
         // 2. Custos do mês
-        const projetoCustosMes = (custosErp || []).filter((c) => {
-          if (c.projeto_id !== projetoId || !c.data_competencia) return false;
+        const projetoCustosMes = projetoCustosTotal.filter((c) => {
+          if (!c.data_competencia) return false;
           try {
             const d = parseISO(c.data_competencia);
             return d >= monthStart && d <= monthEnd;
@@ -693,8 +724,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         const transporte = (projetoCustosMes || [])
           .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Transporte")
           .reduce((s, c) => s + Number(c.valor || 0), 0);
-        const indiretos = (projetoCustosMes || [])
-          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Indiretos")
+        const direto = (projetoCustosMes || [])
+          .filter((c) => c.categoria_analise === "DIRETO" && c.categoria_interna === "Direto")
           .reduce((s, c) => s + Number(c.valor || 0), 0);
 
         const percRisco = mkp?.perc_risco ?? 0;
@@ -752,7 +783,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           materiais,
           transporte,
           // equipamentos column removed as per user request
-          indiretos,
+          direto,
           custoDiretoReal,
           custoDiretoOrcado,
           deltaDireto: custoDiretoOrcado - custoDiretoReal,
@@ -781,7 +812,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     });
 
     return rows;
-  }, [projetosData, mkpParams, impostosData, producaoData, custosErp, startDate, endDate]);
+  }, [projetosData, mkpParamsPorProjeto, impostosPorProjeto, producaoPorProjeto, custosErpPorProjeto, startDate, endDate]);
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
