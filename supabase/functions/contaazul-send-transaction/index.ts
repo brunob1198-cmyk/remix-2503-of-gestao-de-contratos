@@ -303,6 +303,16 @@ async function sendOne(
   if (!force) {
     const alreadySent = await isAlreadyIntegrated(supabase, input.flash_transaction_id);
     if (alreadySent) {
+      // Atualiza o status para enviado para corrigir a interface caso tenha ficado preso como normalizado
+      await supabase
+        .from("flash_normalizacao")
+        .update({
+          status: "enviado",
+          motivo: "Transação já integrada anteriormente (controle de duplicidade)",
+        })
+        .eq("flash_transaction_id", input.flash_transaction_id)
+        .eq("empresa_id", empresaId);
+
       return {
         flash_transaction_id: input.flash_transaction_id,
         status: "skipped",
@@ -854,6 +864,16 @@ serve(async (req) => {
     for (const chunk of chunks) {
       const chunkPromises = chunk.map(async (n) => {
         if (integratedIds.has(n.flash_transaction_id)) {
+          // Atualiza o status para enviado para corrigir a interface caso tenha ficado preso como normalizado
+          await admin
+            .from("flash_normalizacao")
+            .update({
+              status: "enviado",
+              motivo: "Lançamento já havia sido integrado anteriormente.",
+            })
+            .eq("flash_transaction_id", n.flash_transaction_id)
+            .eq("empresa_id", empresaId);
+
           return {
             flash_transaction_id: n.flash_transaction_id,
             status: "skipped",
