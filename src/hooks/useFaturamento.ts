@@ -59,7 +59,7 @@ export function useItensDisponiveis(projetoIds?: string[]) {
   return useQuery({
     queryKey: ["itens_disponiveis_faturamento", projetoIds],
     staleTime: 10 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       // 1. Buscar medições aprovadas
@@ -189,7 +189,7 @@ export function useFaturamentos(projetoIds?: string[]) {
   return useQuery({
     queryKey: ["faturamentos", projetoIds],
     staleTime: 10 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       let query = supabase

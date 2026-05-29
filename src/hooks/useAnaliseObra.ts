@@ -74,6 +74,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["analise_obra", projetoId, filterSiteId, periodoInicio?.toISOString(), periodoFim?.toISOString()],
     staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       if (!projetoId) return null;
 

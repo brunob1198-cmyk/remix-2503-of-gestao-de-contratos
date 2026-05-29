@@ -150,6 +150,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const { data: escopoData = { custoOrcado: 0, valorProduzido: 0 }, isLoading: loadOrc } = useQuery({
     queryKey: ["custo_orcado_escopo", projetoId, siteId],
     staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
       let qSites = supabase.from("sites").select("id").eq("projeto_id", projetoId);
       const { data: sitesData } = await qSites;
@@ -199,6 +200,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const { data: categoriasMapeamento = [] } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
     staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
@@ -217,6 +219,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp", projetoId, siteId, startDate, categoriasDesativadas],
     staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     queryFn: async () => {
       const BATCH_SIZE = 1000;
       
@@ -273,6 +276,7 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   } = useQuery({
     queryKey: ["fisico_apropriado", projetoId, siteId, startDate],
     staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
       let allDiarios: any[] = [];
       let offset = 0;
@@ -479,6 +483,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const { data: categoriasMapeamento = [] } = useQuery({
     queryKey: ["mapeamento_categorias_erp_all"],
     staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mapeamento_categorias_erp")
@@ -496,6 +501,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   const { data: custosErp = [], isLoading: loadCustos } = useQuery({
     queryKey: ["custos_erp_multi", projetoIds, startDate, endDate, categoriasDesativadas],
     staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
       const BATCH_SIZE = 1000;
@@ -616,6 +622,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     },
     enabled: projetoIds.length > 0,
     staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
   });
 
   const { data: projetosData = [] } = useQuery({
