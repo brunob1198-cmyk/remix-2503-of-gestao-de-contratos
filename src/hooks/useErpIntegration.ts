@@ -124,7 +124,7 @@ export function useErpLogs() {
   return useQuery({
     queryKey: ["erp_logs", empresaId],
     staleTime: 10 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
