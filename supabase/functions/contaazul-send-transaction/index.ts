@@ -416,6 +416,7 @@ async function sendOne(
   let contaAzulId: string | null = null;
   let contaAzulProtocolo: string | null = null;
   let status: string = "normalizado";
+  let baixaSucesso = false;
 
   try {
     const endpoint = input.type === "receita"
@@ -547,7 +548,6 @@ async function sendOne(
       }
     }
 
-    let baixaSucesso = false;
     // IMPORTANTE: Mesmo se a baixa falhar, o status deve ser "ENVIADO" se o lançamento foi criado.
     // O status na tabela flash_normalizacao depende desse valor.
     if (status === "ENVIADO" && contaAzulId) {
