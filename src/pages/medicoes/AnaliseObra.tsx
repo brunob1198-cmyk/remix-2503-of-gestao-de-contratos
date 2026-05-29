@@ -57,7 +57,8 @@ export default function AnaliseObraPage() {
   };
 
   // Single sync hook — uses first selected project but syncs all ERP data
-  const { syncErp } = useAnaliseCustos(selectedIds[0] || "", "", periodoInicio, periodoFim);
+  const { empresaId } = useAuth();
+  const syncErp = useSyncErp(empresaId);
 
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_analise"],
