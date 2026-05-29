@@ -13,6 +13,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
 import { SmartImage } from "@/components/ui/SmartImage";
+import ProducaoSection from "@/components/diario/ProducaoSection";
+import EquipeSection from "@/components/diario/EquipeSection";
+import FotosSection from "@/components/diario/FotosSection";
 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
