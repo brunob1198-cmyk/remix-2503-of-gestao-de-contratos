@@ -231,7 +231,7 @@ export default function ProjetosPage() {
             // Check other contracts in contrato_ids
             if (p.contrato_ids && p.contrato_ids.length > 0) {
               return p.contrato_ids.some((cid: string) => {
-                const c = contratos.find(x => x.id === cid);
+                const c = contratosById.get(cid);
                 return (c?.numero_contrato || "-") === value;
               });
             }
