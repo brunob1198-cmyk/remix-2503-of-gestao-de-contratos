@@ -51,6 +51,11 @@ export default function ProjetosPage() {
   const { contratos } = useContratos();
   const { areas } = useAreas();
 
+  const contratosById = useMemo(() => 
+    new Map(contratos.map(c => [c.id, c])),
+    [contratos]
+  );
+
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
