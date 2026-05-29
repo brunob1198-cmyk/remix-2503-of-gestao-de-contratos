@@ -282,7 +282,6 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
     onError: (e: Error) => toast({ title: "Erro ao remover produção", description: e.message, variant: "destructive" }),
   });
-  });
 
   const updateProducao = useMutation({
     mutationFn: async (item: { id: string; quantidade: number; valor_total: number }) => {
