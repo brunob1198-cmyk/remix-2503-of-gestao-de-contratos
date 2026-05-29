@@ -24,6 +24,8 @@ export function useAreas() {
     queryKey: ["areas"],
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
 
     queryFn: async () => {
       const { data, error } = await supabase
