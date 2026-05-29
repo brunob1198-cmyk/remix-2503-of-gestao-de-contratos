@@ -418,6 +418,38 @@ export function useAnaliseCustos(projetoId: string, siteId?: string, periodoInic
   };
 }
 
+/**
+ * Hook leve que expõe apenas a mutation de sincronização do ERP (Conta Azul),
+ * sem instanciar as queries pesadas de useAnaliseCustos.
+ */
+export function useSyncErp(empresaId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      start_date: string | null;
+      end_date: string | null;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("sync-contaazul", {
+        body: {
+          action: "sync_contaazul",
+          empresa_id: empresaId,
+          start_date: params.start_date,
+          end_date: params.end_date,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["custos_erp"] });
+      queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
+      toast.success(data?.message || "ERP Sincronizado!");
+    },
+    onError: (e: any) => toast.error("Falha ao sincronizar ERP: " + e.message),
+  });
+}
+
 export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date, periodoFim?: Date) {
   const queryClient = useQueryClient();
 
