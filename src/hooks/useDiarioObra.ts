@@ -256,16 +256,15 @@ export function useDiarioObra(siteId?: string, data?: string) {
 
   const removeProducao = useMutation({
     mutationFn: async (id: string) => {
-      // 1. Get associated photos first
+      // 1. Delete associated photos
+      // Note: The database trigger handle_r2_file_cleanup will take care of R2 file deletion
       const { data: fotosProd } = await supabase
         .from("diario_fotos")
-        .select("id, url")
+        .select("id")
         .eq("diario_producao_id", id);
 
       if (fotosProd && fotosProd.length > 0) {
-        const { deleteImage } = await import("@/services/uploadImage");
         for (const foto of fotosProd) {
-          await deleteImage(foto.url);
           await supabase.from("diario_fotos").delete().eq("id", foto.id);
         }
       }
@@ -703,18 +702,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
 
   const removeFoto = useMutation({
     mutationFn: async (id: string) => {
-      // Get the URL first to delete from R2
-      const { data: foto } = await supabase
-        .from("diario_fotos")
-        .select("url")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (foto?.url) {
-        const { deleteImage } = await import("@/services/uploadImage");
-        await deleteImage(foto.url);
-      }
-
+      // The database trigger handle_r2_file_cleanup handles the R2 file deletion automatically
       const { error } = await supabase.from("diario_fotos").delete().eq("id", id);
       if (error) throw error;
     },
