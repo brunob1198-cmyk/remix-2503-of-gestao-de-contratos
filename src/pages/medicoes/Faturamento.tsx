@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useItensDisponiveis, useFaturamentos, useGerarFaturamento, useUpdateFaturamentoStatus, useUpdateFaturamento, ItemDisponivel, FaturamentoItem, useFaturamentosContaAzul } from "@/hooks/useFaturamento";
 import { NotasContaAzulTab } from "@/components/faturamento/NotasContaAzulTab";
 import { useProjetos } from "@/hooks/useProjetos";
