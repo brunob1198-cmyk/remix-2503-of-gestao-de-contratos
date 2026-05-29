@@ -513,7 +513,7 @@ export default function ProjetosPage() {
                           {p.contrato_ids && p.contrato_ids.length > 0 ? (
                             <div className="flex flex-col gap-0.5">
                               {p.contrato_ids.map((cid: string) => {
-                                const c = contratos.find(x => x.id === cid);
+                                const c = contratosById.get(cid);
                                 return c ? (
                                   <span key={cid} className="text-[10px] leading-tight font-mono bg-muted px-1 rounded block" title={c.escopo || ''}>
                                     {c.numero_contrato || "-"}
