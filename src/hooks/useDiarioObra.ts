@@ -708,7 +708,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
         .from("diario_fotos")
         .select("url")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (foto?.url) {
         const { deleteImage } = await import("@/services/uploadImage");
