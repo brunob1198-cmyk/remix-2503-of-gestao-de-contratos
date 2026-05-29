@@ -224,17 +224,23 @@ export default function FaturamentoPage() {
     return "";
   };
 
+  // Indexa sites por id para evitar O(n) por item em getFaturamentoMunicipio
+  const sitesById = useMemo(
+    () => new Map(sites.map(s => [s.id, s])),
+    [sites]
+  );
+
   // Helper to get municipality from faturamento items via sites
-  const getFaturamentoMunicipio = (f: any): string => {
+  const getFaturamentoMunicipio = useCallback((f: any): string => {
     const itens = f.itens as FaturamentoItem[] | undefined;
     if (!itens || itens.length === 0) return "";
     const municipios = new Set<string>();
     for (const item of itens) {
-      const site = sites.find(s => s.id === item.site_id);
+      const site = sitesById.get(item.site_id);
       if (site?.municipio) municipios.add(site.municipio);
     }
     return Array.from(municipios).join(", ");
-  };
+  }, [sitesById]);
 
   const columnsFaturas = ["numero", "data", "projeto", "municipio", "bruto", "impostos", "descontos", "liquido", "status"] as const;
   const getColValueFatura = (f: any, col: typeof columnsFaturas[number]): string => {
