@@ -982,24 +982,23 @@ Deno.serve(async (req) => {
 
         const normRows = (savedRows || []).map((r: any) => {
           const existing = normMap.get(r.id);
-          
-          // Se já está enviado ou reconciliado, não mexe na normalização via sync
-          if (existing?.status === "enviado") return null;
+
+          // IMPORTANTE: Nunca sobrescrever uma normalização existente via sync.
+          // Edições manuais (categoria CA, status, centro de custo) devem persistir.
+          // O sync só cria normalização para lançamentos ainda SEM registro.
+          if (existing) return null;
 
           const flash_type = pickFlashType(r.payload_json);
           const m = mappingIdx.get(flash_type);
-          
+
           // Force use of "Flash" account (ID from production)
-          const fixedAccountId = "679d675b-006f-474a-be93-b68480396557"; 
+          const fixedAccountId = "679d675b-006f-474a-be93-b68480396557";
           const fixedAccountName = "Flash";
 
           const categoryId = m?.conta_azul_category_id ?? null;
           const categoryName = m?.conta_azul_category_name ?? null;
-          
+
           const hasFull = !!(categoryId && fixedAccountId);
-          
-          // Se já existe e não é "pendente" e não temos novo mapping, mantém o que está lá
-          if (existing && existing.status !== "pendente" && !hasFull) return null;
 
           return {
             empresa_id: empresaId,
@@ -1012,8 +1011,8 @@ Deno.serve(async (req) => {
             status: hasFull ? "normalizado" : "pendente",
             normalizado_at: hasFull ? new Date().toISOString() : null,
             flash_type_detectado: flash_type,
-            motivo: hasFull 
-              ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")` 
+            motivo: hasFull
+              ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")`
               : `Pendente: aguardando mapeamento para o tipo "${flash_type}"`,
           };
         }).filter(Boolean);
