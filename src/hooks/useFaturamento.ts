@@ -58,6 +58,9 @@ export interface FaturamentoItem {
 export function useItensDisponiveis(projetoIds?: string[]) {
   return useQuery({
     queryKey: ["itens_disponiveis_faturamento", projetoIds],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       // 1. Buscar medições aprovadas
       let qMedicoes = supabase
@@ -185,6 +188,9 @@ export function useItensDisponiveis(projetoIds?: string[]) {
 export function useFaturamentos(projetoIds?: string[]) {
   return useQuery({
     queryKey: ["faturamentos", projetoIds],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       let query = supabase
         .from("faturamentos")
@@ -206,6 +212,9 @@ export function useFaturamentos(projetoIds?: string[]) {
 export function useFaturamentoItens(faturamentoId?: string) {
   return useQuery({
     queryKey: ["faturamento_itens", faturamentoId],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!faturamentoId) return [];
       const { data, error } = await supabase
@@ -439,6 +448,9 @@ export interface FaturamentoContaAzul {
 export function useFaturamentosContaAzul(projetoIds?: string[]) {
   return useQuery({
     queryKey: ["faturamentos_conta_azul", projetoIds],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       let query = supabase
         .from("faturamentos_conta_azul")
