@@ -51,6 +51,11 @@ export default function ProjetosPage() {
   const { contratos } = useContratos();
   const { areas } = useAreas();
 
+  const contratosById = useMemo(() => 
+    new Map(contratos.map(c => [c.id, c])),
+    [contratos]
+  );
+
   // Sorting
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
@@ -110,7 +115,7 @@ export default function ProjetosPage() {
     const primaryContratoId = contratoIds[0] && contratoIds[0] !== "none" ? contratoIds[0] : null;
     
     if (primaryContratoId) {
-      const selectedContrato = contratos.find(c => c.id === primaryContratoId);
+      const selectedContrato = contratosById.get(primaryContratoId);
       if (selectedContrato) {
         // Soma dos aditivos
         const aditivosVal = selectedContrato.aditivos?.reduce((acc, ad) => acc + (ad.valor_total || 0), 0) || 0;
@@ -226,7 +231,7 @@ export default function ProjetosPage() {
             // Check other contracts in contrato_ids
             if (p.contrato_ids && p.contrato_ids.length > 0) {
               return p.contrato_ids.some((cid: string) => {
-                const c = contratos.find(x => x.id === cid);
+                const c = contratosById.get(cid);
                 return (c?.numero_contrato || "-") === value;
               });
             }
@@ -468,7 +473,7 @@ export default function ProjetosPage() {
                                   if (p.contratoObj?.numero_contrato) allNums.add(p.contratoObj.numero_contrato);
                                   if (p.contrato_ids) {
                                     p.contrato_ids.forEach((cid: string) => {
-                                      const c = contratos.find(x => x.id === cid);
+                                      const c = contratosById.get(cid);
                                       if (c?.numero_contrato) allNums.add(c.numero_contrato);
                                     });
                                   }
@@ -508,7 +513,7 @@ export default function ProjetosPage() {
                           {p.contrato_ids && p.contrato_ids.length > 0 ? (
                             <div className="flex flex-col gap-0.5">
                               {p.contrato_ids.map((cid: string) => {
-                                const c = contratos.find(x => x.id === cid);
+                                const c = contratosById.get(cid);
                                 return c ? (
                                   <span key={cid} className="text-[10px] leading-tight font-mono bg-muted px-1 rounded block" title={c.escopo || ''}>
                                     {c.numero_contrato || "-"}
