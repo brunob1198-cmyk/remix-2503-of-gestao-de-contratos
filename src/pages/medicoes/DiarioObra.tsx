@@ -200,11 +200,6 @@ export default function DiarioObraPage() {
     }
   }, [diario, criarDiario, selectedSiteId, selectedDate, diarioUf, diarioMunicipio, notifySiteRequired]);
 
-  const [prodItemId, setProdItemId] = useState("");
-  const [prodQtd, setProdQtd] = useState("");
-  const [eqRecursoId, setEqRecursoId] = useState("");
-  const [eqHoras, setEqHoras] = useState("0");
-  const [eqCustoHora, setEqCustoHora] = useState("");
   const [equipRecursoId, setEquipRecursoId] = useState("");
   const [equipHoras, setEquipHoras] = useState("8");
   const [equipCustoHora, setEquipCustoHora] = useState("");
@@ -212,9 +207,6 @@ export default function DiarioObraPage() {
   const [veicKmInicial, setVeicKmInicial] = useState("");
   const [veicKmFinal, setVeicKmFinal] = useState("");
   const [veicCusto, setVeicCusto] = useState("");
-  const [editingEquipeId, setEditingEquipeId] = useState<string | null>(null);
-  const [editEquipeHoras, setEditEquipeHoras] = useState("");
-  const [editEquipeCustoHora, setEditEquipeCustoHora] = useState("");
   const [editingEquipId, setEditingEquipId] = useState<string | null>(null);
   const [editEquipHoras, setEditEquipHoras] = useState("");
   const [editEquipCustoHora, setEditEquipCustoHora] = useState("");
@@ -222,9 +214,6 @@ export default function DiarioObraPage() {
   const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
   const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
-  const [editingProducaoId, setEditingProducaoId] = useState<string | null>(null);
-  const [editProducaoQtd, setEditProducaoQtd] = useState("");
-  const [pendingProdFiles, setPendingProdFiles] = useState<File[]>([]);
 
   const recursosAlocadosProjeto = (() => {
     if (!selectedProjetoId) return new Set<string>();
