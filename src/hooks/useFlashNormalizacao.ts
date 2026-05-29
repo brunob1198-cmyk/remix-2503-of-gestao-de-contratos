@@ -415,7 +415,24 @@ export function useFlashNormalizacao() {
       }
     } catch (e: any) {
       console.error("Erro sendToContaAzul:", e);
-      toast.error("Falha ao enviar", { description: e.message || "Erro desconhecido" });
+      let errorDesc = e.message || "Erro desconhecido";
+      
+      // Try to parse the Edge Function response body to get the real error message
+      if (e.context && typeof e.context.json === 'function') {
+        try {
+          const errData = await e.context.json();
+          if (errData && errData.error) {
+            errorDesc = errData.error;
+          }
+        } catch (_) {
+          // ignore parsing error
+        }
+      } else if (e.name === 'FunctionsHttpError' && e.message === 'Edge Function returned a non-2xx status code') {
+          // Sometimes context is not available easily, but we know it's a backend failure
+          errorDesc = "Falha interna no servidor (500). Verifique os logs da Edge Function.";
+      }
+
+      toast.error("Falha ao enviar", { description: errorDesc });
     } finally {
       setSending(false);
     }
