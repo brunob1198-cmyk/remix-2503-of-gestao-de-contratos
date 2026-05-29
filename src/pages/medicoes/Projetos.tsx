@@ -115,7 +115,7 @@ export default function ProjetosPage() {
     const primaryContratoId = contratoIds[0] && contratoIds[0] !== "none" ? contratoIds[0] : null;
     
     if (primaryContratoId) {
-      const selectedContrato = contratos.find(c => c.id === primaryContratoId);
+      const selectedContrato = contratosById.get(primaryContratoId);
       if (selectedContrato) {
         // Soma dos aditivos
         const aditivosVal = selectedContrato.aditivos?.reduce((acc, ad) => acc + (ad.valor_total || 0), 0) || 0;
