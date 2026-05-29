@@ -158,18 +158,7 @@ export function useDiarioCampoFotos(diarioCampoId: string | undefined) {
 
   const removeFoto = useMutation({
     mutationFn: async (id: string) => {
-      // Get the URL first to delete from R2
-      const { data: foto } = await supabase
-        .from("diario_campo_fotos")
-        .select("url")
-        .eq("id", id)
-        .single();
-
-      if (foto?.url) {
-        const { deleteImage } = await import("@/services/uploadImage");
-        await deleteImage(foto.url);
-      }
-
+      // The database trigger handle_r2_file_cleanup handles the R2 file deletion automatically
       const { error } = await supabase
         .from("diario_campo_fotos")
         .delete()

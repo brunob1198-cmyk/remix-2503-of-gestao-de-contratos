@@ -227,20 +227,7 @@ export function useLancamentosMedicao(siteId?: string) {
 
   const bulkDeleteMedicao = useMutation({
     mutationFn: async (ids: string[]) => {
-      // 1. Get any capa_url associated with these IDs to delete from R2
-      const { data } = await supabase
-        .from("lancamentos_medicao")
-        .select("capa_url")
-        .in("id", ids);
-      
-      const uniqueUrls = Array.from(new Set(data?.map(d => (d as any).capa_url).filter(Boolean)));
-      if (uniqueUrls.length > 0) {
-        const { deleteImage } = await import("@/services/uploadImage");
-        for (const url of uniqueUrls as string[]) {
-          await deleteImage(url);
-        }
-      }
-
+      // The database trigger handle_r2_file_cleanup handles the R2 file deletion automatically for each record
       const { error } = await supabase.from("lancamentos_medicao").delete().in("id", ids);
       if (error) throw error;
     },
