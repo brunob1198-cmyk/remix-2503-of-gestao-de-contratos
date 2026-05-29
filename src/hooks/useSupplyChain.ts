@@ -333,7 +333,11 @@ export function useCotacoes(requisicaoId?: string) {
 // ─── Pedidos de Compra ───
 export function usePedidosCompra() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const queryClientRef = useRef(queryClient);
+
+  useEffect(() => {
+    queryClientRef.current = queryClient;
+  }, [queryClient]);
 
   const { data: pedidos = [], isLoading } = useQuery({
     queryKey: ["pedidos_compra"],
@@ -370,7 +374,7 @@ export function usePedidosCompra() {
               filter: `empresa_id=eq.${empresaId}` 
             },
             (payload) => {
-              queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+              queryClientRef.current.invalidateQueries({ queryKey: ["pedidos_compra"] });
 
               if (payload.eventType === "UPDATE") {
                 const oldStatus = (payload.old as any)?.status;
@@ -379,27 +383,23 @@ export function usePedidosCompra() {
 
                 if (oldStatus !== newStatus) {
                   if (newStatus === "saiu_para_entrega") {
-                    toast({
-                      title: "🚚 Pedido saiu para entrega",
-                      description: `Pedido ${numero} está a caminho do destino.`,
+                    toast.success(`🚚 Pedido ${numero} saiu para entrega`, {
+                      description: `O pedido está a caminho do destino.`,
                     });
                   } else if (newStatus === "entregue") {
-                    toast({
-                      title: "✅ Pedido entregue",
-                      description: `Pedido ${numero} foi entregue com sucesso.`,
+                    toast.success(`✅ Pedido ${numero} entregue`, {
+                      description: `O pedido foi entregue com sucesso.`,
                     });
                   } else {
                     const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
-                    toast({
-                      title: "Pedido atualizado",
+                    toast(`Pedido atualizado`, {
                       description: `Pedido ${numero} → ${label}`,
                     });
                   }
                 }
               } else if (payload.eventType === "INSERT") {
                 const numero = (payload.new as any)?.numero || "";
-                toast({
-                  title: "Novo pedido",
+                toast(`Novo pedido`, {
                   description: `Pedido ${numero} criado.`,
                 });
               }
@@ -418,7 +418,7 @@ export function usePedidosCompra() {
         supabase.removeChannel(channel);
       }
     };
-  }, [queryClient, toast]);
+  }, []); // dependências vazias — usa refs para valores estáveis
 
   const create = useMutation({
     mutationFn: async (ped: any) => {
@@ -448,9 +448,9 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
-      toast({ title: "Pedido de compra criado!" });
+      toast.success("Pedido de compra criado!");
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Erro: " + e.message),
   });
 
   const updateStatus = useMutation({
@@ -460,9 +460,9 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
-      toast({ title: "Status atualizado!" });
+      toast.success("Status atualizado!");
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Erro: " + e.message),
   });
 
   const remove = useMutation({
@@ -472,9 +472,9 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
-      toast({ title: "Pedido excluído!" });
+      toast.success("Pedido excluído!");
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast.error("Erro: " + e.message),
   });
 
   return { pedidos, isLoading, create, updateStatus, remove };
