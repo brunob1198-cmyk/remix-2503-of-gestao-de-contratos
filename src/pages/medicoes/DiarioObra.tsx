@@ -370,17 +370,16 @@ export default function DiarioObraPage() {
     setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
-  const handleUpdateProducao = async (id: string) => {
+  const handleUpdateProducao = useCallback(async (id: string, editProducaoQtd: string) => {
     if (!editProducaoQtd) return;
     const qtd = Number(editProducaoQtd);
     const prod = producoes.find(p => p.id === id);
     if (!prod) return;
     const valor_total = qtd * (prod.preco_unitario_congelado || 0);
     await updateProducao.mutateAsync({ id, quantidade: qtd, valor_total });
-    setEditingProducaoId(null);
-  };
+  }, [producoes, updateProducao]);
 
-  const handleUpdateEquipe = async (id: string) => {
+  const handleUpdateEquipe = useCallback(async (id: string, editEquipeHoras: string, editEquipeCustoHora: string) => {
     const horas = Number(editEquipeHoras);
     const custo_hora = Number(editEquipeCustoHora);
     const e = equipe.find(x => x.id === id);
@@ -388,8 +387,7 @@ export default function DiarioObraPage() {
     const recurso = recursos.find(r => r.nome === e.nome && r.tipo === 'pessoa');
     const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
     await updateEquipe.mutateAsync({ id, horas, custo_hora, custo_total });
-    setEditingEquipeId(null);
-  };
+  }, [equipe, recursos, updateEquipe]);
 
   const handleUpdateEquipamento = async (id: string) => {
     const horas = Number(editEquipHoras);
