@@ -3091,6 +3091,7 @@ export type Database = {
           created_at: string
           descricao: string | null
           empresa_id: string | null
+          forecast_data: Json | null
           id: string
           nome: string
           status: string | null
@@ -3109,6 +3110,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           empresa_id?: string | null
+          forecast_data?: Json | null
           id?: string
           nome: string
           status?: string | null
@@ -3127,6 +3129,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           empresa_id?: string | null
+          forecast_data?: Json | null
           id?: string
           nome?: string
           status?: string | null

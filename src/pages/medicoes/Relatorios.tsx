@@ -16,9 +16,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid } from "lucide-react";
+import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, BarChart3 } from "lucide-react";
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import ProducaoMensal from "@/components/relatorios/ProducaoMensal";
+import ForecastTab from "@/components/relatorios/ForecastTab";
 import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoesExport";
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -391,10 +392,18 @@ export default function RelatoriosPage() {
           </TabsTrigger>
           <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
           <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
+          <TabsTrigger value="forecast">
+            <BarChart3 className="h-4 w-4 mr-2" />
+            Forecast
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="quadro_geral" className="space-y-4">
           <QuadroGeral />
+        </TabsContent>
+
+        <TabsContent value="forecast" className="space-y-4">
+          <ForecastTab />
         </TabsContent>
 
         <TabsContent value="cruzado" className="space-y-4">
