@@ -595,180 +595,26 @@ export default function DiarioObraPage() {
               </Card>
             </div>
 
-            <Card>
-              <CardHeader><CardTitle>Produção</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={prodItemId} onValueChange={setProdItemId}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione item" /></SelectTrigger>
-                    <SelectContent>
-                      {itensDisponiveis.map(i => <SelectItem key={i.id} value={i.item_lpu_id || i.id}>{i.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="Qtd" className="w-24" />
-                  <Button onClick={handleAddProducao}>Adicionar</Button>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Qtd</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Fotos</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {producoes.map(p => (
-                      <TableRow key={p.id}>
-                        <TableCell>
-                          {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {editingProducaoId === p.id ? (
-                            <Input
-                              type="number"
-                              value={editProducaoQtd}
-                              onChange={e => setEditProducaoQtd(e.target.value)}
-                              className="w-20 ml-auto h-8"
-                            />
-                          ) : (
-                            p.quantidade
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(p.valor_total)}</TableCell>
-                        <TableCell>
-                          <input type="file" multiple accept="image/*" className="hidden" id={`prod-foto-${p.id}`} onChange={e => e.target.files && handleUploadFoto(e, "execucao", p.id)} />
-                          <Button variant="outline" size="sm" onClick={() => document.getElementById(`prod-foto-${p.id}`)?.click()}>
-                            <Camera className="h-4 w-4 mr-1" /> Foto
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-end">
-                            {editingProducaoId === p.id ? (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleUpdateProducao(p.id)} className="h-8 w-8 text-green-600">
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingProducaoId(null)} className="h-8 w-8 text-red-600">
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingProducaoId(p.id);
-                                    setEditProducaoQtd(String(p.quantidade));
-                                  }}
-                                  className="h-8 w-8"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)} className="h-8 w-8 text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ProducaoSection
+              producoes={producoes}
+              itensDisponiveis={itensDisponiveis}
+              diarioId={diario?.id}
+              onAdd={handleAddProducao}
+              onRemove={(id) => removeProducao.mutate(id)}
+              onUpdate={handleUpdateProducao}
+              onUploadFoto={handleUploadFoto}
+              fotos={fotos}
+            />
 
-            <Card>
-              <CardHeader><CardTitle>Equipe</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={eqRecursoId} onValueChange={v => { setEqRecursoId(v); const r = recursos.find(x => x.id === v); setEqCustoHora(r ? String(getCustoAtual(r.id)?.custo_unitario || 0) : ""); }}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione pessoa" /></SelectTrigger>
-                    <SelectContent>
-                      {recursosPessoa.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" value={eqHoras} onChange={e => setEqHoras(e.target.value)} placeholder="Horas" className="w-24" />
-                  <Input type="number" value={eqCustoHora} onChange={e => setEqCustoHora(e.target.value)} placeholder="Custo/h" className="w-24" />
-                  <Button onClick={handleAddEquipe}>Adicionar</Button>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead className="text-right">Horas</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {equipe.map(e => (
-                      <TableRow key={e.id}>
-                        <TableCell>{e.nome}</TableCell>
-                        <TableCell className="text-right">
-                          {editingEquipeId === e.id ? (
-                            <div className="flex flex-col gap-1 items-end">
-                              <Input
-                                type="number"
-                                value={editEquipeHoras}
-                                onChange={ev => setEditEquipeHoras(ev.target.value)}
-                                className="w-20 h-8"
-                                placeholder="Horas"
-                              />
-                              <Input
-                                type="number"
-                                value={editEquipeCustoHora}
-                                onChange={ev => setEditEquipeCustoHora(ev.target.value)}
-                                className="w-20 h-8 text-xs"
-                                placeholder="Custo/h"
-                              />
-                            </div>
-                          ) : (
-                            e.horas
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(e.custo_total)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-end">
-                            {editingEquipeId === e.id ? (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleUpdateEquipe(e.id)} className="h-8 w-8 text-green-600">
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingEquipeId(null)} className="h-8 w-8 text-red-600">
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingEquipeId(e.id);
-                                    setEditEquipeHoras(String(e.horas));
-                                    setEditEquipeCustoHora(String(e.custo_hora));
-                                  }}
-                                  className="h-8 w-8"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)} className="h-8 w-8 text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <EquipeSection
+              equipe={equipe}
+              recursosPessoa={recursosPessoa}
+              recursos={recursos}
+              getCustoAtual={getCustoAtual}
+              onAdd={handleAddEquipe}
+              onRemove={(id) => removeEquipe.mutate(id)}
+              onUpdate={handleUpdateEquipe}
+            />
 
             <Card>
               <CardHeader><CardTitle>Equipamentos</CardTitle></CardHeader>
