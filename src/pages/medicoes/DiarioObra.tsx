@@ -13,6 +13,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronsUpDown } from "lucide-react";
 import { cn, safeFormat, parseLocalDate } from "@/lib/utils";
 import { SmartImage } from "@/components/ui/SmartImage";
+import ProducaoSection from "@/components/diario/ProducaoSection";
+import EquipeSection from "@/components/diario/EquipeSection";
+import FotosSection from "@/components/diario/FotosSection";
 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
@@ -28,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog";
@@ -82,8 +85,6 @@ export default function DiarioObraPage() {
     `diario_photo_groups_${selectedSiteId || "default"}`,
     ["Execução", "Vistoria"]
   );
-  const [newGroupName, setNewGroupName] = useState("");
-  const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleProjetoChange = (projetoId: string) => {
@@ -199,11 +200,6 @@ export default function DiarioObraPage() {
     }
   }, [diario, criarDiario, selectedSiteId, selectedDate, diarioUf, diarioMunicipio, notifySiteRequired]);
 
-  const [prodItemId, setProdItemId] = useState("");
-  const [prodQtd, setProdQtd] = useState("");
-  const [eqRecursoId, setEqRecursoId] = useState("");
-  const [eqHoras, setEqHoras] = useState("0");
-  const [eqCustoHora, setEqCustoHora] = useState("");
   const [equipRecursoId, setEquipRecursoId] = useState("");
   const [equipHoras, setEquipHoras] = useState("8");
   const [equipCustoHora, setEquipCustoHora] = useState("");
@@ -211,9 +207,6 @@ export default function DiarioObraPage() {
   const [veicKmInicial, setVeicKmInicial] = useState("");
   const [veicKmFinal, setVeicKmFinal] = useState("");
   const [veicCusto, setVeicCusto] = useState("");
-  const [editingEquipeId, setEditingEquipeId] = useState<string | null>(null);
-  const [editEquipeHoras, setEditEquipeHoras] = useState("");
-  const [editEquipeCustoHora, setEditEquipeCustoHora] = useState("");
   const [editingEquipId, setEditingEquipId] = useState<string | null>(null);
   const [editEquipHoras, setEditEquipHoras] = useState("");
   const [editEquipCustoHora, setEditEquipCustoHora] = useState("");
@@ -221,9 +214,6 @@ export default function DiarioObraPage() {
   const [editVeicKmInicial, setEditVeicKmInicial] = useState("");
   const [editVeicKmFinal, setEditVeicKmFinal] = useState("");
   const [editVeicCusto, setEditVeicCusto] = useState("");
-  const [editingProducaoId, setEditingProducaoId] = useState<string | null>(null);
-  const [editProducaoQtd, setEditProducaoQtd] = useState("");
-  const [pendingProdFiles, setPendingProdFiles] = useState<File[]>([]);
 
   const recursosAlocadosProjeto = (() => {
     if (!selectedProjetoId) return new Set<string>();
@@ -251,7 +241,7 @@ export default function DiarioObraPage() {
     return { custo_hora: custoUnitario, custo_total: horas * custoUnitario };
   };
 
-  const handleAddProducao = async () => {
+  const handleAddProducao = useCallback(async (prodItemId: string, prodQtd: string, pendingProdFiles: File[]) => {
     if (!prodItemId || !prodQtd) return;
     if (!diarioUf || !diarioMunicipio) {
       toast({ title: "Localização obrigatória", description: "Selecione UF e Município antes de lançar produção.", variant: "destructive" });
@@ -279,10 +269,10 @@ export default function DiarioObraPage() {
       toast({ title: "Erro", description: prodError.message, variant: "destructive" });
       return;
     }
-    
+
     const totalFiles = pendingProdFiles.length;
     setUploadProgress({ current: 0, total: totalFiles });
-    
+
     for (let i = 0; i < pendingProdFiles.length; i++) {
       const file = pendingProdFiles[i];
       try {
@@ -301,10 +291,9 @@ export default function DiarioObraPage() {
       }
     }
     setUploadProgress(null);
-    setProdItemId(""); setProdQtd(""); setPendingProdFiles([]);
     queryClient.invalidateQueries({ queryKey: ["diario_producao"] });
     toast({ title: "Produção adicionada com fotos!" });
-  };
+  }, [diarioUf, diarioMunicipio, itensDisponiveis, ensureDiario, toast, addFoto, queryClient]);
 
   const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => {
     const files = e.target.files;
@@ -331,22 +320,21 @@ export default function DiarioObraPage() {
     e.target.value = "";
   };
 
-  const handleAddEquipe = async () => {
-    if (!eqRecursoId || !eqCustoHora) return;
+  const handleAddEquipe = useCallback(async (eqRecursoId: string, eqHorasStr: string, eqCustoHoraStr: string) => {
+    if (!eqRecursoId || !eqCustoHoraStr) return;
     const recurso = recursos.find(r => r.id === eqRecursoId);
     if (!recurso) return;
     if (isRecursoDuplicado("pessoa", recurso.nome)) {
       toast({ title: "Recurso já adicionado", variant: "destructive" });
       return;
     }
-    const horas = Number(eqHoras);
-    const custoUnitario = Number(eqCustoHora);
+    const horas = Number(eqHorasStr);
+    const custoUnitario = Number(eqCustoHoraStr);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
     const diarioId = await ensureDiario();
     if (!diarioId) return;
     await addEquipe.mutateAsync({ diario_id: diarioId, nome: recurso.nome, funcao: recurso.cargo || undefined, horas, custo_hora, custo_total });
-    setEqRecursoId(""); setEqHoras("0"); setEqCustoHora("");
-  };
+  }, [recursos, isRecursoDuplicado, toast, ensureDiario, addEquipe]);
 
   const handleAddEquipamento = async () => {
     if (!equipRecursoId || !equipCustoHora) return;
@@ -382,17 +370,16 @@ export default function DiarioObraPage() {
     setVeicRecursoId(""); setVeicKmInicial(""); setVeicKmFinal(""); setVeicCusto("");
   };
 
-  const handleUpdateProducao = async (id: string) => {
+  const handleUpdateProducao = useCallback(async (id: string, editProducaoQtd: string) => {
     if (!editProducaoQtd) return;
     const qtd = Number(editProducaoQtd);
     const prod = producoes.find(p => p.id === id);
     if (!prod) return;
     const valor_total = qtd * (prod.preco_unitario_congelado || 0);
     await updateProducao.mutateAsync({ id, quantidade: qtd, valor_total });
-    setEditingProducaoId(null);
-  };
+  }, [producoes, updateProducao]);
 
-  const handleUpdateEquipe = async (id: string) => {
+  const handleUpdateEquipe = useCallback(async (id: string, editEquipeHoras: string, editEquipeCustoHora: string) => {
     const horas = Number(editEquipeHoras);
     const custo_hora = Number(editEquipeCustoHora);
     const e = equipe.find(x => x.id === id);
@@ -400,8 +387,7 @@ export default function DiarioObraPage() {
     const recurso = recursos.find(r => r.nome === e.nome && r.tipo === 'pessoa');
     const { custo_total } = computeCost(recurso || { unidade: 'hora' }, custo_hora, horas);
     await updateEquipe.mutateAsync({ id, horas, custo_hora, custo_total });
-    setEditingEquipeId(null);
-  };
+  }, [equipe, recursos, updateEquipe]);
 
   const handleUpdateEquipamento = async (id: string) => {
     const horas = Number(editEquipHoras);
@@ -609,180 +595,26 @@ export default function DiarioObraPage() {
               </Card>
             </div>
 
-            <Card>
-              <CardHeader><CardTitle>Produção</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={prodItemId} onValueChange={setProdItemId}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione item" /></SelectTrigger>
-                    <SelectContent>
-                      {itensDisponiveis.map(i => <SelectItem key={i.id} value={i.item_lpu_id || i.id}>{i.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="Qtd" className="w-24" />
-                  <Button onClick={handleAddProducao}>Adicionar</Button>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Qtd</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Fotos</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {producoes.map(p => (
-                      <TableRow key={p.id}>
-                        <TableCell>
-                          {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {editingProducaoId === p.id ? (
-                            <Input
-                              type="number"
-                              value={editProducaoQtd}
-                              onChange={e => setEditProducaoQtd(e.target.value)}
-                              className="w-20 ml-auto h-8"
-                            />
-                          ) : (
-                            p.quantidade
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(p.valor_total)}</TableCell>
-                        <TableCell>
-                          <input type="file" multiple accept="image/*" className="hidden" id={`prod-foto-${p.id}`} onChange={e => e.target.files && handleUploadFoto(e, "execucao", p.id)} />
-                          <Button variant="outline" size="sm" onClick={() => document.getElementById(`prod-foto-${p.id}`)?.click()}>
-                            <Camera className="h-4 w-4 mr-1" /> Foto
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-end">
-                            {editingProducaoId === p.id ? (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleUpdateProducao(p.id)} className="h-8 w-8 text-green-600">
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingProducaoId(null)} className="h-8 w-8 text-red-600">
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingProducaoId(p.id);
-                                    setEditProducaoQtd(String(p.quantidade));
-                                  }}
-                                  className="h-8 w-8"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => removeProducao.mutate(p.id)} className="h-8 w-8 text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ProducaoSection
+              producoes={producoes}
+              itensDisponiveis={itensDisponiveis}
+              diarioId={diario?.id}
+              onAdd={handleAddProducao}
+              onRemove={(id) => removeProducao.mutate(id)}
+              onUpdate={handleUpdateProducao}
+              onUploadFoto={handleUploadFoto}
+              fotos={fotos}
+            />
 
-            <Card>
-              <CardHeader><CardTitle>Equipe</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={eqRecursoId} onValueChange={v => { setEqRecursoId(v); const r = recursos.find(x => x.id === v); setEqCustoHora(r ? String(getCustoAtual(r.id)?.custo_unitario || 0) : ""); }}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione pessoa" /></SelectTrigger>
-                    <SelectContent>
-                      {recursosPessoa.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" value={eqHoras} onChange={e => setEqHoras(e.target.value)} placeholder="Horas" className="w-24" />
-                  <Input type="number" value={eqCustoHora} onChange={e => setEqCustoHora(e.target.value)} placeholder="Custo/h" className="w-24" />
-                  <Button onClick={handleAddEquipe}>Adicionar</Button>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead className="text-right">Horas</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {equipe.map(e => (
-                      <TableRow key={e.id}>
-                        <TableCell>{e.nome}</TableCell>
-                        <TableCell className="text-right">
-                          {editingEquipeId === e.id ? (
-                            <div className="flex flex-col gap-1 items-end">
-                              <Input
-                                type="number"
-                                value={editEquipeHoras}
-                                onChange={ev => setEditEquipeHoras(ev.target.value)}
-                                className="w-20 h-8"
-                                placeholder="Horas"
-                              />
-                              <Input
-                                type="number"
-                                value={editEquipeCustoHora}
-                                onChange={ev => setEditEquipeCustoHora(ev.target.value)}
-                                className="w-20 h-8 text-xs"
-                                placeholder="Custo/h"
-                              />
-                            </div>
-                          ) : (
-                            e.horas
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{formatCurrency(e.custo_total)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 justify-end">
-                            {editingEquipeId === e.id ? (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => handleUpdateEquipe(e.id)} className="h-8 w-8 text-green-600">
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingEquipeId(null)} className="h-8 w-8 text-red-600">
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingEquipeId(e.id);
-                                    setEditEquipeHoras(String(e.horas));
-                                    setEditEquipeCustoHora(String(e.custo_hora));
-                                  }}
-                                  className="h-8 w-8"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => removeEquipe.mutate(e.id)} className="h-8 w-8 text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <EquipeSection
+              equipe={equipe}
+              recursosPessoa={recursosPessoa}
+              recursos={recursos}
+              getCustoAtual={getCustoAtual}
+              onAdd={handleAddEquipe}
+              onRemove={(id) => removeEquipe.mutate(id)}
+              onUpdate={handleUpdateEquipe}
+            />
 
             <Card>
               <CardHeader><CardTitle>Equipamentos</CardTitle></CardHeader>
@@ -988,115 +820,14 @@ export default function DiarioObraPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle>Fotos Gerais</CardTitle>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="Novo grupo..." 
-                    value={newGroupName} 
-                    onChange={e => setNewGroupName(e.target.value)} 
-                    className="h-8 w-32" 
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newGroupName.trim()) {
-                        setPhotoGroups(prev => [...prev, newGroupName.trim()]);
-                        setNewGroupName("");
-                      }
-                    }}
-                  />
-                  <Button size="sm" variant="outline" className="h-8" onClick={() => {
-                    if (newGroupName.trim()) {
-                      setPhotoGroups(prev => [...prev, newGroupName.trim()]);
-                      setNewGroupName("");
-                    }
-                  }}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {photoGroups.map(group => (
-                  <div key={group} className="space-y-3">
-                    <div className="flex items-center justify-between border-b pb-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm">{group}</h3>
-                        <Badge variant="outline" className="text-[10px]">{fotos.filter(f => !f.diario_producao_id && f.classificacao === group).length}</Badge>
-                      </div>
-                      <div className="flex gap-1">
-                        <input 
-                          type="file" 
-                          multiple 
-                          accept="image/*" 
-                          className="hidden" 
-                          id={`foto-${group}`} 
-                          ref={el => photoGroupUploadRefs.current[group] = el}
-                          onChange={e => handleUploadFoto(e, group)} 
-                        />
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
-                          <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos
-                        </Button>
-                        {!["Execução", "Vistoria"].includes(group) && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 text-destructive" 
-                            onClick={() => setPhotoGroups(prev => prev.filter(g => g !== group))}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      {fotos.filter(f => !f.diario_producao_id && f.classificacao === group).map(f => (
-                        <div key={f.id} className="relative group rounded overflow-hidden border">
-                          <SmartImage 
-                            src={f.thumb_url || f.url} 
-                            context="diario_fotos"
-                            fallbackUrls={[f.thumb_600_url, f.url]}
-                            className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
-                            onClick={() => setPhotoView(f)}
-                          />
-                          <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFoto.mutate(f.id)}><Trash2 className="h-3 w-3" /></Button>
-                        </div>
-                      ))}
-                      {fotos.filter(f => !f.diario_producao_id && f.classificacao === group).length === 0 && (
-                        <div className="col-span-4 py-4 text-center text-xs text-muted-foreground border border-dashed rounded italic">
-                          Nenhuma foto neste grupo
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Grupo Geral para fotos sem classificação ou com classificações não listadas */}
-                {(() => {
-                  const unlistedPhotos = fotos.filter(f => !f.diario_producao_id && (!f.classificacao || !photoGroups.includes(f.classificacao)));
-                  if (unlistedPhotos.length === 0) return null;
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b pb-1">
-                        <h3 className="font-semibold text-sm">Outras / Geral</h3>
-                      </div>
-                      <div className="grid grid-cols-4 gap-4">
-                        {unlistedPhotos.map(f => (
-                          <div key={f.id} className="relative group rounded overflow-hidden border">
-                            <SmartImage 
-                              src={f.thumb_url || f.url} 
-                              context="diario_fotos"
-                              fallbackUrls={[f.thumb_600_url, f.url]}
-                              className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
-                              onClick={() => setPhotoView(f)}
-                            />
-                            <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeFoto.mutate(f.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
+            <FotosSection
+              fotos={fotos}
+              photoGroups={photoGroups}
+              setPhotoGroups={setPhotoGroups}
+              onUpload={(e, group) => handleUploadFoto(e, group)}
+              onRemove={(id) => removeFoto.mutate(id)}
+              setPhotoView={setPhotoView}
+            />
 
             <Card>
               <CardHeader><CardTitle>Relatório Descritivo / Observações</CardTitle></CardHeader>
