@@ -473,7 +473,7 @@ export default function ProjetosPage() {
                                   if (p.contratoObj?.numero_contrato) allNums.add(p.contratoObj.numero_contrato);
                                   if (p.contrato_ids) {
                                     p.contrato_ids.forEach((cid: string) => {
-                                      const c = contratos.find(x => x.id === cid);
+                                      const c = contratosById.get(cid);
                                       if (c?.numero_contrato) allNums.add(c.numero_contrato);
                                     });
                                   }
