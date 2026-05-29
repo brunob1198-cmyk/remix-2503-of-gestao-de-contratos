@@ -107,7 +107,16 @@ function FotosSection({
                       className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
                       onClick={() => setPhotoView(f)}
                     />
-                    <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => onRemove(f.id)}>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 z-10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(f.id);
+                      }}
+                      type="button"
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -137,7 +146,16 @@ function FotosSection({
                     className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => setPhotoView(f)}
                   />
-                  <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => onRemove(f.id)}>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(f.id);
+                    }}
+                    type="button"
+                  >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

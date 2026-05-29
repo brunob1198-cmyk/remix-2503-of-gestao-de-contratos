@@ -278,7 +278,10 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["diario_producao_quadro"] });
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
       queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      toast({ title: "Produção removida!" });
     },
+    onError: (e: Error) => toast({ title: "Erro ao remover produção", description: e.message, variant: "destructive" }),
+  });
   });
 
   const updateProducao = useMutation({
@@ -716,7 +719,11 @@ export function useDiarioObra(siteId?: string, data?: string) {
       const { error } = await supabase.from("diario_fotos").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      toast({ title: "Foto removida!" });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao remover foto", description: e.message, variant: "destructive" }),
   });
 
   // Summaries
