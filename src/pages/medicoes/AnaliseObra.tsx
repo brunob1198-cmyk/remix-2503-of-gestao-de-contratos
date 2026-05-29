@@ -17,7 +17,9 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { startOfMonth, endOfMonth } from "date-fns";
-import { useAnaliseCustos } from "@/hooks/useAnaliseCustos";
+import { useSyncErp } from "@/hooks/useAnaliseCustos";
+import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
 
 export default function AnaliseObraPage() {
   const queryClient = useQueryClient();
