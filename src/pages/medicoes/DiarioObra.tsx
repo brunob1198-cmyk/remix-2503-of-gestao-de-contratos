@@ -320,22 +320,21 @@ export default function DiarioObraPage() {
     e.target.value = "";
   };
 
-  const handleAddEquipe = async () => {
-    if (!eqRecursoId || !eqCustoHora) return;
+  const handleAddEquipe = useCallback(async (eqRecursoId: string, eqHorasStr: string, eqCustoHoraStr: string) => {
+    if (!eqRecursoId || !eqCustoHoraStr) return;
     const recurso = recursos.find(r => r.id === eqRecursoId);
     if (!recurso) return;
     if (isRecursoDuplicado("pessoa", recurso.nome)) {
       toast({ title: "Recurso já adicionado", variant: "destructive" });
       return;
     }
-    const horas = Number(eqHoras);
-    const custoUnitario = Number(eqCustoHora);
+    const horas = Number(eqHorasStr);
+    const custoUnitario = Number(eqCustoHoraStr);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
     const diarioId = await ensureDiario();
     if (!diarioId) return;
     await addEquipe.mutateAsync({ diario_id: diarioId, nome: recurso.nome, funcao: recurso.cargo || undefined, horas, custo_hora, custo_total });
-    setEqRecursoId(""); setEqHoras("0"); setEqCustoHora("");
-  };
+  }, [recursos, isRecursoDuplicado, toast, ensureDiario, addEquipe]);
 
   const handleAddEquipamento = async () => {
     if (!equipRecursoId || !equipCustoHora) return;
