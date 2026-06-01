@@ -277,6 +277,7 @@ export default function ForecastTab() {
                         options={uniqueClientes} 
                         selected={selectedClientes} 
                         onSelect={setSelectedClientes} 
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
