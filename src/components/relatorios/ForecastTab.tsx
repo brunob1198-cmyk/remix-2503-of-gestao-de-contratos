@@ -391,11 +391,12 @@ export default function ForecastTab() {
   );
 }
 
-function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: { 
+function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder, className }: { 
   options: string[], 
   selected: string[], 
   onSelect: (val: string[]) => void,
-  searchPlaceholder?: string
+  searchPlaceholder?: string,
+  className?: string
 }) {
   const [search, setSearch] = useState("");
   const filteredOptions = useMemo(() => 
