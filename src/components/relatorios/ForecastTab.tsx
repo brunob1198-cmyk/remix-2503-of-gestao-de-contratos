@@ -29,8 +29,8 @@ export default function ForecastTab() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [periodMonths, setPeriodMonths] = useState(12);
-  const [offsetMonths, setOffsetMonths] = useState(-18);
+  const [startDate, setStartDate] = useState(subMonths(startOfMonth(new Date()), 18));
+  const [endDate, setEndDate] = useState(addMonths(startOfMonth(new Date()), 5));
 
   const today = startOfMonth(new Date());
   
