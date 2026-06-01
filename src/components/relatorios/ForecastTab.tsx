@@ -329,17 +329,17 @@ export default function ForecastTab() {
                     >
                       <TableCell className="w-[140px] shrink-0 sticky left-0 bg-background z-20 border-r truncate h-full flex items-center">{p.areaObj?.nome || "-"}</TableCell>
                       <TableCell className="w-[200px] shrink-0 font-medium sticky left-[140px] bg-background z-20 border-r truncate h-full flex items-center">{p.nome}</TableCell>
-                      <TableCell className="w-[180px] truncate border-r">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
-                      <TableCell className="w-[120px] border-r">
+                      <TableCell className="w-[180px] shrink-0 truncate border-r h-full flex items-center">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 border-r h-full flex items-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
                           p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                         }`}>
                           {p.status}
                         </span>
                       </TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap border-r text-xs">{formatCurrency(p.valor_total)}</TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap text-green-600 font-medium border-r text-xs">{formatCurrency(p.totalProduzido)}</TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap font-bold border-r text-xs">{formatCurrency(p.saldo)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.valor_total)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
                         const realValue = p.mensal[col.key] || 0;
                         const forecastValue = p.forecast[col.key] || 0;
