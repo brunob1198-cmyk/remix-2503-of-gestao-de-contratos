@@ -36,18 +36,21 @@ export default function ForecastTab() {
   
   const columns = useMemo(() => {
     const cols = [];
-    // Aumentar o retrocesso para 18 meses para cobrir todo o histórico de produção do diário
-    for (let i = offsetMonths; i < offsetMonths + periodMonths; i++) {
-      const date = addMonths(today, i);
+    let current = startDate;
+    // Limit to safety to avoid infinite loops if dates are misconfigured
+    let safetyCounter = 0;
+    while (!isAfter(current, endDate) && safetyCounter < 100) {
       cols.push({
-        key: format(date, "yyyy-MM"),
-        label: format(date, "MMM/yy", { locale: ptBR }),
-        isFuture: isAfter(date, today) || format(date, "yyyy-MM") === format(today, "yyyy-MM"),
-        date
+        key: format(current, "yyyy-MM"),
+        label: format(current, "MMM/yy", { locale: ptBR }),
+        isFuture: isAfter(current, today) || format(current, "yyyy-MM") === format(today, "yyyy-MM"),
+        date: current
       });
+      current = addMonths(current, 1);
+      safetyCounter++;
     }
     return cols;
-  }, [today]);
+  }, [startDate, endDate, today]);
 
   const filteredData = useMemo(() => {
     return data.filter(p => {
