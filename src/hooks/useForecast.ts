@@ -10,14 +10,29 @@ export function useForecast() {
     queryKey: ["producao_total_projetos"],
     queryFn: async () => {
       // Usar a view de produção para pegar o total produzido por projeto
-      const { data, error } = await supabase
-        .from("view_bi_producao")
-        .select("projeto_id, valor_total");
-      
-      if (error) throw error;
+      let allData: any[] = [];
+      let hasMore = true;
+      let offset = 0;
+      const limit = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("view_bi_producao")
+          .select("projeto_id, valor_total")
+          .range(offset, offset + limit - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          offset += limit;
+          if (data.length < limit) hasMore = false;
+        }
+      }
 
       const map: Record<string, number> = {};
-      data?.forEach((row: any) => {
+      allData.forEach((row: any) => {
         map[row.projeto_id] = (map[row.projeto_id] || 0) + (Number(row.valor_total) || 0);
       });
       return map;
@@ -28,14 +43,29 @@ export function useForecast() {
   const { data: producaoMensal = {}, isLoading: loadingMensal } = useQuery({
     queryKey: ["producao_mensal_projetos"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("view_bi_producao")
-        .select("projeto_id, projeto_codigo, data_producao, valor_total");
-      
-      if (error) throw error;
+      let allData: any[] = [];
+      let hasMore = true;
+      let offset = 0;
+      const limit = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("view_bi_producao")
+          .select("projeto_id, projeto_codigo, data_producao, valor_total")
+          .range(offset, offset + limit - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          offset += limit;
+          if (data.length < limit) hasMore = false;
+        }
+      }
 
       const map: Record<string, Record<string, number>> = {};
-      data?.forEach((row: any) => {
+      allData.forEach((row: any) => {
         const month = row.data_producao.substring(0, 7); // YYYY-MM
         const projId = row.projeto_id;
         
