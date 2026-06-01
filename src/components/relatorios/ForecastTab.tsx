@@ -300,15 +300,17 @@ export default function ForecastTab() {
                     </TableHead>
                   ))}
                 </TableRow>
-                <TableRow className="bg-muted/30 font-bold border-b-2">
-                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-40 text-right border-r">SUBTOTAL</TableCell>
-                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalContrato)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap text-green-600 border-r">{formatCurrency(stats.totalProduzido)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalSaldo)}</TableCell>
+                <TableRow className="bg-muted/30 font-bold border-b-2 flex items-center">
+                  <TableCell className="w-[340px] shrink-0 sticky left-0 bg-muted/30 z-40 text-right border-r flex items-center justify-end">SUBTOTAL</TableCell>
+                  <TableCell className="w-[180px] shrink-0 border-r flex items-center"></TableCell>
+                  <TableCell className="w-[120px] shrink-0 border-r flex items-center"></TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalContrato)}</TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 border-r flex items-center justify-end">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalSaldo)}</TableCell>
                   {columns.map((col) => (
                     <TableCell 
                       key={col.key} 
-                      className={`text-center whitespace-nowrap border-r ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                      className={`text-center w-[110px] shrink-0 whitespace-nowrap border-r flex items-center justify-center ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
                     >
                       {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
                     </TableCell>
