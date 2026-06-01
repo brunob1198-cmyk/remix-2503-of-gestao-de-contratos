@@ -24,8 +24,8 @@ export function useProjetos() {
   const { data, isLoading } = useQuery({
     queryKey: ["projetos"],
     ...QUERY_DEFAULTS,
-    staleTime: 1000 * 60 * 30, // 30 min por ser um cadastro lento
-    gcTime: 1000 * 60 * 60, // 1 hora
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 20, // 20 min
 
     queryFn: async () => {
       console.log("Fetching projetos...");
@@ -85,7 +85,6 @@ export function useProjetos() {
 
   const updateProjeto = useMutation({
     mutationFn: async ({ id, ...projeto }: Partial<Projeto> & { id: string }) => {
-      // Remover propriedades que não pertencem à tabela projetos
       const { clienteObj, contratoObj, areaObj, created_at, updated_at, ...cleanProjeto } = projeto as any;
       
       const { data, error } = await supabase

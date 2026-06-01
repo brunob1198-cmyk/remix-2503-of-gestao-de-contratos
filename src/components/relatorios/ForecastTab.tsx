@@ -1,22 +1,39 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForecast } from "@/hooks/useForecast";
-import { format, addMonths, startOfMonth, isAfter, subMonths, setYear, setMonth, getYear, getMonth, isBefore, isEqual } from "date-fns";
+import { format, addMonths, startOfMonth, isAfter, subMonths, setYear, setMonth, getYear, getMonth, isBefore, isEqual, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FileDown, TrendingUp, Calculator, Calendar, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+// Helper for local storage persistence
+const useLocalStorage = <T,>(key: string, initialValue: T): [T, (val: T) => void] => {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
 
+  const setValue = (value: T) => {
+    setStoredValue(value);
+    window.localStorage.setItem(key, JSON.stringify(value));
+  };
+
+  return [storedValue, setValue];
+};
 
 export default function ForecastTab() {
   const { data, isLoading, updateForecast } = useForecast();
@@ -24,20 +41,23 @@ export default function ForecastTab() {
   const [editing, setEditing] = useState<{ id: string; month: string } | null>(null);
   const [editValue, setEditValue] = useState("");
   
-  // Filters
-  const [selectedObras, setSelectedObras] = useState<string[]>([]);
-  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState(subMonths(startOfMonth(new Date()), 18));
-  const [endDate, setEndDate] = useState(addMonths(startOfMonth(new Date()), 5));
+  // Persisted Filters
+  const [selectedObras, setSelectedObras] = useLocalStorage<string[]>("forecast_filter_obras", []);
+  const [selectedAreas, setSelectedAreas] = useLocalStorage<string[]>("forecast_filter_areas", []);
+  const [selectedClientes, setSelectedClientes] = useLocalStorage<string[]>("forecast_filter_clientes", []);
+  const [selectedStatus, setSelectedStatus] = useLocalStorage<string[]>("forecast_filter_status", []);
+  
+  const [storedStartDate, setStoredStartDate] = useLocalStorage<string>("forecast_filter_start_date", subMonths(startOfMonth(new Date()), 18).toISOString());
+  const [storedEndDate, setStoredEndDate] = useLocalStorage<string>("forecast_filter_end_date", addMonths(startOfMonth(new Date()), 5).toISOString());
+
+  const startDate = useMemo(() => parseISO(storedStartDate), [storedStartDate]);
+  const endDate = useMemo(() => parseISO(storedEndDate), [storedEndDate]);
 
   const today = startOfMonth(new Date());
   
   const columns = useMemo(() => {
     const cols = [];
     let current = startDate;
-    // Limit to safety to avoid infinite loops if dates are misconfigured
     let safetyCounter = 0;
     while (!isAfter(current, endDate) && safetyCounter < 100) {
       cols.push({
@@ -87,7 +107,7 @@ export default function ForecastTab() {
   };
 
   const handleExport = () => {
-    const exportData = data.map((p) => {
+    const exportData = filteredData.map((p) => {
       const row: any = {
         Área: p.areaObj?.nome || "-",
         Obra: p.nome,
@@ -109,13 +129,11 @@ export default function ForecastTab() {
     XLSX.writeFile(wb, `forecast_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
-  // Cards logic
   const stats = useMemo(() => {
     const totalContrato = filteredData.reduce((acc, p) => acc + (Number(p.valor_total) || 0), 0);
     const totalProduzido = filteredData.reduce((acc, p) => acc + p.totalProduzido, 0);
     const totalSaldo = filteredData.reduce((acc, p) => acc + p.saldo, 0);
 
-    // Trimestral (Próximos 3 meses)
     const next3Months = columns.filter(c => c.isFuture).slice(0, 3).map(c => c.key);
     const totalTrimestre = filteredData.reduce((acc, p) => {
       let sum = 0;
@@ -123,7 +141,6 @@ export default function ForecastTab() {
       return acc + sum;
     }, 0);
 
-    // Anual (Restante do ano atual)
     const currentYear = format(new Date(), "yyyy");
     const totalAno = filteredData.reduce((acc, p) => {
       let sum = 0;
@@ -143,7 +160,16 @@ export default function ForecastTab() {
     return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalAno, columnTotals };
   }, [filteredData, columns]);
 
-  if (isLoading) return <div className="p-8 text-center">Carregando dados de forecast...</div>;
+  // Virtualization
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredData.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 45,
+    overscan: 5,
+  });
+
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground animate-pulse">Carregando dados de forecast...</div>;
 
   return (
     <div className="space-y-6">
@@ -155,7 +181,7 @@ export default function ForecastTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats.totalContrato)}</div>
-            <p className="text-xs text-muted-foreground">Soma de todos os projetos</p>
+            <p className="text-xs text-muted-foreground">Soma dos projetos filtrados</p>
           </CardContent>
         </Card>
         <Card className="bg-green-500/5 border-green-500/20">
@@ -175,7 +201,7 @@ export default function ForecastTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalTrimestre)}</div>
-            <p className="text-xs text-muted-foreground">Previsão próximos 3 meses</p>
+            <p className="text-xs text-muted-foreground">Projeção próximos 3 meses</p>
           </CardContent>
         </Card>
         <Card className="bg-orange-500/5 border-orange-500/20">
@@ -185,7 +211,7 @@ export default function ForecastTab() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{formatCurrency(stats.totalAno)}</div>
-            <p className="text-xs text-muted-foreground">Previsão total ano {format(new Date(), "yyyy")}</p>
+            <p className="text-xs text-muted-foreground">Projeção ano {format(new Date(), "yyyy")}</p>
           </CardContent>
         </Card>
       </div>
@@ -198,8 +224,8 @@ export default function ForecastTab() {
                 startDate={startDate} 
                 endDate={endDate} 
                 onSelect={(start, end) => {
-                  setStartDate(start);
-                  setEndDate(end);
+                  setStoredStartDate(start.toISOString());
+                  setStoredEndDate(end.toISOString());
                 }} 
               />
               <div>
@@ -213,12 +239,15 @@ export default function ForecastTab() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto border rounded-md">
-            <Table>
-              <TableHeader>
+        <CardContent className="p-0">
+          <div 
+            ref={parentRef}
+            className="overflow-auto border rounded-md relative h-[600px]"
+          >
+            <Table className="border-collapse table-fixed w-full">
+              <TableHeader className="sticky top-0 z-30 bg-background border-b shadow-sm">
                 <TableRow className="bg-muted/50">
-                  <TableHead className="min-w-[140px] sticky left-0 bg-muted/50 z-20">
+                  <TableHead className="w-[140px] sticky left-0 bg-muted/50 z-40 border-r">
                     <div className="flex items-center justify-between">
                       <span>Área</span>
                       <MultiSelectFilter 
@@ -228,7 +257,7 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="min-w-[200px] sticky left-[140px] bg-muted/50 z-20">
+                  <TableHead className="w-[200px] sticky left-[140px] bg-muted/50 z-40 border-r">
                     <div className="flex items-center justify-between">
                       <span>Obra</span>
                       <MultiSelectFilter 
@@ -239,7 +268,7 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="min-w-[180px]">
+                  <TableHead className="w-[180px] bg-muted/50 border-r">
                     <div className="flex items-center justify-between">
                       <span>Cliente</span>
                       <MultiSelectFilter 
@@ -249,7 +278,7 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="min-w-[120px]">
+                  <TableHead className="w-[120px] bg-muted/50 border-r">
                     <div className="flex items-center justify-between">
                       <span>Status</span>
                       <MultiSelectFilter 
@@ -259,89 +288,100 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Vlr Contrato</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Execução Total</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
+                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Vlr Contrato</TableHead>
+                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Exec Total</TableHead>
+                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Saldo</TableHead>
                   {columns.map((col) => (
                     <TableHead 
                       key={col.key} 
-                      className={`text-center min-w-[110px] ${col.isFuture ? "text-blue-600 font-bold bg-blue-50/50" : ""}`}
+                      className={`text-center w-[110px] bg-muted/50 border-r ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
                     >
                       {col.label}
                     </TableHead>
                   ))}
                 </TableRow>
                 <TableRow className="bg-muted/30 font-bold border-b-2">
-                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-20 text-right">SUBTOTAL</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalContrato)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap text-green-600">{formatCurrency(stats.totalProduzido)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalSaldo)}</TableCell>
+                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-40 text-right border-r">SUBTOTAL</TableCell>
+                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalContrato)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap text-green-600 border-r">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalSaldo)}</TableCell>
                   {columns.map((col) => (
                     <TableCell 
                       key={col.key} 
-                      className={`text-center whitespace-nowrap ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                      className={`text-center whitespace-nowrap border-r ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
                     >
                       {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
                     </TableCell>
                   ))}
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {filteredData.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="sticky left-0 bg-background z-10 border-r">{p.areaObj?.nome || "-"}</TableCell>
-                    <TableCell className="font-medium sticky left-[140px] bg-background z-10 border-r">{p.nome}</TableCell>
-                    <TableCell className="truncate max-w-[150px]">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${
-                        p.status === 'Em Andamento' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{formatCurrency(p.valor_total)}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap text-green-600 font-medium">{formatCurrency(p.totalProduzido)}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap font-bold">{formatCurrency(p.saldo)}</TableCell>
-                    {columns.map((col) => {
-                      const realValue = p.mensal[col.key] || 0;
-                      const forecastValue = p.forecast[col.key] || 0;
-                      const isEditing = editing?.id === p.id && editing?.month === col.key;
+              <TableBody className="relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const p = filteredData[virtualRow.index];
+                  return (
+                    <TableRow 
+                      key={p.id}
+                      className="absolute left-0 w-full hover:bg-muted/30 transition-colors"
+                      style={{ 
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`
+                      }}
+                    >
+                      <TableCell className="w-[140px] sticky left-0 bg-background z-20 border-r truncate">{p.areaObj?.nome || "-"}</TableCell>
+                      <TableCell className="w-[200px] font-medium sticky left-[140px] bg-background z-20 border-r truncate">{p.nome}</TableCell>
+                      <TableCell className="w-[180px] truncate border-r">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
+                      <TableCell className="w-[120px] border-r">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
+                          p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="w-[120px] text-right whitespace-nowrap border-r text-xs">{formatCurrency(p.valor_total)}</TableCell>
+                      <TableCell className="w-[120px] text-right whitespace-nowrap text-green-600 font-medium border-r text-xs">{formatCurrency(p.totalProduzido)}</TableCell>
+                      <TableCell className="w-[120px] text-right whitespace-nowrap font-bold border-r text-xs">{formatCurrency(p.saldo)}</TableCell>
+                      {columns.map((col) => {
+                        const realValue = p.mensal[col.key] || 0;
+                        const forecastValue = p.forecast[col.key] || 0;
+                        const isEditing = editing?.id === p.id && editing?.month === col.key;
 
-                      return (
-                        <TableCell 
-                          key={col.key} 
-                          className={`text-center group p-1 ${col.isFuture ? "bg-blue-50/20" : ""}`}
-                        >
-                          {!col.isFuture ? (
-                             <span className="text-muted-foreground text-xs">{realValue > 0 ? formatCurrency(realValue) : "-"}</span>
-                          ) : isEditing ? (
-                            <div className="flex items-center gap-1">
+                        return (
+                          <TableCell 
+                            key={col.key} 
+                            className={`text-center w-[110px] p-1 border-r ${col.isFuture ? "bg-blue-50/20" : ""}`}
+                          >
+                            {!col.isFuture ? (
+                               <span className="text-muted-foreground text-[10px]">{realValue > 0 ? formatCurrency(realValue) : "-"}</span>
+                            ) : isEditing ? (
                               <Input
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
-                                className="h-8 w-24 text-center text-xs"
+                                className="h-7 w-full text-center text-[10px] px-1"
                                 autoFocus
                                 onBlur={handleSave}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                               />
-                            </div>
-                          ) : (
-                            <div 
-                              className="cursor-pointer hover:bg-blue-100/50 rounded p-1 transition-colors min-h-[32px] flex items-center justify-center"
-                              onClick={() => handleEdit(p.id, col.key, forecastValue)}
-                            >
-                              <span className="text-blue-700 font-medium">
-                                {forecastValue > 0 ? formatCurrency(forecastValue) : "-"}
-                              </span>
-                            </div>
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
+                            ) : (
+                              <div 
+                                className="cursor-pointer hover:bg-blue-100/50 rounded transition-colors min-h-[28px] flex items-center justify-center"
+                                onClick={() => handleEdit(p.id, col.key, forecastValue)}
+                              >
+                                <span className="text-blue-700 font-medium text-[10px]">
+                                  {forecastValue > 0 ? formatCurrency(forecastValue) : "-"}
+                                </span>
+                              </div>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
+            {filteredData.length === 0 && (
+              <div className="p-12 text-center text-muted-foreground">Nenhum projeto encontrado com os filtros selecionados.</div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -356,7 +396,10 @@ function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: {
   searchPlaceholder?: string
 }) {
   const [search, setSearch] = useState("");
-  const filteredOptions = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const filteredOptions = useMemo(() => 
+    options.filter(o => o.toLowerCase().includes(search.toLowerCase())),
+    [options, search]
+  );
 
   return (
     <Popover>
@@ -446,6 +489,14 @@ function MonthRangePicker({ startDate, endDate, onSelect }: {
   const [tempEnd, setTempEnd] = useState(endDate);
   const [viewYearStart, setViewYearStart] = useState(getYear(startDate));
   const [viewYearEnd, setViewYearEnd] = useState(getYear(endDate));
+
+  // Sync temp dates if startDate/endDate change externally
+  useEffect(() => {
+    setTempStart(startDate);
+    setTempEnd(endDate);
+    setViewYearStart(getYear(startDate));
+    setViewYearEnd(getYear(endDate));
+  }, [startDate, endDate]);
 
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
