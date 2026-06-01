@@ -25,7 +25,7 @@ export default function ForecastTab() {
   const [editValue, setEditValue] = useState("");
   
   // Filters
-  const [filterObra, setFilterObra] = useState("");
+  const [selectedObras, setSelectedObras] = useState<string[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
@@ -49,7 +49,7 @@ export default function ForecastTab() {
 
   const filteredData = useMemo(() => {
     return data.filter(p => {
-      const matchObra = p.nome.toLowerCase().includes(filterObra.toLowerCase());
+      const matchObra = selectedObras.length === 0 || selectedObras.includes(p.nome);
       const matchArea = selectedAreas.length === 0 || (p.areaObj?.nome && selectedAreas.includes(p.areaObj.nome));
       const matchCliente = selectedClientes.length === 0 || 
         selectedClientes.includes(p.clienteObj?.razao_social || p.cliente || "Sem Cliente");
@@ -57,9 +57,10 @@ export default function ForecastTab() {
       
       return matchObra && matchArea && matchCliente && matchStatus;
     });
-  }, [data, filterObra, selectedAreas, selectedClientes, selectedStatus]);
+  }, [data, selectedObras, selectedAreas, selectedClientes, selectedStatus]);
 
   const uniqueAreas = useMemo(() => Array.from(new Set(data.map(p => p.areaObj?.nome).filter(Boolean))) as string[], [data]);
+  const uniqueObras = useMemo(() => Array.from(new Set(data.map(p => p.nome))).sort(), [data]);
   const uniqueClientes = useMemo(() => Array.from(new Set(data.map(p => p.clienteObj?.razao_social || p.cliente || "Sem Cliente"))), [data]);
   const uniqueStatus = useMemo(() => Array.from(new Set(data.map(p => p.status))), [data]);
 
@@ -211,24 +212,14 @@ export default function ForecastTab() {
                     </div>
                   </TableHead>
                   <TableHead className="min-w-[200px] sticky left-[140px] bg-muted/50 z-20">
-                    <div className="flex flex-col gap-1 py-1">
+                    <div className="flex items-center justify-between">
                       <span>Obra</span>
-                      <div className="relative">
-                        <Input
-                          placeholder="Filtrar..."
-                          value={filterObra}
-                          onChange={(e) => setFilterObra(e.target.value)}
-                          className="h-7 text-[10px] pr-6"
-                        />
-                        {filterObra && (
-                          <button 
-                            className="absolute right-1 top-1/2 -translate-y-1/2"
-                            onClick={() => setFilterObra("")}
-                          >
-                            <X className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                        )}
-                      </div>
+                      <MultiSelectFilter 
+                        options={uniqueObras} 
+                        selected={selectedObras} 
+                        onSelect={setSelectedObras}
+                        searchPlaceholder="Pesquisar projeto..."
+                      />
                     </div>
                   </TableHead>
                   <TableHead className="min-w-[180px]">
@@ -341,11 +332,15 @@ export default function ForecastTab() {
   );
 }
 
-function MultiSelectFilter({ options, selected, onSelect }: { 
+function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: { 
   options: string[], 
   selected: string[], 
-  onSelect: (val: string[]) => void 
+  onSelect: (val: string[]) => void,
+  searchPlaceholder?: string
 }) {
+  const [search, setSearch] = useState("");
+  const filteredOptions = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -353,40 +348,71 @@ function MultiSelectFilter({ options, selected, onSelect }: {
           <Filter className={`h-3 w-3 ${selected.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground"}`} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
+      <PopoverContent className="w-64 p-2" align="start">
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold">Filtros</span>
-            {selected.length > 0 && (
+          {searchPlaceholder && (
+            <div className="relative mb-2">
+              <Input
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 text-xs pr-7"
+              />
+              {search && (
+                <button 
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                  onClick={() => setSearch("")}
+                >
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          )}
+          <div className="flex items-center justify-between border-b pb-1 mb-1">
+            <div className="flex gap-2">
               <Button 
-                variant="ghost" 
+                variant="link" 
+                size="sm" 
+                onClick={() => onSelect(options)} 
+                className="h-auto p-0 text-[10px] text-orange-600"
+              >
+                Todos
+              </Button>
+              <Button 
+                variant="link" 
                 size="sm" 
                 onClick={() => onSelect([])} 
-                className="h-6 text-[10px]"
+                className="h-auto p-0 text-[10px] text-orange-600"
               >
                 Limpar
               </Button>
-            )}
+            </div>
+            <span className="text-[10px] text-muted-foreground">{selected.length} selecionados</span>
           </div>
-          <div className="max-h-48 overflow-y-auto space-y-1">
-            {options.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <Checkbox 
-                  id={`filter-${option}`}
-                  checked={selected.includes(option)}
-                  onCheckedChange={(checked) => {
-                    if (checked) onSelect([...selected, option]);
-                    else onSelect(selected.filter(s => s !== option));
-                  }}
-                />
-                <label 
-                  htmlFor={`filter-${option}`}
-                  className="text-xs cursor-pointer select-none flex-1 py-1"
-                >
-                  {option}
-                </label>
-              </div>
-            ))}
+          <div className="max-h-60 overflow-y-auto space-y-1 py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="text-[10px] text-center text-muted-foreground py-2">Nenhum resultado</div>
+            ) : (
+              filteredOptions.map((option) => (
+                <div key={option} className="flex items-center space-x-2 px-1 hover:bg-muted/50 rounded">
+                  <Checkbox 
+                    id={`filter-${option}`}
+                    checked={selected.includes(option)}
+                    onCheckedChange={(checked) => {
+                      if (checked) onSelect([...selected, option]);
+                      else onSelect(selected.filter(s => s !== option));
+                    }}
+                    className="h-3.5 w-3.5 border-orange-400 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                  />
+                  <label 
+                    htmlFor={`filter-${option}`}
+                    className="text-xs leading-none cursor-pointer select-none py-1.5 flex-1 truncate"
+                  >
+                    {option}
+                  </label>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </PopoverContent>
