@@ -213,8 +213,6 @@ export default function ForecastTab() {
             </Button>
           </div>
         </CardHeader>
-          </div>
-        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto border rounded-md">
             <Table>
