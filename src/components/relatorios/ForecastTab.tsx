@@ -257,7 +257,7 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[200px] sticky left-[140px] bg-muted/50 z-40 border-r">
+                  <TableHead className="w-[200px] shrink-0 sticky left-[140px] bg-muted/50 z-40 border-r flex items-center">
                     <div className="flex items-center justify-between">
                       <span>Obra</span>
                       <MultiSelectFilter 
