@@ -288,6 +288,7 @@ export default function ForecastTab() {
                         options={uniqueStatus} 
                         selected={selectedStatus} 
                         onSelect={setSelectedStatus} 
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
