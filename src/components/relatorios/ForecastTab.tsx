@@ -407,7 +407,7 @@ function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder, cla
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+        <Button variant="ghost" size="sm" className={`h-6 w-6 p-0 ${className}`}>
           <Filter className={`h-3 w-3 ${selected.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground"}`} />
         </Button>
       </PopoverTrigger>
