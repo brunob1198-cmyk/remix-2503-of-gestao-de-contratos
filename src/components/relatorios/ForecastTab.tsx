@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-const monthsToShow = 12;
+
 
 export default function ForecastTab() {
   const { data, isLoading, updateForecast } = useForecast();
