@@ -218,8 +218,8 @@ export default function ForecastTab() {
 
       <Card>
         <CardHeader className="flex flex-col space-y-4">
-          <div className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <MonthRangePicker 
                 startDate={startDate} 
                 endDate={endDate} 
@@ -228,12 +228,12 @@ export default function ForecastTab() {
                   setStoredEndDate(end.toISOString());
                 }} 
               />
-              <div>
-                <CardTitle>Acompanhamento e Forecast</CardTitle>
-                <p className="text-sm text-muted-foreground">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
+              <div className="min-w-0">
+                <CardTitle className="whitespace-nowrap">Acompanhamento e Forecast</CardTitle>
+                <p className="text-sm text-muted-foreground truncate">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleExport} size="sm" className="h-9">
+            <Button variant="outline" onClick={handleExport} size="sm" className="h-9 shrink-0 ml-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Exportar
             </Button>
