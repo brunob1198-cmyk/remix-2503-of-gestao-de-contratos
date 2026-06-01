@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForecast } from "@/hooks/useForecast";
-import { format, addMonths, startOfMonth, isAfter } from "date-fns";
+import { format, addMonths, startOfMonth, isAfter, subMonths, setYear, setMonth, getYear, getMonth, isBefore, isEqual } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileDown, TrendingUp, Calculator, Calendar, Filter, X } from "lucide-react";
+import { FileDown, TrendingUp, Calculator, Calendar, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-const monthsToShow = 12;
+
 
 export default function ForecastTab() {
   const { data, isLoading, updateForecast } = useForecast();
@@ -29,25 +29,28 @@ export default function ForecastTab() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [periodMonths, setPeriodMonths] = useState(12);
-  const [offsetMonths, setOffsetMonths] = useState(-18);
+  const [startDate, setStartDate] = useState(subMonths(startOfMonth(new Date()), 18));
+  const [endDate, setEndDate] = useState(addMonths(startOfMonth(new Date()), 5));
 
   const today = startOfMonth(new Date());
   
   const columns = useMemo(() => {
     const cols = [];
-    // Aumentar o retrocesso para 18 meses para cobrir todo o histórico de produção do diário
-    for (let i = offsetMonths; i < offsetMonths + periodMonths; i++) {
-      const date = addMonths(today, i);
+    let current = startDate;
+    // Limit to safety to avoid infinite loops if dates are misconfigured
+    let safetyCounter = 0;
+    while (!isAfter(current, endDate) && safetyCounter < 100) {
       cols.push({
-        key: format(date, "yyyy-MM"),
-        label: format(date, "MMM/yy", { locale: ptBR }),
-        isFuture: isAfter(date, today) || format(date, "yyyy-MM") === format(today, "yyyy-MM"),
-        date
+        key: format(current, "yyyy-MM"),
+        label: format(current, "MMM/yy", { locale: ptBR }),
+        isFuture: isAfter(current, today) || format(current, "yyyy-MM") === format(today, "yyyy-MM"),
+        date: current
       });
+      current = addMonths(current, 1);
+      safetyCounter++;
     }
     return cols;
-  }, [today]);
+  }, [startDate, endDate, today]);
 
   const filteredData = useMemo(() => {
     return data.filter(p => {
@@ -188,66 +191,26 @@ export default function ForecastTab() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col space-y-4">
+          <div className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-4">
+              <MonthRangePicker 
+                startDate={startDate} 
+                endDate={endDate} 
+                onSelect={(start, end) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                }} 
+              />
               <div>
                 <CardTitle>Acompanhamento e Forecast</CardTitle>
                 <p className="text-sm text-muted-foreground">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-md border">
-                  <span className="text-xs font-medium px-2">Visualizar:</span>
-                  <div className="flex gap-1">
-                    {[12, 18, 24].map((n) => (
-                      <Button 
-                        key={n}
-                        variant={periodMonths === n ? "default" : "ghost"} 
-                        size="sm" 
-                        className="h-7 text-xs px-3"
-                        onClick={() => setPeriodMonths(n)}
-                      >
-                        {n} Meses
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="w-[1px] h-4 bg-border mx-1" />
-                  <div className="flex gap-1">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 text-xs px-2"
-                      onClick={() => setOffsetMonths(prev => prev - 6)}
-                    >
-                      <Calendar className="h-3 w-3 mr-1" /> Retroceder
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-7 text-xs px-2"
-                      onClick={() => setOffsetMonths(prev => prev + 6)}
-                    >
-                      Avançar <Calendar className="h-3 w-3 ml-1" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 text-xs px-2"
-                      onClick={() => {
-                        setOffsetMonths(-18);
-                        setPeriodMonths(12);
-                      }}
-                    >
-                      Resetar
-                    </Button>
-                  </div>
-                </div>
-                <Button variant="outline" onClick={handleExport} size="sm" className="h-9">
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
-              </div>
             </div>
+            <Button variant="outline" onClick={handleExport} size="sm" className="h-9">
+              <FileDown className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -467,6 +430,108 @@ function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function MonthRangePicker({ startDate, endDate, onSelect }: {
+  startDate: Date,
+  endDate: Date,
+  onSelect: (start: Date, end: Date) => void
+}) {
+  const [tempStart, setTempStart] = useState(startDate);
+  const [tempEnd, setTempEnd] = useState(endDate);
+  const [viewYearStart, setViewYearStart] = useState(getYear(startDate));
+  const [viewYearEnd, setViewYearEnd] = useState(getYear(endDate));
+
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-10 border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/50 gap-2">
+          <Calendar className="h-4 w-4 text-orange-500" />
+          <span className="font-medium">
+            {format(startDate, "MMM/yy", { locale: ptBR })} a {format(endDate, "MMM/yy", { locale: ptBR })}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[480px] p-4" align="start">
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div className="text-center font-semibold text-sm text-muted-foreground">Início</div>
+            <div className="flex items-center justify-between px-2">
+              <Button variant="ghost" size="sm" onClick={() => setViewYearStart(v => v - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg">{viewYearStart}</span>
+              <Button variant="ghost" size="sm" onClick={() => setViewYearStart(v => v + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((m, i) => {
+                const date = setMonth(setYear(startOfMonth(new Date()), viewYearStart), i);
+                const isSelected = isEqual(date, tempStart);
+                return (
+                  <Button
+                    key={m}
+                    variant={isSelected ? "default" : "ghost"}
+                    size="sm"
+                    className={`h-9 text-xs ${isSelected ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}`}
+                    onClick={() => {
+                      setTempStart(date);
+                      if (isBefore(tempEnd, date)) {
+                        setTempEnd(date);
+                        onSelect(date, date);
+                      } else {
+                        onSelect(date, tempEnd);
+                      }
+                    }}
+                  >
+                    {m}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-center font-semibold text-sm text-muted-foreground">Fim</div>
+            <div className="flex items-center justify-between px-2">
+              <Button variant="ghost" size="sm" onClick={() => setViewYearEnd(v => v - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg">{viewYearEnd}</span>
+              <Button variant="ghost" size="sm" onClick={() => setViewYearEnd(v => v + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((m, i) => {
+                const date = setMonth(setYear(startOfMonth(new Date()), viewYearEnd), i);
+                const isSelected = isEqual(date, tempEnd);
+                const isDisabled = isBefore(date, tempStart);
+                return (
+                  <Button
+                    key={m}
+                    variant={isSelected ? "default" : "ghost"}
+                    size="sm"
+                    disabled={isDisabled}
+                    className={`h-9 text-xs ${isSelected ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}`}
+                    onClick={() => {
+                      setTempEnd(date);
+                      onSelect(tempStart, date);
+                    }}
+                  >
+                    {m}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </PopoverContent>
