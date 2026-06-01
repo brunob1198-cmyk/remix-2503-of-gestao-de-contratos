@@ -321,14 +321,14 @@ export default function ForecastTab() {
                   return (
                     <TableRow 
                       key={p.id}
-                      className="absolute left-0 w-full hover:bg-muted/30 transition-colors"
+                      className="absolute left-0 top-0 w-full hover:bg-muted/30 transition-colors flex items-center"
                       style={{ 
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`
                       }}
                     >
-                      <TableCell className="w-[140px] sticky left-0 bg-background z-20 border-r truncate">{p.areaObj?.nome || "-"}</TableCell>
-                      <TableCell className="w-[200px] font-medium sticky left-[140px] bg-background z-20 border-r truncate">{p.nome}</TableCell>
+                      <TableCell className="w-[140px] shrink-0 sticky left-0 bg-background z-20 border-r truncate h-full flex items-center">{p.areaObj?.nome || "-"}</TableCell>
+                      <TableCell className="w-[200px] shrink-0 font-medium sticky left-[140px] bg-background z-20 border-r truncate h-full flex items-center">{p.nome}</TableCell>
                       <TableCell className="w-[180px] truncate border-r">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                       <TableCell className="w-[120px] border-r">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
