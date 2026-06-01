@@ -1,10 +1,11 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Camera, Plus, Trash2 } from "lucide-react";
+import { Camera, Plus, Trash2, Upload } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FotosSectionProps {
   fotos: any[];
@@ -24,7 +25,32 @@ function FotosSection({
   setPhotoView,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
+  const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
   const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleDrag = useCallback((e: React.DragEvent, group: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActiveGroup(group);
+    } else if (e.type === "dragleave") {
+      setDragActiveGroup(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, group: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveGroup(null);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const syntheticEvent = {
+        target: {
+          files: e.dataTransfer.files
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      onUpload(syntheticEvent, group);
+    }
+  }, [onUpload]);
 
   const unlistedPhotos = fotos.filter(
     f => !f.diario_producao_id && (!f.classificacao || !photoGroups.includes(f.classificacao)),
@@ -97,9 +123,18 @@ function FotosSection({
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+              <div 
+                className={cn(
+                  "grid grid-cols-4 gap-4 p-4 rounded-lg border-2 border-transparent transition-all",
+                  dragActiveGroup === group ? "border-dashed border-primary bg-primary/5 scale-[1.01]" : "border-transparent"
+                )}
+                onDragEnter={(e) => handleDrag(e, group)}
+                onDragOver={(e) => handleDrag(e, group)}
+                onDragLeave={(e) => handleDrag(e, null)}
+                onDrop={(e) => handleDrop(e, group)}
+              >
                 {groupPhotos.map(f => (
-                  <div key={f.id} className="relative group rounded overflow-hidden border">
+                  <div key={f.id} className="relative group rounded overflow-hidden border bg-background">
                     <SmartImage
                       src={f.thumb_url || f.url}
                       context="diario_fotos"
@@ -110,7 +145,7 @@ function FotosSection({
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 z-10"
+                      className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemove(f.id);
@@ -122,8 +157,9 @@ function FotosSection({
                   </div>
                 ))}
                 {groupPhotos.length === 0 && (
-                  <div className="col-span-4 py-4 text-center text-xs text-muted-foreground border border-dashed rounded italic">
-                    Nenhuma foto neste grupo
+                  <div className="col-span-4 py-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/30 flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground/50" />
+                    <p>Arraste fotos aqui ou use o botão adicionar</p>
                   </div>
                 )}
               </div>
