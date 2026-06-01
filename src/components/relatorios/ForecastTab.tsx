@@ -254,7 +254,6 @@ export default function ForecastTab() {
                         options={uniqueAreas} 
                         selected={selectedAreas} 
                         onSelect={setSelectedAreas} 
-                        className="ml-1"
                       />
                     </div>
                   </TableHead>
