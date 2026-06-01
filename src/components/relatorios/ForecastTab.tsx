@@ -348,7 +348,7 @@ export default function ForecastTab() {
                         return (
                           <TableCell 
                             key={col.key} 
-                            className={`text-center w-[110px] p-1 border-r ${col.isFuture ? "bg-blue-50/20" : ""}`}
+                            className={`text-center w-[110px] shrink-0 p-1 border-r h-full flex items-center justify-center ${col.isFuture ? "bg-blue-50/20" : ""}`}
                           >
                             {!col.isFuture ? (
                                <span className="text-muted-foreground text-[10px]">{realValue > 0 ? formatCurrency(realValue) : "-"}</span>
