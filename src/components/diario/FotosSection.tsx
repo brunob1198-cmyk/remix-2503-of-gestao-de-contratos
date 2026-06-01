@@ -123,9 +123,18 @@ function FotosSection({
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+              <div 
+                className={cn(
+                  "grid grid-cols-4 gap-4 p-4 rounded-lg border-2 border-transparent transition-all",
+                  dragActiveGroup === group ? "border-dashed border-primary bg-primary/5 scale-[1.01]" : "border-transparent"
+                )}
+                onDragEnter={(e) => handleDrag(e, group)}
+                onDragOver={(e) => handleDrag(e, group)}
+                onDragLeave={(e) => handleDrag(e, null)}
+                onDrop={(e) => handleDrop(e, group)}
+              >
                 {groupPhotos.map(f => (
-                  <div key={f.id} className="relative group rounded overflow-hidden border">
+                  <div key={f.id} className="relative group rounded overflow-hidden border bg-background">
                     <SmartImage
                       src={f.thumb_url || f.url}
                       context="diario_fotos"
@@ -136,7 +145,7 @@ function FotosSection({
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 z-10"
+                      className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRemove(f.id);
@@ -148,8 +157,9 @@ function FotosSection({
                   </div>
                 ))}
                 {groupPhotos.length === 0 && (
-                  <div className="col-span-4 py-4 text-center text-xs text-muted-foreground border border-dashed rounded italic">
-                    Nenhuma foto neste grupo
+                  <div className="col-span-4 py-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/30 flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground/50" />
+                    <p>Arraste fotos aqui ou use o botão adicionar</p>
                   </div>
                 )}
               </div>
