@@ -37,7 +37,8 @@ export function useForecast() {
       });
       return map;
     },
-    staleTime: 1000 * 60 * 5, // 5 min
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 20, // 20 min
   });
 
   const { data: producaoMensal = {}, isLoading: loadingMensal } = useQuery({
@@ -74,7 +75,8 @@ export function useForecast() {
       });
       return map;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10, // 10 min
+    gcTime: 1000 * 60 * 20, // 20 min
   });
 
   const forecastData = useMemo(() => {
