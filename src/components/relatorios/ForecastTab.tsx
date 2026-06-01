@@ -4,11 +4,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForecast } from "@/hooks/useForecast";
-import { format, addMonths, startOfMonth, endOfMonth, isAfter, isBefore, parseISO } from "date-fns";
+import { format, addMonths, startOfMonth, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileDown, TrendingUp, Calculator, Calendar } from "lucide-react";
+import { FileDown, TrendingUp, Calculator, Calendar, Filter, X } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -20,6 +23,12 @@ export default function ForecastTab() {
   const { toast } = useToast();
   const [editing, setEditing] = useState<{ id: string; month: string } | null>(null);
   const [editValue, setEditValue] = useState("");
+  
+  // Filters
+  const [filterObra, setFilterObra] = useState("");
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
+  const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
 
   const today = startOfMonth(new Date());
   
@@ -36,6 +45,22 @@ export default function ForecastTab() {
     }
     return cols;
   }, [today]);
+
+  const filteredData = useMemo(() => {
+    return data.filter(p => {
+      const matchObra = p.nome.toLowerCase().includes(filterObra.toLowerCase());
+      const matchArea = selectedAreas.length === 0 || (p.areaObj?.nome && selectedAreas.includes(p.areaObj.nome));
+      const matchCliente = selectedClientes.length === 0 || 
+        selectedClientes.includes(p.clienteObj?.razao_social || p.cliente || "Sem Cliente");
+      const matchStatus = selectedStatus.length === 0 || selectedStatus.includes(p.status);
+      
+      return matchObra && matchArea && matchCliente && matchStatus;
+    });
+  }, [data, filterObra, selectedAreas, selectedClientes, selectedStatus]);
+
+  const uniqueAreas = useMemo(() => Array.from(new Set(data.map(p => p.areaObj?.nome).filter(Boolean))) as string[], [data]);
+  const uniqueClientes = useMemo(() => Array.from(new Set(data.map(p => p.clienteObj?.razao_social || p.cliente || "Sem Cliente"))), [data]);
+  const uniqueStatus = useMemo(() => Array.from(new Set(data.map(p => p.status))), [data]);
 
   const handleEdit = (projetoId: string, month: string, currentValue: number) => {
     setEditing({ id: projetoId, month });
@@ -79,13 +104,13 @@ export default function ForecastTab() {
 
   // Cards logic
   const stats = useMemo(() => {
-    const totalContrato = data.reduce((acc, p) => acc + (Number(p.valor_total) || 0), 0);
-    const totalProduzido = data.reduce((acc, p) => acc + p.totalProduzido, 0);
-    const totalSaldo = data.reduce((acc, p) => acc + p.saldo, 0);
+    const totalContrato = filteredData.reduce((acc, p) => acc + (Number(p.valor_total) || 0), 0);
+    const totalProduzido = filteredData.reduce((acc, p) => acc + p.totalProduzido, 0);
+    const totalSaldo = filteredData.reduce((acc, p) => acc + p.saldo, 0);
 
     // Trimestral (Próximos 3 meses)
     const next3Months = columns.filter(c => c.isFuture).slice(0, 3).map(c => c.key);
-    const totalTrimestre = data.reduce((acc, p) => {
+    const totalTrimestre = filteredData.reduce((acc, p) => {
       let sum = 0;
       next3Months.forEach(m => sum += (p.forecast[m] || 0));
       return acc + sum;
@@ -93,7 +118,7 @@ export default function ForecastTab() {
 
     // Anual (Restante do ano atual)
     const currentYear = format(new Date(), "yyyy");
-    const totalAno = data.reduce((acc, p) => {
+    const totalAno = filteredData.reduce((acc, p) => {
       let sum = 0;
       Object.entries(p.forecast).forEach(([m, val]) => {
         if (m.startsWith(currentYear)) sum += (val as number);
@@ -102,14 +127,14 @@ export default function ForecastTab() {
     }, 0);
 
     const columnTotals = columns.reduce((acc, col) => {
-      acc[col.key] = data.reduce((sum, p) => {
+      acc[col.key] = filteredData.reduce((sum, p) => {
         return sum + (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
       }, 0);
       return acc;
     }, {} as Record<string, number>);
 
     return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalAno, columnTotals };
-  }, [data, columns]);
+  }, [filteredData, columns]);
 
   if (isLoading) return <div className="p-8 text-center">Carregando dados de forecast...</div>;
 
@@ -174,10 +199,57 @@ export default function ForecastTab() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="min-w-[120px] sticky left-0 bg-muted/50 z-20">Área</TableHead>
-                  <TableHead className="min-w-[180px] sticky left-[120px] bg-muted/50 z-20">Obra</TableHead>
-                  <TableHead className="min-w-[150px]">Cliente</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="min-w-[140px] sticky left-0 bg-muted/50 z-20">
+                    <div className="flex items-center justify-between">
+                      <span>Área</span>
+                      <MultiSelectFilter 
+                        options={uniqueAreas} 
+                        selected={selectedAreas} 
+                        onSelect={setSelectedAreas} 
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[200px] sticky left-[140px] bg-muted/50 z-20">
+                    <div className="flex flex-col gap-1 py-1">
+                      <span>Obra</span>
+                      <div className="relative">
+                        <Input
+                          placeholder="Filtrar..."
+                          value={filterObra}
+                          onChange={(e) => setFilterObra(e.target.value)}
+                          className="h-7 text-[10px] pr-6"
+                        />
+                        {filterObra && (
+                          <button 
+                            className="absolute right-1 top-1/2 -translate-y-1/2"
+                            onClick={() => setFilterObra("")}
+                          >
+                            <X className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[180px]">
+                    <div className="flex items-center justify-between">
+                      <span>Cliente</span>
+                      <MultiSelectFilter 
+                        options={uniqueClientes} 
+                        selected={selectedClientes} 
+                        onSelect={setSelectedClientes} 
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[120px]">
+                    <div className="flex items-center justify-between">
+                      <span>Status</span>
+                      <MultiSelectFilter 
+                        options={uniqueStatus} 
+                        selected={selectedStatus} 
+                        onSelect={setSelectedStatus} 
+                      />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right whitespace-nowrap">Vlr Contrato</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Execução Total</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Saldo</TableHead>
@@ -192,10 +264,10 @@ export default function ForecastTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((p) => (
+                {filteredData.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="sticky left-0 bg-background z-10 border-r">{p.areaObj?.nome || "-"}</TableCell>
-                    <TableCell className="font-medium sticky left-[120px] bg-background z-10 border-r">{p.nome}</TableCell>
+                    <TableCell className="font-medium sticky left-[140px] bg-background z-10 border-r">{p.nome}</TableCell>
                     <TableCell className="truncate max-w-[150px]">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-semibold uppercase ${
@@ -267,5 +339,58 @@ export default function ForecastTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function MultiSelectFilter({ options, selected, onSelect }: { 
+  options: string[], 
+  selected: string[], 
+  onSelect: (val: string[]) => void 
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+          <Filter className={`h-3 w-3 ${selected.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground"}`} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="start">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">Filtros</span>
+            {selected.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => onSelect([])} 
+                className="h-6 text-[10px]"
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {options.map((option) => (
+              <div key={option} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`filter-${option}`}
+                  checked={selected.includes(option)}
+                  onCheckedChange={(checked) => {
+                    if (checked) onSelect([...selected, option]);
+                    else onSelect(selected.filter(s => s !== option));
+                  }}
+                />
+                <label 
+                  htmlFor={`filter-${option}`}
+                  className="text-xs cursor-pointer select-none flex-1 py-1"
+                >
+                  {option}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
