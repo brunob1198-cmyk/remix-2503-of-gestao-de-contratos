@@ -436,3 +436,105 @@ function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: {
     </Popover>
   );
 }
+
+function MonthRangePicker({ startDate, endDate, onSelect }: {
+  startDate: Date,
+  endDate: Date,
+  onSelect: (start: Date, end: Date) => void
+}) {
+  const [tempStart, setTempStart] = useState(startDate);
+  const [tempEnd, setTempEnd] = useState(endDate);
+  const [viewYearStart, setViewYearStart] = useState(getYear(startDate));
+  const [viewYearEnd, setViewYearEnd] = useState(getYear(endDate));
+
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-10 border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/50 gap-2">
+          <Calendar className="h-4 w-4 text-orange-500" />
+          <span className="font-medium">
+            {format(startDate, "MMM/yy", { locale: ptBR })} a {format(endDate, "MMM/yy", { locale: ptBR })}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[480px] p-4" align="start">
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div className="text-center font-semibold text-sm text-muted-foreground">Início</div>
+            <div className="flex items-center justify-between px-2">
+              <Button variant="ghost" size="sm" onClick={() => setViewYearStart(v => v - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg">{viewYearStart}</span>
+              <Button variant="ghost" size="sm" onClick={() => setViewYearStart(v => v + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((m, i) => {
+                const date = setMonth(setYear(startOfMonth(new Date()), viewYearStart), i);
+                const isSelected = isEqual(date, tempStart);
+                return (
+                  <Button
+                    key={m}
+                    variant={isSelected ? "default" : "ghost"}
+                    size="sm"
+                    className={`h-9 text-xs ${isSelected ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}`}
+                    onClick={() => {
+                      setTempStart(date);
+                      if (isBefore(tempEnd, date)) {
+                        setTempEnd(date);
+                        onSelect(date, date);
+                      } else {
+                        onSelect(date, tempEnd);
+                      }
+                    }}
+                  >
+                    {m}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-center font-semibold text-sm text-muted-foreground">Fim</div>
+            <div className="flex items-center justify-between px-2">
+              <Button variant="ghost" size="sm" onClick={() => setViewYearEnd(v => v - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg">{viewYearEnd}</span>
+              <Button variant="ghost" size="sm" onClick={() => setViewYearEnd(v => v + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((m, i) => {
+                const date = setMonth(setYear(startOfMonth(new Date()), viewYearEnd), i);
+                const isSelected = isEqual(date, tempEnd);
+                const isDisabled = isBefore(date, tempStart);
+                return (
+                  <Button
+                    key={m}
+                    variant={isSelected ? "default" : "ghost"}
+                    size="sm"
+                    disabled={isDisabled}
+                    className={`h-9 text-xs ${isSelected ? "bg-orange-600 hover:bg-orange-700 text-white" : ""}`}
+                    onClick={() => {
+                      setTempEnd(date);
+                      onSelect(tempStart, date);
+                    }}
+                  >
+                    {m}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
