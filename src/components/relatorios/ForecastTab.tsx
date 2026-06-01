@@ -266,6 +266,7 @@ export default function ForecastTab() {
                         selected={selectedObras} 
                         onSelect={setSelectedObras}
                         searchPlaceholder="Pesquisar projeto..."
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
