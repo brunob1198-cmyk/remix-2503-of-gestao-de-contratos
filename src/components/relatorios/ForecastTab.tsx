@@ -262,6 +262,20 @@ export default function ForecastTab() {
                     </TableHead>
                   ))}
                 </TableRow>
+                <TableRow className="bg-muted/30 font-bold border-b-2">
+                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-20 text-right">SUBTOTAL</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalContrato)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap text-green-600">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalSaldo)}</TableCell>
+                  {columns.map((col) => (
+                    <TableCell 
+                      key={col.key} 
+                      className={`text-center whitespace-nowrap ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                    >
+                      {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
+                    </TableCell>
+                  ))}
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.map((p) => (
@@ -318,22 +332,6 @@ export default function ForecastTab() {
                   </TableRow>
                 ))}
               </TableBody>
-              <tfoot className="bg-muted/30 font-bold border-t-2">
-                <TableRow>
-                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-20 text-right">TOTAL</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalContrato)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap text-green-600">{formatCurrency(stats.totalProduzido)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalSaldo)}</TableCell>
-                  {columns.map((col) => (
-                    <TableCell 
-                      key={col.key} 
-                      className={`text-center whitespace-nowrap ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
-                    >
-                      {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </tfoot>
             </Table>
           </div>
         </CardContent>
