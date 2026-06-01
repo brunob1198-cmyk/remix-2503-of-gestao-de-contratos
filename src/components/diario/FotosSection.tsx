@@ -25,7 +25,32 @@ function FotosSection({
   setPhotoView,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
+  const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
   const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleDrag = useCallback((e: React.DragEvent, group: string | null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActiveGroup(group);
+    } else if (e.type === "dragleave") {
+      setDragActiveGroup(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, group: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveGroup(null);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const syntheticEvent = {
+        target: {
+          files: e.dataTransfer.files
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      onUpload(syntheticEvent, group);
+    }
+  }, [onUpload]);
 
   const unlistedPhotos = fotos.filter(
     f => !f.diario_producao_id && (!f.classificacao || !photoGroups.includes(f.classificacao)),
