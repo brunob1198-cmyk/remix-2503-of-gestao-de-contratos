@@ -29,13 +29,15 @@ export default function ForecastTab() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [periodMonths, setPeriodMonths] = useState(12);
+  const [offsetMonths, setOffsetMonths] = useState(-18);
 
   const today = startOfMonth(new Date());
   
   const columns = useMemo(() => {
     const cols = [];
     // Aumentar o retrocesso para 18 meses para cobrir todo o histórico de produção do diário
-    for (let i = -18; i < monthsToShow - 12; i++) {
+    for (let i = offsetMonths; i < offsetMonths + periodMonths; i++) {
       const date = addMonths(today, i);
       cols.push({
         key: format(date, "yyyy-MM"),
@@ -187,14 +189,66 @@ export default function ForecastTab() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Acompanhamento e Forecast</CardTitle>
-            <p className="text-sm text-muted-foreground">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
+          <div className="flex flex-col gap-4 w-full">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Acompanhamento e Forecast</CardTitle>
+                <p className="text-sm text-muted-foreground">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-md border">
+                  <span className="text-xs font-medium px-2">Visualizar:</span>
+                  <div className="flex gap-1">
+                    {[12, 18, 24].map((n) => (
+                      <Button 
+                        key={n}
+                        variant={periodMonths === n ? "default" : "ghost"} 
+                        size="sm" 
+                        className="h-7 text-xs px-3"
+                        onClick={() => setPeriodMonths(n)}
+                      >
+                        {n} Meses
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="w-[1px] h-4 bg-border mx-1" />
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-xs px-2"
+                      onClick={() => setOffsetMonths(prev => prev - 6)}
+                    >
+                      <Calendar className="h-3 w-3 mr-1" /> Retroceder
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-xs px-2"
+                      onClick={() => setOffsetMonths(prev => prev + 6)}
+                    >
+                      Avançar <Calendar className="h-3 w-3 ml-1" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs px-2"
+                      onClick={() => {
+                        setOffsetMonths(-18);
+                        setPeriodMonths(12);
+                      }}
+                    >
+                      Resetar
+                    </Button>
+                  </div>
+                </div>
+                <Button variant="outline" onClick={handleExport} size="sm" className="h-9">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </div>
+            </div>
           </div>
-          <Button variant="outline" onClick={handleExport}>
-            <FileDown className="h-4 w-4 mr-2" />
-            Exportar Forecast
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto border rounded-md">
