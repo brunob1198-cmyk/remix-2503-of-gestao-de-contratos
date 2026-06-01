@@ -244,10 +244,10 @@ export default function ForecastTab() {
             ref={parentRef}
             className="overflow-auto border rounded-md relative h-[600px]"
           >
-            <Table className="border-collapse table-fixed w-full">
+            <Table className="border-collapse w-full">
               <TableHeader className="sticky top-0 z-30 bg-background border-b shadow-sm">
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[140px] sticky left-0 bg-muted/50 z-40 border-r">
+                <TableRow className="bg-muted/50 flex items-center">
+                  <TableHead className="w-[140px] shrink-0 sticky left-0 bg-muted/50 z-40 border-r flex items-center">
                     <div className="flex items-center justify-between">
                       <span>Área</span>
                       <MultiSelectFilter 
