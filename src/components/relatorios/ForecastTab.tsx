@@ -101,7 +101,14 @@ export default function ForecastTab() {
       return acc + sum;
     }, 0);
 
-    return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalAno };
+    const columnTotals = columns.reduce((acc, col) => {
+      acc[col.key] = data.reduce((sum, p) => {
+        return sum + (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
+      }, 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalAno, columnTotals };
   }, [data, columns]);
 
   if (isLoading) return <div className="p-8 text-center">Carregando dados de forecast...</div>;
@@ -239,6 +246,22 @@ export default function ForecastTab() {
                   </TableRow>
                 ))}
               </TableBody>
+              <tfoot className="bg-muted/30 font-bold border-t-2">
+                <TableRow>
+                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-20 text-right">TOTAL</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalContrato)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap text-green-600">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatCurrency(stats.totalSaldo)}</TableCell>
+                  {columns.map((col) => (
+                    <TableCell 
+                      key={col.key} 
+                      className={`text-center whitespace-nowrap ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                    >
+                      {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </tfoot>
             </Table>
           </div>
         </CardContent>
