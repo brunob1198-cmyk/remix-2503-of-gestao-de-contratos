@@ -218,8 +218,8 @@ export default function ForecastTab() {
 
       <Card>
         <CardHeader className="flex flex-col space-y-4">
-          <div className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <MonthRangePicker 
                 startDate={startDate} 
                 endDate={endDate} 
@@ -228,12 +228,12 @@ export default function ForecastTab() {
                   setStoredEndDate(end.toISOString());
                 }} 
               />
-              <div>
-                <CardTitle>Acompanhamento e Forecast</CardTitle>
-                <p className="text-sm text-muted-foreground">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
+              <div className="min-w-0">
+                <CardTitle className="whitespace-nowrap">Acompanhamento e Forecast</CardTitle>
+                <p className="text-sm text-muted-foreground truncate">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleExport} size="sm" className="h-9">
+            <Button variant="outline" onClick={handleExport} size="sm" className="h-9 shrink-0 ml-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Exportar
             </Button>
@@ -244,20 +244,21 @@ export default function ForecastTab() {
             ref={parentRef}
             className="overflow-auto border rounded-md relative h-[600px]"
           >
-            <Table className="border-collapse table-fixed w-full">
+            <Table className="border-collapse w-full">
               <TableHeader className="sticky top-0 z-30 bg-background border-b shadow-sm">
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-[140px] sticky left-0 bg-muted/50 z-40 border-r">
+                <TableRow className="bg-muted/50 flex items-center">
+                  <TableHead className="w-[140px] shrink-0 sticky left-0 bg-muted/50 z-40 border-r flex items-center">
                     <div className="flex items-center justify-between">
                       <span>Área</span>
                       <MultiSelectFilter 
                         options={uniqueAreas} 
                         selected={selectedAreas} 
                         onSelect={setSelectedAreas} 
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[200px] sticky left-[140px] bg-muted/50 z-40 border-r">
+                  <TableHead className="w-[200px] shrink-0 sticky left-[140px] bg-muted/50 z-40 border-r flex items-center">
                     <div className="flex items-center justify-between">
                       <span>Obra</span>
                       <MultiSelectFilter 
@@ -265,50 +266,55 @@ export default function ForecastTab() {
                         selected={selectedObras} 
                         onSelect={setSelectedObras}
                         searchPlaceholder="Pesquisar projeto..."
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[180px] bg-muted/50 border-r">
-                    <div className="flex items-center justify-between">
+                  <TableHead className="w-[180px] shrink-0 bg-muted/50 border-r flex items-center">
+                    <div className="flex items-center justify-between w-full">
                       <span>Cliente</span>
                       <MultiSelectFilter 
                         options={uniqueClientes} 
                         selected={selectedClientes} 
                         onSelect={setSelectedClientes} 
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] bg-muted/50 border-r">
-                    <div className="flex items-center justify-between">
+                  <TableHead className="w-[120px] shrink-0 bg-muted/50 border-r flex items-center">
+                    <div className="flex items-center justify-between w-full">
                       <span>Status</span>
                       <MultiSelectFilter 
                         options={uniqueStatus} 
                         selected={selectedStatus} 
                         onSelect={setSelectedStatus} 
+                        className="ml-1"
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Vlr Contrato</TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Exec Total</TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Saldo</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Vlr Contrato</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Exec Total</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Saldo</TableHead>
                   {columns.map((col) => (
                     <TableHead 
                       key={col.key} 
-                      className={`text-center w-[110px] bg-muted/50 border-r ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
+                      className={`text-center w-[110px] shrink-0 bg-muted/50 border-r flex items-center justify-center ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
                     >
                       {col.label}
                     </TableHead>
                   ))}
                 </TableRow>
-                <TableRow className="bg-muted/30 font-bold border-b-2">
-                  <TableCell colSpan={4} className="sticky left-0 bg-muted/30 z-40 text-right border-r">SUBTOTAL</TableCell>
-                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalContrato)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap text-green-600 border-r">{formatCurrency(stats.totalProduzido)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap border-r">{formatCurrency(stats.totalSaldo)}</TableCell>
+                <TableRow className="bg-muted/30 font-bold border-b-2 flex items-center">
+                  <TableCell className="w-[340px] shrink-0 sticky left-0 bg-muted/30 z-40 text-right border-r flex items-center justify-end">SUBTOTAL</TableCell>
+                  <TableCell className="w-[180px] shrink-0 border-r flex items-center"></TableCell>
+                  <TableCell className="w-[120px] shrink-0 border-r flex items-center"></TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalContrato)}</TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 border-r flex items-center justify-end">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalSaldo)}</TableCell>
                   {columns.map((col) => (
                     <TableCell 
                       key={col.key} 
-                      className={`text-center whitespace-nowrap border-r ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                      className={`text-center w-[110px] shrink-0 whitespace-nowrap border-r flex items-center justify-center ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
                     >
                       {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
                     </TableCell>
@@ -321,25 +327,25 @@ export default function ForecastTab() {
                   return (
                     <TableRow 
                       key={p.id}
-                      className="absolute left-0 w-full hover:bg-muted/30 transition-colors"
+                      className="absolute left-0 top-0 w-full hover:bg-muted/30 transition-colors flex items-center"
                       style={{ 
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`
                       }}
                     >
-                      <TableCell className="w-[140px] sticky left-0 bg-background z-20 border-r truncate">{p.areaObj?.nome || "-"}</TableCell>
-                      <TableCell className="w-[200px] font-medium sticky left-[140px] bg-background z-20 border-r truncate">{p.nome}</TableCell>
-                      <TableCell className="w-[180px] truncate border-r">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
-                      <TableCell className="w-[120px] border-r">
+                      <TableCell className="w-[140px] shrink-0 sticky left-0 bg-background z-20 border-r truncate h-full flex items-center">{p.areaObj?.nome || "-"}</TableCell>
+                      <TableCell className="w-[200px] shrink-0 font-medium sticky left-[140px] bg-background z-20 border-r truncate h-full flex items-center">{p.nome}</TableCell>
+                      <TableCell className="w-[180px] shrink-0 truncate border-r h-full flex items-center">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 border-r h-full flex items-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
                           p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                         }`}>
                           {p.status}
                         </span>
                       </TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap border-r text-xs">{formatCurrency(p.valor_total)}</TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap text-green-600 font-medium border-r text-xs">{formatCurrency(p.totalProduzido)}</TableCell>
-                      <TableCell className="w-[120px] text-right whitespace-nowrap font-bold border-r text-xs">{formatCurrency(p.saldo)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.valor_total)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
                         const realValue = p.mensal[col.key] || 0;
                         const forecastValue = p.forecast[col.key] || 0;
@@ -348,7 +354,7 @@ export default function ForecastTab() {
                         return (
                           <TableCell 
                             key={col.key} 
-                            className={`text-center w-[110px] p-1 border-r ${col.isFuture ? "bg-blue-50/20" : ""}`}
+                            className={`text-center w-[110px] shrink-0 p-1 border-r h-full flex items-center justify-center ${col.isFuture ? "bg-blue-50/20" : ""}`}
                           >
                             {!col.isFuture ? (
                                <span className="text-muted-foreground text-[10px]">{realValue > 0 ? formatCurrency(realValue) : "-"}</span>
@@ -389,11 +395,12 @@ export default function ForecastTab() {
   );
 }
 
-function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: { 
+function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder, className }: { 
   options: string[], 
   selected: string[], 
   onSelect: (val: string[]) => void,
-  searchPlaceholder?: string
+  searchPlaceholder?: string,
+  className?: string
 }) {
   const [search, setSearch] = useState("");
   const filteredOptions = useMemo(() => 
@@ -404,7 +411,7 @@ function MultiSelectFilter({ options, selected, onSelect, searchPlaceholder }: {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+        <Button variant="ghost" size="sm" className={`h-6 w-6 p-0 ${className}`}>
           <Filter className={`h-3 w-3 ${selected.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground"}`} />
         </Button>
       </PopoverTrigger>
