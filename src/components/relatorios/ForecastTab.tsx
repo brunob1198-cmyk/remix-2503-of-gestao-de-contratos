@@ -288,13 +288,13 @@ export default function ForecastTab() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Vlr Contrato</TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Exec Total</TableHead>
-                  <TableHead className="w-[120px] text-right bg-muted/50 border-r">Saldo</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Vlr Contrato</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Exec Total</TableHead>
+                  <TableHead className="w-[120px] shrink-0 text-right bg-muted/50 border-r flex items-center justify-end">Saldo</TableHead>
                   {columns.map((col) => (
                     <TableHead 
                       key={col.key} 
-                      className={`text-center w-[110px] bg-muted/50 border-r ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
+                      className={`text-center w-[110px] shrink-0 bg-muted/50 border-r flex items-center justify-center ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
                     >
                       {col.label}
                     </TableHead>
