@@ -1,10 +1,11 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Camera, Plus, Trash2 } from "lucide-react";
+import { Camera, Plus, Trash2, Upload } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FotosSectionProps {
   fotos: any[];
