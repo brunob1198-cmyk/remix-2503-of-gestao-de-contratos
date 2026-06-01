@@ -30,15 +30,17 @@ export function useForecast() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("view_bi_producao")
-        .select("projeto_id, data_producao, valor_total");
+        .select("projeto_id, projeto_codigo, data_producao, valor_total");
       
       if (error) throw error;
 
       const map: Record<string, Record<string, number>> = {};
       data?.forEach((row: any) => {
         const month = row.data_producao.substring(0, 7); // YYYY-MM
-        if (!map[row.projeto_id]) map[row.projeto_id] = {};
-        map[row.projeto_id][month] = (map[row.projeto_id][month] || 0) + (Number(row.valor_total) || 0);
+        const projId = row.projeto_id;
+        
+        if (!map[projId]) map[projId] = {};
+        map[projId][month] = (map[projId][month] || 0) + (Number(row.valor_total) || 0);
       });
       return map;
     },

@@ -34,8 +34,8 @@ export default function ForecastTab() {
   
   const columns = useMemo(() => {
     const cols = [];
-    // Começar 5 meses atrás para garantir que pegamos todo o histórico recente do diário
-    for (let i = -5; i < monthsToShow - 5; i++) {
+    // Aumentar o retrocesso para 18 meses para cobrir todo o histórico de produção do diário
+    for (let i = -18; i < monthsToShow - 12; i++) {
       const date = addMonths(today, i);
       cols.push({
         key: format(date, "yyyy-MM"),
