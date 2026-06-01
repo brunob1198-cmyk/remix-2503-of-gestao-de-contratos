@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForecast } from "@/hooks/useForecast";
-import { format, addMonths, startOfMonth, isAfter } from "date-fns";
+import { format, addMonths, startOfMonth, isAfter, subMonths, setYear, setMonth, getYear, getMonth, isBefore, isEqual } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileDown, TrendingUp, Calculator, Calendar, Filter, X } from "lucide-react";
+import { FileDown, TrendingUp, Calculator, Calendar, Filter, X, ChevronLeft, ChevronRight } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
