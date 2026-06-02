@@ -1202,7 +1202,7 @@ export function DetailMedicaoContent({
     .doc-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 18px; gap: 16px; }
     .doc-header-left { display: flex; gap: 16px; align-items: center; }
     .doc-header-right { text-align: right; display: flex; gap: 16px; align-items: flex-end; }
-    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; }
+    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; display: block; }
     .doc-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
     .doc-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
     .doc-num { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
@@ -1240,7 +1240,7 @@ export function DetailMedicaoContent({
     .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
     .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
-    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
     .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; padding-top: 4px; font-size: 9px; }
@@ -1575,7 +1575,7 @@ export function DetailMedicaoContent({
                 <img 
                   src={logoToUse!} 
                   alt="Logo Empresa" 
-                  style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
+                  style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
                   crossOrigin="anonymous"
                   data-retry-count="0"
                   onLoad={(e) => {
@@ -1643,8 +1643,9 @@ export function DetailMedicaoContent({
                 <img 
                   src={logoToUse} 
                   alt="Logo Cliente" 
-                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
+                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px", display: 'block' }} 
                   crossOrigin="anonymous" 
+
                   data-retry-count="0"
                   onError={(e) => { 
                     const target = e.currentTarget;
