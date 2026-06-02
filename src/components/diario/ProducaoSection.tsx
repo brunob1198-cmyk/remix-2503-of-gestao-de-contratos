@@ -69,7 +69,9 @@ function ProducaoSection({
               <TableHead className="text-right">Qtd</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Fotos</TableHead>
+              <TableHead>Mover</TableHead>
               <TableHead />
+
             </TableRow>
           </TableHeader>
           <TableBody>
