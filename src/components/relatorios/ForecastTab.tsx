@@ -94,11 +94,22 @@ export default function ForecastTab() {
     setEditValue(currentValue ? currentValue.toString() : "");
   };
 
-  const handleSave = async () => {
-    if (!editing) return;
+  const handleSave = async (projetoId: string, month: string) => {
+    if (!editing || (editing.id !== projetoId || editing.month !== month)) return;
+    
+    const val = parseFloat(editValue.replace(",", ".")) || 0;
+    
+    // Check if value actually changed to avoid unnecessary updates
+    const projeto = data.find(p => p.id === projetoId);
+    const currentValue = projeto?.forecast?.[month] || 0;
+    
+    if (val === currentValue) {
+      setEditing(null);
+      return;
+    }
+
     try {
-      const val = parseFloat(editValue.replace(",", ".")) || 0;
-      await updateForecast(editing.id, editing.month, val);
+      await updateForecast(projetoId, month, val);
       setEditing(null);
       toast({ title: "Previsão atualizada!" });
     } catch (error) {
@@ -364,8 +375,8 @@ export default function ForecastTab() {
                                 onChange={(e) => setEditValue(e.target.value)}
                                 className="h-7 w-full text-center text-[10px] px-1"
                                 autoFocus
-                                onBlur={handleSave}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                                 onBlur={() => handleSave(p.id, col.key)}
+                                 onKeyDown={(e) => e.key === 'Enter' && handleSave(p.id, col.key)}
                               />
                             ) : (
                               <div 
