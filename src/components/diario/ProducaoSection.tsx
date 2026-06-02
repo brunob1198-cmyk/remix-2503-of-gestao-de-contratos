@@ -37,7 +37,10 @@ function ProducaoSection({
   onRemove,
   onUpdate,
   onUploadFoto,
+  onMover,
+  selectedDate,
 }: ProducaoSectionProps) {
+
   const [prodItemId, setProdItemId] = useState("");
   const [prodQtd, setProdQtd] = useState("");
   const [pendingProdFiles, setPendingProdFiles] = useState<File[]>([]);
