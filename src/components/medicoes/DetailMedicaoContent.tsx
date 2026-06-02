@@ -187,7 +187,12 @@ export function DetailMedicaoContent({
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
   const getLogoUrl = useCallback((url: string | null | undefined) => {
-    return resolveFileUrl(url, false, "empresas"); // Usa o bucket medicao-capas
+    if (!url) return "";
+    // Se for um PDF, não serve como logo
+    if (typeof url === 'string' && url.toLowerCase().endsWith('.pdf')) {
+      return "";
+    }
+    return resolveFileUrl(url, false, "empresas"); 
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => 
