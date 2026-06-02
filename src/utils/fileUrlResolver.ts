@@ -26,6 +26,12 @@ export function resolveFileUrl(
   if (!path || path.trim() === "") return "";
   
   let trimmedPath = path.trim();
+  
+  // Se for base64 (data URI), retorna como está
+  if (trimmedPath.startsWith("data:")) {
+    return trimmedPath;
+  }
+
   const isSupabaseUrl = trimmedPath.startsWith(SUPABASE_BASE);
 
   // 1. Se for uma URL absoluta, mas do Supabase, verificamos se o bucket está correto se houver contexto

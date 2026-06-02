@@ -436,7 +436,9 @@ export function DetailMedicaoContent({
 
         return {
           id: f.id,
-          url: f.url,
+          url: f.url ? resolveFileUrl(f.url, true, "diario_fotos") || f.url : "",
+          thumb_url: f.thumb_url,
+          thumb_600_url: f.thumb_600_url,
           classificacao: normalizedClass,
           legenda: f.legenda,
           diario_producao_id: (f as any).diario_producao_id,
