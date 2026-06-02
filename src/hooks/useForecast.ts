@@ -6,43 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 export function useForecast() {
   const { projetos, isLoading: loadingProjetos, updateProjeto } = useProjetos();
 
-  const { data: producaoTotal = {}, isLoading: loadingProducao } = useQuery({
-    queryKey: ["producao_total_projetos"],
-    queryFn: async () => {
-      // Usar a view de produção para pegar o total produzido por projeto
-      let allData: any[] = [];
-      let hasMore = true;
-      let offset = 0;
-      const limit = 1000;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("view_bi_producao")
-          .select("projeto_id, valor_total")
-          .range(offset, offset + limit - 1);
-        
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          hasMore = false;
-        } else {
-          allData = [...allData, ...data];
-          offset += limit;
-          if (data.length < limit) hasMore = false;
-        }
-      }
-
-      const map: Record<string, number> = {};
-      allData.forEach((row: any) => {
-        map[row.projeto_id] = (map[row.projeto_id] || 0) + (Number(row.valor_total) || 0);
-      });
-      return map;
-    },
-    staleTime: 1000 * 60 * 10, // 10 min
-    gcTime: 1000 * 60 * 20, // 20 min
-  });
-
-  const { data: producaoMensal = {}, isLoading: loadingMensal } = useQuery({
-    queryKey: ["producao_mensal_projetos"],
+  const { data: producaoData = [], isLoading: loadingProducao } = useQuery({
+    queryKey: ["producao_forecast_unificada"],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     queryFn: async () => {
       let allData: any[] = [];
       let hasMore = true;
@@ -54,30 +21,38 @@ export function useForecast() {
           .from("view_bi_producao")
           .select("projeto_id, projeto_codigo, data_producao, valor_total")
           .range(offset, offset + limit - 1);
-        
+
         if (error) throw error;
         if (!data || data.length === 0) {
           hasMore = false;
-        } else {
-          allData = [...allData, ...data];
-          offset += limit;
-          if (data.length < limit) hasMore = false;
+          break;
         }
+        allData = [...allData, ...data];
+        offset += limit;
+        if (data.length < limit) hasMore = false;
       }
-
-      const map: Record<string, Record<string, number>> = {};
-      allData.forEach((row: any) => {
-        const month = row.data_producao.substring(0, 7); // YYYY-MM
-        const projId = row.projeto_id;
-        
-        if (!map[projId]) map[projId] = {};
-        map[projId][month] = (map[projId][month] || 0) + (Number(row.valor_total) || 0);
-      });
-      return map;
+      return allData;
     },
-    staleTime: 1000 * 60 * 10, // 10 min
-    gcTime: 1000 * 60 * 20, // 20 min
   });
+
+  const producaoTotal = useMemo(() => {
+    const map: Record<string, number> = {};
+    producaoData.forEach(row => {
+      map[row.projeto_id] = (map[row.projeto_id] || 0) + Number(row.valor_total || 0);
+    });
+    return map;
+  }, [producaoData]);
+
+  const producaoMensal = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    producaoData.forEach(row => {
+      const month = row.data_producao?.substring(0, 7);
+      if (!month) return;
+      if (!map[row.projeto_id]) map[row.projeto_id] = {};
+      map[row.projeto_id][month] = (map[row.projeto_id][month] || 0) + Number(row.valor_total || 0);
+    });
+    return map;
+  }, [producaoData]);
 
   const forecastData = useMemo(() => {
     return projetos.map((p) => {
@@ -122,7 +97,7 @@ export function useForecast() {
 
   return {
     data: forecastData,
-    isLoading: loadingProjetos || loadingProducao || loadingMensal,
+    isLoading: loadingProjetos || loadingProducao,
     updateForecast,
   };
 }
