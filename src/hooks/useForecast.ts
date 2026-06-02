@@ -108,10 +108,16 @@ export function useForecast() {
       newForecast[month] = value;
     }
 
-    await updateProjeto.mutateAsync({
-      id: projetoId,
-      forecast_data: newForecast,
-    } as any);
+    try {
+      await updateProjeto.mutateAsync({
+        id: projetoId,
+        forecast_data: newForecast,
+      } as any);
+      return true;
+    } catch (error) {
+      console.error("Error updating forecast:", error);
+      throw error;
+    }
   };
 
   return {
