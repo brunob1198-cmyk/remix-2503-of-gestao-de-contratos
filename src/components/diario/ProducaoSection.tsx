@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Camera, Check, Pencil, Trash2, X } from "lucide-react";
+import { Camera, Check, Pencil, Trash2, X, MoveHorizontal } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,7 +26,10 @@ interface ProducaoSectionProps {
   onRemove: (id: string) => void;
   onUpdate: (id: string, qtd: string) => Promise<void> | void;
   onUploadFoto: (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => void;
+  onMover?: (producaoId: string, novaData: string) => Promise<void> | void;
+  selectedDate?: string;
   fotos: any[];
+
 }
 
 function ProducaoSection({
@@ -34,7 +39,10 @@ function ProducaoSection({
   onRemove,
   onUpdate,
   onUploadFoto,
+  onMover,
+  selectedDate,
 }: ProducaoSectionProps) {
+
   const [prodItemId, setProdItemId] = useState("");
   const [prodQtd, setProdQtd] = useState("");
   const [pendingProdFiles, setPendingProdFiles] = useState<File[]>([]);
@@ -69,7 +77,9 @@ function ProducaoSection({
               <TableHead className="text-right">Qtd</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Fotos</TableHead>
+              <TableHead>Mover</TableHead>
               <TableHead />
+
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -98,6 +108,37 @@ function ProducaoSection({
                   </Button>
                 </TableCell>
                 <TableCell>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" title="Mover para outra data">
+                        <MoveHorizontal className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3 space-y-3">
+                      <p className="text-xs font-medium">Mover item para:</p>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="date" 
+                          defaultValue={selectedDate} 
+                          id={`move-date-${p.id}`}
+                          className="h-8 text-xs"
+                        />
+                        <Button 
+                          size="sm"
+                          className="h-8"
+                          onClick={() => {
+                            const date = (document.getElementById(`move-date-${p.id}`) as HTMLInputElement).value;
+                            if (date && onMover) onMover(p.id, date);
+                          }}
+                        >
+                          Mover
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </TableCell>
+                <TableCell>
+
                   <div className="flex items-center gap-1 justify-end">
                     {editingProducaoId === p.id ? (
                       <>
@@ -118,10 +159,11 @@ function ProducaoSection({
                             setEditProducaoQtd(String(p.quantidade));
                           }}
                           className="h-8 w-8"
+                          title="Editar quantidade"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(p.id)} className="h-8 w-8 text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(p.id)} className="h-8 w-8 text-destructive" title="Excluir item">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
