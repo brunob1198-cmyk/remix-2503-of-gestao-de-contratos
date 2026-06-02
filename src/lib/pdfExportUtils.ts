@@ -26,11 +26,13 @@ export async function getSafeImageUrl(url: string): Promise<string> {
   if (url.startsWith('data:')) return url;
   
   try {
-    const response = await fetch(url, { mode: 'no-cors' }); 
-    if (!response.ok) throw new Error('Network response was not ok');
+    const response = await fetch(url, { mode: 'cors', cache: 'force-cache' }); 
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return url;
   } catch (error) {
-    console.warn(`CORS failure for image: ${url}.`, error);
+    console.warn(`CORS verification failed for image: ${url}.`, error);
+    // If CORS fails, we try to proxied or fallback, but for now we return as is
+    // so the browser can try its default behavior
     return url;
   }
 }
