@@ -1575,7 +1575,7 @@ export function DetailMedicaoContent({
                 <img 
                   src={logoToUse!} 
                   alt="Logo Empresa" 
-                  style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain" }} 
+                  style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
                   crossOrigin="anonymous"
                   data-retry-count="0"
                   onLoad={(e) => {
