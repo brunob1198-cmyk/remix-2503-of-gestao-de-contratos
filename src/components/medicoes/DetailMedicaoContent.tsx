@@ -1240,7 +1240,7 @@ export function DetailMedicaoContent({
     .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
     .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
-    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
     .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; padding-top: 4px; font-size: 9px; }
