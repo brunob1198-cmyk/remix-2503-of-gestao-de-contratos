@@ -785,6 +785,7 @@ export function DetailMedicaoContent({
 
         return {
           url: finalUrl,
+          fallbackUrls: [foto.thumb_url, foto.thumb_600_url].filter(Boolean) as string[],
           filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
@@ -1023,9 +1024,10 @@ export function DetailMedicaoContent({
               <img 
                 src="${safePath}" 
                 data-original-src="${foto.url}"
+                data-fallback-src="${foto.thumb_url || foto.thumb_600_url || ''}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
-                onerror="if(!this.dataset.triedUrl){ this.dataset.triedUrl=true; this.src=this.dataset.originalSrc; } else { this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; }">
+                onerror="if(!this.dataset.triedUrl){ this.dataset.triedUrl=true; this.src=this.dataset.originalSrc; } else if (!this.dataset.triedFallback && this.dataset.fallbackSrc) { this.dataset.triedFallback=true; this.src=this.dataset.fallbackSrc; } else { this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; }">
             ` : `
               <div class="non-image-file">
                 <span>📄 Arquivo ${extension.toUpperCase()}</span>

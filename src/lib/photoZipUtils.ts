@@ -4,6 +4,7 @@ import { savePhotoToCache, getPhotoFromCache, clearPhotoCache } from './db';
 
 export interface PhotoToZip {
   url: string;
+  fallbackUrls?: string[];
   filename: string;
   folder?: string;
 }
@@ -176,7 +177,23 @@ const processPhoto = async (
         }
       };
 
-      const response = await fetchWithRetry(photo.url);
+      const urlsToTry = [photo.url, ...(photo.fallbackUrls || [])].filter(Boolean);
+      let response: Response | null = null;
+      let lastErr: any = null;
+
+      for (const u of urlsToTry) {
+        try {
+          response = await fetchWithRetry(u);
+          break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      if (!response) {
+        throw lastErr || new Error("Failed to fetch any URL");
+      }
+
       blob = await response.blob();
       
       if (!blob || blob.size < 100) {
