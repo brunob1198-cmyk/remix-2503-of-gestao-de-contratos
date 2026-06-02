@@ -9,6 +9,7 @@ import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -780,12 +781,13 @@ export function DetailMedicaoContent({
         // Nome de arquivo extremamente limpo
         const fileName = `foto_${index + 1}_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
         
-        // Se o modo reduzido estiver ativo, usamos a transformação do Supabase Storage para economizar banda
-        const finalUrl = foto.url;
+        const allUrls = buildPossibleImageUrls(foto.url, [foto.thumb_url, foto.thumb_600_url], "diario_fotos");
+        const finalUrl = allUrls[0] || foto.url;
+        const remainingUrls = allUrls.slice(1);
 
         return {
           url: finalUrl,
-          fallbackUrls: [foto.thumb_url, foto.thumb_600_url].filter(Boolean) as string[],
+          fallbackUrls: remainingUrls,
           filename: fileName,
           folder: `fotos/${siteName}/${classification}`
         };
@@ -1017,17 +1019,35 @@ export function DetailMedicaoContent({
       const showItem = opts?.showItem !== false;
       const showSiteName = !!opts?.showSiteName;
 
+      const allUrls = buildPossibleImageUrls(foto.url, [foto.thumb_url, foto.thumb_600_url], "diario_fotos");
+      const primaryUrl = allUrls[0] || foto.url;
+      const fallbackStr = allUrls.slice(1).join(',');
+
       return `
         <div class="photo-card">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
                 src="${safePath}" 
-                data-original-src="${foto.url}"
-                data-fallback-src="${foto.thumb_url || foto.thumb_600_url || ''}"
+                data-original-src="${primaryUrl}"
+                data-fallback-src="${fallbackStr}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
-                onerror="if(!this.dataset.triedUrl){ this.dataset.triedUrl=true; this.src=this.dataset.originalSrc; } else if (!this.dataset.triedFallback && this.dataset.fallbackSrc) { this.dataset.triedFallback=true; this.src=this.dataset.fallbackSrc; } else { this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; }">
+                onerror="
+                  if(!this.dataset.triedUrl){ 
+                    this.dataset.triedUrl=true; 
+                    this.src=this.dataset.originalSrc; 
+                  } else { 
+                    let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
+                    let idx = parseInt(this.dataset.fallbackIdx || '0');
+                    if (idx < fallbacks.length) {
+                      this.dataset.fallbackIdx = idx + 1;
+                      this.src = fallbacks[idx];
+                    } else {
+                      this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; 
+                    }
+                  }
+                ">
             ` : `
               <div class="non-image-file">
                 <span>📄 Arquivo ${extension.toUpperCase()}</span>
