@@ -1202,7 +1202,7 @@ export function DetailMedicaoContent({
     .doc-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--primary); padding-bottom: 12px; margin-bottom: 18px; gap: 16px; }
     .doc-header-left { display: flex; gap: 16px; align-items: center; }
     .doc-header-right { text-align: right; display: flex; gap: 16px; align-items: flex-end; }
-    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; }
+    .doc-header img { max-height: 60px; max-width: 180px; object-fit: contain; display: block; }
     .doc-title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
     .doc-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
     .doc-num { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; color: #0f172a; }
