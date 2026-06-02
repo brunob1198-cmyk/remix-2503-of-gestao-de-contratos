@@ -466,7 +466,7 @@ export function GerarMedicaoDialog({
     if (selectedItens.length === 0) return;
 
     const today = new Date().toISOString().split("T")[0];
-    const customLogo = empresaLogoUrl || localStorage.getItem("custom_logo_url") || "/logo.png";
+    const customLogo = empresaLogoUrl || localStorage.getItem("custom_logo_url") || "";
 
     let items: any[];
 
