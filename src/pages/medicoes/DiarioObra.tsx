@@ -515,19 +515,60 @@ export default function DiarioObraPage() {
                     </SelectContent>
                   </Select>
                   <UfMunicipioSelector uf={diarioUf} municipio={diarioMunicipio} onUfChange={setDiarioUf} onMunicipioChange={setDiarioMunicipio} />
-                  <Button 
-                    onClick={handleSaveHeader}
-                    className={cn(headerSaved && "bg-green-600 hover:bg-green-700")}
-                  >
-                    {headerSaved ? (
-                      <>
-                        <Check className="mr-2 h-4 w-4" />
-                        Salvo
-                      </>
-                    ) : (
-                      "Salvar"
+                  
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={handleSaveHeader}
+                      className={cn(headerSaved && "bg-green-600 hover:bg-green-700")}
+                    >
+                      {headerSaved ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Salvo
+                        </>
+                      ) : (
+                        "Salvar"
+                      )}
+                    </Button>
+
+                    {diario && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="gap-2">
+                            <Copy className="h-4 w-4" />
+                            Transferir Apontamento
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-4 space-y-4">
+                          <div className="space-y-2">
+                            <h4 className="font-medium leading-none">Mover para outra data</h4>
+                            <p className="text-sm text-muted-foreground">Todos os dados deste dia serão movidos.</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input 
+                              type="date" 
+                              defaultValue={selectedDate} 
+                              id="move-to-date" 
+                            />
+                            <Button 
+                              onClick={async () => {
+                                const newDate = (document.getElementById("move-to-date") as HTMLInputElement).value;
+                                if (!newDate || newDate === selectedDate) return;
+                                try {
+                                  await moverDiario.mutateAsync({ diarioId: diario.id, novaData: newDate });
+                                  setSelectedDate(newDate);
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                            >
+                              Transferir
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </div>
 
