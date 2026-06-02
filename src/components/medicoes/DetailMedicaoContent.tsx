@@ -1602,16 +1602,20 @@ export function DetailMedicaoContent({
                   <img 
                     src={logoToUse!} 
                     alt="Logo Empresa" 
+                    key={`logo-${logoToUse?.length || 0}`}
                     style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
                     crossOrigin={isBase64 ? undefined : "anonymous"}
                     onLoad={(e) => {
                       const target = e.currentTarget;
                       target.style.display = 'block';
+                      console.log("[DetailMedicaoContent] Logo loaded successfully");
                     }}
                     onError={(e) => { 
                       const target = e.currentTarget;
                       if (target.dataset.errorHandled) return;
                       target.dataset.errorHandled = "true";
+                      
+                      console.error("[DetailMedicaoContent] Logo load error. URL start:", logoToUse?.substring(0, 50));
                       
                       target.style.display = 'none';
                       const fallback = document.createElement('div');
