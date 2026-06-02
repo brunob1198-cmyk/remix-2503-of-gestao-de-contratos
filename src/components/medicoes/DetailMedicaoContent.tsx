@@ -195,9 +195,13 @@ export function DetailMedicaoContent({
     return resolveFileUrl(url, false, "empresas"); 
   }, []);
 
-  const finalEmpresaLogoUrl = useMemo(() => 
-    getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url")),
-  [detailMedicao.logo_empresa_url, getLogoUrl]);
+  const finalEmpresaLogoUrl = useMemo(() => {
+    let url = getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url"));
+    if (url?.startsWith("data:image/png;base64,/9j/")) {
+      url = url.replace("data:image/png;base64,", "data:image/jpeg;base64,");
+    }
+    return url;
+  }, [detailMedicao.logo_empresa_url, getLogoUrl]);
 
   const finalClienteLogoUrl = useMemo(() => 
     getLogoUrl(clienteLogoUrl),
