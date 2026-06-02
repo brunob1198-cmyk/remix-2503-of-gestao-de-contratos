@@ -196,7 +196,9 @@ export function DetailMedicaoContent({
   }, []);
 
   const finalEmpresaLogoUrl = useMemo(() => {
-    let url = getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url"));
+    let rawUrl = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url");
+    let url = getLogoUrl(rawUrl);
+    
     if (url?.startsWith("data:image/png;base64,/9j/")) {
       url = url.replace("data:image/png;base64,", "data:image/jpeg;base64,");
     }
@@ -374,7 +376,7 @@ export function DetailMedicaoContent({
             .from("diario_fotos")
             .select("*")
             .in("diario_id", diarioIds)
-            .order("created_at", { ascending: true })
+            .order("diario_id", { ascending: true }) // Agrupar para facilitar se necessário, mas a data manda
             .range(from, from + 999);
           if (error) throw error;
           if (!data?.length) break;
@@ -406,7 +408,14 @@ export function DetailMedicaoContent({
         }
       }
 
-      return (fotos || []).map(f => {
+      const sortedFotos = (fotos || []).sort((a, b) => {
+        const dateA = diarioMap.get(a.diario_id)?.data || "";
+        const dateB = diarioMap.get(b.diario_id)?.data || "";
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.created_at || "").localeCompare(b.created_at || "");
+      });
+
+      return sortedFotos.map(f => {
         const diario = diarioMap.get(f.diario_id);
         const producao = (f as any).diario_producao_id ? producaoMap.get((f as any).diario_producao_id) : null;
         const fotoSite = diario ? sites.find(s => s.id === diario.site_id) : null;
