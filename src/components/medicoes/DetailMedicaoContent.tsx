@@ -1595,8 +1595,8 @@ export function DetailMedicaoContent({
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
                 const logoToUse = base64EmpresaLogo || finalEmpresaLogoUrl;
-                const hasValidEmpresaLogo = !!logoToUse && logoToUse.length > 10;
-                const isBase64 = logoToUse?.startsWith('data:');
+                const hasValidEmpresaLogo = !!logoToUse && logoToUse.length > 30;
+                const isBase64 = typeof logoToUse === 'string' && logoToUse.startsWith('data:');
                 
                 return hasValidEmpresaLogo ? (
                   <img 
