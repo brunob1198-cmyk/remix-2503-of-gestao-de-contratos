@@ -197,8 +197,16 @@ export function DetailMedicaoContent({
 
   const finalEmpresaLogoUrl = useMemo(() => {
     let rawUrl = detailMedicao.logo_empresa_url || localStorage.getItem("custom_logo_url");
+    console.log("[DetailMedicaoContent] Raw logo URL:", rawUrl);
+    
+    // Se for base64 puro sem prefixo, adiciona prefixo
+    if (rawUrl && rawUrl.length > 100 && !rawUrl.startsWith('data:') && !rawUrl.startsWith('http')) {
+      rawUrl = `data:image/png;base64,${rawUrl}`;
+    }
+
     let url = getLogoUrl(rawUrl);
     
+    // Correção de prefixo se detectado JPEG em wrapper PNG (comum em conversões)
     if (url?.startsWith("data:image/png;base64,/9j/")) {
       url = url.replace("data:image/png;base64,", "data:image/jpeg;base64,");
     }
@@ -1587,23 +1595,27 @@ export function DetailMedicaoContent({
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
                 const logoToUse = base64EmpresaLogo || finalEmpresaLogoUrl;
-                const hasValidEmpresaLogo = !!logoToUse && logoToUse.length > 10;
-                const isBase64 = logoToUse?.startsWith('data:');
+                const hasValidEmpresaLogo = !!logoToUse && logoToUse.length > 30;
+                const isBase64 = typeof logoToUse === 'string' && logoToUse.startsWith('data:');
                 
                 return hasValidEmpresaLogo ? (
                   <img 
                     src={logoToUse!} 
                     alt="Logo Empresa" 
+                    key={`logo-${logoToUse?.length || 0}`}
                     style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
                     crossOrigin={isBase64 ? undefined : "anonymous"}
                     onLoad={(e) => {
                       const target = e.currentTarget;
                       target.style.display = 'block';
+                      console.log("[DetailMedicaoContent] Logo loaded successfully");
                     }}
                     onError={(e) => { 
                       const target = e.currentTarget;
                       if (target.dataset.errorHandled) return;
                       target.dataset.errorHandled = "true";
+                      
+                      console.error("[DetailMedicaoContent] Logo load error. URL start:", logoToUse?.substring(0, 50));
                       
                       target.style.display = 'none';
                       const fallback = document.createElement('div');
