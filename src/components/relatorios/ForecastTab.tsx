@@ -99,7 +99,7 @@ export default function ForecastTab() {
     
     const val = parseFloat(editValue.replace(",", ".")) || 0;
     
-    // Check if value actually changed to avoid unnecessary updates
+    // Get fresh data from the hook to ensure we compare with latest state
     const projeto = data.find(p => p.id === projetoId);
     const currentValue = projeto?.forecast?.[month] || 0;
     
@@ -359,7 +359,7 @@ export default function ForecastTab() {
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
                         const realValue = p.mensal[col.key] || 0;
-                        const forecastValue = p.forecast[col.key] || 0;
+                        const forecastValue = (p as any).forecast_data?.[col.key] || 0;
                         const isEditing = editing?.id === p.id && editing?.month === col.key;
 
                         return (
@@ -380,7 +380,7 @@ export default function ForecastTab() {
                               />
                             ) : (
                               <div 
-                                className="cursor-pointer hover:bg-blue-100/50 rounded transition-colors min-h-[28px] flex items-center justify-center"
+                                className="cursor-pointer hover:bg-blue-100/50 rounded transition-colors min-h-[28px] flex items-center justify-center w-full"
                                 onClick={() => handleEdit(p.id, col.key, forecastValue)}
                               >
                                 <span className="text-blue-700 font-medium text-[10px]">

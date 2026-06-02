@@ -47,6 +47,7 @@ export function useProjetos() {
           empresa_id,
           cliente,
           contrato_ids,
+          forecast_data,
           clienteObj:clientes(id, razao_social),
           contratoObj:contratos(id, numero_contrato, valor_total),
           areaObj:areas(id, nome)
