@@ -187,12 +187,21 @@ export function DetailMedicaoContent({
   const clienteLogoUrl = site?.clienteObj?.logo_url || site?.projeto?.clienteObj?.logo_url;
 
   const getLogoUrl = useCallback((url: string | null | undefined) => {
-    return resolveFileUrl(url, false, "empresas"); // Usa o bucket medicao-capas
+    if (!url) return "";
+    // Se for um PDF, não serve como logo
+    if (typeof url === 'string' && url.toLowerCase().endsWith('.pdf')) {
+      return "";
+    }
+    return resolveFileUrl(url, false, "empresas"); 
   }, []);
 
-  const finalEmpresaLogoUrl = useMemo(() => 
-    getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url")),
-  [detailMedicao.logo_empresa_url, getLogoUrl]);
+  const finalEmpresaLogoUrl = useMemo(() => {
+    let url = getLogoUrl(detailMedicao.logo_empresa_url) || getLogoUrl(localStorage.getItem("custom_logo_url"));
+    if (url?.startsWith("data:image/png;base64,/9j/")) {
+      url = url.replace("data:image/png;base64,", "data:image/jpeg;base64,");
+    }
+    return url;
+  }, [detailMedicao.logo_empresa_url, getLogoUrl]);
 
   const finalClienteLogoUrl = useMemo(() => 
     getLogoUrl(clienteLogoUrl),
@@ -1569,57 +1578,37 @@ export function DetailMedicaoContent({
             <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
               {(() => {
                 const logoToUse = base64EmpresaLogo || finalEmpresaLogoUrl;
-                const hasValidEmpresaLogo = !!logoToUse;
+                const hasValidEmpresaLogo = !!logoToUse && logoToUse.length > 10;
+                const isBase64 = logoToUse?.startsWith('data:');
                 
                 return hasValidEmpresaLogo ? (
-                <img 
-                  src={logoToUse!} 
-                  alt="Logo Empresa" 
-                  style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
-                  crossOrigin="anonymous"
-                  data-retry-count="0"
-                  onLoad={(e) => {
-                    const target = e.currentTarget;
-                    target.style.display = 'block';
-                  }}
-                  onError={(e) => { 
-                    const target = e.currentTarget;
-                    const maxRetries = 3;
-                    const currentRetry = parseInt(target.dataset.retryCount || "0");
-                    
-                    if (currentRetry < maxRetries && !logoToUse!.startsWith('data:')) {
-                      const nextRetry = currentRetry + 1;
-                      target.dataset.retryCount = nextRetry.toString();
+                  <img 
+                    src={logoToUse!} 
+                    alt="Logo Empresa" 
+                    style={{ maxHeight: 60, maxWidth: 180, objectFit: "contain", display: 'block' }} 
+                    crossOrigin={isBase64 ? undefined : "anonymous"}
+                    onLoad={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'block';
+                    }}
+                    onError={(e) => { 
+                      const target = e.currentTarget;
+                      if (target.dataset.errorHandled) return;
+                      target.dataset.errorHandled = "true";
                       
-                      if (nextRetry === 1) {
-                        target.removeAttribute('crossorigin');
-                      }
-                      
-                      const baseSrc = logoToUse!.split('?')[0];
-                      const sep = baseSrc.includes('?') ? '&' : '?';
-                      
-                      setTimeout(() => {
-                        target.src = `${baseSrc}${sep}retry=${nextRetry}`;
-                      }, 500);
-                      return;
-                    }
-
-                    if (target.dataset.errorHandled) return;
-                    target.dataset.errorHandled = "true";
-                    
-                    target.style.display = 'none';
-                    const fallback = document.createElement('div');
-                    fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
-                    fallback.innerText = 'LOGO INDISPONÍVEL';
-                    target.parentNode?.insertBefore(fallback, target);
-                    addLog(`Falha definitiva ao carregar logo da empresa.`, "error");
-                  }} 
-                />
-              ) : (
-                <div style={{ width: '140px', height: '50px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', border: '1px dashed #cbd5e1', borderRadius: '4px' }}>
-                  LOGO DA EMPRESA
-                </div>
-              );
+                      target.style.display = 'none';
+                      const fallback = document.createElement('div');
+                      fallback.style.cssText = 'width:140px;height:50px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;font-weight:bold;border:1px dashed #cbd5e1;border-radius:4px;';
+                      fallback.innerText = 'LOGO INDISPONÍVEL';
+                      target.parentNode?.insertBefore(fallback, target);
+                      addLog(`Erro ao carregar logo da empresa. URL: ${logoToUse?.substring(0, 50)}...`, "error");
+                    }} 
+                  />
+                ) : (
+                  <div style={{ width: '140px', height: '50px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px', fontWeight: 'bold', border: '1px dashed #cbd5e1', borderRadius: '4px' }}>
+                    LOGO INDISPONÍVEL
+                  </div>
+                );
               })()}
               <div>
                 <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a", lineHeight: '1.6' }}>Relatório de Medição</h1>

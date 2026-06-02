@@ -39,7 +39,14 @@ export async function getPdfSafeImageDataUrl(
   url: string,
   options: { maxWidth?: number; maxHeight?: number; quality?: number; forceLowRes?: boolean } = {},
 ): Promise<string> {
-  if (!url || url.startsWith("data:")) return url;
+  if (!url) return "";
+  
+  // Normalizar base64 se o prefixo estiver errado (ex: png para jpeg)
+  if (url.startsWith("data:image/png;base64,/9j/")) {
+    url = url.replace("data:image/png;base64,", "data:image/jpeg;base64,");
+  }
+
+  if (url.startsWith("data:")) return url;
 
   let maxWidth = options.maxWidth ?? 1200;
   let maxHeight = options.maxHeight ?? 900;
