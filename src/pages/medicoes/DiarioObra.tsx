@@ -648,8 +648,11 @@ export default function DiarioObraPage() {
               onRemove={(id) => removeProducao.mutate(id)}
               onUpdate={handleUpdateProducao}
               onUploadFoto={handleUploadFoto}
+              onMover={(producaoId, novaData) => moverProducao.mutate({ producaoId, novaData })}
+              selectedDate={selectedDate}
               fotos={fotos}
             />
+
 
             <EquipeSection
               equipe={equipe}
