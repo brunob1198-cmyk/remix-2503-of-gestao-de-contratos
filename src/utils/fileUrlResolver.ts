@@ -93,7 +93,7 @@ export function resolveFileUrl(
     // Garantir que não estamos tratando UUID como bucket
     // Se o path começa com um UUID, mantemos como pasta
     
-    const fullPath = `${bucket}/${trimmedPath}`;
+    const fullPath = `${bucket}/${trimmedPath.startsWith('/') ? trimmedPath.slice(1) : trimmedPath}`;
     console.log(`[RESOLVER] Context: ${context}, Bucket: ${bucket}, Original: ${path}, Result: ${fullPath}`);
     
     return `${SUPABASE_BASE}/${fullPath}`;
