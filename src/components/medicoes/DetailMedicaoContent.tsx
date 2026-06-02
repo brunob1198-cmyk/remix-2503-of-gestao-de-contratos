@@ -1643,8 +1643,9 @@ export function DetailMedicaoContent({
                 <img 
                   src={logoToUse} 
                   alt="Logo Cliente" 
-                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px" }} 
+                  style={{ maxHeight: 54, maxWidth: 180, objectFit: "contain", marginLeft: "15px", display: 'block' }} 
                   crossOrigin="anonymous" 
+
                   data-retry-count="0"
                   onError={(e) => { 
                     const target = e.currentTarget;
