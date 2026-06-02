@@ -24,7 +24,10 @@ interface ProducaoSectionProps {
   onRemove: (id: string) => void;
   onUpdate: (id: string, qtd: string) => Promise<void> | void;
   onUploadFoto: (e: React.ChangeEvent<HTMLInputElement>, classificacao: string, diarioProducaoId?: string) => void;
+  onMover?: (producaoId: string, novaData: string) => Promise<void> | void;
+  selectedDate?: string;
   fotos: any[];
+
 }
 
 function ProducaoSection({
