@@ -97,7 +97,7 @@ export function useForecast() {
 
   return {
     data: forecastData,
-    isLoading: loadingProjetos || loadingProducao || loadingMensal,
+    isLoading: loadingProjetos || loadingProducao,
     updateForecast,
   };
 }
