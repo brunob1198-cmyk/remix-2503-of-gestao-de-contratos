@@ -118,10 +118,11 @@ function ProducaoSection({
                             setEditProducaoQtd(String(p.quantidade));
                           }}
                           className="h-8 w-8"
+                          title="Editar quantidade"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemove(p.id)} className="h-8 w-8 text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => onRemove(p.id)} className="h-8 w-8 text-destructive" title="Excluir item">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
