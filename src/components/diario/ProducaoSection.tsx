@@ -106,6 +106,37 @@ function ProducaoSection({
                   </Button>
                 </TableCell>
                 <TableCell>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" title="Mover para outra data">
+                        <MoveHorizontal className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-3 space-y-3">
+                      <p className="text-xs font-medium">Mover item para:</p>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="date" 
+                          defaultValue={selectedDate} 
+                          id={`move-date-${p.id}`}
+                          className="h-8 text-xs"
+                        />
+                        <Button 
+                          size="sm"
+                          className="h-8"
+                          onClick={() => {
+                            const date = (document.getElementById(`move-date-${p.id}`) as HTMLInputElement).value;
+                            if (date && onMover) onMover(p.id, date);
+                          }}
+                        >
+                          Mover
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </TableCell>
+                <TableCell>
+
                   <div className="flex items-center gap-1 justify-end">
                     {editingProducaoId === p.id ? (
                       <>
