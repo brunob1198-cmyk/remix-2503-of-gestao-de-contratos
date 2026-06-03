@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Camera, MapPin, Calendar, Loader2, ScrollText, AlertCircle, CheckCircle2, X, Play, RotateCcw, Settings2, Download, Archive, HardHat, Users, FileDown } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
@@ -455,6 +456,21 @@ export function DetailMedicaoContent({
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
+  const { data: rdoSummary = [] } = useQuery({
+    queryKey: ["medicao_rdo_summary", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+      const { data } = await supabase
+        .from("diarios_obra")
+        .select("id, site_id, status_ativo")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio)
+        .lte("data", detailMedicao.periodo_fim);
+      return data || [];
+    },
+    enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
   // Fetch all RDO data for resources used
   const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
     queryKey: ["medicao_rdo_resources_by_site", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
@@ -637,6 +653,67 @@ export function DetailMedicaoContent({
       default: return "#6b7280";
     }
   };
+
+  const renderSummaryHeader = () => (
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-slate-800">
+            {detailMedicao.site_codigo} - {detailMedicao.site_nome}
+          </h2>
+          {rdoSummary?.some(d => d.status_ativo) && (
+            <div className="flex gap-2">
+              {Array.from(new Set(rdoSummary.map(d => d.status_ativo).filter(Boolean))).map(status => (
+                <Badge 
+                  key={status}
+                  variant="outline" 
+                  className={cn(
+                    "font-bold px-2 py-0.5 border-2",
+                    status === "ON" 
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      : "bg-rose-50 text-rose-700 border-rose-200"
+                  )}
+                >
+                  STATUS {status}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-slate-50">
+            {detailMedicao.uf}
+          </Badge>
+          <Badge variant="outline" className="bg-slate-50">
+            {detailMedicao.numero_medicao}
+          </Badge>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50/50 rounded-lg border border-slate-100">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Período</span>
+          <span className="text-sm font-medium text-slate-700">
+            {detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : "-"} a {detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : "-"}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Projeto</span>
+          <span className="text-sm font-medium text-slate-700 truncate" title={detailMedicao.projeto_nome}>
+            {detailMedicao.projeto_codigo} - {detailMedicao.projeto_nome}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Número PO</span>
+          <span className="text-sm font-medium text-slate-700">{detailMedicao.numero_po || "N/A"}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total</span>
+          <span className="text-sm font-bold text-primary">{formatCurrency(detailMedicao.total_valor)}</span>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
@@ -1346,6 +1423,14 @@ export function DetailMedicaoContent({
 
     <div class="info-grid">
       <div class="info-item"><span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} - ${detailMedicao.site_nome}</span></div>
+      <div class="info-item"><span class="label">Status do Ativo:</span> 
+        ${rdoSummary.some(d => d.status_ativo) ? 
+          Array.from(new Set(rdoSummary.map(d => d.status_ativo).filter(Boolean))).map(s => 
+            `<span class="badge" style="background-color: ${s === 'ON' ? '#10b981' : '#ef4444'}; font-size: 10px; padding: 2px 8px; margin-right: 4px;">STATUS ${s}</span>`
+          ).join('') : 
+          '<span class="value">N/A</span>'
+        }
+      </div>
       <div class="info-item"><span class="label">UF:</span> <span class="value">${detailMedicao.uf}</span></div>
       <div class="info-item"><span class="label">Projeto:</span> <span class="value">${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</span></div>
       <div class="info-item"><span class="label">Período:</span> <span class="value">${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : ''} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : ''}</span></div>
@@ -1547,6 +1632,7 @@ export function DetailMedicaoContent({
 
       {/* Printable content */}
       <div ref={printRef} className="print-container">
+        {renderSummaryHeader()}
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
