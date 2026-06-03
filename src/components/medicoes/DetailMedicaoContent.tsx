@@ -1361,6 +1361,14 @@ export function DetailMedicaoContent({
 
     <div class="info-grid">
       <div class="info-item"><span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} - ${detailMedicao.site_nome}</span></div>
+      <div class="info-item"><span class="label">Status do Ativo:</span> 
+        ${rdoSummary.some(d => d.status_ativo) ? 
+          Array.from(new Set(rdoSummary.map(d => d.status_ativo).filter(Boolean))).map(s => 
+            `<span class="badge" style="background-color: ${s === 'ON' ? '#10b981' : '#ef4444'}; font-size: 10px; padding: 2px 8px; margin-right: 4px;">STATUS ${s}</span>`
+          ).join('') : 
+          '<span class="value">N/A</span>'
+        }
+      </div>
       <div class="info-item"><span class="label">UF:</span> <span class="value">${detailMedicao.uf}</span></div>
       <div class="info-item"><span class="label">Projeto:</span> <span class="value">${detailMedicao.projeto_codigo} - ${detailMedicao.projeto_nome}</span></div>
       <div class="info-item"><span class="label">Período:</span> <span class="value">${detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : ''} até ${detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : ''}</span></div>
