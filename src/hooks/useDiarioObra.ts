@@ -755,7 +755,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
 
   return {
     diario, loadingDiario, criarDiario,
-    atualizarObservacoes, atualizarClima, atualizarLocalizacao,
+    atualizarObservacoes, atualizarClima, atualizarStatusAtivo, atualizarLocalizacao,
     producoes, loadingProducao, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
