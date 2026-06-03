@@ -1547,6 +1547,7 @@ export function DetailMedicaoContent({
 
       {/* Printable content */}
       <div ref={printRef} className="print-container">
+        {renderSummaryHeader()}
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
             .print-container { padding: 0 !important; margin: 0 !important; width: 100% !important; background: white !important; }
