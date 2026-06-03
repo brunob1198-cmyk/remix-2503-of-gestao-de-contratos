@@ -10,6 +10,9 @@ export interface DiarioObra {
   observacoes: string | null;
   created_at: string | null;
   updated_at: string | null;
+  clima: string | null;
+  uf: string | null;
+  municipio: string | null;
   status_ativo: string | null;
 }
 
