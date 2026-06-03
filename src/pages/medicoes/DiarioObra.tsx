@@ -78,6 +78,7 @@ export default function DiarioObraPage() {
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
   const [diarioClima, setDiarioClima] = useState("");
+  const [diarioStatusAtivo, setDiarioStatusAtivo] = useState("");
   const [headerSaved, setHeaderSaved] = useState(false);
   const [photoView, setPhotoView] = useState<any>(null);
 
@@ -116,7 +117,7 @@ export default function DiarioObraPage() {
       }));
 
   const {
-    diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
+    diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarStatusAtivo, atualizarLocalizacao,
     producoes, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
@@ -143,6 +144,7 @@ export default function DiarioObraPage() {
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
+      setDiarioStatusAtivo(d.status_ativo || "");
       
       setObs(diario.observacoes || "");
       
@@ -151,6 +153,7 @@ export default function DiarioObraPage() {
       lastDiarioId.current = null;
       setObs("");
       setDiarioClima("");
+      setDiarioStatusAtivo("");
       setHeaderSaved(false);
     }
   }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
@@ -179,6 +182,7 @@ export default function DiarioObraPage() {
     if (!diarioId) return;
 
     await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
+    await atualizarStatusAtivo.mutateAsync({ id: diarioId, status_ativo: diarioStatusAtivo });
     await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
     await atualizarObservacoes.mutateAsync({ id: diarioId, observacoes: obs });
     setHeaderSaved(true);
@@ -866,6 +870,28 @@ export default function DiarioObraPage() {
                   </TableBody>
                 </Table>
               </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Status do Ativo</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={diarioStatusAtivo === "On" ? "default" : "outline"}
+                    className={cn(diarioStatusAtivo === "On" && "bg-green-600 hover:bg-green-700")}
+                    onClick={() => setDiarioStatusAtivo("On")}
+                  >
+                    On
+                  </Button>
+                  <Button
+                    variant={diarioStatusAtivo === "Off" ? "default" : "outline"}
+                    className={cn(diarioStatusAtivo === "Off" && "bg-red-600 hover:bg-red-700")}
+                    onClick={() => setDiarioStatusAtivo("Off")}
+                  >
+                    Off
+                  </Button>
+                </div>
+              </CardHeader>
             </Card>
 
             <FotosSection

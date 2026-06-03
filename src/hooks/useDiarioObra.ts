@@ -10,6 +10,7 @@ export interface DiarioObra {
   observacoes: string | null;
   created_at: string | null;
   updated_at: string | null;
+  status_ativo: string | null;
 }
 
 export interface DiarioProducao {
@@ -108,6 +109,14 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["diario_calendario"] });
     },
     onError: (e: Error) => toast({ title: "Erro ao criar diário", description: e.message, variant: "destructive" }),
+  });
+
+  const atualizarStatusAtivo = useMutation({
+    mutationFn: async ({ id, status_ativo }: { id: string; status_ativo: string }) => {
+      const { error } = await supabase.from("diarios_obra").update({ status_ativo }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_obra"] }),
   });
 
   const atualizarObservacoes = useMutation({
