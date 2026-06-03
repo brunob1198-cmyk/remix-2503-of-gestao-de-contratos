@@ -95,6 +95,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
         ${localidade ? `<div class="site-info-item"><strong>Localidade:</strong> ${localidade}</div>` : ''}
         <div class="site-info-item"><strong>Data:</strong> ${dataFormatada}</div>
         <div class="site-info-item"><strong>Clima:</strong> ${diario.clima || "Não informado"}</div>
+        <div class="site-info-item"><strong>Status Ativo:</strong> ${diario.status_ativo === "On" ? '<span style="color: green; font-weight: bold;">ON</span>' : diario.status_ativo === "Off" ? '<span style="color: red; font-weight: bold;">OFF</span>' : "Não informado"}</div>
       </div>
 
       ${diario.producoes.length > 0 ? `
