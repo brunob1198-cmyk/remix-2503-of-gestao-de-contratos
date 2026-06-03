@@ -640,9 +640,53 @@ export default function DiarioObraPage() {
                     </div>
                     <TrendingUp className="h-8 w-8 text-primary opacity-50" />
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-amber-100">
+            <CardHeader className="pb-3 bg-amber-50/30">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Play className="h-4 w-4 text-amber-600" />
+                Status do Ativo ao Fim do Acionamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mt-2">
+                <Button 
+                  variant={diarioStatusAtivo === "ON" ? "default" : "outline"} 
+                  className={cn(
+                    "flex-1 gap-2 h-12 text-base font-semibold transition-all",
+                    diarioStatusAtivo === "ON" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100" : "hover:border-emerald-200 hover:bg-emerald-50/50"
+                  )}
+                  onClick={() => setDiarioStatusAtivo("ON")}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-full animate-pulse",
+                    diarioStatusAtivo === "ON" ? "bg-white" : "bg-emerald-500"
+                  )} />
+                  STATUS ON
+                </Button>
+                <Button 
+                  variant={diarioStatusAtivo === "OFF" ? "default" : "outline"} 
+                  className={cn(
+                    "flex-1 gap-2 h-12 text-base font-semibold transition-all",
+                    diarioStatusAtivo === "OFF" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-100" : "hover:border-rose-200 hover:bg-rose-50/50"
+                  )}
+                  onClick={() => setDiarioStatusAtivo("OFF")}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-full",
+                    diarioStatusAtivo === "OFF" ? "bg-white" : "bg-rose-500"
+                  )} />
+                  STATUS OFF
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 italic">
+                * Informe se o equipamento foi deixado operando (ON) ou desligado (OFF).
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
             <ProducaoSection
               producoes={producoes}
