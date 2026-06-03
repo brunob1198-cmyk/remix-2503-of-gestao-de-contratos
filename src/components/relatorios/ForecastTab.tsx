@@ -149,7 +149,15 @@ export default function ForecastTab() {
     const totalTrimestre = filteredData.reduce((acc, p) => {
       let sum = 0;
       next3Months.forEach(m => {
-        // Correct calculation: actual production (if any) + forecast
+        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
+      });
+      return acc + sum;
+    }, 0);
+
+    const next6Months = columns.filter(c => c.isFuture).slice(0, 6).map(c => c.key);
+    const totalSemestre = filteredData.reduce((acc, p) => {
+      let sum = 0;
+      next6Months.forEach(m => {
         sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
       });
       return acc + sum;
@@ -158,7 +166,6 @@ export default function ForecastTab() {
     const currentYear = format(new Date(), "yyyy");
     const totalAno = filteredData.reduce((acc, p) => {
       let sum = 0;
-      // Include everything for the current year: actual production + forecast
       columns.forEach(col => {
         if (col.key.startsWith(currentYear)) {
           sum += (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
@@ -174,7 +181,7 @@ export default function ForecastTab() {
       return acc;
     }, {} as Record<string, number>);
 
-    return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalAno, columnTotals };
+    return { totalContrato, totalProduzido, totalSaldo, totalTrimestre, totalSemestre, totalAno, columnTotals };
   }, [filteredData, columns]);
 
   // Virtualization
@@ -190,7 +197,7 @@ export default function ForecastTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Contrato Total</CardTitle>
@@ -219,6 +226,16 @@ export default function ForecastTab() {
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalTrimestre)}</div>
             <p className="text-xs text-muted-foreground">Projeção próximos 3 meses</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-blue-500/5 border-blue-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Forecast Semestre</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalSemestre)}</div>
+            <p className="text-xs text-muted-foreground">Projeção próximos 6 meses</p>
           </CardContent>
         </Card>
         <Card className="bg-orange-500/5 border-orange-500/20">
