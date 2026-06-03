@@ -1108,6 +1108,7 @@ export type Database = {
           municipio: string | null
           observacoes: string | null
           site_id: string
+          status_ativo: string | null
           uf: string | null
           updated_at: string | null
         }
@@ -1119,6 +1120,7 @@ export type Database = {
           municipio?: string | null
           observacoes?: string | null
           site_id: string
+          status_ativo?: string | null
           uf?: string | null
           updated_at?: string | null
         }
@@ -1130,6 +1132,7 @@ export type Database = {
           municipio?: string | null
           observacoes?: string | null
           site_id?: string
+          status_ativo?: string | null
           uf?: string | null
           updated_at?: string | null
         }
