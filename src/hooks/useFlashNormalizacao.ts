@@ -255,6 +255,16 @@ export function useFlashNormalizacao() {
         
         // Se já existe uma normalização no banco, ela TEM prioridade sobre o mapeamento automático
         // para garantir que edições manuais persistam.
+        if (n.conta_azul_category_id) {
+          base.conta_azul_category_id = n.conta_azul_category_id;
+        }
+        if (n.conta_azul_category_name) {
+          base.conta_azul_category_name = n.conta_azul_category_name;
+        }
+        if (n.tipo_operacao) {
+          base.tipo_operacao = n.tipo_operacao;
+        }
+
         if (n.conta_azul_payload?.cost_center) {
           base.flash_cost_center = n.conta_azul_payload.cost_center;
         }
