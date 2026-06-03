@@ -189,23 +189,33 @@ async function getTransactions(params: {
       break;
     }
 
-    if (nextCursor && nextCursor !== cursor) {
-      cursor = nextCursor;
+    // Tentar extrair metadados do payload principal ou meta/metadata
+    const metaNextCursor = nextCursor ?? payload.metadata?.next_cursor ?? payload.meta?.next_cursor;
+    const metaNextPage = nextPage ?? payload.metadata?.next_page ?? payload.meta?.next_page;
+    const metaTotalPages = totalPages ?? payload.metadata?.totalPages ?? payload.meta?.totalPages ?? payload.metadata?.total_pages ?? payload.meta?.total_pages;
+    const metaHasMore = hasMore ?? payload.metadata?.hasMore ?? payload.meta?.hasMore ?? payload.metadata?.has_more ?? payload.meta?.has_more;
+
+    if (metaNextCursor && metaNextCursor !== cursor) {
+      cursor = metaNextCursor as string;
       continue;
     }
-    if (typeof nextPage === "number" && nextPage > page) {
-      page = nextPage;
+    if (typeof metaNextPage === "number" && metaNextPage > page) {
+      page = metaNextPage;
       continue;
     }
-    if (totalPages && page < Number(totalPages)) {
+    if (metaTotalPages && page < Number(metaTotalPages)) {
       page += 1;
       continue;
     }
-    if (hasMore === true) {
+    if (metaHasMore === true) {
       page += 1;
       continue;
     }
-    if (list.length >= FLASH_PAGE_SIZE && totalPages == null && hasMore == null) {
+    
+    // Fallback robusto: se a API não retornou metadados de paginação ou eles não triggaram o continue,
+    // mas a página veio com itens, assumimos que pode haver mais uma página.
+    // O loop infinito é evitado pela verificação `newOnPage === 0` no início do laço.
+    if (list.length > 0) {
       page += 1;
       continue;
     }
