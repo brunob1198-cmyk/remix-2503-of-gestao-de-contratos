@@ -455,6 +455,21 @@ export function DetailMedicaoContent({
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
+  const { data: rdoSummary = [] } = useQuery({
+    queryKey: ["medicao_rdo_summary", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
+    queryFn: async () => {
+      if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
+      const { data } = await supabase
+        .from("diarios_obra")
+        .select("id, site_id, status_ativo")
+        .in("site_id", allSiteIds)
+        .gte("data", detailMedicao.periodo_inicio)
+        .lte("data", detailMedicao.periodo_fim);
+      return data || [];
+    },
+    enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
+  });
+
   // Fetch all RDO data for resources used
   const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
     queryKey: ["medicao_rdo_resources_by_site", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
