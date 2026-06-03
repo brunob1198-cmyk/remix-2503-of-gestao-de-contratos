@@ -148,15 +148,21 @@ export default function ForecastTab() {
     const next3Months = columns.filter(c => c.isFuture).slice(0, 3).map(c => c.key);
     const totalTrimestre = filteredData.reduce((acc, p) => {
       let sum = 0;
-      next3Months.forEach(m => sum += (p.forecast[m] || 0));
+      next3Months.forEach(m => {
+        // Correct calculation: actual production (if any) + forecast
+        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
+      });
       return acc + sum;
     }, 0);
 
     const currentYear = format(new Date(), "yyyy");
     const totalAno = filteredData.reduce((acc, p) => {
       let sum = 0;
-      Object.entries(p.forecast).forEach(([m, val]) => {
-        if (m.startsWith(currentYear)) sum += (val as number);
+      // Include everything for the current year: actual production + forecast
+      columns.forEach(col => {
+        if (col.key.startsWith(currentYear)) {
+          sum += (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
+        }
       });
       return acc + sum;
     }, 0);
