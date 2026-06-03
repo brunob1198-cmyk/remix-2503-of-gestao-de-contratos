@@ -653,6 +653,67 @@ export function DetailMedicaoContent({
     }
   };
 
+  const renderSummaryHeader = () => (
+    <div className="flex flex-col gap-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-slate-800">
+            {detailMedicao.site_codigo} - {detailMedicao.site_nome}
+          </h2>
+          {rdoSummary?.some(d => d.status_ativo) && (
+            <div className="flex gap-2">
+              {Array.from(new Set(rdoSummary.map(d => d.status_ativo).filter(Boolean))).map(status => (
+                <Badge 
+                  key={status}
+                  variant="outline" 
+                  className={cn(
+                    "font-bold px-2 py-0.5 border-2",
+                    status === "ON" 
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      : "bg-rose-50 text-rose-700 border-rose-200"
+                  )}
+                >
+                  STATUS {status}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-slate-50">
+            {detailMedicao.uf}
+          </Badge>
+          <Badge variant="outline" className="bg-slate-50">
+            {detailMedicao.numero_medicao}
+          </Badge>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50/50 rounded-lg border border-slate-100">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Período</span>
+          <span className="text-sm font-medium text-slate-700">
+            {detailMedicao.periodo_inicio ? formatDate(detailMedicao.periodo_inicio) : "-"} a {detailMedicao.periodo_fim ? formatDate(detailMedicao.periodo_fim) : "-"}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Projeto</span>
+          <span className="text-sm font-medium text-slate-700 truncate" title={detailMedicao.projeto_nome}>
+            {detailMedicao.projeto_codigo} - {detailMedicao.projeto_nome}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Número PO</span>
+          <span className="text-sm font-medium text-slate-700">{detailMedicao.numero_po || "N/A"}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total</span>
+          <span className="text-sm font-bold text-primary">{formatCurrency(detailMedicao.total_valor)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderPhotoCard = useCallback(
     (foto: DiarioFotoWithItem, options?: { showItem?: boolean; showSiteName?: boolean }) => (
       <div 
