@@ -369,8 +369,8 @@ export function useFlashNormalizacao() {
         conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
         conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
         external_id: row.external_id, flash_type: row.flash_type,
-        comentarios: row.comentarios !== "—" ? row.comentarios : null,
-        cost_center: row.flash_cost_center !== "—" ? row.flash_cost_center : null,
+        comentarios: merged.comentarios !== "—" ? merged.comentarios : (row.comentarios !== "—" ? row.comentarios : null),
+        cost_center: merged.flash_cost_center !== "—" ? merged.flash_cost_center : (row.flash_cost_center !== "—" ? row.flash_cost_center : null),
         force_pago: true
       });
 
