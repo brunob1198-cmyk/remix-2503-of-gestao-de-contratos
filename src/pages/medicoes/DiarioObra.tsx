@@ -49,7 +49,7 @@ import { DiarioCalendario, CLIMA_OPTIONS } from "@/components/medicoes/DiarioCal
 import {
   Plus, Trash2, Upload, Camera, Wrench, Users, Truck,
   HardHat, TrendingUp, TrendingDown, DollarSign, Calendar, MapPin, Copy, Pencil, Check, X,
-  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag, Loader2, MessageSquare
+  CalendarDays, ClipboardEdit, AlertTriangle, ChevronDown, ChevronUp, FileText, Tag, Loader2, MessageSquare, Play
 } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
@@ -78,6 +78,7 @@ export default function DiarioObraPage() {
   const [diarioUf, setDiarioUf] = usePersistedState<string>("diario_obra_uf", "");
   const [diarioMunicipio, setDiarioMunicipio] = usePersistedState<string>("diario_obra_municipio", "");
   const [diarioClima, setDiarioClima] = useState("");
+  const [diarioStatusAtivo, setDiarioStatusAtivo] = useState("");
   const [headerSaved, setHeaderSaved] = useState(false);
   const [photoView, setPhotoView] = useState<any>(null);
 
@@ -116,7 +117,7 @@ export default function DiarioObraPage() {
       }));
 
   const {
-    diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarLocalizacao,
+    diario, loadingDiario, criarDiario, atualizarObservacoes, atualizarClima, atualizarStatusAtivo, atualizarLocalizacao,
     producoes, addProducao, removeProducao, updateProducao, moverProducao, moverDiario,
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
@@ -143,6 +144,7 @@ export default function DiarioObraPage() {
       if (d.uf) setDiarioUf(d.uf);
       if (d.municipio) setDiarioMunicipio(d.municipio);
       setDiarioClima(d.clima || "");
+      setDiarioStatusAtivo(d.status_ativo || "");
       
       setObs(diario.observacoes || "");
       
@@ -151,6 +153,7 @@ export default function DiarioObraPage() {
       lastDiarioId.current = null;
       setObs("");
       setDiarioClima("");
+      setDiarioStatusAtivo("");
       setHeaderSaved(false);
     }
   }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
@@ -179,6 +182,7 @@ export default function DiarioObraPage() {
     if (!diarioId) return;
 
     await atualizarClima.mutateAsync({ id: diarioId, clima: diarioClima });
+    await atualizarStatusAtivo.mutateAsync({ id: diarioId, status_ativo: diarioStatusAtivo });
     await atualizarLocalizacao.mutateAsync({ id: diarioId, uf: diarioUf, municipio: diarioMunicipio });
     await atualizarObservacoes.mutateAsync({ id: diarioId, observacoes: obs });
     setHeaderSaved(true);
@@ -636,9 +640,53 @@ export default function DiarioObraPage() {
                     </div>
                     <TrendingUp className="h-8 w-8 text-primary opacity-50" />
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-amber-100">
+            <CardHeader className="pb-3 bg-amber-50/30">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Play className="h-4 w-4 text-amber-600" />
+                Status do Ativo ao Fim do Acionamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mt-2">
+                <Button 
+                  variant={diarioStatusAtivo === "ON" ? "default" : "outline"} 
+                  className={cn(
+                    "flex-1 gap-2 h-12 text-base font-semibold transition-all",
+                    diarioStatusAtivo === "ON" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100" : "hover:border-emerald-200 hover:bg-emerald-50/50"
+                  )}
+                  onClick={() => setDiarioStatusAtivo("ON")}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-full animate-pulse",
+                    diarioStatusAtivo === "ON" ? "bg-white" : "bg-emerald-500"
+                  )} />
+                  STATUS ON
+                </Button>
+                <Button 
+                  variant={diarioStatusAtivo === "OFF" ? "default" : "outline"} 
+                  className={cn(
+                    "flex-1 gap-2 h-12 text-base font-semibold transition-all",
+                    diarioStatusAtivo === "OFF" ? "bg-rose-600 hover:bg-rose-700 shadow-rose-100" : "hover:border-rose-200 hover:bg-rose-50/50"
+                  )}
+                  onClick={() => setDiarioStatusAtivo("OFF")}
+                >
+                  <div className={cn(
+                    "w-3 h-3 rounded-full",
+                    diarioStatusAtivo === "OFF" ? "bg-white" : "bg-rose-500"
+                  )} />
+                  STATUS OFF
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-3 italic">
+                * Informe se o equipamento foi deixado operando (ON) ou desligado (OFF).
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
             <ProducaoSection
               producoes={producoes}
@@ -866,6 +914,28 @@ export default function DiarioObraPage() {
                   </TableBody>
                 </Table>
               </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Status do Ativo</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={diarioStatusAtivo === "On" ? "default" : "outline"}
+                    className={cn(diarioStatusAtivo === "On" && "bg-green-600 hover:bg-green-700")}
+                    onClick={() => setDiarioStatusAtivo("On")}
+                  >
+                    On
+                  </Button>
+                  <Button
+                    variant={diarioStatusAtivo === "Off" ? "default" : "outline"}
+                    className={cn(diarioStatusAtivo === "Off" && "bg-red-600 hover:bg-red-700")}
+                    onClick={() => setDiarioStatusAtivo("Off")}
+                  >
+                    Off
+                  </Button>
+                </div>
+              </CardHeader>
             </Card>
 
             <FotosSection

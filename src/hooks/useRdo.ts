@@ -17,6 +17,7 @@ export interface RdoDiarioResumo {
   data: string;
   observacoes: string | null;
   clima: string | null;
+  status_ativo: string | null;
   site_id: string;
   site_codigo?: string;
   site_nome?: string;
@@ -51,7 +52,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
 
       let q = supabase
         .from("diarios_obra")
-        .select("id, data, observacoes, clima, site_id, municipio, uf")
+        .select("id, data, observacoes, clima, status_ativo, site_id, municipio, uf")
         .in("site_id", siteIds)
         .order("data", { ascending: false });
 
@@ -144,6 +145,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           data: d.data,
           observacoes: d.observacoes,
           clima: (d as any).clima || null,
+          status_ativo: (d as any).status_ativo || null,
           site_id: d.site_id,
           site_codigo: siteInfo?.codigo || "",
           site_nome: siteInfo?.nome || "",
