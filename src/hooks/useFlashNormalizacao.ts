@@ -397,7 +397,9 @@ export function useFlashNormalizacao() {
           conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
           conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
           tipo_operacao: merged.tipo_operacao,
+          updated_at: new Date().toISOString(),
         }, { onConflict: "empresa_id,flash_type,flash_category,flash_cost_center" });
+
         queryClient.invalidateQueries({ queryKey: ["flash_mappings", empresaId] });
       }
     } catch (e: any) {
