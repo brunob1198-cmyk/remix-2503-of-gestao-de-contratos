@@ -211,17 +211,17 @@ export const normalizeFlashTransaction = (
   const fallbackAccountId = "679d675b-006f-474a-be93-b68480396557"; 
   const fallbackAccountName = "Flash";
 
-  // Encontrar o melhor mapping baseado em especificidade
+  // Encontrar o melhor mapping baseado em especificidade e reforço de aprendizado
   const sortedMappings = [...mappings].sort((a, b) => {
     let scoreA = 0;
     let scoreB = 0;
     
-    // Critérios de pontuação:
-    // 1. Descrição (mais específico)
+    // Critérios de pontuação (REFORÇADO):
+    // 1. Descrição exata ou padrão (mais específico)
     // 2. Categoria + Centro de Custo
     // 3. Categoria
     // 4. Centro de Custo
-    // 5. Apenas Tipo
+    // 5. Recência (ajustes mais novos têm peso maior no aprendizado)
     
     if (a.flash_description_pattern) scoreA += 100;
     if (a.flash_category && a.flash_cost_center) scoreA += 50;
@@ -232,6 +232,13 @@ export const normalizeFlashTransaction = (
     if (b.flash_category && b.flash_cost_center) scoreB += 50;
     else if (b.flash_category) scoreB += 30;
     else if (b.flash_cost_center) scoreB += 20;
+
+    // Critério de desempate: recência (aprendizado contínuo)
+    if (scoreA === scoreB) {
+      const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return dateB - dateA;
+    }
     
     return scoreB - scoreA;
   });
@@ -239,20 +246,23 @@ export const normalizeFlashTransaction = (
   const mapping = sortedMappings.find(m => {
     if (m.flash_type !== flash_type) return false;
     
-    // Se o mapping define categoria, deve bater
-    if (m.flash_category && m.flash_category !== flash_category) return false;
-    
-    // Se o mapping define centro de custo, deve bater
-    if (m.flash_cost_center && m.flash_cost_center !== flash_cost_center) return false;
-    
-    // Se o mapping define padrão de descrição, deve bater
+    // Se o mapping define padrão de descrição, ele tem precedência absoluta
     if (m.flash_description_pattern) {
-      const pattern = m.flash_description_pattern.toLowerCase();
-      if (!descricao.toLowerCase().includes(pattern)) return false;
+      const pattern = m.flash_description_pattern.toLowerCase().trim();
+      const descLower = descricao.toLowerCase();
+      // Match inteligente: permite match se o padrão estiver contido na descrição
+      if (descLower.includes(pattern)) return true;
     }
     
-    return true;
+    // Mapeamento por Categoria e/ou Centro de Custo
+    const catMatch = m.flash_category ? m.flash_category === flash_category : true;
+    const ccMatch = m.flash_cost_center ? m.flash_cost_center === flash_cost_center : true;
+    
+    // Para um match ser válido, ele deve bater em todos os campos definidos no mapping
+    // Se o mapping define apenas tipo, CC e Cat devem ser nulos no mapping para bater aqui (ou baterem com os da tx)
+    return catMatch && ccMatch;
   });
+
 
   if (!mapping) {
     const motivo = `Pendente: nenhum mapeamento encontrado para o tipo "${flash_type}" [Cat: ${flash_category} | CC: ${flash_cost_center}].`;
