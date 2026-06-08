@@ -19,7 +19,9 @@ export interface FlashCategoryMappingLike {
   conta_azul_account_id: string | null;
   conta_azul_account_name: string | null;
   tipo_operacao: "receita" | "despesa";
+  updated_at?: string | null;
 }
+
 
 export interface FlashRawTransactionLike {
   id: string;
