@@ -1,6 +1,12 @@
 /**
  * Lógica de normalização automática de transações da Flash.
+ * PROMPT DE APRENDIZADO CONTÍNUO (REFORÇADO):
+ * 1. PRIORIDADE ESPECÍFICA: Sempre buscar o mapeamento mais específico (Descrição > Cat+CC > Cat > CC > Tipo).
+ * 2. ADAPTABILIDADE: Se houver múltiplos mapeamentos para o mesmo tipo, usar o histórico de frequência e data de atualização.
+ * 3. PADRÕES DINÂMICOS: Identificar padrões em descrições (ex: "UBER", "IFOOD") mesmo sem mapeamento exato, sugerindo categorias com base em similaridade.
+ * 4. FEEDBACK LOOP: Cada ajuste manual do usuário reforça o mapeamento para aquela combinação de atributos, servindo de "ground truth" para normalizações futuras.
  */
+
 
 export interface FlashCategoryMappingLike {
   id?: string;
