@@ -388,13 +388,13 @@ async function sendOne(
           conta_financeira: input.financial_account_id,
           descricao: `Parcela única - ${input.description}`,
           valor: transactionValue,
-          situacao: input.force_pago !== false ? "LIQUIDADO" : "PENDENTE",
-          baixa: input.force_pago !== false ? {
+          situacao: "LIQUIDADO",
+          baixa: {
             data_pagamento: transactionDate,
             conta_financeira: input.financial_account_id,
             valor_pago: transactionValue,
             metodo_pagamento: "OUTRO"
-          } : undefined,
+          },
           detalhe_valor: {
             valor_bruto: transactionValue,
             valor_liquido: transactionValue,
