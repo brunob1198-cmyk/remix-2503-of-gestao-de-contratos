@@ -979,8 +979,22 @@ Deno.serve(async (req) => {
         const normMap = new Map();
         (existingNorms || []).forEach(n => normMap.set(n.flash_transaction_id, n));
 
-        const mappingIdx = new Map();
-        (mappings || []).forEach((m) => mappingIdx.set(m.flash_type, m));
+        // Lógica de Aprendizado Contínuo Reforçada (Sync)
+        const sortedMappings = (mappings || []).sort((a, b) => {
+          let scoreA = 0, scoreB = 0;
+          if (a.flash_description_pattern) scoreA += 100;
+          if (a.flash_category && a.flash_cost_center) scoreA += 50;
+          else if (a.flash_category) scoreA += 30;
+          
+          if (b.flash_description_pattern) scoreB += 100;
+          if (b.flash_category && b.flash_cost_center) scoreB += 50;
+          else if (b.flash_category) scoreB += 30;
+
+          if (scoreA === scoreB) {
+            return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+          }
+          return scoreB - scoreA;
+        });
 
         const pickFlashType = (payload: any): string => {
           const candidates = ["type", "tipo", "category", "categoria", "transaction_type"];
@@ -990,24 +1004,40 @@ Deno.serve(async (req) => {
           return "indefinido";
         };
 
+        const pickValue = (payload: any, paths: string[]): string => {
+          for (const p of paths) {
+            const parts = p.split(".");
+            let cur = payload;
+            for (const k of parts) { cur = cur?.[k]; if (cur == null) break; }
+            if (typeof cur === "string" && cur.trim()) return cur.trim();
+          }
+          return "";
+        };
+
         const normRows = (savedRows || []).map((r: any) => {
-          const existing = normMap.get(r.id);
+          if (normMap.has(r.id)) return null;
 
-          // IMPORTANTE: Nunca sobrescrever uma normalização existente via sync.
-          // Edições manuais (categoria CA, status, centro de custo) devem persistir.
-          // O sync só cria normalização para lançamentos ainda SEM registro.
-          if (existing) return null;
+          const p = r.payload_json || {};
+          const flash_type = pickFlashType(p);
+          const flash_category = pickValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]);
+          const flash_cc = pickValue(p, ["costCenter.name", "cost_center.name", "centro_custo", "centroCusto", "costCenter", "cost_center"]);
+          const descricao = pickValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—";
 
-          const flash_type = pickFlashType(r.payload_json);
-          const m = mappingIdx.get(flash_type);
+          const m = sortedMappings.find(sm => {
+            if (sm.flash_type !== flash_type) return false;
+            if (sm.flash_description_pattern) {
+              if (descricao.toLowerCase().includes(sm.flash_description_pattern.toLowerCase().trim())) return true;
+              return false;
+            }
+            const catMatch = sm.flash_category ? sm.flash_category === flash_category : true;
+            const ccMatch = sm.flash_cost_center ? sm.flash_cost_center === flash_cc : true;
+            return catMatch && ccMatch;
+          });
 
-          // Force use of "Flash" account (ID from production)
           const fixedAccountId = "679d675b-006f-474a-be93-b68480396557";
           const fixedAccountName = "Flash";
-
           const categoryId = m?.conta_azul_category_id ?? null;
           const categoryName = m?.conta_azul_category_name ?? null;
-
           const hasFull = !!(categoryId && fixedAccountId);
 
           return {
@@ -1022,10 +1052,11 @@ Deno.serve(async (req) => {
             normalizado_at: hasFull ? new Date().toISOString() : null,
             flash_type_detectado: flash_type,
             motivo: hasFull
-              ? `Normalizado automaticamente via sync (mapping tipo "${flash_type}")`
-              : `Pendente: aguardando mapeamento para o tipo "${flash_type}"`,
+              ? `Normalizado automaticamente via aprendizado contínuo (mapping "${m.flash_description_pattern || flash_type}")`
+              : `Pendente: aguardando aprendizado para o tipo "${flash_type}"`,
           };
         }).filter(Boolean);
+
 
         if (normRows.length > 0) {
           const chunk = 500;
