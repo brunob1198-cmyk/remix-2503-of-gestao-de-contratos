@@ -23,6 +23,9 @@ interface UserRow {
   aprovado: boolean;
   cargo: string | null;
   empresa_id: string | null;
+  pode_aprovar_compra?: boolean;
+  pode_rejeitar_compra?: boolean;
+  pode_receber_compra?: boolean;
 }
 
 interface RoleRow {
@@ -35,6 +38,12 @@ interface PermRow {
   tela: string;
   pode_visualizar: boolean;
   pode_editar: boolean;
+}
+
+interface WorkflowPerms {
+  pode_aprovar_compra: boolean;
+  pode_rejeitar_compra: boolean;
+  pode_receber_compra: boolean;
 }
 
 export default function GerenciarUsuariosPage() {
@@ -51,7 +60,7 @@ export default function GerenciarUsuariosPage() {
     if (!empresaId) return;
     const { data } = await supabase
       .from("profiles")
-      .select("id, nome, avatar_url, aprovado, cargo, empresa_id")
+      .select("id, nome, avatar_url, aprovado, cargo, empresa_id, pode_aprovar_compra, pode_rejeitar_compra, pode_receber_compra")
       .eq("empresa_id", empresaId);
     setUsers((data as UserRow[]) || []);
 
@@ -129,6 +138,21 @@ export default function GerenciarUsuariosPage() {
       .select("user_id, tela, pode_visualizar, pode_editar")
       .eq("user_id", selectedUser.id);
     setUserPerms((data as PermRow[]) || []);
+  };
+
+  const toggleWorkflowPerm = async (field: keyof WorkflowPerms, value: boolean) => {
+    if (!selectedUser) return;
+    
+    await supabase
+      .from("profiles")
+      .update({ [field]: value } as any)
+      .eq("id", selectedUser.id);
+    
+    // Refresh local user state
+    setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, [field]: value } : u));
+    setSelectedUser(prev => prev ? { ...prev, [field]: value } : null);
+    
+    toast({ title: "Permissão de workflow atualizada!" });
   };
 
   const getInitials = (name: string | null) =>
@@ -248,28 +272,75 @@ export default function GerenciarUsuariosPage() {
           <DialogHeader>
             <DialogTitle>Permissões - {selectedUser?.nome}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 items-center text-sm font-medium text-muted-foreground pb-2 border-b">
-              <span>Tela</span>
-              <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Ver</span>
-              <span className="flex items-center gap-1"><Pencil className="h-3 w-3" /> Editar</span>
-            </div>
-            {TELAS.map((tela) => {
-              const perm = userPerms.find((p) => p.tela === tela.id);
-              return (
-                <div key={tela.id} className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 items-center py-1">
-                  <Label className="text-sm">{tela.label}</Label>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" /> Permissões de Workflow (Compras)
+              </h4>
+              <div className="space-y-3 bg-muted/30 p-3 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Aprovar Compras</Label>
+                    <p className="text-xs text-muted-foreground">Permite aprovar requisições pendentes</p>
+                  </div>
                   <Switch
-                    checked={perm?.pode_visualizar ?? false}
-                    onCheckedChange={(v) => togglePerm(tela.id, "pode_visualizar", v)}
-                  />
-                  <Switch
-                    checked={perm?.pode_editar ?? false}
-                    onCheckedChange={(v) => togglePerm(tela.id, "pode_editar", v)}
+                    checked={selectedUser?.pode_aprovar_compra ?? false}
+                    onCheckedChange={(v) => toggleWorkflowPerm("pode_aprovar_compra", v)}
                   />
                 </div>
-              );
-            })}
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Rejeitar Compras</Label>
+                    <p className="text-xs text-muted-foreground">Permite reprovar requisições</p>
+                  </div>
+                  <Switch
+                    checked={selectedUser?.pode_rejeitar_compra ?? false}
+                    onCheckedChange={(v) => toggleWorkflowPerm("pode_rejeitar_compra", v)}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Receber Compras</Label>
+                    <p className="text-xs text-muted-foreground">Permite confirmar recebimento de itens</p>
+                  </div>
+                  <Switch
+                    checked={selectedUser?.pode_receber_compra ?? false}
+                    onCheckedChange={(v) => toggleWorkflowPerm("pode_receber_compra", v)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Eye className="h-4 w-4 text-primary" /> Acesso às Telas
+              </h4>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 items-center text-xs font-medium text-muted-foreground pb-2 border-b">
+                <span>Tela</span>
+                <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Ver</span>
+                <span className="flex items-center gap-1"><Pencil className="h-3 w-3" /> Editar</span>
+              </div>
+              {TELAS.map((tela) => {
+                const perm = userPerms.find((p) => p.tela === tela.id);
+                return (
+                  <div key={tela.id} className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 items-center py-1">
+                    <Label className="text-sm">{tela.label}</Label>
+                    <Switch
+                      checked={perm?.pode_visualizar ?? false}
+                      onCheckedChange={(v) => togglePerm(tela.id, "pode_visualizar", v)}
+                    />
+                    <Switch
+                      checked={perm?.pode_editar ?? false}
+                      onCheckedChange={(v) => togglePerm(tela.id, "pode_editar", v)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
