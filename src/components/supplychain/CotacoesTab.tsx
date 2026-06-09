@@ -18,9 +18,13 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   rejeitada: { label: "Rejeitada", variant: "destructive" },
 };
 
-export function CotacoesTab() {
+export function CotacoesTab({ filter }: { filter?: string }) {
   const { cotacoes, isLoading, create } = useCotacoes();
-  const { requisicoes, updateStatus: updateRequisicaoStatus } = useRequisicoes();
+  const { requisicoes: allRequisicoes, updateStatus: updateRequisicaoStatus } = useRequisicoes();
+  
+  const requisicoes = filter === "QUOTING"
+    ? allRequisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED")
+    : allRequisicoes;
   const { fornecedores } = useFornecedores();
   const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);

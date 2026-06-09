@@ -6,18 +6,37 @@ import { ItensTab } from "@/components/supplychain/ItensTab";
 import { RequisicoesTab } from "@/components/supplychain/RequisicoesTab";
 import { CotacoesTab } from "@/components/supplychain/CotacoesTab";
 import { PedidosTab } from "@/components/supplychain/PedidosTab";
+import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
 
 export default function SupplyChainPage() {
   const [tab, setTab] = useState("requisicoes");
+  const [filter, setFilter] = useState<string | undefined>();
+
+  const handleFilterChange = (newTab: string, newFilter?: string) => {
+    // Se clicar no mesmo filtro que já está ativo, remove o filtro
+    if (tab === newTab && filter === newFilter) {
+      setFilter(undefined);
+    } else {
+      setTab(newTab);
+      setFilter(newFilter);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Supply Chain — Compras</h1>
-        <p className="text-muted-foreground">Gestão completa do fluxo de compras: requisição → cotação → pedido</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Supply Chain — Compras</h1>
+          <p className="text-muted-foreground">Gestão completa do fluxo de compras: requisição → cotação → pedido</p>
+        </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <SupplyChainDashboard 
+        onFilterChange={handleFilterChange} 
+        activeFilter={{ tab, filter }} 
+      />
+
+      <Tabs value={tab} onValueChange={(v) => { setTab(v); setFilter(undefined); }}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="requisicoes" className="gap-2">
             <FileText className="h-4 w-4" /> Requisições
@@ -36,9 +55,9 @@ export default function SupplyChainPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="requisicoes"><RequisicoesTab /></TabsContent>
-        <TabsContent value="cotacoes"><CotacoesTab /></TabsContent>
-        <TabsContent value="pedidos"><PedidosTab /></TabsContent>
+        <TabsContent value="requisicoes"><RequisicoesTab filter={filter} /></TabsContent>
+        <TabsContent value="cotacoes"><CotacoesTab filter={filter} /></TabsContent>
+        <TabsContent value="pedidos"><PedidosTab filter={filter} /></TabsContent>
         <TabsContent value="fornecedores"><FornecedoresTab /></TabsContent>
         <TabsContent value="itens"><ItensTab /></TabsContent>
       </Tabs>
