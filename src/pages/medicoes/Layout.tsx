@@ -3,6 +3,7 @@ import { MedicoesSidebar } from "@/components/medicoes/Sidebar";
 import { Outlet } from "react-router-dom";
 import { LogoWithUpload } from "@/components/LogoUploader";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
 
 export default function MedicoesLayout() {
   return (
@@ -17,6 +18,7 @@ export default function MedicoesLayout() {
               <h1 className="font-semibold text-lg hidden md:block">Gestão de Contratos</h1>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationsDropdown />
               <ThemeToggle />
             </div>
           </header>

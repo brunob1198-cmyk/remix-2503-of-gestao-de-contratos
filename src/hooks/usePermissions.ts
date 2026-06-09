@@ -37,7 +37,22 @@ export const TELAS = [
 export function usePermissions() {
   const { user, role } = useAuth();
 
-  const { data: permissions = [], isLoading: loading } = useQuery({
+  const { data: profile = null, isLoading: loadingProfile } = useQuery({
+    queryKey: ["user_profile", user?.id],
+    ...QUERY_DEFAULTS,
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: permissions = [], isLoading: loadingPermissions } = useQuery({
     queryKey: ["user_permissions", user?.id],
     ...QUERY_DEFAULTS,
     staleTime: 0,
@@ -75,5 +90,17 @@ export function usePermissions() {
     return permissions.some((p) => p.tela === tela && p.pode_editar);
   };
 
-  return { permissions, loading, canView, canEdit };
+  const hasActionPermission = (action: "pode_aprovar_compra" | "pode_rejeitar_compra" | "pode_receber_compra") => {
+    if (role === "admin") return true;
+    return !!profile?.[action];
+  };
+
+  return { 
+    permissions, 
+    loading: loadingPermissions || loadingProfile, 
+    canView, 
+    canEdit,
+    hasActionPermission,
+    profile 
+  };
 }
