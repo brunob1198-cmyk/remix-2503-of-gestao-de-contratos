@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ShoppingCart, FileText, ClipboardCheck, Truck } from "lucide-react";
+import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList } from "lucide-react";
 import { FornecedoresTab } from "@/components/supplychain/FornecedoresTab";
 import { ItensTab } from "@/components/supplychain/ItensTab";
 import { RequisicoesTab } from "@/components/supplychain/RequisicoesTab";
 import { CotacoesTab } from "@/components/supplychain/CotacoesTab";
 import { PedidosTab } from "@/components/supplychain/PedidosTab";
+import { MinhaFilaTab } from "@/components/supplychain/MinhaFilaTab";
 import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
 
 export default function SupplyChainPage() {
-  const [tab, setTab] = useState("requisicoes");
+  const [tab, setTab] = useState("minha-fila");
   const [filter, setFilter] = useState<string | undefined>();
 
   const handleFilterChange = (newTab: string, newFilter?: string) => {
@@ -38,6 +39,9 @@ export default function SupplyChainPage() {
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); setFilter(undefined); }}>
         <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="minha-fila" className="gap-2 text-primary font-semibold">
+            <LayoutList className="h-4 w-4" /> Minha Fila
+          </TabsTrigger>
           <TabsTrigger value="requisicoes" className="gap-2">
             <FileText className="h-4 w-4" /> Requisições
           </TabsTrigger>
@@ -55,6 +59,7 @@ export default function SupplyChainPage() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="minha-fila"><MinhaFilaTab /></TabsContent>
         <TabsContent value="requisicoes"><RequisicoesTab filter={filter} /></TabsContent>
         <TabsContent value="cotacoes"><CotacoesTab filter={filter} /></TabsContent>
         <TabsContent value="pedidos"><PedidosTab filter={filter} /></TabsContent>
