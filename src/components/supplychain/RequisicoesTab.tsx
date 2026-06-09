@@ -43,8 +43,15 @@ interface ItemForm {
   unidade: string;
 }
 
-export function RequisicoesTab() {
-  const { requisicoes, isLoading, create, updateStatus, remove, getHistorico } = useRequisicoes();
+export function RequisicoesTab({ filter }: { filter?: string }) {
+  const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove, getHistorico } = useRequisicoes();
+  
+  const requisicoes = filter 
+    ? allRequisicoes.filter((r: any) => {
+        if (filter === "TO_RECEIVE") return ["PURCHASED", "PARTIALLY_RECEIVED"].includes(r.workflow_status);
+        return r.workflow_status === filter;
+      })
+    : allRequisicoes;
   const { projetos } = useProjetos();
   const { itens: scItens } = useScItens();
   const { hasActionPermission } = usePermissions();

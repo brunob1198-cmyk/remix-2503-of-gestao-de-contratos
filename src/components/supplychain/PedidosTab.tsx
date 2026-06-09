@@ -23,8 +23,12 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 
 interface ItemRow { descricao: string; quantidade: number; preco_unitario: number; unidade: string; sc_item_id?: string; }
 
-export function PedidosTab() {
-  const { pedidos, isLoading, create, updateStatus, remove } = usePedidosCompra();
+export function PedidosTab({ filter }: { filter?: string }) {
+  const { pedidos: allPedidos, isLoading, create, updateStatus, remove } = usePedidosCompra();
+  
+  const pedidos = filter === "OPEN"
+    ? allPedidos.filter((p: any) => ["emitido", "confirmado", "em_transito"].includes(p.status))
+    : allPedidos;
   const { fornecedores } = useFornecedores();
   const { itens: scItens } = useScItens();
   const { hasActionPermission } = usePermissions();
