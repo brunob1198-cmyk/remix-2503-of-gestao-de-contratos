@@ -25,7 +25,7 @@ export function CotacoesTab() {
   const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" });
-  const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number }[]>([]);
+  const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number; observacao: string }[]>([]);
 
   const selectedReq = requisicoes.find((r: any) => r.id === form.requisicao_id);
 
@@ -33,7 +33,7 @@ export function CotacoesTab() {
     setForm(p => ({ ...p, requisicao_id: reqId }));
     const req = requisicoes.find((r: any) => r.id === reqId);
     if (req?.itens) {
-      setCotItens(req.itens.map((i: any) => ({ requisicao_item_id: i.id, preco_unitario: 0, quantidade: i.quantidade })));
+      setCotItens(req.itens.map((i: any) => ({ requisicao_item_id: i.id, preco_unitario: 0, quantidade: i.quantidade, observacao: "" })));
     }
   };
 
@@ -101,6 +101,7 @@ export function CotacoesTab() {
                         <TableHead>Qtd</TableHead>
                         <TableHead>Preço Unit.</TableHead>
                         <TableHead>Total</TableHead>
+                        <TableHead>Observação</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -115,6 +116,13 @@ export function CotacoesTab() {
                                 onChange={e => setCotItens(p => p.map((c, i) => i === idx ? { ...c, preco_unitario: Number(e.target.value) } : c))} />
                             </TableCell>
                             <TableCell>{fmt(ci.preco_unitario * ci.quantidade)}</TableCell>
+                            <TableCell>
+                              <Input 
+                                placeholder="Obs." 
+                                value={ci.observacao}
+                                onChange={e => setCotItens(p => p.map((c, i) => i === idx ? { ...c, observacao: e.target.value } : c))} 
+                              />
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -123,6 +131,11 @@ export function CotacoesTab() {
                   <p className="text-right font-semibold mt-2">Total: {fmt(cotItens.reduce((s, i) => s + i.preco_unitario * i.quantidade, 0))}</p>
                 </div>
               )}
+
+              <div>
+                <Label>Observações Gerais</Label>
+                <Input value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} />
+              </div>
 
               <Button onClick={handleSave} disabled={!form.requisicao_id || !form.fornecedor_id || create.isPending}>
                 Registrar Cotação
