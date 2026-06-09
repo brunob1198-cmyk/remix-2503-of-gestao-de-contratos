@@ -229,7 +229,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="outline" 
                             size="sm" 
                             className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Requisição aprovada pelo gestor." })}
                           >
                             <Check className="h-4 w-4 mr-1" /> Aprovar
                           </Button>
@@ -240,7 +240,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="outline" 
                             size="sm" 
                             className="text-destructive border-red-200 hover:bg-red-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED", observacoes: "Requisição rejeitada pelo gestor." })}
                           >
                             <X className="h-4 w-4 mr-1" /> Rejeitar
                           </Button>
@@ -250,7 +250,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED", observacoes: "Itens recebidos e conferidos no almoxarifado." })}
                           >
                             <PackageCheck className="h-4 w-4 mr-1" /> Receber
                           </Button>
