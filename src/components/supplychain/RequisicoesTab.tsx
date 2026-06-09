@@ -206,11 +206,14 @@ export function RequisicoesTab() {
                         <Button variant="ghost" size="icon" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
                         
                         {r.workflow_status === "DRAFT" && (
-                          <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}>Enviar</Button>
-                        )}
-                        
-                        {r.workflow_status === "SUBMITTED" && (
-                          <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}>Iniciar Cotação</Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-primary hover:text-primary hover:bg-primary/10"
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}
+                          >
+                            Enviar
+                          </Button>
                         )}
 
                         {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_aprovar_compra") && (
