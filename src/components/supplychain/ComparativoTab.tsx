@@ -61,7 +61,7 @@ export function ComparativoTab() {
     updateCotStatus.mutate({ id: cotacao.id, status: "aprovada" });
     
     // Move the request to PENDING_APPROVAL
-    updateReqStatus.mutate({ id: cotacao.requisicao_id, workflow_status: "PENDING_APPROVAL" });
+    updateReqStatus.mutate({ id: cotacao.requisicao_id, workflow_status: "PENDING_APPROVAL", observacoes: `Fornecedor ${cotacao.fornecedor?.razao_social} selecionado como vencedor da cotação.` });
     
     // Set other quotes for same request to "rejeitada"
     relevantCotacoes.forEach(c => {

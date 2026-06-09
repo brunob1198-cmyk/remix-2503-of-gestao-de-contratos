@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Eye, Check, X, PackageCheck } from "lucide-react";
+import { Plus, Trash2, Eye, Check, X, PackageCheck, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
+import { RequisitionTimeline } from "./RequisitionTimeline";
 
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Rascunho", variant: "secondary" },
@@ -217,7 +218,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="ghost" 
                             size="sm" 
                             className="text-primary hover:text-primary hover:bg-primary/10"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED", observacoes: "Requisição enviada para o setor de compras." })}
                           >
                             Enviar
                           </Button>
@@ -228,7 +229,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="outline" 
                             size="sm" 
                             className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Requisição aprovada pelo gestor." })}
                           >
                             <Check className="h-4 w-4 mr-1" /> Aprovar
                           </Button>
@@ -239,7 +240,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="outline" 
                             size="sm" 
                             className="text-destructive border-red-200 hover:bg-red-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED", observacoes: "Requisição rejeitada pelo gestor." })}
                           >
                             <X className="h-4 w-4 mr-1" /> Rejeitar
                           </Button>
@@ -249,7 +250,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED", observacoes: "Itens recebidos e conferidos no almoxarifado." })}
                           >
                             <PackageCheck className="h-4 w-4 mr-1" /> Receber
                           </Button>
@@ -334,9 +335,14 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t">
-                  <h4 className="font-semibold text-sm mb-2">Histórico de Movimentações</h4>
-                  <HistoricoList requisicaoId={selected.id} />
+                <div className="pt-4 border-t">
+                  <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                    <History className="h-4 w-4 text-primary" />
+                    Timeline da Requisição (Auditoria)
+                  </h4>
+                  <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <RequisitionTimeline requisicaoId={selected.id} />
+                  </div>
                 </div>
               </div>
             )}
@@ -344,30 +350,5 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
         </Dialog>
       </CardContent>
     </Card>
-  );
-}
-
-function HistoricoList({ requisicaoId }: { requisicaoId: string }) {
-  const { getHistorico } = useRequisicoes();
-  const { data: historico, isLoading } = getHistorico(requisicaoId);
-
-  if (isLoading) return <p className="text-xs text-muted-foreground">Carregando histórico...</p>;
-  if (!historico || historico.length === 0) return <p className="text-xs text-muted-foreground">Sem movimentações registradas.</p>;
-
-  return (
-    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-      {historico.map((h: any) => (
-        <div key={h.id} className="text-xs border-l-2 border-primary/20 pl-2 py-1">
-          <div className="flex justify-between font-medium">
-            <span>{WORKFLOW_STATUS_MAP[h.status_novo]?.label || h.status_novo}</span>
-            <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("pt-BR")}</span>
-          </div>
-          <div className="text-muted-foreground">
-            {h.profiles?.nome ? `Por: ${h.profiles.nome}` : "Sistema"}
-            {h.status_anterior && ` (Anterior: ${WORKFLOW_STATUS_MAP[h.status_anterior]?.label || h.status_anterior})`}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle } from "lucide-react";
+import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
+import { RequisitionTimeline } from "./RequisitionTimeline";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "secondary" },
@@ -219,7 +220,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                                     variant="ghost" 
                                     size="sm"
                                     className="text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}
+                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING", observacoes: "Iniciado processo de cotação com fornecedores." })}
                                   >
                                     Iniciar Cotação
                                   </Button>
@@ -373,6 +374,15 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              </div>
+              <div className="pt-4 border-t">
+                <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  Timeline da Requisição
+                </h4>
+                <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                  <RequisitionTimeline requisicaoId={selectedReqForDetail.id} />
                 </div>
               </div>
               
