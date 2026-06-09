@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCotacoes, useRequisicoes, useFornecedores } from "@/hooks/useSupplyChain";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
