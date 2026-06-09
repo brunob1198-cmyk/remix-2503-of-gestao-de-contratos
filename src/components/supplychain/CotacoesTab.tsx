@@ -20,7 +20,7 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 
 export function CotacoesTab() {
   const { cotacoes, isLoading, create } = useCotacoes();
-  const { requisicoes } = useRequisicoes();
+  const { requisicoes, updateStatus: updateRequisicaoStatus } = useRequisicoes();
   const { fornecedores } = useFornecedores();
   const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
@@ -134,11 +134,11 @@ export function CotacoesTab() {
       <CardContent>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
-        ) : (cotacoes.length === 0 && requisicoes.filter((r: any) => r.workflow_status === "QUOTING").length === 0) ? (
+        ) : (cotacoes.length === 0 && requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").length === 0) ? (
           <p className="text-muted-foreground text-center py-8">Nenhuma cotação</p>
         ) : (
           <div className="space-y-6">
-            {requisicoes.filter((r: any) => r.workflow_status === "QUOTING").length > 0 && (
+            {requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Requisições Aguardando Cotação</h3>
                 <Table>
@@ -151,7 +151,7 @@ export function CotacoesTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {requisicoes.filter((r: any) => r.workflow_status === "QUOTING").map((r: any) => (
+                    {requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").map((r: any) => (
                       <TableRow key={r.id}>
                         <TableCell className="font-mono">{r.numero}</TableCell>
                         <TableCell>{r.projeto?.codigo || "—"}</TableCell>
@@ -162,16 +162,30 @@ export function CotacoesTab() {
                         </TableCell>
                         <TableCell className="text-right">
                           {hasActionPermission("pode_criar_cotacao") && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                handleReqChange(r.id);
-                                setOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Criar Cotação
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              {r.workflow_status === "SUBMITTED" && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                  onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}
+                                >
+                                  Iniciar Cotação
+                                </Button>
+                              )}
+                              {r.workflow_status === "QUOTING" && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    handleReqChange(r.id);
+                                    setOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" /> Criar Cotação
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
