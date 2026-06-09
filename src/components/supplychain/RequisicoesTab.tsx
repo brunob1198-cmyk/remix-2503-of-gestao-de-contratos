@@ -262,35 +262,74 @@ export function RequisicoesTab() {
 
         {/* Detail dialog */}
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl">
             <DialogHeader><DialogTitle>Requisição {selected?.numero}</DialogTitle></DialogHeader>
             {selected && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="text-muted-foreground">Projeto:</span> {selected.projeto?.nome || "—"}</div>
-                  <div><span className="text-muted-foreground">Status:</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
-                  <div><span className="text-muted-foreground">Prioridade:</span> {PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</div>
-                  <div><span className="text-muted-foreground">Data:</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-3 rounded-lg border">
+                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> {selected.projeto?.codigo} - {selected.projeto?.nome || "—"}</div>
+                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
+                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> <Badge variant={PRIORIDADE_MAP[selected.prioridade]?.variant || "outline"}>{PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</Badge></div>
+                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
                 </div>
-                {selected.justificativa && <p className="text-sm"><span className="text-muted-foreground">Justificativa:</span> {selected.justificativa}</p>}
-                <div>
-                  <h4 className="font-medium mb-1">Itens ({selected.itens?.length || 0})</h4>
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Qtd</TableHead><TableHead>Unid</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {(selected.itens || []).map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.sc_item?.descricao || item.descricao_livre || "—"}</TableCell>
-                          <TableCell>{item.quantidade}</TableCell>
-                          <TableCell>{item.unidade}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <div>
-                    <h4 className="font-medium mb-1">Histórico de Movimentações</h4>
-                    <HistoricoList requisicaoId={selected.id} />
+                
+                {selected.justificativa && (
+                  <div className="text-sm border p-3 rounded-lg bg-yellow-50/30">
+                    <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Justificativa</span>
+                    <p className="whitespace-pre-wrap">{selected.justificativa}</p>
                   </div>
+                )}
+
+                {selected.observacoes && (
+                  <div className="text-sm border p-3 rounded-lg">
+                    <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações</span>
+                    <p className="whitespace-pre-wrap">{selected.observacoes}</p>
+                  </div>
+                )}
+
+                <div>
+                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <PackageCheck className="h-4 w-4" /> 
+                    Itens Solicitados ({selected.itens?.length || 0})
+                  </h4>
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead>Código</TableHead>
+                          <TableHead>Item / Descrição</TableHead>
+                          <TableHead className="text-center w-20">Qtd</TableHead>
+                          <TableHead className="w-20">Unid</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(selected.itens && selected.itens.length > 0) ? (
+                          selected.itens.map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-mono text-xs">{item.sc_item?.codigo || "—"}</TableCell>
+                              <TableCell className="text-sm font-medium">
+                                {item.sc_item?.descricao || item.descricao_livre || "—"}
+                                {item.sc_item?.descricao && item.descricao_livre && item.descricao_livre !== item.sc_item.descricao && (
+                                  <span className="block text-xs text-muted-foreground font-normal italic mt-0.5">{item.descricao_livre}</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-bold">{item.quantidade}</TableCell>
+                              <TableCell>{item.unidade}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4 text-muted-foreground italic">Nenhum item encontrado.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t">
+                  <h4 className="font-semibold text-sm mb-2">Histórico de Movimentações</h4>
+                  <HistoricoList requisicaoId={selected.id} />
                 </div>
               </div>
             )}
