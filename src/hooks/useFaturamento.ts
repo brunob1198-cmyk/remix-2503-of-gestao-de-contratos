@@ -457,10 +457,6 @@ export function useFaturamentosContaAzul(projetoIds?: string[]) {
         .select("*")
         .order("data_emissao", { ascending: false });
 
-      if (projetoIds && projetoIds.length > 0) {
-        query = query.in("projeto_id", projetoIds);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
       return data as FaturamentoContaAzul[];
