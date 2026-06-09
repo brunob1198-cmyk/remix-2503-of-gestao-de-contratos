@@ -100,10 +100,11 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div><Label>Validade</Label><Input type="date" value={form.validade} onChange={e => setForm(p => ({ ...p, validade: e.target.value }))} /></div>
                 <div><Label>Prazo Entrega (dias)</Label><Input type="number" value={form.prazo_entrega_dias} onChange={e => setForm(p => ({ ...p, prazo_entrega_dias: e.target.value }))} /></div>
                 <div><Label>Cond. Pagamento</Label><Input value={form.condicao_pagamento} onChange={e => setForm(p => ({ ...p, condicao_pagamento: e.target.value }))} /></div>
+                <div><Label>Valor Frete</Label><Input type="number" step="0.01" value={form.frete} onChange={e => setForm(p => ({ ...p, frete: Number(e.target.value) }))} /></div>
               </div>
 
               {cotItens.length > 0 && (
