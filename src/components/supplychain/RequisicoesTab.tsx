@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRequisicoes, useScItens } from "@/hooks/useSupplyChain";
 import { useProjetos } from "@/hooks/useProjetos";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Eye } from "lucide-react";
+import { Plus, Trash2, Eye, Check, X, PackageCheck } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -46,6 +47,7 @@ export function RequisicoesTab() {
   const { requisicoes, isLoading, create, updateStatus, remove, getHistorico } = useRequisicoes();
   const { projetos } = useProjetos();
   const { itens: scItens } = useScItens();
+  const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
@@ -196,12 +198,47 @@ export function RequisicoesTab() {
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
+                        
                         {r.workflow_status === "DRAFT" && (
                           <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}>Enviar</Button>
                         )}
+                        
                         {r.workflow_status === "SUBMITTED" && (
                           <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}>Iniciar Cotação</Button>
                         )}
+
+                        {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_aprovar_compra") && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED" })}
+                          >
+                            <Check className="h-4 w-4 mr-1" /> Aprovar
+                          </Button>
+                        )}
+
+                        {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_rejeitar_compra") && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-destructive border-red-200 hover:bg-red-50"
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED" })}
+                          >
+                            <X className="h-4 w-4 mr-1" /> Rejeitar
+                          </Button>
+                        )}
+
+                        {(r.workflow_status === "PURCHASED" || r.workflow_status === "PARTIALLY_RECEIVED") && hasActionPermission("pode_receber_compra") && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED" })}
+                          >
+                            <PackageCheck className="h-4 w-4 mr-1" /> Receber
+                          </Button>
+                        )}
+
                         {r.status === "rascunho" && (
                           <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         )}

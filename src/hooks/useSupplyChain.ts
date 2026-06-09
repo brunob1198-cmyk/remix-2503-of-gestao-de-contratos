@@ -474,8 +474,11 @@ export function usePedidosCompra() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("pedidos_compra").update({ status }).eq("id", id);
+    mutationFn: async ({ id, status, workflow_status }: { id: string; status?: string; workflow_status?: string }) => {
+      const updates: any = {};
+      if (status) updates.status = status;
+      if (workflow_status) updates.workflow_status = workflow_status;
+      const { error } = await supabase.from("pedidos_compra").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
