@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList } from "lucide-react";
+import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList, Scale } from "lucide-react";
 import { FornecedoresTab } from "@/components/supplychain/FornecedoresTab";
 import { ItensTab } from "@/components/supplychain/ItensTab";
 import { RequisicoesTab } from "@/components/supplychain/RequisicoesTab";
@@ -8,6 +8,7 @@ import { CotacoesTab } from "@/components/supplychain/CotacoesTab";
 import { PedidosTab } from "@/components/supplychain/PedidosTab";
 import { MinhaFilaTab } from "@/components/supplychain/MinhaFilaTab";
 import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
+import { ComparativoTab } from "@/components/supplychain/ComparativoTab";
 
 export default function SupplyChainPage() {
   const [tab, setTab] = useState("minha-fila");
@@ -48,6 +49,9 @@ export default function SupplyChainPage() {
           <TabsTrigger value="cotacoes" className="gap-2">
             <ClipboardCheck className="h-4 w-4" /> Cotações
           </TabsTrigger>
+          <TabsTrigger value="comparativo" className="gap-2">
+            <Scale className="h-4 w-4" /> Comparativo
+          </TabsTrigger>
           <TabsTrigger value="pedidos" className="gap-2">
             <Truck className="h-4 w-4" /> Pedidos
           </TabsTrigger>
@@ -62,6 +66,7 @@ export default function SupplyChainPage() {
         <TabsContent value="minha-fila"><MinhaFilaTab /></TabsContent>
         <TabsContent value="requisicoes"><RequisicoesTab filter={filter} /></TabsContent>
         <TabsContent value="cotacoes"><CotacoesTab filter={filter} /></TabsContent>
+        <TabsContent value="comparativo"><ComparativoTab /></TabsContent>
         <TabsContent value="pedidos"><PedidosTab filter={filter} /></TabsContent>
         <TabsContent value="fornecedores"><FornecedoresTab /></TabsContent>
         <TabsContent value="itens"><ItensTab /></TabsContent>
