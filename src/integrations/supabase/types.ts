@@ -2798,6 +2798,50 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          lida: boolean | null
+          link: string | null
+          mensagem: string
+          tipo: string | null
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          lida?: boolean | null
+          link?: string | null
+          mensagem: string
+          tipo?: string | null
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          lida?: boolean | null
+          link?: string | null
+          mensagem?: string
+          tipo?: string | null
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedido_itens: {
         Row: {
           created_at: string
@@ -2955,6 +2999,9 @@ export type Database = {
           empresa_id: string | null
           id: string
           nome: string | null
+          pode_aprovar_compra: boolean | null
+          pode_receber_compra: boolean | null
+          pode_rejeitar_compra: boolean | null
           sexo: string | null
           updated_at: string | null
         }
@@ -2968,6 +3015,9 @@ export type Database = {
           empresa_id?: string | null
           id: string
           nome?: string | null
+          pode_aprovar_compra?: boolean | null
+          pode_receber_compra?: boolean | null
+          pode_rejeitar_compra?: boolean | null
           sexo?: string | null
           updated_at?: string | null
         }
@@ -2981,6 +3031,9 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           nome?: string | null
+          pode_aprovar_compra?: boolean | null
+          pode_receber_compra?: boolean | null
+          pode_rejeitar_compra?: boolean | null
           sexo?: string | null
           updated_at?: string | null
         }
