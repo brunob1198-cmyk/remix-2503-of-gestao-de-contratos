@@ -130,34 +130,82 @@ export function CotacoesTab() {
       <CardContent>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
-        ) : cotacoes.length === 0 ? (
+        ) : (cotacoes.length === 0 && requisicoes.filter((r: any) => r.workflow_status === "QUOTING").length === 0) ? (
           <p className="text-muted-foreground text-center py-8">Nenhuma cotação</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Fornecedor</TableHead>
-                <TableHead>Prazo (dias)</TableHead>
-                <TableHead>Valor Total</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cotacoes.map((c: any) => {
-                const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
-                return (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-mono">{c.numero}</TableCell>
-                    <TableCell>{c.fornecedor?.razao_social || "—"}</TableCell>
-                    <TableCell>{c.prazo_entrega_dias || "—"}</TableCell>
-                    <TableCell>{fmt(c.valor_total || 0)}</TableCell>
-                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <div className="space-y-6">
+            {requisicoes.filter((r: any) => r.workflow_status === "QUOTING").length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Requisições Aguardando Cotação</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Prioridade</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requisicoes.filter((r: any) => r.workflow_status === "QUOTING").map((r: any) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-mono">{r.numero}</TableCell>
+                        <TableCell>{r.projeto?.codigo || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={r.prioridade === "urgente" ? "destructive" : "outline"}>
+                            {r.prioridade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              handleReqChange(r.id);
+                              setOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" /> Criar Cotação
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {cotacoes.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cotações Registradas</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Fornecedor</TableHead>
+                      <TableHead>Prazo (dias)</TableHead>
+                      <TableHead>Valor Total</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cotacoes.map((c: any) => {
+                      const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-mono">{c.numero}</TableCell>
+                          <TableCell>{c.fornecedor?.razao_social || "—"}</TableCell>
+                          <TableCell>{c.prazo_entrega_dias || "—"}</TableCell>
+                          <TableCell>{fmt(c.valor_total || 0)}</TableCell>
+                          <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
