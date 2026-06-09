@@ -156,7 +156,7 @@ export function ComparativoTab() {
                                 className={`h-3 w-3 ${star <= (4 + (c.fornecedor?.razao_social?.length % 2)) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} 
                               />
                             ))}
-                            {isBestRating && <ShieldCheck className="h-3 w-3 text-primary ml-1" title="Melhor Avaliação" />}
+                            {isBestRating && <ShieldCheck className="h-3 w-3 text-primary ml-1" />}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
