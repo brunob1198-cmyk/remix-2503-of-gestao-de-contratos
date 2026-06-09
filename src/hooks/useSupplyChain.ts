@@ -203,13 +203,12 @@ export function useRequisicoes() {
     mutationFn: async (req: any) => {
       const empresaId = await getEmpresaId();
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const itens = req.itens || [];
       const reqData = { ...req };
       delete reqData.itens;
       
-      // Get the next RC number atomically using a function or a more reliable method
-      // For now, let's at least wrap it better. 
-      // Ideally, this should be a DB trigger or a function to avoid collisions
       const { count, error: countErr } = await supabase
         .from("requisicoes_compra")
         .select("id", { count: "exact", head: true })
@@ -220,10 +219,19 @@ export function useRequisicoes() {
 
       const { data, error } = await supabase
         .from("requisicoes_compra")
-        .insert({ ...reqData, empresa_id: empresaId, solicitante_id: user!.id, numero, workflow_status: 'DRAFT' })
+        .insert({ ...reqData, empresa_id: empresaId, solicitante_id: user.id, numero, workflow_status: 'DRAFT' })
         .select()
         .single();
       if (error) throw error;
+
+      // Log initial history
+      await supabase.from("requisicao_historico").insert({
+        requisicao_id: data.id,
+        status_anterior: null,
+        status_novo: 'DRAFT',
+        usuario_id: user.id,
+        observacoes: "Requisição criada no sistema"
+      });
 
       if (itens.length > 0) {
         const { error: itemErr } = await supabase
