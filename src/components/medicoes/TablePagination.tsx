@@ -23,32 +23,8 @@ export function TablePagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex items-center justify-between px-2 py-4 border-t">
-      <div className="flex-1 text-sm text-muted-foreground">
-        Mostrando {startItem} a {endItem} de {totalItems} registros
-      </div>
+    <div className="flex items-center justify-between px-2 py-4 border-t gap-4">
       <div className="flex items-center space-x-6 lg:space-x-8">
-        <div className="flex items-center space-x-2">
-          <p className="hidden text-sm font-medium sm:block">Linhas por página</p>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={(value) => onItemsPerPageChange(Number(value))}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={itemsPerPage.toString()} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[10, 20, 50, 100].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Página {currentPage} de {totalPages}
-        </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -86,6 +62,33 @@ export function TablePagination({
             <span className="sr-only">Última página</span>
             <ChevronsRight className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+          Página {currentPage} de {totalPages}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <div className="flex items-center space-x-2">
+          <p className="hidden text-sm font-medium sm:block">Linhas por página</p>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => onItemsPerPageChange(Number(value))}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue placeholder={itemsPerPage.toString()} />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {[10, 20, 50, 100].map((pageSize) => (
+                <SelectItem key={pageSize} value={pageSize.toString()}>
+                  {pageSize}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 text-sm text-muted-foreground whitespace-nowrap">
+          Mostrando {startItem} a {endItem} de {totalItems} registros
         </div>
       </div>
     </div>
