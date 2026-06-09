@@ -218,7 +218,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                             variant="ghost" 
                             size="sm" 
                             className="text-primary hover:text-primary hover:bg-primary/10"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}
+                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED", observacoes: "Requisição enviada para o setor de compras." })}
                           >
                             Enviar
                           </Button>
