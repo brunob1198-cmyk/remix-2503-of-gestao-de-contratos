@@ -335,9 +335,14 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t">
-                  <h4 className="font-semibold text-sm mb-2">Histórico de Movimentações</h4>
-                  <HistoricoList requisicaoId={selected.id} />
+                <div className="pt-4 border-t">
+                  <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                    <History className="h-4 w-4 text-primary" />
+                    Timeline da Requisição (Auditoria)
+                  </h4>
+                  <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <RequisitionTimeline requisicaoId={selected.id} />
+                  </div>
                 </div>
               </div>
             )}
@@ -345,30 +350,5 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
         </Dialog>
       </CardContent>
     </Card>
-  );
-}
-
-function HistoricoList({ requisicaoId }: { requisicaoId: string }) {
-  const { getHistorico } = useRequisicoes();
-  const { data: historico, isLoading } = getHistorico(requisicaoId);
-
-  if (isLoading) return <p className="text-xs text-muted-foreground">Carregando histórico...</p>;
-  if (!historico || historico.length === 0) return <p className="text-xs text-muted-foreground">Sem movimentações registradas.</p>;
-
-  return (
-    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
-      {historico.map((h: any) => (
-        <div key={h.id} className="text-xs border-l-2 border-primary/20 pl-2 py-1">
-          <div className="flex justify-between font-medium">
-            <span>{WORKFLOW_STATUS_MAP[h.status_novo]?.label || h.status_novo}</span>
-            <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("pt-BR")}</span>
-          </div>
-          <div className="text-muted-foreground">
-            {h.profiles?.nome ? `Por: ${h.profiles.nome}` : "Sistema"}
-            {h.status_anterior && ` (Anterior: ${WORKFLOW_STATUS_MAP[h.status_anterior]?.label || h.status_anterior})`}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
