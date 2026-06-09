@@ -579,10 +579,10 @@ export default function QuadroGeral() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Total Faturado</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground font-medium">Saldo Contrato</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <p className="text-lg font-bold tabular-nums">{formatCurrency(grandTotals.valor_faturado)}</p>
+            <p className="text-lg font-bold tabular-nums">{formatCurrency(grandTotals.saldo_contrato)}</p>
           </CardContent>
         </Card>
         <Card>
