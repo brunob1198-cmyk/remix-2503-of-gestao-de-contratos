@@ -13,12 +13,19 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Eye } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 
-const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  rascunho: { label: "Rascunho", variant: "secondary" },
-  aprovada: { label: "Aprovada", variant: "default" },
-  em_cotacao: { label: "Em Cotação", variant: "outline" },
-  finalizada: { label: "Finalizada", variant: "default" },
-  cancelada: { label: "Cancelada", variant: "destructive" },
+const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  DRAFT: { label: "Rascunho", variant: "secondary" },
+  SUBMITTED: { label: "Enviado", variant: "default" },
+  QUOTING: { label: "Em Cotação", variant: "outline" },
+  QUOTE_COMPLETED: { label: "Cotação Finalizada", variant: "default" },
+  PENDING_APPROVAL: { label: "Pendente Aprovação", variant: "outline" },
+  APPROVED: { label: "Aprovado", variant: "default" },
+  REJECTED: { label: "Rejeitado", variant: "destructive" },
+  PURCHASE_ORDER_CREATED: { label: "Pedido Criado", variant: "outline" },
+  PURCHASED: { label: "Comprado", variant: "default" },
+  PARTIALLY_RECEIVED: { label: "Recebimento Parcial", variant: "outline" },
+  RECEIVED: { label: "Recebido", variant: "default" },
+  CLOSED: { label: "Finalizado", variant: "secondary" },
 };
 
 const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -36,7 +43,7 @@ interface ItemForm {
 }
 
 export function RequisicoesTab() {
-  const { requisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
+  const { requisicoes, isLoading, create, updateStatus, remove, getHistorico } = useRequisicoes();
   const { projetos } = useProjetos();
   const { itens: scItens } = useScItens();
   const [open, setOpen] = useState(false);
@@ -176,7 +183,7 @@ export function RequisicoesTab() {
             </TableHeader>
             <TableBody>
               {requisicoes.map((r: any) => {
-                const st = STATUS_MAP[r.status] || { label: r.status, variant: "outline" as const };
+                const st = WORKFLOW_STATUS_MAP[r.workflow_status] || { label: r.workflow_status, variant: "outline" as const };
                 const pr = PRIORIDADE_MAP[r.prioridade] || { label: r.prioridade, variant: "outline" as const };
                 return (
                   <TableRow key={r.id}>
@@ -189,8 +196,11 @@ export function RequisicoesTab() {
                     <TableCell>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
-                        {r.status === "rascunho" && (
-                          <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, status: "aprovada" })}>Aprovar</Button>
+                        {r.workflow_status === "DRAFT" && (
+                          <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED" })}>Enviar</Button>
+                        )}
+                        {r.workflow_status === "SUBMITTED" && (
+                          <Button variant="ghost" size="sm" onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}>Iniciar Cotação</Button>
                         )}
                         {r.status === "rascunho" && (
                           <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -212,7 +222,7 @@ export function RequisicoesTab() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div><span className="text-muted-foreground">Projeto:</span> {selected.projeto?.nome || "—"}</div>
-                  <div><span className="text-muted-foreground">Status:</span> <Badge variant={STATUS_MAP[selected.status]?.variant || "outline"}>{STATUS_MAP[selected.status]?.label || selected.status}</Badge></div>
+                  <div><span className="text-muted-foreground">Status:</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
                   <div><span className="text-muted-foreground">Prioridade:</span> {PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</div>
                   <div><span className="text-muted-foreground">Data:</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
                 </div>
@@ -231,6 +241,10 @@ export function RequisicoesTab() {
                       ))}
                     </TableBody>
                   </Table>
+                  <div>
+                    <h4 className="font-medium mb-1">Histórico de Movimentações</h4>
+                    <HistoricoList requisicaoId={selected.id} />
+                  </div>
                 </div>
               </div>
             )}
@@ -238,5 +252,30 @@ export function RequisicoesTab() {
         </Dialog>
       </CardContent>
     </Card>
+  );
+}
+
+function HistoricoList({ requisicaoId }: { requisicaoId: string }) {
+  const { getHistorico } = useRequisicoes();
+  const { data: historico, isLoading } = getHistorico(requisicaoId);
+
+  if (isLoading) return <p className="text-xs text-muted-foreground">Carregando histórico...</p>;
+  if (!historico || historico.length === 0) return <p className="text-xs text-muted-foreground">Sem movimentações registradas.</p>;
+
+  return (
+    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+      {historico.map((h: any) => (
+        <div key={h.id} className="text-xs border-l-2 border-primary/20 pl-2 py-1">
+          <div className="flex justify-between font-medium">
+            <span>{WORKFLOW_STATUS_MAP[h.status_novo]?.label || h.status_novo}</span>
+            <span className="text-muted-foreground">{new Date(h.created_at).toLocaleString("pt-BR")}</span>
+          </div>
+          <div className="text-muted-foreground">
+            {h.profiles?.nome ? `Por: ${h.profiles.nome}` : "Sistema"}
+            {h.status_anterior && ` (Anterior: ${WORKFLOW_STATUS_MAP[h.status_anterior]?.label || h.status_anterior})`}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
