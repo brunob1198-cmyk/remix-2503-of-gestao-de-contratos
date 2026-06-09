@@ -3000,6 +3000,8 @@ export type Database = {
           id: string
           nome: string | null
           pode_aprovar_compra: boolean | null
+          pode_criar_cotacao: boolean | null
+          pode_criar_pedido: boolean | null
           pode_receber_compra: boolean | null
           pode_rejeitar_compra: boolean | null
           sexo: string | null
@@ -3016,6 +3018,8 @@ export type Database = {
           id: string
           nome?: string | null
           pode_aprovar_compra?: boolean | null
+          pode_criar_cotacao?: boolean | null
+          pode_criar_pedido?: boolean | null
           pode_receber_compra?: boolean | null
           pode_rejeitar_compra?: boolean | null
           sexo?: string | null
@@ -3032,6 +3036,8 @@ export type Database = {
           id?: string
           nome?: string | null
           pode_aprovar_compra?: boolean | null
+          pode_criar_cotacao?: boolean | null
+          pode_criar_pedido?: boolean | null
           pode_receber_compra?: boolean | null
           pode_rejeitar_compra?: boolean | null
           sexo?: string | null

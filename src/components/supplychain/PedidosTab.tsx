@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePedidosCompra, useFornecedores, useScItens } from "@/hooks/useSupplyChain";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -26,6 +27,7 @@ export function PedidosTab() {
   const { pedidos, isLoading, create, updateStatus, remove } = usePedidosCompra();
   const { fornecedores } = useFornecedores();
   const { itens: scItens } = useScItens();
+  const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ fornecedor_id: "", data_entrega_prevista: "", condicao_pagamento: "", frete: 0, observacoes: "" });
   const [itemRows, setItemRows] = useState<ItemRow[]>([{ descricao: "", quantidade: 1, preco_unitario: 0, unidade: "UN" }]);
@@ -64,9 +66,11 @@ export function PedidosTab() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Pedidos de Compra</CardTitle>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Novo Pedido</Button>
-          </DialogTrigger>
+          {hasActionPermission("pode_criar_pedido") && (
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Novo Pedido</Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Novo Pedido de Compra</DialogTitle></DialogHeader>
             <div className="grid gap-3">

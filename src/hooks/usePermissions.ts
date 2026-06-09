@@ -90,7 +90,7 @@ export function usePermissions() {
     return permissions.some((p) => p.tela === tela && p.pode_editar);
   };
 
-  const hasActionPermission = (action: "pode_aprovar_compra" | "pode_rejeitar_compra" | "pode_receber_compra") => {
+  const hasActionPermission = (action: "pode_aprovar_compra" | "pode_rejeitar_compra" | "pode_receber_compra" | "pode_criar_cotacao" | "pode_criar_pedido") => {
     if (role === "admin") return true;
     return !!profile?.[action];
   };
