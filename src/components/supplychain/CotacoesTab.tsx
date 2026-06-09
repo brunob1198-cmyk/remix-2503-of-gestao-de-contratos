@@ -220,7 +220,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                                     variant="ghost" 
                                     size="sm"
                                     className="text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}
+                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING", observacoes: "Iniciado processo de cotação com fornecedores." })}
                                   >
                                     Iniciar Cotação
                                   </Button>
