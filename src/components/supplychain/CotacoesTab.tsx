@@ -9,13 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle } from "lucide-react";
+import { parseLocalDate } from "@/lib/utils";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "secondary" },
   recebida: { label: "Recebida", variant: "outline" },
   aprovada: { label: "Aprovada", variant: "default" },
   rejeitada: { label: "Rejeitada", variant: "destructive" },
+};
+
+const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  baixa: { label: "Baixa", variant: "secondary" },
+  normal: { label: "Normal", variant: "outline" },
+  alta: { label: "Alta", variant: "default" },
+  urgente: { label: "Urgente", variant: "destructive" },
 };
 
 export function CotacoesTab({ filter }: { filter?: string }) {
@@ -28,6 +36,8 @@ export function CotacoesTab({ filter }: { filter?: string }) {
   const { fornecedores } = useFornecedores();
   const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedReqForDetail, setSelectedReqForDetail] = useState<any>(null);
   const [form, setForm] = useState({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" });
   const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number; observacao: string }[]>([]);
 
@@ -164,6 +174,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                       <TableHead>Número</TableHead>
                       <TableHead>Projeto</TableHead>
                       <TableHead>Prioridade</TableHead>
+                      <TableHead>Itens</TableHead>
                       <TableHead className="text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -171,15 +182,36 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                     {requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").map((r: any) => (
                       <TableRow key={r.id}>
                         <TableCell className="font-mono">{r.numero}</TableCell>
-                        <TableCell>{r.projeto?.codigo || "—"}</TableCell>
                         <TableCell>
-                          <Badge variant={r.prioridade === "urgente" ? "destructive" : "outline"}>
-                            {r.prioridade}
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{r.projeto?.codigo || "—"}</span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">{r.projeto?.nome || ""}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={PRIORIDADE_MAP[r.prioridade]?.variant || "outline"}>
+                            {PRIORIDADE_MAP[r.prioridade]?.label || r.prioridade}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <PackageCheck className="h-3 w-3" />
+                            {r.itens?.length || 0} itens
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right">
-                          {hasActionPermission("pode_criar_cotacao") && (
-                            <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              title="Ver Detalhes da Requisição"
+                              onClick={() => {
+                                setSelectedReqForDetail(r);
+                                setDetailOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                               {r.workflow_status === "SUBMITTED" && (
                                 <Button 
                                   variant="ghost" 
@@ -245,6 +277,118 @@ export function CotacoesTab({ filter }: { filter?: string }) {
           </div>
         )}
       </CardContent>
+
+      {/* Detalhes da Requisição para o Comprador */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              Detalhes da Requisição {selectedReqForDetail?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedReqForDetail && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg border">
+                <div className="flex items-start gap-2">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> 
+                    {selectedReqForDetail.projeto?.codigo} - {selectedReqForDetail.projeto?.nome || "—"}
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> 
+                    {selectedReqForDetail.data_necessidade ? parseLocalDate(selectedReqForDetail.data_necessidade).toLocaleDateString("pt-BR") : "—"}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> 
+                  <Badge variant={PRIORIDADE_MAP[selectedReqForDetail.prioridade]?.variant || "outline"}>
+                    {PRIORIDADE_MAP[selectedReqForDetail.prioridade]?.label || selectedReqForDetail.prioridade}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Itens Totais</span>
+                  <span className="font-medium">{selectedReqForDetail.itens?.length || 0} itens solicitados</span>
+                </div>
+              </div>
+              
+              {(selectedReqForDetail.justificativa || selectedReqForDetail.observacoes) && (
+                <div className="space-y-2">
+                  {selectedReqForDetail.justificativa && (
+                    <div className="text-sm border p-3 rounded-lg bg-yellow-50/30">
+                      <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Justificativa do Requisitante</span>
+                      <p className="whitespace-pre-wrap">{selectedReqForDetail.justificativa}</p>
+                    </div>
+                  )}
+                  {selectedReqForDetail.observacoes && (
+                    <div className="text-sm border p-3 rounded-lg">
+                      <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações Internas</span>
+                      <p className="whitespace-pre-wrap">{selectedReqForDetail.observacoes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <PackageCheck className="h-4 w-4" /> 
+                  Itens para Cotação
+                </h4>
+                <div className="border rounded-md overflow-hidden max-h-[300px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="w-24">Código</TableHead>
+                        <TableHead>Descrição do Item</TableHead>
+                        <TableHead className="text-center w-20">Qtd</TableHead>
+                        <TableHead className="w-20">Unid</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(selectedReqForDetail.itens && selectedReqForDetail.itens.length > 0) ? (
+                        selectedReqForDetail.itens.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono text-xs">{item.sc_item?.codigo || "—"}</TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {item.sc_item?.descricao || item.descricao_livre || "—"}
+                              {item.sc_item?.descricao && item.descricao_livre && item.descricao_livre !== item.sc_item.descricao && (
+                                <span className="block text-xs text-muted-foreground font-normal italic mt-0.5">{item.descricao_livre}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-bold">{item.quantidade}</TableCell>
+                            <TableCell>{item.unidade}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-4 text-muted-foreground italic">Nenhum item encontrado.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+              
+              <div className="flex justify-end pt-4 border-t gap-2">
+                <Button variant="outline" onClick={() => setDetailOpen(false)}>Fechar</Button>
+                {hasActionPermission("pode_criar_cotacao") && selectedReqForDetail.workflow_status === "QUOTING" && (
+                  <Button onClick={() => {
+                    setDetailOpen(false);
+                    handleReqChange(selectedReqForDetail.id);
+                    setOpen(true);
+                  }}>
+                    <Plus className="h-4 w-4 mr-1" /> Criar Cotação Agora
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
