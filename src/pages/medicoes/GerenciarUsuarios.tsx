@@ -26,6 +26,8 @@ interface UserRow {
   pode_aprovar_compra?: boolean;
   pode_rejeitar_compra?: boolean;
   pode_receber_compra?: boolean;
+  pode_criar_cotacao?: boolean;
+  pode_criar_pedido?: boolean;
 }
 
 interface RoleRow {
@@ -44,6 +46,8 @@ interface WorkflowPerms {
   pode_aprovar_compra: boolean;
   pode_rejeitar_compra: boolean;
   pode_receber_compra: boolean;
+  pode_criar_cotacao: boolean;
+  pode_criar_pedido: boolean;
 }
 
 export default function GerenciarUsuariosPage() {
@@ -60,7 +64,8 @@ export default function GerenciarUsuariosPage() {
     if (!empresaId) return;
     const { data } = await supabase
       .from("profiles")
-      .select("id, nome, avatar_url, aprovado, cargo, empresa_id, pode_aprovar_compra, pode_rejeitar_compra, pode_receber_compra")
+      .select("id, nome, avatar_url, aprovado, cargo, empresa_id, pode_aprovar_compra, pode_rejeitar_compra, pode_receber_compra, pode_criar_cotacao, pode_criar_pedido")
+
       .eq("empresa_id", empresaId);
     setUsers((data as UserRow[]) || []);
 
@@ -308,6 +313,28 @@ export default function GerenciarUsuariosPage() {
                   <Switch
                     checked={selectedUser?.pode_receber_compra ?? false}
                     onCheckedChange={(v) => toggleWorkflowPerm("pode_receber_compra", v)}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Criar Cotações (Compras)</Label>
+                    <p className="text-xs text-muted-foreground">Permite criar cotações para requisições</p>
+                  </div>
+                  <Switch
+                    checked={selectedUser?.pode_criar_cotacao ?? false}
+                    onCheckedChange={(v) => toggleWorkflowPerm("pode_criar_cotacao", v)}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Criar Pedidos (Compras)</Label>
+                    <p className="text-xs text-muted-foreground">Permite gerar pedidos de compra</p>
+                  </div>
+                  <Switch
+                    checked={selectedUser?.pode_criar_pedido ?? false}
+                    onCheckedChange={(v) => toggleWorkflowPerm("pode_criar_pedido", v)}
                   />
                 </div>
               </div>

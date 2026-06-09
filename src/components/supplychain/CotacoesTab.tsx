@@ -21,6 +21,7 @@ export function CotacoesTab() {
   const { cotacoes, isLoading, create } = useCotacoes();
   const { requisicoes } = useRequisicoes();
   const { fornecedores } = useFornecedores();
+  const { hasActionPermission } = usePermissions();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" });
   const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number }[]>([]);
@@ -51,9 +52,11 @@ export function CotacoesTab() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cotações</CardTitle>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Cotação</Button>
-          </DialogTrigger>
+          {hasActionPermission("pode_criar_cotacao") && (
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Cotação</Button>
+            </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Registrar Cotação</DialogTitle></DialogHeader>
             <div className="grid gap-3">
@@ -157,16 +160,18 @@ export function CotacoesTab() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              handleReqChange(r.id);
-                              setOpen(true);
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-1" /> Criar Cotação
-                          </Button>
+                          {hasActionPermission("pode_criar_cotacao") && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                handleReqChange(r.id);
+                                setOpen(true);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" /> Criar Cotação
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
