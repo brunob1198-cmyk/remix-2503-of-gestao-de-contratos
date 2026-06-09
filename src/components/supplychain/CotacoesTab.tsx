@@ -212,30 +212,33 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                              {r.workflow_status === "SUBMITTED" && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-primary hover:text-primary hover:bg-primary/10"
-                                  onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}
-                                >
-                                  Iniciar Cotação
-                                </Button>
-                              )}
-                              {r.workflow_status === "QUOTING" && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    handleReqChange(r.id);
-                                    setOpen(true);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" /> Criar Cotação
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                            {hasActionPermission("pode_criar_cotacao") && (
+                              <>
+                                {r.workflow_status === "SUBMITTED" && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-primary hover:text-primary hover:bg-primary/10"
+                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING" })}
+                                  >
+                                    Iniciar Cotação
+                                  </Button>
+                                )}
+                                {r.workflow_status === "QUOTING" && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      handleReqChange(r.id);
+                                      setOpen(true);
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" /> Criar Cotação
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
