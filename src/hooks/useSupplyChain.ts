@@ -234,8 +234,12 @@ export function useRequisicoes() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("requisicoes_compra").update({ status }).eq("id", id);
+    mutationFn: async ({ id, status, workflow_status }: { id: string; status?: string; workflow_status?: string }) => {
+      const updates: any = {};
+      if (status) updates.status = status;
+      if (workflow_status) updates.workflow_status = workflow_status;
+      
+      const { error } = await supabase.from("requisicoes_compra").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -244,6 +248,22 @@ export function useRequisicoes() {
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
+
+  const getHistorico = (requisicaoId: string) => {
+    return useQuery({
+      queryKey: ["requisicao_historico", requisicaoId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("requisicao_historico")
+          .select("*, profiles(nome)")
+          .eq("requisicao_id", requisicaoId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!requisicaoId,
+    });
+  };
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -257,7 +277,7 @@ export function useRequisicoes() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  return { requisicoes, isLoading, create, updateStatus, remove };
+  return { requisicoes, isLoading, create, updateStatus, remove, getHistorico };
 }
 
 // ─── Cotações ───
