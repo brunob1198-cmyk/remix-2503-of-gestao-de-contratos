@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Eye, Check, X, PackageCheck } from "lucide-react";
+import { Plus, Trash2, Eye, Check, X, PackageCheck, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
+import { RequisitionTimeline } from "./RequisitionTimeline";
 
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Rascunho", variant: "secondary" },
