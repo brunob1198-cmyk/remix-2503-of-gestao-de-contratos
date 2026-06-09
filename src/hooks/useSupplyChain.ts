@@ -249,16 +249,38 @@ export function useRequisicoes() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, workflow_status }: { id: string; status?: string; workflow_status?: string }) => {
+    mutationFn: async ({ id, status, workflow_status, observacoes }: { id: string; status?: string; workflow_status?: string; observacoes?: string }) => {
+      // Get current status for history
+      const { data: current, error: fetchErr } = await supabase
+        .from("requisicoes_compra")
+        .select("workflow_status")
+        .eq("id", id)
+        .single();
+      
+      if (fetchErr) throw fetchErr;
+
       const updates: any = {};
       if (status) updates.status = status;
       if (workflow_status) updates.workflow_status = workflow_status;
       
       const { error } = await supabase.from("requisicoes_compra").update(updates).eq("id", id);
       if (error) throw error;
+
+      // Log to history
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && (workflow_status || status)) {
+        await supabase.from("requisicao_historico").insert({
+          requisicao_id: id,
+          status_anterior: current.workflow_status,
+          status_novo: workflow_status || current.workflow_status,
+          usuario_id: user.id,
+          observacoes: observacoes || `Status atualizado para ${workflow_status || status}`
+        });
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["requisicao_historico", variables.id] });
       toast({ title: "Status atualizado!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
