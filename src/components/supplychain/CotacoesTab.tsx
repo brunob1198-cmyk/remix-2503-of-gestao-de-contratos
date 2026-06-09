@@ -376,6 +376,15 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                   </Table>
                 </div>
               </div>
+              <div className="pt-4 border-t">
+                <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  Timeline da Requisição
+                </h4>
+                <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                  <RequisitionTimeline requisicaoId={selectedReqForDetail.id} />
+                </div>
+              </div>
               
               <div className="flex justify-end pt-4 border-t gap-2">
                 <Button variant="outline" onClick={() => setDetailOpen(false)}>Fechar</Button>
