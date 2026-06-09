@@ -3362,6 +3362,44 @@ export type Database = {
           },
         ]
       }
+      requisicao_historico: {
+        Row: {
+          created_at: string
+          id: string
+          observacoes: string | null
+          requisicao_id: string
+          status_anterior: string | null
+          status_novo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          requisicao_id: string
+          status_anterior?: string | null
+          status_novo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observacoes?: string | null
+          requisicao_id?: string
+          status_anterior?: string | null
+          status_novo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicao_historico_requisicao_id_fkey"
+            columns: ["requisicao_id"]
+            isOneToOne: false
+            referencedRelation: "requisicoes_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requisicao_itens: {
         Row: {
           created_at: string
@@ -3427,6 +3465,7 @@ export type Database = {
           solicitante_id: string
           status: string
           updated_at: string
+          workflow_status: string
         }
         Insert: {
           aprovado_por?: string | null
@@ -3444,6 +3483,7 @@ export type Database = {
           solicitante_id: string
           status?: string
           updated_at?: string
+          workflow_status?: string
         }
         Update: {
           aprovado_por?: string | null
@@ -3461,6 +3501,7 @@ export type Database = {
           solicitante_id?: string
           status?: string
           updated_at?: string
+          workflow_status?: string
         }
         Relationships: [
           {
