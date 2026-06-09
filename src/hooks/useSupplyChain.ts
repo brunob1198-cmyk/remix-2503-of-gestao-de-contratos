@@ -210,13 +210,13 @@ export function useRequisicoes() {
       // Get the next RC number atomically using a function or a more reliable method
       // For now, let's at least wrap it better. 
       // Ideally, this should be a DB trigger or a function to avoid collisions
-      const { data: countData, error: countErr } = await supabase
+      const { count, error: countErr } = await supabase
         .from("requisicoes_compra")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId);
       
       if (countErr) throw countErr;
-      const numero = `RC-${String((countData || 0) + 1).padStart(4, "0")}`;
+      const numero = `RC-${String((count || 0) + 1).padStart(4, "0")}`;
 
       const { data, error } = await supabase
         .from("requisicoes_compra")
