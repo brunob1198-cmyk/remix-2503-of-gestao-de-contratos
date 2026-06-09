@@ -204,17 +204,23 @@ export function useRequisicoes() {
       const empresaId = await getEmpresaId();
       const { data: { user } } = await supabase.auth.getUser();
       const itens = req.itens || [];
-      delete req.itens;
+      const reqData = { ...req };
+      delete reqData.itens;
       
-      const count = await supabase
+      // Get the next RC number atomically using a function or a more reliable method
+      // For now, let's at least wrap it better. 
+      // Ideally, this should be a DB trigger or a function to avoid collisions
+      const { count, error: countErr } = await supabase
         .from("requisicoes_compra")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId);
-      const numero = `RC-${String((count.count || 0) + 1).padStart(4, "0")}`;
+      
+      if (countErr) throw countErr;
+      const numero = `RC-${String((count || 0) + 1).padStart(4, "0")}`;
 
       const { data, error } = await supabase
         .from("requisicoes_compra")
-        .insert({ ...req, empresa_id: empresaId, solicitante_id: user!.id, numero })
+        .insert({ ...reqData, empresa_id: empresaId, solicitante_id: user!.id, numero, workflow_status: 'DRAFT' })
         .select()
         .single();
       if (error) throw error;
@@ -225,6 +231,7 @@ export function useRequisicoes() {
           .insert(itens.map((i: any) => ({ ...i, requisicao_id: data.id })));
         if (itemErr) throw itemErr;
       }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });

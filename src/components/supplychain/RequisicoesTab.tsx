@@ -60,8 +60,14 @@ export function RequisicoesTab() {
   };
 
   const handleSave = () => {
+    if (create.isPending) return;
     const itens = itemRows.filter(i => i.descricao_livre || i.sc_item_id);
-    create.mutate({ ...form, itens }, { onSuccess: () => { setOpen(false); resetForm(); } });
+    create.mutate({ ...form, itens }, { 
+      onSuccess: () => { 
+        setOpen(false); 
+        resetForm(); 
+      } 
+    });
   };
 
   const addItemRow = () => setItemRows(p => [...p, { sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]);
