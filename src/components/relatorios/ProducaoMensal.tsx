@@ -352,7 +352,7 @@ export default function ProducaoMensal() {
             </p>
           ) : (
             <div className="space-y-2">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-md border h-[calc(100vh-380px)] min-h-[500px]">
                 <Table>
                   <TableHeader>
                     <TableRow>

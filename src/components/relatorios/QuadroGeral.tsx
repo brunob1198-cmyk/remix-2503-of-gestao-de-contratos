@@ -663,9 +663,9 @@ export default function QuadroGeral() {
           {filteredAreaGroups.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
           ) : (
-            <div className="rounded-md border overflow-auto">
-              <Table>
-                <TableHeader>
+            <div className="rounded-md border overflow-auto h-[calc(100vh-380px)] min-h-[500px]">
+              <Table className="relative">
+                <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                   <TableRow>
                     <TableHead className="min-w-[360px]">
                       {Array.from(visibleColumns)
