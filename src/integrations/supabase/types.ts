@@ -1508,7 +1508,6 @@ export type Database = {
           data_emissao: string
           descricao: string | null
           erp_id: string
-          empresa_id: string | null
           id: string
           numero_nota: string | null
           numero_venda: string | null
@@ -1527,7 +1526,6 @@ export type Database = {
           data_emissao: string
           descricao?: string | null
           erp_id: string
-          empresa_id?: string | null
           id?: string
           numero_nota?: string | null
           numero_venda?: string | null
@@ -1546,7 +1544,6 @@ export type Database = {
           data_emissao?: string
           descricao?: string | null
           erp_id?: string
-          empresa_id?: string | null
           id?: string
           numero_nota?: string | null
           numero_venda?: string | null
