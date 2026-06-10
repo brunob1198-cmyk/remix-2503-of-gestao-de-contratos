@@ -276,7 +276,7 @@ export default function ForecastTab() {
         <CardContent className="p-0">
           <div 
             ref={parentRef}
-            className="overflow-auto border rounded-md relative h-[600px]"
+            className="overflow-auto border rounded-md relative h-[calc(100vh-420px)] min-h-[600px]"
           >
             <Table className="border-collapse w-full">
               <TableHeader className="sticky top-0 z-30 bg-background border-b shadow-sm">
