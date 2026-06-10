@@ -289,6 +289,7 @@ serve(async (req) => {
         centro_custo: centroCusto,
         status: nf.status || null,
         payload_json: nf,
+        empresa_id: profile.empresa_id,
         updated_at: new Date().toISOString(),
       };
     }));
@@ -327,6 +328,7 @@ serve(async (req) => {
         centro_custo: centroCusto,
         status: nf.status || null,
         payload_json: nf,
+        empresa_id: profile.empresa_id,
         updated_at: new Date().toISOString(),
       };
     }));

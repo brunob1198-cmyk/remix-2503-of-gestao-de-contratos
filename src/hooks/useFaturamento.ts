@@ -429,6 +429,7 @@ export function useUpdateFaturamento() {
 export interface FaturamentoContaAzul {
   id: string;
   erp_id: string;
+  empresa_id: string | null;
   numero_nota: string | null;
   data_emissao: string;
   cliente_nome: string | null;
