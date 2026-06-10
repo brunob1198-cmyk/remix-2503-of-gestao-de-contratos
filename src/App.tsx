@@ -36,7 +36,7 @@ import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
 import UploadTestPage from "./pages/debug/UploadTest";
 import StorageMigrationPage from "./pages/medicoes/StorageMigration";
-
+import ForecastPublicPage from "./pages/ForecastPublic";
 
 // Lazy Loaded Pages
 const RecursosPage = React.lazy(() => import("./pages/medicoes/Recursos"));
@@ -128,6 +128,8 @@ const App = () => {
 
               {/* Extrator de PDF */}
               <Route path="/extrator" element={<Index />} />
+              <Route path="/forecast-public" element={<ForecastPublicPage />} />
+
 
               <Route path="*" element={<NotFound />} />
             </Routes>
