@@ -1,0 +1,1 @@
+DROP VIEW IF EXISTS public.view_public_forecast CASCADE;

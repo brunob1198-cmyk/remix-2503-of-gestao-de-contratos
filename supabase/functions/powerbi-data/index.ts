@@ -16,6 +16,7 @@ const ALLOWED_VIEWS = [
   "view_contratos",
   "view_bi_analise_obras",
   "view_quadro_geral_bi",
+  
   "view_public_forecast",
   "view_public_forecast_flat",
 ];

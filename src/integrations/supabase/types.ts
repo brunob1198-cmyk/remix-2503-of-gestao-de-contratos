@@ -4963,7 +4963,6 @@ export type Database = {
           cliente_nome: string | null
           forecast_data: Json | null
           producao_mensal: Json | null
-          projeto_codigo: string | null
           projeto_id: string | null
           projeto_nome: string | null
           projeto_status: string | null
@@ -5167,7 +5166,6 @@ export type Database = {
           cliente_nome: string | null
           forecast_data: Json | null
           producao_mensal: Json | null
-          projeto_codigo: string | null
           projeto_id: string | null
           projeto_nome: string | null
           projeto_status: string | null
