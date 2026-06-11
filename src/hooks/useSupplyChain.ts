@@ -93,6 +93,8 @@ export function useFornecedores() {
       contato_email?: string; 
       contato_telefone?: string; 
       endereco?: string; 
+      cep?: string;
+      complemento?: string;
       categoria?: string; 
       observacoes?: string;
       municipio?: string;

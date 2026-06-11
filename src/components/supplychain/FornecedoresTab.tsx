@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useFornecedores } from "@/hooks/useSupplyChain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +16,44 @@ export function FornecedoresTab() {
   const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  const maskCNPJ = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
+      .substring(0, 18);
+  };
+
+  const handleCEPChange = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, "");
+    setForm(p => ({ ...p, cep: cleanCEP }));
+    
+    if (cleanCEP.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setForm(p => ({
+            ...p,
+            endereco: data.logradouro,
+            municipio: data.localidade,
+            uf: data.uf
+          }));
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+      }
+    }
+  };
 
   const resetForm = () => {
-    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
     setEditing(null);
   };
 
@@ -42,6 +74,8 @@ export function FornecedoresTab() {
       contato_email: f.contato_email || "", 
       contato_telefone: f.contato_telefone || "", 
       endereco: f.endereco || "", 
+      cep: f.cep || "",
+      complemento: f.complemento || "",
       categoria: f.categoria || "geral", 
       observacoes: f.observacoes || "",
       municipio: f.municipio || "",
@@ -76,6 +110,8 @@ export function FornecedoresTab() {
           else if (kl.includes("email") || kl.includes("e-mail")) colMap.contato_email = k;
           else if (kl.includes("telef") || kl.includes("fone") || kl.includes("cel")) colMap.contato_telefone = k;
           else if (kl.includes("ender")) colMap.endereco = k;
+          else if (kl.includes("cep")) colMap.cep = k;
+          else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("categ")) colMap.categoria = k;
           else if (kl.includes("municip") || kl.includes("cidade")) colMap.municipio = k;
           else if (kl === "uf" || kl === "estado") colMap.uf = k;
@@ -97,6 +133,8 @@ export function FornecedoresTab() {
             contato_email: colMap.contato_email ? String(r[colMap.contato_email] || "").trim() || undefined : undefined,
             contato_telefone: colMap.contato_telefone ? String(r[colMap.contato_telefone] || "").trim() || undefined : undefined,
             endereco: colMap.endereco ? String(r[colMap.endereco] || "").trim() || undefined : undefined,
+            cep: colMap.cep ? String(r[colMap.cep] || "").trim() || undefined : undefined,
+            complemento: colMap.complemento ? String(r[colMap.complemento] || "").trim() || undefined : undefined,
             categoria: colMap.categoria ? String(r[colMap.categoria] || "geral").trim() : "geral",
             municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
             uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
@@ -120,11 +158,11 @@ export function FornecedoresTab() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { "Razão Social": "Fornecedor Exemplo Ltda", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "Endereço": "Rua Exemplo, 100", "Município": "São Paulo", "UF": "SP", "Score": 85, "Categoria": "materiais", "Observações": "" },
+      { "Razão Social": "FORNECEDOR EXEMPLO LTDA", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "CEP": "01001-000", "Endereço": "Rua Direita", "Complemento": "Loja 1", "Município": "São Paulo", "UF": "SP", "Score": 85, "Categoria": "materiais", "Observações": "" },
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(template);
-    ws["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 5 }, { wch: 8 }, { wch: 15 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(wb, ws, "Fornecedores");
     XLSX.writeFile(wb, "modelo_fornecedores.xlsx");
   };
@@ -148,22 +186,62 @@ export function FornecedoresTab() {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} Fornecedor</DialogTitle></DialogHeader>
               <div className="grid gap-3">
-                <div><Label>Razão Social *</Label><Input value={form.razao_social} onChange={e => setForm(p => ({ ...p, razao_social: e.target.value }))} /></div>
+                <div>
+                  <Label>Razão Social *</Label>
+                  <Input 
+                    value={form.razao_social} 
+                    onChange={e => setForm(p => ({ ...p, razao_social: e.target.value.toUpperCase() }))} 
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>CNPJ</Label><Input value={form.cnpj} onChange={e => setForm(p => ({ ...p, cnpj: e.target.value }))} /></div>
+                  <div>
+                    <Label>CNPJ</Label>
+                    <Input 
+                      value={form.cnpj} 
+                      onChange={e => setForm(p => ({ ...p, cnpj: maskCNPJ(e.target.value) }))} 
+                    />
+                  </div>
                   <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
                   <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>CEP</Label>
+                    <Input 
+                      value={form.cep} 
+                      onChange={e => handleCEPChange(e.target.value)}
+                      maxLength={8}
+                    />
+                  </div>
+                  <div>
+                    <Label>Município</Label>
+                    <Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} />
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><Label>Município</Label><Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} /></div>
-                  <div><Label>UF</Label><Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value }))} maxLength={2} /></div>
-                  <div><Label>Score</Label><Input type="number" value={form.score} onChange={e => setForm(p => ({ ...p, score: Number(e.target.value) }))} /></div>
+                  <div className="col-span-1">
+                    <Label>UF</Label>
+                    <Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value.toUpperCase() }))} maxLength={2} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Score</Label>
+                    <Input type="number" value={form.score} onChange={e => setForm(p => ({ ...p, score: Number(e.target.value) }))} />
+                  </div>
                 </div>
                 <div><Label>E-mail</Label><Input value={form.contato_email} onChange={e => setForm(p => ({ ...p, contato_email: e.target.value }))} /></div>
-                <div><Label>Endereço</Label><Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-1">
+                    <Label>Endereço (Rua)</Label>
+                    <Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} />
+                  </div>
+                  <div className="col-span-1">
+                    <Label>Complemento (Qd, Lt, Nº, etc)</Label>
+                    <Input value={form.complemento} onChange={e => setForm(p => ({ ...p, complemento: e.target.value }))} />
+                  </div>
+                </div>
                 <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} /></div>
                 <Button onClick={handleSave} disabled={!form.razao_social || create.isPending || update.isPending}>
                   {editing ? "Salvar" : "Cadastrar"}
