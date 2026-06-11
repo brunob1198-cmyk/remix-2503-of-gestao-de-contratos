@@ -227,8 +227,20 @@ export function FornecedoresTab() {
                     <Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value.toUpperCase() }))} maxLength={2} />
                   </div>
                   <div className="col-span-2">
-                    <Label>Score</Label>
-                    <Input type="number" value={form.score} onChange={e => setForm(p => ({ ...p, score: Number(e.target.value) }))} />
+                    <div className="flex justify-between items-center">
+                      <Label>Score</Label>
+                      <span className="text-[10px] text-muted-foreground font-medium">Legenda: 0-100</span>
+                    </div>
+                    <Input 
+                      type="number" 
+                      min={0} 
+                      max={100} 
+                      value={form.score} 
+                      onChange={e => {
+                        const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                        setForm(p => ({ ...p, score: val }));
+                      }} 
+                    />
                   </div>
                 </div>
                 <div><Label>E-mail</Label><Input value={form.contato_email} onChange={e => setForm(p => ({ ...p, contato_email: e.target.value }))} /></div>
