@@ -1143,6 +1143,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
               <span className="text-xs font-semibold text-primary truncate">
                 {diario.site_codigo} — {diario.site_nome}
               </span>
+              <StatusAtivoBadge status={diario.status_ativo} compact />
             </div>
           )}
           {!showSite && (
@@ -1153,6 +1154,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
               <span className="text-xs text-muted-foreground">
                 {safeFormat(diario.data, "EEEE", { locale: ptBR })}
               </span>
+              <StatusAtivoBadge status={diario.status_ativo} compact />
               {hasProblema && (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
               )}
