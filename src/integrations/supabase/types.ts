@@ -1995,7 +1995,9 @@ export type Database = {
           ativo: boolean | null
           avaliacao: number | null
           categoria: string | null
+          cep: string | null
           cnpj: string | null
+          complemento: string | null
           contato_email: string | null
           contato_nome: string | null
           contato_telefone: string | null
@@ -2014,7 +2016,9 @@ export type Database = {
           ativo?: boolean | null
           avaliacao?: number | null
           categoria?: string | null
+          cep?: string | null
           cnpj?: string | null
+          complemento?: string | null
           contato_email?: string | null
           contato_nome?: string | null
           contato_telefone?: string | null
@@ -2033,7 +2037,9 @@ export type Database = {
           ativo?: boolean | null
           avaliacao?: number | null
           categoria?: string | null
+          cep?: string | null
           cnpj?: string | null
+          complemento?: string | null
           contato_email?: string | null
           contato_nome?: string | null
           contato_telefone?: string | null
