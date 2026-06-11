@@ -16,7 +16,7 @@ export function FornecedoresTab() {
   const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
