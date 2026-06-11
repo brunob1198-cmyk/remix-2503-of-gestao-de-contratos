@@ -1316,6 +1316,28 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
           </Card>
         )}
 
+        {diario.status_ativo && (() => {
+          const s = String(diario.status_ativo).toUpperCase();
+          const isOn = s === "ON";
+          return (
+            <div className={cn(
+              "rounded-lg border-2 p-3 flex items-center justify-between",
+              isOn ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn("inline-block h-2.5 w-2.5 rounded-full", isOn ? "bg-emerald-500" : "bg-rose-500")} />
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Status do Ativo ao Fim do Acionamento</span>
+              </div>
+              <span className={cn(
+                "text-sm font-bold px-3 py-1 rounded",
+                isOn ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+              )}>
+                STATUS {s}
+              </span>
+            </div>
+          );
+        })()}
+
         {(diario.equipe.length > 0 || diario.equipamentos.length > 0 || diario.veiculos.length > 0) && (
           <Card>
             <CardHeader className="pb-2">
