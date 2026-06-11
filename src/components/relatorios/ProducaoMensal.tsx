@@ -352,9 +352,9 @@ export default function ProducaoMensal() {
             </p>
           ) : (
             <div className="space-y-2">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+              <div className="overflow-x-auto rounded-md border h-[calc(100vh-380px)] min-h-[500px]">
+                <Table className="relative">
+                  <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                     <TableRow>
                       <TableHead>{renderColumnHeader("area")}</TableHead>
                       <TableHead>{renderColumnHeader("cliente")}</TableHead>
