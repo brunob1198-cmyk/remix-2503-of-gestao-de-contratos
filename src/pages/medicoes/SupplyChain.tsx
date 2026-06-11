@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList, Scale } from "lucide-react";
+import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList, Scale, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { FornecedoresTab } from "@/components/supplychain/FornecedoresTab";
 import { ItensTab } from "@/components/supplychain/ItensTab";
 import { RequisicoesTab } from "@/components/supplychain/RequisicoesTab";
@@ -9,6 +9,13 @@ import { PedidosTab } from "@/components/supplychain/PedidosTab";
 import { MinhaFilaTab } from "@/components/supplychain/MinhaFilaTab";
 import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
 import { ComparativoTab } from "@/components/supplychain/ComparativoTab";
+
+const PIPELINE_STEPS = [
+  { id: "requisicoes", label: "Requisição", icon: FileText },
+  { id: "cotacoes", label: "Cotação", icon: ClipboardCheck },
+  { id: "comparativo", label: "Aprovação", icon: Scale },
+  { id: "pedidos", label: "Pedido / Recebimento", icon: Truck },
+];
 
 export default function SupplyChainPage() {
   const [tab, setTab] = useState("minha-fila");
@@ -38,39 +45,71 @@ export default function SupplyChainPage() {
         activeFilter={{ tab, filter }} 
       />
 
-      <Tabs value={tab} onValueChange={(v) => { setTab(v); setFilter(undefined); }}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="minha-fila" className="gap-2 text-primary font-semibold">
-            <LayoutList className="h-4 w-4" /> Minha Fila
-          </TabsTrigger>
-          <TabsTrigger value="requisicoes" className="gap-2">
-            <FileText className="h-4 w-4" /> Requisições
-          </TabsTrigger>
-          <TabsTrigger value="cotacoes" className="gap-2">
-            <ClipboardCheck className="h-4 w-4" /> Cotações
-          </TabsTrigger>
-          <TabsTrigger value="comparativo" className="gap-2">
-            <Scale className="h-4 w-4" /> Comparativo
-          </TabsTrigger>
-          <TabsTrigger value="pedidos" className="gap-2">
-            <Truck className="h-4 w-4" /> Pedidos
-          </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="gap-2">
-            <ShoppingCart className="h-4 w-4" /> Fornecedores
-          </TabsTrigger>
-          <TabsTrigger value="itens" className="gap-2">
-            <Package className="h-4 w-4" /> Itens
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Flow Pipeline */}
+      <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-muted/30 p-3 rounded-lg border overflow-x-auto hide-scrollbar">
+        <Button 
+          variant={tab === "minha-fila" ? "default" : "outline"} 
+          className="gap-2 shrink-0 bg-background"
+          onClick={() => { setTab("minha-fila"); setFilter(undefined); }}
+        >
+          <LayoutList className="h-4 w-4 text-primary" /> 
+          <span className="font-semibold">Minha Fila</span>
+        </Button>
 
-        <TabsContent value="minha-fila"><MinhaFilaTab /></TabsContent>
-        <TabsContent value="requisicoes"><RequisicoesTab filter={filter} /></TabsContent>
-        <TabsContent value="cotacoes"><CotacoesTab filter={filter} /></TabsContent>
-        <TabsContent value="comparativo"><ComparativoTab /></TabsContent>
-        <TabsContent value="pedidos"><PedidosTab filter={filter} /></TabsContent>
-        <TabsContent value="fornecedores"><FornecedoresTab /></TabsContent>
-        <TabsContent value="itens"><ItensTab /></TabsContent>
-      </Tabs>
+        <div className="hidden xl:block h-8 w-px bg-border mx-2"></div>
+
+        <div className="flex items-center gap-2 flex-nowrap w-full overflow-x-auto pb-1 xl:pb-0 hide-scrollbar">
+          {PIPELINE_STEPS.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = tab === step.id;
+            return (
+              <div key={step.id} className="flex items-center shrink-0">
+                <Button
+                  variant={isActive ? "default" : "outline"}
+                  className={`gap-2 rounded-full ${isActive ? "shadow-md" : "bg-background hover:bg-muted"}`}
+                  onClick={() => { setTab(step.id); setFilter(undefined); }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {step.label}
+                </Button>
+                {index < PIPELINE_STEPS.length - 1 && (
+                  <ChevronRight className="h-5 w-5 mx-1 md:mx-3 text-muted-foreground/50 shrink-0" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hidden xl:block h-8 w-px bg-border mx-2"></div>
+
+        <div className="flex items-center gap-2 shrink-0 pt-2 xl:pt-0 border-t xl:border-t-0 border-border w-full xl:w-auto">
+          <Button 
+            variant={tab === "fornecedores" ? "default" : "ghost"} 
+            size="sm" 
+            onClick={() => { setTab("fornecedores"); setFilter(undefined); }}
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" /> Fornecedores
+          </Button>
+          <Button 
+            variant={tab === "itens" ? "default" : "ghost"} 
+            size="sm" 
+            onClick={() => { setTab("itens"); setFilter(undefined); }}
+          >
+            <Package className="h-4 w-4 mr-2" /> Itens
+          </Button>
+        </div>
+      </div>
+
+      {/* Render Active View */}
+      <div className="mt-6">
+        {tab === "minha-fila" && <MinhaFilaTab />}
+        {tab === "requisicoes" && <RequisicoesTab filter={filter} />}
+        {tab === "cotacoes" && <CotacoesTab filter={filter} />}
+        {tab === "comparativo" && <ComparativoTab />}
+        {tab === "pedidos" && <PedidosTab filter={filter} />}
+        {tab === "fornecedores" && <FornecedoresTab />}
+        {tab === "itens" && <ItensTab />}
+      </div>
     </div>
   );
 }

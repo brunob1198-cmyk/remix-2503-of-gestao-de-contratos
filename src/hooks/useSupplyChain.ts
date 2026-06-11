@@ -397,14 +397,14 @@ export function usePedidosCompra() {
   }, [queryClient]);
 
   const { data: pedidos = [], isLoading } = useQuery({
-    queryKey: ["pedidos_compra"],
+    queryKey: ["pedidos"],
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("pedidos_compra")
-        .select("*, fornecedor:fornecedores(razao_social), itens:pedido_itens(*)")
+        .from("pedidos")
+        .select("*, fornecedor:fornecedores(razao_social), itens:pedido_itens(*, sc_item:sc_itens(codigo, descricao)), recebimentos:pedido_recebimentos(*, itens:pedido_recebimento_itens(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -419,19 +419,18 @@ export function usePedidosCompra() {
       try {
         const empresaId = await getEmpresaId();
         
-        // Uso de canal específico por empresa para isolamento via RLS em realtime.messages
         channel = supabase
-          .channel(`pedidos_compra:${empresaId}`)
+          .channel(`pedidos:${empresaId}`)
           .on(
             "postgres_changes",
             { 
               event: "*", 
               schema: "public", 
-              table: "pedidos_compra",
+              table: "pedidos",
               filter: `empresa_id=eq.${empresaId}` 
             },
             (payload) => {
-              queryClientRef.current.invalidateQueries({ queryKey: ["pedidos_compra"] });
+              queryClientRef.current.invalidateQueries({ queryKey: ["pedidos"] });
 
               if (payload.eventType === "UPDATE") {
                 const oldStatus = (payload.old as any)?.status;
@@ -439,13 +438,13 @@ export function usePedidosCompra() {
                 const numero = (payload.new as any)?.numero || "";
 
                 if (oldStatus !== newStatus) {
-                  if (newStatus === "saiu_para_entrega") {
-                    toast.success(`🚚 Pedido ${numero} saiu para entrega`, {
-                      description: `O pedido está a caminho do destino.`,
+                  if (newStatus === "em_transito" || newStatus === "saiu_para_entrega") {
+                    toast.success(`🚚 Pedido ${numero} a caminho`, {
+                      description: `O pedido está em trânsito.`,
                     });
                   } else if (newStatus === "entregue") {
                     toast.success(`✅ Pedido ${numero} entregue`, {
-                      description: `O pedido foi entregue com sucesso.`,
+                      description: `O pedido foi recebido integralmente.`,
                     });
                   } else {
                     const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
@@ -475,7 +474,7 @@ export function usePedidosCompra() {
         supabase.removeChannel(channel);
       }
     };
-  }, []); // dependências vazias — usa refs para valores estáveis
+  }, []);
 
   const create = useMutation({
     mutationFn: async (ped: any) => {
@@ -484,14 +483,14 @@ export function usePedidosCompra() {
       delete ped.itens;
 
       const count = await supabase
-        .from("pedidos_compra")
+        .from("pedidos")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId);
-      const numero = `PC-${String((count.count || 0) + 1).padStart(4, "0")}`;
+      const numero = `PED-${String((count.count || 0) + 1).padStart(4, "0")}`;
 
       const { data, error } = await supabase
-        .from("pedidos_compra")
-        .insert({ ...ped, empresa_id: empresaId, numero })
+        .from("pedidos")
+        .insert({ ...ped, empresa_id: empresaId, numero, status: 'rascunho' })
         .select()
         .single();
       if (error) throw error;
@@ -502,24 +501,27 @@ export function usePedidosCompra() {
           .insert(itens.map((i: any) => ({ ...i, pedido_id: data.id })));
         if (itemErr) throw itemErr;
       }
+      return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       toast.success("Pedido de compra criado!");
     },
-    onError: (e: Error) => toast.error("Erro: " + e.message),
+    onError: (e: Error) => toast.error("Erro ao criar pedido: " + e.message),
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, workflow_status }: { id: string; status?: string; workflow_status?: string }) => {
+    mutationFn: async ({ id, status, observacoes }: { id: string; status?: string; observacoes?: string }) => {
       const updates: any = {};
       if (status) updates.status = status;
-      if (workflow_status) updates.workflow_status = workflow_status;
-      const { error } = await supabase.from("pedidos_compra").update(updates).eq("id", id);
+      if (observacoes) updates.observacoes = observacoes;
+      if (status === 'entregue') updates.data_entrega_real = new Date().toISOString().split('T')[0];
+      
+      const { error } = await supabase.from("pedidos").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       toast.success("Status atualizado!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
@@ -527,15 +529,79 @@ export function usePedidosCompra() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("pedidos_compra").delete().eq("id", id);
+      const { error } = await supabase.from("pedidos").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pedidos_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       toast.success("Pedido excluído!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
   });
 
   return { pedidos, isLoading, create, updateStatus, remove };
+}
+
+// ─── Recebimentos de Pedido ───
+export function usePedidoRecebimentos() {
+  const queryClient = useQueryClient();
+
+  const create = useMutation({
+    mutationFn: async (recebimento: any) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const itens = recebimento.itens || [];
+      delete recebimento.itens;
+
+      const { data, error } = await supabase
+        .from("pedido_recebimentos")
+        .insert({ ...recebimento, recebido_por: user.id })
+        .select()
+        .single();
+      
+      if (error) throw error;
+
+      if (itens.length > 0) {
+        const { error: itemErr } = await supabase
+          .from("pedido_recebimento_itens")
+          .insert(itens.map((i: any) => ({ ...i, recebimento_id: data.id })));
+        if (itemErr) throw itemErr;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      toast.success("Recebimento registrado com sucesso!");
+    },
+    onError: (e: Error) => toast.error("Erro ao registrar recebimento: " + e.message),
+  });
+
+  return { create };
+}
+
+// ─── Avaliações de Fornecedor ───
+export function useAvaliacoesFornecedor() {
+  const queryClient = useQueryClient();
+
+  const create = useMutation({
+    mutationFn: async (avaliacao: any) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const { error } = await supabase
+        .from("avaliacoes_fornecedor")
+        .insert({ ...avaliacao, avaliado_por: user.id });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
+      queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      toast.success("Avaliação registrada com sucesso!");
+    },
+    onError: (e: Error) => toast.error("Erro ao registrar avaliação: " + e.message),
+  });
+
+  return { create };
 }
