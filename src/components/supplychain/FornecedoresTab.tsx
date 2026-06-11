@@ -21,7 +21,7 @@ export function FornecedoresTab() {
   const { toast } = useToast();
 
   const resetForm = () => {
-    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
     setEditing(null);
   };
 
@@ -42,6 +42,8 @@ export function FornecedoresTab() {
       contato_email: f.contato_email || "", 
       contato_telefone: f.contato_telefone || "", 
       endereco: f.endereco || "", 
+      cep: f.cep || "",
+      complemento: f.complemento || "",
       categoria: f.categoria || "geral", 
       observacoes: f.observacoes || "",
       municipio: f.municipio || "",
