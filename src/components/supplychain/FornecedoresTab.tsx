@@ -101,6 +101,8 @@ export function FornecedoresTab() {
             contato_email: colMap.contato_email ? String(r[colMap.contato_email] || "").trim() || undefined : undefined,
             contato_telefone: colMap.contato_telefone ? String(r[colMap.contato_telefone] || "").trim() || undefined : undefined,
             endereco: colMap.endereco ? String(r[colMap.endereco] || "").trim() || undefined : undefined,
+            cep: colMap.cep ? String(r[colMap.cep] || "").trim() || undefined : undefined,
+            complemento: colMap.complemento ? String(r[colMap.complemento] || "").trim() || undefined : undefined,
             categoria: colMap.categoria ? String(r[colMap.categoria] || "geral").trim() : "geral",
             municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
             uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
