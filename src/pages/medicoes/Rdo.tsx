@@ -70,6 +70,28 @@ const classificacaoColors: Record<string, string> = {
 
 const htmlCache = new Map<string, string>();
 
+function StatusAtivoBadge({ status, compact }: { status?: string | null; compact?: boolean }) {
+  if (!status) return null;
+  const s = String(status).toUpperCase();
+  if (s !== "ON" && s !== "OFF") return null;
+  const isOn = s === "ON";
+  return (
+    <span
+      title={`Status do Ativo: ${s}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full font-bold shrink-0 border",
+        compact ? "px-1.5 py-0 text-[10px] leading-4" : "px-2 py-0.5 text-xs",
+        isOn
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+          : "bg-rose-50 text-rose-700 border-rose-300"
+      )}
+    >
+      <span className={cn("inline-block h-1.5 w-1.5 rounded-full", isOn ? "bg-emerald-500" : "bg-rose-500")} />
+      {s}
+    </span>
+  );
+}
+
 // Generate HTML report for a single day
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
   const dataFormatada = safeFormat(diario.data, "dd/MM/yyyy (EEEE)", { locale: ptBR });
