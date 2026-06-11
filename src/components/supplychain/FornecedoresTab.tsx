@@ -16,12 +16,12 @@ export function FornecedoresTab() {
   const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "" });
+  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const resetForm = () => {
-    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "" });
+    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
     setEditing(null);
   };
 
@@ -35,7 +35,19 @@ export function FornecedoresTab() {
 
   const handleEdit = (f: any) => {
     setEditing(f);
-    setForm({ razao_social: f.razao_social, cnpj: f.cnpj || "", contato_nome: f.contato_nome || "", contato_email: f.contato_email || "", contato_telefone: f.contato_telefone || "", endereco: f.endereco || "", categoria: f.categoria || "geral", observacoes: f.observacoes || "" });
+    setForm({ 
+      razao_social: f.razao_social, 
+      cnpj: f.cnpj || "", 
+      contato_nome: f.contato_nome || "", 
+      contato_email: f.contato_email || "", 
+      contato_telefone: f.contato_telefone || "", 
+      endereco: f.endereco || "", 
+      categoria: f.categoria || "geral", 
+      observacoes: f.observacoes || "",
+      municipio: f.municipio || "",
+      uf: f.uf || "",
+      score: f.score || 0
+    });
     setOpen(true);
   };
 
@@ -65,6 +77,9 @@ export function FornecedoresTab() {
           else if (kl.includes("telef") || kl.includes("fone") || kl.includes("cel")) colMap.contato_telefone = k;
           else if (kl.includes("ender")) colMap.endereco = k;
           else if (kl.includes("categ")) colMap.categoria = k;
+          else if (kl.includes("municip") || kl.includes("cidade")) colMap.municipio = k;
+          else if (kl === "uf" || kl === "estado") colMap.uf = k;
+          else if (kl.includes("score") || kl.includes("pontua")) colMap.score = k;
           else if (kl.includes("obs")) colMap.observacoes = k;
         }
 
@@ -83,6 +98,9 @@ export function FornecedoresTab() {
             contato_telefone: colMap.contato_telefone ? String(r[colMap.contato_telefone] || "").trim() || undefined : undefined,
             endereco: colMap.endereco ? String(r[colMap.endereco] || "").trim() || undefined : undefined,
             categoria: colMap.categoria ? String(r[colMap.categoria] || "geral").trim() : "geral",
+            municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
+            uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
+            score: colMap.score ? Number(r[colMap.score]) || 0 : 0,
             observacoes: colMap.observacoes ? String(r[colMap.observacoes] || "").trim() || undefined : undefined,
           }));
 
@@ -102,7 +120,7 @@ export function FornecedoresTab() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { "Razão Social": "Fornecedor Exemplo Ltda", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "Endereço": "Rua Exemplo, 100", "Categoria": "materiais", "Observações": "" },
+      { "Razão Social": "Fornecedor Exemplo Ltda", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "Endereço": "Rua Exemplo, 100", "Município": "São Paulo", "UF": "SP", "Score": 85, "Categoria": "materiais", "Observações": "" },
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(template);
@@ -139,6 +157,11 @@ export function FornecedoresTab() {
                   <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
                   <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
                 </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>Município</Label><Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} /></div>
+                  <div><Label>UF</Label><Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value }))} maxLength={2} /></div>
+                  <div><Label>Score</Label><Input type="number" value={form.score} onChange={e => setForm(p => ({ ...p, score: Number(e.target.value) }))} /></div>
+                </div>
                 <div><Label>E-mail</Label><Input value={form.contato_email} onChange={e => setForm(p => ({ ...p, contato_email: e.target.value }))} /></div>
                 <div><Label>Endereço</Label><Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} /></div>
                 <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} /></div>
@@ -162,7 +185,9 @@ export function FornecedoresTab() {
                 <TableHead>Razão Social</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Contato</TableHead>
-                <TableHead>Categoria</TableHead>
+                 <TableHead>Categoria</TableHead>
+                <TableHead>Município/UF</TableHead>
+                <TableHead>Score</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
@@ -173,7 +198,13 @@ export function FornecedoresTab() {
                   <TableCell className="font-medium">{f.razao_social}</TableCell>
                   <TableCell>{f.cnpj || "—"}</TableCell>
                   <TableCell>{f.contato_nome || "—"}</TableCell>
-                  <TableCell><Badge variant="outline">{f.categoria}</Badge></TableCell>
+                   <TableCell><Badge variant="outline">{f.categoria}</Badge></TableCell>
+                  <TableCell>{f.municipio ? `${f.municipio}${f.uf ? `/${f.uf}` : ""}` : f.uf || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}>
+                      {f.score || 0}
+                    </Badge>
+                  </TableCell>
                   <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>
                     <div className="flex gap-1">

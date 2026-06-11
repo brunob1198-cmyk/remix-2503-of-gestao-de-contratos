@@ -86,7 +86,19 @@ export function useFornecedores() {
   });
 
   const bulkCreate = useMutation({
-    mutationFn: async (items: { razao_social: string; cnpj?: string; contato_nome?: string; contato_email?: string; contato_telefone?: string; endereco?: string; categoria?: string; observacoes?: string }[]) => {
+    mutationFn: async (items: { 
+      razao_social: string; 
+      cnpj?: string; 
+      contato_nome?: string; 
+      contato_email?: string; 
+      contato_telefone?: string; 
+      endereco?: string; 
+      categoria?: string; 
+      observacoes?: string;
+      municipio?: string;
+      uf?: string;
+      score?: number;
+    }[]) => {
       const empresaId = await getEmpresaId();
       const BATCH_SIZE = 500;
       for (let i = 0; i < items.length; i += BATCH_SIZE) {

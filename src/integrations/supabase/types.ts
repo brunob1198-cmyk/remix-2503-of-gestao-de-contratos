@@ -2003,9 +2003,11 @@ export type Database = {
           empresa_id: string
           endereco: string | null
           id: string
+          municipio: string | null
           observacoes: string | null
           razao_social: string
           score: number | null
+          uf: string | null
           updated_at: string
         }
         Insert: {
@@ -2020,9 +2022,11 @@ export type Database = {
           empresa_id: string
           endereco?: string | null
           id?: string
+          municipio?: string | null
           observacoes?: string | null
           razao_social: string
           score?: number | null
+          uf?: string | null
           updated_at?: string
         }
         Update: {
@@ -2037,9 +2041,11 @@ export type Database = {
           empresa_id?: string
           endereco?: string | null
           id?: string
+          municipio?: string | null
           observacoes?: string | null
           razao_social?: string
           score?: number | null
+          uf?: string | null
           updated_at?: string
         }
         Relationships: [
