@@ -248,6 +248,76 @@ export type Database = {
         }
         Relationships: []
       }
+      avaliacoes_fornecedor: {
+        Row: {
+          atraso_dias: number | null
+          avaliado_por: string | null
+          created_at: string
+          dias_entregues: number | null
+          dias_prometidos: number | null
+          fornecedor_id: string
+          id: string
+          nota_prazo: number
+          nota_preco: number
+          nota_qualidade: number
+          nota_responsividade: number | null
+          observacao: string | null
+          pedido_id: string
+        }
+        Insert: {
+          atraso_dias?: number | null
+          avaliado_por?: string | null
+          created_at?: string
+          dias_entregues?: number | null
+          dias_prometidos?: number | null
+          fornecedor_id: string
+          id?: string
+          nota_prazo: number
+          nota_preco: number
+          nota_qualidade: number
+          nota_responsividade?: number | null
+          observacao?: string | null
+          pedido_id: string
+        }
+        Update: {
+          atraso_dias?: number | null
+          avaliado_por?: string | null
+          created_at?: string
+          dias_entregues?: number | null
+          dias_prometidos?: number | null
+          fornecedor_id?: string
+          id?: string
+          nota_prazo?: number
+          nota_preco?: number
+          nota_qualidade?: number
+          nota_responsividade?: number | null
+          observacao?: string | null
+          pedido_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_fornecedor_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_fornecedor_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: true
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_fornecedor_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: true
+            referencedRelation: "vw_pedidos_resumo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cep: string | null
@@ -1935,6 +2005,7 @@ export type Database = {
           id: string
           observacoes: string | null
           razao_social: string
+          score: number | null
           updated_at: string
         }
         Insert: {
@@ -1951,6 +2022,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           razao_social: string
+          score?: number | null
           updated_at?: string
         }
         Update: {
@@ -1967,6 +2039,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           razao_social?: string
+          score?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2951,6 +3024,229 @@ export type Database = {
             columns: ["sc_item_id"]
             isOneToOne: false
             referencedRelation: "sc_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedido_recebimento_itens: {
+        Row: {
+          id: string
+          pedido_item_id: string
+          quantidade_recebida: number
+          recebimento_id: string
+        }
+        Insert: {
+          id?: string
+          pedido_item_id: string
+          quantidade_recebida: number
+          recebimento_id: string
+        }
+        Update: {
+          id?: string
+          pedido_item_id?: string
+          quantidade_recebida?: number
+          recebimento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_recebimento_itens_pedido_item_id_fkey"
+            columns: ["pedido_item_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_recebimento_itens_recebimento_id_fkey"
+            columns: ["recebimento_id"]
+            isOneToOne: false
+            referencedRelation: "pedido_recebimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedido_recebimentos: {
+        Row: {
+          created_at: string
+          data_recebimento: string
+          id: string
+          observacao: string | null
+          pedido_id: string
+          recebido_por: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_recebimento?: string
+          id?: string
+          observacao?: string | null
+          pedido_id: string
+          recebido_por?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_recebimento?: string
+          id?: string
+          observacao?: string | null
+          pedido_id?: string
+          recebido_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_recebimentos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_recebimentos_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "vw_pedidos_resumo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos: {
+        Row: {
+          condicao_pagamento: string | null
+          cotacao_id: string
+          created_at: string
+          criado_por: string | null
+          data_emissao: string | null
+          data_entrega_real: string | null
+          data_prevista_entrega: string | null
+          empresa_id: string
+          fornecedor_id: string
+          frete: number | null
+          id: string
+          motivo_cancelamento: string | null
+          nf_arquivo_url: string | null
+          nf_emitida_em: string | null
+          nf_numero: string | null
+          nf_serie: string | null
+          numero: string
+          observacoes: string | null
+          prazo_entrega_dias: number | null
+          projeto_id: string | null
+          requisicao_id: string
+          status: Database["public"]["Enums"]["pedido_status"]
+          updated_at: string
+          valor_total: number
+        }
+        Insert: {
+          condicao_pagamento?: string | null
+          cotacao_id: string
+          created_at?: string
+          criado_por?: string | null
+          data_emissao?: string | null
+          data_entrega_real?: string | null
+          data_prevista_entrega?: string | null
+          empresa_id: string
+          fornecedor_id: string
+          frete?: number | null
+          id?: string
+          motivo_cancelamento?: string | null
+          nf_arquivo_url?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_serie?: string | null
+          numero: string
+          observacoes?: string | null
+          prazo_entrega_dias?: number | null
+          projeto_id?: string | null
+          requisicao_id: string
+          status?: Database["public"]["Enums"]["pedido_status"]
+          updated_at?: string
+          valor_total: number
+        }
+        Update: {
+          condicao_pagamento?: string | null
+          cotacao_id?: string
+          created_at?: string
+          criado_por?: string | null
+          data_emissao?: string | null
+          data_entrega_real?: string | null
+          data_prevista_entrega?: string | null
+          empresa_id?: string
+          fornecedor_id?: string
+          frete?: number | null
+          id?: string
+          motivo_cancelamento?: string | null
+          nf_arquivo_url?: string | null
+          nf_emitida_em?: string | null
+          nf_numero?: string | null
+          nf_serie?: string | null
+          numero?: string
+          observacoes?: string | null
+          prazo_entrega_dias?: number | null
+          projeto_id?: string | null
+          requisicao_id?: string
+          status?: Database["public"]["Enums"]["pedido_status"]
+          updated_at?: string
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_cotacao_id_fkey"
+            columns: ["cotacao_id"]
+            isOneToOne: false
+            referencedRelation: "cotacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "pedidos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "pedidos_requisicao_id_fkey"
+            columns: ["requisicao_id"]
+            isOneToOne: false
+            referencedRelation: "requisicoes_compra"
             referencedColumns: ["id"]
           },
         ]
@@ -4570,6 +4866,69 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_pedidos_resumo: {
+        Row: {
+          atraso_dias: number | null
+          created_at: string | null
+          criado_por: string | null
+          data_emissao: string | null
+          data_entrega_real: string | null
+          data_prevista_entrega: string | null
+          empresa_id: string | null
+          fornecedor_nome: string | null
+          fornecedor_score: number | null
+          id: string | null
+          numero: string | null
+          projeto_id: string | null
+          requisicao_numero: string | null
+          status: Database["public"]["Enums"]["pedido_status"] | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       vw_resumo_financeiro_site_item: {
         Row: {
           item_codigo: string | null
@@ -4633,6 +4992,10 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_score_fornecedor: {
+        Args: { p_fornecedor_id: string }
+        Returns: number
+      }
       count_fotos_periodo: {
         Args: {
           p_data_fim: string
@@ -4799,6 +5162,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "interno" | "cliente"
+      pedido_status:
+        | "rascunho"
+        | "emitido"
+        | "confirmado"
+        | "entrega_parcial"
+        | "entregue"
+        | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4927,6 +5297,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "interno", "cliente"],
+      pedido_status: [
+        "rascunho",
+        "emitido",
+        "confirmado",
+        "entrega_parcial",
+        "entregue",
+        "cancelado",
+      ],
     },
   },
 } as const
