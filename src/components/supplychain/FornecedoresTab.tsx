@@ -186,7 +186,8 @@ export function FornecedoresTab() {
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Contato</TableHead>
                  <TableHead>Categoria</TableHead>
-                <TableHead>Município/UF</TableHead>
+                <TableHead>Município</TableHead>
+                <TableHead>UF</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-20" />
@@ -199,7 +200,8 @@ export function FornecedoresTab() {
                   <TableCell>{f.cnpj || "—"}</TableCell>
                   <TableCell>{f.contato_nome || "—"}</TableCell>
                    <TableCell><Badge variant="outline">{f.categoria}</Badge></TableCell>
-                  <TableCell>{f.municipio ? `${f.municipio}${f.uf ? `/${f.uf}` : ""}` : f.uf || "—"}</TableCell>
+                  <TableCell>{f.municipio || "—"}</TableCell>
+                  <TableCell>{f.uf || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}>
                       {f.score || 0}
