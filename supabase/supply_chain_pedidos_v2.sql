@@ -21,6 +21,11 @@ EXCEPTION
 END $$;
 
 -- ------------------------------------------------------------
+-- AJUSTE: Adicionar coluna 'score' na tabela fornecedores existente
+-- ------------------------------------------------------------
+ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS score NUMERIC(5, 2) DEFAULT 0;
+
+-- ------------------------------------------------------------
 -- 2. TABELA: pedidos
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS pedidos (
