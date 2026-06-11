@@ -720,13 +720,6 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -1171,13 +1164,6 @@ export type Database = {
             foreignKeyName: "diarios_campo_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "diarios_campo_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -1579,13 +1565,6 @@ export type Database = {
             foreignKeyName: "faturamentos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "faturamentos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -1686,13 +1665,6 @@ export type Database = {
             foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -1766,13 +1738,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "fca_eventos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -2232,13 +2197,6 @@ export type Database = {
             foreignKeyName: "frentes_obra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "frentes_obra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -2433,13 +2391,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "itens_lpu_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -2956,13 +2907,6 @@ export type Database = {
             foreignKeyName: "mkp_parametros_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: true
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "mkp_parametros_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: true
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -3307,13 +3251,6 @@ export type Database = {
             foreignKeyName: "pedidos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "pedidos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -3569,13 +3506,6 @@ export type Database = {
             foreignKeyName: "projeto_impostos_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: true
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_impostos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: true
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -3749,13 +3679,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -4071,13 +3994,6 @@ export type Database = {
             foreignKeyName: "requisicoes_compra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -4214,13 +4130,6 @@ export type Database = {
             foreignKeyName: "sc_locais_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "sc_locais_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -4305,13 +4214,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "sites_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -4605,13 +4507,6 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -4804,13 +4699,6 @@ export type Database = {
             foreignKeyName: "custo_real_erp_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -4957,21 +4845,6 @@ export type Database = {
           },
         ]
       }
-      view_public_forecast: {
-        Row: {
-          area_nome: string | null
-          cliente_nome: string | null
-          forecast_data: Json | null
-          producao_mensal: Json | null
-          projeto_codigo: string | null
-          projeto_id: string | null
-          projeto_nome: string | null
-          projeto_status: string | null
-          total_produzido: number | null
-          valor_contrato: number | null
-        }
-        Relationships: []
-      }
       view_public_forecast_flat: {
         Row: {
           area_nome: string | null
@@ -5066,13 +4939,6 @@ export type Database = {
             foreignKeyName: "requisicoes_compra_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -5134,13 +5000,6 @@ export type Database = {
             foreignKeyName: "sites_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "sites_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
@@ -5159,27 +5018,6 @@ export type Database = {
           p_site_ids: string[]
         }
         Returns: number
-      }
-      fetch_public_forecast: {
-        Args: never
-        Returns: {
-          area_nome: string | null
-          cliente_nome: string | null
-          forecast_data: Json | null
-          producao_mensal: Json | null
-          projeto_codigo: string | null
-          projeto_id: string | null
-          projeto_nome: string | null
-          projeto_status: string | null
-          total_produzido: number | null
-          valor_contrato: number | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "view_public_forecast"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       first_of_month:
         | {
