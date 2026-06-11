@@ -70,6 +70,28 @@ const classificacaoColors: Record<string, string> = {
 
 const htmlCache = new Map<string, string>();
 
+function StatusAtivoBadge({ status, compact }: { status?: string | null; compact?: boolean }) {
+  if (!status) return null;
+  const s = String(status).toUpperCase();
+  if (s !== "ON" && s !== "OFF") return null;
+  const isOn = s === "ON";
+  return (
+    <span
+      title={`Status do Ativo: ${s}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full font-bold shrink-0 border",
+        compact ? "px-1.5 py-0 text-[10px] leading-4" : "px-2 py-0.5 text-xs",
+        isOn
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+          : "bg-rose-50 text-rose-700 border-rose-300"
+      )}
+    >
+      <span className={cn("inline-block h-1.5 w-1.5 rounded-full", isOn ? "bg-emerald-500" : "bg-rose-500")} />
+      {s}
+    </span>
+  );
+}
+
 // Generate HTML report for a single day
 function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clienteLogoUrl?: string | null, siteName?: string): string {
   const dataFormatada = safeFormat(diario.data, "dd/MM/yyyy (EEEE)", { locale: ptBR });
@@ -1143,6 +1165,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
               <span className="text-xs font-semibold text-primary truncate">
                 {diario.site_codigo} — {diario.site_nome}
               </span>
+              <StatusAtivoBadge status={diario.status_ativo} compact />
             </div>
           )}
           {!showSite && (
@@ -1153,6 +1176,7 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
               <span className="text-xs text-muted-foreground">
                 {safeFormat(diario.data, "EEEE", { locale: ptBR })}
               </span>
+              <StatusAtivoBadge status={diario.status_ativo} compact />
               {hasProblema && (
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
               )}
@@ -1313,6 +1337,28 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
             </CardContent>
           </Card>
         )}
+
+        {diario.status_ativo && (() => {
+          const s = String(diario.status_ativo).toUpperCase();
+          const isOn = s === "ON";
+          return (
+            <div className={cn(
+              "rounded-lg border-2 p-3 flex items-center justify-between",
+              isOn ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"
+            )}>
+              <div className="flex items-center gap-2">
+                <span className={cn("inline-block h-2.5 w-2.5 rounded-full", isOn ? "bg-emerald-500" : "bg-rose-500")} />
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Status do Ativo ao Fim do Acionamento</span>
+              </div>
+              <span className={cn(
+                "text-sm font-bold px-3 py-1 rounded",
+                isOn ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+              )}>
+                STATUS {s}
+              </span>
+            </div>
+          );
+        })()}
 
         {(diario.equipe.length > 0 || diario.equipamentos.length > 0 || diario.veiculos.length > 0) && (
           <Card>
