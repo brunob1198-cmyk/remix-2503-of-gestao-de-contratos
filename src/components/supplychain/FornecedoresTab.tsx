@@ -19,6 +19,38 @@ export function FornecedoresTab() {
   const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  const maskCNPJ = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
+      .substring(0, 18);
+  };
+
+  const handleCEPChange = async (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, "");
+    setForm(p => ({ ...p, cep: cleanCEP }));
+    
+    if (cleanCEP.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setForm(p => ({
+            ...p,
+            endereco: data.logradouro,
+            municipio: data.localidade,
+            uf: data.uf
+          }));
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+      }
+    }
+  };
 
   const resetForm = () => {
     setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
