@@ -158,11 +158,11 @@ export function FornecedoresTab() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      { "Razão Social": "Fornecedor Exemplo Ltda", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "Endereço": "Rua Exemplo, 100", "Município": "São Paulo", "UF": "SP", "Score": 85, "Categoria": "materiais", "Observações": "" },
+      { "Razão Social": "FORNECEDOR EXEMPLO LTDA", "CNPJ": "12.345.678/0001-90", "Contato": "João Silva", "E-mail": "joao@exemplo.com", "Telefone": "(11) 99999-0000", "CEP": "01001-000", "Endereço": "Rua Direita", "Complemento": "Loja 1", "Município": "São Paulo", "UF": "SP", "Score": 85, "Categoria": "materiais", "Observações": "" },
     ];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(template);
-    ws["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 5 }, { wch: 8 }, { wch: 15 }, { wch: 30 }];
     XLSX.utils.book_append_sheet(wb, ws, "Fornecedores");
     XLSX.writeFile(wb, "modelo_fornecedores.xlsx");
   };
