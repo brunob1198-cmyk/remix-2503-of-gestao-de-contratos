@@ -49,10 +49,10 @@ export default function SupplyChainPage() {
       <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-muted/30 p-3 rounded-lg border overflow-x-auto hide-scrollbar">
         <Button 
           variant={tab === "minha-fila" ? "default" : "outline"} 
-          className="gap-2 shrink-0 bg-background"
+          className={`gap-2 shrink-0 ${tab === "minha-fila" ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/90" : "bg-background"}`}
           onClick={() => { setTab("minha-fila"); setFilter(undefined); }}
         >
-          <LayoutList className="h-4 w-4 text-primary" /> 
+          <LayoutList className={`h-4 w-4 ${tab === "minha-fila" ? "text-primary-foreground" : "text-primary"}`} /> 
           <span className="font-semibold">Minha Fila</span>
         </Button>
 
