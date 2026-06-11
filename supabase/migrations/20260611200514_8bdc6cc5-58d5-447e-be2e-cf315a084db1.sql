@@ -1,0 +1,1 @@
+GRANT SELECT ON public.view_public_forecast_flat TO anon, authenticated, service_role;
