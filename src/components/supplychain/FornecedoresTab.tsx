@@ -78,6 +78,8 @@ export function FornecedoresTab() {
           else if (kl.includes("email") || kl.includes("e-mail")) colMap.contato_email = k;
           else if (kl.includes("telef") || kl.includes("fone") || kl.includes("cel")) colMap.contato_telefone = k;
           else if (kl.includes("ender")) colMap.endereco = k;
+          else if (kl.includes("cep")) colMap.cep = k;
+          else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("categ")) colMap.categoria = k;
           else if (kl.includes("municip") || kl.includes("cidade")) colMap.municipio = k;
           else if (kl === "uf" || kl === "estado") colMap.uf = k;
