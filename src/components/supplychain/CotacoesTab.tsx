@@ -39,13 +39,17 @@ export function CotacoesTab({ filter }: { filter?: string }) {
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedReqForDetail, setSelectedReqForDetail] = useState<any>(null);
+  const [cotacaoDetailOpen, setCotacaoDetailOpen] = useState(false);
+  const [selectedCotacao, setSelectedCotacao] = useState<any>(null);
+  const [reqLocked, setReqLocked] = useState(false);
   const [form, setForm] = useState({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" });
   const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number; observacao: string }[]>([]);
 
   const selectedReq = requisicoes.find((r: any) => r.id === form.requisicao_id);
 
-  const handleReqChange = (reqId: string) => {
+  const handleReqChange = (reqId: string, lock = false) => {
     setForm(p => ({ ...p, requisicao_id: reqId }));
+    setReqLocked(lock);
     const req = requisicoes.find((r: any) => r.id === reqId);
     if (req?.itens) {
       setCotItens(req.itens.map((i: any) => ({ requisicao_item_id: i.id, preco_unitario: 0, quantidade: i.quantidade, observacao: "" })));
@@ -58,7 +62,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
       prazo_entrega_dias: form.prazo_entrega_dias ? Number(form.prazo_entrega_dias) : null,
       itens: cotItens,
       valor_total: cotItens.reduce((sum, i) => sum + i.preco_unitario * i.quantidade, 0),
-    }, { onSuccess: () => { setOpen(false); setForm({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" }); setCotItens([]); } });
+    }, { onSuccess: () => { setOpen(false); setReqLocked(false); setForm({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" }); setCotItens([]); } });
   };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
