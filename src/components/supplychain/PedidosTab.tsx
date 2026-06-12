@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePedidosCompra } from "@/hooks/useSupplyChain";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -22,15 +22,23 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
 
 export function PedidosTab({ filter }: { filter?: string }) {
   const { pedidos: allPedidos, isLoading, updateStatus, remove } = usePedidosCompra();
-  
+
+  const isUuid = !!filter && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filter);
+  const highlightId = isUuid ? filter : undefined;
+
   const pedidos = filter === "OPEN"
     ? allPedidos.filter((p: any) => ["emitido", "confirmado", "em_transito", "entrega_parcial"].includes(p.status))
     : allPedidos;
-    
+
   const { hasActionPermission } = usePermissions();
-  
-  // State for Avaliacao modal
   const [pedidoToAvaliar, setPedidoToAvaliar] = useState<any>(null);
+  const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (highlightId && highlightRowRef.current) {
+      highlightRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, pedidos.length]);
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -70,7 +78,11 @@ export function PedidosTab({ filter }: { filter?: string }) {
                   const canReceive = ["emitido", "confirmado", "em_transito", "entrega_parcial"].includes(p.status);
                   
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow
+                      key={p.id}
+                      ref={highlightId === p.id ? highlightRowRef : undefined}
+                      className={highlightId === p.id ? "bg-primary/10 ring-2 ring-primary/40" : ""}
+                    >
                       <TableCell className="font-mono">{p.numero}</TableCell>
                       <TableCell>{p.fornecedor?.razao_social || "—"}</TableCell>
                       <TableCell>{p.data_emissao ? parseLocalDate(p.data_emissao).toLocaleDateString("pt-BR") : "—"}</TableCell>

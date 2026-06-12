@@ -105,7 +105,7 @@ export default function SupplyChainPage() {
         {tab === "minha-fila" && <MinhaFilaTab />}
         {tab === "requisicoes" && <RequisicoesTab filter={filter} />}
         {tab === "cotacoes" && <CotacoesTab filter={filter} />}
-        {tab === "comparativo" && <ComparativoTab />}
+        {tab === "comparativo" && <ComparativoTab onNavigate={(t, f) => { setTab(t); setFilter(f); }} />}
         {tab === "pedidos" && <PedidosTab filter={filter} />}
         {tab === "fornecedores" && <FornecedoresTab />}
         {tab === "itens" && <ItensTab />}
