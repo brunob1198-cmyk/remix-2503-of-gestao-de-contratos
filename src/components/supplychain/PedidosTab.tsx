@@ -78,7 +78,11 @@ export function PedidosTab({ filter }: { filter?: string }) {
                   const canReceive = ["emitido", "confirmado", "em_transito", "entrega_parcial"].includes(p.status);
                   
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow
+                      key={p.id}
+                      ref={highlightId === p.id ? highlightRowRef : undefined}
+                      className={highlightId === p.id ? "bg-primary/10 ring-2 ring-primary/40" : ""}
+                    >
                       <TableCell className="font-mono">{p.numero}</TableCell>
                       <TableCell>{p.fornecedor?.razao_social || "—"}</TableCell>
                       <TableCell>{p.data_emissao ? parseLocalDate(p.data_emissao).toLocaleDateString("pt-BR") : "—"}</TableCell>
