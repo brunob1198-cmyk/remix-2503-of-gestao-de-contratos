@@ -2044,6 +2044,10 @@ export type Database = {
           observacoes: string | null
           razao_social: string
           score: number | null
+          score_prazo: number | null
+          score_preco: number | null
+          score_qualidade: number | null
+          score_responsividade: number | null
           uf: string | null
           updated_at: string
         }
@@ -2065,6 +2069,10 @@ export type Database = {
           observacoes?: string | null
           razao_social: string
           score?: number | null
+          score_prazo?: number | null
+          score_preco?: number | null
+          score_qualidade?: number | null
+          score_responsividade?: number | null
           uf?: string | null
           updated_at?: string
         }
@@ -2086,6 +2094,10 @@ export type Database = {
           observacoes?: string | null
           razao_social?: string
           score?: number | null
+          score_prazo?: number | null
+          score_preco?: number | null
+          score_qualidade?: number | null
+          score_responsividade?: number | null
           uf?: string | null
           updated_at?: string
         }

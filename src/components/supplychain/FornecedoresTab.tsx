@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useFornecedores } from "@/hooks/useSupplyChain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,17 +8,45 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Download, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+
+const SCORE_WEIGHTS = {
+  prazo: 0.4,
+  preco: 0.3,
+  qualidade: 0.2,
+  responsividade: 0.1
+};
 
 export function FornecedoresTab() {
   const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+  const [form, setForm] = useState({ 
+    razao_social: "", 
+    cnpj: "", 
+    contato_nome: "", 
+    contato_email: "", 
+    contato_telefone: "", 
+    endereco: "", 
+    cep: "", 
+    complemento: "", 
+    categoria: "geral", 
+    observacoes: "", 
+    municipio: "", 
+    uf: "", 
+    score: 0,
+    score_prazo: 0,
+    score_preco: 0,
+    score_qualidade: 0,
+    score_responsividade: 0
+  });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
   
   const maskCNPJ = (value: string) => {
     return value
@@ -53,9 +81,28 @@ export function FornecedoresTab() {
   };
 
   const resetForm = () => {
-    setForm({ razao_social: "", cnpj: "", contato_nome: "", contato_email: "", contato_telefone: "", endereco: "", cep: "", complemento: "", categoria: "geral", observacoes: "", municipio: "", uf: "", score: 0 });
+    setForm({ 
+      razao_social: "", 
+      cnpj: "", 
+      contato_nome: "", 
+      contato_email: "", 
+      contato_telefone: "", 
+      endereco: "", 
+      cep: "", 
+      complemento: "", 
+      categoria: "geral", 
+      observacoes: "", 
+      municipio: "", 
+      uf: "", 
+      score: 0,
+      score_prazo: 0,
+      score_preco: 0,
+      score_qualidade: 0,
+      score_responsividade: 0
+    });
     setEditing(null);
   };
+
 
   const handleSave = () => {
     if (editing) {
@@ -80,10 +127,15 @@ export function FornecedoresTab() {
       observacoes: f.observacoes || "",
       municipio: f.municipio || "",
       uf: f.uf || "",
-      score: f.score || 0
+      score: f.score || 0,
+      score_prazo: f.score_prazo || 0,
+      score_preco: f.score_preco || 0,
+      score_qualidade: f.score_qualidade || 0,
+      score_responsividade: f.score_responsividade || 0
     });
     setOpen(true);
   };
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,6 +168,11 @@ export function FornecedoresTab() {
           else if (kl.includes("municip") || kl.includes("cidade")) colMap.municipio = k;
           else if (kl === "uf" || kl === "estado") colMap.uf = k;
           else if (kl.includes("score") || kl.includes("pontua")) colMap.score = k;
+          else if (kl.includes("prazo")) colMap.score_prazo = k;
+          else if (kl.includes("preço") || kl.includes("preco")) colMap.score_preco = k;
+          else if (kl.includes("qualidade")) colMap.score_qualidade = k;
+          else if (kl.includes("responsi")) colMap.score_responsividade = k;
+
           else if (kl.includes("obs")) colMap.observacoes = k;
         }
 
@@ -139,6 +196,11 @@ export function FornecedoresTab() {
             municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
             uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
             score: colMap.score ? Number(r[colMap.score]) || 0 : 0,
+            score_prazo: colMap.score_prazo ? Number(r[colMap.score_prazo]) || 0 : 0,
+            score_preco: colMap.score_preco ? Number(r[colMap.score_preco]) || 0 : 0,
+            score_qualidade: colMap.score_qualidade ? Number(r[colMap.score_qualidade]) || 0 : 0,
+            score_responsividade: colMap.score_responsividade ? Number(r[colMap.score_responsividade]) || 0 : 0,
+
             observacoes: colMap.observacoes ? String(r[colMap.observacoes] || "").trim() || undefined : undefined,
           }));
 
@@ -167,6 +229,22 @@ export function FornecedoresTab() {
     XLSX.writeFile(wb, "modelo_fornecedores.xlsx");
   };
 
+  const calculatedScore = useMemo(() => {
+    return (
+      (form.score_prazo * SCORE_WEIGHTS.prazo) +
+      (form.score_preco * SCORE_WEIGHTS.preco) +
+      (form.score_qualidade * SCORE_WEIGHTS.qualidade) +
+      (form.score_responsividade * SCORE_WEIGHTS.responsividade)
+    ).toFixed(1);
+  }, [form.score_prazo, form.score_preco, form.score_qualidade, form.score_responsividade]);
+
+  const chartData = useMemo(() => [
+    { name: "Prazo", value: form.score_prazo, color: "#ef4444" },
+    { name: "Preço", value: form.score_preco, color: "#3b82f6" },
+    { name: "Qualidade", value: form.score_qualidade, color: "#10b981" },
+    { name: "Resp.", value: form.score_responsividade, color: "#f59e0b" },
+  ], [form.score_prazo, form.score_preco, form.score_qualidade, form.score_responsividade]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -183,83 +261,149 @@ export function FornecedoresTab() {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Novo Fornecedor</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} Fornecedor</DialogTitle></DialogHeader>
-              <div className="grid gap-3">
-                <div>
-                  <Label>Razão Social *</Label>
-                  <Input 
-                    value={form.razao_social} 
-                    onChange={e => setForm(p => ({ ...p, razao_social: e.target.value.toUpperCase() }))} 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
                   <div>
-                    <Label>CNPJ</Label>
+                    <Label>Razão Social *</Label>
                     <Input 
-                      value={form.cnpj} 
-                      onChange={e => setForm(p => ({ ...p, cnpj: maskCNPJ(e.target.value) }))} 
+                      value={form.razao_social} 
+                      onChange={e => setForm(p => ({ ...p, razao_social: e.target.value.toUpperCase() }))} 
                     />
                   </div>
-                  <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
-                  <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>CEP</Label>
-                    <Input 
-                      value={form.cep} 
-                      onChange={e => handleCEPChange(e.target.value)}
-                      maxLength={8}
-                    />
-                  </div>
-                  <div>
-                    <Label>Município</Label>
-                    <Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-1">
-                    <Label>UF</Label>
-                    <Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value.toUpperCase() }))} maxLength={2} />
-                  </div>
-                  <div className="col-span-2">
-                    <div className="flex justify-between items-center">
-                      <Label>Score</Label>
-                      <span className="text-[10px] text-muted-foreground font-medium">Legenda: 0-100</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CNPJ</Label>
+                      <Input 
+                        value={form.cnpj} 
+                        onChange={e => setForm(p => ({ ...p, cnpj: maskCNPJ(e.target.value) }))} 
+                      />
                     </div>
-                    <Input 
-                      type="number" 
-                      min={0} 
-                      max={100} 
-                      value={form.score} 
-                      onChange={e => {
-                        const val = Math.min(100, Math.max(0, Number(e.target.value)));
-                        setForm(p => ({ ...p, score: val }));
-                      }} 
-                    />
+                    <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} /></div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
+                    <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CEP</Label>
+                      <Input 
+                        value={form.cep} 
+                        onChange={e => handleCEPChange(e.target.value)}
+                        maxLength={8}
+                      />
+                    </div>
+                    <div>
+                      <Label>Município</Label>
+                      <Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="col-span-1">
+                      <Label>UF</Label>
+                      <Input value={form.uf} onChange={e => setForm(p => ({ ...p, uf: e.target.value.toUpperCase() }))} maxLength={2} />
+                    </div>
+                    <div className="col-span-3">
+                      <Label>E-mail</Label>
+                      <Input value={form.contato_email} onChange={e => setForm(p => ({ ...p, contato_email: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-1">
+                      <Label>Endereço (Rua)</Label>
+                      <Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} />
+                    </div>
+                    <div className="col-span-1">
+                      <Label>Complemento</Label>
+                      <Input value={form.complemento} onChange={e => setForm(p => ({ ...p, complemento: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} rows={3} /></div>
                 </div>
-                <div><Label>E-mail</Label><Input value={form.contato_email} onChange={e => setForm(p => ({ ...p, contato_email: e.target.value }))} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-1">
-                    <Label>Endereço (Rua)</Label>
-                    <Input value={form.endereco} onChange={e => setForm(p => ({ ...p, endereco: e.target.value }))} />
+
+                <div className="space-y-4 border-l pl-6">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase text-muted-foreground mb-1">Cálculo de Score</h3>
+                      <div className="text-3xl font-bold text-primary">{calculatedScore}</div>
+                    </div>
+                    <Badge variant={Number(calculatedScore) >= 70 ? "default" : Number(calculatedScore) >= 40 ? "secondary" : "destructive"}>
+                      {Number(calculatedScore) >= 70 ? "Excelente" : Number(calculatedScore) >= 40 ? "Regular" : "Crítico"}
+                    </Badge>
                   </div>
-                  <div className="col-span-1">
-                    <Label>Complemento (Qd, Lt, Nº, etc)</Label>
-                    <Input value={form.complemento} onChange={e => setForm(p => ({ ...p, complemento: e.target.value }))} />
+
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs">Prazo (40%)</Label>
+                        <span className="text-xs font-medium">{form.score_prazo}</span>
+                      </div>
+                      <Input 
+                        type="number" min={0} max={100} size={1}
+                        value={form.score_prazo} 
+                        onChange={e => setForm(p => ({ ...p, score_prazo: Math.min(100, Math.max(0, Number(e.target.value))) }))} 
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs">Preço (30%)</Label>
+                        <span className="text-xs font-medium">{form.score_preco}</span>
+                      </div>
+                      <Input 
+                        type="number" min={0} max={100}
+                        value={form.score_preco} 
+                        onChange={e => setForm(p => ({ ...p, score_preco: Math.min(100, Math.max(0, Number(e.target.value))) }))} 
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs">Qualidade (20%)</Label>
+                        <span className="text-xs font-medium">{form.score_qualidade}</span>
+                      </div>
+                      <Input 
+                        type="number" min={0} max={100}
+                        value={form.score_qualidade} 
+                        onChange={e => setForm(p => ({ ...p, score_qualidade: Math.min(100, Math.max(0, Number(e.target.value))) }))} 
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <Label className="text-xs">Responsividade (10%)</Label>
+                        <span className="text-xs font-medium">{form.score_responsividade}</span>
+                      </div>
+                      <Input 
+                        type="number" min={0} max={100}
+                        value={form.score_responsividade} 
+                        onChange={e => setForm(p => ({ ...p, score_responsividade: Math.min(100, Math.max(0, Number(e.target.value))) }))} 
+                      />
+                    </div>
                   </div>
+
+                  <div className="h-40 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} layout="vertical" margin={{ left: -20, right: 10 }}>
+                        <XAxis type="number" domain={[0, 100]} hide />
+                        <YAxis dataKey="name" type="category" scale="band" tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <Button onClick={handleSave} className="w-full" disabled={!form.razao_social || create.isPending || update.isPending}>
+                    {editing ? "Salvar Alterações" : "Cadastrar Fornecedor"}
+                  </Button>
                 </div>
-                <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(p => ({ ...p, observacoes: e.target.value }))} /></div>
-                <Button onClick={handleSave} disabled={!form.razao_social || create.isPending || update.isPending}>
-                  {editing ? "Salvar" : "Cadastrar"}
-                </Button>
               </div>
             </DialogContent>
+
+
           </Dialog>
         </div>
       </CardHeader>
@@ -293,10 +437,47 @@ export function FornecedoresTab() {
                   <TableCell>{f.municipio || "—"}</TableCell>
                   <TableCell>{f.uf || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}>
-                      {f.score || 0}
-                    </Badge>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <Badge 
+                          className="cursor-help"
+                          variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}
+                        >
+                          {Number(f.score || 0).toFixed(1)}
+                        </Badge>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-60">
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
+                          <div className="grid grid-cols-2 gap-1 text-xs">
+                            <span className="text-muted-foreground">Prazo (40%):</span>
+                            <span className="text-right font-medium">{f.score_prazo || 0}</span>
+                            <span className="text-muted-foreground">Preço (30%):</span>
+                            <span className="text-right font-medium">{f.score_preco || 0}</span>
+                            <span className="text-muted-foreground">Qualidade (20%):</span>
+                            <span className="text-right font-medium">{f.score_qualidade || 0}</span>
+                            <span className="text-muted-foreground">Resp. (10%):</span>
+                            <span className="text-right font-medium">{f.score_responsividade || 0}</span>
+                          </div>
+                          <div className="h-20 w-full mt-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                { subject: 'P', A: f.score_prazo || 0 },
+                                { subject: 'V', A: f.score_preco || 0 },
+                                { subject: 'Q', A: f.score_qualidade || 0 },
+                                { subject: 'R', A: f.score_responsividade || 0 },
+                              ]}>
+                                <PolarGrid />
+                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
+                                <Radar dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   </TableCell>
+
                   <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
                   <TableCell>
                     <div className="flex gap-1">
