@@ -419,6 +419,103 @@ export function CotacoesTab({ filter }: { filter?: string }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Detalhes da Cotação */}
+      <Dialog open={cotacaoDetailOpen} onOpenChange={setCotacaoDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackageCheck className="h-5 w-5 text-primary" />
+              Cotação {selectedCotacao?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCotacao && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-muted/30 p-4 rounded-lg border">
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Requisição</span>
+                  <span className="font-mono">{selectedCotacao.requisicao?.numero || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span>
+                  <span>{selectedCotacao.requisicao?.projeto?.codigo || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Fornecedor</span>
+                  <span>{selectedCotacao.fornecedor?.razao_social || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Prazo Entrega</span>
+                  <span>{selectedCotacao.prazo_entrega_dias ? `${selectedCotacao.prazo_entrega_dias} dias` : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Validade</span>
+                  <span>{selectedCotacao.validade ? parseLocalDate(selectedCotacao.validade).toLocaleDateString("pt-BR") : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Cond. Pagamento</span>
+                  <span>{selectedCotacao.condicao_pagamento || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Frete</span>
+                  <span>{fmt(selectedCotacao.frete || 0)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span>
+                  <Badge variant={(STATUS_MAP[selectedCotacao.status]?.variant) || "outline"}>
+                    {STATUS_MAP[selectedCotacao.status]?.label || selectedCotacao.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Itens Cotados</h4>
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-24">Código</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-center w-20">Qtd</TableHead>
+                        <TableHead className="text-right w-32">Preço Unit.</TableHead>
+                        <TableHead className="text-right w-32">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(selectedCotacao.itens && selectedCotacao.itens.length > 0) ? selectedCotacao.itens.map((i: any) => (
+                        <TableRow key={i.id}>
+                          <TableCell className="font-mono text-xs">{i.req_item?.sc_item?.codigo || "—"}</TableCell>
+                          <TableCell className="text-sm">
+                            {i.req_item?.sc_item?.descricao || i.req_item?.descricao_livre || "—"}
+                            {i.observacao && <span className="block text-xs text-muted-foreground italic mt-0.5">{i.observacao}</span>}
+                          </TableCell>
+                          <TableCell className="text-center">{i.quantidade}</TableCell>
+                          <TableCell className="text-right">{fmt(i.preco_unitario || 0)}</TableCell>
+                          <TableCell className="text-right font-medium">{fmt((i.preco_unitario || 0) * (i.quantidade || 0))}</TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground italic">Sem itens.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-right font-semibold mt-2">Total: {fmt(selectedCotacao.valor_total || 0)}</p>
+              </div>
+
+              {selectedCotacao.observacoes && (
+                <div className="text-sm border p-3 rounded-lg">
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações</span>
+                  <p className="whitespace-pre-wrap">{selectedCotacao.observacoes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setCotacaoDetailOpen(false)}>Fechar</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
