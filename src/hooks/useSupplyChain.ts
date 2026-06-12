@@ -344,7 +344,7 @@ export function useCotacoes(requisicaoId?: string) {
     queryFn: async () => {
       let q = supabase
         .from("cotacoes")
-        .select("*, fornecedor:fornecedores(razao_social), itens:cotacao_itens(*, req_item:requisicao_itens(descricao_livre, sc_item:sc_itens(codigo, descricao)))")
+        .select("*, fornecedor:fornecedores(razao_social), requisicao:requisicoes_compra(numero, projeto:projetos(codigo, nome)), itens:cotacao_itens(*, req_item:requisicao_itens(descricao_livre, quantidade, unidade, sc_item:sc_itens(codigo, descricao)))")
         .order("created_at", { ascending: false });
       if (requisicaoId) q = q.eq("requisicao_id", requisicaoId);
       const { data, error } = await q;
