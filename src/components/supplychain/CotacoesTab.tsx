@@ -236,7 +236,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                                     variant="outline" 
                                     size="sm"
                                     onClick={() => {
-                                      handleReqChange(r.id);
+                                      handleReqChange(r.id, true);
                                       setOpen(true);
                                     }}
                                   >
