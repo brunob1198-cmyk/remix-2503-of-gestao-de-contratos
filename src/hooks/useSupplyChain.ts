@@ -257,6 +257,8 @@ export function useRequisicoes() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast({ title: "Requisição criada!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
@@ -294,6 +296,8 @@ export function useRequisicoes() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       queryClient.invalidateQueries({ queryKey: ["requisicao_historico", variables.id] });
       toast({ title: "Status atualizado!" });
     },
@@ -323,6 +327,8 @@ export function useRequisicoes() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast({ title: "Requisição excluída!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
@@ -445,6 +451,8 @@ export function usePedidosCompra() {
             },
             (payload) => {
               queryClientRef.current.invalidateQueries({ queryKey: ["pedidos"] });
+              queryClientRef.current.invalidateQueries({ queryKey: ["sc_counts"] });
+              queryClientRef.current.invalidateQueries({ queryKey: ["minha_fila"] });
 
               if (payload.eventType === "UPDATE") {
                 const oldStatus = (payload.old as any)?.status;
@@ -519,6 +527,8 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast.success("Pedido de compra criado!");
     },
     onError: (e: Error) => toast.error("Erro ao criar pedido: " + e.message),
@@ -544,7 +554,11 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast.success("Pedido atualizado!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
@@ -557,6 +571,8 @@ export function usePedidosCompra() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast.success("Pedido excluído!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
@@ -622,6 +638,8 @@ export function usePedidoRecebimentos() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast.success("Recebimento registrado com sucesso!");
     },
     onError: (e: Error) => toast.error("Erro ao registrar recebimento: " + e.message),
@@ -648,6 +666,8 @@ export function useAvaliacoesFornecedor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
+      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast.success("Avaliação registrada com sucesso!");
     },
     onError: (e: Error) => toast.error("Erro ao registrar avaliação: " + e.message),
