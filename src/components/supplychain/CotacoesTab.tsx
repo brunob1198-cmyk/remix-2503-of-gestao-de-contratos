@@ -261,6 +261,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Número</TableHead>
+                      <TableHead>Requisição</TableHead>
                       <TableHead>Fornecedor</TableHead>
                       <TableHead>Prazo (dias)</TableHead>
                       <TableHead>Valor Total</TableHead>
@@ -271,8 +272,18 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                     {cotacoes.map((c: any) => {
                       const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
                       return (
-                        <TableRow key={c.id}>
+                        <TableRow
+                          key={c.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => { setSelectedCotacao(c); setCotacaoDetailOpen(true); }}
+                        >
                           <TableCell className="font-mono">{c.numero}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {c.requisicao?.numero || "—"}
+                            {c.requisicao?.projeto?.codigo && (
+                              <span className="block text-muted-foreground">{c.requisicao.projeto.codigo}</span>
+                            )}
+                          </TableCell>
                           <TableCell>{c.fornecedor?.razao_social || "—"}</TableCell>
                           <TableCell>{c.prazo_entrega_dias || "—"}</TableCell>
                           <TableCell>{fmt(c.valor_total || 0)}</TableCell>
