@@ -71,7 +71,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cotações</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setReqLocked(false); }}>
           {hasActionPermission("pode_criar_cotacao") && (
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Cotação</Button>
@@ -83,14 +83,15 @@ export function CotacoesTab({ filter }: { filter?: string }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Requisição *</Label>
-                  <Select value={form.requisicao_id} onValueChange={handleReqChange}>
+                  <Select value={form.requisicao_id} onValueChange={(v) => handleReqChange(v)} disabled={reqLocked}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {requisicoes.filter((r: any) => r.status !== "cancelada").map((r: any) => (
-                        <SelectItem key={r.id} value={r.id}>{r.numero} - {r.projeto?.codigo || ""}</SelectItem>
+                        <SelectItem key={r.id} value={r.id}>{r.numero} — {r.projeto?.codigo || ""} {r.projeto?.nome ? `· ${r.projeto.nome}` : ""}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {reqLocked && <p className="text-xs text-muted-foreground mt-1">Requisição pré-selecionada e bloqueada para esta cotação.</p>}
                 </div>
                 <div>
                   <Label>Fornecedor *</Label>
