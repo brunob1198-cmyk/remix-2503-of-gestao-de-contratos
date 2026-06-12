@@ -39,13 +39,17 @@ export function CotacoesTab({ filter }: { filter?: string }) {
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedReqForDetail, setSelectedReqForDetail] = useState<any>(null);
+  const [cotacaoDetailOpen, setCotacaoDetailOpen] = useState(false);
+  const [selectedCotacao, setSelectedCotacao] = useState<any>(null);
+  const [reqLocked, setReqLocked] = useState(false);
   const [form, setForm] = useState({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" });
   const [cotItens, setCotItens] = useState<{ requisicao_item_id: string; preco_unitario: number; quantidade: number; observacao: string }[]>([]);
 
   const selectedReq = requisicoes.find((r: any) => r.id === form.requisicao_id);
 
-  const handleReqChange = (reqId: string) => {
+  const handleReqChange = (reqId: string, lock = false) => {
     setForm(p => ({ ...p, requisicao_id: reqId }));
+    setReqLocked(lock);
     const req = requisicoes.find((r: any) => r.id === reqId);
     if (req?.itens) {
       setCotItens(req.itens.map((i: any) => ({ requisicao_item_id: i.id, preco_unitario: 0, quantidade: i.quantidade, observacao: "" })));
@@ -58,7 +62,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
       prazo_entrega_dias: form.prazo_entrega_dias ? Number(form.prazo_entrega_dias) : null,
       itens: cotItens,
       valor_total: cotItens.reduce((sum, i) => sum + i.preco_unitario * i.quantidade, 0),
-    }, { onSuccess: () => { setOpen(false); setForm({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" }); setCotItens([]); } });
+    }, { onSuccess: () => { setOpen(false); setReqLocked(false); setForm({ requisicao_id: "", fornecedor_id: "", validade: "", prazo_entrega_dias: "", condicao_pagamento: "", frete: 0, desconto_percentual: 0, observacoes: "" }); setCotItens([]); } });
   };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -67,7 +71,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Cotações</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setReqLocked(false); }}>
           {hasActionPermission("pode_criar_cotacao") && (
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Cotação</Button>
@@ -79,14 +83,15 @@ export function CotacoesTab({ filter }: { filter?: string }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Requisição *</Label>
-                  <Select value={form.requisicao_id} onValueChange={handleReqChange}>
+                  <Select value={form.requisicao_id} onValueChange={(v) => handleReqChange(v)} disabled={reqLocked}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {requisicoes.filter((r: any) => r.status !== "cancelada").map((r: any) => (
-                        <SelectItem key={r.id} value={r.id}>{r.numero} - {r.projeto?.codigo || ""}</SelectItem>
+                        <SelectItem key={r.id} value={r.id}>{r.numero} — {r.projeto?.codigo || ""} {r.projeto?.nome ? `· ${r.projeto.nome}` : ""}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {reqLocked && <p className="text-xs text-muted-foreground mt-1">Requisição pré-selecionada e bloqueada para esta cotação.</p>}
                 </div>
                 <div>
                   <Label>Fornecedor *</Label>
@@ -231,7 +236,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                                     variant="outline" 
                                     size="sm"
                                     onClick={() => {
-                                      handleReqChange(r.id);
+                                      handleReqChange(r.id, true);
                                       setOpen(true);
                                     }}
                                   >
@@ -256,6 +261,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Número</TableHead>
+                      <TableHead>Requisição</TableHead>
                       <TableHead>Fornecedor</TableHead>
                       <TableHead>Prazo (dias)</TableHead>
                       <TableHead>Valor Total</TableHead>
@@ -266,8 +272,18 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                     {cotacoes.map((c: any) => {
                       const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
                       return (
-                        <TableRow key={c.id}>
+                        <TableRow
+                          key={c.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => { setSelectedCotacao(c); setCotacaoDetailOpen(true); }}
+                        >
                           <TableCell className="font-mono">{c.numero}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {c.requisicao?.numero || "—"}
+                            {c.requisicao?.projeto?.codigo && (
+                              <span className="block text-muted-foreground">{c.requisicao.projeto.codigo}</span>
+                            )}
+                          </TableCell>
                           <TableCell>{c.fornecedor?.razao_social || "—"}</TableCell>
                           <TableCell>{c.prazo_entrega_dias || "—"}</TableCell>
                           <TableCell>{fmt(c.valor_total || 0)}</TableCell>
@@ -398,6 +414,103 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                     <Plus className="h-4 w-4 mr-1" /> Criar Cotação Agora
                   </Button>
                 )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhes da Cotação */}
+      <Dialog open={cotacaoDetailOpen} onOpenChange={setCotacaoDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PackageCheck className="h-5 w-5 text-primary" />
+              Cotação {selectedCotacao?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCotacao && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-muted/30 p-4 rounded-lg border">
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Requisição</span>
+                  <span className="font-mono">{selectedCotacao.requisicao?.numero || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span>
+                  <span>{selectedCotacao.requisicao?.projeto?.codigo || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Fornecedor</span>
+                  <span>{selectedCotacao.fornecedor?.razao_social || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Prazo Entrega</span>
+                  <span>{selectedCotacao.prazo_entrega_dias ? `${selectedCotacao.prazo_entrega_dias} dias` : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Validade</span>
+                  <span>{selectedCotacao.validade ? parseLocalDate(selectedCotacao.validade).toLocaleDateString("pt-BR") : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Cond. Pagamento</span>
+                  <span>{selectedCotacao.condicao_pagamento || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Frete</span>
+                  <span>{fmt(selectedCotacao.frete || 0)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span>
+                  <Badge variant={(STATUS_MAP[selectedCotacao.status]?.variant) || "outline"}>
+                    {STATUS_MAP[selectedCotacao.status]?.label || selectedCotacao.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Itens Cotados</h4>
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-24">Código</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-center w-20">Qtd</TableHead>
+                        <TableHead className="text-right w-32">Preço Unit.</TableHead>
+                        <TableHead className="text-right w-32">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(selectedCotacao.itens && selectedCotacao.itens.length > 0) ? selectedCotacao.itens.map((i: any) => (
+                        <TableRow key={i.id}>
+                          <TableCell className="font-mono text-xs">{i.req_item?.sc_item?.codigo || "—"}</TableCell>
+                          <TableCell className="text-sm">
+                            {i.req_item?.sc_item?.descricao || i.req_item?.descricao_livre || "—"}
+                            {i.observacao && <span className="block text-xs text-muted-foreground italic mt-0.5">{i.observacao}</span>}
+                          </TableCell>
+                          <TableCell className="text-center">{i.quantidade}</TableCell>
+                          <TableCell className="text-right">{fmt(i.preco_unitario || 0)}</TableCell>
+                          <TableCell className="text-right font-medium">{fmt((i.preco_unitario || 0) * (i.quantidade || 0))}</TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground italic">Sem itens.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-right font-semibold mt-2">Total: {fmt(selectedCotacao.valor_total || 0)}</p>
+              </div>
+
+              {selectedCotacao.observacoes && (
+                <div className="text-sm border p-3 rounded-lg">
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações</span>
+                  <p className="whitespace-pre-wrap">{selectedCotacao.observacoes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setCotacaoDetailOpen(false)}>Fechar</Button>
               </div>
             </div>
           )}
