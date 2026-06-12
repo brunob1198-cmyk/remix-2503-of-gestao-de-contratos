@@ -680,7 +680,8 @@ export function useAvaliacoesFornecedor() {
 export function useSupplyChainCounts() {
   return useQuery({
     queryKey: ["sc_counts"],
-    staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const empresaId = await getEmpresaId();
@@ -728,7 +729,8 @@ export function useSupplyChainCounts() {
 export function useMinhaFila() {
   return useQuery({
     queryKey: ["minha_fila"],
-    staleTime: 30_000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const empresaId = await getEmpresaId();
