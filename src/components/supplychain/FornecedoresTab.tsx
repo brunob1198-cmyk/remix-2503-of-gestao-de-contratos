@@ -265,43 +265,41 @@ export function FornecedoresTab() {
               <DialogHeader><DialogTitle>{editing ? "Editar" : "Novo"} Fornecedor</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
-
-                <div>
-                  <Label>Razão Social *</Label>
-                  <Input 
-                    value={form.razao_social} 
-                    onChange={e => setForm(p => ({ ...p, razao_social: e.target.value.toUpperCase() }))} 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>CNPJ</Label>
+                    <Label>Razão Social *</Label>
                     <Input 
-                      value={form.cnpj} 
-                      onChange={e => setForm(p => ({ ...p, cnpj: maskCNPJ(e.target.value) }))} 
+                      value={form.razao_social} 
+                      onChange={e => setForm(p => ({ ...p, razao_social: e.target.value.toUpperCase() }))} 
                     />
                   </div>
-                  <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
-                  <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>CEP</Label>
-                    <Input 
-                      value={form.cep} 
-                      onChange={e => handleCEPChange(e.target.value)}
-                      maxLength={8}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CNPJ</Label>
+                      <Input 
+                        value={form.cnpj} 
+                        onChange={e => setForm(p => ({ ...p, cnpj: maskCNPJ(e.target.value) }))} 
+                      />
+                    </div>
+                    <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} /></div>
                   </div>
-                  <div>
-                    <Label>Município</Label>
-                    <Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Contato</Label><Input value={form.contato_nome} onChange={e => setForm(p => ({ ...p, contato_nome: e.target.value }))} /></div>
+                    <div><Label>Telefone</Label><Input value={form.contato_telefone} onChange={e => setForm(p => ({ ...p, contato_telefone: e.target.value }))} /></div>
                   </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CEP</Label>
+                      <Input 
+                        value={form.cep} 
+                        onChange={e => handleCEPChange(e.target.value)}
+                        maxLength={8}
+                      />
+                    </div>
+                    <div>
+                      <Label>Município</Label>
+                      <Input value={form.municipio} onChange={e => setForm(p => ({ ...p, municipio: e.target.value }))} />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-4 gap-3">
                     <div className="col-span-1">
                       <Label>UF</Label>
@@ -404,6 +402,7 @@ export function FornecedoresTab() {
                 </div>
               </div>
             </DialogContent>
+
 
           </Dialog>
         </div>
