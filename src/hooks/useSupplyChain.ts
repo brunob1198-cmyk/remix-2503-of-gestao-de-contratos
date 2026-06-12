@@ -418,8 +418,8 @@ export function usePedidosCompra() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedidos")
-        .select("*, fornecedor:fornecedores(razao_social), itens:pedido_itens(*, sc_item:sc_itens(codigo, descricao)), recebimentos:pedido_recebimentos(*, itens:pedido_recebimento_itens(*))")
-        .order("created_at", { ascending: false });
+        .select("*, fornecedor:fornecedores(id, razao_social), projeto:projetos(codigo, nome), requisicao:requisicoes_compra(numero), itens:pedido_itens(*, sc_item:sc_itens(codigo, descricao)), recebimentos:pedido_recebimentos(*, itens:pedido_recebimento_itens(*))")
+        .order("data_prevista_entrega", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data;
     },
@@ -525,18 +525,27 @@ export function usePedidosCompra() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, observacoes }: { id: string; status?: string; observacoes?: string }) => {
+    mutationFn: async ({ id, status, observacoes, motivo_cancelamento, nf_numero, nf_arquivo_url, data_emissao, requisicao_id, requisicao_status_after }: { id: string; status?: string; observacoes?: string; motivo_cancelamento?: string; nf_numero?: string; nf_arquivo_url?: string; data_emissao?: string; requisicao_id?: string; requisicao_status_after?: string }) => {
       const updates: any = {};
       if (status) updates.status = status;
-      if (observacoes) updates.observacoes = observacoes;
-      if (status === 'entregue') updates.data_entrega_real = new Date().toISOString().split('T')[0];
-      
+      if (observacoes !== undefined) updates.observacoes = observacoes;
+      if (motivo_cancelamento !== undefined) updates.motivo_cancelamento = motivo_cancelamento;
+      if (nf_numero !== undefined) updates.nf_numero = nf_numero;
+      if (nf_arquivo_url !== undefined) updates.nf_arquivo_url = nf_arquivo_url;
+      if (data_emissao !== undefined) updates.data_emissao = data_emissao;
+      if (status === 'entregue' && !updates.data_entrega_real) updates.data_entrega_real = new Date().toISOString().split('T')[0];
+
       const { error } = await supabase.from("pedidos").update(updates).eq("id", id);
       if (error) throw error;
+
+      if (requisicao_id && requisicao_status_after) {
+        await supabase.from("requisicoes_compra").update({ workflow_status: requisicao_status_after }).eq("id", requisicao_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
-      toast.success("Status atualizado!");
+      queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      toast.success("Pedido atualizado!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
   });
@@ -566,14 +575,20 @@ export function usePedidoRecebimentos() {
       if (!user) throw new Error("Não autenticado");
 
       const itens = recebimento.itens || [];
+      const nfNumero = recebimento.nf_numero;
+      const nfArquivoUrl = recebimento.nf_arquivo_url;
+      const pedidoId = recebimento.pedido_id;
+      const dataRecebimento = recebimento.data_recebimento;
       delete recebimento.itens;
+      delete recebimento.nf_numero;
+      delete recebimento.nf_arquivo_url;
 
       const { data, error } = await supabase
         .from("pedido_recebimentos")
         .insert({ ...recebimento, recebido_por: user.id })
         .select()
         .single();
-      
+
       if (error) throw error;
 
       if (itens.length > 0) {
@@ -582,6 +597,27 @@ export function usePedidoRecebimentos() {
           .insert(itens.map((i: any) => ({ ...i, recebimento_id: data.id })));
         if (itemErr) throw itemErr;
       }
+
+      // Recalcular status do pedido com base nos totais
+      const { data: pedItens } = await supabase
+        .from("pedido_itens")
+        .select("quantidade_pedida, quantidade_recebida")
+        .eq("pedido_id", pedidoId);
+
+      const tudoRecebido = (pedItens || []).every((it: any) => Number(it.quantidade_recebida || 0) >= Number(it.quantidade_pedida || 0));
+
+      const pedUpdates: any = {};
+      if (tudoRecebido) {
+        pedUpdates.status = "entregue";
+        pedUpdates.data_entrega_real = dataRecebimento || new Date().toISOString().split("T")[0];
+      } else {
+        pedUpdates.status = "entrega_parcial";
+      }
+      if (nfNumero) pedUpdates.nf_numero = nfNumero;
+      if (nfArquivoUrl) pedUpdates.nf_arquivo_url = nfArquivoUrl;
+
+      await supabase.from("pedidos").update(pedUpdates).eq("id", pedidoId);
+
       return data;
     },
     onSuccess: () => {
