@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { useRequisicoes, useCotacoes, usePedidosCompra } from "@/hooks/useSupplyChain";
+import { useSupplyChainCounts } from "@/hooks/useSupplyChain";
 import { ClipboardCheck, FileText, ShoppingCart, Truck, Package } from "lucide-react";
 
 interface DashboardCardProps {
@@ -13,7 +13,7 @@ interface DashboardCardProps {
 
 function DashboardCard({ title, value, icon: Icon, color, onClick, isActive }: DashboardCardProps) {
   return (
-    <Card 
+    <Card
       className={`cursor-pointer transition-all hover:ring-2 hover:ring-primary/20 ${isActive ? 'ring-2 ring-primary bg-primary/5 shadow-md' : 'hover:shadow-sm'}`}
       onClick={onClick}
     >
@@ -30,60 +30,64 @@ function DashboardCard({ title, value, icon: Icon, color, onClick, isActive }: D
   );
 }
 
-export function SupplyChainDashboard({ onFilterChange, activeFilter }: { onFilterChange: (tab: string, filter?: string) => void, activeFilter: { tab: string, filter?: string } }) {
-  const { requisicoes } = useRequisicoes();
-  const { cotacoes } = useCotacoes();
-  const { pedidos } = usePedidosCompra();
+export function SupplyChainDashboard({
+  onFilterChange,
+  activeFilter,
+}: {
+  onFilterChange: (tab: string, filter?: string) => void;
+  activeFilter: { tab: string; filter?: string };
+}) {
+  const { data: stats } = useSupplyChainCounts();
 
-  const stats = {
-    requisicoesPendentes: requisicoes.filter(r => r.workflow_status === "SUBMITTED").length,
-    emCotacao: requisicoes.filter(r => r.workflow_status === "QUOTING").length,
-    aguardandoAprovacao: requisicoes.filter(r => r.workflow_status === "PENDING_APPROVAL").length,
-    pedidosEmAberto: pedidos.filter(p => ["emitido", "confirmado", "em_transito"].includes(p.status)).length,
-    recebimentosPendentes: requisicoes.filter(r => ["PURCHASED", "PARTIALLY_RECEIVED"].includes(r.workflow_status)).length,
+  const s = stats || {
+    requisicoesPendentes: 0,
+    emCotacao: 0,
+    paraAprovar: 0,
+    pedidosEmAberto: 0,
+    recebimentosPendentes: 0,
   };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
       <DashboardCard
         title="RCs Pendentes"
-        value={stats.requisicoesPendentes}
+        value={s.requisicoesPendentes}
         icon={FileText}
         color="bg-blue-500"
-        onClick={() => onFilterChange("requisicoes", "SUBMITTED")}
-        isActive={activeFilter.tab === "requisicoes" && activeFilter.filter === "SUBMITTED"}
+        onClick={() => onFilterChange("requisicoes", "pendente")}
+        isActive={activeFilter.tab === "requisicoes" && activeFilter.filter === "pendente"}
       />
       <DashboardCard
         title="Em Cotação"
-        value={stats.emCotacao}
+        value={s.emCotacao}
         icon={ClipboardCheck}
         color="bg-orange-500"
-        onClick={() => onFilterChange("cotacoes", "QUOTING")}
-        isActive={activeFilter.tab === "cotacoes" && activeFilter.filter === "QUOTING"}
+        onClick={() => onFilterChange("cotacoes")}
+        isActive={activeFilter.tab === "cotacoes" && !activeFilter.filter}
       />
       <DashboardCard
         title="Para Aprovar"
-        value={stats.aguardandoAprovacao}
+        value={s.paraAprovar}
         icon={ShoppingCart}
         color="bg-purple-500"
-        onClick={() => onFilterChange("requisicoes", "PENDING_APPROVAL")}
-        isActive={activeFilter.tab === "requisicoes" && activeFilter.filter === "PENDING_APPROVAL"}
+        onClick={() => onFilterChange("comparativo")}
+        isActive={activeFilter.tab === "comparativo"}
       />
       <DashboardCard
         title="Pedidos Abertos"
-        value={stats.pedidosEmAberto}
+        value={s.pedidosEmAberto}
         icon={Truck}
         color="bg-indigo-500"
-        onClick={() => onFilterChange("pedidos", "OPEN")}
-        isActive={activeFilter.tab === "pedidos" && activeFilter.filter === "OPEN"}
+        onClick={() => onFilterChange("pedidos", "abertos")}
+        isActive={activeFilter.tab === "pedidos" && activeFilter.filter === "abertos"}
       />
       <DashboardCard
         title="Para Receber"
-        value={stats.recebimentosPendentes}
+        value={s.recebimentosPendentes}
         icon={Package}
         color="bg-green-500"
-        onClick={() => onFilterChange("requisicoes", "TO_RECEIVE")}
-        isActive={activeFilter.tab === "requisicoes" && activeFilter.filter === "TO_RECEIVE"}
+        onClick={() => onFilterChange("pedidos", "para_receber")}
+        isActive={activeFilter.tab === "pedidos" && activeFilter.filter === "para_receber"}
       />
     </div>
   );
