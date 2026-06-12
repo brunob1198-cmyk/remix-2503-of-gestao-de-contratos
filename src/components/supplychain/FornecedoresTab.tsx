@@ -337,19 +337,17 @@ export function FornecedoresTab() {
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs">Prazo (40%)</Label>
-                        <span className="text-xs font-medium">{form.score_prazo}</span>
+                        <Label className="text-xs">Prazo (40%) - 0 a 100</Label>
                       </div>
                       <Input 
-                        type="number" min={0} max={100} size={1}
+                        type="number" min={0} max={100}
                         value={form.score_prazo} 
                         onChange={e => setForm(p => ({ ...p, score_prazo: Math.min(100, Math.max(0, Number(e.target.value))) }))} 
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs">Preço (30%)</Label>
-                        <span className="text-xs font-medium">{form.score_preco}</span>
+                        <Label className="text-xs">Preço (30%) - 0 a 100</Label>
                       </div>
                       <Input 
                         type="number" min={0} max={100}
@@ -359,8 +357,7 @@ export function FornecedoresTab() {
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs">Qualidade (20%)</Label>
-                        <span className="text-xs font-medium">{form.score_qualidade}</span>
+                        <Label className="text-xs">Qualidade (20%) - 0 a 100</Label>
                       </div>
                       <Input 
                         type="number" min={0} max={100}
@@ -370,8 +367,7 @@ export function FornecedoresTab() {
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
-                        <Label className="text-xs">Responsividade (10%)</Label>
-                        <span className="text-xs font-medium">{form.score_responsividade}</span>
+                        <Label className="text-xs">Responsividade (10%) - 0 a 100</Label>
                       </div>
                       <Input 
                         type="number" min={0} max={100}
@@ -450,13 +446,13 @@ export function FornecedoresTab() {
                         <div className="space-y-2">
                           <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
                           <div className="grid grid-cols-2 gap-1 text-xs">
-                            <span className="text-muted-foreground">Prazo (40%):</span>
+                            <span className="text-muted-foreground">Prazo (40%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_prazo || 0}</span>
-                            <span className="text-muted-foreground">Preço (30%):</span>
+                            <span className="text-muted-foreground">Preço (30%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_preco || 0}</span>
-                            <span className="text-muted-foreground">Qualidade (20%):</span>
+                            <span className="text-muted-foreground">Qualidade (20%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_qualidade || 0}</span>
-                            <span className="text-muted-foreground">Resp. (10%):</span>
+                            <span className="text-muted-foreground">Resp. (10%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_responsividade || 0}</span>
                           </div>
                           <div className="h-20 w-full mt-2">
