@@ -655,3 +655,86 @@ export function useAvaliacoesFornecedor() {
 
   return { create };
 }
+
+// ─── Dashboard counts ───
+export function useSupplyChainCounts() {
+  return useQuery({
+    queryKey: ["sc_counts"],
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empresaId = await getEmpresaId();
+
+      const baseReq = () =>
+        supabase.from("requisicoes_compra").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
+      const basePed = () =>
+        supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
+
+      const [pendentesRes, emCotacaoRes, pedidosAbertosRes, paraReceberRes, cotacoesAbertasRes] = await Promise.all([
+        baseReq().in("status", ["rascunho", "pendente_aprovacao"]),
+        baseReq().eq("status", "em_cotacao"),
+        basePed().in("status", ["rascunho", "emitido", "confirmado", "entrega_parcial"]),
+        basePed().in("status", ["emitido", "confirmado", "entrega_parcial"]),
+        supabase.from("cotacoes").select("requisicao_id").eq("empresa_id", empresaId).eq("status", "aberta"),
+      ]);
+
+      const reqIdsComCotacao = new Set(
+        (cotacoesAbertasRes.data || []).map((c: any) => c.requisicao_id).filter(Boolean)
+      );
+
+      let paraAprovar = 0;
+      if (reqIdsComCotacao.size > 0) {
+        const { count } = await supabase
+          .from("requisicoes_compra")
+          .select("id", { count: "exact", head: true })
+          .eq("empresa_id", empresaId)
+          .eq("status", "em_cotacao")
+          .in("id", Array.from(reqIdsComCotacao));
+        paraAprovar = count || 0;
+      }
+
+      return {
+        requisicoesPendentes: pendentesRes.count || 0,
+        emCotacao: emCotacaoRes.count || 0,
+        paraAprovar,
+        pedidosEmAberto: pedidosAbertosRes.count || 0,
+        recebimentosPendentes: paraReceberRes.count || 0,
+      };
+    },
+  });
+}
+
+// ─── Minha Fila ───
+export function useMinhaFila() {
+  return useQuery({
+    queryKey: ["minha_fila"],
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empresaId = await getEmpresaId();
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const selectReq = "id, numero, status, prioridade, data_necessidade, created_at, projeto:projetos(codigo, nome)";
+      const selectPed = "id, numero, status, data_prevista_entrega, valor_total, created_at, fornecedor:fornecedores(razao_social), projeto:projetos(codigo, nome)";
+
+      const [minhas, paraCotar, pedidosRascunho, aprovacoes, recebimentos] = await Promise.all([
+        userId
+          ? supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("solicitante_id", userId).order("created_at", { ascending: false }).limit(10)
+          : Promise.resolve({ data: [] as any[] }),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "em_cotacao").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
+        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).eq("status", "rascunho").order("created_at", { ascending: true }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "pendente_aprovacao").order("prioridade", { ascending: false }).limit(10),
+        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", ["emitido", "confirmado", "entrega_parcial"]).order("data_prevista_entrega", { ascending: true, nullsFirst: false }).limit(10),
+      ]);
+
+      return {
+        minhasRequisicoes: minhas.data || [],
+        requisicoesParaCotar: paraCotar.data || [],
+        pedidosParaEmitir: pedidosRascunho.data || [],
+        aprovacoesPendentes: aprovacoes.data || [],
+        recebimentosPendentes: recebimentos.data || [],
+      };
+    },
+  });
+}
