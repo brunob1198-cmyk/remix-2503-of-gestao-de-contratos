@@ -120,6 +120,7 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                       <TableRow>
                         <TableHead>Item</TableHead>
                         <TableHead>Qtd</TableHead>
+                        <TableHead>Unidade</TableHead>
                         <TableHead>Preço Unit.</TableHead>
                         <TableHead>Total</TableHead>
                         <TableHead>Observação</TableHead>
@@ -132,11 +133,13 @@ export function CotacoesTab({ filter }: { filter?: string }) {
                           <TableRow key={idx}>
                             <TableCell>{reqItem?.sc_item?.descricao || reqItem?.descricao_livre || "Item"}</TableCell>
                             <TableCell>{ci.quantidade}</TableCell>
+                            <TableCell className="text-muted-foreground">{reqItem?.unidade || "—"}</TableCell>
                             <TableCell>
-                              <Input type="number" step="0.01" className="w-28" value={ci.preco_unitario}
+                              <Input type="number" step="0.01" min="0" className="w-28" value={ci.preco_unitario || ""}
+                                placeholder="0,00"
                                 onChange={e => setCotItens(p => p.map((c, i) => i === idx ? { ...c, preco_unitario: Number(e.target.value) } : c))} />
                             </TableCell>
-                            <TableCell>{fmt(ci.preco_unitario * ci.quantidade)}</TableCell>
+                            <TableCell className="font-medium">{fmt(ci.preco_unitario * ci.quantidade)}</TableCell>
                             <TableCell>
                               <Input 
                                 placeholder="Obs." 
