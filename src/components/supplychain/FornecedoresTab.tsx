@@ -446,13 +446,13 @@ export function FornecedoresTab() {
                         <div className="space-y-2">
                           <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
                           <div className="grid grid-cols-2 gap-1 text-xs">
-                            <span className="text-muted-foreground">Prazo (40%):</span>
+                            <span className="text-muted-foreground">Prazo (40%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_prazo || 0}</span>
-                            <span className="text-muted-foreground">Preço (30%):</span>
+                            <span className="text-muted-foreground">Preço (30%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_preco || 0}</span>
-                            <span className="text-muted-foreground">Qualidade (20%):</span>
+                            <span className="text-muted-foreground">Qualidade (20%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_qualidade || 0}</span>
-                            <span className="text-muted-foreground">Resp. (10%):</span>
+                            <span className="text-muted-foreground">Resp. (10%) - 0 a 100:</span>
                             <span className="text-right font-medium">{f.score_responsividade || 0}</span>
                           </div>
                           <div className="h-20 w-full mt-2">
