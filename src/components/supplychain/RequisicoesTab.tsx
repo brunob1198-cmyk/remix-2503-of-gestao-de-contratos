@@ -7,27 +7,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Eye, Check, X, PackageCheck, History } from "lucide-react";
+import { Plus, Eye, Trash2, Check, X, PackageCheck, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 import { RequisitionTimeline } from "./RequisitionTimeline";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Rascunho", variant: "secondary" },
-  SUBMITTED: { label: "Enviado", variant: "default" },
+  SUBMITTED: { label: "Aguardando Aprovação", variant: "outline" },
+  PENDING_APPROVAL: { label: "Aguardando Aprovação", variant: "outline" },
+  APPROVED: { label: "Aprovada", variant: "default" },
+  REJECTED: { label: "Rejeitada", variant: "destructive" },
   QUOTING: { label: "Em Cotação", variant: "outline" },
-  QUOTE_COMPLETED: { label: "Cotação Finalizada", variant: "default" },
-  PENDING_APPROVAL: { label: "Pendente Aprovação", variant: "outline" },
-  APPROVED: { label: "Aprovado", variant: "default" },
-  REJECTED: { label: "Rejeitado", variant: "destructive" },
-  PURCHASE_ORDER_CREATED: { label: "Pedido Criado", variant: "outline" },
-  PURCHASED: { label: "Comprado", variant: "default" },
-  PARTIALLY_RECEIVED: { label: "Recebimento Parcial", variant: "outline" },
+  PURCHASE_ORDER_CREATED: { label: "Pedido Emitido", variant: "outline" },
+  PURCHASED: { label: "Pedido Emitido", variant: "outline" },
+  PARTIALLY_RECEIVED: { label: "Recebimento Parcial", variant: "secondary" },
   RECEIVED: { label: "Recebido", variant: "default" },
-  CLOSED: { label: "Finalizado", variant: "secondary" },
+  CLOSED: { label: "Encerrada", variant: "default" },
 };
 
 const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -37,44 +38,48 @@ const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "seco
   urgente: { label: "Urgente", variant: "destructive" },
 };
 
-interface ItemForm {
-  sc_item_id: string;
-  descricao_livre: string;
-  quantidade: number;
-  unidade: string;
-}
-
 export function RequisicoesTab({ filter }: { filter?: string }) {
-  const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove, getHistorico } = useRequisicoes();
-  
-  const requisicoes = filter 
-    ? allRequisicoes.filter((r: any) => {
-        if (filter === "TO_RECEIVE") return ["PURCHASED", "PARTIALLY_RECEIVED"].includes(r.workflow_status);
-        return r.workflow_status === filter;
-      })
-    : allRequisicoes;
+  const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
-  const { itens: scItens } = useScItens();
+  const { scItens } = useScItens();
   const { hasActionPermission } = usePermissions();
+
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
-  const [form, setForm] = useState({ projeto_id: "", prioridade: "normal", data_necessidade: "", justificativa: "", observacoes: "" });
-  const [itemRows, setItemRows] = useState<ItemForm[]>([{ sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]);
+
+  const [form, setForm] = useState({
+    projeto_id: "",
+    prioridade: "normal",
+    data_necessidade: "",
+    justificativa: "",
+  });
+
+  const [itemRows, setItemRows] = useState<{
+    sc_item_id: string;
+    descricao_livre: string;
+    quantidade: number;
+    unidade: string;
+  }[]>([
+    { sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }
+  ]);
+
+  const requisicoes = filter === "PENDING_APPROVAL" 
+    ? allRequisicoes.filter((r: any) => r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED")
+    : allRequisicoes;
 
   const resetForm = () => {
-    setForm({ projeto_id: "", prioridade: "normal", data_necessidade: "", justificativa: "", observacoes: "" });
+    setForm({ projeto_id: "", prioridade: "normal", data_necessidade: "", justificativa: "" });
     setItemRows([{ sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]);
   };
 
   const handleSave = () => {
-    if (create.isPending) return;
-    const itens = itemRows.filter(i => i.descricao_livre || i.sc_item_id);
-    create.mutate({ ...form, itens }, { 
-      onSuccess: () => { 
-        setOpen(false); 
-        resetForm(); 
-      } 
+    create.mutate({
+      ...form,
+      data_necessidade: form.data_necessidade || null,
+      itens: itemRows.filter(r => r.descricao_livre || r.sc_item_id)
+    }, {
+      onSuccess: () => { setOpen(false); resetForm(); }
     });
   };
 
@@ -96,6 +101,142 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
   };
 
   const removeItemRow = (idx: number) => setItemRows(p => p.filter((_, i) => i !== idx));
+
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      cell: ({ row }) => <span className="font-mono text-primary cursor-pointer hover:underline" onClick={() => { setSelected(row.original); setDetailOpen(true); }}>{row.getValue("numero")}</span>,
+    },
+    {
+      accessorKey: "projeto",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      accessorFn: (row) => row.projeto?.codigo || "—",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-sm">{r.projeto?.codigo || "—"}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[150px]">{r.projeto?.nome || ""}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "prioridade",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Prioridade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const pr = PRIORIDADE_MAP[row.getValue("prioridade") as string] || { label: row.getValue("prioridade"), variant: "outline" as const };
+        return <Badge variant={pr.variant}>{pr.label}</Badge>;
+      },
+    },
+    {
+      accessorKey: "data_necessidade",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Data Necessidade" />,
+      cell: ({ row }) => {
+        const val = row.getValue("data_necessidade") as string;
+        return val ? parseLocalDate(val).toLocaleDateString("pt-BR") : "—";
+      },
+    },
+    {
+      id: "itens_count",
+      header: "Itens",
+      accessorFn: (row) => row.itens?.length || 0,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <PackageCheck className="h-3 w-3" />
+          {row.getValue("itens_count")} itens
+        </div>
+      ),
+    },
+    {
+      accessorKey: "workflow_status",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const st = WORKFLOW_STATUS_MAP[row.getValue("workflow_status") as string] || { label: row.getValue("workflow_status"), variant: "outline" as const };
+        return <Badge variant={st.variant}>{st.label}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ação</div>,
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" title="Ver Detalhes" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
+            
+            {r.workflow_status === "DRAFT" && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:text-primary hover:bg-primary/10"
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED", observacoes: "Requisição enviada para o setor de compras." })}
+              >
+                Enviar
+              </Button>
+            )}
+
+            {(r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED") && hasActionPermission("pode_aprovar_compra") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-green-600 border-green-200 hover:bg-green-50"
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Requisição aprovada pelo gestor." })}
+              >
+                <Check className="h-4 w-4 mr-1" /> Aprovar
+              </Button>
+            )}
+
+            {(r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED") && hasActionPermission("pode_rejeitar_compra") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-destructive border-red-200 hover:bg-red-50"
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED", observacoes: "Requisição rejeitada pelo gestor." })}
+              >
+                <X className="h-4 w-4 mr-1" /> Rejeitar
+              </Button>
+            )}
+
+            {(r.workflow_status === "PURCHASED" || r.workflow_status === "PARTIALLY_RECEIVED") && hasActionPermission("pode_receber_compra") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED", observacoes: "Itens recebidos e conferidos no almoxarifado." })}
+              >
+                <PackageCheck className="h-4 w-4 mr-1" /> Receber
+              </Button>
+            )}
+
+            {(r.workflow_status === "DRAFT" || r.status === "rascunho") && (
+              <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <Card>
@@ -179,176 +320,96 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
           </DialogContent>
         </Dialog>
       </CardHeader>
+      
       <CardContent>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
         ) : requisicoes.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">Nenhuma requisição</p>
+          <p className="text-muted-foreground text-center py-8">Nenhuma requisição encontrada.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Projeto</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead>Data Necessidade</TableHead>
-                <TableHead>Itens</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-28" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requisicoes.map((r: any) => {
-                const st = WORKFLOW_STATUS_MAP[r.workflow_status] || { label: r.workflow_status, variant: "outline" as const };
-                const pr = PRIORIDADE_MAP[r.prioridade] || { label: r.prioridade, variant: "outline" as const };
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-mono">{r.numero}</TableCell>
-                    <TableCell>{r.projeto?.codigo || "—"}</TableCell>
-                    <TableCell><Badge variant={pr.variant}>{pr.label}</Badge></TableCell>
-                    <TableCell>{r.data_necessidade ? parseLocalDate(r.data_necessidade).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                    <TableCell>{r.itens?.length || 0}</TableCell>
-                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
-                        
-                        {r.workflow_status === "DRAFT" && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-primary hover:text-primary hover:bg-primary/10"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED", observacoes: "Requisição enviada para o setor de compras." })}
-                          >
-                            Enviar
-                          </Button>
-                        )}
-
-                        {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_aprovar_compra") && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Requisição aprovada pelo gestor." })}
-                          >
-                            <Check className="h-4 w-4 mr-1" /> Aprovar
-                          </Button>
-                        )}
-
-                        {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_rejeitar_compra") && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-destructive border-red-200 hover:bg-red-50"
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "REJECTED", observacoes: "Requisição rejeitada pelo gestor." })}
-                          >
-                            <X className="h-4 w-4 mr-1" /> Rejeitar
-                          </Button>
-                        )}
-
-                        {(r.workflow_status === "PURCHASED" || r.workflow_status === "PARTIALLY_RECEIVED") && hasActionPermission("pode_receber_compra") && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "RECEIVED", observacoes: "Itens recebidos e conferidos no almoxarifado." })}
-                          >
-                            <PackageCheck className="h-4 w-4 mr-1" /> Receber
-                          </Button>
-                        )}
-
-                        {r.status === "rascunho" && (
-                          <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <DataTable columns={columns} data={requisicoes} searchKey="numero" searchPlaceholder="Buscar por número..." />
         )}
+      </CardContent>
 
-        {/* Detail dialog */}
-        <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader><DialogTitle>Requisição {selected?.numero}</DialogTitle></DialogHeader>
-            {selected && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-3 rounded-lg border">
-                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> {selected.projeto?.codigo} - {selected.projeto?.nome || "—"}</div>
-                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
-                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> <Badge variant={PRIORIDADE_MAP[selected.prioridade]?.variant || "outline"}>{PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</Badge></div>
-                  <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Requisição {selected?.numero}</DialogTitle></DialogHeader>
+          {selected && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-3 rounded-lg border">
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> {selected.projeto?.codigo} - {selected.projeto?.nome || "—"}</div>
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> <Badge variant={PRIORIDADE_MAP[selected.prioridade]?.variant || "outline"}>{PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</Badge></div>
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
+              </div>
+              
+              {selected.justificativa && (
+                <div className="text-sm border p-3 rounded-lg bg-yellow-50/30">
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Justificativa</span>
+                  <p className="whitespace-pre-wrap">{selected.justificativa}</p>
                 </div>
-                
-                {selected.justificativa && (
-                  <div className="text-sm border p-3 rounded-lg bg-yellow-50/30">
-                    <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Justificativa</span>
-                    <p className="whitespace-pre-wrap">{selected.justificativa}</p>
-                  </div>
-                )}
+              )}
 
-                {selected.observacoes && (
-                  <div className="text-sm border p-3 rounded-lg">
-                    <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações</span>
-                    <p className="whitespace-pre-wrap">{selected.observacoes}</p>
-                  </div>
-                )}
+              {selected.observacoes && (
+                <div className="text-sm border p-3 rounded-lg">
+                  <span className="text-muted-foreground block text-xs uppercase font-semibold mb-1">Observações</span>
+                  <p className="whitespace-pre-wrap">{selected.observacoes}</p>
+                </div>
+              )}
 
-                <div>
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <PackageCheck className="h-4 w-4" /> 
-                    Itens Solicitados ({selected.itens?.length || 0})
-                  </h4>
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow>
-                          <TableHead>Código</TableHead>
-                          <TableHead>Item / Descrição</TableHead>
-                          <TableHead className="text-center w-20">Qtd</TableHead>
-                          <TableHead className="w-20">Unid</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(selected.itens && selected.itens.length > 0) ? (
-                          selected.itens.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-mono text-xs">{item.sc_item?.codigo || "—"}</TableCell>
-                              <TableCell className="text-sm font-medium">
-                                {item.sc_item?.descricao || item.descricao_livre || "—"}
-                                {item.sc_item?.descricao && item.descricao_livre && item.descricao_livre !== item.sc_item.descricao && (
-                                  <span className="block text-xs text-muted-foreground font-normal italic mt-0.5">{item.descricao_livre}</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center font-bold">{item.quantidade}</TableCell>
-                              <TableCell>{item.unidade}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={4} className="text-center py-4 text-muted-foreground italic">Nenhum item encontrado.</TableCell>
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <PackageCheck className="h-4 w-4" /> 
+                  Itens Solicitados ({selected.itens?.length || 0})
+                </h4>
+                <div className="border rounded-md overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Item / Descrição</TableHead>
+                        <TableHead className="text-center w-20">Qtd</TableHead>
+                        <TableHead className="w-20">Unid</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(selected.itens && selected.itens.length > 0) ? (
+                        selected.itens.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-mono text-xs">{item.sc_item?.codigo || "—"}</TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {item.sc_item?.descricao || item.descricao_livre || "—"}
+                              {item.sc_item?.descricao && item.descricao_livre && item.descricao_livre !== item.sc_item.descricao && (
+                                <span className="block text-xs text-muted-foreground font-normal italic mt-0.5">{item.descricao_livre}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-bold">{item.quantidade}</TableCell>
+                            <TableCell>{item.unidade}</TableCell>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
-                    <History className="h-4 w-4 text-primary" />
-                    Timeline da Requisição (Auditoria)
-                  </h4>
-                  <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    <RequisitionTimeline requisicaoId={selected.id} />
-                  </div>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-4 text-muted-foreground italic">Nenhum item encontrado.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </CardContent>
+
+              <div className="pt-4 border-t">
+                <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  Timeline da Requisição (Auditoria)
+                </h4>
+                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  <RequisitionTimeline requisicaoId={selected.id} />
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

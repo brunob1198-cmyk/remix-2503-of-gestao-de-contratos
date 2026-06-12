@@ -1,10 +1,11 @@
 import { useMinhaFila } from "@/hooks/useSupplyChain";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Clock, AlertCircle } from "lucide-react";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   rascunho: { label: "Rascunho", variant: "secondary" },
@@ -29,6 +30,94 @@ function statusBadge(status: string) {
   );
 }
 
+// Columns definition for Requisicoes
+const reqColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "numero",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+    cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("numero")}</span>,
+  },
+  {
+    accessorKey: "projeto",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+    accessorFn: (row) => row.projeto?.codigo || "—",
+    cell: ({ row }) => <span className="text-sm">{row.getValue("projeto")}</span>,
+  },
+  {
+    accessorKey: "created_at",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Data" />,
+    cell: ({ row }) => {
+      const val = row.getValue("created_at") as string;
+      return <span className="text-sm">{val ? new Date(val).toLocaleDateString("pt-BR") : "—"}</span>;
+    },
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <div className="flex items-center">
+        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnFilter 
+          column={column} 
+          title="Filtro Status" 
+          options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
+        />
+      </div>
+    ),
+    filterFn: multiSelectFilter,
+    cell: ({ row }) => statusBadge(row.getValue("status")),
+  },
+  {
+    id: "actions",
+    cell: () => (
+      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+    ),
+  },
+];
+
+// Columns definition for Pedidos
+const pedColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "numero",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+    cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("numero")}</span>,
+  },
+  {
+    accessorKey: "fornecedor",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Fornecedor" />,
+    accessorFn: (row) => row.fornecedor?.razao_social || "—",
+    cell: ({ row }) => <span className="text-sm">{row.getValue("fornecedor")}</span>,
+  },
+  {
+    accessorKey: "data_prevista_entrega",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Prev. Entrega" />,
+    cell: ({ row }) => {
+      const val = row.getValue("data_prevista_entrega") as string;
+      return <span className="text-sm">{val ? new Date(val).toLocaleDateString("pt-BR") : "—"}</span>;
+    },
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <div className="flex items-center">
+        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnFilter 
+          column={column} 
+          title="Filtro Status" 
+          options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
+        />
+      </div>
+    ),
+    filterFn: multiSelectFilter,
+    cell: ({ row }) => statusBadge(row.getValue("status")),
+  },
+  {
+    id: "actions",
+    cell: () => (
+      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+    ),
+  },
+];
+
 export function MinhaFilaTab() {
   const { data, isLoading } = useMinhaFila();
   const { hasActionPermission } = usePermissions();
@@ -50,38 +139,11 @@ export function MinhaFilaTab() {
         {title}
         <Badge variant="secondary" className="ml-1">{rows.length}</Badge>
       </h3>
-      <div className="border rounded-md overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Projeto</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground italic">{emptyMsg}</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((r: any) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-mono text-xs">{r.numero}</TableCell>
-                  <TableCell className="text-sm">{r.projeto?.codigo || "—"}</TableCell>
-                  <TableCell className="text-sm">{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                  <TableCell>{statusBadge(r.status)}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {rows.length === 0 ? (
+        <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
+      ) : (
+        <DataTable columns={reqColumns} data={rows} searchKey="numero" searchPlaceholder="Buscar por número..." />
+      )}
     </div>
   );
 
@@ -91,38 +153,11 @@ export function MinhaFilaTab() {
         {title}
         <Badge variant="secondary" className="ml-1">{rows.length}</Badge>
       </h3>
-      <div className="border rounded-md overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead>Número</TableHead>
-              <TableHead>Fornecedor</TableHead>
-              <TableHead>Prev. Entrega</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground italic">{emptyMsg}</TableCell>
-              </TableRow>
-            ) : (
-              rows.map((p: any) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs">{p.numero}</TableCell>
-                  <TableCell className="text-sm">{p.fornecedor?.razao_social || "—"}</TableCell>
-                  <TableCell className="text-sm">{p.data_prevista_entrega ? new Date(p.data_prevista_entrega).toLocaleDateString("pt-BR") : "—"}</TableCell>
-                  <TableCell>{statusBadge(p.status)}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {rows.length === 0 ? (
+        <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
+      ) : (
+        <DataTable columns={pedColumns} data={rows} searchKey="numero" searchPlaceholder="Buscar por número..." />
+      )}
     </div>
   );
 

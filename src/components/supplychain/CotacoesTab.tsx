@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 import { RequisitionTimeline } from "./RequisitionTimeline";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pendente: { label: "Pendente", variant: "secondary" },
@@ -66,6 +68,171 @@ export function CotacoesTab({ filter }: { filter?: string }) {
   };
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const reqColumns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      cell: ({ row }) => <span className="font-mono">{row.getValue("numero")}</span>,
+    },
+    {
+      accessorKey: "projeto",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      accessorFn: (row) => row.projeto?.codigo || "—",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium text-sm">{r.projeto?.codigo || "—"}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[150px]">{r.projeto?.nome || ""}</span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "prioridade",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Prioridade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const pr = PRIORIDADE_MAP[row.getValue("prioridade") as string] || { label: row.getValue("prioridade"), variant: "outline" as const };
+        return <Badge variant={pr.variant}>{pr.label}</Badge>;
+      },
+    },
+    {
+      id: "itens",
+      header: "Itens",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <PackageCheck className="h-3 w-3" />
+          {row.original.itens?.length || 0} itens
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ação</div>,
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex justify-end gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title="Ver Detalhes da Requisição"
+              onClick={() => {
+                setSelectedReqForDetail(r);
+                setDetailOpen(true);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            {hasActionPermission("pode_criar_cotacao") && (
+              <>
+                {r.workflow_status === "SUBMITTED" && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-primary hover:text-primary hover:bg-primary/10"
+                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING", observacoes: "Iniciado processo de cotação com fornecedores." })}
+                  >
+                    Iniciar Cotação
+                  </Button>
+                )}
+                {r.workflow_status === "QUOTING" && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      handleReqChange(r.id, true);
+                      setOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Criar Cotação
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  const cotColumns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      cell: ({ row }) => {
+        const c = row.original;
+        return (
+          <div className="cursor-pointer font-mono text-primary hover:underline" onClick={() => { setSelectedCotacao(c); setCotacaoDetailOpen(true); }}>
+            {c.numero}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "requisicao",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Requisição" />,
+      accessorFn: (row) => row.requisicao?.numero || "—",
+      cell: ({ row }) => {
+        const c = row.original;
+        return (
+          <div className="font-mono text-xs">
+            {c.requisicao?.numero || "—"}
+            {c.requisicao?.projeto?.codigo && (
+              <span className="block text-muted-foreground">{c.requisicao.projeto.codigo}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "fornecedor",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Fornecedor" />,
+      accessorFn: (row) => row.fornecedor?.razao_social || "—",
+      cell: ({ row }) => row.getValue("fornecedor"),
+    },
+    {
+      accessorKey: "prazo_entrega_dias",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Prazo (dias)" />,
+      cell: ({ row }) => row.getValue("prazo_entrega_dias") ? `${row.getValue("prazo_entrega_dias")} dias` : "—",
+    },
+    {
+      accessorKey: "valor_total",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Valor Total" />,
+      cell: ({ row }) => fmt(row.getValue("valor_total") || 0),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const st = STATUS_MAP[row.getValue("status") as string] || { label: row.getValue("status"), variant: "outline" as const };
+        return <Badge variant={st.variant}>{st.label}</Badge>;
+      },
+    },
+  ];
+
+  const reqsQuoting = requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED");
 
   return (
     <Card>
@@ -171,131 +338,21 @@ export function CotacoesTab({ filter }: { filter?: string }) {
       <CardContent>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
-        ) : (cotacoes.length === 0 && requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").length === 0) ? (
+        ) : (cotacoes.length === 0 && reqsQuoting.length === 0) ? (
           <p className="text-muted-foreground text-center py-8">Nenhuma cotação</p>
         ) : (
           <div className="space-y-6">
-            {requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").length > 0 && (
+            {reqsQuoting.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Requisições Aguardando Cotação</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Número</TableHead>
-                      <TableHead>Projeto</TableHead>
-                      <TableHead>Prioridade</TableHead>
-                      <TableHead>Itens</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requisicoes.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED").map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-mono">{r.numero}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm">{r.projeto?.codigo || "—"}</span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">{r.projeto?.nome || ""}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={PRIORIDADE_MAP[r.prioridade]?.variant || "outline"}>
-                            {PRIORIDADE_MAP[r.prioridade]?.label || r.prioridade}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <PackageCheck className="h-3 w-3" />
-                            {r.itens?.length || 0} itens
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Ver Detalhes da Requisição"
-                              onClick={() => {
-                                setSelectedReqForDetail(r);
-                                setDetailOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {hasActionPermission("pode_criar_cotacao") && (
-                              <>
-                                {r.workflow_status === "SUBMITTED" && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={() => updateRequisicaoStatus.mutate({ id: r.id, workflow_status: "QUOTING", observacoes: "Iniciado processo de cotação com fornecedores." })}
-                                  >
-                                    Iniciar Cotação
-                                  </Button>
-                                )}
-                                {r.workflow_status === "QUOTING" && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => {
-                                      handleReqChange(r.id, true);
-                                      setOpen(true);
-                                    }}
-                                  >
-                                    <Plus className="h-4 w-4 mr-1" /> Criar Cotação
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable columns={reqColumns} data={reqsQuoting} searchKey="numero" searchPlaceholder="Buscar por número..." />
               </div>
             )}
 
             {cotacoes.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cotações Registradas</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Número</TableHead>
-                      <TableHead>Requisição</TableHead>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead>Prazo (dias)</TableHead>
-                      <TableHead>Valor Total</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cotacoes.map((c: any) => {
-                      const st = STATUS_MAP[c.status] || { label: c.status, variant: "outline" as const };
-                      return (
-                        <TableRow
-                          key={c.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => { setSelectedCotacao(c); setCotacaoDetailOpen(true); }}
-                        >
-                          <TableCell className="font-mono">{c.numero}</TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {c.requisicao?.numero || "—"}
-                            {c.requisicao?.projeto?.codigo && (
-                              <span className="block text-muted-foreground">{c.requisicao.projeto.codigo}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{c.fornecedor?.razao_social || "—"}</TableCell>
-                          <TableCell>{c.prazo_entrega_dias || "—"}</TableCell>
-                          <TableCell>{fmt(c.valor_total || 0)}</TableCell>
-                          <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable columns={cotColumns} data={cotacoes} searchKey="numero" searchPlaceholder="Buscar por número..." />
               </div>
             )}
           </div>

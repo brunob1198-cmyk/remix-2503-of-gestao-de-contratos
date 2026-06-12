@@ -13,6 +13,8 @@ import { Trash2, Star, Send, CheckCircle, XCircle, AlertTriangle, Eye } from "lu
 import { parseLocalDate } from "@/lib/utils";
 import { RecebimentoModal } from "./RecebimentoModal";
 import { AvaliacaoFornecedorModal } from "./AvaliacaoFornecedorModal";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 const STATUS_LIST = [
   { value: "rascunho", label: "Rascunho", className: "bg-gray-200 text-gray-800 hover:bg-gray-200" },
@@ -109,6 +111,135 @@ export function PedidosTab({ filter }: { filter?: string }) {
     return items;
   };
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      cell: ({ row }) => {
+        const p = row.original;
+        return (
+          <button
+            className="hover:underline text-left font-mono text-primary"
+            onClick={() => setSelectedPedido(p)}
+          >
+            {p.numero}
+          </button>
+        );
+      },
+    },
+    {
+      accessorKey: "fornecedor",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Fornecedor" />,
+      accessorFn: (row) => row.fornecedor?.razao_social || "—",
+      cell: ({ row }) => row.getValue("fornecedor"),
+    },
+    {
+      accessorKey: "projeto",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      accessorFn: (row) => row.projeto ? `${row.projeto.codigo} ${row.projeto.nome}` : "—",
+      cell: ({ row }) => {
+        const p = row.original;
+        return p.projeto ? (
+          <span className="text-sm">
+            <span className="font-mono text-muted-foreground">{p.projeto.codigo}</span> {p.projeto.nome}
+          </span>
+        ) : "—";
+      },
+    },
+    {
+      accessorKey: "valor_total",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Valor Total" />,
+      cell: ({ row }) => <div className="text-right">{fmt(row.getValue("valor_total") || 0)}</div>,
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={STATUS_LIST.map(s => ({ label: s.label, value: s.value }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => statusBadge(row.getValue("status")),
+    },
+    {
+      accessorKey: "data_prevista_entrega",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Entrega Prevista" />,
+      cell: ({ row }) => {
+        const p = row.original;
+        const overdue = isOverdue(p);
+        return (
+          <div className="flex items-center gap-1">
+            {overdue && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+            <span className={overdue ? "text-orange-600 font-medium" : ""}>
+              {fmtDate(p.data_prevista_entrega)}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ações</div>,
+      cell: ({ row }) => {
+        const p = row.original;
+        const canReceive = ["confirmado", "entrega_parcial"].includes(p.status);
+        return (
+          <div className="flex justify-end gap-2 items-center flex-wrap">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedPedido(p)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+
+            {p.status === "rascunho" && (
+              <>
+                <Button size="sm" onClick={() => setEmitDialog({ open: true, pedido: p, obs: "" })}>
+                  <Send className="h-4 w-4 mr-1" /> Emitir
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </>
+            )}
+
+            {p.status === "emitido" && (
+              <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: p.id, status: "confirmado" })}>
+                Confirmar Recebimento Fornecedor
+              </Button>
+            )}
+
+            {canReceive && <RecebimentoModal pedido={p} />}
+
+            {p.status === "entregue" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+                onClick={() => setPedidoToAvaliar(p)}
+              >
+                <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" /> Avaliar
+              </Button>
+            )}
+
+            {(p.status === "rascunho" || p.status === "emitido") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive"
+                onClick={() => setCancelDialog({ open: true, pedido: p, motivo: "" })}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -141,114 +272,8 @@ export function PedidosTab({ filter }: { filter?: string }) {
         ) : pedidos.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">Nenhum pedido</p>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Número</TableHead>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead className="text-right">Valor Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Entrega Prevista</TableHead>
-                  <TableHead className="w-[340px] text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pedidos.map((p: any) => {
-                  const overdue = isOverdue(p);
-                  const canReceive = ["confirmado", "entrega_parcial"].includes(p.status);
-
-                  return (
-                    <TableRow
-                      key={p.id}
-                      ref={highlightId === p.id ? highlightRowRef : undefined}
-                      className={[
-                        highlightId === p.id ? "bg-primary/10 ring-2 ring-primary/40" : "",
-                        overdue ? "border-l-4 border-l-orange-500" : "",
-                      ].join(" ")}
-                    >
-                      <TableCell className="font-mono">
-                        <button
-                          className="hover:underline text-left"
-                          onClick={() => setSelectedPedido(p)}
-                        >
-                          {p.numero}
-                        </button>
-                      </TableCell>
-                      <TableCell>{p.fornecedor?.razao_social || "—"}</TableCell>
-                      <TableCell className="text-sm">
-                        {p.projeto ? (
-                          <span>
-                            <span className="font-mono text-muted-foreground">{p.projeto.codigo}</span> {p.projeto.nome}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">{fmt(p.valor_total || 0)}</TableCell>
-                      <TableCell>{statusBadge(p.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {overdue && <AlertTriangle className="h-4 w-4 text-orange-500" />}
-                          <span className={overdue ? "text-orange-600 font-medium" : ""}>
-                            {fmtDate(p.data_prevista_entrega)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2 items-center flex-wrap">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedPedido(p)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-
-                          {p.status === "rascunho" && (
-                            <>
-                              <Button size="sm" onClick={() => setEmitDialog({ open: true, pedido: p, obs: "" })}>
-                                <Send className="h-4 w-4 mr-1" /> Emitir
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-
-                          {p.status === "emitido" && (
-                            <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: p.id, status: "confirmado" })}>
-                              Confirmar Recebimento Fornecedor
-                            </Button>
-                          )}
-
-                          {canReceive && <RecebimentoModal pedido={p} />}
-
-                          {p.status === "entregue" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-yellow-700 border-yellow-300 hover:bg-yellow-50"
-                              onClick={() => setPedidoToAvaliar(p)}
-                            >
-                              <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" /> Avaliar
-                            </Button>
-                          )}
-
-                          {(p.status === "rascunho" || p.status === "emitido") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive"
-                              onClick={() => setCancelDialog({ open: true, pedido: p, motivo: "" })}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <div className="space-y-4">
+            <DataTable columns={columns} data={pedidos} searchKey="numero" searchPlaceholder="Buscar por número do pedido..." />
           </div>
         )}
       </CardContent>
