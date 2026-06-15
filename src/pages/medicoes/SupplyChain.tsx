@@ -8,6 +8,7 @@ import { CotacoesTab } from "@/components/supplychain/CotacoesTab";
 import { PedidosTab } from "@/components/supplychain/PedidosTab";
 import { MinhaFilaTab } from "@/components/supplychain/MinhaFilaTab";
 import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
+import { StatusFunnel } from "@/components/supplychain/StatusFunnel";
 import { ComparativoTab } from "@/components/supplychain/ComparativoTab";
 
 const PIPELINE_STEPS = [
@@ -44,6 +45,8 @@ export default function SupplyChainPage() {
         onFilterChange={handleFilterChange} 
         activeFilter={{ tab, filter }} 
       />
+
+      <StatusFunnel onNavigate={handleFilterChange} />
 
       {/* Main Flow Pipeline */}
       <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4 bg-muted/30 p-3 rounded-lg border overflow-x-auto hide-scrollbar">

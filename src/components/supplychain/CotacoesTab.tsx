@@ -86,6 +86,11 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     // External filter support (e.g., from Dashboard)
     if (filter === "QUOTING") {
       filtered = filtered.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED");
+    } else if (filter === "prioridade_alta") {
+      filtered = filtered.filter((r: any) => 
+        (r.prioridade === "alta" || r.prioridade === "urgente") &&
+        (!r.cotacoes || r.cotacoes.length === 0)
+      );
     }
 
     if (searchTerm) {

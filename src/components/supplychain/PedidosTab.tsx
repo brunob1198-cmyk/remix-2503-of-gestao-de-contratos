@@ -31,6 +31,7 @@ const fmtDate = (d?: string | null) => (d ? parseLocalDate(d).toLocaleDateString
 export function PedidosTab({ filter }: { filter?: string }) {
   const { pedidos: allPedidos, isLoading, updateStatus, remove } = usePedidosCompra();
   const isUuid = !!filter && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filter);
+  const isRcNumber = !!filter && filter.startsWith("RC-");
   const highlightId = isUuid ? filter : undefined;
 
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -44,14 +45,19 @@ export function PedidosTab({ filter }: { filter?: string }) {
 
   const pedidos = useMemo(() => {
     let list = allPedidos as any[];
-    if (filter === "OPEN") {
+    if (filter === "OPEN" || filter === "para_receber") {
       list = list.filter((p) => ["emitido", "confirmado", "entrega_parcial"].includes(p.status));
+    } else if (filter === "entregues") {
+      list = list.filter((p) => p.status === "entregue");
+    } else if (isRcNumber) {
+      list = list.filter((p) => p.requisicao?.numero === filter);
     }
+    
     if (statusFilter !== "ALL") {
       list = list.filter((p) => p.status === statusFilter);
     }
     return list;
-  }, [allPedidos, filter, statusFilter]);
+  }, [allPedidos, filter, statusFilter, isRcNumber]);
 
   useEffect(() => {
     if (highlightId && highlightRowRef.current) {

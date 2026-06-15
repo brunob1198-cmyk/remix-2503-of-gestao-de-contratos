@@ -407,6 +407,81 @@ export function useCotacoes(requisicaoId?: string) {
   return { cotacoes, isLoading, create, updateStatus };
 }
 
+export function useSupplyChainFunnelCounts() {
+  return useQuery({
+    queryKey: ["sc_funnel_counts"],
+    staleTime: 30 * 1000,
+    gcTime: 60 * 1000,
+    queryFn: async () => {
+      // 1. Fetch RCs basic data + cotacoes
+      const { data: reqs, error: reqErr } = await supabase
+        .from("requisicoes_compra")
+        .select("id, numero, workflow_status, prioridade, data_necessidade, cotacoes(id, status)");
+      
+      if (reqErr) throw reqErr;
+
+      // 2. Fetch Pedidos basic data
+      const { data: peds, error: pedErr } = await supabase
+        .from("pedidos")
+        .select("id, status, data_entrega_real, created_at");
+      
+      if (pedErr) throw pedErr;
+
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+      // Estágio 1: Aguardando cotação
+      const stage1Reqs = (reqs || []).filter(r => 
+        r.workflow_status === 'SUBMITTED' || 
+        r.workflow_status === 'PENDING_APPROVAL' ||
+        (r.workflow_status === 'QUOTING' && (!r.cotacoes || r.cotacoes.length === 0))
+      );
+
+      // Estágio 2: Em cotação
+      const stage2Reqs = (reqs || []).filter(r => 
+        r.workflow_status === 'QUOTING' &&
+        r.cotacoes?.some((c: any) => c.status === 'pendente')
+      );
+      const stage2QuotesCount = stage2Reqs.reduce((acc, r) => acc + (r.cotacoes?.filter((c: any) => c.status === 'pendente').length || 0), 0);
+
+      // Estágio 3: Em aprovação
+      const stage3Reqs = (reqs || []).filter(r => r.workflow_status === 'PENDING_APPROVAL');
+
+      // Estágio 4: Pedido emitido
+      const stage4Peds = (peds || []).filter(p => ['emitido', 'confirmado', 'entrega_parcial'].includes(p.status || ''));
+
+      // Estágio 5: Recebido
+      const stage5Peds = (peds || []).filter(p => {
+        if (p.status !== 'entregue') return false;
+        const dateStr = p.data_entrega_real || p.created_at;
+        if (!dateStr) return false;
+        return new Date(dateStr) >= thirtyDaysAgo;
+      });
+
+      // Alerta de Alta Prioridade Atrasada
+      const alertReqs = (reqs || []).filter(r => {
+        if (r.prioridade !== 'alta' && r.prioridade !== 'urgente') return false;
+        if (!['SUBMITTED', 'PENDING_APPROVAL', 'QUOTING'].includes(r.workflow_status)) return false;
+        if (r.cotacoes && r.cotacoes.length > 0) return false;
+        if (!r.data_necessidade) return false;
+        const dataNec = new Date(r.data_necessidade);
+        return dataNec <= threeDaysFromNow;
+      });
+
+      return {
+        stage1: { count: stage1Reqs.length, items: stage1Reqs.slice(0, 3).map(r => r.numero).join(", ") },
+        stage2: { count: stage2Reqs.length, quotesCount: stage2QuotesCount },
+        stage3: { count: stage3Reqs.length },
+        stage4: { count: stage4Peds.length },
+        stage5: { count: stage5Peds.length },
+        alert: { count: alertReqs.length }
+      };
+    }
+  });
+}
+
 export function useCotacoesMestreDetalhe() {
   return useQuery({
     queryKey: ["cotacoes_mestre_detalhe"],
