@@ -510,7 +510,7 @@ export function useCotacoesMestreDetalhe() {
           itens:requisicao_itens(id, quantidade, unidade, descricao_livre, sc_item:sc_itens(codigo, descricao)),
           cotacoes(
             id, numero, prazo_entrega_dias, valor_total, status, frete, condicao_pagamento, validade, observacoes, created_at,
-            fornecedor:fornecedores(id, razao_social, fantasia),
+            fornecedor:fornecedores(id, razao_social),
             itens:cotacao_itens(id, req_item_id, quantidade, preco_unitario, observacao)
           )
         `)

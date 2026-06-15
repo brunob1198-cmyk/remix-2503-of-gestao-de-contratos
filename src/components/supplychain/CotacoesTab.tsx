@@ -305,7 +305,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                                 <div className="flex items-center gap-3">
                                   <span className="font-mono text-xs text-muted-foreground">{cot.numero}</span>
                                   <span className={`text-sm font-medium ${isPerdida ? 'line-through text-muted-foreground' : ''}`}>
-                                    {cot.fornecedor?.fantasia || cot.fornecedor?.razao_social || "Fornecedor Removido"}
+                                    {cot.fornecedor?.razao_social || "Fornecedor Removido"}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-4 mt-2 sm:mt-0 text-sm">
