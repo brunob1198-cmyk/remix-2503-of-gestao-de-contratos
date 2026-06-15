@@ -332,10 +332,6 @@ export default function DiarioObraPage() {
     if (!eqRecursoId || !eqCustoHoraStr) return;
     const recurso = recursos.find(r => r.id === eqRecursoId);
     if (!recurso) return;
-    if (isRecursoDuplicado("pessoa", recurso.nome)) {
-      toast({ title: "Recurso já adicionado", variant: "destructive" });
-      return;
-    }
     const horas = Number(eqHorasStr);
     const custoUnitario = Number(eqCustoHoraStr);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
@@ -348,10 +344,6 @@ export default function DiarioObraPage() {
     if (!equipRecursoId || !equipCustoHora) return;
     const recurso = recursos.find(r => r.id === equipRecursoId);
     if (!recurso) return;
-    if (isRecursoDuplicado("equipamento", recurso.nome)) {
-      toast({ title: "Recurso já adicionado", variant: "destructive" });
-      return;
-    }
     const horas = Number(equipHoras);
     const custoUnitario = Number(equipCustoHora);
     const { custo_hora, custo_total } = computeCost(recurso, custoUnitario, horas);
@@ -365,10 +357,6 @@ export default function DiarioObraPage() {
     if (!veicRecursoId || !veicCusto) return;
     const recurso = recursos.find(r => r.id === veicRecursoId);
     if (!recurso) return;
-    if (isRecursoDuplicado("veiculo", recurso.nome)) {
-      toast({ title: "Recurso já adicionado", variant: "destructive" });
-      return;
-    }
     const kmInicial = veicKmInicial ? Number(veicKmInicial) : 0;
     const kmFinal = veicKmFinal ? Number(veicKmFinal) : 0;
     const kmRodados = Math.max(0, kmFinal - kmInicial);
