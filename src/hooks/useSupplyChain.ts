@@ -407,6 +407,53 @@ export function useCotacoes(requisicaoId?: string) {
   return { cotacoes, isLoading, create, updateStatus };
 }
 
+export function useCotacoesMestreDetalhe() {
+  return useQuery({
+    queryKey: ["cotacoes_mestre_detalhe"],
+    staleTime: 30 * 1000,
+    gcTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("requisicoes_compra")
+        .select(`
+          id, numero, projeto_id, prioridade, workflow_status, data_necessidade, status, justificativa, observacoes, created_at,
+          projeto:projetos(codigo, nome),
+          itens:requisicao_itens(id, quantidade, unidade, descricao_livre, sc_item:sc_itens(codigo, descricao)),
+          cotacoes(
+            id, numero, prazo_entrega_dias, valor_total, status, frete, condicao_pagamento, validade, observacoes, created_at,
+            fornecedor:fornecedores(id, razao_social, fantasia),
+            itens:cotacao_itens(id, req_item_id, quantidade, preco_unitario, observacao)
+          )
+        `)
+        .in("workflow_status", ["SUBMITTED", "PENDING_APPROVAL", "QUOTING", "APPROVED"]);
+      
+      if (error) throw error;
+      
+      // Ordenação no frontend para simplificar (banco pode ter prioridades em formato string sem peso definido)
+      // Definimos pesos para prioridade:
+      const prioWeight: Record<string, number> = { urgente: 4, alta: 3, normal: 2, baixa: 1 };
+      
+      return (data || []).sort((a: any, b: any) => {
+        const pA = prioWeight[a.prioridade?.toLowerCase()] || 0;
+        const pB = prioWeight[b.prioridade?.toLowerCase()] || 0;
+        if (pA !== pB) return pB - pA;
+        
+        // Em seguida ordena por data_necessidade ASC
+        const dA = a.data_necessidade ? new Date(a.data_necessidade).getTime() : Infinity;
+        const dB = b.data_necessidade ? new Date(b.data_necessidade).getTime() : Infinity;
+        if (dA !== dB) return dA - dB;
+        
+        return a.created_at < b.created_at ? 1 : -1;
+      }).map((req: any) => {
+        // Ordena as cotações por valor_total ASC dentro da requisição
+        req.cotacoes = (req.cotacoes || []).sort((cA: any, cB: any) => (cA.valor_total || Infinity) - (cB.valor_total || Infinity));
+        return req;
+      });
+    },
+  });
+}
+
 // ─── Pedidos de Compra ───
 export function usePedidosCompra() {
   const queryClient = useQueryClient();
