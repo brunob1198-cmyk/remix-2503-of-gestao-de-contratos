@@ -76,11 +76,24 @@ export function useFornecedores() {
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("fornecedores").delete().eq("id", id);
-      if (error) throw error;
+      if (error) {
+        // 23503 is the PostgreSQL error code for foreign_key_violation
+        if (error.code === '23503') {
+          const { error: updateError } = await supabase.from("fornecedores").update({ ativo: false }).eq("id", id);
+          if (updateError) throw updateError;
+          return { softDeleted: true };
+        }
+        throw error;
+      }
+      return { softDeleted: false };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
-      toast({ title: "Fornecedor excluído!" });
+      if (data?.softDeleted) {
+        toast({ title: "Fornecedor inativado", description: "O fornecedor não pôde ser excluído pois possui histórico de cotações/pedidos. Ele foi marcado como Inativo." });
+      } else {
+        toast({ title: "Fornecedor excluído!" });
+      }
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
