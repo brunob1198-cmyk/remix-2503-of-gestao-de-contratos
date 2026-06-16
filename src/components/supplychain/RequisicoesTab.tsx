@@ -197,12 +197,23 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {(r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED") && hasActionPermission("pode_aprovar_compra") && (
+            {r.workflow_status === "SUBMITTED" && hasActionPermission("pode_aprovar_compra") && (
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="text-green-600 border-green-200 hover:bg-green-50"
-                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Requisição aprovada pelo gestor." })}
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "QUOTING", observacoes: "Requisição aprovada para iniciar cotações." })}
+              >
+                <Check className="h-4 w-4 mr-1" /> Aprovar
+              </Button>
+            )}
+
+            {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_aprovar_compra") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-green-600 border-green-200 hover:bg-green-50"
+                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Cotações aprovadas pelo gestor." })}
               >
                 <Check className="h-4 w-4 mr-1" /> Aprovar
               </Button>

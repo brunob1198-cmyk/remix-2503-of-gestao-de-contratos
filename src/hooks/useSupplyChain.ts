@@ -236,13 +236,21 @@ export function useRequisicoes() {
       const reqData = { ...req };
       delete reqData.itens;
       
-      const { count, error: countErr } = await supabase
+      const { data: latestReqs, error: latestErr } = await supabase
         .from("requisicoes_compra")
-        .select("id", { count: "exact", head: true })
-        .eq("empresa_id", empresaId);
+        .select("numero")
+        .eq("empresa_id", empresaId)
+        .order("numero", { ascending: false })
+        .limit(1);
       
-      if (countErr) throw countErr;
-      const numero = `RC-${String((count || 0) + 1).padStart(4, "0")}`;
+      let nextNum = 1;
+      if (latestReqs && latestReqs.length > 0 && latestReqs[0].numero) {
+        const match = latestReqs[0].numero.match(/RC-(\d+)/);
+        if (match) {
+          nextNum = parseInt(match[1], 10) + 1;
+        }
+      }
+      const numero = `RC-${String(nextNum).padStart(4, "0")}`;
 
       const { data, error } = await supabase
         .from("requisicoes_compra")
