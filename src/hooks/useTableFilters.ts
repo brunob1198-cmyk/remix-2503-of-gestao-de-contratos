@@ -147,7 +147,8 @@ export function useTableFilters<T, ColKey extends string>(
   const uniqueValues = useMemo(() => {
     const result = {} as Record<ColKey, string[]>;
     for (const col of columns) {
-      result[col] = Array.from(new Set(items.map(s => getColValue(s, col)))).sort();
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+      result[col] = Array.from(new Set(items.map(s => getColValue(s, col)))).sort((a, b) => collator.compare(a, b));
     }
     return result;
   }, [items, columns, getColValue]);
