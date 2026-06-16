@@ -27,7 +27,7 @@ export function useItensLpu(projetoId?: string) {
       
       const { data, error } = await query;
       if (error) throw error;
-      return data as ItemLpu[];
+      return (data as unknown) as ItemLpu[];
     },
   });
 
