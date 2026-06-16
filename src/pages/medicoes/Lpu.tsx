@@ -15,6 +15,9 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
+import { BdiConfigCard } from "@/components/medicoes/BdiConfigCard";
+import { useBdiConfig } from "@/hooks/useProjetoBdiMensal";
+import { Badge } from "@/components/ui/badge";
 import XLSX from "xlsx-js-style";
 
 const columns = ["codigo", "descricao", "unidade", "preco_unitario", "bdi", "categoria", "projeto"] as const;
@@ -24,6 +27,7 @@ export default function LpuPage() {
   const [projetoFilter, setProjetoFilter] = useState<string>("");
   const { itensLpu, isLoading, deleteItemLpu, updateItemLpu } = useItensLpu();
   const { projetos } = useProjetos();
+  const { data: bdiConfigs } = useBdiConfig();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBdi, setEditBdi] = useState<string>("");
   const [editPreco, setEditPreco] = useState<string>("");
@@ -107,6 +111,8 @@ export default function LpuPage() {
   };
 
   const { sortColumn, sortDir, searchTexts, selectedFilters, handleSort, setSearchText, toggleValue, selectAll, clearAll, clearAllFilters, hasActiveFilters, processedItems, uniqueValues, paginatedItems, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages } = useTableFilters(filteredItems, columns, getColValue);
+
+  const bdiVarProjects = new Set(bdiConfigs?.filter(p => p.bdi_variavel).map(p => p.id));
 
   const allSelected = processedItems.length > 0 && processedItems.every((i) => selectedIds.has(i.id));
   const someSelected = processedItems.some((i) => selectedIds.has(i.id));
@@ -235,6 +241,8 @@ export default function LpuPage() {
 
       <LpuImporter />
 
+      <BdiConfigCard />
+
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -362,7 +370,14 @@ export default function LpuPage() {
                         {editingId === item.id ? (
                           <Input type="number" step="0.01" value={editBdi} onChange={(e) => setEditBdi(e.target.value)} className="w-20 text-right" />
                         ) : (
-                          <span className="font-mono">{Number(item.bdi ?? 1).toFixed(2)}</span>
+                          <div className="flex items-center justify-end gap-2">
+                            {item.projeto_id && bdiVarProjects.has(item.projeto_id) && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0" title="Este projeto usa BDI mensal variável. O BDI fixo do item é ignorado na análise de custos.">variável</Badge>
+                            )}
+                            <span className={`font-mono ${item.projeto_id && bdiVarProjects.has(item.projeto_id) ? "line-through opacity-50" : ""}`}>
+                              {Number(item.bdi ?? 1).toFixed(2)}
+                            </span>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>{item.categoria || "-"}</TableCell>
