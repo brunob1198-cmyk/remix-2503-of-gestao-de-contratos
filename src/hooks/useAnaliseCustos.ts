@@ -552,7 +552,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
 
   // 4. Produção (POC) por Projeto e Referência
   const { data: producaoData = [] } = useQuery({
-    queryKey: ["producao_poc_multi_v14", projetoIds, startDate, endDate],
+    queryKey: ["producao_poc_multi_v15", projetoIds, startDate, endDate],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
 
@@ -887,7 +887,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     });
 
     return rows;
-  }, [projetosData, mkpParamsPorProjeto, impostosPorProjeto, producaoPorProjeto, custosErpPorProjeto, startDate, endDate]);
+  }, [projetosData, mkpParamsPorProjeto, impostosPorProjeto, producaoPorProjeto, custosErpPorProjeto, startDate, endDate, bdiMensalData]);
 
   const updateCategoria = useMutation({
     mutationFn: async ({ erpId, newCategoria }: { erpId: string; newCategoria: string }) => {
