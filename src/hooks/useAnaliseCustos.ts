@@ -597,7 +597,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         while (hasMore) {
           const { data } = await supabase
             .from("diario_producao")
-            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
+            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi, item_lpu_bdi_mensal(mes_referencia, bdi))")
             .in("diario_id", chunk)
             .range(offset, offset + 999);
           
@@ -616,6 +616,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           valor_total: Number(p.valor_total || 0),
           data_producao: diarioSiteMap[p.diario_id]?.data,
           bdi_item: Number(p.item_lpu?.bdi || 0),
+          bdi_mensal: p.item_lpu?.item_lpu_bdi_mensal || [],
           site_id: diarioSiteMap[p.diario_id]?.site_id,
         }))
         .filter((p) => p.projeto_id);
@@ -630,21 +631,8 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")
-        .select("id, codigo, nome, area_analise, cliente, cliente_id, bdi_variavel, bdi_padrao, clientes(*), areas(*)")
+        .select("id, codigo, nome, area_analise, cliente, cliente_id, clientes(*), areas(*)")
         .in("id", projetoIds);
-      return data || [];
-    },
-    enabled: projetoIds.length > 0,
-  });
-
-  const { data: bdiMensalData = [] } = useQuery({
-    queryKey: ["projeto_bdi_mensal_multi", projetoIds],
-    queryFn: async () => {
-      if (projetoIds.length === 0) return [];
-      const { data } = await supabase
-        .from("projeto_bdi_mensal")
-        .select("projeto_id, competencia, bdi")
-        .in("projeto_id", projetoIds);
       return data || [];
     },
     enabled: projetoIds.length > 0,
@@ -715,30 +703,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
 
       const projetoProducaoTotal = producaoPorProjeto.get(projetoId) || [];
-      const projetoCustosTotal = custosErpPorProjeto.get(projetoId) || [];
-
-      const bdiMensalMap = new Map<string, number>();
-      bdiMensalData.forEach(b => {
-        const key = `${b.projeto_id}-${b.competencia.slice(0, 7)}`;
-        bdiMensalMap.set(key, Number(b.bdi));
-      });
-
       (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
         const monthLabel = format(monthStart, "MMM/yyyy", { locale: ptBR });
         
-        let missingBdi = false;
-        let bdiMesEfetivo: number | null = null;
-        if ((projeto as any).bdi_variavel) {
-          const bdiKey = `${projetoId}-${monthStr.slice(0, 7)}`;
-          if (bdiMensalMap.has(bdiKey)) {
-            bdiMesEfetivo = bdiMensalMap.get(bdiKey)!;
-          } else {
-            missingBdi = true;
-          }
-        }
-
         // 1. Produção Bruta (POC) do mês e Custo Direto Orçado (baseado no BDI do item)
         const producaoItensMes = projetoProducaoTotal.filter((p) => {
           try {
@@ -751,20 +720,20 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
             return false;
           }
         }).map(p => {
-          // Ajusta o bdi_item do POC se o projeto for bdi_variavel
-          if ((projeto as any).bdi_variavel) {
-            return {
-              ...p,
-              bdi_item: missingBdi ? 0 : bdiMesEfetivo!
-            };
-          }
-          return p;
+          // BDI variavel mensal por item
+          const monthKey = monthStr.slice(0, 7);
+          const bdiMensalData = p.bdi_mensal?.find((b: any) => b.mes_referencia === monthKey);
+          
+          return {
+            ...p,
+            bdi_item: bdiMensalData ? Number(bdiMensalData.bdi) : p.bdi_item
+          };
         });
 
         const poc = producaoItensMes.reduce((sum, p) => sum + Number(p.valor_total || 0), 0);
 
-        // Novo cálculo de Custo Direto Orçado: soma de (Valor Item / BDI Item)
-        const custoDiretoOrcado = missingBdi ? 0 : calculateCustoDiretoOrcado(producaoItensMes, mkp);
+        // Custo Direto Orçado: soma de (Valor Item / BDI Item Efetivo)
+        const custoDiretoOrcado = calculateCustoDiretoOrcado(producaoItensMes, mkp);
 
         // 2. Custos do mês
         const projetoCustosMes = projetoCustosTotal.filter((c) => {

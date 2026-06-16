@@ -24,6 +24,7 @@ export function LpuImporter() {
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [selectedProjetoId, setSelectedProjetoId] = useState<string>("");
+  const [mesVigencia, setMesVigencia] = useState<string>("");
   const { importItensLpu } = useItensLpu();
   const { projetos } = useProjetos();
 
@@ -123,11 +124,12 @@ export function LpuImporter() {
         projeto_id: selectedProjetoId || undefined,
       }));
       
-      importItensLpu.mutate(itemsWithProject, {
+      importItensLpu.mutate({ itens: itemsWithProject, mes_referencia: mesVigencia || undefined }, {
         onSuccess: () => {
           setParsedItems([]);
           setFileName("");
           setSelectedProjetoId("");
+          setMesVigencia("");
         },
       });
     }
@@ -137,6 +139,7 @@ export function LpuImporter() {
     setParsedItems([]);
     setFileName("");
     setSelectedProjetoId("");
+    setMesVigencia("");
   };
 
   const formatCurrency = (value: number) => {
@@ -160,21 +163,32 @@ export function LpuImporter() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Vincular ao Projeto (opcional)</Label>
-              <Select value={selectedProjetoId || "none"} onValueChange={(v) => setSelectedProjetoId(v === "none" ? "" : v)}>
-                <SelectTrigger className="w-full md:w-96">
-                  <SelectValue placeholder="Selecione um projeto (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem vínculo (LPU geral)</SelectItem>
-                  {projetos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.codigo} - {p.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="space-y-2 flex-1">
+                <Label>Vincular ao Projeto (opcional)</Label>
+                <Select value={selectedProjetoId || "none"} onValueChange={(v) => setSelectedProjetoId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um projeto (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem vínculo (LPU geral)</SelectItem>
+                    {projetos.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.codigo} - {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 w-full md:w-64">
+                <Label>Mês de Vigência (opcional)</Label>
+                <input 
+                  type="month" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={mesVigencia}
+                  onChange={(e) => setMesVigencia(e.target.value)}
+                />
+              </div>
             </div>
 
             <div
@@ -214,21 +228,32 @@ export function LpuImporter() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Vincular ao Projeto</Label>
-              <Select value={selectedProjetoId || "none"} onValueChange={(v) => setSelectedProjetoId(v === "none" ? "" : v)}>
-                <SelectTrigger className="w-full md:w-96">
-                  <SelectValue placeholder="Selecione um projeto (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem vínculo (LPU geral)</SelectItem>
-                  {projetos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.codigo} - {p.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="space-y-2 flex-1">
+                <Label>Vincular ao Projeto</Label>
+                <Select value={selectedProjetoId || "none"} onValueChange={(v) => setSelectedProjetoId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um projeto (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem vínculo (LPU geral)</SelectItem>
+                    {projetos.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.codigo} - {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 w-full md:w-64">
+                <Label>Mês de Vigência (opcional)</Label>
+                <input 
+                  type="month" 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={mesVigencia}
+                  onChange={(e) => setMesVigencia(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="max-h-96 overflow-auto">

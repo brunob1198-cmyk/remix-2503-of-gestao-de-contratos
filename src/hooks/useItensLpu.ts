@@ -14,7 +14,11 @@ export function useItensLpu(projetoId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("itens_lpu")
-        .select("id, codigo, descricao, unidade, preco_unitario, bdi, categoria, projeto_id, created_at, updated_at, projeto:projetos(id, codigo, nome)")
+        .select(`
+          id, codigo, descricao, unidade, preco_unitario, bdi, categoria, projeto_id, created_at, updated_at, 
+          projeto:projetos(id, codigo, nome),
+          item_lpu_bdi_mensal(id, mes_referencia, bdi)
+        `)
         .order("codigo");
       
       if (projetoId) {
@@ -47,12 +51,59 @@ export function useItensLpu(projetoId?: string) {
   });
 
   const importItensLpu = useMutation({
-    mutationFn: async (itens: { codigo: string; descricao: string; unidade?: string; preco_unitario?: number; bdi?: number; categoria?: string; projeto_id?: string }[]) => {
+    mutationFn: async ({ itens, mes_referencia }: { 
+      itens: { codigo: string; descricao: string; unidade?: string; preco_unitario?: number; bdi?: number; categoria?: string; projeto_id?: string }[];
+      mes_referencia?: string;
+    }) => {
+      // 1. Inserir (ou atualizar se houver conflito, caso configurado no DB) os itens na LPU
+      // Nota: Como não temos certeza da unique key, usamos upsert tentando codigo,projeto_id ou insert fallback.
+      // O Supabase tentará fazer upsert. Se falhar por falta de onConflict explícito correto, podemos usar insert,
+      // mas vamos tentar usar upsert para evitar duplicatas ao subir LPU mensal.
+      
       const { data, error } = await supabase
         .from("itens_lpu")
-        .insert(itens)
+        .upsert(itens, { onConflict: "codigo,projeto_id", ignoreDuplicates: false })
         .select();
-      if (error) throw error;
+        
+      if (error) {
+        // Se falhar o upsert por causa da key, tentamos insert normal
+        console.warn("Upsert falhou, tentando insert normal", error);
+        const { data: insertData, error: insertError } = await supabase
+          .from("itens_lpu")
+          .insert(itens)
+          .select();
+        
+        if (insertError) throw insertError;
+        
+        if (mes_referencia && insertData && insertData.length > 0) {
+          const bdiMensalData = insertData.map(item => ({
+            item_lpu_id: item.id,
+            mes_referencia,
+            bdi: item.bdi || 1
+          }));
+          await supabase.from("item_lpu_bdi_mensal").upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
+        }
+        return insertData;
+      }
+
+      // 2. Se houver mês de vigência, gravar na tabela item_lpu_bdi_mensal
+      if (mes_referencia && data && data.length > 0) {
+        const bdiMensalData = data.map(item => ({
+          item_lpu_id: item.id,
+          mes_referencia,
+          bdi: item.bdi || 1
+        }));
+        
+        const { error: bdiError } = await supabase
+          .from("item_lpu_bdi_mensal")
+          .upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
+          
+        if (bdiError) {
+          console.error("Erro ao inserir BDI mensal", bdiError);
+          // Não falhar a importação inteira, mas logar
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {

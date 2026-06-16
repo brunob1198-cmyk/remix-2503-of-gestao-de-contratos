@@ -741,21 +741,7 @@ export function AnaliseCustos({ projetoIds, periodoInicio, periodoFim }: Analise
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700">{formatCurrency(row.direto)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 font-bold text-blue-700">{formatCurrency(row.custoDiretoReal)}</td>
                     <td className="py-2 px-4 border-b border-r bg-blue-50/50 text-blue-700/60">
-                      <div className="flex items-center justify-end gap-2">
-                        {row.missingBdi && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <AlertTriangle className="h-4 w-4 text-red-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>BDI não configurado para o mês.<br />Custo Orçado zerado.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {formatCurrency(row.custoDiretoOrcado)}
-                      </div>
+                      {formatCurrency(row.custoDiretoOrcado)}
                     </td>
                     <td className={`py-2 px-4 border-b border-r bg-blue-50/50 font-bold ${row.deltaDireto > 0 ? 'text-green-600' : row.deltaDireto < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                       <div className="flex items-center justify-end gap-1">

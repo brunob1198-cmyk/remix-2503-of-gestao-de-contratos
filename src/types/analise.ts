@@ -59,5 +59,4 @@ export interface AnaliseCustosRow {
   alertaGerencia: boolean;
   semMkp: boolean;
   semImpostos: boolean;
-  missingBdi?: boolean;
 }

@@ -15,8 +15,6 @@ import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
-import { BdiConfigCard } from "@/components/medicoes/BdiConfigCard";
-import { useBdiConfig } from "@/hooks/useProjetoBdiMensal";
 import { Badge } from "@/components/ui/badge";
 import XLSX from "xlsx-js-style";
 
@@ -27,7 +25,6 @@ export default function LpuPage() {
   const [projetoFilter, setProjetoFilter] = useState<string>("");
   const { itensLpu, isLoading, deleteItemLpu, updateItemLpu } = useItensLpu();
   const { projetos } = useProjetos();
-  const { data: bdiConfigs } = useBdiConfig();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBdi, setEditBdi] = useState<string>("");
   const [editPreco, setEditPreco] = useState<string>("");
@@ -112,7 +109,10 @@ export default function LpuPage() {
 
   const { sortColumn, sortDir, searchTexts, selectedFilters, handleSort, setSearchText, toggleValue, selectAll, clearAll, clearAllFilters, hasActiveFilters, processedItems, uniqueValues, paginatedItems, currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages } = useTableFilters(filteredItems, columns, getColValue);
 
-  const bdiVarProjects = new Set(bdiConfigs?.filter(p => p.bdi_variavel).map(p => p.id));
+  // Extrair todos os meses únicos que têm BDI cadastrado para exibir horizontalmente
+  const uniqueMeses = Array.from(new Set(
+    processedItems.flatMap(item => item.item_lpu_bdi_mensal?.map(b => b.mes_referencia) || [])
+  )).sort();
 
   const allSelected = processedItems.length > 0 && processedItems.every((i) => selectedIds.has(i.id));
   const someSelected = processedItems.some((i) => selectedIds.has(i.id));
@@ -146,7 +146,8 @@ export default function LpuPage() {
       "Descrição",
       "Unidade",
       "Preço Unitário",
-      "BDI",
+      "BDI Base",
+      ...uniqueMeses.map(m => `BDI ${m}`),
       "Categoria",
       "Projeto"
     ];
@@ -157,6 +158,10 @@ export default function LpuPage() {
       item.unidade || "",
       item.preco_unitario || 0,
       item.bdi || 1,
+      ...uniqueMeses.map(m => {
+        const bdiMensal = item.item_lpu_bdi_mensal?.find(b => b.mes_referencia === m);
+        return bdiMensal ? bdiMensal.bdi : "-";
+      }),
       item.categoria || "",
       getProjetoNome(item.projeto_id)
     ]);
@@ -241,8 +246,6 @@ export default function LpuPage() {
 
       <LpuImporter />
 
-      <BdiConfigCard />
-
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -312,7 +315,7 @@ export default function LpuPage() {
                     {columns.map(col => (
                       <TableHead key={col} className={col === "preco_unitario" || col === "bdi" ? "text-right" : ""}>
                         <ColumnHeader
-                          label={columnLabels[col]}
+                          label={columnLabels[col] === "BDI" ? "BDI Base" : columnLabels[col]}
                           sortDir={sortColumn === col ? sortDir : null}
                           onSort={() => handleSort(col)}
                           searchText={searchTexts[col]}
@@ -323,6 +326,11 @@ export default function LpuPage() {
                           onSelectAll={() => selectAll(col, uniqueValues[col])}
                           onClearAll={() => clearAll(col)}
                         />
+                      </TableHead>
+                    ))}
+                    {uniqueMeses.map(mes => (
+                      <TableHead key={mes} className="text-right min-w-[100px] whitespace-nowrap bg-blue-50/50">
+                        BDI {mes}
                       </TableHead>
                     ))}
                     <TableHead></TableHead>
@@ -371,15 +379,20 @@ export default function LpuPage() {
                           <Input type="number" step="0.01" value={editBdi} onChange={(e) => setEditBdi(e.target.value)} className="w-20 text-right" />
                         ) : (
                           <div className="flex items-center justify-end gap-2">
-                            {item.projeto_id && bdiVarProjects.has(item.projeto_id) && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0" title="Este projeto usa BDI mensal variável. O BDI fixo do item é ignorado na análise de custos.">variável</Badge>
-                            )}
-                            <span className={`font-mono ${item.projeto_id && bdiVarProjects.has(item.projeto_id) ? "line-through opacity-50" : ""}`}>
+                            <span className="font-mono">
                               {Number(item.bdi ?? 1).toFixed(2)}
                             </span>
                           </div>
                         )}
                       </TableCell>
+                      {uniqueMeses.map(mes => {
+                        const bdiMensal = item.item_lpu_bdi_mensal?.find(b => b.mes_referencia === mes);
+                        return (
+                          <TableCell key={mes} className="text-right font-mono bg-blue-50/30">
+                            {bdiMensal ? Number(bdiMensal.bdi).toFixed(2) : <span className="text-muted-foreground/40">-</span>}
+                          </TableCell>
+                        );
+                      })}
                       <TableCell>{item.categoria || "-"}</TableCell>
                       <TableCell className="text-sm">
                         {item.projeto_id ? getProjetoNome(item.projeto_id) : <span className="text-muted-foreground">Geral</span>}

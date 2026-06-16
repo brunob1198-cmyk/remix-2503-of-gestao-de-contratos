@@ -78,6 +78,13 @@ export interface Site {
   projeto?: Projeto;
 }
 
+export interface ItemLpuBdiMensal {
+  id?: string;
+  item_lpu_id: string;
+  mes_referencia: string;
+  bdi: number;
+}
+
 export interface ItemLpu {
   id: string;
   codigo: string;
@@ -89,6 +96,7 @@ export interface ItemLpu {
   ativo: boolean;
   projeto_id?: string;
   projeto?: Projeto;
+  item_lpu_bdi_mensal?: ItemLpuBdiMensal[];
   created_at: string;
   updated_at: string;
 }
