@@ -319,26 +319,39 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       // Use ERP cost if available, otherwise use diário cost
       const custoReal = custoErpTotal > 0 ? custoErpTotal : custoDiario;
 
-      // ── EXPECTED COST based on BDI ──
-      // For each item produced in diário, expected cost = receita / BDI
-      // If escopo has custo_unitario, use: quantidade_produzida * custo_unitario
-      let custoEsperado = 0;
+      // ── EXPECTED COST: replicate AnaliseCustos custoTotalOrcado ──
+      // 1) Custo Direto Orçado = Σ (valor_total / bdi_item) per produced item
+      let custoDiretoOrcado = 0;
       prodByItem.forEach((prod, itemLpuId) => {
-        const esc = escopoMap.get(itemLpuId);
-        if (esc && esc.custoUnitario > 0) {
-          custoEsperado += prod.quantidade * esc.custoUnitario;
-        } else {
-          // Fallback: use BDI from itens_lpu
-          const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
-          const bdi = Number((dpSample?.item_lpu as any)?.bdi || 1);
-          custoEsperado += bdi > 0 ? prod.receita / bdi : prod.receita;
-        }
+        const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
+        const bdi = Number((dpSample?.item_lpu as any)?.bdi || 1);
+        custoDiretoOrcado += bdi > 0 ? prod.receita / bdi : prod.receita;
       });
+
+      // 2) Load MKP parameters and apply Risco / Inflação / Gerência / Treinamento overlays
+      const { data: mkpCfg } = await supabase
+        .from("mkp_parametros")
+        .select("perc_risco, perc_inflacao, perc_gerencia, perc_treinamento")
+        .eq("projeto_id", resolvedProjetoId)
+        .maybeSingle();
+
+      const percRisco = Number(mkpCfg?.perc_risco || 0);
+      const percInflacao = Number(mkpCfg?.perc_inflacao || 0);
+      const percGerencia = Number(mkpCfg?.perc_gerencia || 0);
+      const percTreinamento = Number(mkpCfg?.perc_treinamento || 0);
+
+      const gerenciaOrcada = custoDiretoOrcado * percGerencia;
+      const custoEsperado =
+        custoDiretoOrcado +
+        custoDiretoOrcado * percRisco +
+        (custoDiretoOrcado + custoDiretoOrcado * (percRisco + percGerencia)) * percInflacao +
+        gerenciaOrcada +
+        (custoDiretoOrcado + custoDiretoOrcado * (percRisco + percGerencia)) * percTreinamento;
 
       const receitaLiquida = receitaTotal * taxRate;
       const margem = receitaLiquida - custoReal;
       const margemPercent = receitaLiquida > 0 ? (margem / receitaLiquida) * 100 : 0;
-      
+
       const mbOrcada = receitaLiquida - custoEsperado;
       const mbOrcadaPercent = receitaLiquida > 0 ? (mbOrcada / receitaLiquida) * 100 : 0;
 
@@ -357,6 +370,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       const escopoTotal = escopo.reduce((s, e) => s + Number(e.quantidade) * Number(e.valor_unitario), 0);
       const escopoCustoTotal = escopo.reduce((s, e) => s + Number(e.quantidade) * Number(e.custo_unitario), 0);
 
+      // Lucro projetado = MB Orçada da produção realizada + margem sobre o que ainda há a faturar
+      const lucroProjetado = mbOrcada + (aFaturar > 0 ? aFaturar * taxRate : 0);
+
       const financeiro: AnaliseFinanceira = {
         receitaTotal,
         receitaLiquida,
@@ -368,7 +384,7 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
         mbOrcadaPercent,
         aFaturar,
         custoPrevisto: escopoCustoTotal,
-        lucroProjetado: margem + (aFaturar > 0 ? aFaturar * taxRate : 0),
+        lucroProjetado,
       };
 
       // ── PROGRESS ──
