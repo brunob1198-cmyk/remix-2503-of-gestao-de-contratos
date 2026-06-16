@@ -854,7 +854,6 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           alertaGerencia: gerenciaReal > gerenciaOrcada * 1.15,
           semMkp: !mkp,
           semImpostos: !impostosProjeto,
-          missingBdi,
         });
       });
     });
