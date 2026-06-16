@@ -41,12 +41,24 @@ export default function AnaliseObraPage() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ["analise_obra"] });
-      await queryClient.invalidateQueries({ queryKey: ["analise_custos_matrix_mensal"] });
-      await queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] });
-      await queryClient.invalidateQueries({ queryKey: ["custo_orcado_escopo"] });
-      await queryClient.invalidateQueries({ queryKey: ["fisico_apropriado"] });
-      
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["analise_obra"] }),
+        queryClient.invalidateQueries({ queryKey: ["analise_custos_matrix_mensal"] }),
+        queryClient.invalidateQueries({ queryKey: ["custos_erp"] }),
+        queryClient.invalidateQueries({ queryKey: ["custos_erp_multi"] }),
+        queryClient.invalidateQueries({ queryKey: ["custo_orcado_escopo"] }),
+        queryClient.invalidateQueries({ queryKey: ["fisico_apropriado"] }),
+        queryClient.invalidateQueries({ queryKey: ["producao_poc_multi_v15"] }),
+        queryClient.invalidateQueries({ queryKey: ["mkp_parametros"] }),
+        queryClient.invalidateQueries({ queryKey: ["projeto_impostos"] }),
+        queryClient.invalidateQueries({ queryKey: ["mapeamento_categorias_erp_all"] }),
+        queryClient.invalidateQueries({ queryKey: ["item_lpu_bdi_mensal_multi"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos_analise"] }),
+        queryClient.invalidateQueries({ queryKey: ["projeto_config_status"] }),
+      ]);
+      // Force refetch of active queries to bypass any stale snapshot
+      await queryClient.refetchQueries({ type: "active" });
+
       setLastUpdated(new Date().toISOString());
       toast.success("Dados atualizados com sucesso!");
     } catch (error) {
