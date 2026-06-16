@@ -2413,6 +2413,69 @@ export type Database = {
           },
         ]
       }
+      item_lpu_bdi_mensal: {
+        Row: {
+          bdi: number
+          created_at: string
+          id: string
+          item_lpu_id: string
+          mes_referencia: string
+          updated_at: string
+        }
+        Insert: {
+          bdi?: number
+          created_at?: string
+          id?: string
+          item_lpu_id: string
+          mes_referencia: string
+          updated_at?: string
+        }
+        Update: {
+          bdi?: number
+          created_at?: string
+          id?: string
+          item_lpu_id?: string
+          mes_referencia?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_lpu_bdi_mensal_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "itens_lpu"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_lpu_bdi_mensal_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "item_lpu_bdi_mensal_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "item_lpu_bdi_mensal_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["item_lpu_id"]
+          },
+          {
+            foreignKeyName: "item_lpu_bdi_mensal_item_lpu_id_fkey"
+            columns: ["item_lpu_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["item_lpu_id"]
+          },
+        ]
+      }
       itens_lpu: {
         Row: {
           ativo: boolean | null
