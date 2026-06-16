@@ -703,6 +703,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
 
       const projetoProducaoTotal = producaoPorProjeto.get(projetoId) || [];
+      const projetoCustosTotal = custosErpPorProjeto.get(projetoId) || [];
       (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
