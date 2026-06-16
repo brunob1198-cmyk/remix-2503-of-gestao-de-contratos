@@ -109,16 +109,32 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
       let faturamento: any[] = [];
       let diarios: any[] = [];
 
-      const { data: faturamentosData } = await supabase
-        .from("faturamentos")
-        .select("valor_liquido, valor_bruto")
-        .eq("projeto_id", resolvedProjetoId);
-
+      // Prefer configured impostos (projeto_impostos.perc_total_impostos)
+      // Fallback to historic faturamento ratio, then to 0.94 default.
       let taxRate = 0.94;
-      if (faturamentosData && faturamentosData.length > 0) {
-        const totalBruto = faturamentosData.reduce((a, b) => a + Number(b.valor_bruto || 0), 0);
-        const totalLiquido = faturamentosData.reduce((a, b) => a + Number(b.valor_liquido || 0), 0);
-        taxRate = totalBruto > 0 ? totalLiquido / totalBruto : 0.94;
+
+      const { data: impostosCfg } = await supabase
+        .from("projeto_impostos")
+        .select("perc_total_impostos")
+        .eq("projeto_id", resolvedProjetoId)
+        .maybeSingle();
+
+      if (impostosCfg && impostosCfg.perc_total_impostos != null) {
+        const perc = Number(impostosCfg.perc_total_impostos);
+        // perc may be stored as fraction (0.06) or percent (6). Normalize.
+        const fraction = perc > 1 ? perc / 100 : perc;
+        taxRate = 1 - fraction;
+      } else {
+        const { data: faturamentosData } = await supabase
+          .from("faturamentos")
+          .select("valor_liquido, valor_bruto")
+          .eq("projeto_id", resolvedProjetoId);
+
+        if (faturamentosData && faturamentosData.length > 0) {
+          const totalBruto = faturamentosData.reduce((a, b) => a + Number(b.valor_bruto || 0), 0);
+          const totalLiquido = faturamentosData.reduce((a, b) => a + Number(b.valor_liquido || 0), 0);
+          taxRate = totalBruto > 0 ? totalLiquido / totalBruto : 0.94;
+        }
       }
 
       if (siteIds.length > 0) {
