@@ -312,7 +312,7 @@ export default function LpuPage() {
                         {...(someSelected && !allSelected ? { "data-state": "indeterminate" as const } : {})}
                       />
                     </TableHead>
-                    {columns.map(col => (
+                    {(["codigo", "descricao", "unidade", "preco_unitario", "bdi"] as ColKey[]).map(col => (
                       <TableHead key={col} className={col === "preco_unitario" || col === "bdi" ? "text-right" : ""}>
                         <ColumnHeader
                           label={columnLabels[col] === "BDI" ? "BDI Base" : columnLabels[col]}
@@ -333,7 +333,23 @@ export default function LpuPage() {
                         BDI {mes}
                       </TableHead>
                     ))}
-                    <TableHead></TableHead>
+                    {(["categoria", "projeto"] as ColKey[]).map(col => (
+                      <TableHead key={col}>
+                        <ColumnHeader
+                          label={columnLabels[col]}
+                          sortDir={sortColumn === col ? sortDir : null}
+                          onSort={() => handleSort(col)}
+                          searchText={searchTexts[col]}
+                          onSearchChange={(v) => setSearchText(col, v)}
+                          uniqueValues={uniqueValues[col]}
+                          selectedValues={selectedFilters[col]}
+                          onToggleValue={(v) => toggleValue(col, v)}
+                          onSelectAll={() => selectAll(col, uniqueValues[col])}
+                          onClearAll={() => clearAll(col)}
+                        />
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-24 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
