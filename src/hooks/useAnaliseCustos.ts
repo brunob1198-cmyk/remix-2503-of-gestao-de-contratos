@@ -643,7 +643,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     queryKey: ["item_lpu_bdi_mensal_multi", projetoIds],
     queryFn: async () => {
       if (projetoIds.length === 0) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("item_lpu_bdi_mensal")
         .select("item_lpu_id, mes_referencia, bdi, itens_lpu!inner(projeto_id)")
         .in("itens_lpu.projeto_id", projetoIds);
@@ -685,6 +685,14 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
     new Map(impostosData.map(i => [i.projeto_id, i])),
   [impostosData]);
 
+  const bdiMensalMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (bdiMensalData as any[]).forEach((b) => {
+      map.set(`${b.item_lpu_id}-${b.mes_referencia}`, Number(b.bdi));
+    });
+    return map;
+  }, [bdiMensalData]);
+
   const analiseRows = useMemo(() => {
     if (!startDate || !endDate || projetosData.length === 0) return [];
 
@@ -721,16 +729,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
 
       const projetoProducaoTotal = producaoPorProjeto.get(projetoId) || [];
-<<<<<<< HEAD
-
-      const bdiMensalMap = new Map<string, number>();
-      bdiMensalData.forEach(b => {
-        bdiMensalMap.set(`${b.item_lpu_id}-${b.mes_referencia}`, Number(b.bdi));
-      });
-
-=======
       const projetoCustosTotal = custosErpPorProjeto.get(projetoId) || [];
->>>>>>> 91cec3c5a7a8b2adddb473a2ae05d4132cd36b2a
       (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
