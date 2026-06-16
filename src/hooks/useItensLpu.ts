@@ -27,7 +27,7 @@ export function useItensLpu(projetoId?: string) {
       
       const { data, error } = await query;
       if (error) throw error;
-      return data as ItemLpu[];
+      return (data as unknown) as ItemLpu[];
     },
   });
 
@@ -81,7 +81,7 @@ export function useItensLpu(projetoId?: string) {
             mes_referencia,
             bdi: item.bdi || 1
           }));
-          await supabase.from("item_lpu_bdi_mensal").upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
+          await (supabase as any).from("item_lpu_bdi_mensal").upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
         }
         return insertData;
       }
@@ -94,7 +94,7 @@ export function useItensLpu(projetoId?: string) {
           bdi: item.bdi || 1
         }));
         
-        const { error: bdiError } = await supabase
+        const { error: bdiError } = await (supabase as any)
           .from("item_lpu_bdi_mensal")
           .upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
           
