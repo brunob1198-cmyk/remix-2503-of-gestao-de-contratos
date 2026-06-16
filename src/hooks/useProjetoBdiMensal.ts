@@ -1,7 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { getEmpresaId } from "@/lib/auth";
+
+async function getEmpresaId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Usuário não autenticado");
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("empresa_id")
+    .eq("id", user.id)
+    .single();
+  if (error) throw error;
+  if (!data?.empresa_id) throw new Error("Usuário não vinculado a uma empresa");
+  return data.empresa_id;
+}
 
 export function useBdiConfig() {
   return useQuery({
