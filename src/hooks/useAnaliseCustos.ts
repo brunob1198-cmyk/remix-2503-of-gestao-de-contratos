@@ -595,12 +595,13 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         let hasMore = true;
         let offset = 0;
         while (hasMore) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("diario_producao")
-            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi, item_lpu_bdi_mensal(mes_referencia, bdi))")
+            .select("diario_id, item_lpu_id, valor_total, item_lpu:itens_lpu(bdi)")
             .in("diario_id", chunk)
             .range(offset, offset + 999);
           
+          if (error) console.error("Error fetching diario_producao:", error);
           const rows = data || [];
           allProducao = [...allProducao, ...rows];
           hasMore = rows.length === 1000;
@@ -616,7 +617,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
           valor_total: Number(p.valor_total || 0),
           data_producao: diarioSiteMap[p.diario_id]?.data,
           bdi_item: Number(p.item_lpu?.bdi || 0),
-          bdi_mensal: p.item_lpu?.item_lpu_bdi_mensal || [],
+          item_lpu_id: p.item_lpu_id,
           site_id: diarioSiteMap[p.diario_id]?.site_id,
         }))
         .filter((p) => p.projeto_id);
@@ -633,6 +634,23 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         .from("projetos")
         .select("id, codigo, nome, area_analise, cliente, cliente_id, clientes(*), areas(*)")
         .in("id", projetoIds);
+      return data || [];
+    },
+    enabled: projetoIds.length > 0,
+  });
+
+  const { data: bdiMensalData = [] } = useQuery({
+    queryKey: ["item_lpu_bdi_mensal_multi", projetoIds],
+    queryFn: async () => {
+      if (projetoIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("item_lpu_bdi_mensal")
+        .select("item_lpu_id, mes_referencia, bdi, itens_lpu!inner(projeto_id)")
+        .in("itens_lpu.projeto_id", projetoIds);
+      
+      if (error) {
+        console.error("Error fetching bdi_mensal_multi:", error);
+      }
       return data || [];
     },
     enabled: projetoIds.length > 0,
@@ -703,6 +721,12 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         (projeto as any).areas?.nome || (projeto as any).area_analise || (projeto as any).area_id || "N/A";
 
       const projetoProducaoTotal = producaoPorProjeto.get(projetoId) || [];
+
+      const bdiMensalMap = new Map<string, number>();
+      bdiMensalData.forEach(b => {
+        bdiMensalMap.set(`${b.item_lpu_id}-${b.mes_referencia}`, Number(b.bdi));
+      });
+
       (periodMonths || []).forEach((monthStr) => {
         const monthStart = startOfMonth(parseISO(monthStr));
         const monthEnd = endOfMonth(monthStart);
@@ -722,11 +746,11 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
         }).map(p => {
           // BDI variavel mensal por item
           const monthKey = monthStr.slice(0, 7);
-          const bdiMensalData = p.bdi_mensal?.find((b: any) => b.mes_referencia === monthKey);
+          const bdiMesEfetivoData = bdiMensalMap.get(`${p.item_lpu_id}-${monthKey}`);
           
           return {
             ...p,
-            bdi_item: bdiMensalData ? Number(bdiMensalData.bdi) : p.bdi_item
+            bdi_item: bdiMesEfetivoData !== undefined ? bdiMesEfetivoData : p.bdi_item
           };
         });
 
