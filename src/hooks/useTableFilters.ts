@@ -134,10 +134,11 @@ export function useTableFilters<T, ColKey extends string>(
       if (selected.size > 0) result = result.filter(s => selected.has(getColValue(s, col)));
     }
     if (sortColumn && sortDir) {
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
       result.sort((a, b) => {
-        const va = getColValue(a, sortColumn).toLowerCase();
-        const vb = getColValue(b, sortColumn).toLowerCase();
-        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+        const va = getColValue(a, sortColumn);
+        const vb = getColValue(b, sortColumn);
+        return sortDir === "asc" ? collator.compare(va, vb) : collator.compare(vb, va);
       });
     }
     return result;
@@ -146,7 +147,8 @@ export function useTableFilters<T, ColKey extends string>(
   const uniqueValues = useMemo(() => {
     const result = {} as Record<ColKey, string[]>;
     for (const col of columns) {
-      result[col] = Array.from(new Set(items.map(s => getColValue(s, col)))).sort();
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+      result[col] = Array.from(new Set(items.map(s => getColValue(s, col)))).sort((a, b) => collator.compare(a, b));
     }
     return result;
   }, [items, columns, getColValue]);

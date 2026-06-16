@@ -731,13 +731,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "custo_real_erp_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -1189,13 +1182,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "diarios_campo_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "diarios_campo_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -1603,13 +1589,6 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "faturamentos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       faturamentos_conta_azul: {
@@ -1717,13 +1696,6 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       fca_eventos: {
@@ -1808,13 +1780,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "fca_eventos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
             referencedColumns: ["projeto_id"]
           },
         ]
@@ -2290,13 +2255,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "frentes_obra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "frentes_obra_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -2564,13 +2522,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "itens_lpu_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
             referencedColumns: ["projeto_id"]
           },
         ]
@@ -3090,13 +3041,6 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "mkp_parametros_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: true
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       municipios_ibge: {
@@ -3449,13 +3393,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "pedidos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "pedidos_requisicao_id_fkey"
             columns: ["requisicao_id"]
             isOneToOne: false
@@ -3618,96 +3555,6 @@ export type Database = {
           },
         ]
       }
-      projeto_bdi_mensal: {
-        Row: {
-          bdi: number
-          competencia: string
-          created_at: string
-          criado_por: string | null
-          id: string
-          observacao: string | null
-          projeto_id: string
-          updated_at: string
-        }
-        Insert: {
-          bdi: number
-          competencia: string
-          created_at?: string
-          criado_por?: string | null
-          id?: string
-          observacao?: string | null
-          projeto_id: string
-          updated_at?: string
-        }
-        Update: {
-          bdi?: number
-          competencia?: string
-          created_at?: string
-          criado_por?: string | null
-          id?: string
-          observacao?: string | null
-          projeto_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "projetos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_bi_producao"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_flash_transactions"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_producao"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_producao_diario"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "projeto_bdi_mensal_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-        ]
-      }
       projeto_impostos: {
         Row: {
           created_at: string | null
@@ -3807,21 +3654,12 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "projeto_impostos_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: true
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       projetos: {
         Row: {
           area_analise: string | null
           area_id: string | null
-          bdi_padrao: number | null
-          bdi_variavel: boolean
           cliente: string | null
           cliente_id: string | null
           codigo: string
@@ -3841,8 +3679,6 @@ export type Database = {
         Insert: {
           area_analise?: string | null
           area_id?: string | null
-          bdi_padrao?: number | null
-          bdi_variavel?: boolean
           cliente?: string | null
           cliente_id?: string | null
           codigo: string
@@ -3862,8 +3698,6 @@ export type Database = {
         Update: {
           area_analise?: string | null
           area_id?: string | null
-          bdi_padrao?: number | null
-          bdi_variavel?: boolean
           cliente?: string | null
           cliente_id?: string | null
           codigo?: string
@@ -4004,13 +3838,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "recurso_alocacoes_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
             referencedColumns: ["projeto_id"]
           },
           {
@@ -4329,13 +4156,6 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       sc_itens: {
@@ -4480,13 +4300,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "sc_locais_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "sc_locais_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -4581,13 +4394,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "sites_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
             referencedColumns: ["projeto_id"]
           },
         ]
@@ -4885,13 +4691,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "custo_real_erp_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -5091,13 +4890,6 @@ export type Database = {
             referencedColumns: ["projeto_id"]
           },
           {
-            foreignKeyName: "custo_real_erp_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
-          {
             foreignKeyName: "custo_real_erp_site_id_fkey"
             columns: ["site_id"]
             isOneToOne: false
@@ -5290,20 +5082,6 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_bdi_efetivo: {
-        Row: {
-          bdi_efetivo: number | null
-          bdi_mensal: number | null
-          bdi_padrao: number | null
-          bdi_variavel: boolean | null
-          competencia: string | null
-          observacao: string | null
-          projeto_codigo: string | null
-          projeto_id: string | null
-          projeto_nome: string | null
-        }
-        Relationships: []
-      }
       vw_pedidos_resumo: {
         Row: {
           atraso_dias: number | null
@@ -5372,13 +5150,6 @@ export type Database = {
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
           },
-          {
-            foreignKeyName: "requisicoes_compra_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
-            referencedColumns: ["projeto_id"]
-          },
         ]
       }
       vw_resumo_financeiro_site_item: {
@@ -5445,13 +5216,6 @@ export type Database = {
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
-            referencedColumns: ["projeto_id"]
-          },
-          {
-            foreignKeyName: "sites_projeto_id_fkey"
-            columns: ["projeto_id"]
-            isOneToOne: false
-            referencedRelation: "vw_bdi_efetivo"
             referencedColumns: ["projeto_id"]
           },
         ]
