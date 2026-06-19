@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Upload, Download, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -22,8 +24,10 @@ const SCORE_WEIGHTS = {
 };
 
 export function FornecedoresTab() {
-  const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores();
   const [open, setOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ 
     razao_social: "", 
@@ -154,25 +158,26 @@ export function FornecedoresTab() {
 
         const colMap: Record<string, string> = {};
         const keys = Object.keys(rows[0]);
+        const norm = (s: string) =>
+          s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         for (const k of keys) {
-          const kl = k.toLowerCase().trim();
-          if (kl.includes("raz") || kl.includes("social") || kl === "nome" || kl === "fornecedor") colMap.razao_social = k;
+          const kl = norm(k);
+          if (kl.includes("municip") || kl === "cidade" || kl.startsWith("cidade")) colMap.municipio = k;
+          else if (kl === "uf" || kl === "estado" || kl.startsWith("uf ")) colMap.uf = k;
+          else if (kl.includes("raz") || kl.includes("social") || kl === "nome" || kl === "fornecedor") colMap.razao_social = k;
           else if (kl.includes("cnpj")) colMap.cnpj = k;
           else if (kl.includes("contato") && !kl.includes("email") && !kl.includes("tel")) colMap.contato_nome = k;
           else if (kl.includes("email") || kl.includes("e-mail")) colMap.contato_email = k;
           else if (kl.includes("telef") || kl.includes("fone") || kl.includes("cel")) colMap.contato_telefone = k;
+          else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("ender")) colMap.endereco = k;
           else if (kl.includes("cep")) colMap.cep = k;
-          else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("categ")) colMap.categoria = k;
-          else if (kl.includes("municip") || kl.includes("cidade")) colMap.municipio = k;
-          else if (kl === "uf" || kl === "estado") colMap.uf = k;
-          else if (kl.includes("score") || kl.includes("pontua")) colMap.score = k;
           else if (kl.includes("prazo")) colMap.score_prazo = k;
-          else if (kl.includes("preço") || kl.includes("preco")) colMap.score_preco = k;
+          else if (kl.includes("preco") || kl.includes("preço")) colMap.score_preco = k;
           else if (kl.includes("qualidade")) colMap.score_qualidade = k;
           else if (kl.includes("responsi")) colMap.score_responsividade = k;
-
+          else if (kl.includes("score") || kl.includes("pontua")) colMap.score = k;
           else if (kl.includes("obs")) colMap.observacoes = k;
         }
 
@@ -250,6 +255,35 @@ export function FornecedoresTab() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Fornecedores</CardTitle>
         <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <AlertDialog open={confirmBulkDeleteOpen} onOpenChange={setConfirmBulkDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={bulkRemove.isPending}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir {selectedIds.size} selecionado(s)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir fornecedores selecionados?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {selectedIds.size} fornecedor(es) serão excluídos. Aqueles que possuírem histórico de cotações/pedidos serão apenas inativados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      bulkRemove.mutate(Array.from(selectedIds), {
+                        onSuccess: () => { setSelectedIds(new Set()); setConfirmBulkDeleteOpen(false); },
+                      });
+                    }}
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
             <Download className="h-4 w-4 mr-1" /> Modelo
           </Button>
@@ -412,6 +446,16 @@ export function FornecedoresTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={fornecedores.length > 0 && selectedIds.size === fornecedores.length}
+                    onCheckedChange={(v) => {
+                      if (v) setSelectedIds(new Set(fornecedores.map((f: any) => f.id)));
+                      else setSelectedIds(new Set());
+                    }}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead>Razão Social</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Contato</TableHead>
@@ -425,7 +469,20 @@ export function FornecedoresTab() {
             </TableHeader>
             <TableBody>
               {fornecedores.map(f => (
-                <TableRow key={f.id}>
+                <TableRow key={f.id} data-state={selectedIds.has(f.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(f.id)}
+                      onCheckedChange={(v) => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (v) next.add(f.id); else next.delete(f.id);
+                          return next;
+                        });
+                      }}
+                      aria-label={`Selecionar ${f.razao_social}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{f.razao_social}</TableCell>
                   <TableCell>{f.cnpj || "—"}</TableCell>
                   <TableCell>{f.contato_nome || "—"}</TableCell>
