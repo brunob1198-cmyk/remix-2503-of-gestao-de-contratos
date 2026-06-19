@@ -24,8 +24,10 @@ const SCORE_WEIGHTS = {
 };
 
 export function FornecedoresTab() {
-  const { fornecedores, isLoading, create, update, remove, bulkCreate } = useFornecedores();
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores();
   const [open, setOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ 
     razao_social: "", 
