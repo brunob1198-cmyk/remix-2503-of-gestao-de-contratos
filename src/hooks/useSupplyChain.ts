@@ -156,8 +156,12 @@ export function useFornecedores() {
       const removeSafely = async (batchIds: string[]): Promise<{ hardDeleted: number; softDeleted: number }> => {
         try {
           return { hardDeleted: await deleteBatch(batchIds), softDeleted: 0 };
-        } catch (error: any) {
-          if (error?.code !== "23503") throw error;
+        } catch (error: unknown) {
+          const errorCode = typeof error === "object" && error !== null && "code" in error
+            ? (error as { code?: string }).code
+            : undefined;
+
+          if (errorCode !== "23503") throw error;
 
           if (batchIds.length === 1) {
             return { hardDeleted: 0, softDeleted: await softDeleteBatch(batchIds) };
