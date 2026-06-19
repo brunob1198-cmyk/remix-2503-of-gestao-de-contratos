@@ -255,6 +255,35 @@ export function FornecedoresTab() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Fornecedores</CardTitle>
         <div className="flex gap-2">
+          {selectedIds.size > 0 && (
+            <AlertDialog open={confirmBulkDeleteOpen} onOpenChange={setConfirmBulkDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={bulkRemove.isPending}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Excluir {selectedIds.size} selecionado(s)
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir fornecedores selecionados?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {selectedIds.size} fornecedor(es) serão excluídos. Aqueles que possuírem histórico de cotações/pedidos serão apenas inativados.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      bulkRemove.mutate(Array.from(selectedIds), {
+                        onSuccess: () => { setSelectedIds(new Set()); setConfirmBulkDeleteOpen(false); },
+                      });
+                    }}
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
             <Download className="h-4 w-4 mr-1" /> Modelo
           </Button>
