@@ -446,6 +446,16 @@ export function FornecedoresTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={fornecedores.length > 0 && selectedIds.size === fornecedores.length}
+                    onCheckedChange={(v) => {
+                      if (v) setSelectedIds(new Set(fornecedores.map((f: any) => f.id)));
+                      else setSelectedIds(new Set());
+                    }}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
                 <TableHead>Razão Social</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Contato</TableHead>
@@ -459,7 +469,20 @@ export function FornecedoresTab() {
             </TableHeader>
             <TableBody>
               {fornecedores.map(f => (
-                <TableRow key={f.id}>
+                <TableRow key={f.id} data-state={selectedIds.has(f.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(f.id)}
+                      onCheckedChange={(v) => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (v) next.add(f.id); else next.delete(f.id);
+                          return next;
+                        });
+                      }}
+                      aria-label={`Selecionar ${f.razao_social}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{f.razao_social}</TableCell>
                   <TableCell>{f.cnpj || "—"}</TableCell>
                   <TableCell>{f.contato_nome || "—"}</TableCell>
