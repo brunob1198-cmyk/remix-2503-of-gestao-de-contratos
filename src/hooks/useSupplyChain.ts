@@ -131,28 +131,66 @@ export function useFornecedores() {
 
   const bulkRemove = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error, count } = await supabase
-        .from("fornecedores")
-        .delete({ count: "exact" })
-        .in("id", ids);
-      if (error) {
-        if (error.code === '23503') {
-          const { error: upErr } = await supabase
-            .from("fornecedores")
-            .update({ ativo: false })
-            .in("id", ids);
-          if (upErr) throw upErr;
-          return { softDeleted: true, total: ids.length };
+      const DELETE_BATCH_SIZE = 100;
+
+      const deleteBatch = async (batchIds: string[]): Promise<number> => {
+        const { error, count } = await supabase
+          .from("fornecedores")
+          .delete({ count: "exact" })
+          .in("id", batchIds);
+
+        if (error) throw error;
+        return count ?? batchIds.length;
+      };
+
+      const softDeleteBatch = async (batchIds: string[]): Promise<number> => {
+        const { error, count } = await supabase
+          .from("fornecedores")
+          .update({ ativo: false }, { count: "exact" })
+          .in("id", batchIds);
+
+        if (error) throw error;
+        return count ?? batchIds.length;
+      };
+
+      const removeSafely = async (batchIds: string[]): Promise<{ hardDeleted: number; softDeleted: number }> => {
+        try {
+          return { hardDeleted: await deleteBatch(batchIds), softDeleted: 0 };
+        } catch (error: any) {
+          if (error?.code !== "23503") throw error;
+
+          if (batchIds.length === 1) {
+            return { hardDeleted: 0, softDeleted: await softDeleteBatch(batchIds) };
+          }
+
+          const middle = Math.ceil(batchIds.length / 2);
+          const left = await removeSafely(batchIds.slice(0, middle));
+          const right = await removeSafely(batchIds.slice(middle));
+          return {
+            hardDeleted: left.hardDeleted + right.hardDeleted,
+            softDeleted: left.softDeleted + right.softDeleted,
+          };
         }
-        throw error;
+      };
+
+      let hardDeleted = 0;
+      let softDeleted = 0;
+
+      for (let i = 0; i < ids.length; i += DELETE_BATCH_SIZE) {
+        const result = await removeSafely(ids.slice(i, i + DELETE_BATCH_SIZE));
+        hardDeleted += result.hardDeleted;
+        softDeleted += result.softDeleted;
       }
-      return { softDeleted: false, total: count ?? ids.length };
+
+      return { hardDeleted, softDeleted, total: hardDeleted + softDeleted };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
       toast({
-        title: data.softDeleted ? "Fornecedores inativados" : `${data.total} fornecedores excluídos!`,
-        description: data.softDeleted ? "Alguns possuem histórico e foram marcados como Inativo." : undefined,
+        title: data.softDeleted > 0
+          ? `${data.hardDeleted} excluído(s) e ${data.softDeleted} inativado(s)`
+          : `${data.hardDeleted} fornecedores excluídos!`,
+        description: data.softDeleted > 0 ? "Fornecedores com histórico de cotações/pedidos foram marcados como Inativo." : undefined,
       });
     },
     onError: (e: Error) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
