@@ -129,7 +129,36 @@ export function useFornecedores() {
     onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
   });
 
-  return { fornecedores, isLoading, create, update, remove, bulkCreate };
+  const bulkRemove = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error, count } = await supabase
+        .from("fornecedores")
+        .delete({ count: "exact" })
+        .in("id", ids);
+      if (error) {
+        if (error.code === '23503') {
+          const { error: upErr } = await supabase
+            .from("fornecedores")
+            .update({ ativo: false })
+            .in("id", ids);
+          if (upErr) throw upErr;
+          return { softDeleted: true, total: ids.length };
+        }
+        throw error;
+      }
+      return { softDeleted: false, total: count ?? ids.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
+      toast({
+        title: data.softDeleted ? "Fornecedores inativados" : `${data.total} fornecedores excluídos!`,
+        description: data.softDeleted ? "Alguns possuem histórico e foram marcados como Inativo." : undefined,
+      });
+    },
+    onError: (e: Error) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+  });
+
+  return { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove };
 }
 
 // ─── SC Itens ───
