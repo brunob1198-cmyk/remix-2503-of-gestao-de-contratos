@@ -377,7 +377,7 @@ export default function DashboardPage() {
               <CardDescription>Distribuição dos valores produzidos por área de atuação</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-center gap-8">
+          <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
             <div className="h-[300px] w-full md:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
