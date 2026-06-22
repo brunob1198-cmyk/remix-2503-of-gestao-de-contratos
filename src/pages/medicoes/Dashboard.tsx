@@ -161,7 +161,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual, projetosExcluidos]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
