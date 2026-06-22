@@ -777,15 +777,15 @@ export default function RdoPage() {
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Início
                   </label>
-                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Fim
                   </label>
-                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
-                <div className="space-y-1 min-w-[260px]">
+                <div className="space-y-1 w-full sm:min-w-[260px] sm:w-auto sm:flex-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Tag className="h-3 w-3" /> Item LPU
                   </label>
