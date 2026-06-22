@@ -459,7 +459,7 @@ export default function RdoPage() {
   }, [projetos, escopoProjetoIds]);
 
   const { data: producaoAcumuladaProjeto = 0 } = useQuery({
-    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds],
+    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds, dataInicio, dataFim],
     queryFn: async () => {
       if (escopoProjetoIds.length === 0) return 0;
       const { data: sitesData, error: sitesErr } = await supabase
@@ -469,10 +469,13 @@ export default function RdoPage() {
       if (sitesErr) throw sitesErr;
       const siteIds = (sitesData || []).map((s: any) => s.id);
       if (siteIds.length === 0) return 0;
-      const { data: diariosData, error: diariosErr } = await supabase
+      let dq = supabase
         .from("diarios_obra")
         .select("id")
         .in("site_id", siteIds);
+      if (dataInicio) dq = dq.gte("data", dataInicio);
+      if (dataFim) dq = dq.lte("data", dataFim);
+      const { data: diariosData, error: diariosErr } = await dq;
       if (diariosErr) throw diariosErr;
       const diarioIds = (diariosData || []).map((d: any) => d.id);
       if (diarioIds.length === 0) return 0;
