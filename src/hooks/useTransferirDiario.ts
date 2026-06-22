@@ -47,7 +47,7 @@ export function useTransferirDiario() {
       // 1) carregar diário origem com site
       const { data: srcDiario, error: srcErr } = await supabase
         .from("diarios_obra")
-        .select("*, site:sites(id, projeto_id, codigo, nome, municipio, uf, cliente_id)")
+        .select("*, site:sites(id, projeto_id, codigo, nome, municipio, uf)")
         .eq("id", diarioId)
         .single();
       if (srcErr) throw srcErr;
@@ -75,7 +75,6 @@ export function useTransferirDiario() {
               nome: srcSite.nome,
               municipio: srcSite.municipio,
               uf: srcSite.uf,
-              cliente_id: srcSite.cliente_id,
             } as any)
             .select("id")
             .single();
