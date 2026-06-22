@@ -82,18 +82,43 @@ export default function DashboardPage() {
     }
   });
 
+  // Buscar status dos projetos para excluir os Finalizados/Concluídos (alinhar com Análise de Custos)
+  const { data: projetosStatus = [] } = useQuery({
+    queryKey: ["projetos_status_dashboard"],
+    staleTime: 1000 * 60 * 30,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projetos").select("id, status");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const projetosExcluidos = useMemo(() => {
+    const set = new Set<string>();
+    projetosStatus.forEach((p: any) => {
+      const s = (p.status || "").toString().toLowerCase().trim();
+      if (s === "finalizado" || s === "concluído" || s === "concluido") set.add(p.id);
+    });
+    return set;
+  }, [projetosStatus]);
+
+  // Predicado comum para exclusão (nomes Comercial/Administrativo + projetos finalizados/concluídos)
+  const isProjetoExcluido = (p: any) => {
+    const projetoNome = p.Projeto || "";
+    if (
+      projetoNome.toLowerCase().trim() === "administrativo" ||
+      projetoNome.toLowerCase().trim() === "comercial" ||
+      projetoNome.startsWith("Comercial -") ||
+      projetoNome.startsWith("Administrativo -")
+    ) return true;
+    if (p["ID Projeto"] && projetosExcluidos.has(p["ID Projeto"])) return true;
+    return false;
+  };
+
   // Filtrar dados por período e desconsiderar centros de custo específicos
   const filteredData = useMemo(() => {
     return biAnalise.filter((p: any) => {
-      // Desconsiderar centros de custo "Comercial" e "Administrativo"
-      const projetoNome = p.Projeto || "";
-      if (
-        projetoNome.toLowerCase().trim() === "administrativo" || 
-        projetoNome.toLowerCase().trim() === "comercial" ||
-        projetoNome.startsWith("Comercial -") ||
-        projetoNome.startsWith("Administrativo -")
-      ) return false;
-
+      if (isProjetoExcluido(p)) return false;
       if (!p.Ano || !p["Mês Num"]) return false;
       const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
       return isWithinInterval(dataProducao, { 
@@ -101,22 +126,16 @@ export default function DashboardPage() {
         end: endOfMonth(periodoFim) 
       });
     });
-  }, [biAnalise, periodoInicio, periodoFim]);
+  }, [biAnalise, periodoInicio, periodoFim, projetosExcluidos]);
+
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number, mb: number }>();
     
-    // Filtro específico para o gráfico anual, também desconsiderando Comercial e Administrativo
+    // Filtro específico para o gráfico anual, também desconsiderando Comercial/Administrativo e finalizados
     const filteredForAnnual = biAnalise.filter((p: any) => {
-      const projetoNome = p.Projeto || "";
-      if (
-        projetoNome.toLowerCase().trim() === "administrativo" || 
-        projetoNome.toLowerCase().trim() === "comercial" ||
-        projetoNome.startsWith("Comercial -") ||
-        projetoNome.startsWith("Administrativo -")
-      ) return false;
-
+      if (isProjetoExcluido(p)) return false;
       if (!p.Ano || !p["Mês Num"]) return false;
       const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
       return isWithinInterval(dataProducao, { 
@@ -124,6 +143,7 @@ export default function DashboardPage() {
         end: endOfMonth(periodoFimAnual) 
       });
     });
+
 
     filteredForAnnual.forEach((p: any) => {
       const year = p.Ano;
@@ -141,7 +161,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual, projetosExcluidos]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
