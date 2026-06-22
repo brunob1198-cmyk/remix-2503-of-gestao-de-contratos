@@ -195,7 +195,7 @@ export function useTransferirDiario() {
       const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
       if (delErr) throw delErr;
 
-      return { targetDiarioId, movedProducoes: producoes?.length || 0 };
+      return { targetDiarioId, destinoSiteId, movedProducoes: producoes?.length || 0 };
     },
     onSuccess: () => {
       invalidateAll(queryClient);
