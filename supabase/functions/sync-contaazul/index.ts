@@ -587,6 +587,44 @@ function resolveProjetoESite(
     return { projetoId: null, siteId: null, strategy: "none" };
   }
 
+  // 1) Prioridade: extrair código do projeto (ex.: "O003.26") do centro de custo
+  const extractedCode = extractProjectCode(centroCusto);
+  let matchedProject = extractedCode ? projetosByCode.get(normalizeText(extractedCode)) || null : null;
+
+  // 2) Se achou projeto pelo código, tenta casar um site DENTRO desse projeto
+  if (matchedProject) {
+    const candidateSites = sitesByProjeto.get(matchedProject.id) || [];
+    const scopedSiteMatch = candidateSites
+      .map((site) => ({
+        site,
+        score: Math.max(
+          scoreMatch(normalizedCentro, site.normalizedCode),
+          scoreMatch(normalizedCentro, site.normalizedName),
+        ),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (scopedSiteMatch) {
+      return {
+        projetoId: matchedProject.id,
+        siteId: scopedSiteMatch.site.id,
+        strategy: "code-project-site",
+      };
+    }
+
+    if (candidateSites.length === 1) {
+      return {
+        projetoId: matchedProject.id,
+        siteId: candidateSites[0].id,
+        strategy: "code-project-single-site",
+      };
+    }
+
+    return { projetoId: matchedProject.id, siteId: null, strategy: "code-project-only" };
+  }
+
+  // 3) Fallback: direct site match global (apenas quando não há código de projeto)
   const directSiteMatch = sites
     .map((site) => ({
       site,
@@ -605,6 +643,7 @@ function resolveProjetoESite(
       strategy: "site-direct",
     };
   }
+
 
   const extractedCode = extractProjectCode(centroCusto);
   let matchedProject = extractedCode ? projetosByCode.get(normalizeText(extractedCode)) || null : null;
