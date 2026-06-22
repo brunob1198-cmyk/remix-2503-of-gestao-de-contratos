@@ -36,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog";
 import { CriarSiteDialog } from "@/components/medicoes/CriarSiteDialog";
+import { TransferirApontamentoButton } from "@/components/medicoes/TransferirApontamentoButton";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
 import { useDiarioCampoAtividades } from "@/hooks/useDiarioCampo";
@@ -524,41 +525,16 @@ export default function DiarioObraPage() {
                     </Button>
 
                     {diario && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="gap-2">
-                            <Copy className="h-4 w-4" />
-                            Transferir Apontamento
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-4 space-y-4">
-                          <div className="space-y-2">
-                            <h4 className="font-medium leading-none">Mover para outra data</h4>
-                            <p className="text-sm text-muted-foreground">Todos os dados deste dia serão movidos.</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Input 
-                              type="date" 
-                              defaultValue={selectedDate} 
-                              id="move-to-date" 
-                            />
-                            <Button 
-                              onClick={async () => {
-                                const newDate = (document.getElementById("move-to-date") as HTMLInputElement).value;
-                                if (!newDate || newDate === selectedDate) return;
-                                try {
-                                  await moverDiario.mutateAsync({ diarioId: diario.id, novaData: newDate });
-                                  setSelectedDate(newDate);
-                                } catch (err) {
-                                  console.error(err);
-                                }
-                              }}
-                            >
-                              Transferir
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <TransferirApontamentoButton
+                        diarioId={diario.id}
+                        currentDate={selectedDate}
+                        currentProjetoId={projetoIdParaLancamento}
+                        moverDiarioMutation={moverDiario}
+                        onTransferredData={(novaData) => setSelectedDate(novaData)}
+                        onTransferredProjeto={() => {
+                          setSelectedSiteId("");
+                        }}
+                      />
                     )}
                   </div>
                 </div>

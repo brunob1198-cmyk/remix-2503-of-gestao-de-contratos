@@ -39,6 +39,7 @@ import html2pdf from "html2pdf.js";
 import { pdfGlobalStyles, getLogoHtml, getClientLogoHtml, getPdfOptions } from "@/lib/pdfTemplates";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { TransferirApontamentoButton } from "@/components/medicoes/TransferirApontamentoButton";
 
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -1088,6 +1089,8 @@ export default function RdoPage() {
                     onPhotoClick={(photo) => setLightboxPhoto({ ...photo, data: selectedDiario.data })}
                     onDownloadDia={handleDownloadDia}
                     downloading={downloading}
+                    projetoIdOrigem={sites.find(s => s.id === selectedDiario.site_id)?.projeto_id}
+                    onTransferred={() => setSelectedDiarioId(null)}
                   />
                 )}
               </div>
@@ -1228,13 +1231,15 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
   );
 }
 
-function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading }: {
+function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading, projetoIdOrigem, onTransferred }: {
   diario: RdoDiarioResumo;
   isCliente: boolean;
   showSite: boolean;
   onPhotoClick: (photo: RdoFoto) => void;
   onDownloadDia: (diario: RdoDiarioResumo) => void;
   downloading: boolean;
+  projetoIdOrigem?: string;
+  onTransferred?: () => void;
 }) {
   const fotosByItem = useMemo(() => {
     const groups: { key: string; label: string; photos: RdoFoto[] }[] = [];
@@ -1288,20 +1293,32 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
               </div>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 shrink-0"
-            disabled={downloading}
-            onClick={() => onDownloadDia(diario)}
-          >
-            {downloading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 shrink-0">
+            {!isCliente && (
+              <TransferirApontamentoButton
+                diarioId={diario.id}
+                currentDate={diario.data}
+                currentProjetoId={projetoIdOrigem}
+                onTransferredProjeto={() => onTransferred?.()}
+                size="sm"
+                label="Transferir"
+              />
             )}
-            Baixar Dia
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={downloading}
+              onClick={() => onDownloadDia(diario)}
+            >
+              {downloading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              Baixar Dia
+            </Button>
+          </div>
         </div>
 
         {diario.producoes.length > 0 && (
