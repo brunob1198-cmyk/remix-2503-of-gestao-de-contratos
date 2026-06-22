@@ -268,20 +268,22 @@ export default function AnaliseObraPage() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="custos-erp" className="gap-2">
-              <Calculator className="h-4 w-4" />
-              Análise de Custos
-            </TabsTrigger>
-            <TabsTrigger value="auditoria-erp" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Auditoria ERP
-            </TabsTrigger>
-            <TabsTrigger value="executiva" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Visão Executiva
-            </TabsTrigger>
-          </TabsList>
+          <div className="-mx-3 sm:mx-0 overflow-x-auto">
+            <TabsList className="w-max sm:w-auto">
+              <TabsTrigger value="custos-erp" className="gap-2">
+                <Calculator className="h-4 w-4" />
+                <span className="whitespace-nowrap">Análise de Custos</span>
+              </TabsTrigger>
+              <TabsTrigger value="auditoria-erp" className="gap-2">
+                <ClipboardList className="h-4 w-4" />
+                <span className="whitespace-nowrap">Auditoria ERP</span>
+              </TabsTrigger>
+              <TabsTrigger value="executiva" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="whitespace-nowrap">Visão Executiva</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="custos-erp" className="mt-0">
             <AnaliseCustos projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
