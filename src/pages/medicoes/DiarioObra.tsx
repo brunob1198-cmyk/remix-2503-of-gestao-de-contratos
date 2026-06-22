@@ -36,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog";
 import { CriarSiteDialog } from "@/components/medicoes/CriarSiteDialog";
+import { TransferirApontamentoButton } from "@/components/medicoes/TransferirApontamentoButton";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
 import { useDiarioCampoAtividades } from "@/hooks/useDiarioCampo";
