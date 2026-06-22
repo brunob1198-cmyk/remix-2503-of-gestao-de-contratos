@@ -1230,13 +1230,15 @@ function DayCard({ diario, isSelected, isCliente, showSite, onClick }: {
   );
 }
 
-function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading }: {
+function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, downloading, projetoIdOrigem, onTransferred }: {
   diario: RdoDiarioResumo;
   isCliente: boolean;
   showSite: boolean;
   onPhotoClick: (photo: RdoFoto) => void;
   onDownloadDia: (diario: RdoDiarioResumo) => void;
   downloading: boolean;
+  projetoIdOrigem?: string;
+  onTransferred?: () => void;
 }) {
   const fotosByItem = useMemo(() => {
     const groups: { key: string; label: string; photos: RdoFoto[] }[] = [];
