@@ -484,20 +484,82 @@ export default function NormalizacaoFlashPage() {
     });
   }, [transactions, dateFrom, dateTo]);
 
-  // Extract unique values for filters (from all transactions to avoid hiding options)
+  // Cascading filter options: each dimension's available values respect ALL other active filters.
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
-    const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
-    
-    // Novas opções para filtros CA
-    const caCategories = Array.from(new Set(transactions.map(t => t.conta_azul_category_name))).filter(Boolean).sort();
-    const caStatus = ["pendente", "normalizado", "enviado"];
-    
-    return { users, types, categories, costCenters, prestacaoContas, caCategories, caStatus };
-  }, [transactions]);
+    const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
+    const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
+    const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
+    const userHeaderFilter = searchParams.get("user")?.split(",").filter(Boolean) || [];
+    const typeHeaderFilter = searchParams.get("type")?.split(",").filter(Boolean) || [];
+    const catHeaderFilter = searchParams.get("cat")?.split(",").filter(Boolean) || [];
+    const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
+    const caCatFilter = searchParams.get("ca_cat")?.split(",").filter(Boolean) || [];
+    const caStatusFilter = searchParams.get("ca_status")?.split(",").filter(Boolean) || [];
+    const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
+
+    // Predicates keyed by dimension. When computing options for X, we apply every predicate EXCEPT X.
+    const predicates: Record<string, (t: typeof transactions[number]) => boolean> = {
+      status: (t) => statusFilter === "todos" || t.status === statusFilter,
+      users: (t) =>
+        (selectedUsers.length === 0 || selectedUsers.includes(t.usuario)) &&
+        (userHeaderFilter.length === 0 || userHeaderFilter.includes(t.usuario)),
+      types: (t) =>
+        (selectedTypes.length === 0 || selectedTypes.includes(t.flash_type)) &&
+        (typeHeaderFilter.length === 0 || typeHeaderFilter.includes(t.flash_type)),
+      categories: (t) =>
+        (selectedCategories.length === 0 || selectedCategories.includes(t.flash_category)) &&
+        (catHeaderFilter.length === 0 || catHeaderFilter.includes(t.flash_category)),
+      costCenters: (t) =>
+        (selectedCostCenters.length === 0 || selectedCostCenters.includes(t.flash_cost_center)) &&
+        (ccHeaderFilter.length === 0 || ccHeaderFilter.includes(t.flash_cost_center)),
+      prestacaoContas: (t) =>
+        (selectedPrestacao.length === 0 || selectedPrestacao.includes(t.flash_prestacao_contas)) &&
+        (prestHeaderFilter.length === 0 || prestHeaderFilter.includes(t.flash_prestacao_contas)),
+      caCategories: (t) => caCatFilter.length === 0 || caCatFilter.includes(t.conta_azul_category_name || ""),
+      caStatus: (t) => caStatusFilter.length === 0 || caStatusFilter.includes(t.status || "pendente"),
+      data: (t) => dataFilter.length === 0 || dataFilter.includes(formatDate(t.data)),
+      desc: (t) => descFilter.length === 0 || descFilter.includes(t.descricao),
+      val: (t) => valFilter.length === 0 || valFilter.includes(formatCurrency(t.valor)),
+      search: (t) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          t.descricao.toLowerCase().includes(q) ||
+          t.usuario.toLowerCase().includes(q) ||
+          t.flash_type.toLowerCase().includes(q) ||
+          (t.flash_prestacao_contas || "").toLowerCase().includes(q)
+        );
+      },
+    };
+
+    const filterExcept = (exclude: string) => {
+      const keys = Object.keys(predicates).filter((k) => k !== exclude);
+      return dateFiltered.filter((t) => keys.every((k) => predicates[k](t)));
+    };
+
+    const uniq = (arr: any[]) => Array.from(new Set(arr)).filter(Boolean).sort();
+
+    return {
+      users: uniq(filterExcept("users").map((t) => t.usuario)),
+      types: uniq(filterExcept("types").map((t) => t.flash_type)),
+      categories: uniq(filterExcept("categories").map((t) => t.flash_category)),
+      costCenters: uniq(filterExcept("costCenters").map((t) => t.flash_cost_center)),
+      prestacaoContas: uniq(filterExcept("prestacaoContas").map((t) => t.flash_prestacao_contas)),
+      caCategories: uniq(filterExcept("caCategories").map((t) => t.conta_azul_category_name)),
+      caStatus: ["pendente", "normalizado", "enviado"],
+    };
+  }, [
+    dateFiltered,
+    transactions,
+    statusFilter,
+    search,
+    selectedUsers,
+    selectedTypes,
+    selectedCategories,
+    selectedCostCenters,
+    selectedPrestacao,
+    searchParams,
+  ]);
 
   const filtered = useMemo(() => {
     let result = dateFiltered.filter((t) => {
