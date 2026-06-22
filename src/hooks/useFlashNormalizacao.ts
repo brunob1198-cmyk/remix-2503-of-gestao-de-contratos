@@ -412,20 +412,44 @@ export function useFlashNormalizacao() {
   const sendToContaAzul = async (ids: string[]) => {
     setSending(true);
     try {
-      toast.info(`Enviando ${ids.length} lançamentos...`);
-      // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
-      const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
-        body: { flash_transaction_ids: ids } 
-      });
-      if (error) throw error;
+      toast.info(`Iniciando envio de ${ids.length} lançamentos...`);
       
-      if (data?.error) {
-        toast.error("Erro no envio", { description: data.error });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
-        toast.success("Envio concluído!");
+      const CHUNK_SIZE = 10;
+      let successCount = 0;
+      let errorCount = 0;
+      let skippedCount = 0;
+
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
+        const batchNum = Math.floor(i / CHUNK_SIZE) + 1;
+        const totalBatches = Math.ceil(ids.length / CHUNK_SIZE);
+        
+        toast.loading(`Enviando lote ${batchNum} de ${totalBatches}...`, { id: "ca_send_progress" });
+        
+        // O nome correto da function é contaazul-send-transaction e o parâmetro é flash_transaction_ids
+        const { data, error } = await supabase.functions.invoke("contaazul-send-transaction", { 
+          body: { flash_transaction_ids: chunk } 
+        });
+        
+        if (error) throw error;
+        
+        if (data?.error) {
+          throw new Error(data.error);
+        }
+        
+        if (data) {
+          successCount += (data.sucesso || 0);
+          errorCount += (data.erro || 0);
+          skippedCount += (data.skipped || 0);
+        }
       }
+      
+      toast.dismiss("ca_send_progress");
+      queryClient.invalidateQueries({ queryKey: ["flash_transactions", empresaId] });
+      toast.success(`Envio concluído! Sucesso: ${successCount}, Erros: ${errorCount}, Pulados: ${skippedCount}`);
+      
     } catch (e: any) {
+      toast.dismiss("ca_send_progress");
       console.error("Erro sendToContaAzul:", e);
       let errorDesc = e.message || "Erro desconhecido";
       

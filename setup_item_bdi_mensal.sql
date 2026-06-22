@@ -1,9 +1,6 @@
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PARTE 1 — SQL (rodar no Supabase SQL Editor)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1. Limpeza da versão anterior (BDI por Projeto)
-DROP TABLE IF EXISTS projeto_bdi_mensal;
+DROP TABLE IF EXISTS projeto_bdi_mensal CASCADE;
 
 ALTER TABLE projetos 
   DROP COLUMN IF EXISTS bdi_variavel,
@@ -25,6 +22,8 @@ COMMENT ON TABLE item_lpu_bdi_mensal IS 'Armazena o BDI mensal de cada item da L
 -- 3. Configuração do RLS (Row Level Security)
 ALTER TABLE item_lpu_bdi_mensal ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "item_lpu_bdi_mensal_select" ON item_lpu_bdi_mensal;
+
 CREATE POLICY "item_lpu_bdi_mensal_select" 
 ON item_lpu_bdi_mensal FOR SELECT 
 USING (
@@ -33,6 +32,8 @@ USING (
     WHERE itens_lpu.id = item_lpu_bdi_mensal.item_lpu_id
   )
 );
+
+DROP POLICY IF EXISTS "item_lpu_bdi_mensal_insert" ON item_lpu_bdi_mensal;
 
 CREATE POLICY "item_lpu_bdi_mensal_insert" 
 ON item_lpu_bdi_mensal FOR INSERT 
@@ -43,6 +44,8 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS "item_lpu_bdi_mensal_update" ON item_lpu_bdi_mensal;
+
 CREATE POLICY "item_lpu_bdi_mensal_update" 
 ON item_lpu_bdi_mensal FOR UPDATE 
 USING (
@@ -51,6 +54,8 @@ USING (
     WHERE itens_lpu.id = item_lpu_bdi_mensal.item_lpu_id
   )
 );
+
+DROP POLICY IF EXISTS "item_lpu_bdi_mensal_delete" ON item_lpu_bdi_mensal;
 
 CREATE POLICY "item_lpu_bdi_mensal_delete" 
 ON item_lpu_bdi_mensal FOR DELETE 
