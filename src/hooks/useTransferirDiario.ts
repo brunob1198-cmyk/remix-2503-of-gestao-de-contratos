@@ -76,7 +76,7 @@ export function useTransferirDiario() {
               municipio: srcSite.municipio,
               uf: srcSite.uf,
               cliente_id: srcSite.cliente_id,
-            })
+            } as any)
             .select("id")
             .single();
           if (criarErr) throw criarErr;
