@@ -1292,20 +1292,32 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
               </div>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 shrink-0"
-            disabled={downloading}
-            onClick={() => onDownloadDia(diario)}
-          >
-            {downloading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 shrink-0">
+            {!isCliente && (
+              <TransferirApontamentoButton
+                diarioId={diario.id}
+                currentDate={diario.data}
+                currentProjetoId={projetoIdOrigem}
+                onTransferredProjeto={() => onTransferred?.()}
+                size="sm"
+                label="Transferir"
+              />
             )}
-            Baixar Dia
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={downloading}
+              onClick={() => onDownloadDia(diario)}
+            >
+              {downloading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              Baixar Dia
+            </Button>
+          </div>
         </div>
 
         {diario.producoes.length > 0 && (
