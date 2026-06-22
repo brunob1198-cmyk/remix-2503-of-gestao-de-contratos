@@ -282,19 +282,19 @@ export default function AcompanhamentoMedicoesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Acompanhamento de Medições</h1>
-          <p className="text-muted-foreground">Acompanhe e gerencie o status das medições</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold truncate">Acompanhamento de Medições</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Acompanhe e gerencie o status das medições</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowGerarDialog(true)}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Button onClick={() => setShowGerarDialog(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Gerar Medição do Período
           </Button>
           {tableMedicoes.processedItems.length > 0 && (
-            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)}>
+            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)} className="w-full sm:w-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
@@ -306,7 +306,7 @@ export default function AcompanhamentoMedicoesPage() {
         <CardHeader>
           <CardTitle>Histórico de Medições</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6 overflow-x-auto">
           <MedicoesTable 
             tableMedicoes={tableMedicoes}
             localEdits={localEdits}

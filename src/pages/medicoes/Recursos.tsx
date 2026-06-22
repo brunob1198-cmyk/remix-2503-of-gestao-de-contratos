@@ -538,28 +538,28 @@ export default function RecursosPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">⚙️ Recursos da Obra</h2>
-          <p className="text-muted-foreground">Gerencie pessoas, equipamentos e veículos</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-2xl font-bold tracking-tight truncate">⚙️ Recursos da Obra</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Gerencie pessoas, equipamentos e veículos</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExportAll}>
-            <Download className="h-4 w-4 mr-1" /> Exportar Excel
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportAll} className="flex-1 sm:flex-none">
+            <Download className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Exportar</span> Excel
           </Button>
-          <Button variant="outline" onClick={() => setShowImporter(true)}>
-            <Upload className="h-4 w-4 mr-1" /> Importar Excel
+          <Button variant="outline" size="sm" onClick={() => setShowImporter(true)} className="flex-1 sm:flex-none">
+            <Upload className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Importar</span> Excel
           </Button>
-          <Button onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Recurso
+          <Button size="sm" onClick={() => setShowNew(true)} className="flex-1 sm:flex-none">
+            <Plus className="h-4 w-4 mr-1" /> Novo <span className="hidden sm:inline">Recurso</span>
           </Button>
         </div>
       </div>
 
       {/* Global filters: Client and Project */}
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="space-y-1 min-w-[200px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 sm:gap-4">
+        <div className="space-y-1 w-full sm:min-w-[200px] sm:w-auto">
           <Label className="text-sm">Cliente</Label>
           <Select value={filterClienteId} onValueChange={(v) => { setFilterClienteId(v === "__all__" ? "" : v); setFilterProjetoId(""); }}>
             <SelectTrigger className="h-9">
@@ -573,7 +573,7 @@ export default function RecursosPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1 min-w-[250px]">
+        <div className="space-y-1 w-full sm:min-w-[250px] sm:w-auto">
           <Label className="text-sm">Projeto / Obra</Label>
           <Select value={filterProjetoId} onValueChange={(v) => setFilterProjetoId(v === "__all__" ? "" : v)}>
             <SelectTrigger className="h-9">
@@ -588,7 +588,7 @@ export default function RecursosPage() {
           </Select>
         </div>
         {(filterClienteId || filterProjetoId) && (
-          <Button variant="ghost" size="sm" onClick={() => { setFilterClienteId(""); setFilterProjetoId(""); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setFilterClienteId(""); setFilterProjetoId(""); }} className="w-full sm:w-auto">
             <X className="h-4 w-4 mr-1" /> Limpar filtros
           </Button>
         )}
