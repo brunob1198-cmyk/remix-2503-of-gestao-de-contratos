@@ -133,16 +133,9 @@ export default function DashboardPage() {
   const annualData = useMemo(() => {
     const yearsMap = new Map<number, { year: number, total: number, mb: number }>();
     
-    // Filtro específico para o gráfico anual, também desconsiderando Comercial e Administrativo
+    // Filtro específico para o gráfico anual, também desconsiderando Comercial/Administrativo e finalizados
     const filteredForAnnual = biAnalise.filter((p: any) => {
-      const projetoNome = p.Projeto || "";
-      if (
-        projetoNome.toLowerCase().trim() === "administrativo" || 
-        projetoNome.toLowerCase().trim() === "comercial" ||
-        projetoNome.startsWith("Comercial -") ||
-        projetoNome.startsWith("Administrativo -")
-      ) return false;
-
+      if (isProjetoExcluido(p)) return false;
       if (!p.Ano || !p["Mês Num"]) return false;
       const dataProducao = new Date(p.Ano, p["Mês Num"] - 1, 1);
       return isWithinInterval(dataProducao, { 
@@ -150,6 +143,7 @@ export default function DashboardPage() {
         end: endOfMonth(periodoFimAnual) 
       });
     });
+
 
     filteredForAnnual.forEach((p: any) => {
       const year = p.Ano;
