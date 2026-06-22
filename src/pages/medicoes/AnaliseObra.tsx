@@ -135,21 +135,21 @@ export default function AnaliseObraPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">📊 Análise de Obras</h1>
-        <p className="text-muted-foreground text-sm mt-1">Visão completa de desempenho financeiro e físico</p>
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight">📊 Análise de Obras</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Visão completa de desempenho financeiro e físico</p>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 sm:items-center">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[320px] justify-between font-normal">
+            <Button variant="outline" className="w-full sm:w-[320px] justify-between font-normal">
               <span className="truncate">{label}</span>
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-2" align="start">
+          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[320px] p-2" align="start">
             <Input
               placeholder="Buscar projeto..."
               value={search}
