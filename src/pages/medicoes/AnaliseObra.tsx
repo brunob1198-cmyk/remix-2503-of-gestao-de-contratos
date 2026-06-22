@@ -135,21 +135,21 @@ export default function AnaliseObraPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">📊 Análise de Obras</h1>
-        <p className="text-muted-foreground text-sm mt-1">Visão completa de desempenho financeiro e físico</p>
+        <h1 className="text-lg sm:text-2xl font-bold tracking-tight">📊 Análise de Obras</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Visão completa de desempenho financeiro e físico</p>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 sm:items-center">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[320px] justify-between font-normal">
+            <Button variant="outline" className="w-full sm:w-[320px] justify-between font-normal">
               <span className="truncate">{label}</span>
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[320px] p-2" align="start">
+          <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[320px] p-2" align="start">
             <Input
               placeholder="Buscar projeto..."
               value={search}
@@ -268,20 +268,22 @@ export default function AnaliseObraPage() {
         </div>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="custos-erp" className="gap-2">
-              <Calculator className="h-4 w-4" />
-              Análise de Custos
-            </TabsTrigger>
-            <TabsTrigger value="auditoria-erp" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Auditoria ERP
-            </TabsTrigger>
-            <TabsTrigger value="executiva" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Visão Executiva
-            </TabsTrigger>
-          </TabsList>
+          <div className="-mx-3 sm:mx-0 overflow-x-auto">
+            <TabsList className="w-max sm:w-auto">
+              <TabsTrigger value="custos-erp" className="gap-2">
+                <Calculator className="h-4 w-4" />
+                <span className="whitespace-nowrap">Análise de Custos</span>
+              </TabsTrigger>
+              <TabsTrigger value="auditoria-erp" className="gap-2">
+                <ClipboardList className="h-4 w-4" />
+                <span className="whitespace-nowrap">Auditoria ERP</span>
+              </TabsTrigger>
+              <TabsTrigger value="executiva" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="whitespace-nowrap">Visão Executiva</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="custos-erp" className="mt-0">
             <AnaliseCustos projetoIds={selectedIds} periodoInicio={periodoInicio} periodoFim={periodoFim} />
