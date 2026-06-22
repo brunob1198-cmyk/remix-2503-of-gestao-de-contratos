@@ -306,7 +306,7 @@ export default function AcompanhamentoMedicoesPage() {
         <CardHeader>
           <CardTitle>Histórico de Medições</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6 overflow-x-auto">
           <MedicoesTable 
             tableMedicoes={tableMedicoes}
             localEdits={localEdits}
