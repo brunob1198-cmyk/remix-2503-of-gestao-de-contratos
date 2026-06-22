@@ -1088,6 +1088,8 @@ export default function RdoPage() {
                     onPhotoClick={(photo) => setLightboxPhoto({ ...photo, data: selectedDiario.data })}
                     onDownloadDia={handleDownloadDia}
                     downloading={downloading}
+                    projetoIdOrigem={sites.find(s => s.id === selectedDiario.site_id)?.projeto_id}
+                    onTransferred={() => setSelectedDiarioId(null)}
                   />
                 )}
               </div>
