@@ -378,25 +378,27 @@ export default function RelatoriosPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Relatórios</h1>
-        <p className="text-muted-foreground">Exporte relatórios personalizados em Excel para análise</p>
+        <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold">Relatórios</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Exporte relatórios personalizados em Excel para análise</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="quadro_geral">
-            <LayoutGrid className="h-4 w-4 mr-2" />
-            Quadro Geral
-          </TabsTrigger>
-          <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
-          <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
-          <TabsTrigger value="forecast">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Forecast
-          </TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 sm:mx-0 overflow-x-auto">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="quadro_geral" className="whitespace-nowrap">
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Quadro Geral
+            </TabsTrigger>
+            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Cruzados</TabsTrigger>
+            <TabsTrigger value="producao_mensal" className="whitespace-nowrap">Produção Mensal</TabsTrigger>
+            <TabsTrigger value="forecast" className="whitespace-nowrap">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Forecast
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="quadro_geral" className="space-y-4">
           <QuadroGeral />
