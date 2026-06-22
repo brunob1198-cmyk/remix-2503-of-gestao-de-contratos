@@ -4,13 +4,15 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface TransferirParaProjetoParams {
   diarioId: string;
-  destinoSiteId: string;
   destinoProjetoId: string;
+  /** Opcional. Quando omitido, o site origem é replicado (ou reutilizado se já existir) no projeto destino. */
+  destinoSiteId?: string;
   novaData?: string; // opcional; default = data atual do diário
 }
 
 export interface TransferirParaProjetoResult {
   targetDiarioId: string;
+  destinoSiteId: string;
   movedProducoes: number;
 }
 
@@ -26,6 +28,8 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
     "diario_campo_atividades",
     "diario_campo_calendario",
     "rdo",
+    "sites",
+    "sites_destino_transferencia",
   ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
 }
 
@@ -36,17 +40,50 @@ export function useTransferirDiario() {
   const transferirParaProjeto = useMutation({
     mutationFn: async ({
       diarioId,
-      destinoSiteId,
+      destinoSiteId: destinoSiteIdParam,
       destinoProjetoId,
       novaData,
     }: TransferirParaProjetoParams): Promise<TransferirParaProjetoResult> => {
-      // 1) carregar diário origem
+      // 1) carregar diário origem com site
       const { data: srcDiario, error: srcErr } = await supabase
         .from("diarios_obra")
-        .select("*")
+        .select("*, site:sites(id, projeto_id, codigo, nome, municipio, uf, cliente_id)")
         .eq("id", diarioId)
         .single();
       if (srcErr) throw srcErr;
+
+      // 1b) resolver site destino: usar o informado, ou replicar/reaproveitar a partir do site origem
+      let destinoSiteId = destinoSiteIdParam || "";
+      if (!destinoSiteId) {
+        const srcSite = (srcDiario as any).site;
+        if (!srcSite) throw new Error("Site de origem não encontrado para transferir.");
+        const { data: matchSite, error: matchErr } = await supabase
+          .from("sites")
+          .select("id")
+          .eq("projeto_id", destinoProjetoId)
+          .eq("codigo", srcSite.codigo)
+          .maybeSingle();
+        if (matchErr) throw matchErr;
+        if (matchSite) {
+          destinoSiteId = matchSite.id;
+        } else {
+          const { data: novoSite, error: criarErr } = await supabase
+            .from("sites")
+            .insert({
+              projeto_id: destinoProjetoId,
+              codigo: srcSite.codigo,
+              nome: srcSite.nome,
+              municipio: srcSite.municipio,
+              uf: srcSite.uf,
+              cliente_id: srcSite.cliente_id,
+            })
+            .select("id")
+            .single();
+          if (criarErr) throw criarErr;
+          destinoSiteId = novoSite.id;
+        }
+      }
+
       if (srcDiario.site_id === destinoSiteId) {
         throw new Error("O site de destino é o mesmo do diário atual.");
       }
