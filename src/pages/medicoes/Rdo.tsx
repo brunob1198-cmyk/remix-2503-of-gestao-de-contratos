@@ -624,41 +624,41 @@ export default function RdoPage() {
       : `${selectedSiteIds.length} sites`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-start sm:items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <FileText className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight leading-none">RDO — Relatório Diário de Obra</h1>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">RDO — Relatório Diário de Obra</h1>
           {selectedSite && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
               {selectedSite.codigo} — {selectedSite.nome}
               {selectedSite.municipio && ` · ${selectedSite.municipio}`}
               {selectedSite.uf && `/${selectedSite.uf}`}
             </p>
           )}
           {!selectedSite && selectedProjeto && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
               {selectedProjeto.codigo} — {selectedProjeto.nome} · Todos os sites
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-[220px]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 sm:flex-wrap">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-xs">
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
-                {projetoLabel}
+                <span className="truncate">{projetoLabel}</span>
                 {selectedProjetoIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedProjetoIds.length}</Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3 space-y-2" align="start">
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -697,18 +697,18 @@ export default function RdoPage() {
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex items-center gap-2 min-w-[220px]">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-xs">
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
-                {siteLabel}
+                <span className="truncate">{siteLabel}</span>
                 {selectedSiteIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedSiteIds.length}</Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3 space-y-2" align="start">
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -752,7 +752,7 @@ export default function RdoPage() {
           variant="ghost" 
           size="sm" 
           onClick={clearFilters}
-          className="text-muted-foreground hover:text-primary gap-1.5 h-9"
+          className="text-muted-foreground hover:text-primary gap-1.5 h-9 w-full sm:w-auto justify-center"
         >
           <X className="h-4 w-4" />
           Limpar filtros
@@ -777,15 +777,15 @@ export default function RdoPage() {
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Início
                   </label>
-                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Fim
                   </label>
-                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
-                <div className="space-y-1 min-w-[260px]">
+                <div className="space-y-1 w-full sm:min-w-[260px] sm:w-auto sm:flex-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Tag className="h-3 w-3" /> Item LPU
                   </label>
@@ -802,7 +802,7 @@ export default function RdoPage() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[360px] p-0" align="start">
+                    <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[360px] p-0" align="start">
                       <Command
                         filter={(value, search) => {
                           if (!search) return 1;
