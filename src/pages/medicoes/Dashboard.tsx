@@ -82,27 +82,9 @@ export default function DashboardPage() {
     }
   });
 
-  // Buscar status dos projetos para excluir os Finalizados/Concluídos (alinhar com Análise de Custos)
-  const { data: projetosStatus = [] } = useQuery({
-    queryKey: ["projetos_status_dashboard"],
-    staleTime: 1000 * 60 * 30,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("projetos").select("id, status");
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const projetosExcluidos = useMemo(() => {
-    const set = new Set<string>();
-    projetosStatus.forEach((p: any) => {
-      const s = (p.status || "").toString().toLowerCase().trim();
-      if (s === "finalizado" || s === "concluído" || s === "concluido") set.add(p.id);
-    });
-    return set;
-  }, [projetosStatus]);
-
-  // Predicado comum para exclusão (nomes Comercial/Administrativo + projetos finalizados/concluídos)
+  // Predicado comum para exclusão (apenas nomes Comercial/Administrativo).
+  // Projetos com status "Finalizado/Concluído" NÃO devem ser excluídos do dashboard,
+  // pois sua produção histórica precisa aparecer nos gráficos anuais/mensais.
   const isProjetoExcluido = (p: any) => {
     const projetoNome = p.Projeto || "";
     if (
@@ -111,9 +93,9 @@ export default function DashboardPage() {
       projetoNome.startsWith("Comercial -") ||
       projetoNome.startsWith("Administrativo -")
     ) return true;
-    if (p["ID Projeto"] && projetosExcluidos.has(p["ID Projeto"])) return true;
     return false;
   };
+
 
   // Filtrar dados por período e desconsiderar centros de custo específicos
   const filteredData = useMemo(() => {
