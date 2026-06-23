@@ -1359,6 +1359,55 @@ export default function NormalizacaoFlashPage() {
                         </PopoverContent>
                       </Popover>
                     )}
+                    {selectedToSendIds.length > 0 && (
+                      <Popover open={bulkCatCAOpen} onOpenChange={setBulkCatCAOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-2 border-primary/50 bg-primary/5 text-primary hover:bg-primary/10"
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            Categoria CA em Massa ({selectedToSendIds.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="end">
+                          <Command>
+                            <CommandInput
+                              placeholder="Buscar categoria CA..."
+                              value={bulkCatCASearch}
+                              onValueChange={setBulkCatCASearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {loadingMetadata ? "Carregando categorias..." : "Nenhuma categoria encontrada."}
+                              </CommandEmpty>
+                              <CommandGroup heading="Categorias Conta Azul">
+                                {categorias.map((opt) => (
+                                  <CommandItem
+                                    key={opt.id}
+                                    value={opt.name}
+                                    onSelect={() => {
+                                      const confirmText = `Deseja aplicar a Categoria CA "${opt.name}" em ${selectedToSendIds.length} lançamentos selecionados?`;
+                                      if (window.confirm(confirmText)) {
+                                        bulkUpdateCategoriaCA(selectedToSendIds, { id: opt.id, name: opt.name }).then(() => {
+                                          setSelectedToSendIds([]);
+                                          setBulkCatCAOpen(false);
+                                          setBulkCatCASearch("");
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {opt.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
