@@ -1493,15 +1493,9 @@ export default function NormalizacaoFlashPage() {
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
                     setSelectedPrestacao([]);
+                    setCurrentPage(1);
                     const params = new URLSearchParams(searchParams);
-                    params.delete("data");
-                    params.delete("desc");
-                    params.delete("val");
-                    params.delete("user");
-                    params.delete("type");
-                    params.delete("cat");
-                    params.delete("cc");
-                    params.delete("prest");
+                    ["data","desc","val","user","type","cat","cc","prest","ca_status","ca_cat","status","q","users","types","categories","costCenters","prestacao"].forEach((k) => params.delete(k));
                     setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
