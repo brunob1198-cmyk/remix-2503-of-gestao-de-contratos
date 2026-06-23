@@ -451,6 +451,9 @@ export default function NormalizacaoFlashPage() {
   // Bulk CC state
   const [bulkCCValue, setBulkCCValue] = useState("");
   const [bulkCCOpen, setBulkCCOpen] = useState(false);
+  // Bulk Categoria CA state
+  const [bulkCatCAOpen, setBulkCatCAOpen] = useState(false);
+  const [bulkCatCASearch, setBulkCatCASearch] = useState("");
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // Efeito para fixar a conta financeira padrão "Flash" (qualquer conta com 'flash' no nome)
