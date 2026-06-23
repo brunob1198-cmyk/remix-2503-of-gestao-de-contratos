@@ -375,23 +375,65 @@ export function useAtividades(projetoId?: string) {
 
   const analyzeGanttAi = useMutation({
     mutationFn: async (atividades: AtividadePlanejamento[]) => {
-      const { data, error } = await supabase.functions.invoke("analyze-gantt", {
-        body: { atividades }
-      });
-      if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || "Falha na análise");
-      
-      return data.data as { id: string; nova_data_fim: string }[];
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      const suggestions: { id: string; nova_data_fim: string }[] = [];
+
+      for (const a of atividades) {
+        if (!a.data_inicio) continue;
+        const qtdTotal = Number(a.quantidade_total) || 0;
+        if (qtdTotal <= 0) continue;
+        const prodPrev = Number(a.producao_diaria_prevista) || 0;
+        if (prodPrev <= 0) continue;
+
+        const inicio = new Date(a.data_inicio);
+        inicio.setHours(0, 0, 0, 0);
+        const qtdProd = Number(a.qtd_produzida) || 0;
+        const pct = qtdProd / qtdTotal;
+
+        // já concluída, não sugere alteração
+        if (pct >= 1) continue;
+
+        const diasPassados = Math.max(
+          0,
+          Math.ceil((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24))
+        );
+
+        let novaDuracao: number;
+        if (hoje <= inicio) {
+          // ainda não começou: mantém previsão original
+          novaDuracao = Math.ceil(qtdTotal / prodPrev);
+        } else if (qtdProd <= 0) {
+          // atrasada sem produção: assume ritmo previsto a partir de hoje + atraso
+          novaDuracao = diasPassados + Math.ceil(qtdTotal / prodPrev);
+        } else {
+          const ritmoReal = qtdProd / Math.max(1, diasPassados);
+          // se ritmo real >= previsto, mantém duração original
+          const ritmoUsado = Math.min(ritmoReal, prodPrev);
+          novaDuracao = Math.ceil(qtdTotal / Math.max(0.01, ritmoUsado));
+        }
+
+        const novaFim = new Date(inicio);
+        novaFim.setDate(novaFim.getDate() + novaDuracao - 1);
+        suggestions.push({
+          id: a.id,
+          nova_data_fim: novaFim.toISOString().split("T")[0],
+        });
+      }
+
+      return suggestions;
     },
     onSuccess: async (suggestions) => {
       for (const sug of suggestions) {
         await supabase.from("atividades_planejamento").update({ data_fim_prevista: sug.nova_data_fim }).eq("id", sug.id);
       }
       queryClient.invalidateQueries({ queryKey: ["atividades_planejamento", projetoId] });
-      toast.success("Cronograma recalculado via IA!");
+      toast.success(`Cronograma recalculado (${suggestions.length} atividade(s) ajustada(s))`);
     },
-    onError: (e: Error) => toast.error("Erro na IA: " + e.message)
+    onError: (e: Error) => toast.error("Erro ao recalcular: " + e.message)
   });
 
   return { ...query, create, update, remove, analyzeGanttAi };
 }
+
