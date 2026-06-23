@@ -320,6 +320,7 @@ export default function NormalizacaoFlashPage() {
     saasCostCenters,
     reprocessAll,
     bulkUpdateCostCenter,
+    bulkUpdateCategoriaCA,
     updateStatus,
   } = useFlashNormalizacao();
 
