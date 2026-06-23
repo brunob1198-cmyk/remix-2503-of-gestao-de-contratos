@@ -108,7 +108,7 @@ export default function DashboardPage() {
         end: endOfMonth(periodoFim) 
       });
     });
-  }, [biAnalise, periodoInicio, periodoFim, projetosExcluidos]);
+  }, [biAnalise, periodoInicio, periodoFim]);
 
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -143,7 +143,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise, periodoInicioAnual, periodoFimAnual, projetosExcluidos]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
