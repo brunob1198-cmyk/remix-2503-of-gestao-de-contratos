@@ -1382,12 +1382,24 @@ export default function NormalizacaoFlashPage() {
                   </div>
                 </div>
 
-                {(searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
+                {(statusFilter !== "todos" || !!search ||
+                  searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
                   searchParams.get("data") || searchParams.get("desc") || searchParams.get("val") ||
-                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") || 
-                  searchParams.get("cc") || searchParams.get("prest")) && (
+                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") ||
+                  searchParams.get("cc") || searchParams.get("prest") ||
+                  searchParams.get("ca_status") || searchParams.get("ca_cat")) && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
+                    <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+                    {statusFilter !== "todos" && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Status: {statusFilter}
+                      </Badge>
+                    )}
+                    {!!search && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Busca: "{search}"
+                      </Badge>
+                    )}
                     {(searchParams.get("users") || searchParams.get("user")) && (
                       <Badge variant="secondary" className="text-[11px]">
                         Usuário
@@ -1428,24 +1440,30 @@ export default function NormalizacaoFlashPage() {
                         Valor
                       </Badge>
                     )}
+                    {searchParams.get("ca_status") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Status CA
+                      </Badge>
+                    )}
+                    {searchParams.get("ca_cat") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Categoria CA
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
+                        setStatusFilter("todos");
+                        setSearch("");
                         setSelectedUsers([]);
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                         setSelectedPrestacao([]);
+                        setCurrentPage(1);
                         const params = new URLSearchParams(searchParams);
-                        params.delete("data");
-                        params.delete("desc");
-                        params.delete("val");
-                        params.delete("user");
-                        params.delete("type");
-                        params.delete("cat");
-                        params.delete("cc");
-                        params.delete("prest");
+                        ["data","desc","val","user","type","cat","cc","prest","ca_status","ca_cat","status","q","users","types","categories","costCenters","prestacao"].forEach((k) => params.delete(k));
                         setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
