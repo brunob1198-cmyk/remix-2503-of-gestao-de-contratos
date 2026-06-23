@@ -64,6 +64,12 @@ export interface ProducaoItem {
   mediaDiaria: number;
   mediaSemanal: number;
   mediaMensal: number;
+  /** Ritmo do item nos dias em que ele foi efetivamente executado (executado / diasComProducao). */
+  ritmoPorDiaProduzido: number;
+  /** Ritmo médio no período ativo do item: 1ª produção → última produção (executado / diasCorridosAtivos). */
+  ritmoPorDiaCorridoAtivo: number;
+  /** Dias corridos entre primeira e última produção do item (inclusive). */
+  diasIntervaloAtivo: number;
   diasComProducao: number;
   primeiraData: string | null;
   ultimaData: string | null;
