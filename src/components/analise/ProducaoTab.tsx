@@ -76,7 +76,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
       if (cellG) cellG.z = '0.0%';
       
       // Colunas numéricas
-      [3, 4, 5, 8, 9, 10].forEach(C => {
+      [3, 4, 5, 9, 11].forEach(C => {
         const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
         if (cell) cell.z = '#,##0.00';
       });
