@@ -58,10 +58,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
       { wch: 15 }, // Executado
       { wch: 15 }, // Saldo
       { wch: 15 }, // % Executado
-      { wch: 10 }, // Dias
-      { wch: 15 }, // Média Diária
-      { wch: 15 }, // Média Semanal
-      { wch: 15 }, // Média Mensal
+      { wch: 12 }, // Dias com Produção
+      { wch: 18 }, // Ritmo / Dia Produzido
+      { wch: 22 }, // Dias Período Ativo
+      { wch: 22 }, // Ritmo / Dia Ativo
     ];
     worksheet['!cols'] = wscols;
 
