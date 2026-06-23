@@ -127,6 +127,12 @@ Retorne JSON:
     if (!response.ok) {
       const finalErr = await response.text();
       console.error('All AI attempts failed:', finalErr);
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ success: false, error: 'Créditos de IA esgotados. Adicione créditos ao workspace Lovable para continuar usando a extração automática de contratos.' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ success: false, error: 'Limite de requisições de IA atingido. Aguarde alguns instantes e tente novamente.' }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       throw new Error(`AI Gateway error: ${response.status} - ${finalErr}`);
     }
 
