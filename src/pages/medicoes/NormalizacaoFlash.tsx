@@ -320,6 +320,7 @@ export default function NormalizacaoFlashPage() {
     saasCostCenters,
     reprocessAll,
     bulkUpdateCostCenter,
+    bulkUpdateCategoriaCA,
     updateStatus,
   } = useFlashNormalizacao();
 
@@ -450,6 +451,9 @@ export default function NormalizacaoFlashPage() {
   // Bulk CC state
   const [bulkCCValue, setBulkCCValue] = useState("");
   const [bulkCCOpen, setBulkCCOpen] = useState(false);
+  // Bulk Categoria CA state
+  const [bulkCatCAOpen, setBulkCatCAOpen] = useState(false);
+  const [bulkCatCASearch, setBulkCatCASearch] = useState("");
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // Efeito para fixar a conta financeira padrão "Flash" (qualquer conta com 'flash' no nome)
@@ -1350,6 +1354,55 @@ export default function NormalizacaoFlashPage() {
                                   </CommandItem>
                                 </CommandGroup>
                               )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    {selectedToSendIds.length > 0 && (
+                      <Popover open={bulkCatCAOpen} onOpenChange={setBulkCatCAOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-2 border-primary/50 bg-primary/5 text-primary hover:bg-primary/10"
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            Categoria CA em Massa ({selectedToSendIds.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="end">
+                          <Command>
+                            <CommandInput
+                              placeholder="Buscar categoria CA..."
+                              value={bulkCatCASearch}
+                              onValueChange={setBulkCatCASearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {loadingMetadata ? "Carregando categorias..." : "Nenhuma categoria encontrada."}
+                              </CommandEmpty>
+                              <CommandGroup heading="Categorias Conta Azul">
+                                {categorias.map((opt) => (
+                                  <CommandItem
+                                    key={opt.id}
+                                    value={opt.name}
+                                    onSelect={() => {
+                                      const confirmText = `Deseja aplicar a Categoria CA "${opt.name}" em ${selectedToSendIds.length} lançamentos selecionados?`;
+                                      if (window.confirm(confirmText)) {
+                                        bulkUpdateCategoriaCA(selectedToSendIds, { id: opt.id, name: opt.name }).then(() => {
+                                          setSelectedToSendIds([]);
+                                          setBulkCatCAOpen(false);
+                                          setBulkCatCASearch("");
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {opt.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
                             </CommandList>
                           </Command>
                         </PopoverContent>

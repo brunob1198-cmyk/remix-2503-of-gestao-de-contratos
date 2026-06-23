@@ -502,6 +502,19 @@ export function useFlashNormalizacao() {
     }
   };
 
+  const bulkUpdateCategoriaCA = async (ids: string[], categoria: { id: string; name: string }) => {
+    for (const id of ids) {
+      const row = transactions.find(t => t.id === id);
+      if (row) {
+        await saveNormalization(
+          row,
+          { conta_azul_category_id: categoria.id, conta_azul_category_name: categoria.name },
+          { allowEditEnviado: true }
+        );
+      }
+    }
+  };
+
   const bulkApplyToPending = async (ids: string[], params: any) => {
     for (const id of ids) {
       const row = transactions.find(t => t.id === id);
@@ -533,7 +546,7 @@ export function useFlashNormalizacao() {
     loading: loadingRaw || loadingMappings, savingId, sending, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
     updateStatus, mappingByType: new Map(),
-    applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter
+    applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter, bulkUpdateCategoriaCA
   };
 }
 
