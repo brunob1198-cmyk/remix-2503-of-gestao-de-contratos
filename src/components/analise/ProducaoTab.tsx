@@ -193,10 +193,46 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                     <th className="text-right px-3 py-2.5 font-semibold">Executado</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Saldo</th>
                     <th className="text-right px-3 py-2.5 font-semibold">%</th>
-                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Dias</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[70px]">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Dias Prod. <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            Dias em que o item foi efetivamente lançado em RDO (dias com produção do item).
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-right px-3 py-2.5 font-semibold">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Ritmo / Dia Prod. <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            <strong>Ritmo do item nos dias em que ele foi executado.</strong><br />
+                            Fórmula: Executado ÷ Dias com Produção.<br />
+                            Mostra a produtividade real quando a equipe está atuando neste item.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-right px-3 py-2.5 font-semibold">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Ritmo / Dia Ativo <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            <strong>Ritmo médio no período ativo do item (1ª → última produção).</strong><br />
+                            Fórmula: Executado ÷ Dias corridos entre a primeira e a última produção (inclusive).<br />
+                            Considera a ociosidade entre lançamentos — ideal para itens contínuos.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
                     <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Fotos</th>
                   </tr>
                 </thead>
