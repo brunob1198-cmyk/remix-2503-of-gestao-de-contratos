@@ -238,7 +238,8 @@ export default function PlanejamentoObra() {
                     className="gap-1.5"
                   >
                     <Sparkles className="h-4 w-4 text-purple-600" />
-                    {analyzeGanttAi.isPending ? "Analisando Cronograma..." : "Analisar via IA"}
+                    {analyzeGanttAi.isPending ? "Recalculando..." : "Recalcular Cronograma"}
+
                   </Button>
                 )}
                 <FrenteForm
