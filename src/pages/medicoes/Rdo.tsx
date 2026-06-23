@@ -433,18 +433,31 @@ export default function RdoPage() {
 
   const isMultiSite = selectedSiteIds.length !== 1;
 
-  // Use aggregated totals from DB, with local calculation as fallback
-  const totalDias = (totaisAgregados as any)?.total_dias ?? dayGroups.length;
-  const totalFotos = (totaisAgregados as any)?.total_fotos ?? diarios.reduce((s, d) => s + d.totalFotos, 0);
-  const totalProd = (totaisAgregados as any)?.total_producao ?? diarios.reduce((s, d) => s + d.totalProducao, 0);
-  const mediaPorDia = (totaisAgregados as any)?.media_por_dia ?? (totalDias > 0 ? totalProd / totalDias : 0);
+  // Quando há filtros que o RPC não conhece (item LPU / busca textual),
+  // calcula os totais localmente a partir dos diários já filtrados.
+  const hasLocalFilters = !!(itemFilter.trim() || (busca && busca.trim()));
 
   const qtdSitesAtendidosLocal = useMemo(() => {
     const set = new Set<string>();
     diarios.forEach(d => set.add(d.site_id));
     return set.size;
   }, [diarios]);
-  const qtdSitesAtendidos = (totaisAgregados as any)?.total_sites ?? qtdSitesAtendidosLocal;
+
+  const totalDias = hasLocalFilters
+    ? dayGroups.length
+    : ((totaisAgregados as any)?.total_dias ?? dayGroups.length);
+  const totalFotos = hasLocalFilters
+    ? diarios.reduce((s, d) => s + d.totalFotos, 0)
+    : ((totaisAgregados as any)?.total_fotos ?? diarios.reduce((s, d) => s + d.totalFotos, 0));
+  const totalProd = hasLocalFilters
+    ? diarios.reduce((s, d) => s + d.totalProducao, 0)
+    : ((totaisAgregados as any)?.total_producao ?? diarios.reduce((s, d) => s + d.totalProducao, 0));
+  const mediaPorDia = hasLocalFilters
+    ? (totalDias > 0 ? totalProd / totalDias : 0)
+    : ((totaisAgregados as any)?.media_por_dia ?? (totalDias > 0 ? totalProd / totalDias : 0));
+  const qtdSitesAtendidos = hasLocalFilters
+    ? qtdSitesAtendidosLocal
+    : ((totaisAgregados as any)?.total_sites ?? qtdSitesAtendidosLocal);
 
   const escopoProjetoIds = useMemo(() => {
     if (selectedProjetoIds.length > 0) return selectedProjetoIds;
