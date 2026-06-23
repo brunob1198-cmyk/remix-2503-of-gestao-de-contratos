@@ -547,6 +547,7 @@ export default function NormalizacaoFlashPage() {
       prestacaoContas: uniq(filterExcept("prestacaoContas").map((t) => t.flash_prestacao_contas)),
       caCategories: uniq(filterExcept("caCategories").map((t) => t.conta_azul_category_name)),
       caStatus: ["pendente", "normalizado", "enviado"],
+      status: uniq(filterExcept("status").map((t) => t.status || "pendente")),
     };
   }, [
     dateFiltered,
