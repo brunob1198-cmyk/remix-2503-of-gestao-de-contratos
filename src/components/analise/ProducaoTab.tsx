@@ -37,10 +37,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
         "Executado": item.executado,
         "Saldo": item.saldo,
         "% Executado": pct,
-        "Dias": item.diasComProducao,
-        "Média Diária": item.mediaDiaria,
-        "Média Semanal": item.mediaSemanal,
-        "Média Mensal": item.mediaMensal
+        "Dias com Produção": item.diasComProducao,
+        "Ritmo / Dia Produzido": item.ritmoPorDiaProduzido,
+        "Dias Período Ativo (1ª→última)": item.diasIntervaloAtivo,
+        "Ritmo / Dia no Período Ativo": item.ritmoPorDiaCorridoAtivo,
       };
     });
 
