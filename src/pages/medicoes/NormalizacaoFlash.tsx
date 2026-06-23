@@ -1370,9 +1370,13 @@ export default function NormalizacaoFlashPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todos">Todos os status</SelectItem>
-                        <SelectItem value="pendente">Pendente</SelectItem>
-                        <SelectItem value="normalizado">Normalizado</SelectItem>
-                        <SelectItem value="enviado">Enviado</SelectItem>
+                        {["pendente", "normalizado", "enviado"]
+                          .filter((s) => statusFilter === s || filterOptions.status.includes(s))
+                          .map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
