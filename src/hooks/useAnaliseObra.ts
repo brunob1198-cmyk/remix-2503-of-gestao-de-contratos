@@ -64,6 +64,12 @@ export interface ProducaoItem {
   mediaDiaria: number;
   mediaSemanal: number;
   mediaMensal: number;
+  /** Ritmo do item nos dias em que ele foi efetivamente executado (executado / diasComProducao). */
+  ritmoPorDiaProduzido: number;
+  /** Ritmo médio no período ativo do item: 1ª produção → última produção (executado / diasCorridosAtivos). */
+  ritmoPorDiaCorridoAtivo: number;
+  /** Dias corridos entre primeira e última produção do item (inclusive). */
+  diasIntervaloAtivo: number;
   diasComProducao: number;
   primeiraData: string | null;
   ultimaData: string | null;
@@ -521,6 +527,18 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           mediaMensal = mediaDiaria * 30;
         }
 
+        // Ritmo do item nos dias em que ele foi efetivamente executado
+        const ritmoPorDiaProduzido = diasComProducao > 0 ? executado / diasComProducao : 0;
+
+        // Ritmo no período ativo: 1ª → última produção do item (dias corridos, inclusive)
+        let diasIntervaloAtivo = 0;
+        if (prod?.primeiraData && prod?.ultimaData) {
+          const ini = new Date(prod.primeiraData).getTime();
+          const fim = new Date(prod.ultimaData).getTime();
+          diasIntervaloAtivo = Math.max(1, Math.floor((fim - ini) / 86400000) + 1);
+        }
+        const ritmoPorDiaCorridoAtivo = diasIntervaloAtivo > 0 ? executado / diasIntervaloAtivo : 0;
+
         const itemFotos = fotosData
           .filter(f => f.diario_producao?.item_lpu_id === itemLpuId)
           .map(f => f.url)
@@ -537,6 +555,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           mediaDiaria,
           mediaSemanal,
           mediaMensal,
+          ritmoPorDiaProduzido,
+          ritmoPorDiaCorridoAtivo,
+          diasIntervaloAtivo,
           diasComProducao,
           primeiraData: prod?.primeiraData || null,
           ultimaData: prod?.ultimaData || null,
@@ -552,6 +573,15 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
           
           let mediaDiaria = totalDiasObra > 0 ? executado / totalDiasObra : 0;
           
+          const ritmoPorDiaProduzido = diasComProducao > 0 ? executado / diasComProducao : 0;
+          let diasIntervaloAtivo = 0;
+          if (prod.primeiraData && prod.ultimaData) {
+            const ini = new Date(prod.primeiraData).getTime();
+            const fim = new Date(prod.ultimaData).getTime();
+            diasIntervaloAtivo = Math.max(1, Math.floor((fim - ini) / 86400000) + 1);
+          }
+          const ritmoPorDiaCorridoAtivo = diasIntervaloAtivo > 0 ? executado / diasIntervaloAtivo : 0;
+
           const dpSample = diarioProducaoData.find((d: any) => d.item_lpu_id === itemLpuId);
           const item = dpSample?.item_lpu as any;
 
@@ -566,6 +596,9 @@ export function useAnaliseObra(projetoId?: string, filterSiteId?: string, period
             mediaDiaria,
             mediaSemanal: mediaDiaria * 7,
             mediaMensal: mediaDiaria * 30,
+            ritmoPorDiaProduzido,
+            ritmoPorDiaCorridoAtivo,
+            diasIntervaloAtivo,
             diasComProducao,
             primeiraData: prod.primeiraData,
             ultimaData: prod.ultimaData,

@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, TrendingUp, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { ClipboardList, TrendingUp, AlertTriangle, FileSpreadsheet, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { format } from "date-fns";
@@ -37,10 +38,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
         "Executado": item.executado,
         "Saldo": item.saldo,
         "% Executado": pct,
-        "Dias": item.diasComProducao,
-        "Média Diária": item.mediaDiaria,
-        "Média Semanal": item.mediaSemanal,
-        "Média Mensal": item.mediaMensal
+        "Dias com Produção": item.diasComProducao,
+        "Ritmo / Dia Produzido": item.ritmoPorDiaProduzido,
+        "Dias Período Ativo (1ª→última)": item.diasIntervaloAtivo,
+        "Ritmo / Dia no Período Ativo": item.ritmoPorDiaCorridoAtivo,
       };
     });
 
@@ -58,10 +59,10 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
       { wch: 15 }, // Executado
       { wch: 15 }, // Saldo
       { wch: 15 }, // % Executado
-      { wch: 10 }, // Dias
-      { wch: 15 }, // Média Diária
-      { wch: 15 }, // Média Semanal
-      { wch: 15 }, // Média Mensal
+      { wch: 12 }, // Dias com Produção
+      { wch: 18 }, // Ritmo / Dia Produzido
+      { wch: 22 }, // Dias Período Ativo
+      { wch: 22 }, // Ritmo / Dia Ativo
     ];
     worksheet['!cols'] = wscols;
 
@@ -76,7 +77,7 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
       if (cellG) cellG.z = '0.0%';
       
       // Colunas numéricas
-      [3, 4, 5, 8, 9, 10].forEach(C => {
+      [3, 4, 5, 9, 11].forEach(C => {
         const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
         if (cell) cell.z = '#,##0.00';
       });
@@ -192,10 +193,46 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                     <th className="text-right px-3 py-2.5 font-semibold">Executado</th>
                     <th className="text-right px-3 py-2.5 font-semibold">Saldo</th>
                     <th className="text-right px-3 py-2.5 font-semibold">%</th>
-                    <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Dias</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Diária</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Semanal</th>
-                    <th className="text-right px-3 py-2.5 font-semibold">Méd. Mensal</th>
+                    <th className="text-center px-2 py-2.5 font-semibold w-[70px]">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Dias Prod. <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            Dias em que o item foi efetivamente lançado em RDO (dias com produção do item).
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-right px-3 py-2.5 font-semibold">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Ritmo / Dia Prod. <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            <strong>Ritmo do item nos dias em que ele foi executado.</strong><br />
+                            Fórmula: Executado ÷ Dias com Produção.<br />
+                            Mostra a produtividade real quando a equipe está atuando neste item.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
+                    <th className="text-right px-3 py-2.5 font-semibold">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 cursor-help">Ritmo / Dia Ativo <Info className="h-3 w-3 opacity-60" /></span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            <strong>Ritmo médio no período ativo do item (1ª → última produção).</strong><br />
+                            Fórmula: Executado ÷ Dias corridos entre a primeira e a última produção (inclusive).<br />
+                            Considera a ociosidade entre lançamentos — ideal para itens contínuos.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </th>
                     <th className="text-center px-2 py-2.5 font-semibold w-[60px]">Fotos</th>
                   </tr>
                 </thead>
@@ -242,9 +279,17 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                         <td className="px-2 py-2 text-center tabular-nums text-muted-foreground">
                           {item.diasComProducao > 0 ? item.diasComProducao : "—"}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaDiaria)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaSemanal)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaMensal)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {item.ritmoPorDiaProduzido > 0 ? `${fmtAvg(item.ritmoPorDiaProduzido)} ${item.unidade}/d` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {item.ritmoPorDiaCorridoAtivo > 0 ? (
+                            <span title={`${item.diasIntervaloAtivo} dia(s) corridos`}>
+                              {fmtAvg(item.ritmoPorDiaCorridoAtivo)} {item.unidade}/d
+                              <span className="ml-1 text-[10px] opacity-60">({item.diasIntervaloAtivo}d)</span>
+                            </span>
+                          ) : "—"}
+                        </td>
                         <td className="px-2 py-2 text-center">
                           {item.fotos && item.fotos.length > 0 ? (
                             <div className="flex justify-center -space-x-2">
