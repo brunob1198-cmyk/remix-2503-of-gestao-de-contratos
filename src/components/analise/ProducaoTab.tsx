@@ -279,9 +279,17 @@ export function ProducaoTab({ siteId, projetoId }: { siteId?: string; projetoId?
                         <td className="px-2 py-2 text-center tabular-nums text-muted-foreground">
                           {item.diasComProducao > 0 ? item.diasComProducao : "—"}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaDiaria)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaSemanal)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtAvg(item.mediaMensal)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {item.ritmoPorDiaProduzido > 0 ? `${fmtAvg(item.ritmoPorDiaProduzido)} ${item.unidade}/d` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {item.ritmoPorDiaCorridoAtivo > 0 ? (
+                            <span title={`${item.diasIntervaloAtivo} dia(s) corridos`}>
+                              {fmtAvg(item.ritmoPorDiaCorridoAtivo)} {item.unidade}/d
+                              <span className="ml-1 text-[10px] opacity-60">({item.diasIntervaloAtivo}d)</span>
+                            </span>
+                          ) : "—"}
+                        </td>
                         <td className="px-2 py-2 text-center">
                           {item.fotos && item.fotos.length > 0 ? (
                             <div className="flex justify-center -space-x-2">
