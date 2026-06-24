@@ -14,11 +14,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Props {
   frentes: FrenteObra[];
   atividades: AtividadePlanejamento[];
+  projetoId?: string;
   onCreate: (data: any) => void;
   isLoading?: boolean;
 }
 
-export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Props) {
+export function AtividadeForm({ frentes, atividades, projetoId, onCreate, isLoading }: Props) {
   const [open, setOpen] = useState(false);
   const [frenteId, setFrenteId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
@@ -29,8 +30,9 @@ export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Prop
 
   const selectedFrente = frentes.find(f => f.id === frenteId);
   const frenteSiteId = (selectedFrente as any)?.site_id;
-  
-  const { itens: escopoItens } = useEscopos(frenteSiteId);
+
+  // Fallback para LPU do projeto se a frente não tiver site
+  const { itens: escopoItens } = useEscopos(frenteSiteId, frenteSiteId ? undefined : projetoId);
 
   const toggleLpu = (id: string) => {
     setSelectedLpus((prev) => {
