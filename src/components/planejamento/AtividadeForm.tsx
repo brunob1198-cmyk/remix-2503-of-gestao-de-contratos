@@ -14,11 +14,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Props {
   frentes: FrenteObra[];
   atividades: AtividadePlanejamento[];
+  projetoId?: string;
   onCreate: (data: any) => void;
   isLoading?: boolean;
 }
 
-export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Props) {
+export function AtividadeForm({ frentes, atividades, projetoId, onCreate, isLoading }: Props) {
   const [open, setOpen] = useState(false);
   const [frenteId, setFrenteId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
@@ -29,8 +30,9 @@ export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Prop
 
   const selectedFrente = frentes.find(f => f.id === frenteId);
   const frenteSiteId = (selectedFrente as any)?.site_id;
-  
-  const { itens: escopoItens } = useEscopos(frenteSiteId);
+
+  // Fallback para LPU do projeto se a frente não tiver site
+  const { itens: escopoItens } = useEscopos(frenteSiteId, frenteSiteId ? undefined : projetoId);
 
   const toggleLpu = (id: string) => {
     setSelectedLpus((prev) => {
@@ -126,9 +128,12 @@ export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Prop
             </div>
           </div>
 
-          {frenteSiteId && escopoItens.length > 0 ? (
+          {escopoItens.length > 0 ? (
             <div className="border rounded-md p-3 mt-4">
-              <Label className="mb-2 block font-semibold text-primary">Selecione os itens do Escopo para adicionar</Label>
+              <Label className="mb-2 block font-semibold text-primary">
+                Selecione os itens do Escopo para adicionar
+                {!frenteSiteId && <span className="ml-2 text-xs font-normal text-muted-foreground">(usando LPU do projeto)</span>}
+              </Label>
               <ScrollArea className="h-[300px] border rounded p-2">
                 <div className="space-y-3">
                   {escopoItens.map((item) => {
@@ -179,7 +184,7 @@ export function AtividadeForm({ frentes, atividades, onCreate, isLoading }: Prop
             </div>
           ) : (
             <div className="bg-muted p-4 text-sm text-center text-muted-foreground rounded-md">
-              Por favor, selecione uma frente vinculada a um site que contenha LPU carregada.
+              Selecione uma frente. Se ela não tiver site, será usado o escopo do projeto. Cadastre a LPU/Escopo se a lista estiver vazia.
             </div>
           )}
 

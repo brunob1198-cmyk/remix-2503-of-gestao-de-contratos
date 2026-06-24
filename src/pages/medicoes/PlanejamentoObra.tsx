@@ -13,7 +13,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { GanttChart } from "@/components/planejamento/GanttChart";
 import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailSheet";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
-// AtividadeForm removed - escopo linking is done in FrenteForm
+import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 
 // SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
@@ -252,6 +252,15 @@ export default function PlanejamentoObra() {
                   }}
                   isLoading={createFrente.isPending}
                 />
+                {frentes.length > 0 && (
+                  <AtividadeForm
+                    frentes={frentes}
+                    atividades={atividades}
+                    projetoId={projetoId}
+                    onCreate={(data) => createAtividade.mutate(data)}
+                    isLoading={createAtividade.isPending}
+                  />
+                )}
               </div>
 
               {/* Frentes list with delete */}
