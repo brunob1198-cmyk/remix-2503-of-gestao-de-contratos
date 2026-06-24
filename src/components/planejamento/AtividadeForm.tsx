@@ -184,7 +184,7 @@ export function AtividadeForm({ frentes, atividades, projetoId, onCreate, isLoad
             </div>
           ) : (
             <div className="bg-muted p-4 text-sm text-center text-muted-foreground rounded-md">
-              Por favor, selecione uma frente vinculada a um site que contenha LPU carregada.
+              Selecione uma frente. Se ela não tiver site, será usado o escopo do projeto. Cadastre a LPU/Escopo se a lista estiver vazia.
             </div>
           )}
 
