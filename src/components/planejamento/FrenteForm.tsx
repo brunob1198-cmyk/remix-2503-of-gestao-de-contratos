@@ -41,7 +41,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
   const [selectedLpus, setSelectedLpus] = useState<Record<string, { producao_diaria_prevista: string }>>({});
   const [principalLpuId, setPrincipalLpuId] = useState<string | null>(null);
 
-  const { itens: escopoItens } = useEscopos(siteId || undefined, siteId ? undefined : projetoId);
+  const { itens: escopoItens } = useEscopos(siteId || undefined, projetoId);
 
   const toggleRecurso = (id: string) => {
     setSelectedRecursos((prev) =>
