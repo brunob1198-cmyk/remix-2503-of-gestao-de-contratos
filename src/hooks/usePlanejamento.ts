@@ -69,36 +69,32 @@ export function useFrentes(projetoId?: string) {
   const create = useMutation({
     mutationFn: async (payload: any) => {
       const { recursos, atividades_geradas, ...frenteData } = payload;
-      
+
       // 1. Cria a frente
-      const { data, error } = await supabase.from("frentes_obra").insert(frenteData).select().single();
+      const { data, error } = await supabase
+        .from("frentes_obra")
+        .insert(frenteData)
+        .select()
+        .single();
       if (error) throw error;
-      
+
       const novaFrenteId = data.id;
 
-      // 2. Vincula Recursos
-      if (recursos && recursos.length > 0) {
-        const recursosDb = recursos.map((rid: string) => ({
-          frente_id: novaFrenteId,
-          recurso_id: rid
-        }));
-        const { error: errRec } = await (supabase as any).from("frentes_recursos").insert(recursosDb);
-        if (errRec) console.error("Erro vinculando recursos:", errRec);
-      }
-
-      // 3. Cria Atividades a partir do Escopo
+      // 2. Cria Atividades a partir do Escopo (vinculadas à frente)
+      let atividadesCriadas: any[] = [];
       if (atividades_geradas && atividades_geradas.length > 0) {
         let ordemAtual = 1;
         const atividadesDb = atividades_geradas.map((a: any) => {
-          let expectedEnd = null;
+          let expectedEnd: string | null = null;
           if (frenteData.data_inicio) {
-            const duracao = Math.ceil((Number(a.quantidade_total) || 1) / (Number(a.producao_diaria_prevista) || 1));
-            const startStr = frenteData.data_inicio;
-            const endD = new Date(startStr);
+            const duracao = Math.ceil(
+              (Number(a.quantidade_total) || 1) /
+                (Number(a.producao_diaria_prevista) || 1)
+            );
+            const endD = new Date(frenteData.data_inicio);
             endD.setDate(endD.getDate() + duracao - 1);
             expectedEnd = endD.toISOString().split("T")[0];
           }
-
           return {
             frente_id: novaFrenteId,
             item_lpu_id: a.item_lpu_id,
@@ -108,20 +104,41 @@ export function useFrentes(projetoId?: string) {
             is_principal: a.is_principal || false,
             data_inicio: frenteData.data_inicio || null,
             data_fim_prevista: expectedEnd,
-            ordem: ordemAtual++
+            ordem: ordemAtual++,
           };
         });
-        
-        const { error: errAtv } = await supabase.from("atividades_planejamento").insert(atividadesDb);
-        if (errAtv) console.error("Erro inserindo atividades geradas:", errAtv);
 
-        // Se tiver atividade principal sem data fim na frente, atualiza a data da frente
+        const { data: insAtv, error: errAtv } = await supabase
+          .from("atividades_planejamento")
+          .insert(atividadesDb)
+          .select();
+        if (errAtv) throw errAtv;
+        atividadesCriadas = insAtv || [];
+
+        // Se a frente não tem data_fim, usa a da atividade principal
         if (!frenteData.data_fim) {
-          const princAtiv = atividadesDb.find((a: any) => a.is_principal);
-          if (princAtiv && princAtiv.data_fim_prevista) {
-            await supabase.from("frentes_obra").update({ data_fim: princAtiv.data_fim_prevista }).eq("id", novaFrenteId);
+          const princ = atividadesDb.find((a: any) => a.is_principal);
+          if (princ?.data_fim_prevista) {
+            await supabase
+              .from("frentes_obra")
+              .update({ data_fim: princ.data_fim_prevista })
+              .eq("id", novaFrenteId);
           }
         }
+      }
+
+      // 3. Vincula recursos a TODAS as atividades criadas (via atividade_recursos)
+      if (recursos && recursos.length > 0 && atividadesCriadas.length > 0) {
+        const rows = atividadesCriadas.flatMap((atv: any) =>
+          recursos.map((rid: string) => ({
+            atividade_id: atv.id,
+            recurso_id: rid,
+          }))
+        );
+        const { error: errRec } = await supabase
+          .from("atividade_recursos")
+          .insert(rows);
+        if (errRec) console.error("Erro vinculando recursos:", errRec);
       }
 
       return data;
