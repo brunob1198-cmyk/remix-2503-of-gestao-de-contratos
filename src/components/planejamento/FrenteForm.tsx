@@ -165,7 +165,7 @@ export function FrenteForm({ projetoId, sites = [], recursos = [], onCreate, isL
             </div>
           </div>
           
-          {siteId && escopoItens.length > 0 && (
+          {escopoItens.length > 0 && (
             <div className="border rounded-md p-3">
               <Label className="mb-2 block font-semibold text-primary">Vincular Escopo (LPU) à Frente</Label>
               <p className="text-xs text-muted-foreground mb-3">Selecione os itens do escopo e defina a meta de produção diária prevista. Atividades serão geradas no Gantt.</p>
