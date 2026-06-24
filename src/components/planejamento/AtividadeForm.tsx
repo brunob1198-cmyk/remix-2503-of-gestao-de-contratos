@@ -128,9 +128,12 @@ export function AtividadeForm({ frentes, atividades, projetoId, onCreate, isLoad
             </div>
           </div>
 
-          {frenteSiteId && escopoItens.length > 0 ? (
+          {escopoItens.length > 0 ? (
             <div className="border rounded-md p-3 mt-4">
-              <Label className="mb-2 block font-semibold text-primary">Selecione os itens do Escopo para adicionar</Label>
+              <Label className="mb-2 block font-semibold text-primary">
+                Selecione os itens do Escopo para adicionar
+                {!frenteSiteId && <span className="ml-2 text-xs font-normal text-muted-foreground">(usando LPU do projeto)</span>}
+              </Label>
               <ScrollArea className="h-[300px] border rounded p-2">
                 <div className="space-y-3">
                   {escopoItens.map((item) => {
