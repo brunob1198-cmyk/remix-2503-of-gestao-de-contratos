@@ -69,36 +69,32 @@ export function useFrentes(projetoId?: string) {
   const create = useMutation({
     mutationFn: async (payload: any) => {
       const { recursos, atividades_geradas, ...frenteData } = payload;
-      
+
       // 1. Cria a frente
-      const { data, error } = await supabase.from("frentes_obra").insert(frenteData).select().single();
+      const { data, error } = await supabase
+        .from("frentes_obra")
+        .insert(frenteData)
+        .select()
+        .single();
       if (error) throw error;
-      
+
       const novaFrenteId = data.id;
 
-      // 2. Vincula Recursos
-      if (recursos && recursos.length > 0) {
-        const recursosDb = recursos.map((rid: string) => ({
-          frente_id: novaFrenteId,
-          recurso_id: rid
-        }));
-        const { error: errRec } = await (supabase as any).from("frentes_recursos").insert(recursosDb);
-        if (errRec) console.error("Erro vinculando recursos:", errRec);
-      }
-
-      // 3. Cria Atividades a partir do Escopo
+      // 2. Cria Atividades a partir do Escopo (vinculadas à frente)
+      let atividadesCriadas: any[] = [];
       if (atividades_geradas && atividades_geradas.length > 0) {
         let ordemAtual = 1;
         const atividadesDb = atividades_geradas.map((a: any) => {
-          let expectedEnd = null;
+          let expectedEnd: string | null = null;
           if (frenteData.data_inicio) {
-            const duracao = Math.ceil((Number(a.quantidade_total) || 1) / (Number(a.producao_diaria_prevista) || 1));
-            const startStr = frenteData.data_inicio;
-            const endD = new Date(startStr);
+            const duracao = Math.ceil(
+              (Number(a.quantidade_total) || 1) /
+                (Number(a.producao_diaria_prevista) || 1)
+            );
+            const endD = new Date(frenteData.data_inicio);
             endD.setDate(endD.getDate() + duracao - 1);
             expectedEnd = endD.toISOString().split("T")[0];
           }
-
           return {
             frente_id: novaFrenteId,
             item_lpu_id: a.item_lpu_id,
@@ -108,20 +104,41 @@ export function useFrentes(projetoId?: string) {
             is_principal: a.is_principal || false,
             data_inicio: frenteData.data_inicio || null,
             data_fim_prevista: expectedEnd,
-            ordem: ordemAtual++
+            ordem: ordemAtual++,
           };
         });
-        
-        const { error: errAtv } = await supabase.from("atividades_planejamento").insert(atividadesDb);
-        if (errAtv) console.error("Erro inserindo atividades geradas:", errAtv);
 
-        // Se tiver atividade principal sem data fim na frente, atualiza a data da frente
+        const { data: insAtv, error: errAtv } = await supabase
+          .from("atividades_planejamento")
+          .insert(atividadesDb)
+          .select();
+        if (errAtv) throw errAtv;
+        atividadesCriadas = insAtv || [];
+
+        // Se a frente não tem data_fim, usa a da atividade principal
         if (!frenteData.data_fim) {
-          const princAtiv = atividadesDb.find((a: any) => a.is_principal);
-          if (princAtiv && princAtiv.data_fim_prevista) {
-            await supabase.from("frentes_obra").update({ data_fim: princAtiv.data_fim_prevista }).eq("id", novaFrenteId);
+          const princ = atividadesDb.find((a: any) => a.is_principal);
+          if (princ?.data_fim_prevista) {
+            await supabase
+              .from("frentes_obra")
+              .update({ data_fim: princ.data_fim_prevista })
+              .eq("id", novaFrenteId);
           }
         }
+      }
+
+      // 3. Vincula recursos a TODAS as atividades criadas (via atividade_recursos)
+      if (recursos && recursos.length > 0 && atividadesCriadas.length > 0) {
+        const rows = atividadesCriadas.flatMap((atv: any) =>
+          recursos.map((rid: string) => ({
+            atividade_id: atv.id,
+            recurso_id: rid,
+          }))
+        );
+        const { error: errRec } = await supabase
+          .from("atividade_recursos")
+          .insert(rows);
+        if (errRec) console.error("Erro vinculando recursos:", errRec);
       }
 
       return data;
@@ -171,16 +188,19 @@ export function useAtividades(projetoId?: string) {
     refetchOnReconnect: false,
     queryFn: async () => {
       if (!projetoId) return [];
-      // Get frentes for this project
+      // Get frentes for this project (com site_id para escopar produção por frente)
       const { data: frentes, error: fErr } = await supabase
         .from("frentes_obra")
-        .select("id, nome")
+        .select("id, nome, site_id")
         .eq("projeto_id", projetoId);
       if (fErr) throw fErr;
       if (!frentes?.length) return [];
 
       const frenteIds = frentes.map((f) => f.id);
       const frenteMap = Object.fromEntries(frentes.map((f) => [f.id, f.nome]));
+      const frenteSiteMap = Object.fromEntries(
+        frentes.map((f: any) => [f.id, f.site_id || null])
+      );
 
       const { data: atividades, error: aErr } = await supabase
         .from("atividades_planejamento")
@@ -189,8 +209,6 @@ export function useAtividades(projetoId?: string) {
         .order("ordem");
       if (aErr) throw aErr;
 
-      // Get dependencies AND project sites in parallel — both depend only on
-      // already-known IDs and are independent of each other.
       const atIds = (atividades ?? []).map((a) => a.id);
       const itemLpuIds = (atividades ?? [])
         .filter((a) => a.item_lpu_id)
@@ -211,20 +229,22 @@ export function useAtividades(projetoId?: string) {
       const deps = (depsResult.data ?? []) as DependenciaAtividade[];
       const siteIds = (sitesResult.data ?? []).map((s: any) => s.id);
 
-      let prodMap: Record<string, number> = {};
-      let matrizGeral: Record<string, Record<string, number>> = {};
+      // Produção agregada por (item_lpu_id + site_id)
+      // Assim, frentes vinculadas a um site só contam a produção daquele site.
+      const prodPorItemSite: Record<string, Record<string, number>> = {};
+      const matrizPorItemSite: Record<string, Record<string, Record<string, number>>> = {};
 
-      // Diarios depend on siteIds, prods depend on diarioIds — keep sequential
-      // but short-circuit when there's nothing to fetch.
       if (itemLpuIds.length && siteIds.length) {
         const { data: diariosDoSite } = await supabase
           .from("diarios_obra")
-          .select("id, data")
+          .select("id, data, site_id")
           .in("site_id", siteIds);
 
         if (diariosDoSite && diariosDoSite.length > 0) {
-          const diarioIds = diariosDoSite.map(d => d.id);
-          const dataDiarioMap = Object.fromEntries(diariosDoSite.map(d => [d.id, d.data]));
+          const diarioIds = diariosDoSite.map((d) => d.id);
+          const diarioInfo = Object.fromEntries(
+            diariosDoSite.map((d: any) => [d.id, { data: d.data, site_id: d.site_id }])
+          );
 
           const { data: prods } = await supabase
             .from("diario_producao")
@@ -232,18 +252,47 @@ export function useAtividades(projetoId?: string) {
             .in("diario_id", diarioIds)
             .in("item_lpu_id", itemLpuIds);
 
-          (prods ?? []).forEach((p) => {
+          (prods ?? []).forEach((p: any) => {
+            const info = diarioInfo[p.diario_id];
+            if (!info) return;
             const qtd = Number(p.quantidade) || 0;
-            const dataRealizada = dataDiarioMap[p.diario_id];
-            prodMap[p.item_lpu_id] = (prodMap[p.item_lpu_id] || 0) + qtd;
-            // Matriz diária:
-            if (dataRealizada) {
-              if (!matrizGeral[p.item_lpu_id]) matrizGeral[p.item_lpu_id] = {};
-              matrizGeral[p.item_lpu_id][dataRealizada] = (matrizGeral[p.item_lpu_id][dataRealizada] || 0) + qtd;
-            }
+            const item = p.item_lpu_id as string;
+            const site = info.site_id as string;
+
+            if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
+            prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
+
+            if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
+            if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
+            matrizPorItemSite[item][site][info.data] =
+              (matrizPorItemSite[item][site][info.data] || 0) + qtd;
           });
         }
       }
+
+      const sumQtdForAtividade = (itemId: string | null, frenteId: string) => {
+        if (!itemId) return { qtd: 0, matriz: {} as Record<string, number> };
+        const siteId = frenteSiteMap[frenteId];
+        const sitesMap = prodPorItemSite[itemId] || {};
+        const matrizSites = matrizPorItemSite[itemId] || {};
+
+        if (siteId) {
+          return {
+            qtd: sitesMap[siteId] || 0,
+            matriz: matrizSites[siteId] || {},
+          };
+        }
+        // Sem site vinculado: agrega todos os sites do projeto
+        let qtd = 0;
+        const matrizAgreg: Record<string, number> = {};
+        for (const s of Object.keys(sitesMap)) qtd += sitesMap[s];
+        for (const s of Object.keys(matrizSites)) {
+          for (const d of Object.keys(matrizSites[s])) {
+            matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSites[s][d];
+          }
+        }
+        return { qtd, matriz: matrizAgreg };
+      };
 
       const depsMap: Record<string, string[]> = {};
       deps.forEach((d) => {
@@ -255,7 +304,7 @@ export function useAtividades(projetoId?: string) {
 
       return (atividades ?? []).map((aBase) => {
         const a = aBase as any;
-        const qtdProd = a.item_lpu_id ? (prodMap[a.item_lpu_id] || 0) : 0;
+        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id);
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
         const prodDiaria = Number(a.producao_diaria_prevista) || 1;
@@ -278,7 +327,6 @@ export function useAtividades(projetoId?: string) {
           }
         }
 
-        const matriz = a.item_lpu_id ? matrizGeral[a.item_lpu_id] || {} : {};
         const diasComProducao = Object.keys(matriz).length;
         const mediaDiaria = diasComProducao > 0 ? qtdProd / diasComProducao : 0;
 
