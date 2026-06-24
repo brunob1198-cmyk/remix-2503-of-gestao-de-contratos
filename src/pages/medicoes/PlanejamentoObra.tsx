@@ -252,6 +252,15 @@ export default function PlanejamentoObra() {
                   }}
                   isLoading={createFrente.isPending}
                 />
+                {frentes.length > 0 && (
+                  <AtividadeForm
+                    frentes={frentes}
+                    atividades={atividades}
+                    projetoId={projetoId}
+                    onCreate={(data) => createAtividade.mutate(data)}
+                    isLoading={createAtividade.isPending}
+                  />
+                )}
               </div>
 
               {/* Frentes list with delete */}
