@@ -43,6 +43,7 @@ export function AtividadeDetailSheet({
   const [qtdTotal, setQtdTotal] = useState("");
   const [prodDiaria, setProdDiaria] = useState("");
   const [dataInicio, setDataInicio] = useState("");
+  const [dataFimOverride, setDataFimOverride] = useState("");
   const [predecessoras, setPredecessoras] = useState<string[]>([]);
   const [selectedRecursos, setSelectedRecursos] = useState<string[]>([]);
 
