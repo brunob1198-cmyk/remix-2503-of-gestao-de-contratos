@@ -137,9 +137,20 @@ export function AtividadeDetailSheet({
                   <Input type="number" value={prodDiaria} onChange={(e) => setProdDiaria(e.target.value)} />
                 </div>
               </div>
-              <div>
-                <Label>Data Início</Label>
-                <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Data Início</Label>
+                  <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Data Fim {!dataFimOverride && <span className="text-xs text-muted-foreground">(auto)</span>}</Label>
+                  <Input
+                    type="date"
+                    value={dataFimOverride}
+                    onChange={(e) => setDataFimOverride(e.target.value)}
+                    placeholder="Calc. auto"
+                  />
+                </div>
               </div>
               {duracao > 0 && (
                 <p className="text-xs text-muted-foreground">
