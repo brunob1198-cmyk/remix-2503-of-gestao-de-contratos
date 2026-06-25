@@ -91,6 +91,10 @@ export function AtividadeForm({ frentes, projetoId, onCreate, isLoading }: Props
   const handleSubmit = () => {
     if (!frenteId) return;
 
+    // Fallback: usa as datas da frente quando o usuário não informou no form
+    const inicioBase = dataInicio || (selectedFrente as any)?.data_inicio || "";
+    const fimBaseFrente = (selectedFrente as any)?.data_fim || "";
+
     const atividadesGeradas = Object.keys(selectedLpus).map((lpuId) => {
       const sel = selectedLpus[lpuId];
       const lpu = (itensLpu || []).find((i: any) => i.id === lpuId);
@@ -100,11 +104,14 @@ export function AtividadeForm({ frentes, projetoId, onCreate, isLoading }: Props
       const qtdTotal = sel.sob_demanda ? 0 : Number(sel.quantidade_total) || 0;
 
       let endDStr: string | undefined;
-      if (dataInicio && dataFimOverride) {
+      if (dataFimOverride) {
         endDStr = dataFimOverride;
-      } else if (dataInicio && qtdTotal > 0) {
+      } else if (inicioBase && qtdTotal > 0) {
         const dur = Math.max(1, Math.ceil(qtdTotal / prodDiaria));
-        endDStr = format(addDays(parseISO(dataInicio), dur - 1), "yyyy-MM-dd");
+        endDStr = format(addDays(parseISO(inicioBase), dur - 1), "yyyy-MM-dd");
+      } else if (inicioBase && fimBaseFrente) {
+        // Sob demanda: usa o período da frente para projetar a média diária no Gantt
+        endDStr = fimBaseFrente;
       }
 
       return {
@@ -114,7 +121,7 @@ export function AtividadeForm({ frentes, projetoId, onCreate, isLoading }: Props
         quantidade_total: qtdTotal,
         producao_diaria_prevista: prodDiaria,
         is_principal: lpuId === principalLpuId,
-        data_inicio: dataInicio || undefined,
+        data_inicio: inicioBase || undefined,
         data_fim_prevista: endDStr,
         predecessoras: [],
       };
