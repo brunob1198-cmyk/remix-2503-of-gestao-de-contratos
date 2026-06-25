@@ -68,7 +68,8 @@ export function AtividadeDetailSheet({
   });
 
   const duracao = qtdTotal && prodDiaria ? Math.ceil(Number(qtdTotal) / Number(prodDiaria)) : atividade.duracao_dias || 0;
-  const dataFim = dataInicio && duracao ? format(addDays(parseISO(dataInicio), duracao - 1), "yyyy-MM-dd") : "";
+  const dataFimCalc = dataInicio && duracao ? format(addDays(parseISO(dataInicio), duracao - 1), "yyyy-MM-dd") : "";
+  const dataFim = dataFimOverride || dataFimCalc;
 
   const handleSave = () => {
     if (!onUpdate) return;
