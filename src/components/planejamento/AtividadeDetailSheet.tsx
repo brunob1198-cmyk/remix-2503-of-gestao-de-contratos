@@ -43,6 +43,7 @@ export function AtividadeDetailSheet({
   const [qtdTotal, setQtdTotal] = useState("");
   const [prodDiaria, setProdDiaria] = useState("");
   const [dataInicio, setDataInicio] = useState("");
+  const [dataFimOverride, setDataFimOverride] = useState("");
   const [predecessoras, setPredecessoras] = useState<string[]>([]);
   const [selectedRecursos, setSelectedRecursos] = useState<string[]>([]);
 
@@ -51,6 +52,7 @@ export function AtividadeDetailSheet({
       setQtdTotal(String(atividade.quantidade_total));
       setProdDiaria(String(atividade.producao_diaria_prevista));
       setDataInicio(atividade.data_inicio || "");
+      setDataFimOverride(atividade.data_fim_prevista || "");
       setPredecessoras(atividade.predecessoras || []);
       setSelectedRecursos(atividadeRecursoIds);
       setEditing(false);
@@ -66,7 +68,8 @@ export function AtividadeDetailSheet({
   });
 
   const duracao = qtdTotal && prodDiaria ? Math.ceil(Number(qtdTotal) / Number(prodDiaria)) : atividade.duracao_dias || 0;
-  const dataFim = dataInicio && duracao ? format(addDays(parseISO(dataInicio), duracao - 1), "yyyy-MM-dd") : "";
+  const dataFimCalc = dataInicio && duracao ? format(addDays(parseISO(dataInicio), duracao - 1), "yyyy-MM-dd") : "";
+  const dataFim = dataFimOverride || dataFimCalc;
 
   const handleSave = () => {
     if (!onUpdate) return;
@@ -134,9 +137,20 @@ export function AtividadeDetailSheet({
                   <Input type="number" value={prodDiaria} onChange={(e) => setProdDiaria(e.target.value)} />
                 </div>
               </div>
-              <div>
-                <Label>Data Início</Label>
-                <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Data Início</Label>
+                  <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Data Fim {!dataFimOverride && <span className="text-xs text-muted-foreground">(auto)</span>}</Label>
+                  <Input
+                    type="date"
+                    value={dataFimOverride}
+                    onChange={(e) => setDataFimOverride(e.target.value)}
+                    placeholder="Calc. auto"
+                  />
+                </div>
               </div>
               {duracao > 0 && (
                 <p className="text-xs text-muted-foreground">
