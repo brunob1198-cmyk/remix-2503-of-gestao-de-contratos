@@ -52,6 +52,7 @@ export function AtividadeDetailSheet({
       setQtdTotal(String(atividade.quantidade_total));
       setProdDiaria(String(atividade.producao_diaria_prevista));
       setDataInicio(atividade.data_inicio || "");
+      setDataFimOverride(atividade.data_fim_prevista || "");
       setPredecessoras(atividade.predecessoras || []);
       setSelectedRecursos(atividadeRecursoIds);
       setEditing(false);
