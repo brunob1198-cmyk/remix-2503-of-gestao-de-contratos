@@ -509,8 +509,11 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 </TableCell>
               );
             }
-            return <TableCell key={c.key} />;
-          })}
+            return (
+              <TableCell key={c.key} className={c.key === "observacoes" ? "max-w-md whitespace-pre-wrap text-xs text-muted-foreground" : ""}>
+                {!c.numeric ? joinUnique(node.rows, c.key) : ""}
+              </TableCell>
+            );
         </TableRow>
       );
       if (isOpen) {
