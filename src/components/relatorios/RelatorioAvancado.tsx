@@ -444,6 +444,14 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
         }
       });
       aoa.push(totalRow);
+    } else if (pivotRows) {
+      pivotRows.forEach(r => aoa.push(detailRow(r)));
+      const grand = aggregateRows(filters.processedItems);
+      const totalRow: (string | number)[] = activeColumns.map(c =>
+        c.numeric ? Number(grand[c.key] ?? 0) : ""
+      );
+      if (totalRow.length) totalRow[0] = "TOTAL GERAL";
+      aoa.push(totalRow);
     } else {
       filters.processedItems.forEach(r => aoa.push(detailRow(r)));
     }
