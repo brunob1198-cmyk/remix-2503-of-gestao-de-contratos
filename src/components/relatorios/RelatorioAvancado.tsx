@@ -337,7 +337,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       ALL_COLUMNS.forEach(c => {
         if (rowDims.includes(c.key)) return;
         if (c.numeric) base[c.key] = agg[c.key] ?? 0;
-        else base[c.key] = "";
+        else base[c.key] = joinUnique(grp, c.key);
       });
       base.site_id = grp[0].site_id;
       base.item_id = grp[0].item_id;
