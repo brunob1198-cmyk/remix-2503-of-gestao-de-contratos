@@ -467,6 +467,45 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
+                  <Sigma className="h-4 w-4 mr-2" />
+                  Valores
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b flex items-center justify-between">
+                  <span className="text-sm font-medium">Agregação por coluna</span>
+                  <button onClick={() => setAggregations(DEFAULT_AGG)} className="text-xs text-primary hover:underline">Padrão</button>
+                </div>
+                <ScrollArea className="h-72">
+                  <div className="p-2 space-y-1">
+                    {NUMERIC_KEYS.map(k => {
+                      const c = ALL_COLUMNS.find(x => x.key === k)!;
+                      const cur = (aggregations[k] || DEFAULT_AGG[k] || "sum") as AggType;
+                      return (
+                        <div key={k} className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                          <span className="flex-1 truncate">{c.label}</span>
+                          <Select value={cur} onValueChange={(v) => setAggregations({ ...aggregations, [k]: v as AggType })}>
+                            <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sum">{AGG_LABEL.sum}</SelectItem>
+                              <SelectItem value="avg">{AGG_LABEL.avg}</SelectItem>
+                              <SelectItem value="count">{AGG_LABEL.count}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-2 border-t text-xs text-muted-foreground">
+                  Aplicado nas linhas agrupadas. "Contagem" considera valores &gt; 0.
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
                   <Settings2 className="h-4 w-4 mr-2" />
                   Colunas ({visibleColumns.length})
                 </Button>
