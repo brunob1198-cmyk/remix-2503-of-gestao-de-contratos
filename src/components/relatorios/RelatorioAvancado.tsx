@@ -562,7 +562,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                     {activeColumns.map(c => (
                       <TableHead key={c.key} className={c.numeric ? "text-right" : ""}>
                         <ColumnHeader
-                          label={c.label}
+                          label={c.numeric && groupBy.length > 0 ? `${c.label} (${AGG_LABEL[(aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType]})` : c.label}
                           sortDir={filters.sortColumn === c.key ? filters.sortDir : null}
                           onSort={() => filters.handleSort(c.key)}
                           searchText={filters.searchTexts[c.key] || ""}
