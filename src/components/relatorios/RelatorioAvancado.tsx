@@ -242,11 +242,13 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const toggleGroupBy = (key: ColKey) =>
     setGroupBy(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
-  const formatCell = (col: ColKey, value: any) => {
+  const formatCell = (col: ColKey, value: any, agg?: AggType) => {
     const meta = ALL_COLUMNS.find(c => c.key === col);
+    if (agg === "count") return new Intl.NumberFormat("pt-BR").format(Number(value) || 0);
     if (meta?.currency) return fmtCurrency(value);
     if (meta?.decimal) return fmtDecimal(value);
     if (col === "data") return fmtDate(value);
+    if (meta?.numeric) return fmtDecimal(value);
     return value ?? "";
   };
 
