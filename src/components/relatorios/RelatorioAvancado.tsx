@@ -378,7 +378,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
             if (aggVal !== undefined) {
               return (
                 <TableCell key={c.key} className={c.numeric ? "text-right tabular-nums" : ""}>
-                  {formatCell(c.key, aggVal)}
+                  {formatCell(c.key, aggVal, (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType)}
                 </TableCell>
               );
             }
