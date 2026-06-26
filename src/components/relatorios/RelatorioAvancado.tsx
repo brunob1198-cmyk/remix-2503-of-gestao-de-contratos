@@ -729,14 +729,16 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 <TableBody>
                   {groupTree
                     ? renderGroupRows(groupTree)
-                    : filters.paginatedItems.map((r, i) => (
+                    : (pivotRows ?? filters.paginatedItems).map((r, i) => (
                         <TableRow key={i}>
                           {activeColumns.map(c => (
                             <TableCell
                               key={c.key}
                               className={`${c.numeric ? "text-right tabular-nums" : ""} ${c.key === "observacoes" ? "max-w-md whitespace-pre-wrap text-xs text-muted-foreground" : ""}`}
                             >
-                              {formatCell(c.key, r[c.key as keyof Row])}
+                              {c.numeric && pivotRows
+                                ? formatCell(c.key, r[c.key as keyof Row], (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType)
+                                : formatCell(c.key, r[c.key as keyof Row])}
                             </TableCell>
                           ))}
                         </TableRow>
