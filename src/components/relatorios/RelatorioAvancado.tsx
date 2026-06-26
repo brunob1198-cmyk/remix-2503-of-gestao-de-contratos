@@ -124,6 +124,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
   const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
+  const [aggregations, setAggregations] = usePersistedState<Record<string, AggType>>("relatorio_avancado_aggs", DEFAULT_AGG);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: rows = [], isLoading } = useQuery({
