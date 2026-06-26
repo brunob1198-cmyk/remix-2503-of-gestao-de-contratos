@@ -77,6 +77,15 @@ const DEFAULT_VISIBLE: ColKey[] = [
 
 const GROUPABLE: ColKey[] = ["projeto", "site_codigo", "site_nome", "municipio", "uf", "mes", "item_codigo", "item_descricao", "status_ativo"];
 
+type AggType = "sum" | "avg" | "count";
+const NUMERIC_KEYS: ColKey[] = ["quantidade", "preco_unitario", "valor_total", "qtd_medida", "valor_medido", "qtd_faturada", "valor_faturado"];
+const DEDUP_KEYS = new Set<ColKey>(["qtd_medida", "valor_medido", "qtd_faturada", "valor_faturado"]);
+const DEFAULT_AGG: Record<string, AggType> = {
+  quantidade: "sum", valor_total: "sum", qtd_medida: "sum", valor_medido: "sum",
+  qtd_faturada: "sum", valor_faturado: "sum", preco_unitario: "avg",
+};
+const AGG_LABEL: Record<AggType, string> = { sum: "Soma", avg: "Média", count: "Contagem" };
+
 interface Row {
   projeto: string;
   site_id: string;
