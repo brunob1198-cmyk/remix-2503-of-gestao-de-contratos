@@ -392,7 +392,7 @@ export default function RelatoriosPage() {
               <LayoutGrid className="h-4 w-4 mr-2" />
               Quadro Geral
             </TabsTrigger>
-            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Cruzados</TabsTrigger>
+            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Avançados</TabsTrigger>
             <TabsTrigger value="producao_mensal" className="whitespace-nowrap">Produção Mensal</TabsTrigger>
             <TabsTrigger value="forecast" className="whitespace-nowrap">
               <BarChart3 className="h-4 w-4 mr-2" />
