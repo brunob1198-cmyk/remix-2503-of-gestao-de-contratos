@@ -379,7 +379,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       });
     }
     activeColumns.forEach(c => {
-      const isAgg = c.numeric && groupBy.length > 0;
+      const isAgg = c.numeric && (groupBy.length > 0 || rowDims.length > 0);
       const aggT = (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType;
       header.push(isAgg ? `${c.label} (${AGG_LABEL[aggT]})` : c.label);
     });
