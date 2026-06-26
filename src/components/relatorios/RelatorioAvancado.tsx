@@ -514,6 +514,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 {!c.numeric ? joinUnique(node.rows, c.key) : ""}
               </TableCell>
             );
+          })}
         </TableRow>
       );
       if (isOpen) {
