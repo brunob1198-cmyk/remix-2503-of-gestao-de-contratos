@@ -123,9 +123,12 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const { empresaId } = useAuth();
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
+  const [rowDims, setRowDims] = usePersistedState<ColKey[]>("relatorio_avancado_rowdims", []);
   const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
   const [aggregations, setAggregations] = usePersistedState<Record<string, AggType>>("relatorio_avancado_aggs", DEFAULT_AGG);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleRowDim = (key: ColKey) =>
+    setRowDims(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["relatorio_avancado_v2", empresaId, projetoId, selectedSiteIds, dataInicio, dataFim],
