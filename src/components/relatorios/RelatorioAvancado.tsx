@@ -113,6 +113,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const { empresaId } = useAuth();
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
+  const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: rows = [], isLoading } = useQuery({
