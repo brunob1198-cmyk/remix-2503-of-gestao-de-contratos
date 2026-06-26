@@ -265,6 +265,15 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
     aggregates: Partial<Record<ColKey, number>>;
   }
 
+  const joinUnique = (groupRows: Row[], col: ColKey): string => {
+    const set = new Set<string>();
+    groupRows.forEach(r => {
+      const v = String(r[col as keyof Row] ?? "").trim();
+      if (v) set.add(v);
+    });
+    return Array.from(set).join(" | ");
+  };
+
   const aggregateRows = (groupRows: Row[]): Partial<Record<ColKey, number>> => {
     const out: Partial<Record<ColKey, number>> = {};
     // dedup rows for medição/faturamento keys (avoid double count on per-day duplication)
@@ -337,7 +346,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       ALL_COLUMNS.forEach(c => {
         if (rowDims.includes(c.key)) return;
         if (c.numeric) base[c.key] = agg[c.key] ?? 0;
-        else base[c.key] = "";
+        else base[c.key] = joinUnique(grp, c.key);
       });
       base.site_id = grp[0].site_id;
       base.item_id = grp[0].item_id;
@@ -412,7 +421,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
         } else if (groupBy[node.depth] === c.key) {
           row.push(node.label);
         } else {
-          row.push("");
+          row.push(joinUnique(node.rows, c.key));
         }
       });
       return row;
@@ -500,7 +509,11 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 </TableCell>
               );
             }
-            return <TableCell key={c.key} />;
+            return (
+              <TableCell key={c.key} className={c.key === "observacoes" ? "max-w-md whitespace-pre-wrap text-xs text-muted-foreground" : ""}>
+                {!c.numeric ? joinUnique(node.rows, c.key) : ""}
+              </TableCell>
+            );
           })}
         </TableRow>
       );
