@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { Settings2, FileDown, Rows3, ChevronRight, ChevronDown, Sigma } from "lucide-react";
+import { Settings2, FileDown, Rows3, ChevronRight, ChevronDown, Sigma, List } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as XLSX from "xlsx";
 
@@ -123,9 +123,12 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const { empresaId } = useAuth();
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
+  const [rowDims, setRowDims] = usePersistedState<ColKey[]>("relatorio_avancado_rowdims", []);
   const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
   const [aggregations, setAggregations] = usePersistedState<Record<string, AggType>>("relatorio_avancado_aggs", DEFAULT_AGG);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleRowDim = (key: ColKey) =>
+    setRowDims(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["relatorio_avancado_v2", empresaId, projetoId, selectedSiteIds, dataInicio, dataFim],
@@ -315,6 +318,38 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
     return build(filters.processedItems, 0, "");
   }, [filters.processedItems, groupBy, aggregations]);
 
+  // Pivot rows: dedupe by chosen dimensions and aggregate numerics (used when not grouping)
+  const pivotRows = useMemo<Row[] | null>(() => {
+    if (groupBy.length > 0 || rowDims.length === 0) return null;
+    const map = new Map<string, Row[]>();
+    filters.processedItems.forEach(r => {
+      const k = rowDims.map(d => String(r[d as keyof Row] ?? "")).join("||");
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
+    });
+    const out: Row[] = [];
+    map.forEach((grp, _key) => {
+      const agg = aggregateRows(grp);
+      const base: any = {};
+      // keep dimension values
+      rowDims.forEach(d => { base[d] = grp[0][d as keyof Row]; });
+      // blank other non-numeric columns
+      ALL_COLUMNS.forEach(c => {
+        if (rowDims.includes(c.key)) return;
+        if (c.numeric) base[c.key] = agg[c.key] ?? 0;
+        else base[c.key] = "";
+      });
+      base.site_id = grp[0].site_id;
+      base.item_id = grp[0].item_id;
+      out.push(base as Row);
+    });
+    return out.sort((a, b) =>
+      rowDims.map(d => String(a[d as keyof Row] ?? "").localeCompare(String(b[d as keyof Row] ?? ""), "pt-BR", { numeric: true }))
+        .find(v => v !== 0) ?? 0
+    );
+  }, [filters.processedItems, rowDims, groupBy, aggregations]);
+
+
   const toggleExpand = (k: string) =>
     setExpanded(prev => {
       const n = new Set(prev);
@@ -344,7 +379,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       });
     }
     activeColumns.forEach(c => {
-      const isAgg = c.numeric && groupBy.length > 0;
+      const isAgg = c.numeric && (groupBy.length > 0 || rowDims.length > 0);
       const aggT = (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType;
       header.push(isAgg ? `${c.label} (${AGG_LABEL[aggT]})` : c.label);
     });
@@ -408,6 +443,14 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
           totalRow.push("");
         }
       });
+      aoa.push(totalRow);
+    } else if (pivotRows) {
+      pivotRows.forEach(r => aoa.push(detailRow(r)));
+      const grand = aggregateRows(filters.processedItems);
+      const totalRow: (string | number)[] = activeColumns.map(c =>
+        c.numeric ? Number(grand[c.key] ?? 0) : ""
+      );
+      if (totalRow.length) totalRow[0] = "TOTAL GERAL";
       aoa.push(totalRow);
     } else {
       filters.processedItems.forEach(r => aoa.push(detailRow(r)));
@@ -497,6 +540,37 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" disabled={groupBy.length > 0}>
+                  <List className="h-4 w-4 mr-2" />
+                  Linhas ({rowDims.length})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="end">
+                <div className="p-3 border-b flex items-center justify-between">
+                  <span className="text-sm font-medium">Dimensões de linha</span>
+                  <button onClick={() => setRowDims([])} className="text-xs text-primary hover:underline">Limpar</button>
+                </div>
+                <ScrollArea className="h-64">
+                  <div className="p-2">
+                    {GROUPABLE.map(k => {
+                      const c = ALL_COLUMNS.find(x => x.key === k)!;
+                      return (
+                        <label key={k} className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted rounded cursor-pointer text-sm">
+                          <Checkbox checked={rowDims.includes(k)} onCheckedChange={() => toggleRowDim(k)} />
+                          <span className="flex-1">{c.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-2 border-t text-xs text-muted-foreground">
+                  Define as dimensões únicas por linha. Numéricos são agregados conforme "Valores".
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -637,7 +711,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                     {activeColumns.map(c => (
                       <TableHead key={c.key} className={c.numeric ? "text-right" : ""}>
                         <ColumnHeader
-                          label={c.numeric && groupBy.length > 0 ? `${c.label} (${AGG_LABEL[(aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType]})` : c.label}
+                          label={c.numeric && (groupBy.length > 0 || rowDims.length > 0) ? `${c.label} (${AGG_LABEL[(aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType]})` : c.label}
                           sortDir={filters.sortColumn === c.key ? filters.sortDir : null}
                           onSort={() => filters.handleSort(c.key)}
                           searchText={filters.searchTexts[c.key] || ""}
@@ -655,14 +729,16 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 <TableBody>
                   {groupTree
                     ? renderGroupRows(groupTree)
-                    : filters.paginatedItems.map((r, i) => (
+                    : (pivotRows ?? filters.paginatedItems).map((r, i) => (
                         <TableRow key={i}>
                           {activeColumns.map(c => (
                             <TableCell
                               key={c.key}
                               className={`${c.numeric ? "text-right tabular-nums" : ""} ${c.key === "observacoes" ? "max-w-md whitespace-pre-wrap text-xs text-muted-foreground" : ""}`}
                             >
-                              {formatCell(c.key, r[c.key as keyof Row])}
+                              {c.numeric && pivotRows
+                                ? formatCell(c.key, r[c.key as keyof Row], (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType)
+                                : formatCell(c.key, r[c.key as keyof Row])}
                             </TableCell>
                           ))}
                         </TableRow>
@@ -670,7 +746,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 </TableBody>
               </Table>
             </div>
-            {!groupTree && (
+            {!groupTree && !pivotRows && (
               <TablePagination
                 currentPage={filters.currentPage}
                 totalPages={filters.totalPages}
