@@ -313,7 +313,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
         });
     };
     return build(filters.processedItems, 0, "");
-  }, [filters.processedItems, groupBy]);
+  }, [filters.processedItems, groupBy, aggregations]);
 
   const toggleExpand = (k: string) =>
     setExpanded(prev => {
