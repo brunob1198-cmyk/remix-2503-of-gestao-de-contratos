@@ -374,7 +374,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       if (isOpen) {
         if (hasChildren) {
           out.push(...renderGroupRows(node.children!));
-        } else {
+        } else if (showDetails) {
           node.rows.forEach((r, i) => {
             out.push(
               <TableRow key={`${node.key}-r${i}`}>
