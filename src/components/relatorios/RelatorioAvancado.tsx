@@ -13,7 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { Settings2, FileDown, Rows3, ChevronRight, ChevronDown } from "lucide-react";
+import { Settings2, FileDown, Rows3, ChevronRight, ChevronDown, Sigma } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as XLSX from "xlsx";
 
 interface Props {
@@ -76,6 +77,15 @@ const DEFAULT_VISIBLE: ColKey[] = [
 
 const GROUPABLE: ColKey[] = ["projeto", "site_codigo", "site_nome", "municipio", "uf", "mes", "item_codigo", "item_descricao", "status_ativo"];
 
+type AggType = "sum" | "avg" | "count";
+const NUMERIC_KEYS: ColKey[] = ["quantidade", "preco_unitario", "valor_total", "qtd_medida", "valor_medido", "qtd_faturada", "valor_faturado"];
+const DEDUP_KEYS = new Set<ColKey>(["qtd_medida", "valor_medido", "qtd_faturada", "valor_faturado"]);
+const DEFAULT_AGG: Record<string, AggType> = {
+  quantidade: "sum", valor_total: "sum", qtd_medida: "sum", valor_medido: "sum",
+  qtd_faturada: "sum", valor_faturado: "sum", preco_unitario: "avg",
+};
+const AGG_LABEL: Record<AggType, string> = { sum: "Soma", avg: "Média", count: "Contagem" };
+
 interface Row {
   projeto: string;
   site_id: string;
@@ -114,6 +124,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
   const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
+  const [aggregations, setAggregations] = usePersistedState<Record<string, AggType>>("relatorio_avancado_aggs", DEFAULT_AGG);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: rows = [], isLoading } = useQuery({
@@ -231,11 +242,13 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const toggleGroupBy = (key: ColKey) =>
     setGroupBy(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
 
-  const formatCell = (col: ColKey, value: any) => {
+  const formatCell = (col: ColKey, value: any, agg?: AggType) => {
     const meta = ALL_COLUMNS.find(c => c.key === col);
+    if (agg === "count") return new Intl.NumberFormat("pt-BR").format(Number(value) || 0);
     if (meta?.currency) return fmtCurrency(value);
     if (meta?.decimal) return fmtDecimal(value);
     if (col === "data") return fmtDate(value);
+    if (meta?.numeric) return fmtDecimal(value);
     return value ?? "";
   };
 
@@ -250,27 +263,29 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   }
 
   const aggregateRows = (groupRows: Row[]): Partial<Record<ColKey, number>> => {
-    const agg: Partial<Record<ColKey, number>> = {
-      quantidade: 0, valor_total: 0,
-    };
-    // Sum production fields
-    groupRows.forEach(r => {
-      agg.quantidade = (agg.quantidade || 0) + r.quantidade;
-      agg.valor_total = (agg.valor_total || 0) + r.valor_total;
-    });
-    // Medição/Faturamento: sum per unique (site_id, item_id) to avoid double counting
+    const out: Partial<Record<ColKey, number>> = {};
+    // dedup rows for medição/faturamento keys (avoid double count on per-day duplication)
     const seen = new Set<string>();
-    let qm = 0, vm = 0, qf = 0, vf = 0;
+    const dedup: Row[] = [];
     groupRows.forEach(r => {
       const k = `${r.site_id}|${r.item_id}`;
       if (seen.has(k)) return;
       seen.add(k);
-      qm += r.qtd_medida; vm += r.valor_medido;
-      qf += r.qtd_faturada; vf += r.valor_faturado;
+      dedup.push(r);
     });
-    agg.qtd_medida = qm; agg.valor_medido = vm;
-    agg.qtd_faturada = qf; agg.valor_faturado = vf;
-    return agg;
+    NUMERIC_KEYS.forEach(col => {
+      const type: AggType = aggregations[col] || DEFAULT_AGG[col] || "sum";
+      const src = DEDUP_KEYS.has(col) ? dedup : groupRows;
+      if (type === "count") {
+        out[col] = src.filter(r => Number(r[col as keyof Row]) > 0).length;
+      } else if (type === "avg") {
+        const vals = src.map(r => Number(r[col as keyof Row]) || 0).filter(v => v !== 0);
+        out[col] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      } else {
+        out[col] = src.reduce((a, r) => a + (Number(r[col as keyof Row]) || 0), 0);
+      }
+    });
+    return out;
   };
 
   const groupTree = useMemo<GroupNode[] | null>(() => {
@@ -298,7 +313,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
         });
     };
     return build(filters.processedItems, 0, "");
-  }, [filters.processedItems, groupBy]);
+  }, [filters.processedItems, groupBy, aggregations]);
 
   const toggleExpand = (k: string) =>
     setExpanded(prev => {
@@ -363,7 +378,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
             if (aggVal !== undefined) {
               return (
                 <TableCell key={c.key} className={c.numeric ? "text-right tabular-nums" : ""}>
-                  {formatCell(c.key, aggVal)}
+                  {formatCell(c.key, aggVal, (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType)}
                 </TableCell>
               );
             }
@@ -452,6 +467,45 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
+                  <Sigma className="h-4 w-4 mr-2" />
+                  Valores
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b flex items-center justify-between">
+                  <span className="text-sm font-medium">Agregação por coluna</span>
+                  <button onClick={() => setAggregations(DEFAULT_AGG)} className="text-xs text-primary hover:underline">Padrão</button>
+                </div>
+                <ScrollArea className="h-72">
+                  <div className="p-2 space-y-1">
+                    {NUMERIC_KEYS.map(k => {
+                      const c = ALL_COLUMNS.find(x => x.key === k)!;
+                      const cur = (aggregations[k] || DEFAULT_AGG[k] || "sum") as AggType;
+                      return (
+                        <div key={k} className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                          <span className="flex-1 truncate">{c.label}</span>
+                          <Select value={cur} onValueChange={(v) => setAggregations({ ...aggregations, [k]: v as AggType })}>
+                            <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sum">{AGG_LABEL.sum}</SelectItem>
+                              <SelectItem value="avg">{AGG_LABEL.avg}</SelectItem>
+                              <SelectItem value="count">{AGG_LABEL.count}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-2 border-t text-xs text-muted-foreground">
+                  Aplicado nas linhas agrupadas. "Contagem" considera valores &gt; 0.
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
                   <Settings2 className="h-4 w-4 mr-2" />
                   Colunas ({visibleColumns.length})
                 </Button>
@@ -508,7 +562,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                     {activeColumns.map(c => (
                       <TableHead key={c.key} className={c.numeric ? "text-right" : ""}>
                         <ColumnHeader
-                          label={c.label}
+                          label={c.numeric && groupBy.length > 0 ? `${c.label} (${AGG_LABEL[(aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType]})` : c.label}
                           sortDir={filters.sortColumn === c.key ? filters.sortDir : null}
                           onSort={() => filters.handleSort(c.key)}
                           searchText={filters.searchTexts[c.key] || ""}
