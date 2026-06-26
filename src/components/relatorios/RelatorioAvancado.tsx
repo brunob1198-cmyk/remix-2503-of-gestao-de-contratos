@@ -75,7 +75,7 @@ const DEFAULT_VISIBLE: ColKey[] = [
   "valor_medido", "valor_faturado",
 ];
 
-const GROUPABLE: ColKey[] = ["projeto", "site_codigo", "site_nome", "municipio", "uf", "mes", "item_codigo", "item_descricao", "status_ativo"];
+const GROUPABLE: ColKey[] = ["projeto", "site_codigo", "site_nome", "municipio", "uf", "data", "mes", "item_codigo", "item_descricao", "status_ativo", "clima", "unidade"];
 
 type AggType = "sum" | "avg" | "count";
 const NUMERIC_KEYS: ColKey[] = ["quantidade", "preco_unitario", "valor_total", "qtd_medida", "valor_medido", "qtd_faturada", "valor_faturado"];
