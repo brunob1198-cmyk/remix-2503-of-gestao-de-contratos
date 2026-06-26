@@ -263,27 +263,29 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   }
 
   const aggregateRows = (groupRows: Row[]): Partial<Record<ColKey, number>> => {
-    const agg: Partial<Record<ColKey, number>> = {
-      quantidade: 0, valor_total: 0,
-    };
-    // Sum production fields
-    groupRows.forEach(r => {
-      agg.quantidade = (agg.quantidade || 0) + r.quantidade;
-      agg.valor_total = (agg.valor_total || 0) + r.valor_total;
-    });
-    // Medição/Faturamento: sum per unique (site_id, item_id) to avoid double counting
+    const out: Partial<Record<ColKey, number>> = {};
+    // dedup rows for medição/faturamento keys (avoid double count on per-day duplication)
     const seen = new Set<string>();
-    let qm = 0, vm = 0, qf = 0, vf = 0;
+    const dedup: Row[] = [];
     groupRows.forEach(r => {
       const k = `${r.site_id}|${r.item_id}`;
       if (seen.has(k)) return;
       seen.add(k);
-      qm += r.qtd_medida; vm += r.valor_medido;
-      qf += r.qtd_faturada; vf += r.valor_faturado;
+      dedup.push(r);
     });
-    agg.qtd_medida = qm; agg.valor_medido = vm;
-    agg.qtd_faturada = qf; agg.valor_faturado = vf;
-    return agg;
+    NUMERIC_KEYS.forEach(col => {
+      const type: AggType = aggregations[col] || DEFAULT_AGG[col] || "sum";
+      const src = DEDUP_KEYS.has(col) ? dedup : groupRows;
+      if (type === "count") {
+        out[col] = src.filter(r => Number(r[col as keyof Row]) > 0).length;
+      } else if (type === "avg") {
+        const vals = src.map(r => Number(r[col as keyof Row]) || 0).filter(v => v !== 0);
+        out[col] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      } else {
+        out[col] = src.reduce((a, r) => a + (Number(r[col as keyof Row]) || 0), 0);
+      }
+    });
+    return out;
   };
 
   const groupTree = useMemo<GroupNode[] | null>(() => {
