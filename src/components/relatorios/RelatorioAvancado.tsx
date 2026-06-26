@@ -421,7 +421,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
         } else if (groupBy[node.depth] === c.key) {
           row.push(node.label);
         } else {
-          row.push("");
+          row.push(joinUnique(node.rows, c.key));
         }
       });
       return row;
