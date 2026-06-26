@@ -332,13 +332,88 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const collapseAll = () => setExpanded(new Set());
 
   const handleExport = () => {
-    const data = filters.processedItems.map(r => {
-      const obj: Record<string, any> = {};
-      activeColumns.forEach(c => { obj[c.label] = r[c.key as keyof Row]; });
-      return obj;
-    });
-    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
+    const aoa: any[][] = [];
+
+    // Header row: optional group level columns + active columns (with agg label when grouped)
+    const header: string[] = [];
+    if (groupBy.length > 0) {
+      groupBy.forEach((g, i) => {
+        const meta = ALL_COLUMNS.find(c => c.key === g);
+        header.push(`Nível ${i + 1} - ${meta?.label ?? g}`);
+      });
+    }
+    activeColumns.forEach(c => {
+      const isAgg = c.numeric && groupBy.length > 0;
+      const aggT = (aggregations[c.key] || DEFAULT_AGG[c.key] || "sum") as AggType;
+      header.push(isAgg ? `${c.label} (${AGG_LABEL[aggT]})` : c.label);
+    });
+    aoa.push(header);
+
+    const padLeft = (vals: (string | number)[]): (string | number)[] => {
+      const pad: (string | number)[] = new Array(groupBy.length).fill("");
+      return [...pad, ...vals];
+    };
+
+    const detailRow = (r: Row): (string | number)[] => {
+      const vals = activeColumns.map(c => {
+        const v: any = r[c.key as keyof Row];
+        if (c.numeric) return Number(v) || 0;
+        if (c.key === "data") return fmtDate(v);
+        return (v as any) ?? "";
+      });
+      return padLeft(vals);
+    };
+
+    const subtotalRow = (node: GroupNode): (string | number)[] => {
+      const row: (string | number)[] = [];
+      for (let i = 0; i < groupBy.length; i++) {
+        row.push(i < node.depth ? "" : i === node.depth ? `${node.label}` : "");
+      }
+      activeColumns.forEach(c => {
+        if (c.numeric) {
+          const v = node.aggregates[c.key];
+          row.push(v != null ? Number(v) : "");
+        } else if (groupBy[node.depth] === c.key) {
+          row.push(node.label);
+        } else {
+          row.push("");
+        }
+      });
+      return row;
+    };
+
+    const walk = (nodes: GroupNode[]) => {
+      nodes.forEach(node => {
+        aoa.push(subtotalRow(node));
+        if (node.children?.length) {
+          walk(node.children);
+        } else if (showDetails) {
+          node.rows.forEach(r => aoa.push(detailRow(r)));
+        }
+      });
+    };
+
+    if (groupTree && groupBy.length > 0) {
+      walk(groupTree);
+      // Grand total
+      const grand = aggregateRows(filters.processedItems);
+      const totalRow: (string | number)[] = [];
+      for (let i = 0; i < groupBy.length; i++) totalRow.push(i === 0 ? "TOTAL GERAL" : "");
+      activeColumns.forEach(c => {
+        if (c.numeric) {
+          const v = grand[c.key];
+          totalRow.push(v != null ? Number(v) : "");
+        } else {
+          totalRow.push("");
+        }
+      });
+      aoa.push(totalRow);
+    } else {
+      filters.processedItems.forEach(r => aoa.push(detailRow(r)));
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     XLSX.utils.book_append_sheet(wb, ws, "Relatório Avançado");
     XLSX.writeFile(wb, `relatorio_avancado_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
