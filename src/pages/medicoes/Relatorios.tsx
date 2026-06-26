@@ -20,6 +20,7 @@ import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, Lay
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import ProducaoMensal from "@/components/relatorios/ProducaoMensal";
 import ForecastTab from "@/components/relatorios/ForecastTab";
+import RelatorioAvancado from "@/components/relatorios/RelatorioAvancado";
 import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoesExport";
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -391,7 +392,7 @@ export default function RelatoriosPage() {
               <LayoutGrid className="h-4 w-4 mr-2" />
               Quadro Geral
             </TabsTrigger>
-            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Cruzados</TabsTrigger>
+            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Avançados</TabsTrigger>
             <TabsTrigger value="producao_mensal" className="whitespace-nowrap">Produção Mensal</TabsTrigger>
             <TabsTrigger value="forecast" className="whitespace-nowrap">
               <BarChart3 className="h-4 w-4 mr-2" />
@@ -651,6 +652,13 @@ export default function RelatoriosPage() {
               )}
             </CardContent>
           </Card>
+
+          <RelatorioAvancado
+            projetoId={projetoId}
+            selectedSiteIds={selectedSiteIds}
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+          />
         </TabsContent>
 
         <TabsContent value="producao_mensal" className="space-y-4">
