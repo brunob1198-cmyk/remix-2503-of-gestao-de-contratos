@@ -318,6 +318,38 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
     return build(filters.processedItems, 0, "");
   }, [filters.processedItems, groupBy, aggregations]);
 
+  // Pivot rows: dedupe by chosen dimensions and aggregate numerics (used when not grouping)
+  const pivotRows = useMemo<Row[] | null>(() => {
+    if (groupBy.length > 0 || rowDims.length === 0) return null;
+    const map = new Map<string, Row[]>();
+    filters.processedItems.forEach(r => {
+      const k = rowDims.map(d => String(r[d as keyof Row] ?? "")).join("||");
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
+    });
+    const out: Row[] = [];
+    map.forEach((grp, _key) => {
+      const agg = aggregateRows(grp);
+      const base: any = {};
+      // keep dimension values
+      rowDims.forEach(d => { base[d] = grp[0][d as keyof Row]; });
+      // blank other non-numeric columns
+      ALL_COLUMNS.forEach(c => {
+        if (rowDims.includes(c.key)) return;
+        if (c.numeric) base[c.key] = agg[c.key] ?? 0;
+        else base[c.key] = "";
+      });
+      base.site_id = grp[0].site_id;
+      base.item_id = grp[0].item_id;
+      out.push(base as Row);
+    });
+    return out.sort((a, b) =>
+      rowDims.map(d => String(a[d as keyof Row] ?? "").localeCompare(String(b[d as keyof Row] ?? ""), "pt-BR", { numeric: true }))
+        .find(v => v !== 0) ?? 0
+    );
+  }, [filters.processedItems, rowDims, groupBy, aggregations]);
+
+
   const toggleExpand = (k: string) =>
     setExpanded(prev => {
       const n = new Set(prev);
