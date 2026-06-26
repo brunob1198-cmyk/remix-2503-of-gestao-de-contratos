@@ -113,6 +113,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
   const { empresaId } = useAuth();
   const [visibleColumns, setVisibleColumns] = usePersistedState<ColKey[]>("relatorio_avancado_columns", DEFAULT_VISIBLE);
   const [groupBy, setGroupBy] = usePersistedState<ColKey[]>("relatorio_avancado_groupby", []);
+  const [showDetails, setShowDetails] = usePersistedState<boolean>("relatorio_avancado_showdetails", false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const { data: rows = [], isLoading } = useQuery({
@@ -373,7 +374,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
       if (isOpen) {
         if (hasChildren) {
           out.push(...renderGroupRows(node.children!));
-        } else {
+        } else if (showDetails) {
           node.rows.forEach((r, i) => {
             out.push(
               <TableRow key={`${node.key}-r${i}`}>
@@ -434,10 +435,16 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                   </div>
                 </ScrollArea>
                 {groupBy.length > 0 && (
-                  <div className="p-2 border-t flex gap-2">
-                    <Button variant="ghost" size="sm" className="flex-1" onClick={expandAll}>Expandir tudo</Button>
-                    <Button variant="ghost" size="sm" className="flex-1" onClick={collapseAll}>Recolher tudo</Button>
-                  </div>
+                  <>
+                    <label className="px-3 py-2 border-t flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={showDetails} onCheckedChange={v => setShowDetails(!!v)} />
+                      <span>Mostrar linhas de detalhe</span>
+                    </label>
+                    <div className="p-2 border-t flex gap-2">
+                      <Button variant="ghost" size="sm" className="flex-1" onClick={expandAll}>Expandir tudo</Button>
+                      <Button variant="ghost" size="sm" className="flex-1" onClick={collapseAll}>Recolher tudo</Button>
+                    </div>
+                  </>
                 )}
               </PopoverContent>
             </Popover>
