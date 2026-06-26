@@ -265,6 +265,15 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
     aggregates: Partial<Record<ColKey, number>>;
   }
 
+  const joinUnique = (groupRows: Row[], col: ColKey): string => {
+    const set = new Set<string>();
+    groupRows.forEach(r => {
+      const v = String(r[col as keyof Row] ?? "").trim();
+      if (v) set.add(v);
+    });
+    return Array.from(set).join(" | ");
+  };
+
   const aggregateRows = (groupRows: Row[]): Partial<Record<ColKey, number>> => {
     const out: Partial<Record<ColKey, number>> = {};
     // dedup rows for medição/faturamento keys (avoid double count on per-day duplication)
