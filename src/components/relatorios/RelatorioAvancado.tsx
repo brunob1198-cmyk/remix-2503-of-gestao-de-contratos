@@ -746,7 +746,7 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
                 </TableBody>
               </Table>
             </div>
-            {!groupTree && (
+            {!groupTree && !pivotRows && (
               <TablePagination
                 currentPage={filters.currentPage}
                 totalPages={filters.totalPages}
