@@ -652,6 +652,13 @@ export default function RelatoriosPage() {
               )}
             </CardContent>
           </Card>
+
+          <RelatorioAvancado
+            projetoId={projetoId}
+            selectedSiteIds={selectedSiteIds}
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+          />
         </TabsContent>
 
         <TabsContent value="producao_mensal" className="space-y-4">
