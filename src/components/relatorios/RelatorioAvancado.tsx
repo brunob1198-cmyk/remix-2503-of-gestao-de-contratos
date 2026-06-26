@@ -542,6 +542,37 @@ export default function RelatorioAvancado({ projetoId, selectedSiteIds, dataInic
           <div className="flex flex-wrap gap-2">
             <Popover>
               <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" disabled={groupBy.length > 0}>
+                  <List className="h-4 w-4 mr-2" />
+                  Linhas ({rowDims.length})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-0" align="end">
+                <div className="p-3 border-b flex items-center justify-between">
+                  <span className="text-sm font-medium">Dimensões de linha</span>
+                  <button onClick={() => setRowDims([])} className="text-xs text-primary hover:underline">Limpar</button>
+                </div>
+                <ScrollArea className="h-64">
+                  <div className="p-2">
+                    {GROUPABLE.map(k => {
+                      const c = ALL_COLUMNS.find(x => x.key === k)!;
+                      return (
+                        <label key={k} className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted rounded cursor-pointer text-sm">
+                          <Checkbox checked={rowDims.includes(k)} onCheckedChange={() => toggleRowDim(k)} />
+                          <span className="flex-1">{c.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-2 border-t text-xs text-muted-foreground">
+                  Define as dimensões únicas por linha. Numéricos são agregados conforme "Valores".
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Rows3 className="h-4 w-4 mr-2" />
                   Agrupar por ({groupBy.length})
