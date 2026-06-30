@@ -1939,7 +1939,19 @@ export function DetailMedicaoContent({
                     >
                       <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.4', minHeight: '32px' }}>
                         <MapPin className="h-4 w-4 shrink-0" />
-                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{siteName}</span>
+                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="flex-1">{siteName}</span>
+                        {statusAtivoBySite.get(siteId) && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded border-2 shrink-0"
+                            style={{
+                              backgroundColor: statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2",
+                              color: statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c",
+                              borderColor: statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3",
+                            }}
+                          >
+                            STATUS DO ATIVO: {statusAtivoBySite.get(siteId)}
+                          </span>
+                        )}
                       </div>
 
                       {siteItems.length > 0 && (
