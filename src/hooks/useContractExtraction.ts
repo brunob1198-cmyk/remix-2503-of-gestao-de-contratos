@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { uploadImage, verifyImageUrl } from '@/services/uploadImage';
+import { useState, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { uploadImage } from "@/services/uploadImage";
 
+const WORKER_URL = "https://obras-ai-api.brunob1198.workers.dev/extract-contract";
 
 export interface ContratoExtraido {
   valor_total: string | null;
@@ -21,61 +21,85 @@ export interface ContratoExtraido {
 
 export function useContractExtraction() {
   const [isExtracting, setIsExtracting] = useState(false);
+
   const { toast } = useToast();
 
-  const extrairContrato = useCallback(async (file: File): Promise<{ data: ContratoExtraido, path: string } | null> => {
-    setIsExtracting(true);
-    let result: { data: ContratoExtraido, path: string } | null = null;
-    
-    try {
-      console.log('Uploading file to R2...');
-      const publicUrl = await uploadImage(file);
+  const extrairContrato = useCallback(
+    async (
+      file: File,
+    ): Promise<{
+      data: ContratoExtraido;
+      path: string;
+    } | null> => {
+      setIsExtracting(true);
 
+      let result: {
+        data: ContratoExtraido;
+        path: string;
+      } | null = null;
 
-      console.log('File uploaded, calling extraction function...');
-      const { data, error } = await supabase.functions.invoke('extract-contract', {
-        body: { 
-          fileUrl: publicUrl, 
-          fileName: file.name
+      try {
+        console.log("Uploading file to R2...");
+
+        const publicUrl = await uploadImage(file);
+
+        console.log("Arquivo enviado para o R2:", publicUrl);
+
+        console.log("Chamando Cloudflare Worker...");
+
+        const response = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fileUrl: publicUrl,
+            fileName: file.name,
+          }),
+        });
+
+        const data = await response.json();
+
+        console.log("Resposta do Worker:", data);
+
+        if (!response.ok) {
+          throw new Error(data.error || "Erro ao comunicar com o Worker");
         }
-      });
 
+        if (!data.success) {
+          throw new Error(data.error || "Falha na extração do contrato");
+        }
 
-      if (error) {
-        throw new Error(error.message);
+        result = {
+          data: data.data as ContratoExtraido,
+          path: publicUrl,
+        };
+
+        toast({
+          title: "Leitura concluída",
+          description: "Dados do contrato foram extraídos com sucesso.",
+        });
+      } catch (error) {
+        console.error(`Erro ao processar ${file.name}:`, error);
+
+        toast({
+          title: "Erro na leitura do contrato",
+          description: error instanceof Error ? error.message : "Erro desconhecido ao comunicar com o Worker.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsExtracting(false);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Falha na extração de contrato');
-      }
+      return result;
+    },
 
-      result = { 
-        data: data.data as ContratoExtraido, 
-        path: publicUrl 
-      };
-
-      
-      toast({
-        title: 'Leitura concluída',
-        description: 'Dados do contrato foram extraídos com sucesso.',
-      });
-
-    } catch (error) {
-      console.error(`Error processing contract ${file.name}:`, error);
-      toast({
-        title: 'Erro na leitura do contrato',
-        description: error instanceof Error ? error.message : 'Erro desconhecido ao comunicar com a IA.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExtracting(false);
-    }
-    
-    return result;
-  }, [toast]);
+    [toast],
+  );
 
   return {
     extrairContrato,
+
     isExtracting,
   };
 }
