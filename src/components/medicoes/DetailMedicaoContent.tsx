@@ -462,7 +462,7 @@ export function DetailMedicaoContent({
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
       const { data } = await supabase
         .from("diarios_obra")
-        .select("id, site_id, status_ativo")
+        .select("id, site_id, status_ativo, data")
         .in("site_id", allSiteIds)
         .gte("data", detailMedicao.periodo_inicio)
         .lte("data", detailMedicao.periodo_fim);
@@ -470,6 +470,21 @@ export function DetailMedicaoContent({
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
+
+  // Latest status_ativo per site (based on most recent diary in the period)
+  const statusAtivoBySite = useMemo(() => {
+    const map = new Map<string, string>();
+    const latestDate = new Map<string, string>();
+    (rdoSummary as any[]).forEach(d => {
+      if (!d.status_ativo || !d.site_id) return;
+      const cur = latestDate.get(d.site_id);
+      if (!cur || (d.data || "") > cur) {
+        latestDate.set(d.site_id, d.data || "");
+        map.set(d.site_id, d.status_ativo);
+      }
+    });
+    return map;
+  }, [rdoSummary]);
 
   // Fetch all RDO data for resources used
   const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
