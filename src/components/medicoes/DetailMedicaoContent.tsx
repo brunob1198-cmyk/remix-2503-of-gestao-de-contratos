@@ -462,7 +462,7 @@ export function DetailMedicaoContent({
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
       const { data } = await supabase
         .from("diarios_obra")
-        .select("id, site_id, status_ativo")
+        .select("id, site_id, status_ativo, data")
         .in("site_id", allSiteIds)
         .gte("data", detailMedicao.periodo_inicio)
         .lte("data", detailMedicao.periodo_fim);
@@ -470,6 +470,21 @@ export function DetailMedicaoContent({
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
+
+  // Latest status_ativo per site (based on most recent diary in the period)
+  const statusAtivoBySite = useMemo(() => {
+    const map = new Map<string, string>();
+    const latestDate = new Map<string, string>();
+    (rdoSummary as any[]).forEach(d => {
+      if (!d.status_ativo || !d.site_id) return;
+      const cur = latestDate.get(d.site_id);
+      if (!cur || (d.data || "") > cur) {
+        latestDate.set(d.site_id, d.data || "");
+        map.set(d.site_id, d.status_ativo);
+      }
+    });
+    return map;
+  }, [rdoSummary]);
 
   // Fetch all RDO data for resources used
   const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
@@ -1223,7 +1238,10 @@ export function DetailMedicaoContent({
 
         return `
           <section class="site-block">
-            <div class="site-header">📍 ${siteName}</div>
+            <div class="site-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span>📍 ${siteName}</span>
+              ${statusAtivoBySite.get(siteId) ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:2px solid ${statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3"};background:${statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2"};color:${statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c"};">STATUS DO ATIVO: ${statusAtivoBySite.get(siteId)}</span>` : ''}
+            </div>
             ${itemsTableHtml}
             ${recursosHtml}
             ${obsHtml}
@@ -1478,7 +1496,7 @@ export function DetailMedicaoContent({
   ` : ''}
 </body>
 </html>`;
-  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite]);
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1924,7 +1942,19 @@ export function DetailMedicaoContent({
                     >
                       <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.4', minHeight: '32px' }}>
                         <MapPin className="h-4 w-4 shrink-0" />
-                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{siteName}</span>
+                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="flex-1">{siteName}</span>
+                        {statusAtivoBySite.get(siteId) && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded border-2 shrink-0"
+                            style={{
+                              backgroundColor: statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2",
+                              color: statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c",
+                              borderColor: statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3",
+                            }}
+                          >
+                            STATUS DO ATIVO: {statusAtivoBySite.get(siteId)}
+                          </span>
+                        )}
                       </div>
 
                       {siteItems.length > 0 && (
