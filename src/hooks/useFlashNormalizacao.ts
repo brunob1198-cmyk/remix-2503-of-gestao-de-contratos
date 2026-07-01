@@ -302,6 +302,51 @@ export function useFlashNormalizacao() {
         if (n.conta_azul_payload?.cost_center) {
           base.flash_cost_center = n.conta_azul_payload.cost_center;
         }
+
+        if (!n.conta_azul_category_id && n.status !== "enviado") {
+          const learnedNormalization = normalizeFlashTransaction({
+            id: rawTx.id,
+            external_id: rawTx.external_id,
+            payload_json: rawTx.payload_json,
+            flash_type: base.flash_type,
+            flash_category: base.flash_category,
+            flash_cost_center: base.flash_cost_center,
+            descricao: base.descricao,
+          }, mappings as any[]);
+
+          if (learnedNormalization.status === "normalizado") {
+            base.tipo_operacao = learnedNormalization.tipo_operacao;
+            base.status = learnedNormalization.status;
+            base.conta_azul_category_id = learnedNormalization.conta_azul_category_id;
+            base.conta_azul_category_name = learnedNormalization.conta_azul_category_name;
+            base.conta_azul_account_id = flashAccount?.id ?? learnedNormalization.conta_azul_account_id;
+            base.conta_azul_account_name = flashAccount?.name ?? learnedNormalization.conta_azul_account_name;
+            base.motivo = learnedNormalization.motivo;
+            base.flash_type_detectado = learnedNormalization.flash_type;
+            base.mapping_id_usado = learnedNormalization.mapping_id_usado;
+            base.conta_azul_payload = learnedNormalization.conta_azul_payload;
+
+            const reprocessKey = `mapped:${rawTx.id}:${learnedNormalization.mapping_id_usado || "sem-id"}`;
+            if (!processedRef.current.has(reprocessKey)) {
+              autoNormPayloads.push({
+                empresa_id: empresaId,
+                flash_transaction_id: rawTx.id,
+                conta_azul_category_id: base.conta_azul_category_id ?? null,
+                conta_azul_category_name: base.conta_azul_category_name ?? null,
+                conta_azul_account_id: base.conta_azul_account_id ?? null,
+                conta_azul_account_name: base.conta_azul_account_name ?? null,
+                tipo_operacao: base.tipo_operacao ?? "despesa",
+                status: base.status ?? "pendente",
+                conta_azul_payload: base.conta_azul_payload,
+                normalizado_at: new Date().toISOString(),
+                flash_type_detectado: base.flash_type_detectado,
+                mapping_id_usado: base.mapping_id_usado,
+                motivo: base.motivo,
+              });
+              processedRef.current.add(reprocessKey);
+            }
+          }
+        }
         return base;
       }
 
@@ -335,6 +380,9 @@ export function useFlashNormalizacao() {
           status: base.status ?? "pendente",
           conta_azul_payload: base.conta_azul_payload,
           normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
+          flash_type_detectado: base.flash_type_detectado,
+          mapping_id_usado: base.mapping_id_usado,
+          motivo: base.motivo,
         });
         processedRef.current.add(rawTx.id);
       }
