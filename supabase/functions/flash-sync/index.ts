@@ -1123,8 +1123,9 @@ Deno.serve(async (req) => {
             status: hasFull ? "normalizado" : "pendente",
             normalizado_at: hasFull ? new Date().toISOString() : null,
             flash_type_detectado: flash_type,
+            mapping_id_usado: m?.id ?? null,
             motivo: hasFull
-              ? `Normalizado automaticamente via aprendizado contínuo (mapping "${m.flash_description_pattern || flash_type}")`
+              ? `Normalizado automaticamente via aprendizado contínuo (mapping "${m.flash_description_pattern || m.flash_category || m.flash_cost_center || flash_type}")`
               : `Pendente: aguardando aprendizado para o tipo "${flash_type}"`,
           };
         }).filter(Boolean);
