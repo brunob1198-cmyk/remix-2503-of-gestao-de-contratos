@@ -314,7 +314,7 @@ async function getCostCenters(token: string): Promise<Map<string, { id: string; 
       if (hasMore === false) break;
       if (records.length < 100) break;
       page++;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Cost centers fetch error:`, err?.message ?? err);
       break;
     }
@@ -379,7 +379,7 @@ async function getEmployees(token: string, costCenterMap: Map<string, any>): Pro
       if (totalPages && page >= Number(totalPages)) break;
       if (records.length < 100) break;
       page++;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Employees fetch error:`, err?.message ?? err);
       break;
     }
@@ -511,7 +511,7 @@ Deno.serve(async (req) => {
           body_preview: text.slice(0, 300),
         });
         if (res.ok && !winner) winner = p;
-      } catch (err) {
+      } catch (err: any) {
         results.push({ path: p, error: String(err?.message ?? err) });
       }
     }
@@ -610,7 +610,7 @@ Deno.serve(async (req) => {
         message: `✅ Conexão estabelecida! ${Array.isArray(list) ? list.length : 0} empresa(s) acessível(is) via API Flash.`,
         diagnostic,
       });
-    } catch (err) {
+    } catch (err: any) {
       diagnostic.exception = String(err?.message ?? err);
       return jsonResponse({ success: false, error: err.message, diagnostic }, 500);
     }
@@ -645,7 +645,7 @@ Deno.serve(async (req) => {
       costCenterMap = await getCostCenters(flashToken);
       // Busca funcionários para ter um fallback de centro de custo baseado no perfil do usuário
       employeeMap = await getEmployees(flashToken, costCenterMap);
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Falha ao buscar dados auxiliares (CC/Emp):`, err?.message ?? err);
     }
 
@@ -788,7 +788,7 @@ Deno.serve(async (req) => {
               if (!tx.employee && detail.employee) tx.employee = detail.employee;
             }
           }
-        } catch (e) {
+        } catch (e: any) {
           console.warn(`[flash-sync] Falha no processamento para ${txId}:`, e?.message ?? e);
         }
       };
@@ -970,25 +970,42 @@ Deno.serve(async (req) => {
       // Auto-normalization
       try {
         const externalIds = rows.map((r) => r.external_id);
-        const [{ data: savedRows }, { data: mappings }, { data: existingNorms }] = await Promise.all([
+        const [{ data: savedRows }, { data: mappings }] = await Promise.all([
           adminClient.from("flash_transactions_raw").select("id, external_id, payload_json").eq("empresa_id", empresaId).in("external_id", externalIds),
           adminClient.from("flash_category_mapping").select("*").eq("empresa_id", empresaId),
-          adminClient.from("flash_normalizacao").select("flash_transaction_id, status, conta_azul_payload").eq("empresa_id", empresaId).in("flash_transaction_id", rows.map(r => r.id).filter(Boolean).concat(transactions.map((t:any) => t.id).filter(Boolean))),
         ]);
+
+        const savedRowIds = (savedRows || []).map((r: any) => r.id).filter(Boolean);
+        const { data: existingNorms } = savedRowIds.length > 0
+          ? await adminClient
+              .from("flash_normalizacao")
+              .select("flash_transaction_id, status, conta_azul_category_id, conta_azul_payload")
+              .eq("empresa_id", empresaId)
+              .in("flash_transaction_id", savedRowIds)
+          : { data: [] };
 
         const normMap = new Map();
         (existingNorms || []).forEach(n => normMap.set(n.flash_transaction_id, n));
 
         // Lógica de Aprendizado Contínuo Reforçada (Sync)
         const sortedMappings = (mappings || []).sort((a, b) => {
-          let scoreA = 0, scoreB = 0;
-          if (a.flash_description_pattern) scoreA += 100;
-          if (a.flash_category && a.flash_cost_center) scoreA += 50;
-          else if (a.flash_category) scoreA += 30;
-          
-          if (b.flash_description_pattern) scoreB += 100;
-          if (b.flash_category && b.flash_cost_center) scoreB += 50;
-          else if (b.flash_category) scoreB += 30;
+          const isScoped = (value: unknown) => {
+            const clean = String(value ?? "").trim();
+            return !!clean && clean !== "—" && clean !== "*";
+          };
+          const score = (mapping: any) => {
+            let total = 0;
+            if (mapping.learned === false) total -= 100;
+            if (isScoped(mapping.flash_description_pattern)) total += 120;
+            if (isScoped(mapping.flash_category) && isScoped(mapping.flash_cost_center)) total += 80;
+            else if (isScoped(mapping.flash_category)) total += 60;
+            else if (isScoped(mapping.flash_cost_center)) total += 35;
+            else total += 1;
+            total += Math.min(Number(mapping.manual_confirmations ?? 0), 20);
+            return total;
+          };
+          const scoreA = score(a);
+          const scoreB = score(b);
 
           if (scoreA === scoreB) {
             return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
@@ -997,9 +1014,26 @@ Deno.serve(async (req) => {
         });
 
         const pickFlashType = (payload: any): string => {
+          const translations: Record<string, string> = {
+            CORPORATE_CARD: "Cartão Corporativo",
+            MEAL: "Refeição",
+            FOOD: "Alimentação",
+            FUEL: "Combustível",
+            MOBILITY: "Mobilidade",
+            HEALTH: "Saúde",
+            CULTURE: "Cultura",
+            EDUCATION: "Educação",
+            GIFT: "Presente",
+            FLEXIBLE: "Flexível",
+            REWARD: "Recompensa",
+            EXPENSE_REFUND: "Reembolso",
+          };
           const candidates = ["type", "tipo", "category", "categoria", "transaction_type"];
           for (const k of candidates) {
-            if (payload[k]) return String(payload[k]).trim();
+            if (payload[k]) {
+              const value = String(payload[k]).trim();
+              return translations[value] || value;
+            }
           }
           return "indefinido";
         };
@@ -1009,28 +1043,75 @@ Deno.serve(async (req) => {
             const parts = p.split(".");
             let cur = payload;
             for (const k of parts) { cur = cur?.[k]; if (cur == null) break; }
+            if (cur && typeof cur === "object" && !Array.isArray(cur)) {
+              for (const key of ["name", "text", "description", "value", "code", "label", "display_name", "title"]) {
+                if (typeof cur[key] === "string" && cur[key].trim()) return cur[key].trim();
+              }
+            }
             if (typeof cur === "string" && cur.trim()) return cur.trim();
           }
           return "";
         };
 
+        const translateFlashCategory = (value: string): string => {
+          const translations: Record<string, string> = {
+            MEAL: "Refeição",
+            FOOD: "Alimentação",
+            FUEL: "Combustível",
+            MOBILITY: "Mobilidade",
+            HEALTH: "Saúde",
+            CULTURE: "Cultura",
+            EDUCATION: "Educação",
+            OTHERS: "Outros",
+            TOLL: "Pedágio",
+            Toll: "Pedágio",
+            PARKING: "Estacionamento",
+            Parking: "Estacionamento",
+          };
+          return translations[value] || value;
+        };
+
+        const normalizeDimension = (value: string | null | undefined): string | null => {
+          const clean = value?.trim();
+          if (!clean || clean === "—" || clean === "*") return null;
+          return clean;
+        };
+
+        const dimensionMatches = (mappingValue: string | null | undefined, transactionValue: string | null | undefined): boolean => {
+          const expected = normalizeDimension(mappingValue);
+          if (!expected) return true;
+          const actual = normalizeDimension(transactionValue);
+          return !!actual && expected.toLowerCase() === actual.toLowerCase();
+        };
+
+        const hasSpecificScope = (mapping: any): boolean => {
+          return !!(
+            normalizeDimension(mapping.flash_description_pattern) ||
+            normalizeDimension(mapping.flash_category) ||
+            normalizeDimension(mapping.flash_cost_center)
+          );
+        };
+
         const normRows = (savedRows || []).map((r: any) => {
-          if (normMap.has(r.id)) return null;
+          const existingNorm = normMap.get(r.id);
+          if (existingNorm?.status === "enviado" || existingNorm?.conta_azul_category_id) return null;
 
           const p = r.payload_json || {};
           const flash_type = pickFlashType(p);
-          const flash_category = pickValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]);
+          const flash_category = translateFlashCategory(pickValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]));
           const flash_cc = pickValue(p, ["costCenter.name", "cost_center.name", "centro_custo", "centroCusto", "costCenter", "cost_center"]);
           const descricao = pickValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—";
 
           const m = sortedMappings.find(sm => {
+            if (sm.learned === false) return false;
             if (sm.flash_type !== flash_type) return false;
+            if (!hasSpecificScope(sm) && (normalizeDimension(flash_category) || normalizeDimension(flash_cc))) return false;
             if (sm.flash_description_pattern) {
               if (descricao.toLowerCase().includes(sm.flash_description_pattern.toLowerCase().trim())) return true;
               return false;
             }
-            const catMatch = sm.flash_category ? sm.flash_category === flash_category : true;
-            const ccMatch = sm.flash_cost_center ? sm.flash_cost_center === flash_cc : true;
+            const catMatch = dimensionMatches(sm.flash_category, flash_category);
+            const ccMatch = dimensionMatches(sm.flash_cost_center, flash_cc);
             return catMatch && ccMatch;
           });
 
@@ -1051,8 +1132,9 @@ Deno.serve(async (req) => {
             status: hasFull ? "normalizado" : "pendente",
             normalizado_at: hasFull ? new Date().toISOString() : null,
             flash_type_detectado: flash_type,
+            mapping_id_usado: m?.id ?? null,
             motivo: hasFull
-              ? `Normalizado automaticamente via aprendizado contínuo (mapping "${m.flash_description_pattern || flash_type}")`
+              ? `Normalizado automaticamente via aprendizado contínuo (mapping "${m.flash_description_pattern || m.flash_category || m.flash_cost_center || flash_type}")`
               : `Pendente: aguardando aprendizado para o tipo "${flash_type}"`,
           };
         }).filter(Boolean);
@@ -1066,7 +1148,7 @@ Deno.serve(async (req) => {
             });
           }
         }
-      } catch (e) { console.error("Auto-norm failed", e); }
+      } catch (e: any) { console.error("Auto-norm failed", e); }
     }
 
     const durationMs = Date.now() - startedAt;
@@ -1092,7 +1174,7 @@ Deno.serve(async (req) => {
       duracao_ms: durationMs,
       rawResponse: lastResponse,
     });
-  } catch (err) {
+  } catch (err: any) {
     const msg = err.message;
     if (logId) {
       await adminClient.from("flash_integration_logs").update({

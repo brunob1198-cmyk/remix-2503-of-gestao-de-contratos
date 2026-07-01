@@ -14,6 +14,8 @@ export interface FlashCategoryMappingLike {
   flash_category?: string | null;
   flash_cost_center?: string | null;
   flash_description_pattern?: string | null;
+  manual_confirmations?: number | null;
+  learned?: boolean | null;
   conta_azul_category_id: string | null;
   conta_azul_category_name: string | null;
   conta_azul_account_id: string | null;
@@ -123,6 +125,74 @@ const pickNumber = (payload: any, paths: string[]): number => {
   return 0;
 };
 
+const normalizeText = (value?: string | null): string | null => {
+  const clean = value?.trim();
+  if (!clean || clean === "—" || clean === "*") return null;
+  return clean;
+};
+
+const sameDimension = (mappingValue: string | null | undefined, transactionValue: string | null | undefined): boolean => {
+  const expected = normalizeText(mappingValue);
+  if (!expected) return true;
+  const actual = normalizeText(transactionValue);
+  return !!actual && expected.toLowerCase() === actual.toLowerCase();
+};
+
+export const translateFlashCategory = (category: string | null | undefined): string | null => {
+  const clean = normalizeText(category);
+  if (!clean) return null;
+
+  const categoryTranslations: Record<string, string> = {
+    "Refeição": "Refeição",
+    MEAL: "Refeição",
+    Alimentação: "Alimentação",
+    FOOD: "Alimentação",
+    "Combustível": "Combustível",
+    FUEL: "Combustível",
+    Mobilidade: "Mobilidade",
+    MOBILITY: "Mobilidade",
+    "Saúde": "Saúde",
+    HEALTH: "Saúde",
+    Cultura: "Cultura",
+    CULTURE: "Cultura",
+    Educação: "Educação",
+    EDUCATION: "Educação",
+    Outros: "Outros",
+    OTHERS: "Outros",
+    Toll: "Pedágio",
+    TOLL: "Pedágio",
+    Pedágio: "Pedágio",
+    Parking: "Estacionamento",
+    PARKING: "Estacionamento",
+    Estacionamento: "Estacionamento",
+  };
+
+  return categoryTranslations[clean] || clean;
+};
+
+const getMappingScore = (mapping: FlashCategoryMappingLike): number => {
+  let score = 0;
+  const manualConfirmations = Math.max(0, mapping.manual_confirmations ?? 0);
+
+  if (mapping.learned === false) score -= 100;
+  if (mapping.flash_description_pattern) score += 120;
+  if (normalizeText(mapping.flash_category) && normalizeText(mapping.flash_cost_center)) score += 80;
+  else if (normalizeText(mapping.flash_category)) score += 60;
+  else if (normalizeText(mapping.flash_cost_center)) score += 35;
+  else score += 1;
+
+  score += Math.min(manualConfirmations, 20);
+  return score;
+};
+
+const hasSpecificScope = (mapping: FlashCategoryMappingLike): boolean => {
+  return !!(
+    normalizeText(mapping.flash_description_pattern) ||
+    normalizeText(mapping.flash_category) ||
+    normalizeText(mapping.flash_cost_center)
+  );
+};
+
 export const extractFlashType = (transaction: FlashRawTransactionLike): string => {
   if (transaction.flash_type && transaction.flash_type.trim()) {
     const type = transaction.flash_type.trim();
@@ -154,14 +224,14 @@ export const normalizeFlashTransaction = (
   const payload = transaction.payload_json || {};
   
   // Extrair metadados para matching inteligente
-  const flash_category = transaction.flash_category || pickValue(payload, [
+  const flash_category = translateFlashCategory(transaction.flash_category || pickValue(payload, [
     "category.name", 
     "transaction.category", 
     "categoria.nome", 
     "category", 
     "categoria",
     "transaction.categoryName",
-  ]) || "—";
+  ])) || "—";
   const flash_cost_center = transaction.flash_cost_center || pickValue(payload, [
     // Prioridade: Campos diretos de centro de custo
     "costCenter.name", 
@@ -215,25 +285,8 @@ export const normalizeFlashTransaction = (
 
   // Encontrar o melhor mapping baseado em especificidade e reforço de aprendizado
   const sortedMappings = [...mappings].sort((a, b) => {
-    let scoreA = 0;
-    let scoreB = 0;
-    
-    // Critérios de pontuação (REFORÇADO):
-    // 1. Descrição exata ou padrão (mais específico)
-    // 2. Categoria + Centro de Custo
-    // 3. Categoria
-    // 4. Centro de Custo
-    // 5. Recência (ajustes mais novos têm peso maior no aprendizado)
-    
-    if (a.flash_description_pattern) scoreA += 100;
-    if (a.flash_category && a.flash_cost_center) scoreA += 50;
-    else if (a.flash_category) scoreA += 30;
-    else if (a.flash_cost_center) scoreA += 20;
-    
-    if (b.flash_description_pattern) scoreB += 100;
-    if (b.flash_category && b.flash_cost_center) scoreB += 50;
-    else if (b.flash_category) scoreB += 30;
-    else if (b.flash_cost_center) scoreB += 20;
+    const scoreA = getMappingScore(a);
+    const scoreB = getMappingScore(b);
 
     // Critério de desempate: recência (aprendizado contínuo)
     if (scoreA === scoreB) {
@@ -246,7 +299,9 @@ export const normalizeFlashTransaction = (
   });
 
   const mapping = sortedMappings.find(m => {
+    if (m.learned === false) return false;
     if (m.flash_type !== flash_type) return false;
+    if (!hasSpecificScope(m) && (normalizeText(flash_category) || normalizeText(flash_cost_center))) return false;
     
     // Se o mapping define padrão de descrição, ele tem precedência absoluta
     if (m.flash_description_pattern) {
@@ -257,8 +312,8 @@ export const normalizeFlashTransaction = (
     }
     
     // Mapeamento por Categoria e/ou Centro de Custo
-    const catMatch = m.flash_category ? m.flash_category === flash_category : true;
-    const ccMatch = m.flash_cost_center ? m.flash_cost_center === flash_cost_center : true;
+    const catMatch = sameDimension(m.flash_category, flash_category);
+    const ccMatch = sameDimension(m.flash_cost_center, flash_cost_center);
     
     // Para um match ser válido, ele deve bater em todos os campos definidos no mapping
     // Se o mapping define apenas tipo, CC e Cat devem ser nulos no mapping para bater aqui (ou baterem com os da tx)
