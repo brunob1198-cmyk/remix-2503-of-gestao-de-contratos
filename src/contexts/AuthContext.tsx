@@ -1,5 +1,46 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
+
+// Cache TTL para profile/role/empresa (raramente mudam)
+const AUTH_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutos
+const AUTH_CACHE_KEY = "auth_profile_cache_v1";
+
+type AuthCache = {
+  userId: string;
+  cachedAt: number;
+  profile: Profile | null;
+  role: AppRole | null;
+  empresaLogoUrl: string | null;
+};
+
+function readAuthCache(userId: string): AuthCache | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthCache;
+    if (parsed.userId !== userId) return null;
+    if (Date.now() - parsed.cachedAt > AUTH_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeAuthCache(entry: AuthCache) {
+  try {
+    sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearAuthCache() {
+  try {
+    sessionStorage.removeItem(AUTH_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "interno" | "cliente";
