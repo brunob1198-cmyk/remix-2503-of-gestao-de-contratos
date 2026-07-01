@@ -222,10 +222,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    lastFetchedUserIdRef.current = null;
+    clearAuthCache();
     setSession(null);
     setProfile(null);
     setRole(null);
+    setEmpresaLogoUrl(null);
   };
+
 
   return (
     <AuthContext.Provider
