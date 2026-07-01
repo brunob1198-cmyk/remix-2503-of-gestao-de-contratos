@@ -314,7 +314,7 @@ async function getCostCenters(token: string): Promise<Map<string, { id: string; 
       if (hasMore === false) break;
       if (records.length < 100) break;
       page++;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Cost centers fetch error:`, err?.message ?? err);
       break;
     }
@@ -379,7 +379,7 @@ async function getEmployees(token: string, costCenterMap: Map<string, any>): Pro
       if (totalPages && page >= Number(totalPages)) break;
       if (records.length < 100) break;
       page++;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Employees fetch error:`, err?.message ?? err);
       break;
     }
@@ -511,7 +511,7 @@ Deno.serve(async (req) => {
           body_preview: text.slice(0, 300),
         });
         if (res.ok && !winner) winner = p;
-      } catch (err) {
+      } catch (err: any) {
         results.push({ path: p, error: String(err?.message ?? err) });
       }
     }
@@ -610,7 +610,7 @@ Deno.serve(async (req) => {
         message: `✅ Conexão estabelecida! ${Array.isArray(list) ? list.length : 0} empresa(s) acessível(is) via API Flash.`,
         diagnostic,
       });
-    } catch (err) {
+    } catch (err: any) {
       diagnostic.exception = String(err?.message ?? err);
       return jsonResponse({ success: false, error: err.message, diagnostic }, 500);
     }
@@ -788,7 +788,7 @@ Deno.serve(async (req) => {
               if (!tx.employee && detail.employee) tx.employee = detail.employee;
             }
           }
-        } catch (e) {
+        } catch (e: any) {
           console.warn(`[flash-sync] Falha no processamento para ${txId}:`, e?.message ?? e);
         }
       };
@@ -1147,7 +1147,7 @@ Deno.serve(async (req) => {
             });
           }
         }
-      } catch (e) { console.error("Auto-norm failed", e); }
+      } catch (e: any) { console.error("Auto-norm failed", e); }
     }
 
     const durationMs = Date.now() - startedAt;
@@ -1173,7 +1173,7 @@ Deno.serve(async (req) => {
       duracao_ms: durationMs,
       rawResponse: lastResponse,
     });
-  } catch (err) {
+  } catch (err: any) {
     const msg = err.message;
     if (logId) {
       await adminClient.from("flash_integration_logs").update({
