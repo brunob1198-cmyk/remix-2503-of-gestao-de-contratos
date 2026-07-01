@@ -645,7 +645,7 @@ Deno.serve(async (req) => {
       costCenterMap = await getCostCenters(flashToken);
       // Busca funcionários para ter um fallback de centro de custo baseado no perfil do usuário
       employeeMap = await getEmployees(flashToken, costCenterMap);
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`[flash-sync] Falha ao buscar dados auxiliares (CC/Emp):`, err?.message ?? err);
     }
 
@@ -979,7 +979,7 @@ Deno.serve(async (req) => {
         const { data: existingNorms } = savedRowIds.length > 0
           ? await adminClient
               .from("flash_normalizacao")
-              .select("flash_transaction_id, status, conta_azul_payload")
+              .select("flash_transaction_id, status, conta_azul_category_id, conta_azul_payload")
               .eq("empresa_id", empresaId)
               .in("flash_transaction_id", savedRowIds)
           : { data: [] };
@@ -1093,7 +1093,8 @@ Deno.serve(async (req) => {
         };
 
         const normRows = (savedRows || []).map((r: any) => {
-          if (normMap.has(r.id)) return null;
+          const existingNorm = normMap.get(r.id);
+          if (existingNorm?.status === "enviado" || existingNorm?.conta_azul_category_id) return null;
 
           const p = r.payload_json || {};
           const flash_type = pickFlashType(p);
