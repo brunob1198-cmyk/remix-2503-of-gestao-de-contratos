@@ -394,7 +394,7 @@ export function useFlashNormalizacao() {
 
     const flashCategory = normalizeMappingDimension(row.flash_category);
     const flashCostCenter = normalizeMappingDimension(merged.flash_cost_center || row.flash_cost_center);
-    const forceLearned = !!opts.saveMapping;
+    const forceLearned = !!(opts.saveMapping || opts.saveMappingPerType);
     const now = new Date().toISOString();
 
     const localExisting = (mappings as CategoryMapping[]).find((mapping) =>
@@ -641,10 +641,16 @@ export function useFlashNormalizacao() {
   };
 
   const bulkApplyToPending = async (ids: string[], params: any) => {
+    const { saveMappingPerType, learnFromEdit, allowEditEnviado, saveMapping, ...patch } = params;
     for (const id of ids) {
       const row = transactions.find(t => t.id === id);
       if (row) {
-        await saveNormalization(row, params);
+        await saveNormalization(row, patch, {
+          saveMappingPerType,
+          learnFromEdit,
+          allowEditEnviado,
+          saveMapping,
+        });
       }
     }
   };
