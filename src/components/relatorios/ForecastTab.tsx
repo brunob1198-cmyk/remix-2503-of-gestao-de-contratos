@@ -364,7 +364,6 @@ export default function ForecastTab() {
                       {columns.map((col) => {
                         const realValue = pickForecastValue(p, { ...col, isFuture: false });
                         const forecastValue = pickForecastValue(p, { ...col, isFuture: true });
-                        const displayValue = pickForecastValue(p, col);
                         const isEditing = editing?.id === p.id && editing?.month === col.key;
 
                         return (
