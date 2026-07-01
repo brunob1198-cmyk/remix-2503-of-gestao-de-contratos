@@ -1885,7 +1885,7 @@ export default function NormalizacaoFlashPage() {
                                     saveNormalization(row, {
                                       conta_azul_category_id: id,
                                       conta_azul_category_name: name,
-                                    })
+                                    }, { learnFromEdit: true })
                                   }
                                   placeholder="Selecionar categoria..."
                                   disabled={fieldsDisabled}
@@ -2058,7 +2058,7 @@ export default function NormalizacaoFlashPage() {
                       checked={bulkSaveMapping}
                       onCheckedChange={(c) => setBulkSaveMapping(!!c)}
                     />
-                    Salvar mapeamento por tipo
+                    Salvar aprendizado por categoria/centro de custo
                   </label>
                   <Button
                     size="sm"
@@ -2159,9 +2159,9 @@ export default function NormalizacaoFlashPage() {
         <TabsContent value="mapeamentos">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Mapeamentos automáticos por tipo Flash</CardTitle>
+              <CardTitle className="text-base">Mapeamentos automáticos inteligentes</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Estes mapeamentos preenchem automaticamente novos lançamentos do mesmo tipo.
+                Estes mapeamentos priorizam Categoria Flash, Centro de Custo e confirmações manuais para sugerir categorias nos próximos lançamentos.
               </p>
             </CardHeader>
             <CardContent>
@@ -2178,6 +2178,7 @@ export default function NormalizacaoFlashPage() {
                         <TableHead>Categoria Flash</TableHead>
                         <TableHead>Centro de Custo Flash</TableHead>
                         <TableHead>Operação</TableHead>
+                        <TableHead>Aprendizado</TableHead>
                         <TableHead>Categoria Conta Azul</TableHead>
                         <TableHead>Conta financeira CA</TableHead>
                       </TableRow>
@@ -2209,6 +2210,13 @@ export default function NormalizacaoFlashPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant={m.learned === false ? "outline" : "secondary"} className="text-[10px]">
+                              {m.learned === false
+                                ? `${m.manual_confirmations || 0}/3 ajustes`
+                                : `${m.manual_confirmations || 0} ajuste(s)`}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
                           <TableCell className="text-xs">{m.conta_azul_account_name || "—"}</TableCell>
                         </TableRow>

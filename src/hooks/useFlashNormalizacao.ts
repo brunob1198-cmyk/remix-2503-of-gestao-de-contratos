@@ -248,6 +248,17 @@ export function useFlashNormalizacao() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const mappingByType = useMemo(() => {
+    const index = new Map<string, CategoryMapping[]>();
+    (mappings as CategoryMapping[]).forEach((mapping) => {
+      if (!mapping.learned && (mapping.manual_confirmations ?? 0) < LEARNING_THRESHOLD) return;
+      const current = index.get(mapping.flash_type) || [];
+      current.push(mapping);
+      index.set(mapping.flash_type, current);
+    });
+    return index;
+  }, [mappings]);
+
   // 3. Transformação e Normalização Automática (gera o estado mutável transactions)
   useEffect(() => {
     if (!rawData || !empresaId || loadingRaw || loadingMappings) return;
@@ -630,7 +641,7 @@ export function useFlashNormalizacao() {
   return {
     loading: loadingRaw || loadingMappings, savingId, sending, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
-    updateStatus, mappingByType: new Map(),
+    updateStatus, mappingByType,
     applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter, bulkUpdateCategoriaCA
   };
 }
