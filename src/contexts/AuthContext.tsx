@@ -181,14 +181,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
 
       if (nextSession?.user) {
+        // Evita refetch quando o mesmo usuário já foi carregado (ex: TOKEN_REFRESHED, foco de aba)
+        if (lastFetchedUserIdRef.current === nextSession.user.id) {
+          if (mounted) setLoading(false);
+          return;
+        }
         await fetchProfileAndRole(nextSession.user.id);
       } else {
+        lastFetchedUserIdRef.current = null;
+        clearAuthCache();
         setProfile(null);
         setRole(null);
+        setEmpresaLogoUrl(null);
       }
 
       if (mounted) setLoading(false);
     };
+
 
     // Get initial session first
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
