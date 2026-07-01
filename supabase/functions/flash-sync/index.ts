@@ -997,9 +997,26 @@ Deno.serve(async (req) => {
         });
 
         const pickFlashType = (payload: any): string => {
+          const translations: Record<string, string> = {
+            CORPORATE_CARD: "Cartão Corporativo",
+            MEAL: "Refeição",
+            FOOD: "Alimentação",
+            FUEL: "Combustível",
+            MOBILITY: "Mobilidade",
+            HEALTH: "Saúde",
+            CULTURE: "Cultura",
+            EDUCATION: "Educação",
+            GIFT: "Presente",
+            FLEXIBLE: "Flexível",
+            REWARD: "Recompensa",
+            EXPENSE_REFUND: "Reembolso",
+          };
           const candidates = ["type", "tipo", "category", "categoria", "transaction_type"];
           for (const k of candidates) {
-            if (payload[k]) return String(payload[k]).trim();
+            if (payload[k]) {
+              const value = String(payload[k]).trim();
+              return translations[value] || value;
+            }
           }
           return "indefinido";
         };
@@ -1009,9 +1026,53 @@ Deno.serve(async (req) => {
             const parts = p.split(".");
             let cur = payload;
             for (const k of parts) { cur = cur?.[k]; if (cur == null) break; }
+            if (cur && typeof cur === "object" && !Array.isArray(cur)) {
+              for (const key of ["name", "text", "description", "value", "code", "label", "display_name", "title"]) {
+                if (typeof cur[key] === "string" && cur[key].trim()) return cur[key].trim();
+              }
+            }
             if (typeof cur === "string" && cur.trim()) return cur.trim();
           }
           return "";
+        };
+
+        const translateFlashCategory = (value: string): string => {
+          const translations: Record<string, string> = {
+            MEAL: "Refeição",
+            FOOD: "Alimentação",
+            FUEL: "Combustível",
+            MOBILITY: "Mobilidade",
+            HEALTH: "Saúde",
+            CULTURE: "Cultura",
+            EDUCATION: "Educação",
+            OTHERS: "Outros",
+            TOLL: "Pedágio",
+            Toll: "Pedágio",
+            PARKING: "Estacionamento",
+            Parking: "Estacionamento",
+          };
+          return translations[value] || value;
+        };
+
+        const normalizeDimension = (value: string | null | undefined): string | null => {
+          const clean = value?.trim();
+          if (!clean || clean === "—" || clean === "*") return null;
+          return clean;
+        };
+
+        const dimensionMatches = (mappingValue: string | null | undefined, transactionValue: string | null | undefined): boolean => {
+          const expected = normalizeDimension(mappingValue);
+          if (!expected) return true;
+          const actual = normalizeDimension(transactionValue);
+          return !!actual && expected.toLowerCase() === actual.toLowerCase();
+        };
+
+        const hasSpecificScope = (mapping: any): boolean => {
+          return !!(
+            normalizeDimension(mapping.flash_description_pattern) ||
+            normalizeDimension(mapping.flash_category) ||
+            normalizeDimension(mapping.flash_cost_center)
+          );
         };
 
         const normRows = (savedRows || []).map((r: any) => {
@@ -1019,18 +1080,20 @@ Deno.serve(async (req) => {
 
           const p = r.payload_json || {};
           const flash_type = pickFlashType(p);
-          const flash_category = pickValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]);
+          const flash_category = translateFlashCategory(pickValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]));
           const flash_cc = pickValue(p, ["costCenter.name", "cost_center.name", "centro_custo", "centroCusto", "costCenter", "cost_center"]);
           const descricao = pickValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—";
 
           const m = sortedMappings.find(sm => {
+            if (sm.learned === false) return false;
             if (sm.flash_type !== flash_type) return false;
+            if (!hasSpecificScope(sm) && (normalizeDimension(flash_category) || normalizeDimension(flash_cc))) return false;
             if (sm.flash_description_pattern) {
               if (descricao.toLowerCase().includes(sm.flash_description_pattern.toLowerCase().trim())) return true;
               return false;
             }
-            const catMatch = sm.flash_category ? sm.flash_category === flash_category : true;
-            const ccMatch = sm.flash_cost_center ? sm.flash_cost_center === flash_cc : true;
+            const catMatch = dimensionMatches(sm.flash_category, flash_category);
+            const ccMatch = dimensionMatches(sm.flash_cost_center, flash_cc);
             return catMatch && ccMatch;
           });
 
