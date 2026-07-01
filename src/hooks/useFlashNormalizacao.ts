@@ -458,6 +458,7 @@ export function useFlashNormalizacao() {
   const saveNormalization = useCallback(async (row: FlashTransactionRow, patch: any, opts: SaveNormalizationOptions = {}) => {
     if (!empresaId || (row.status === "enviado" && !opts?.allowEditEnviado)) return;
     setSavingId(row.id);
+    let previousTransactions: FlashTransactionRow[] | null = null;
     try {
       const currentRow = transactionsRef.current.find((transaction) => transaction.id === row.id) ?? row;
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
@@ -469,6 +470,7 @@ export function useFlashNormalizacao() {
       };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
+      previousTransactions = transactionsRef.current;
       setTransactions(prev => {
         const next = prev.map(t => t.id === currentRow.id ? { ...t, ...merged } : t);
         transactionsRef.current = next;
@@ -522,6 +524,10 @@ export function useFlashNormalizacao() {
         await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
       }
     } catch (e: any) {
+      if (previousTransactions) {
+        transactionsRef.current = previousTransactions;
+        setTransactions(previousTransactions);
+      }
       toast.error("Erro ao salvar", { description: e.message });
     } finally {
       setSavingId(null);
