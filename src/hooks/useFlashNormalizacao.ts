@@ -507,6 +507,16 @@ export function useFlashNormalizacao() {
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
+      queryClient.setQueryData(["flash_transactions", empresaId], (old: any) => {
+        if (!old) return old;
+        const previousNorms = Array.isArray(old.norm) ? old.norm : [];
+        const hasNorm = previousNorms.some((norm: any) => norm.flash_transaction_id === currentRow.id);
+        const norm = hasNorm
+          ? previousNorms.map((item: any) => item.flash_transaction_id === currentRow.id ? normData : item)
+          : [...previousNorms, normData];
+        return { ...old, norm };
+      });
+
       setTransactions(prev => {
         const next = prev.map(t => t.id === currentRow.id ? {
         ...t,
@@ -532,7 +542,7 @@ export function useFlashNormalizacao() {
     } finally {
       setSavingId(null);
     }
-  }, [empresaId, contas, learnCategoryMapping]);
+  }, [empresaId, contas, learnCategoryMapping, queryClient]);
 
   const sendToContaAzul = async (ids: string[]) => {
     setSending(true);
