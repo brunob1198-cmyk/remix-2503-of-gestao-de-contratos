@@ -981,14 +981,23 @@ Deno.serve(async (req) => {
 
         // Lógica de Aprendizado Contínuo Reforçada (Sync)
         const sortedMappings = (mappings || []).sort((a, b) => {
-          let scoreA = 0, scoreB = 0;
-          if (a.flash_description_pattern) scoreA += 100;
-          if (a.flash_category && a.flash_cost_center) scoreA += 50;
-          else if (a.flash_category) scoreA += 30;
-          
-          if (b.flash_description_pattern) scoreB += 100;
-          if (b.flash_category && b.flash_cost_center) scoreB += 50;
-          else if (b.flash_category) scoreB += 30;
+          const isScoped = (value: unknown) => {
+            const clean = String(value ?? "").trim();
+            return !!clean && clean !== "—" && clean !== "*";
+          };
+          const score = (mapping: any) => {
+            let total = 0;
+            if (mapping.learned === false) total -= 100;
+            if (isScoped(mapping.flash_description_pattern)) total += 120;
+            if (isScoped(mapping.flash_category) && isScoped(mapping.flash_cost_center)) total += 80;
+            else if (isScoped(mapping.flash_category)) total += 60;
+            else if (isScoped(mapping.flash_cost_center)) total += 35;
+            else total += 1;
+            total += Math.min(Number(mapping.manual_confirmations ?? 0), 20);
+            return total;
+          };
+          const scoreA = score(a);
+          const scoreB = score(b);
 
           if (scoreA === scoreB) {
             return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
