@@ -531,7 +531,13 @@ export function useFlashNormalizacao() {
       });
 
       if ((opts.saveMapping || opts.saveMappingPerType || opts.learnFromEdit) && currentRow.flash_type) {
-        await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
+        try {
+          await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
+        } catch (mappingError: any) {
+          toast.warning("Categoria salva, mas o aprendizado não foi atualizado", {
+            description: mappingError?.message,
+          });
+        }
       }
     } catch (e: any) {
       if (previousTransactions) {
