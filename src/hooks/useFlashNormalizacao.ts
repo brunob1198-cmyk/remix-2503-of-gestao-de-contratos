@@ -251,7 +251,7 @@ export function useFlashNormalizacao() {
   const mappingByType = useMemo(() => {
     const index = new Map<string, CategoryMapping[]>();
     (mappings as CategoryMapping[]).forEach((mapping) => {
-      if (!mapping.learned && (mapping.manual_confirmations ?? 0) < LEARNING_THRESHOLD) return;
+      if (mapping.learned === false && (mapping.manual_confirmations ?? 0) < LEARNING_THRESHOLD) return;
       const current = index.get(mapping.flash_type) || [];
       current.push(mapping);
       index.set(mapping.flash_type, current);
