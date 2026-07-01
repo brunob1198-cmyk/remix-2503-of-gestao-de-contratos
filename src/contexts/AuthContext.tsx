@@ -86,6 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [empresaLogoUrl, setEmpresaLogoUrl] = useState<string | null>(null);
   const lastFetchedUserIdRef = useRef<string | null>(null);
+  // Deduplicação global: evita múltiplos requests simultâneos para o mesmo usuário
+  const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
+  // Marca fetch pendente quando a rede falhou — usado para retry ao voltar online
+  const pendingRefreshRef = useRef<string | null>(null);
 
   const applyProfileData = (
     profileData: Profile | null,
@@ -97,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setEmpresaLogoUrl(logoUrl);
   };
 
-  const fetchProfileAndRole = async (userId: string, force = false) => {
+  const doFetch = async (userId: string, force: boolean) => {
     if (!force) {
       const cached = readAuthCache(userId);
       if (cached) {
@@ -105,69 +109,96 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastFetchedUserIdRef.current = userId;
         return;
       }
-    }
-
-    let profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-
-    // If no profile exists (trigger may have been missing), create one
-    if (!profileRes.data && !profileRes.error) {
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        await supabase.from("profiles").insert({
-          id: userData.user.id,
-          nome: userData.user.user_metadata?.nome || userData.user.email,
-        });
-        // Re-fetch after creation
-        profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    } else {
+      // Force: exibe cache imediatamente (se houver) e atualiza em background
+      const cached = readAuthCache(userId);
+      if (cached) {
+        applyProfileData(cached.profile, cached.role, cached.empresaLogoUrl);
       }
     }
 
-    const roleRes = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+    try {
+      let profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
 
-    let nextProfile: Profile | null = null;
-    let nextRole: AppRole | null = null;
-    let nextLogo: string | null = null;
+      if (!profileRes.data && !profileRes.error) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          await supabase.from("profiles").insert({
+            id: userData.user.id,
+            nome: userData.user.user_metadata?.nome || userData.user.email,
+          });
+          profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+        }
+      }
 
-    if (profileRes.error) {
-      console.error("Erro ao carregar perfil:", profileRes.error.message);
-    } else if (profileRes.data) {
-      nextProfile = {
-        id: profileRes.data.id,
-        nome: profileRes.data.nome,
-        avatar_url: profileRes.data.avatar_url,
-        empresa_id: profileRes.data.empresa_id,
-        aprovado: (profileRes.data as any).aprovado ?? false,
-      };
+      const roleRes = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
+
+      let nextProfile: Profile | null = null;
+      let nextRole: AppRole | null = null;
+      let nextLogo: string | null = null;
+
+      if (profileRes.error) throw profileRes.error;
+      if (profileRes.data) {
+        nextProfile = {
+          id: profileRes.data.id,
+          nome: profileRes.data.nome,
+          avatar_url: profileRes.data.avatar_url,
+          empresa_id: profileRes.data.empresa_id,
+          aprovado: (profileRes.data as any).aprovado ?? false,
+        };
+      }
+
+      if (roleRes.error) throw roleRes.error;
+      if (roleRes.data) nextRole = roleRes.data.role as AppRole;
+
+      if (profileRes.data?.empresa_id) {
+        const { data: empData, error: empErr } = await supabase
+          .from("empresas")
+          .select("logo_url")
+          .eq("id", profileRes.data.empresa_id)
+          .maybeSingle();
+        if (empErr) throw empErr;
+        nextLogo = empData?.logo_url || null;
+      }
+
+      applyProfileData(nextProfile, nextRole, nextLogo);
+      lastFetchedUserIdRef.current = userId;
+      pendingRefreshRef.current = null;
+      writeAuthCache({
+        userId,
+        cachedAt: Date.now(),
+        profile: nextProfile,
+        role: nextRole,
+        empresaLogoUrl: nextLogo,
+      });
+    } catch (err) {
+      // Fallback: mantém cache exibido e marca refresh pendente para quando a rede voltar
+      console.warn("[Auth] Falha ao carregar profile — usando cache. Retry ao reconectar.", err);
+      pendingRefreshRef.current = userId;
+      const cached = readAuthCache(userId);
+      if (cached) {
+        applyProfileData(cached.profile, cached.role, cached.empresaLogoUrl);
+        lastFetchedUserIdRef.current = userId;
+      }
     }
+  };
 
-    if (roleRes.error) {
-      console.error("Erro ao carregar papel do usuário:", roleRes.error.message);
-    } else if (roleRes.data) {
-      nextRole = roleRes.data.role as AppRole;
-    }
-
-    if (profileRes.data?.empresa_id) {
-      const { data: empData } = await supabase
-        .from("empresas")
-        .select("logo_url")
-        .eq("id", profileRes.data.empresa_id)
-        .maybeSingle();
-      nextLogo = empData?.logo_url || null;
-    }
-
-    applyProfileData(nextProfile, nextRole, nextLogo);
-    lastFetchedUserIdRef.current = userId;
-    writeAuthCache({
-      userId,
-      cachedAt: Date.now(),
-      profile: nextProfile,
-      role: nextRole,
-      empresaLogoUrl: nextLogo,
+  const fetchProfileAndRole = (userId: string, force = false): Promise<void> => {
+    const key = `${userId}:${force ? "force" : "soft"}`;
+    const existing = inFlightRef.current.get(key);
+    if (existing) return existing;
+    const promise = doFetch(userId, force).finally(() => {
+      inFlightRef.current.delete(key);
     });
+    inFlightRef.current.set(key, promise);
+    return promise;
   };
 
   const refreshProfile = async () => {
     if (session?.user) {
+      // Invalida cache e recarrega (dedupado globalmente)
+      clearAuthCache();
+      lastFetchedUserIdRef.current = null;
       await fetchProfileAndRole(session.user.id, true);
     }
   };
@@ -181,7 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
 
       if (nextSession?.user) {
-        // Evita refetch quando o mesmo usuário já foi carregado (ex: TOKEN_REFRESHED, foco de aba)
         if (lastFetchedUserIdRef.current === nextSession.user.id) {
           if (mounted) setLoading(false);
           return;
@@ -199,36 +229,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
 
-    // Get initial session first
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       syncAuthState(initialSession);
     });
 
-    // Then listen for changes — use non-blocking callback
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
-        // Defer async work to avoid Supabase auth deadlock
         setTimeout(() => {
           syncAuthState(nextSession);
         }, 0);
       }
     );
 
+    // Retry automático ao voltar online se houver refresh pendente
+    const handleOnline = () => {
+      const pending = pendingRefreshRef.current;
+      if (pending) {
+        fetchProfileAndRole(pending, true);
+      }
+    };
+    window.addEventListener("online", handleOnline);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      window.removeEventListener("online", handleOnline);
     };
   }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
     lastFetchedUserIdRef.current = null;
+    inFlightRef.current.clear();
+    pendingRefreshRef.current = null;
     clearAuthCache();
     setSession(null);
     setProfile(null);
     setRole(null);
     setEmpresaLogoUrl(null);
   };
+
 
 
   return (
