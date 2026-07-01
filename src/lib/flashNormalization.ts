@@ -185,6 +185,14 @@ const getMappingScore = (mapping: FlashCategoryMappingLike): number => {
   return score;
 };
 
+const hasSpecificScope = (mapping: FlashCategoryMappingLike): boolean => {
+  return !!(
+    normalizeText(mapping.flash_description_pattern) ||
+    normalizeText(mapping.flash_category) ||
+    normalizeText(mapping.flash_cost_center)
+  );
+};
+
 export const extractFlashType = (transaction: FlashRawTransactionLike): string => {
   if (transaction.flash_type && transaction.flash_type.trim()) {
     const type = transaction.flash_type.trim();
@@ -293,6 +301,7 @@ export const normalizeFlashTransaction = (
   const mapping = sortedMappings.find(m => {
     if (m.learned === false) return false;
     if (m.flash_type !== flash_type) return false;
+    if (!hasSpecificScope(m) && (normalizeText(flash_category) || normalizeText(flash_cost_center))) return false;
     
     // Se o mapping define padrão de descrição, ele tem precedência absoluta
     if (m.flash_description_pattern) {
