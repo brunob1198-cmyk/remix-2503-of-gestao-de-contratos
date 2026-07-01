@@ -145,34 +145,30 @@ export default function ForecastTab() {
     const totalProduzido = filteredData.reduce((acc, p) => acc + p.totalProduzido, 0);
     const totalSaldo = filteredData.reduce((acc, p) => acc + p.saldo, 0);
 
-    const next3Months = columns.filter(c => c.isFuture).slice(0, 3).map(c => c.key);
-    const totalTrimestre = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      next3Months.forEach(m => {
-        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
-      });
-      return acc + sum;
-    }, 0);
+    // Mesma lógica das linhas/coluna: real (mensal) em meses passados, forecast em meses futuros
+    const pickValue = (p: any, col: { key: string; isFuture: boolean }) =>
+      col.isFuture
+        ? Number(p.forecast?.[col.key] || 0)
+        : Number(p.mensal?.[col.key] || 0);
 
-    const next6Months = columns.filter(c => c.isFuture).slice(0, 6).map(c => c.key);
-    const totalSemestre = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      next6Months.forEach(m => {
-        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
-      });
-      return acc + sum;
-    }, 0);
+    const next3Months = columns.filter(c => c.isFuture).slice(0, 3);
+    const totalTrimestre = filteredData.reduce(
+      (acc, p) => acc + next3Months.reduce((s, c) => s + pickValue(p, c), 0),
+      0
+    );
+
+    const next6Months = columns.filter(c => c.isFuture).slice(0, 6);
+    const totalSemestre = filteredData.reduce(
+      (acc, p) => acc + next6Months.reduce((s, c) => s + pickValue(p, c), 0),
+      0
+    );
 
     const currentYear = format(new Date(), "yyyy");
-    const totalAno = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      columns.forEach(col => {
-        if (col.key.startsWith(currentYear)) {
-          sum += (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
-        }
-      });
-      return acc + sum;
-    }, 0);
+    const yearCols = columns.filter(c => c.key.startsWith(currentYear));
+    const totalAno = filteredData.reduce(
+      (acc, p) => acc + yearCols.reduce((s, c) => s + pickValue(p, c), 0),
+      0
+    );
 
     // Match per-row rendering: past months show real (mensal), future months show forecast_data.
     // Summing both would double-count the current month where real production already exists
