@@ -2192,7 +2192,7 @@ export default function NormalizacaoFlashPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
-                            {m.flash_category ? (
+                            {m.flash_category && m.flash_category !== "*" ? (
                               <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
                                 {m.flash_category}
                               </Badge>
@@ -2201,7 +2201,7 @@ export default function NormalizacaoFlashPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-xs">
-                            {m.flash_cost_center ? (
+                            {m.flash_cost_center && m.flash_cost_center !== "*" ? (
                               <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
                                 {m.flash_cost_center}
                               </Badge>
