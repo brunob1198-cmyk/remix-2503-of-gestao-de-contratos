@@ -124,28 +124,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const roleRes = await supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle();
 
+    let nextProfile: Profile | null = null;
+    let nextRole: AppRole | null = null;
+    let nextLogo: string | null = null;
+
     if (profileRes.error) {
       console.error("Erro ao carregar perfil:", profileRes.error.message);
-      setProfile(null);
     } else if (profileRes.data) {
-      setProfile({
+      nextProfile = {
         id: profileRes.data.id,
         nome: profileRes.data.nome,
         avatar_url: profileRes.data.avatar_url,
         empresa_id: profileRes.data.empresa_id,
         aprovado: (profileRes.data as any).aprovado ?? false,
-      });
-    } else {
-      setProfile(null);
+      };
     }
 
     if (roleRes.error) {
       console.error("Erro ao carregar papel do usuário:", roleRes.error.message);
-      setRole(null);
     } else if (roleRes.data) {
-      setRole(roleRes.data.role as AppRole);
-    } else {
-      setRole(null);
+      nextRole = roleRes.data.role as AppRole;
     }
 
     if (profileRes.data?.empresa_id) {
@@ -154,18 +152,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("logo_url")
         .eq("id", profileRes.data.empresa_id)
         .maybeSingle();
-      
-      setEmpresaLogoUrl(empData?.logo_url || null);
-    } else {
-      setEmpresaLogoUrl(null);
+      nextLogo = empData?.logo_url || null;
     }
+
+    applyProfileData(nextProfile, nextRole, nextLogo);
+    lastFetchedUserIdRef.current = userId;
+    writeAuthCache({
+      userId,
+      cachedAt: Date.now(),
+      profile: nextProfile,
+      role: nextRole,
+      empresaLogoUrl: nextLogo,
+    });
   };
 
   const refreshProfile = async () => {
     if (session?.user) {
-      await fetchProfileAndRole(session.user.id);
+      await fetchProfileAndRole(session.user.id, true);
     }
   };
+
 
   useEffect(() => {
     let mounted = true;
