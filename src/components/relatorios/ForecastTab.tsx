@@ -174,9 +174,15 @@ export default function ForecastTab() {
       return acc + sum;
     }, 0);
 
+    // Match per-row rendering: past months show real (mensal), future months show forecast_data.
+    // Summing both would double-count the current month where real production already exists
+    // alongside a manual forecast entry.
     const columnTotals = columns.reduce((acc, col) => {
       acc[col.key] = filteredData.reduce((sum, p) => {
-        return sum + (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
+        if (col.isFuture) {
+          return sum + Number((p as any).forecast_data?.[col.key] || p.forecast?.[col.key] || 0);
+        }
+        return sum + Number(p.mensal?.[col.key] || 0);
       }, 0);
       return acc;
     }, {} as Record<string, number>);
