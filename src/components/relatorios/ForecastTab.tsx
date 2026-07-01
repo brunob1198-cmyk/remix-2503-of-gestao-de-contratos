@@ -362,8 +362,9 @@ export default function ForecastTab() {
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
-                        const realValue = p.mensal[col.key] || 0;
-                        const forecastValue = (p as any).forecast_data?.[col.key] || 0;
+                        const realValue = pickForecastValue(p, { ...col, isFuture: false });
+                        const forecastValue = pickForecastValue(p, { ...col, isFuture: true });
+                        const displayValue = pickForecastValue(p, col);
                         const isEditing = editing?.id === p.id && editing?.month === col.key;
 
                         return (
