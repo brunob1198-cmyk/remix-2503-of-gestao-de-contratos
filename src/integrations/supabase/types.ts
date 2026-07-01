@@ -1797,6 +1797,10 @@ export type Database = {
           flash_description_pattern: string | null
           flash_type: string
           id: string
+          last_feedback_at: string | null
+          last_feedback_source: string | null
+          learned: boolean
+          manual_confirmations: number
           tipo_operacao: string
           updated_at: string
         }
@@ -1812,6 +1816,10 @@ export type Database = {
           flash_description_pattern?: string | null
           flash_type: string
           id?: string
+          last_feedback_at?: string | null
+          last_feedback_source?: string | null
+          learned?: boolean
+          manual_confirmations?: number
           tipo_operacao?: string
           updated_at?: string
         }
@@ -1827,6 +1835,10 @@ export type Database = {
           flash_description_pattern?: string | null
           flash_type?: string
           id?: string
+          last_feedback_at?: string | null
+          last_feedback_source?: string | null
+          learned?: boolean
+          manual_confirmations?: number
           tipo_operacao?: string
           updated_at?: string
         }
