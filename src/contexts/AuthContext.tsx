@@ -85,8 +85,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [empresaLogoUrl, setEmpresaLogoUrl] = useState<string | null>(null);
+  const lastFetchedUserIdRef = useRef<string | null>(null);
 
-  const fetchProfileAndRole = async (userId: string) => {
+  const applyProfileData = (
+    profileData: Profile | null,
+    roleData: AppRole | null,
+    logoUrl: string | null,
+  ) => {
+    setProfile(profileData);
+    setRole(roleData);
+    setEmpresaLogoUrl(logoUrl);
+  };
+
+  const fetchProfileAndRole = async (userId: string, force = false) => {
+    if (!force) {
+      const cached = readAuthCache(userId);
+      if (cached) {
+        applyProfileData(cached.profile, cached.role, cached.empresaLogoUrl);
+        lastFetchedUserIdRef.current = userId;
+        return;
+      }
+    }
+
     let profileRes = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
 
     // If no profile exists (trigger may have been missing), create one
