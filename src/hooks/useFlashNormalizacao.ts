@@ -499,14 +499,18 @@ export function useFlashNormalizacao() {
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
-      setTransactions(prev => prev.map(t => t.id === currentRow.id ? {
+      setTransactions(prev => {
+        const next = prev.map(t => t.id === currentRow.id ? {
         ...t,
         ...merged,
         norm_id: normData.id,
         conta_azul_payload: payload,
         flash_type_detectado: currentRow.flash_type,
         motivo: normData.motivo ?? t.motivo,
-      } : t));
+        } : t);
+        transactionsRef.current = next;
+        return next;
+      });
 
       if ((opts.saveMapping || opts.saveMappingPerType || opts.learnFromEdit) && currentRow.flash_type) {
         await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
