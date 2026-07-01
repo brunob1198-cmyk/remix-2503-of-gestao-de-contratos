@@ -469,6 +469,12 @@ export function useFlashNormalizacao() {
       };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
+      setTransactions(prev => {
+        const next = prev.map(t => t.id === currentRow.id ? { ...t, ...merged } : t);
+        transactionsRef.current = next;
+        return next;
+      });
+
       const payload = buildContaAzulPayload({
         descricao: currentRow.descricao, valor: currentRow.valor, data: currentRow.data, tipo_operacao: merged.tipo_operacao,
         conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
