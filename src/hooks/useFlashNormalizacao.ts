@@ -397,11 +397,24 @@ export function useFlashNormalizacao() {
     const forceLearned = !!opts.saveMapping;
     const now = new Date().toISOString();
 
-    const existing = (mappings as CategoryMapping[]).find((mapping) =>
+    const localExisting = (mappings as CategoryMapping[]).find((mapping) =>
       mapping.flash_type === row.flash_type &&
       isSameMappingDimension(mapping.flash_category, flashCategory) &&
       isSameMappingDimension(mapping.flash_cost_center, flashCostCenter)
     );
+
+    const { data: databaseExisting, error: existingError } = await supabase
+      .from("flash_category_mapping")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .eq("flash_type", row.flash_type)
+      .eq("flash_category", flashCategory)
+      .eq("flash_cost_center", flashCostCenter)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    const existing = (databaseExisting as CategoryMapping | null) ?? localExisting;
 
     const nextConfirmations = Math.max(existing?.manual_confirmations ?? 0, forceLearned ? LEARNING_THRESHOLD - 1 : 0) + 1;
     const learned = forceLearned || nextConfirmations >= LEARNING_THRESHOLD;
