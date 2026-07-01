@@ -201,6 +201,11 @@ export function useFlashNormalizacao() {
   const [contas, setContas] = useState<ContaAzulOption[]>([]);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
   const processedRef = useRef<Set<string>>(new Set());
+  const transactionsRef = useRef<FlashTransactionRow[]>([]);
+
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
 
   // 1. Query para buscar transações e normalizações (dados brutos do banco)
   const { data: rawData, isLoading: loadingRaw, refetch: refetchRaw } = useQuery({
@@ -430,28 +435,29 @@ export function useFlashNormalizacao() {
     if (!empresaId || (row.status === "enviado" && !opts?.allowEditEnviado)) return;
     setSavingId(row.id);
     try {
+      const currentRow = transactionsRef.current.find((transaction) => transaction.id === row.id) ?? row;
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
       const merged = { 
-        ...row, 
+        ...currentRow, 
         ...patch, 
-        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id,
-        enviado_at: patch.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : row.enviado_at)
+        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? currentRow.conta_azul_account_id,
+        enviado_at: patch.status === "enviado" ? (currentRow.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : currentRow.enviado_at)
       };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
       const payload = buildContaAzulPayload({
-        descricao: row.descricao, valor: row.valor, data: row.data, tipo_operacao: merged.tipo_operacao,
+        descricao: currentRow.descricao, valor: currentRow.valor, data: currentRow.data, tipo_operacao: merged.tipo_operacao,
         conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
         conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
-        external_id: row.external_id, flash_type: row.flash_type,
-        comentarios: merged.comentarios !== "—" ? merged.comentarios : (row.comentarios !== "—" ? row.comentarios : null),
-        cost_center: merged.flash_cost_center !== "—" ? merged.flash_cost_center : (row.flash_cost_center !== "—" ? row.flash_cost_center : null),
+        external_id: currentRow.external_id, flash_type: currentRow.flash_type,
+        comentarios: merged.comentarios !== "—" ? merged.comentarios : (currentRow.comentarios !== "—" ? currentRow.comentarios : null),
+        cost_center: merged.flash_cost_center !== "—" ? merged.flash_cost_center : (currentRow.flash_cost_center !== "—" ? currentRow.flash_cost_center : null),
         force_pago: true
       });
 
       const { data: normData, error } = await supabase.from("flash_normalizacao").upsert({
         empresa_id: empresaId,
-        flash_transaction_id: row.id,
+        flash_transaction_id: currentRow.id,
         conta_azul_category_id: merged.conta_azul_category_id ?? null,
         conta_azul_category_name: merged.conta_azul_category_name ?? null,
         conta_azul_account_id: merged.conta_azul_account_id ?? null,
@@ -460,26 +466,26 @@ export function useFlashNormalizacao() {
         status: merged.status ?? "pendente",
         conta_azul_payload: payload,
         normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null,
-        enviado_at: merged.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : row.enviado_at),
-        flash_type_detectado: row.flash_type,
-        mapping_id_usado: merged.mapping_id_usado ?? row.mapping_id_usado ?? null,
+        enviado_at: merged.status === "enviado" ? (currentRow.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : currentRow.enviado_at),
+        flash_type_detectado: currentRow.flash_type,
+        mapping_id_usado: merged.mapping_id_usado ?? currentRow.mapping_id_usado ?? null,
         motivo: opts.saveMapping
-          ? `Normalizado manualmente e mapeamento salvo para Categoria Flash "${row.flash_category}" e Centro de Custo "${merged.flash_cost_center || row.flash_cost_center}".`
-          : (row.motivo ?? null),
+          ? `Normalizado manualmente e mapeamento salvo para Categoria Flash "${currentRow.flash_category}" e Centro de Custo "${merged.flash_cost_center || currentRow.flash_cost_center}".`
+          : (currentRow.motivo ?? null),
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
-      setTransactions(prev => prev.map(t => t.id === row.id ? {
+      setTransactions(prev => prev.map(t => t.id === currentRow.id ? {
         ...t,
         ...merged,
         norm_id: normData.id,
         conta_azul_payload: payload,
-        flash_type_detectado: row.flash_type,
+        flash_type_detectado: currentRow.flash_type,
         motivo: normData.motivo ?? t.motivo,
       } : t));
 
-      if ((opts.saveMapping || opts.saveMappingPerType || opts.learnFromEdit) && row.flash_type) {
-        await learnCategoryMapping(row, { ...row, ...merged, conta_azul_payload: payload }, opts);
+      if ((opts.saveMapping || opts.saveMappingPerType || opts.learnFromEdit) && currentRow.flash_type) {
+        await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
       }
     } catch (e: any) {
       toast.error("Erro ao salvar", { description: e.message });
