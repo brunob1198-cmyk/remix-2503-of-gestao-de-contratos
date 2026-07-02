@@ -1831,12 +1831,12 @@ export default function NormalizacaoFlashPage() {
                               </TableCell>
                               <TableCell className="text-xs truncate w-[140px]">{row.usuario}</TableCell>
                               <TableCell className="text-xs truncate w-[150px]">
-                                <Tooltip>
+                                <Tooltip delayDuration={100}>
                                   <TooltipTrigger asChild>
-                                    <span className="block truncate">{row.comentarios}</span>
+                                    <span className="block truncate cursor-help">{row.comentarios}</span>
                                   </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs break-words">{row.comentarios}</p>
+                                  <TooltipContent side="top" align="start" className="max-w-[480px] whitespace-pre-wrap break-words text-xs leading-relaxed">
+                                    {row.comentarios || "—"}
                                   </TooltipContent>
                                 </Tooltip>
                               </TableCell>
