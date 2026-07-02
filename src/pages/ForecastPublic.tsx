@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, addMonths, startOfMonth, isAfter, subMonths, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { pickForecastValue, sumForecastValues } from "@/lib/forecastValue";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
