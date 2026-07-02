@@ -96,7 +96,8 @@ const ForecastPublic = () => {
                       <TableCell className="text-right text-green-600">{formatCurrency(p.total_produzido)}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(saldo)}</TableCell>
                       {columns.map((col) => {
-                        const val = (p.producao_mensal?.[col.key] || 0) + (p.forecast_data?.[col.key] || 0);
+                        const projLike = { mensal: p.producao_mensal, forecast_data: p.forecast_data };
+                        const val = pickForecastValue(projLike, col);
                         return (
                           <TableCell key={col.key} className={`text-center ${col.isFuture ? "bg-blue-50/30 font-medium" : ""}`}>
                             {val > 0 ? formatCurrency(val) : "-"}
