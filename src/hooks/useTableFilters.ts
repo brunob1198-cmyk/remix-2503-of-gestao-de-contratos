@@ -146,12 +146,21 @@ export function useTableFilters<T, ColKey extends string>(
 
   const uniqueValues = useMemo(() => {
     const result = {} as Record<ColKey, string[]>;
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
     for (const col of columns) {
-      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-      result[col] = Array.from(new Set(items.map(s => getColValue(s, col)))).sort((a, b) => collator.compare(a, b));
+      // Apply all filters EXCEPT the current column so options cascade with other active filters
+      let base = items;
+      for (const other of columns) {
+        if (other === col) continue;
+        const search = (debouncedSearchTexts[other] || "").toLowerCase();
+        const selected = selectedFilters[other];
+        if (search) base = base.filter(s => (getColValue(s, other) || "").toLowerCase().includes(search));
+        if (selected.size > 0) base = base.filter(s => selected.has(getColValue(s, other)));
+      }
+      result[col] = Array.from(new Set(base.map(s => getColValue(s, col)))).sort((a, b) => collator.compare(a, b));
     }
     return result;
-  }, [items, columns, getColValue]);
+  }, [items, columns, getColValue, debouncedSearchTexts, selectedFilters]);
 
   const totalPages = Math.max(1, Math.ceil(processedItems.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
