@@ -738,13 +738,14 @@ export function DetailMedicaoContent({
         data-pdf-element="photo" 
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
-        <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
+        <div className="aspect-[4/3] bg-muted/10 flex items-center justify-center overflow-hidden">
           <SmartImage
             src={foto.url}
             context="diario_fotos"
             fallbackUrls={[foto.thumb_600_url, foto.thumb_url]}
             alt={foto.item_descricao || foto.site_nome || "foto"}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
+            containerClassName="h-full w-full"
             crossOrigin="anonymous"
           />
         </div>
