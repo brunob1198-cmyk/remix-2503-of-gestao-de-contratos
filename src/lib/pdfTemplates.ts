@@ -96,7 +96,7 @@ export const pdfGlobalStyles = `
       margin-bottom: 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
     }
-    .foto-card img { width: 100%; height: auto; max-height: 280px; object-fit: contain; display: block; background: #f8fafc; border-bottom: 1px solid #f1f5f9; }
+    .foto-card img { width: 100%; height: 260px; object-fit: cover; display: block; background: #f8fafc; border-bottom: 1px solid #f1f5f9; }
     .foto-info { padding: 10px 14px; background: #fff; }
     .foto-title { font-size: 11px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
     .foto-meta { font-size: 9px; color: #64748b; margin: 0 0 4px 0; display: flex; gap: 8px; flex-wrap: wrap; }
