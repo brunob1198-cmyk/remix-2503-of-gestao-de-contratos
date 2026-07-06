@@ -967,11 +967,39 @@ export default function RdoPage() {
             {!isCliente && escopoProjetoIds.length > 0 && (
               <Card className="border-primary/20">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Wallet className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold">
-                      Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold">
+                        Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Período acumulado:</span>
+                      <Input
+                        type="date"
+                        value={contratoDataInicio}
+                        onChange={e => setContratoDataInicio(e.target.value)}
+                        className="h-8 w-[150px] text-xs"
+                      />
+                      <span className="text-xs text-muted-foreground">até</span>
+                      <Input
+                        type="date"
+                        value={contratoDataFim}
+                        onChange={e => setContratoDataFim(e.target.value)}
+                        className="h-8 w-[150px] text-xs"
+                      />
+                      {(contratoDataInicio || contratoDataFim) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => { setContratoDataInicio(""); setContratoDataFim(""); }}
+                        >
+                          Limpar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center md:text-left">
