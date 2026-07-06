@@ -358,6 +358,9 @@ export default function RdoPage() {
 
   const [dataInicio, setDataInicio] = usePersistedState("rdo-data-inicio", format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
+  // Filtro independente do card "Contrato vs Produção": afeta apenas Produção Acumulada e Saldo
+  const [contratoDataInicio, setContratoDataInicio] = usePersistedState<string>("rdo-contrato-data-inicio", "");
+  const [contratoDataFim, setContratoDataFim] = usePersistedState<string>("rdo-contrato-data-fim", "");
   const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
 
