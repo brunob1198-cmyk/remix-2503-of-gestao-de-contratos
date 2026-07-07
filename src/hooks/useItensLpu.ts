@@ -74,10 +74,24 @@ export function useItensLpu(projetoId?: string) {
       const toInsert: any[] = [];
       const toUpdate: any[] = [];
 
+      // Mapa auxiliar para preservar o BDI informado no arquivo (para uso no mensal),
+      // mesmo quando removemos o campo `bdi` do payload de update.
+      const bdiPorChave = new Map<string, number>();
+
       itens.forEach(item => {
-        const existingId = existingMap.get(`${item.codigo}-${item.projeto_id}`);
+        const chave = `${item.codigo}-${item.projeto_id}`;
+        if (item.bdi != null) bdiPorChave.set(chave, item.bdi);
+
+        const existingId = existingMap.get(chave);
         if (existingId) {
-          toUpdate.push({ ...item, id: existingId });
+          if (mes_referencia) {
+            // Há mês de vigência: NÃO sobrescrever o BDI base do item existente.
+            // O novo BDI será registrado somente na tabela item_lpu_bdi_mensal.
+            const { bdi: _omit, ...semBdi } = item;
+            toUpdate.push({ ...semBdi, id: existingId });
+          } else {
+            toUpdate.push({ ...item, id: existingId });
+          }
         } else {
           toInsert.push(item);
         }
@@ -105,16 +119,19 @@ export function useItensLpu(projetoId?: string) {
 
       // 2. Se houver mês de vigência, gravar na tabela item_lpu_bdi_mensal
       if (mes_referencia && finalData.length > 0) {
-        const bdiMensalData = finalData.map(item => ({
-          item_lpu_id: item.id,
-          mes_referencia,
-          bdi: item.bdi || 1
-        }));
-        
+        const bdiMensalData = finalData.map(item => {
+          const bdiInformado = bdiPorChave.get(`${item.codigo}-${item.projeto_id}`);
+          return {
+            item_lpu_id: item.id,
+            mes_referencia,
+            bdi: bdiInformado ?? item.bdi ?? 1,
+          };
+        });
+
         const { error: bdiError } = await (supabase as any)
           .from("item_lpu_bdi_mensal")
           .upsert(bdiMensalData, { onConflict: "item_lpu_id,mes_referencia" });
-          
+
         if (bdiError) {
           console.error("Erro ao inserir BDI mensal", bdiError);
         }
