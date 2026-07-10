@@ -64,7 +64,10 @@ export default function AcompanhamentoMedicoesPage() {
         ? `agrupada_${projetoId}_${l.numero_medicao || 'sem_numero'}`
         : `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
       const preco = Number(l.item_lpu?.preco_unitario || 0);
-      const valor = Number(l.quantidade) * preco;
+      // Após revisão (data_resposta preenchida), o valor da medição reflete a quantidade aprovada
+      const foiRespondida = l.data_resposta != null || l.quantidade_aprovada != null;
+      const qtdParaValor = foiRespondida ? Number(l.quantidade_aprovada || 0) : Number(l.quantidade);
+      const valor = qtdParaValor * preco;
 
       if (!grouped.has(key)) {
         grouped.set(key, {
