@@ -951,16 +951,16 @@ export function useMinhaFila() {
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
 
-      const selectReq = "id, numero, status, prioridade, data_necessidade, created_at, projeto:projetos(codigo, nome)";
+      const selectReq = "id, numero, workflow_status, prioridade, data_necessidade, created_at, projeto:projetos(codigo, nome)";
       const selectPed = "id, numero, status, data_prevista_entrega, valor_total, created_at, fornecedor:fornecedores(razao_social), projeto:projetos(codigo, nome)";
 
       const [minhas, paraCotar, pedidosRascunho, aprovacoes, recebimentos] = await Promise.all([
         userId
           ? supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("solicitante_id", userId).order("created_at", { ascending: false }).limit(10)
           : Promise.resolve({ data: [] as any[] }),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "em_cotacao").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("workflow_status", "QUOTING").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
         supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).eq("status", "rascunho").order("created_at", { ascending: true }).limit(10),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "pendente_aprovacao").order("prioridade", { ascending: false }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).in("workflow_status", ["PENDING_APPROVAL", "SUBMITTED"]).order("prioridade", { ascending: false }).limit(10),
         supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", ["emitido", "confirmado", "entrega_parcial"]).order("data_prevista_entrega", { ascending: true, nullsFirst: false }).limit(10),
       ]);
 
