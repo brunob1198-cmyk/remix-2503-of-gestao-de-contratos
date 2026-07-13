@@ -7,7 +7,6 @@ import { Eye, Clock, AlertCircle } from "lucide-react";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  WORKFLOW_STATUS_MAP,
   WORKFLOW_STATUS_OPTIONS,
   getStatusLabel,
   getStatusVariant,
