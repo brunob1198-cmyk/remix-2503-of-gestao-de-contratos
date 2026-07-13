@@ -128,49 +128,6 @@ const pedColumns: ColumnDef<any>[] = [
   },
 ];
 
-// Columns definition for Pedidos
-const pedColumns: ColumnDef<any>[] = [
-  {
-    accessorKey: "numero",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
-    cell: ({ row }) => <span className="font-mono text-xs">{row.getValue("numero")}</span>,
-  },
-  {
-    accessorKey: "fornecedor",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Fornecedor" />,
-    accessorFn: (row) => row.fornecedor?.razao_social || "—",
-    cell: ({ row }) => <span className="text-sm">{row.getValue("fornecedor")}</span>,
-  },
-  {
-    accessorKey: "data_prevista_entrega",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Prev. Entrega" />,
-    cell: ({ row }) => {
-      const val = row.getValue("data_prevista_entrega") as string;
-      return <span className="text-sm">{val ? new Date(val).toLocaleDateString("pt-BR") : "—"}</span>;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <div className="flex items-center">
-        <DataTableColumnHeader column={column} title="Status" />
-        <DataTableColumnFilter 
-          column={column} 
-          title="Filtro Status" 
-          options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
-        />
-      </div>
-    ),
-    filterFn: multiSelectFilter,
-    cell: ({ row }) => statusBadge(row.getValue("status")),
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
-    ),
-  },
-];
 
 export function MinhaFilaTab() {
   const { data, isLoading } = useMinhaFila();
