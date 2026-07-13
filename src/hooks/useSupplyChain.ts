@@ -357,32 +357,31 @@ export function useRequisicoes() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, workflow_status, observacoes }: { id: string; status?: string; workflow_status?: string; observacoes?: string }) => {
-      // Get current status for history
+    mutationFn: async ({ id, workflow_status, observacoes }: { id: string; workflow_status: string; observacoes?: string }) => {
+      // Get current workflow_status for history
       const { data: current, error: fetchErr } = await supabase
         .from("requisicoes_compra")
         .select("workflow_status")
         .eq("id", id)
         .single();
-      
+
       if (fetchErr) throw fetchErr;
 
-      const updates: any = {};
-      if (status) updates.status = status;
-      if (workflow_status) updates.workflow_status = workflow_status;
-      
-      const { error } = await supabase.from("requisicoes_compra").update(updates).eq("id", id);
+      const { error } = await supabase
+        .from("requisicoes_compra")
+        .update({ workflow_status })
+        .eq("id", id);
       if (error) throw error;
 
       // Log to history
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && (workflow_status || status)) {
+      if (user) {
         await supabase.from("requisicao_historico").insert({
           requisicao_id: id,
           status_anterior: current.workflow_status,
-          status_novo: workflow_status || current.workflow_status,
+          status_novo: workflow_status,
           usuario_id: user.id,
-          observacoes: observacoes || `Status atualizado para ${workflow_status || status}`
+          observacoes: observacoes || `Status atualizado para ${workflow_status}`
         });
       }
     },
@@ -906,8 +905,8 @@ export function useSupplyChainCounts() {
         supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
 
       const [pendentesRes, emCotacaoRes, pedidosAbertosRes, paraReceberRes, cotacoesAbertasRes] = await Promise.all([
-        baseReq().in("status", ["rascunho", "pendente_aprovacao"]),
-        baseReq().eq("status", "em_cotacao"),
+        baseReq().in("workflow_status", ["DRAFT", "SUBMITTED", "PENDING_APPROVAL"]),
+        baseReq().eq("workflow_status", "QUOTING"),
         basePed().in("status", ["rascunho", "emitido", "confirmado", "entrega_parcial"]),
         basePed().in("status", ["emitido", "confirmado", "entrega_parcial"]),
         supabase.from("cotacoes").select("requisicao_id").eq("empresa_id", empresaId).eq("status", "aberta"),
@@ -923,7 +922,7 @@ export function useSupplyChainCounts() {
           .from("requisicoes_compra")
           .select("id", { count: "exact", head: true })
           .eq("empresa_id", empresaId)
-          .eq("status", "em_cotacao")
+          .in("workflow_status", ["QUOTING", "PENDING_APPROVAL"])
           .in("id", Array.from(reqIdsComCotacao));
         paraAprovar = count || 0;
       }
@@ -951,16 +950,16 @@ export function useMinhaFila() {
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
 
-      const selectReq = "id, numero, status, prioridade, data_necessidade, created_at, projeto:projetos(codigo, nome)";
+      const selectReq = "id, numero, workflow_status, prioridade, data_necessidade, created_at, projeto:projetos(codigo, nome)";
       const selectPed = "id, numero, status, data_prevista_entrega, valor_total, created_at, fornecedor:fornecedores(razao_social), projeto:projetos(codigo, nome)";
 
       const [minhas, paraCotar, pedidosRascunho, aprovacoes, recebimentos] = await Promise.all([
         userId
           ? supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("solicitante_id", userId).order("created_at", { ascending: false }).limit(10)
           : Promise.resolve({ data: [] as any[] }),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "em_cotacao").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("workflow_status", "QUOTING").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
         supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).eq("status", "rascunho").order("created_at", { ascending: true }).limit(10),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("status", "pendente_aprovacao").order("prioridade", { ascending: false }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).in("workflow_status", ["PENDING_APPROVAL", "SUBMITTED"]).order("prioridade", { ascending: false }).limit(10),
         supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", ["emitido", "confirmado", "entrega_parcial"]).order("data_prevista_entrega", { ascending: true, nullsFirst: false }).limit(10),
       ]);
 
