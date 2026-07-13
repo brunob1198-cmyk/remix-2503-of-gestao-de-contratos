@@ -609,6 +609,9 @@ export default function NormalizacaoFlashPage() {
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
+      const comentSearch = (searchParams.get("coment") || "").trim().toLowerCase();
+      if (comentSearch && !(t.comentarios || "").toLowerCase().includes(comentSearch)) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
