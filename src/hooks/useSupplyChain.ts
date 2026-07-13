@@ -906,8 +906,8 @@ export function useSupplyChainCounts() {
         supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
 
       const [pendentesRes, emCotacaoRes, pedidosAbertosRes, paraReceberRes, cotacoesAbertasRes] = await Promise.all([
-        baseReq().in("status", ["rascunho", "pendente_aprovacao"]),
-        baseReq().eq("status", "em_cotacao"),
+        baseReq().in("workflow_status", ["DRAFT", "SUBMITTED", "PENDING_APPROVAL"]),
+        baseReq().eq("workflow_status", "QUOTING"),
         basePed().in("status", ["rascunho", "emitido", "confirmado", "entrega_parcial"]),
         basePed().in("status", ["emitido", "confirmado", "entrega_parcial"]),
         supabase.from("cotacoes").select("requisicao_id").eq("empresa_id", empresaId).eq("status", "aberta"),
@@ -923,7 +923,7 @@ export function useSupplyChainCounts() {
           .from("requisicoes_compra")
           .select("id", { count: "exact", head: true })
           .eq("empresa_id", empresaId)
-          .eq("status", "em_cotacao")
+          .in("workflow_status", ["QUOTING", "PENDING_APPROVAL"])
           .in("id", Array.from(reqIdsComCotacao));
         paraAprovar = count || 0;
       }
