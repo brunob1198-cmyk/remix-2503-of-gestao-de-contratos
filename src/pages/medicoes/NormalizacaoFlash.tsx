@@ -609,6 +609,9 @@ export default function NormalizacaoFlashPage() {
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
+      const comentSearch = (searchParams.get("coment") || "").trim().toLowerCase();
+      if (comentSearch && !(t.comentarios || "").toLowerCase().includes(comentSearch)) return false;
+
       if (search) {
         const q = search.toLowerCase();
         if (
@@ -1655,11 +1658,58 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[150px] cursor-pointer group"
-                            onClick={() => toggleSort('comentarios')}
-                          >
-                            <div className="flex items-center">Comentários <SortIcon column="comentarios" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('comentarios')}
+                              >
+                                Comentários <SortIcon column="comentarios" />
+                              </button>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn("h-6 w-6 shrink-0", searchParams.get("coment") && "text-primary")}
+                                    aria-label="Filtrar Comentários"
+                                  >
+                                    <Filter className={cn("h-3 w-3", searchParams.get("coment") && "fill-current")} />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[240px] p-2" align="start">
+                                  <Input
+                                    autoFocus
+                                    placeholder="Pesquisar comentário..."
+                                    value={searchParams.get("coment") || ""}
+                                    onChange={(e) => {
+                                      const params = new URLSearchParams(searchParams);
+                                      if (e.target.value) params.set("coment", e.target.value);
+                                      else params.delete("coment");
+                                      setSearchParams(params, { replace: true });
+                                    }}
+                                    className="h-8"
+                                  />
+                                  {searchParams.get("coment") && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full mt-2 h-7 text-xs"
+                                      onClick={() => {
+                                        const params = new URLSearchParams(searchParams);
+                                        params.delete("coment");
+                                        setSearchParams(params, { replace: true });
+                                      }}
+                                    >
+                                      Limpar
+                                    </Button>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </TableHead>
                           <TableHead className="w-[150px]">
                             <div className="flex items-center gap-1">
