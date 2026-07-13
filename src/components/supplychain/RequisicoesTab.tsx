@@ -227,7 +227,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {(r.workflow_status === "DRAFT" || r.status === "rascunho") && (
+            {r.workflow_status === "DRAFT" && (
               <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             )}
           </div>
