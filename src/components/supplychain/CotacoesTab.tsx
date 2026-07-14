@@ -327,7 +327,12 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                                   <Badge variant={st.variant} className={isVencedora ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                                     {st.label}
                                   </Badge>
-                                </div>
+                                  {diasAtraso > 0 && (
+                                    <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Atrasada há {diasAtraso}d
+                                    </Badge>
+                                  )}
                               </div>
                             );
                           })}
