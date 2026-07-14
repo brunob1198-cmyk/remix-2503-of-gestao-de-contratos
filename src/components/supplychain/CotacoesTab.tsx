@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, ChevronRight, Search } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
+import { diasCotacaoAtrasada, isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 import { RequisitionTimeline } from "./RequisitionTimeline";
 
 // WORKFLOW_STATUS in the DB
