@@ -37,10 +37,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
   const [syncFrom, setSyncFrom] = useState("");
   const [syncTo, setSyncTo] = useState("");
 
-  // Paginação
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-
   // Modal de detalhes
   const [selectedNota, setSelectedNota] = useState<FaturamentoContaAzul | null>(null);
 
