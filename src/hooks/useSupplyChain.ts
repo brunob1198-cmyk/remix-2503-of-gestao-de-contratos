@@ -849,20 +849,40 @@ export function usePedidosCompra() {
       if (data_emissao !== undefined) updates.data_emissao = data_emissao;
       if (status === 'entregue' && !updates.data_entrega_real) updates.data_entrega_real = new Date().toISOString().split('T')[0];
 
+      const { data: current, error: fetchErr } = await supabase
+        .from("pedidos")
+        .select("status, empresa_id")
+        .eq("id", id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
       const { error } = await supabase.from("pedidos").update(updates).eq("id", id);
       if (error) throw error;
+
+      if (status && status !== current.status) {
+        const obs = status === "cancelado" && motivo_cancelamento
+          ? `Cancelado: ${motivo_cancelamento}`
+          : observacoes || `Status atualizado para ${status}`;
+        await logHistorico({
+          empresa_id: current.empresa_id,
+          entidade_tipo: "pedido",
+          entidade_id: id,
+          status_anterior: current.status,
+          status_novo: status,
+          observacoes: obs,
+        });
+      }
 
       if (requisicao_id && requisicao_status_after) {
         await supabase.from("requisicoes_compra").update({ workflow_status: requisicao_status_after }).eq("id", requisicao_id);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
-      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
-      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "pedido", variables.id] });
       toast.success("Pedido atualizado!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
