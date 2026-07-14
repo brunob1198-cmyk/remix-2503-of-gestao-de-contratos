@@ -28,7 +28,8 @@ const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "seco
 export function RequisicoesTab({ filter }: { filter?: string }) {
   const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
-  const { itens: scItens } = useScItens();
+  const [scItensSearch, setScItensSearch] = useState("");
+  const { itens: scItens } = useScItens({ search: scItensSearch });
   const { hasActionPermission } = usePermissions();
 
   const [open, setOpen] = useState(false);
