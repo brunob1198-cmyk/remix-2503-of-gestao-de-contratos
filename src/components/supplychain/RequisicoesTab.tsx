@@ -278,9 +278,17 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               <div><Label>Justificativa</Label><Textarea value={form.justificativa} onChange={e => setForm(p => ({ ...p, justificativa: e.target.value }))} /></div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <Label className="text-base font-semibold">Itens</Label>
-                  <Button variant="outline" size="sm" onClick={addItemRow}><Plus className="h-3 w-3 mr-1" /> Adicionar Item</Button>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Buscar item por código/descrição..."
+                      value={scItensSearch}
+                      onChange={(e) => setScItensSearch(e.target.value)}
+                      className="h-8 w-64"
+                    />
+                    <Button variant="outline" size="sm" onClick={addItemRow}><Plus className="h-3 w-3 mr-1" /> Adicionar Item</Button>
+                  </div>
                 </div>
                 {itemRows.map((row, idx) => (
                   <div key={idx} className="flex gap-2 items-end">
