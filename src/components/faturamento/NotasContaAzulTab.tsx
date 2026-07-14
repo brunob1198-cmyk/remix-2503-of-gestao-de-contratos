@@ -230,7 +230,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
-                    setPage(1);
                   }}
                 />
               </div>
