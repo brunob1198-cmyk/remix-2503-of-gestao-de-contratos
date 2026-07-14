@@ -303,7 +303,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
     onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
   });
 
-  return { itens, isLoading, create, update, remove, bulkCreate };
+  return { itens, isLoading, searchScItens, create, update, remove, bulkCreate };
 }
 
 // ─── Requisições de Compra ───
