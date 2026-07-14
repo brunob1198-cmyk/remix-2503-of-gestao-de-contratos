@@ -65,24 +65,73 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
     });
   }, [notas, search, dateFrom, dateTo, clienteFilter, centroFilter]);
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Header filters + sort per column
+  const COLUMNS = [
+    "numero_nota",
+    "numero_venda",
+    "data_emissao",
+    "cliente_nome",
+    "centro_custo",
+    "descricao",
+    "valor_total",
+    "valor_aberto",
+    "valor_baixado",
+    "status",
+  ] as const;
+  type ColKey = (typeof COLUMNS)[number];
+
+  const columnLabels: Record<ColKey, string> = {
+    numero_nota: "Nº Nota",
+    numero_venda: "Nº Venda",
+    data_emissao: "Data Emissão",
+    cliente_nome: "Cliente",
+    centro_custo: "Centro de Custo",
+    descricao: "Descrição",
+    valor_total: "Total",
+    valor_aberto: "Em Aberto",
+    valor_baixado: "Baixado",
+    status: "Status",
+  };
+
+  const getColValue = (n: FaturamentoContaAzul, col: ColKey): string => {
+    if (col === "data_emissao") return n.data_emissao || "";
+    if (col === "valor_total" || col === "valor_aberto" || col === "valor_baixado") {
+      return (Number((n as any)[col]) || 0).toFixed(2);
+    }
+    const v = (n as any)[col];
+    return v == null || v === "" ? "-" : String(v);
+  };
+
+  const {
+    sortColumn, sortDir, searchTexts, selectedFilters, handleSort, setSearchText, toggleValue,
+    selectAll, clearAll, clearAllFilters: clearHeaderFilters, hasActiveFilters: hasHeaderFilters,
+    processedItems, uniqueValues, paginatedItems,
+    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages,
+  } = useTableFilters<FaturamentoContaAzul, ColKey>(filtered, COLUMNS, getColValue, "notas_ca");
+
+  const total = processedItems.length;
 
   const valorTotalFiltrado = useMemo(
-    () => filtered.reduce((sum, n) => sum + (Number(n.valor_total) || 0), 0),
-    [filtered],
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_total) || 0), 0),
+    [processedItems],
+  );
+  const valorAbertoFiltrado = useMemo(
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_aberto) || 0), 0),
+    [processedItems],
+  );
+  const valorBaixadoFiltrado = useMemo(
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_baixado) || 0), 0),
+    [processedItems],
   );
 
-  const hasFilters = !!(search || dateFrom || dateTo || clienteFilter !== "all" || centroFilter !== "all");
+  const hasFilters = !!(search || dateFrom || dateTo || clienteFilter !== "all" || centroFilter !== "all") || hasHeaderFilters;
   const clearFilters = () => {
     setSearch("");
     setDateFrom("");
     setDateTo("");
     setClienteFilter("all");
     setCentroFilter("all");
-    setPage(1);
+    clearHeaderFilters();
   };
 
   // Detalhes derivados do payload_json
