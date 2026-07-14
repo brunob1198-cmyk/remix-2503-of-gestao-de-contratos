@@ -5283,6 +5283,10 @@ export type Database = {
         Args: { p_competencia: string; p_projeto_id: string }
         Returns: number
       }
+      gerar_proximo_numero_sc: {
+        Args: { p_empresa_id: string; p_prefixo: string }
+        Returns: string
+      }
       get_bi_analise_obras: {
         Args: never
         Returns: {
