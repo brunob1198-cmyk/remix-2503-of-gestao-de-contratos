@@ -334,6 +334,7 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                             onToggleValue={(v) => toggleValue(col, v)}
                             onSelectAll={() => selectAll(col, uniqueValues[col])}
                             onClearAll={() => clearAll(col)}
+                            isDate={col === "data_emissao"}
                           />
                         </TableHead>
                       ))}
