@@ -609,8 +609,11 @@ export default function NormalizacaoFlashPage() {
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
-      const comentSearch = (searchParams.get("coment") || "").trim().toLowerCase();
-      if (comentSearch && !(t.comentarios || "").toLowerCase().includes(comentSearch)) return false;
+      const comentTokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (comentTokens.length > 0) {
+        const hay = (t.comentarios || "").toLowerCase();
+        if (!comentTokens.every((tok) => hay.includes(tok))) return false;
+      }
 
       if (search) {
         const q = search.toLowerCase();
