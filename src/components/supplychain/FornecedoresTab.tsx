@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useFornecedores } from "@/hooks/useSupplyChain";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,7 +26,8 @@ const SCORE_WEIGHTS = {
 
 export function FornecedoresTab() {
   const [search, setSearch] = useState("");
-  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ search, includeInactive: true });
+  const debouncedSearch = useDebounce(search, 250);
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ search: debouncedSearch, includeInactive: true });
   const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
