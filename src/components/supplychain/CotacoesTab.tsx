@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, ChevronRight, Search } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
+import { diasCotacaoAtrasada, isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 import { RequisitionTimeline } from "./RequisitionTimeline";
 
 // WORKFLOW_STATUS in the DB
@@ -93,6 +94,10 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
       filtered = filtered.filter((r: any) => 
         (r.prioridade === "alta" || r.prioridade === "urgente") &&
         (!r.cotacoes || r.cotacoes.length === 0)
+      );
+    } else if (filter === "cotacoes_atrasadas") {
+      filtered = filtered.filter((r: any) =>
+        r.cotacoes?.some((c: any) => isCotacaoAtrasada(c))
       );
     }
 
@@ -295,6 +300,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                             const isVencedora = cot.status === "aprovada";
                             const isPerdida = cot.status === "rejeitada" || (hasAprovada && !isVencedora); // Se tem vencedora, as outras perdem opacidade
                             const st = COTACAO_STATUS_MAP[isVencedora ? "aprovada" : (isPerdida ? "rejeitada" : "pendente")];
+                            const diasAtraso = diasCotacaoAtrasada(cot);
                             
                             return (
                               <div 
@@ -321,6 +327,12 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                                   <Badge variant={st.variant} className={isVencedora ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                                     {st.label}
                                   </Badge>
+                                  {diasAtraso > 0 && (
+                                    <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Atrasada há {diasAtraso}d
+                                    </Badge>
+                                  )}
                                 </div>
                               </div>
                             );

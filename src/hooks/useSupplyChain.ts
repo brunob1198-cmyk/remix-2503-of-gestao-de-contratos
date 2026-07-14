@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
+import { isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 
 // Friendly labels used in realtime notifications
 const PEDIDO_STATUS_LABELS: Record<string, string> = {
@@ -588,7 +589,7 @@ export function useSupplyChainFunnelCounts() {
       // 1. Fetch RCs basic data + cotacoes
       const { data: reqs, error: reqErr } = await supabase
         .from("requisicoes_compra")
-        .select("id, numero, workflow_status, prioridade, data_necessidade, cotacoes(id, status)");
+        .select("id, numero, workflow_status, prioridade, data_necessidade, cotacoes(id, status, created_at, validade)");
       
       if (reqErr) throw reqErr;
 
@@ -618,6 +619,16 @@ export function useSupplyChainFunnelCounts() {
       );
       const stage2QuotesCount = stage2Reqs.reduce((acc, r) => acc + (r.cotacoes?.filter((c: any) => c.status === 'pendente').length || 0), 0);
 
+      // Sub-indicador: cotações pendentes atrasadas (sem resposta do fornecedor)
+      const atrasadasReqs = (reqs || []).filter(r =>
+        r.workflow_status === 'QUOTING' &&
+        r.cotacoes?.some((c: any) => isCotacaoAtrasada(c))
+      );
+      const atrasadasCount = (reqs || []).reduce(
+        (acc, r) => acc + (r.cotacoes?.filter((c: any) => isCotacaoAtrasada(c)).length || 0),
+        0
+      );
+
       // Estágio 3: Em aprovação
       const stage3Reqs = (reqs || []).filter(r => r.workflow_status === 'PENDING_APPROVAL');
 
@@ -644,7 +655,12 @@ export function useSupplyChainFunnelCounts() {
 
       return {
         stage1: { count: stage1Reqs.length, items: stage1Reqs.slice(0, 3).map(r => r.numero).join(", ") },
-        stage2: { count: stage2Reqs.length, quotesCount: stage2QuotesCount },
+        stage2: {
+          count: stage2Reqs.length,
+          quotesCount: stage2QuotesCount,
+          atrasadasCount,
+          atrasadasReqsCount: atrasadasReqs.length,
+        },
         stage3: { count: stage3Reqs.length },
         stage4: { count: stage4Peds.length },
         stage5: { count: stage5Peds.length },
