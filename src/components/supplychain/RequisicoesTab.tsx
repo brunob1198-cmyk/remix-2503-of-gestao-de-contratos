@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRequisicoes, useScItens } from "@/hooks/useSupplyChain";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useProjetos } from "@/hooks/useProjetos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
