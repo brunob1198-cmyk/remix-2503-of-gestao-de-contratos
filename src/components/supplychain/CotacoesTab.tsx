@@ -300,6 +300,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                             const isVencedora = cot.status === "aprovada";
                             const isPerdida = cot.status === "rejeitada" || (hasAprovada && !isVencedora); // Se tem vencedora, as outras perdem opacidade
                             const st = COTACAO_STATUS_MAP[isVencedora ? "aprovada" : (isPerdida ? "rejeitada" : "pendente")];
+                            const diasAtraso = diasCotacaoAtrasada(cot);
                             
                             return (
                               <div 
