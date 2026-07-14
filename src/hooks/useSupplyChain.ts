@@ -307,21 +307,11 @@ export function useRequisicoes() {
       const reqData = { ...req };
       delete reqData.itens;
       
-      const { data: latestReqs, error: latestErr } = await supabase
-        .from("requisicoes_compra")
-        .select("numero")
-        .eq("empresa_id", empresaId)
-        .order("numero", { ascending: false })
-        .limit(1);
-      
-      let nextNum = 1;
-      if (latestReqs && latestReqs.length > 0 && latestReqs[0].numero) {
-        const match = latestReqs[0].numero.match(/RC-(\d+)/);
-        if (match) {
-          nextNum = parseInt(match[1], 10) + 1;
-        }
-      }
-      const numero = `RC-${String(nextNum).padStart(4, "0")}`;
+      const { data: numero, error: numeroErr } = await supabase.rpc("gerar_proximo_numero_sc", {
+        p_empresa_id: empresaId,
+        p_prefixo: "RC",
+      });
+      if (numeroErr) throw numeroErr;
 
       const { data, error } = await supabase
         .from("requisicoes_compra")
@@ -457,11 +447,11 @@ export function useCotacoes(requisicaoId?: string) {
       const itens = cot.itens || [];
       delete cot.itens;
 
-      const count = await supabase
-        .from("cotacoes")
-        .select("id", { count: "exact", head: true })
-        .eq("empresa_id", empresaId);
-      const numero = `COT-${String((count.count || 0) + 1).padStart(4, "0")}`;
+      const { data: numero, error: numeroErr } = await supabase.rpc("gerar_proximo_numero_sc", {
+        p_empresa_id: empresaId,
+        p_prefixo: "COT",
+      });
+      if (numeroErr) throw numeroErr;
 
       const { data, error } = await supabase
         .from("cotacoes")
@@ -717,11 +707,11 @@ export function usePedidosCompra() {
       const itens = ped.itens || [];
       delete ped.itens;
 
-      const count = await supabase
-        .from("pedidos")
-        .select("id", { count: "exact", head: true })
-        .eq("empresa_id", empresaId);
-      const numero = `PED-${String((count.count || 0) + 1).padStart(4, "0")}`;
+      const { data: numero, error: numeroErr } = await supabase.rpc("gerar_proximo_numero_sc", {
+        p_empresa_id: empresaId,
+        p_prefixo: "PED",
+      });
+      if (numeroErr) throw numeroErr;
 
       const { data, error } = await supabase
         .from("pedidos")
