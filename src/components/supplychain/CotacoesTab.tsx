@@ -95,6 +95,10 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
         (r.prioridade === "alta" || r.prioridade === "urgente") &&
         (!r.cotacoes || r.cotacoes.length === 0)
       );
+    } else if (filter === "cotacoes_atrasadas") {
+      filtered = filtered.filter((r: any) =>
+        r.cotacoes?.some((c: any) => isCotacaoAtrasada(c))
+      );
     }
 
     if (searchTerm) {
