@@ -241,7 +241,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
-                  setPage(1);
                 }}
               />
             </div>
@@ -252,7 +251,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
-                  setPage(1);
                 }}
               />
             </div>
@@ -262,7 +260,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={clienteFilter}
                 onValueChange={(v) => {
                   setClienteFilter(v);
-                  setPage(1);
                 }}
               >
                 <SelectTrigger>
@@ -284,7 +281,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={centroFilter}
                 onValueChange={(v) => {
                   setCentroFilter(v);
-                  setPage(1);
                 }}
               >
                 <SelectTrigger>
@@ -398,7 +394,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 itemsPerPage={pageSize}
                 onItemsPerPageChange={(s) => {
                   setPageSize(s);
-                  setPage(1);
                 }}
                 totalItems={total}
               />
