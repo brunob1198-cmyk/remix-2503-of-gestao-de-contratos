@@ -37,7 +37,8 @@ const PRIORIDADE_MAP: Record<string, { label: string; bg: string; text: string }
 
 export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigate?: (t: string, f?: string) => void }) {
   const { data: requisicoesMestreDetalhe = [], isLoading } = useCotacoesMestreDetalhe();
-  const { fornecedores } = useFornecedores();
+  const [fornecedorSearch, setFornecedorSearch] = useState("");
+  const { fornecedores } = useFornecedores({ search: fornecedorSearch });
   const { create: createCotacao } = useCotacoes(); // Using only the mutation part for creation
   const { hasActionPermission } = usePermissions();
 
