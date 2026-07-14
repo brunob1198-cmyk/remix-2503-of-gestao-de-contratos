@@ -28,6 +28,58 @@ async function getEmpresaId(): Promise<string> {
   return data.empresa_id;
 }
 
+// ─── Histórico genérico (sc_historico) ───
+export type ScEntidadeTipo = "requisicao" | "cotacao" | "pedido";
+
+async function logHistorico(params: {
+  empresa_id: string;
+  entidade_tipo: ScEntidadeTipo;
+  entidade_id: string;
+  status_anterior?: string | null;
+  status_novo?: string | null;
+  observacoes?: string | null;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("sc_historico").insert({
+    empresa_id: params.empresa_id,
+    entidade_tipo: params.entidade_tipo,
+    entidade_id: params.entidade_id,
+    status_anterior: params.status_anterior ?? null,
+    status_novo: params.status_novo ?? null,
+    usuario_id: user?.id ?? null,
+    observacoes: params.observacoes ?? null,
+  });
+  if (error) console.error("sc_historico insert failed", error);
+}
+
+export function useHistorico(entidadeTipo: ScEntidadeTipo, entidadeId?: string) {
+  return useQuery({
+    queryKey: ["sc_historico", entidadeTipo, entidadeId],
+    enabled: !!entidadeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sc_historico")
+        .select("*")
+        .eq("entidade_tipo", entidadeTipo)
+        .eq("entidade_id", entidadeId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const rows = data || [];
+      const userIds = Array.from(new Set(rows.map((r: any) => r.usuario_id).filter(Boolean)));
+      let nameMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", userIds);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.nome]));
+      }
+      return rows.map((r: any) => ({ ...r, profiles: { nome: nameMap[r.usuario_id] || null } }));
+    },
+  });
+}
+
 // ─── Fornecedores ───
 export function useFornecedores(options?: { search?: string; includeInactive?: boolean; limit?: number }) {
   const queryClient = useQueryClient();
