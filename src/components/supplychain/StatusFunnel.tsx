@@ -58,7 +58,7 @@ export function StatusFunnel({ onNavigate }: { onNavigate?: (tab: string, filter
               title="Cotações pendentes sem resposta do fornecedor"
             >
               <AlertCircle className="h-3 w-3" />
-              {funnel.stage2.atrasadasCount} sem resposta há +{3}d
+              {funnel.stage2.atrasadasCount} sem resposta há +{DIAS_COTACAO_ATRASADA}d
             </button>
           )}
         </div>
