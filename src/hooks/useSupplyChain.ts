@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
+import { isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 
 // Friendly labels used in realtime notifications
 const PEDIDO_STATUS_LABELS: Record<string, string> = {
