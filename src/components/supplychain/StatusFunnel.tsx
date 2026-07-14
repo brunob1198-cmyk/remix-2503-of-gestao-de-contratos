@@ -49,6 +49,17 @@ export function StatusFunnel({ onNavigate }: { onNavigate?: (tab: string, filter
               {funnel.stage2.quotesCount} cotação(ões) registrada(s)
             </span>
           )}
+          {(funnel.stage2.atrasadasCount ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onNavigate && onNavigate("cotacoes", "cotacoes_atrasadas"); }}
+              className="mt-2 inline-flex items-center gap-1 self-start rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-100 transition-colors"
+              title="Cotações pendentes sem resposta do fornecedor"
+            >
+              <AlertCircle className="h-3 w-3" />
+              {funnel.stage2.atrasadasCount} sem resposta há +{3}d
+            </button>
+          )}
         </div>
 
         {/* Estágio 3 */}
