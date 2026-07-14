@@ -1,4 +1,5 @@
 import { useSupplyChainFunnelCounts } from "@/hooks/useSupplyChain";
+import { DIAS_COTACAO_ATRASADA } from "@/lib/cotacaoAtraso";
 import { AlertCircle } from "lucide-react";
 
 export function StatusFunnel({ onNavigate }: { onNavigate?: (tab: string, filter?: string) => void }) {
