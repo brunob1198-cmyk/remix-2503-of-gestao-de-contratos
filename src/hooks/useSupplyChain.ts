@@ -29,24 +29,37 @@ async function getEmpresaId(): Promise<string> {
 }
 
 // ─── Fornecedores ───
-export function useFornecedores() {
+export function useFornecedores(options?: { search?: string; includeInactive?: boolean; limit?: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const search = options?.search?.trim() ?? "";
+  const includeInactive = options?.includeInactive ?? false;
+  const limit = options?.limit ?? 200;
 
   const { data: fornecedores = [], isLoading } = useQuery({
-    queryKey: ["fornecedores"],
+    queryKey: ["fornecedores", { search, includeInactive, limit }],
     staleTime: 10 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fornecedores")
-        .select("*")
-        .order("razao_social");
+      let q = supabase.from("fornecedores").select("*").order("razao_social").limit(limit);
+      if (!includeInactive) q = q.eq("ativo", true);
+      if (search) q = q.ilike("razao_social", `%${search}%`);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
+
+  const searchFornecedores = async (termo: string, opts?: { includeInactive?: boolean; limit?: number }) => {
+    const l = opts?.limit ?? 50;
+    let q = supabase.from("fornecedores").select("*").order("razao_social").limit(l);
+    if (!(opts?.includeInactive ?? false)) q = q.eq("ativo", true);
+    if (termo?.trim()) q = q.ilike("razao_social", `%${termo.trim()}%`);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  };
 
   const create = useMutation({
     mutationFn: async (f: any) => {
