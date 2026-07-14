@@ -213,25 +213,41 @@ export function useFornecedores(options?: { search?: string; includeInactive?: b
     onError: (e: Error) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
   });
 
-  return { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove };
+  return { fornecedores, isLoading, searchFornecedores, create, update, remove, bulkCreate, bulkRemove };
 }
 
 // ─── SC Itens ───
-export function useScItens() {
+export function useScItens(options?: { search?: string; limit?: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const search = options?.search?.trim() ?? "";
+  const limit = options?.limit ?? 200;
 
   const { data: itens = [], isLoading } = useQuery({
-    queryKey: ["sc_itens"],
+    queryKey: ["sc_itens", { search, limit }],
     staleTime: 10 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data, error } = await supabase.from("sc_itens").select("*").order("codigo");
+      let q = supabase.from("sc_itens").select("*").order("codigo").limit(limit);
+      if (search) q = q.or(`codigo.ilike.%${search}%,descricao.ilike.%${search}%`);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
+
+  const searchScItens = async (termo: string, opts?: { limit?: number }) => {
+    const l = opts?.limit ?? 50;
+    let q = supabase.from("sc_itens").select("*").order("codigo").limit(l);
+    if (termo?.trim()) {
+      const t = termo.trim();
+      q = q.or(`codigo.ilike.%${t}%,descricao.ilike.%${t}%`);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  };
 
   const create = useMutation({
     mutationFn: async (item: any) => {
