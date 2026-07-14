@@ -14,7 +14,8 @@ import * as XLSX from "xlsx";
 
 export function ItensTab() {
   const [search, setSearch] = useState("");
-  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens({ search });
+  const debouncedSearch = useDebounce(search, 250);
+  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens({ search: debouncedSearch });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ codigo: "", descricao: "", unidade: "UN", categoria: "", especificacao: "" });
