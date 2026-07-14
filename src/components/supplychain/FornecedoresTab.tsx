@@ -24,7 +24,8 @@ const SCORE_WEIGHTS = {
 };
 
 export function FornecedoresTab() {
-  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores();
+  const [search, setSearch] = useState("");
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ search, includeInactive: true });
   const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
