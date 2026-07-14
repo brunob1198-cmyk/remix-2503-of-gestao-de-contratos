@@ -524,6 +524,12 @@ export default function NormalizacaoFlashPage() {
       data: (t) => dataFilter.length === 0 || dataFilter.includes(formatDate(t.data)),
       desc: (t) => descFilter.length === 0 || descFilter.includes(t.descricao),
       val: (t) => valFilter.length === 0 || valFilter.includes(formatCurrency(t.valor)),
+      coment: (t) => {
+        const tokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (tokens.length === 0) return true;
+        const hay = (t.comentarios || "").toLowerCase();
+        return tokens.every((tok) => hay.includes(tok));
+      },
       search: (t) => {
         if (!search) return true;
         const q = search.toLowerCase();
