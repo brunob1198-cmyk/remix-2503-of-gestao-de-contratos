@@ -12,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
 export function ItensTab() {
-  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens();
+  const [search, setSearch] = useState("");
+  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens({ search });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ codigo: "", descricao: "", unidade: "UN", categoria: "", especificacao: "" });
