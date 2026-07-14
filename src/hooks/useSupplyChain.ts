@@ -447,11 +447,11 @@ export function useCotacoes(requisicaoId?: string) {
       const itens = cot.itens || [];
       delete cot.itens;
 
-      const count = await supabase
-        .from("cotacoes")
-        .select("id", { count: "exact", head: true })
-        .eq("empresa_id", empresaId);
-      const numero = `COT-${String((count.count || 0) + 1).padStart(4, "0")}`;
+      const { data: numero, error: numeroErr } = await supabase.rpc("gerar_proximo_numero_sc", {
+        p_empresa_id: empresaId,
+        p_prefixo: "COT",
+      });
+      if (numeroErr) throw numeroErr;
 
       const { data, error } = await supabase
         .from("cotacoes")
