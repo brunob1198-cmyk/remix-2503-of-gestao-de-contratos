@@ -30,7 +30,8 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
   const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
   const [scItensSearch, setScItensSearch] = useState("");
-  const { itens: scItens } = useScItens({ search: scItensSearch });
+  const debouncedScItensSearch = useDebounce(scItensSearch, 250);
+  const { itens: scItens } = useScItens({ search: debouncedScItensSearch });
   const { hasActionPermission } = usePermissions();
 
   const [open, setOpen] = useState(false);
