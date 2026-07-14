@@ -1598,6 +1598,7 @@ export type Database = {
           created_at: string | null
           data_emissao: string
           descricao: string | null
+          empresa_id: string | null
           erp_id: string
           id: string
           numero_nota: string | null
@@ -1616,6 +1617,7 @@ export type Database = {
           created_at?: string | null
           data_emissao: string
           descricao?: string | null
+          empresa_id?: string | null
           erp_id: string
           id?: string
           numero_nota?: string | null
@@ -1634,6 +1636,7 @@ export type Database = {
           created_at?: string | null
           data_emissao?: string
           descricao?: string | null
+          empresa_id?: string | null
           erp_id?: string
           id?: string
           numero_nota?: string | null
@@ -1647,6 +1650,13 @@ export type Database = {
           valor_total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "faturamentos_conta_azul_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
             columns: ["projeto_id"]
