@@ -333,6 +333,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                                       Atrasada há {diasAtraso}d
                                     </Badge>
                                   )}
+                                </div>
                               </div>
                             );
                           })}
