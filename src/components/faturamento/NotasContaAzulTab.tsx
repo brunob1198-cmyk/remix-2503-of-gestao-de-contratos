@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Receipt, RefreshCw, FilterX, Search, Eye } from "lucide-react";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
+import { useTableFilters } from "@/hooks/useTableFilters";
 import { FaturamentoContaAzul, useSyncContaAzulVendas } from "@/hooks/useFaturamento";
 
 const formatCurrency = (value: number) =>
