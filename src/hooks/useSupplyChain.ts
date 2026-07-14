@@ -817,6 +817,16 @@ export function usePedidosCompra() {
           .insert(itens.map((i: any) => ({ ...i, pedido_id: data.id })));
         if (itemErr) throw itemErr;
       }
+
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "pedido",
+        entidade_id: data.id,
+        status_anterior: null,
+        status_novo: "rascunho",
+        observacoes: "Pedido de compra criado",
+      });
+
       return data;
     },
     onSuccess: () => {
