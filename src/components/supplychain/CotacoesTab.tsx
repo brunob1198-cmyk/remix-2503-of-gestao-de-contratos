@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useCotacoesMestreDetalhe, useFornecedores, useCotacoes } from "@/hooks/useSupplyChain";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
