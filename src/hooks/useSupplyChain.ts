@@ -939,6 +939,12 @@ export function usePedidoRecebimentos() {
       }
 
       // Recalcular status do pedido com base nos totais
+      const { data: pedAtual } = await supabase
+        .from("pedidos")
+        .select("status, empresa_id")
+        .eq("id", pedidoId)
+        .single();
+
       const { data: pedItens } = await supabase
         .from("pedido_itens")
         .select("quantidade_pedida, quantidade_recebida")
@@ -957,6 +963,18 @@ export function usePedidoRecebimentos() {
       if (nfArquivoUrl) pedUpdates.nf_arquivo_url = nfArquivoUrl;
 
       await supabase.from("pedidos").update(pedUpdates).eq("id", pedidoId);
+
+      if (pedAtual && pedAtual.status !== pedUpdates.status) {
+        await logHistorico({
+          empresa_id: pedAtual.empresa_id,
+          entidade_tipo: "pedido",
+          entidade_id: pedidoId,
+          status_anterior: pedAtual.status,
+          status_novo: pedUpdates.status,
+          observacoes: tudoRecebido ? "Recebimento total" : "Recebimento parcial",
+        });
+      }
+
 
       return data;
     },
