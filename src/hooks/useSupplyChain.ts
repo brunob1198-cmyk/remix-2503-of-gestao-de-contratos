@@ -529,6 +529,17 @@ export function useCotacoes(requisicaoId?: string) {
           .insert(itens.map((i: any) => ({ ...i, cotacao_id: data.id })));
         if (itemErr) throw itemErr;
       }
+
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "cotacao",
+        entidade_id: data.id,
+        status_anterior: null,
+        status_novo: data.status || "pendente",
+        observacoes: "Cotação registrada",
+      });
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
@@ -538,12 +549,29 @@ export function useCotacoes(requisicaoId?: string) {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, observacoes }: { id: string; status: string; observacoes?: string }) => {
+      const { data: current, error: fetchErr } = await supabase
+        .from("cotacoes")
+        .select("status, empresa_id")
+        .eq("id", id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
       const { error } = await supabase.from("cotacoes").update({ status }).eq("id", id);
       if (error) throw error;
+
+      await logHistorico({
+        empresa_id: current.empresa_id,
+        entidade_tipo: "cotacao",
+        entidade_id: id,
+        status_anterior: current.status,
+        status_novo: status,
+        observacoes: observacoes || `Status atualizado para ${status}`,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "cotacao", variables.id] });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
