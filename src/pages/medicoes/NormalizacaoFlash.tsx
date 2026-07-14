@@ -524,6 +524,12 @@ export default function NormalizacaoFlashPage() {
       data: (t) => dataFilter.length === 0 || dataFilter.includes(formatDate(t.data)),
       desc: (t) => descFilter.length === 0 || descFilter.includes(t.descricao),
       val: (t) => valFilter.length === 0 || valFilter.includes(formatCurrency(t.valor)),
+      coment: (t) => {
+        const tokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (tokens.length === 0) return true;
+        const hay = (t.comentarios || "").toLowerCase();
+        return tokens.every((tok) => hay.includes(tok));
+      },
       search: (t) => {
         if (!search) return true;
         const q = search.toLowerCase();
@@ -609,8 +615,11 @@ export default function NormalizacaoFlashPage() {
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
 
-      const comentSearch = (searchParams.get("coment") || "").trim().toLowerCase();
-      if (comentSearch && !(t.comentarios || "").toLowerCase().includes(comentSearch)) return false;
+      const comentTokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (comentTokens.length > 0) {
+        const hay = (t.comentarios || "").toLowerCase();
+        if (!comentTokens.every((tok) => hay.includes(tok))) return false;
+      }
 
       if (search) {
         const q = search.toLowerCase();
