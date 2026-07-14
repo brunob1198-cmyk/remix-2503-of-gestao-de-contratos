@@ -620,7 +620,6 @@ export function useSupplyChainFunnelCounts() {
       const stage2QuotesCount = stage2Reqs.reduce((acc, r) => acc + (r.cotacoes?.filter((c: any) => c.status === 'pendente').length || 0), 0);
 
       // Sub-indicador: cotações pendentes atrasadas (sem resposta do fornecedor)
-      const { isCotacaoAtrasada } = await import("@/lib/cotacaoAtraso");
       const atrasadasReqs = (reqs || []).filter(r =>
         r.workflow_status === 'QUOTING' &&
         r.cotacoes?.some((c: any) => isCotacaoAtrasada(c))
