@@ -4180,6 +4180,50 @@ export type Database = {
           },
         ]
       }
+      sc_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          id: string
+          observacoes: string | null
+          status_anterior: string | null
+          status_novo: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          entidade_id?: string
+          entidade_tipo?: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sc_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sc_itens: {
         Row: {
           ativo: boolean | null

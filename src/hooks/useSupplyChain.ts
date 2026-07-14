@@ -28,6 +28,58 @@ async function getEmpresaId(): Promise<string> {
   return data.empresa_id;
 }
 
+// ─── Histórico genérico (sc_historico) ───
+export type ScEntidadeTipo = "requisicao" | "cotacao" | "pedido";
+
+async function logHistorico(params: {
+  empresa_id: string;
+  entidade_tipo: ScEntidadeTipo;
+  entidade_id: string;
+  status_anterior?: string | null;
+  status_novo?: string | null;
+  observacoes?: string | null;
+}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase.from("sc_historico").insert({
+    empresa_id: params.empresa_id,
+    entidade_tipo: params.entidade_tipo,
+    entidade_id: params.entidade_id,
+    status_anterior: params.status_anterior ?? null,
+    status_novo: params.status_novo ?? null,
+    usuario_id: user?.id ?? null,
+    observacoes: params.observacoes ?? null,
+  });
+  if (error) console.error("sc_historico insert failed", error);
+}
+
+export function useHistorico(entidadeTipo: ScEntidadeTipo, entidadeId?: string) {
+  return useQuery({
+    queryKey: ["sc_historico", entidadeTipo, entidadeId],
+    enabled: !!entidadeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sc_historico")
+        .select("*")
+        .eq("entidade_tipo", entidadeTipo)
+        .eq("entidade_id", entidadeId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const rows = data || [];
+      const userIds = Array.from(new Set(rows.map((r: any) => r.usuario_id).filter(Boolean)));
+      let nameMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", userIds);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.nome]));
+      }
+      return rows.map((r: any) => ({ ...r, profiles: { nome: nameMap[r.usuario_id] || null } }));
+    },
+  });
+}
+
 // ─── Fornecedores ───
 export function useFornecedores(options?: { search?: string; includeInactive?: boolean; limit?: number }) {
   const queryClient = useQueryClient();
@@ -350,12 +402,13 @@ export function useRequisicoes() {
       if (error) throw error;
 
       // Log initial history
-      await supabase.from("requisicao_historico").insert({
-        requisicao_id: data.id,
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "requisicao",
+        entidade_id: data.id,
         status_anterior: null,
-        status_novo: 'DRAFT',
-        usuario_id: user.id,
-        observacoes: "Requisição criada no sistema"
+        status_novo: "DRAFT",
+        observacoes: "Requisição criada no sistema",
       });
 
       if (itens.length > 0) {
@@ -380,7 +433,7 @@ export function useRequisicoes() {
       // Get current workflow_status for history
       const { data: current, error: fetchErr } = await supabase
         .from("requisicoes_compra")
-        .select("workflow_status")
+        .select("workflow_status, empresa_id")
         .eq("id", id)
         .single();
 
@@ -392,43 +445,24 @@ export function useRequisicoes() {
         .eq("id", id);
       if (error) throw error;
 
-      // Log to history
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("requisicao_historico").insert({
-          requisicao_id: id,
-          status_anterior: current.workflow_status,
-          status_novo: workflow_status,
-          usuario_id: user.id,
-          observacoes: observacoes || `Status atualizado para ${workflow_status}`
-        });
-      }
+      await logHistorico({
+        empresa_id: current.empresa_id,
+        entidade_tipo: "requisicao",
+        entidade_id: id,
+        status_anterior: current.workflow_status,
+        status_novo: workflow_status,
+        observacoes: observacoes || `Status atualizado para ${workflow_status}`,
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
       queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
-      queryClient.invalidateQueries({ queryKey: ["requisicao_historico", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "requisicao", variables.id] });
       toast({ title: "Status atualizado!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
-
-  const getHistorico = (requisicaoId: string) => {
-    return useQuery({
-      queryKey: ["requisicao_historico", requisicaoId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from("requisicao_historico")
-          .select("*, profiles(nome)")
-          .eq("requisicao_id", requisicaoId)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        return data;
-      },
-      enabled: !!requisicaoId,
-    });
-  };
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -444,7 +478,7 @@ export function useRequisicoes() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  return { requisicoes, isLoading, create, updateStatus, remove, getHistorico };
+  return { requisicoes, isLoading, create, updateStatus, remove };
 }
 
 // ─── Cotações ───
@@ -495,6 +529,17 @@ export function useCotacoes(requisicaoId?: string) {
           .insert(itens.map((i: any) => ({ ...i, cotacao_id: data.id })));
         if (itemErr) throw itemErr;
       }
+
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "cotacao",
+        entidade_id: data.id,
+        status_anterior: null,
+        status_novo: data.status || "pendente",
+        observacoes: "Cotação registrada",
+      });
+
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
@@ -504,12 +549,29 @@ export function useCotacoes(requisicaoId?: string) {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, observacoes }: { id: string; status: string; observacoes?: string }) => {
+      const { data: current, error: fetchErr } = await supabase
+        .from("cotacoes")
+        .select("status, empresa_id")
+        .eq("id", id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
       const { error } = await supabase.from("cotacoes").update({ status }).eq("id", id);
       if (error) throw error;
+
+      await logHistorico({
+        empresa_id: current.empresa_id,
+        entidade_tipo: "cotacao",
+        entidade_id: id,
+        status_anterior: current.status,
+        status_novo: status,
+        observacoes: observacoes || `Status atualizado para ${status}`,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "cotacao", variables.id] });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -755,6 +817,16 @@ export function usePedidosCompra() {
           .insert(itens.map((i: any) => ({ ...i, pedido_id: data.id })));
         if (itemErr) throw itemErr;
       }
+
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "pedido",
+        entidade_id: data.id,
+        status_anterior: null,
+        status_novo: "rascunho",
+        observacoes: "Pedido de compra criado",
+      });
+
       return data;
     },
     onSuccess: () => {
@@ -777,20 +849,40 @@ export function usePedidosCompra() {
       if (data_emissao !== undefined) updates.data_emissao = data_emissao;
       if (status === 'entregue' && !updates.data_entrega_real) updates.data_entrega_real = new Date().toISOString().split('T')[0];
 
+      const { data: current, error: fetchErr } = await supabase
+        .from("pedidos")
+        .select("status, empresa_id")
+        .eq("id", id)
+        .single();
+      if (fetchErr) throw fetchErr;
+
       const { error } = await supabase.from("pedidos").update(updates).eq("id", id);
       if (error) throw error;
+
+      if (status && status !== current.status) {
+        const obs = status === "cancelado" && motivo_cancelamento
+          ? `Cancelado: ${motivo_cancelamento}`
+          : observacoes || `Status atualizado para ${status}`;
+        await logHistorico({
+          empresa_id: current.empresa_id,
+          entidade_tipo: "pedido",
+          entidade_id: id,
+          status_anterior: current.status,
+          status_novo: status,
+          observacoes: obs,
+        });
+      }
 
       if (requisicao_id && requisicao_status_after) {
         await supabase.from("requisicoes_compra").update({ workflow_status: requisicao_status_after }).eq("id", requisicao_id);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
-      queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
-      queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "pedido", variables.id] });
       toast.success("Pedido atualizado!");
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
@@ -847,6 +939,12 @@ export function usePedidoRecebimentos() {
       }
 
       // Recalcular status do pedido com base nos totais
+      const { data: pedAtual } = await supabase
+        .from("pedidos")
+        .select("status, empresa_id")
+        .eq("id", pedidoId)
+        .single();
+
       const { data: pedItens } = await supabase
         .from("pedido_itens")
         .select("quantidade_pedida, quantidade_recebida")
@@ -865,6 +963,18 @@ export function usePedidoRecebimentos() {
       if (nfArquivoUrl) pedUpdates.nf_arquivo_url = nfArquivoUrl;
 
       await supabase.from("pedidos").update(pedUpdates).eq("id", pedidoId);
+
+      if (pedAtual && pedAtual.status !== pedUpdates.status) {
+        await logHistorico({
+          empresa_id: pedAtual.empresa_id,
+          entidade_tipo: "pedido",
+          entidade_id: pedidoId,
+          status_anterior: pedAtual.status,
+          status_novo: pedUpdates.status,
+          observacoes: tudoRecebido ? "Recebimento total" : "Recebimento parcial",
+        });
+      }
+
 
       return data;
     },
