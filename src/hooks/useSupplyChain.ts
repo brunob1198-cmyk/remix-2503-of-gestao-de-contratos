@@ -402,12 +402,13 @@ export function useRequisicoes() {
       if (error) throw error;
 
       // Log initial history
-      await supabase.from("requisicao_historico").insert({
-        requisicao_id: data.id,
+      await logHistorico({
+        empresa_id: empresaId,
+        entidade_tipo: "requisicao",
+        entidade_id: data.id,
         status_anterior: null,
-        status_novo: 'DRAFT',
-        usuario_id: user.id,
-        observacoes: "Requisição criada no sistema"
+        status_novo: "DRAFT",
+        observacoes: "Requisição criada no sistema",
       });
 
       if (itens.length > 0) {
