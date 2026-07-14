@@ -12,7 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
 export function ItensTab() {
-  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens();
+  const [search, setSearch] = useState("");
+  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens({ search });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ codigo: "", descricao: "", unidade: "UN", categoria: "", especificacao: "" });
@@ -138,10 +139,19 @@ export function ItensTab() {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <Input
+            placeholder="Buscar por código ou descrição..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Mostrando até 200 resultados. Refine a busca para localizar mais.</p>
+        </div>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
         ) : itens.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">Nenhum item cadastrado</p>
+          <p className="text-muted-foreground text-center py-8">{search ? "Nenhum item encontrado" : "Nenhum item cadastrado"}</p>
         ) : (
           <Table>
             <TableHeader>
