@@ -303,7 +303,7 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : paginated.length === 0 ? (
+          ) : paginatedItems.length === 0 ? (
             <div className="text-center py-12 space-y-3">
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto opacity-20" />
               <p className="text-muted-foreground">
@@ -318,21 +318,30 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nº Nota</TableHead>
-                      <TableHead>Nº Venda</TableHead>
-                      <TableHead>Data Emissão</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Centro de Custo</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Em Aberto</TableHead>
-                      <TableHead className="text-right">Baixado</TableHead>
-                      <TableHead>Status</TableHead>
+                      {COLUMNS.map((col) => (
+                        <TableHead
+                          key={col}
+                          className={col === "valor_total" || col === "valor_aberto" || col === "valor_baixado" ? "text-right" : ""}
+                        >
+                          <ColumnHeader
+                            label={columnLabels[col]}
+                            sortDir={sortColumn === col ? sortDir : null}
+                            onSort={() => handleSort(col)}
+                            searchText={searchTexts[col]}
+                            onSearchChange={(v) => setSearchText(col, v)}
+                            uniqueValues={uniqueValues[col]}
+                            selectedValues={selectedFilters[col]}
+                            onToggleValue={(v) => toggleValue(col, v)}
+                            onSelectAll={() => selectAll(col, uniqueValues[col])}
+                            onClearAll={() => clearAll(col)}
+                          />
+                        </TableHead>
+                      ))}
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginated.map((nota) => (
+                    {paginatedItems.map((nota) => (
                       <TableRow
                         key={nota.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -385,16 +394,31 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                       </TableRow>
                     ))}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-right font-semibold">
+                        Total{hasFilters ? " (filtrado)" : ""}:
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatCurrency(valorTotalFiltrado)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-orange-600">
+                        {formatCurrency(valorAbertoFiltrado)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-green-600">
+                        {formatCurrency(valorBaixadoFiltrado)}
+                      </TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               </div>
               <TablePagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={setPage}
-                itemsPerPage={pageSize}
-                onItemsPerPageChange={(s) => {
-                  setPageSize(s);
-                }}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
                 totalItems={total}
               />
             </>
