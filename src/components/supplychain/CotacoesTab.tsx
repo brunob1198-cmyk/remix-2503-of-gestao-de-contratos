@@ -412,10 +412,16 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
               </div>
               <div>
                 <Label>Fornecedor *</Label>
+                <Input
+                  placeholder="Buscar fornecedor..."
+                  value={fornecedorSearch}
+                  onChange={(e) => setFornecedorSearch(e.target.value)}
+                  className="mb-1 h-8"
+                />
                 <Select value={form.fornecedor_id} onValueChange={v => setForm(p => ({ ...p, fornecedor_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    {fornecedores.filter((f: any) => f.ativo).map((f: any) => (
+                    {fornecedores.map((f: any) => (
                       <SelectItem key={f.id} value={f.id}>{f.razao_social}</SelectItem>
                     ))}
                   </SelectContent>
