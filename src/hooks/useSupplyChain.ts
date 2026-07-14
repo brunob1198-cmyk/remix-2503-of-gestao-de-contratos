@@ -433,7 +433,7 @@ export function useRequisicoes() {
       // Get current workflow_status for history
       const { data: current, error: fetchErr } = await supabase
         .from("requisicoes_compra")
-        .select("workflow_status")
+        .select("workflow_status, empresa_id")
         .eq("id", id)
         .single();
 
@@ -445,43 +445,24 @@ export function useRequisicoes() {
         .eq("id", id);
       if (error) throw error;
 
-      // Log to history
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("requisicao_historico").insert({
-          requisicao_id: id,
-          status_anterior: current.workflow_status,
-          status_novo: workflow_status,
-          usuario_id: user.id,
-          observacoes: observacoes || `Status atualizado para ${workflow_status}`
-        });
-      }
+      await logHistorico({
+        empresa_id: current.empresa_id,
+        entidade_tipo: "requisicao",
+        entidade_id: id,
+        status_anterior: current.workflow_status,
+        status_novo: workflow_status,
+        observacoes: observacoes || `Status atualizado para ${workflow_status}`,
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
       queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
-      queryClient.invalidateQueries({ queryKey: ["requisicao_historico", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["sc_historico", "requisicao", variables.id] });
       toast({ title: "Status atualizado!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
-
-  const getHistorico = (requisicaoId: string) => {
-    return useQuery({
-      queryKey: ["requisicao_historico", requisicaoId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from("requisicao_historico")
-          .select("*, profiles(nome)")
-          .eq("requisicao_id", requisicaoId)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        return data;
-      },
-      enabled: !!requisicaoId,
-    });
-  };
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -497,7 +478,7 @@ export function useRequisicoes() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  return { requisicoes, isLoading, create, updateStatus, remove, getHistorico };
+  return { requisicoes, isLoading, create, updateStatus, remove };
 }
 
 // ─── Cotações ───
