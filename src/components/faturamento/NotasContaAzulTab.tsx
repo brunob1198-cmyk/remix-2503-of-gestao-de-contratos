@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Receipt, RefreshCw, FilterX, Search, Eye } from "lucide-react";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
+import { useTableFilters } from "@/hooks/useTableFilters";
 import { FaturamentoContaAzul, useSyncContaAzulVendas } from "@/hooks/useFaturamento";
 
 const formatCurrency = (value: number) =>
@@ -34,10 +36,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
   // Sync params
   const [syncFrom, setSyncFrom] = useState("");
   const [syncTo, setSyncTo] = useState("");
-
-  // Paginação
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
 
   // Modal de detalhes
   const [selectedNota, setSelectedNota] = useState<FaturamentoContaAzul | null>(null);
@@ -67,24 +65,73 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
     });
   }, [notas, search, dateFrom, dateTo, clienteFilter, centroFilter]);
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Header filters + sort per column
+  const COLUMNS = [
+    "numero_nota",
+    "numero_venda",
+    "data_emissao",
+    "cliente_nome",
+    "centro_custo",
+    "descricao",
+    "valor_total",
+    "valor_aberto",
+    "valor_baixado",
+    "status",
+  ] as const;
+  type ColKey = (typeof COLUMNS)[number];
+
+  const columnLabels: Record<ColKey, string> = {
+    numero_nota: "Nº Nota",
+    numero_venda: "Nº Venda",
+    data_emissao: "Data Emissão",
+    cliente_nome: "Cliente",
+    centro_custo: "Centro de Custo",
+    descricao: "Descrição",
+    valor_total: "Total",
+    valor_aberto: "Em Aberto",
+    valor_baixado: "Baixado",
+    status: "Status",
+  };
+
+  const getColValue = (n: FaturamentoContaAzul, col: ColKey): string => {
+    if (col === "data_emissao") return n.data_emissao || "";
+    if (col === "valor_total" || col === "valor_aberto" || col === "valor_baixado") {
+      return (Number((n as any)[col]) || 0).toFixed(2);
+    }
+    const v = (n as any)[col];
+    return v == null || v === "" ? "-" : String(v);
+  };
+
+  const {
+    sortColumn, sortDir, searchTexts, selectedFilters, handleSort, setSearchText, toggleValue,
+    selectAll, clearAll, clearAllFilters: clearHeaderFilters, hasActiveFilters: hasHeaderFilters,
+    processedItems, uniqueValues, paginatedItems,
+    currentPage, setCurrentPage, itemsPerPage, setItemsPerPage, totalPages,
+  } = useTableFilters<FaturamentoContaAzul, ColKey>(filtered, COLUMNS, getColValue, "notas_ca");
+
+  const total = processedItems.length;
 
   const valorTotalFiltrado = useMemo(
-    () => filtered.reduce((sum, n) => sum + (Number(n.valor_total) || 0), 0),
-    [filtered],
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_total) || 0), 0),
+    [processedItems],
+  );
+  const valorAbertoFiltrado = useMemo(
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_aberto) || 0), 0),
+    [processedItems],
+  );
+  const valorBaixadoFiltrado = useMemo(
+    () => processedItems.reduce((sum, n) => sum + (Number(n.valor_baixado) || 0), 0),
+    [processedItems],
   );
 
-  const hasFilters = !!(search || dateFrom || dateTo || clienteFilter !== "all" || centroFilter !== "all");
+  const hasFilters = !!(search || dateFrom || dateTo || clienteFilter !== "all" || centroFilter !== "all") || hasHeaderFilters;
   const clearFilters = () => {
     setSearch("");
     setDateFrom("");
     setDateTo("");
     setClienteFilter("all");
     setCentroFilter("all");
-    setPage(1);
+    clearHeaderFilters();
   };
 
   // Detalhes derivados do payload_json
@@ -183,7 +230,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
-                    setPage(1);
                   }}
                 />
               </div>
@@ -195,7 +241,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
-                  setPage(1);
                 }}
               />
             </div>
@@ -206,7 +251,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
-                  setPage(1);
                 }}
               />
             </div>
@@ -216,7 +260,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={clienteFilter}
                 onValueChange={(v) => {
                   setClienteFilter(v);
-                  setPage(1);
                 }}
               >
                 <SelectTrigger>
@@ -238,7 +281,6 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 value={centroFilter}
                 onValueChange={(v) => {
                   setCentroFilter(v);
-                  setPage(1);
                 }}
               >
                 <SelectTrigger>
@@ -261,7 +303,7 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : paginated.length === 0 ? (
+          ) : paginatedItems.length === 0 ? (
             <div className="text-center py-12 space-y-3">
               <Receipt className="h-12 w-12 text-muted-foreground mx-auto opacity-20" />
               <p className="text-muted-foreground">
@@ -276,21 +318,30 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nº Nota</TableHead>
-                      <TableHead>Nº Venda</TableHead>
-                      <TableHead>Data Emissão</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Centro de Custo</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Em Aberto</TableHead>
-                      <TableHead className="text-right">Baixado</TableHead>
-                      <TableHead>Status</TableHead>
+                      {COLUMNS.map((col) => (
+                        <TableHead
+                          key={col}
+                          className={col === "valor_total" || col === "valor_aberto" || col === "valor_baixado" ? "text-right" : ""}
+                        >
+                          <ColumnHeader
+                            label={columnLabels[col]}
+                            sortDir={sortColumn === col ? sortDir : null}
+                            onSort={() => handleSort(col)}
+                            searchText={searchTexts[col]}
+                            onSearchChange={(v) => setSearchText(col, v)}
+                            uniqueValues={uniqueValues[col]}
+                            selectedValues={selectedFilters[col]}
+                            onToggleValue={(v) => toggleValue(col, v)}
+                            onSelectAll={() => selectAll(col, uniqueValues[col])}
+                            onClearAll={() => clearAll(col)}
+                          />
+                        </TableHead>
+                      ))}
                       <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginated.map((nota) => (
+                    {paginatedItems.map((nota) => (
                       <TableRow
                         key={nota.id}
                         className="cursor-pointer hover:bg-muted/50"
@@ -343,17 +394,31 @@ export function NotasContaAzulTab({ notas, loading }: Props) {
                       </TableRow>
                     ))}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-right font-semibold">
+                        Total{hasFilters ? " (filtrado)" : ""}:
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        {formatCurrency(valorTotalFiltrado)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-orange-600">
+                        {formatCurrency(valorAbertoFiltrado)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-green-600">
+                        {formatCurrency(valorBaixadoFiltrado)}
+                      </TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               </div>
               <TablePagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={setPage}
-                itemsPerPage={pageSize}
-                onItemsPerPageChange={(s) => {
-                  setPageSize(s);
-                  setPage(1);
-                }}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                onItemsPerPageChange={setItemsPerPage}
                 totalItems={total}
               />
             </>
