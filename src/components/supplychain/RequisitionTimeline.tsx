@@ -1,12 +1,14 @@
-import { useRequisicoes } from "@/hooks/useSupplyChain";
+import { useHistorico, type ScEntidadeTipo } from "@/hooks/useSupplyChain";
 import { CheckCircle2, Circle, Clock, MessageSquare, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 interface RequisitionTimelineProps {
-  requisicaoId: string;
+  /** Legacy prop — same as `entidadeId`, mantido para compatibilidade */
+  requisicaoId?: string;
+  entidadeId?: string;
+  entidadeTipo?: ScEntidadeTipo;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -23,9 +25,9 @@ const STATUS_LABELS: Record<string, string> = {
   CLOSED: "Finalizado",
 };
 
-export function RequisitionTimeline({ requisicaoId }: RequisitionTimelineProps) {
-  const { getHistorico } = useRequisicoes();
-  const { data: historico, isLoading } = getHistorico(requisicaoId);
+export function RequisitionTimeline({ requisicaoId, entidadeId, entidadeTipo = "requisicao" }: RequisitionTimelineProps) {
+  const id = entidadeId ?? requisicaoId;
+  const { data: historico, isLoading } = useHistorico(entidadeTipo, id);
 
   if (isLoading) return <div className="py-4 text-center text-sm text-muted-foreground">Carregando histórico...</div>;
   if (!historico || historico.length === 0) return <div className="py-4 text-center text-sm text-muted-foreground">Nenhum histórico encontrado.</div>;
