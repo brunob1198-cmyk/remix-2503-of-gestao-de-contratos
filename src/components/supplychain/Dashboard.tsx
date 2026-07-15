@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupplyChainCounts, useEconomiaGerada } from "@/hooks/useSupplyChain";
 import { ClipboardCheck, FileText, ShoppingCart, Truck, Package, TrendingDown, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EconomiaDetalhesDialog } from "./EconomiaDetalhesDialog";
+
 
 interface DashboardCardProps {
   title: string;
@@ -40,6 +43,9 @@ export function SupplyChainDashboard({
 }) {
   const { data: stats } = useSupplyChainCounts();
   const { data: economia } = useEconomiaGerada(30);
+  const [openEconomia, setOpenEconomia] = useState(false);
+  const hasDetalhes = (economia?.detalhes?.length ?? 0) > 0;
+
 
   const s = stats || {
     requisicoesPendentes: 0,
