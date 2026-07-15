@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSupplyChainCounts, useEconomiaGerada } from "@/hooks/useSupplyChain";
 import { ClipboardCheck, FileText, ShoppingCart, Truck, Package, TrendingDown, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EconomiaDetalhesDialog } from "./EconomiaDetalhesDialog";
+
 
 interface DashboardCardProps {
   title: string;
@@ -40,6 +43,9 @@ export function SupplyChainDashboard({
 }) {
   const { data: stats } = useSupplyChainCounts();
   const { data: economia } = useEconomiaGerada(30);
+  const [openEconomia, setOpenEconomia] = useState(false);
+  const hasDetalhes = (economia?.detalhes?.length ?? 0) > 0;
+
 
   const s = stats || {
     requisicoesPendentes: 0,
@@ -96,7 +102,13 @@ export function SupplyChainDashboard({
       />
 
       <TooltipProvider delayDuration={200}>
-        <Card className="transition-all hover:shadow-sm border-emerald-200 dark:border-emerald-900/40">
+        <Card
+          className={`transition-all border-emerald-200 dark:border-emerald-900/40 ${
+            hasDetalhes ? "cursor-pointer hover:ring-2 hover:ring-emerald-500/30 hover:shadow-sm" : ""
+          }`}
+          onClick={() => hasDetalhes && setOpenEconomia(true)}
+          role={hasDetalhes ? "button" : undefined}
+        >
           <CardContent className="p-4 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-emerald-500 text-white">
               <TrendingDown className="h-5 w-5" />
@@ -108,7 +120,11 @@ export function SupplyChainDashboard({
                 </p>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground/70 hover:text-foreground">
+                    <button
+                      type="button"
+                      className="text-muted-foreground/70 hover:text-foreground"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
@@ -117,7 +133,7 @@ export function SupplyChainDashboard({
                     <strong> média(valor das cotações não vencedoras) − valor da cotação vencedora</strong>.
                     Requisições com apenas 1 cotação são ignoradas.
                     {economia && economia.requisicoesConsideradas > 0 && (
-                      <> Base: {economia.requisicoesConsideradas} requisiç{economia.requisicoesConsideradas === 1 ? "ão" : "ões"}.</>
+                      <> Base: {economia.requisicoesConsideradas} requisiç{economia.requisicoesConsideradas === 1 ? "ão" : "ões"}. Clique no card para ver o detalhe.</>
                     )}
                   </TooltipContent>
                 </Tooltip>
@@ -134,6 +150,15 @@ export function SupplyChainDashboard({
           </CardContent>
         </Card>
       </TooltipProvider>
+
+      <EconomiaDetalhesDialog
+        open={openEconomia}
+        onOpenChange={setOpenEconomia}
+        dias={economia?.dias ?? 30}
+        economiaTotal={economia?.economiaTotal ?? 0}
+        detalhes={economia?.detalhes ?? []}
+      />
     </div>
+
   );
 }
