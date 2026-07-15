@@ -1118,3 +1118,81 @@ export function useMinhaFila() {
     },
   });
 }
+
+// ─── Economia Gerada (cotações aprovadas vs. concorrentes) ───
+export function useEconomiaGerada(dias: number = 30) {
+  return useQuery({
+    queryKey: ["sc_economia_gerada", dias],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 20 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const empresaId = await getEmpresaId();
+      const desde = new Date();
+      desde.setDate(desde.getDate() - dias);
+
+      // 1) Cotações vencedoras no período
+      const { data: vencedoras, error: err1 } = await supabase
+        .from("cotacoes")
+        .select("id, requisicao_id, valor_total, updated_at")
+        .eq("empresa_id", empresaId)
+        .eq("status", "aprovada")
+        .gte("updated_at", desde.toISOString());
+
+      if (err1) throw err1;
+      const reqIds = Array.from(
+        new Set((vencedoras || []).map((c: any) => c.requisicao_id).filter(Boolean))
+      );
+
+      if (reqIds.length === 0) {
+        return { economiaTotal: 0, percentualMedio: 0, totalPago: 0, requisicoesConsideradas: 0, dias };
+      }
+
+      // 2) Todas as cotações dessas requisições (para calcular média das perdedoras)
+      const { data: todas, error: err2 } = await supabase
+        .from("cotacoes")
+        .select("id, requisicao_id, valor_total, status")
+        .eq("empresa_id", empresaId)
+        .in("requisicao_id", reqIds);
+
+      if (err2) throw err2;
+
+      const porReq = new Map<string, any[]>();
+      (todas || []).forEach((c: any) => {
+        if (!c.requisicao_id) return;
+        const arr = porReq.get(c.requisicao_id) || [];
+        arr.push(c);
+        porReq.set(c.requisicao_id, arr);
+      });
+
+      let economiaTotal = 0;
+      let totalPago = 0;
+      let requisicoesConsideradas = 0;
+      const percentuais: number[] = [];
+
+      (vencedoras || []).forEach((venc: any) => {
+        const irmas = porReq.get(venc.requisicao_id) || [];
+        const perdedoras = irmas.filter(
+          (c: any) => c.id !== venc.id && Number(c.valor_total) > 0
+        );
+        if (perdedoras.length === 0) return; // só 1 cotação → sem economia calculável
+        const mediaPerdedoras =
+          perdedoras.reduce((s, c) => s + Number(c.valor_total || 0), 0) / perdedoras.length;
+        const pago = Number(venc.valor_total || 0);
+        const economia = mediaPerdedoras - pago;
+        if (pago > 0) percentuais.push((economia / mediaPerdedoras) * 100);
+        economiaTotal += economia;
+        totalPago += pago;
+        requisicoesConsideradas += 1;
+      });
+
+      const percentualMedio =
+        percentuais.length > 0
+          ? percentuais.reduce((s, v) => s + v, 0) / percentuais.length
+          : 0;
+
+      return { economiaTotal, percentualMedio, totalPago, requisicoesConsideradas, dias };
+    },
+  });
+}
+
