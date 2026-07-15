@@ -94,6 +94,46 @@ export function SupplyChainDashboard({
         onClick={() => onFilterChange("pedidos", "para_receber")}
         isActive={activeFilter.tab === "pedidos" && activeFilter.filter === "para_receber"}
       />
+
+      <TooltipProvider delayDuration={200}>
+        <Card className="transition-all hover:shadow-sm border-emerald-200 dark:border-emerald-900/40">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-emerald-500 text-white">
+              <TrendingDown className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <p className="text-sm font-medium text-muted-foreground truncate">
+                  Economia (30d)
+                </p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground/70 hover:text-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    Para cada requisição aprovada nos últimos 30 dias, calculamos
+                    <strong> média(valor das cotações não vencedoras) − valor da cotação vencedora</strong>.
+                    Requisições com apenas 1 cotação são ignoradas.
+                    {economia && economia.requisicoesConsideradas > 0 && (
+                      <> Base: {economia.requisicoesConsideradas} requisiç{economia.requisicoesConsideradas === 1 ? "ão" : "ões"}.</>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {fmtBRL(economia?.economiaTotal ?? 0)}
+              </h3>
+              {economia && economia.percentualMedio > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  ~{economia.percentualMedio.toFixed(1)}% médio
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </TooltipProvider>
     </div>
   );
 }
