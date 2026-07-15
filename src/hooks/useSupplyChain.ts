@@ -1120,6 +1120,17 @@ export function useMinhaFila() {
 }
 
 // ─── Economia Gerada (cotações aprovadas vs. concorrentes) ───
+export interface EconomiaRequisicaoDetalhe {
+  requisicao_id: string;
+  requisicao_numero: string | null;
+  fornecedor_vencedor: string | null;
+  valor_vencedora: number;
+  media_perdedoras: number;
+  perdedoras: { id: string; fornecedor: string | null; valor_total: number }[];
+  economia: number;
+  percentual: number;
+}
+
 export function useEconomiaGerada(dias: number = 30) {
   return useQuery({
     queryKey: ["sc_economia_gerada", dias],
@@ -1134,7 +1145,7 @@ export function useEconomiaGerada(dias: number = 30) {
       // 1) Cotações vencedoras no período
       const { data: vencedoras, error: err1 } = await supabase
         .from("cotacoes")
-        .select("id, requisicao_id, valor_total, updated_at")
+        .select("id, requisicao_id, valor_total, updated_at, fornecedor:fornecedores(nome)")
         .eq("empresa_id", empresaId)
         .eq("status", "aprovada")
         .gte("updated_at", desde.toISOString());
@@ -1145,17 +1156,32 @@ export function useEconomiaGerada(dias: number = 30) {
       );
 
       if (reqIds.length === 0) {
-        return { economiaTotal: 0, percentualMedio: 0, totalPago: 0, requisicoesConsideradas: 0, dias };
+        return {
+          economiaTotal: 0,
+          percentualMedio: 0,
+          totalPago: 0,
+          requisicoesConsideradas: 0,
+          dias,
+          detalhes: [] as EconomiaRequisicaoDetalhe[],
+        };
       }
 
       // 2) Todas as cotações dessas requisições (para calcular média das perdedoras)
       const { data: todas, error: err2 } = await supabase
         .from("cotacoes")
-        .select("id, requisicao_id, valor_total, status")
+        .select("id, requisicao_id, valor_total, status, fornecedor:fornecedores(nome)")
         .eq("empresa_id", empresaId)
         .in("requisicao_id", reqIds);
 
       if (err2) throw err2;
+
+      // 3) Números das requisições
+      const { data: reqs } = await supabase
+        .from("requisicoes_compra")
+        .select("id, numero")
+        .in("id", reqIds);
+      const numeroPorReq = new Map<string, string | null>();
+      (reqs || []).forEach((r: any) => numeroPorReq.set(r.id, r.numero ?? null));
 
       const porReq = new Map<string, any[]>();
       (todas || []).forEach((c: any) => {
@@ -1167,32 +1193,56 @@ export function useEconomiaGerada(dias: number = 30) {
 
       let economiaTotal = 0;
       let totalPago = 0;
-      let requisicoesConsideradas = 0;
       const percentuais: number[] = [];
+      const detalhes: EconomiaRequisicaoDetalhe[] = [];
 
       (vencedoras || []).forEach((venc: any) => {
         const irmas = porReq.get(venc.requisicao_id) || [];
         const perdedoras = irmas.filter(
           (c: any) => c.id !== venc.id && Number(c.valor_total) > 0
         );
-        if (perdedoras.length === 0) return; // só 1 cotação → sem economia calculável
+        if (perdedoras.length === 0) return;
         const mediaPerdedoras =
           perdedoras.reduce((s, c) => s + Number(c.valor_total || 0), 0) / perdedoras.length;
         const pago = Number(venc.valor_total || 0);
         const economia = mediaPerdedoras - pago;
-        if (pago > 0) percentuais.push((economia / mediaPerdedoras) * 100);
+        const percentual = mediaPerdedoras > 0 ? (economia / mediaPerdedoras) * 100 : 0;
+        if (pago > 0) percentuais.push(percentual);
         economiaTotal += economia;
         totalPago += pago;
-        requisicoesConsideradas += 1;
+        detalhes.push({
+          requisicao_id: venc.requisicao_id,
+          requisicao_numero: numeroPorReq.get(venc.requisicao_id) ?? null,
+          fornecedor_vencedor: venc.fornecedor?.nome ?? null,
+          valor_vencedora: pago,
+          media_perdedoras: mediaPerdedoras,
+          perdedoras: perdedoras.map((p: any) => ({
+            id: p.id,
+            fornecedor: p.fornecedor?.nome ?? null,
+            valor_total: Number(p.valor_total || 0),
+          })),
+          economia,
+          percentual,
+        });
       });
+
+      detalhes.sort((a, b) => b.economia - a.economia);
 
       const percentualMedio =
         percentuais.length > 0
           ? percentuais.reduce((s, v) => s + v, 0) / percentuais.length
           : 0;
 
-      return { economiaTotal, percentualMedio, totalPago, requisicoesConsideradas, dias };
+      return {
+        economiaTotal,
+        percentualMedio,
+        totalPago,
+        requisicoesConsideradas: detalhes.length,
+        dias,
+        detalhes,
+      };
     },
   });
 }
+
 
