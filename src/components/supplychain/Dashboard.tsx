@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { useSupplyChainCounts } from "@/hooks/useSupplyChain";
-import { ClipboardCheck, FileText, ShoppingCart, Truck, Package } from "lucide-react";
+import { useSupplyChainCounts, useEconomiaGerada } from "@/hooks/useSupplyChain";
+import { ClipboardCheck, FileText, ShoppingCart, Truck, Package, TrendingDown, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DashboardCardProps {
   title: string;
