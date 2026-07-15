@@ -39,6 +39,7 @@ export function SupplyChainDashboard({
   activeFilter: { tab: string; filter?: string };
 }) {
   const { data: stats } = useSupplyChainCounts();
+  const { data: economia } = useEconomiaGerada(30);
 
   const s = stats || {
     requisicoesPendentes: 0,
@@ -48,8 +49,11 @@ export function SupplyChainDashboard({
     recebimentosPendentes: 0,
   };
 
+  const fmtBRL = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
       <DashboardCard
         title="RCs Pendentes"
         value={s.requisicoesPendentes}
