@@ -73,11 +73,11 @@ export const exportTEPToHtml = (data: TEPData) => {
                 this.dataset.triedUrl=true; 
                 this.src=this.dataset.originalSrc; 
               } else { 
-                const fallbacks = (this.dataset.fallbackSrc || '').split(',').filter(Boolean);
-                const nextIdx = parseInt(this.dataset.fallbackIdx || '0');
-                if(nextIdx < fallbacks.length) {
-                  this.dataset.fallbackIdx = (nextIdx + 1).toString();
-                  this.src = fallbacks[nextIdx];
+                let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
+                let idx = parseInt(this.dataset.fallbackIdx || '0');
+                if (idx < fallbacks.length) {
+                  this.dataset.fallbackIdx = idx + 1;
+                  this.src = fallbacks[idx];
                 } else {
                   this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem';
                   this.onerror=null;
