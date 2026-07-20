@@ -137,7 +137,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
   } else {
     const groups = ["Vistoria", "Execução"];
     const sectionsHtml = groups.map(group => {
-      const groupFotos = data.fotos.filter(f => 
+      const groupFotos = processedFotos.filter(f => 
         f.classificacao.toLowerCase() === group.toLowerCase() || 
         (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
         (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
