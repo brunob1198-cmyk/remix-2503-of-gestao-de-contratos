@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { getPdfSafeImageDataUrl } from "./pdfExportUtils";
 
 interface TEPData {
   siteNome: string;
