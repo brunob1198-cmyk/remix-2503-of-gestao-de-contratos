@@ -1,10 +1,12 @@
 import { format } from "date-fns";
+import { getPdfSafeImageDataUrl } from "./pdfExportUtils";
 
 interface TEPData {
   siteNome: string;
   observacoes: string;
   fotos: {
     url: string;
+    thumb_600_url?: string | null;
     classificacao: string;
     legenda: string | null;
     site_nome?: string;
@@ -24,7 +26,59 @@ interface TEPData {
 
 export const exportTEPToHtml = async (data: TEPData) => {
   const { addLog } = data;
+  addLog?.("Iniciando conversão de fotos para Base64...", "info");
+
+  // Converter fotos principais
+  const processedFotos = await Promise.all(
+    data.fotos.map(async (f, idx) => {
+      try {
+        const urlToConvert = f.thumb_600_url || f.url;
+        const base64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
+        return { ...f, url: base64 };
+      } catch (err) {
+        console.warn(`Erro ao converter foto ${idx} para base64:`, err);
+        return f;
+      }
+    })
+  );
+
+  // Se houver multi-site, converter fotos em sitesData também
+  if (data.isMultiSite && data.sitesData) {
+    addLog?.("Convertendo fotos dos sites...", "info");
+    for (const site of data.sitesData) {
+      for (const classGroup of site.classes) {
+        const photos = classGroup[1];
+        for (let i = 0; i < photos.length; i++) {
+          try {
+            const f = photos[i];
+            const urlToConvert = f.thumb_600_url || f.url;
+            const base64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
+            photos[i] = { ...f, url: base64 };
+          } catch (err) {
+            console.warn("Erro ao converter foto do site para base64", err);
+          }
+        }
+      }
+    }
+  }
+
+  // Converter logos
+  let processedLogoUrl = data.logoUrl;
+  if (data.logoUrl && !data.logoUrl.startsWith('data:')) {
+    try {
+      processedLogoUrl = await getPdfSafeImageDataUrl(data.logoUrl, { maxWidth: 400, quality: 0.9 });
+    } catch (e) { console.warn("Erro ao converter logo empresa para base64", e); }
+  }
+
+  let processedClienteLogoUrl = data.clienteLogoUrl;
+  if (data.clienteLogoUrl && !data.clienteLogoUrl.startsWith('data:')) {
+    try {
+      processedClienteLogoUrl = await getPdfSafeImageDataUrl(data.clienteLogoUrl, { maxWidth: 400, quality: 0.9 });
+    } catch (e) { console.warn("Erro ao converter logo cliente para base64", e); }
+  }
+
   addLog?.("Gerando Relatório TEP em formato HTML...", "info");
+
 
   const buildPhotoCardHtml = (foto: any) => {
     const clsLower = foto.classificacao?.toLowerCase();
@@ -38,7 +92,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
     return `
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
         <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
-          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
+          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
@@ -83,7 +137,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
   } else {
     const groups = ["Vistoria", "Execução"];
     const sectionsHtml = groups.map(group => {
-      const groupFotos = data.fotos.filter(f => 
+      const groupFotos = processedFotos.filter(f => 
         f.classificacao.toLowerCase() === group.toLowerCase() || 
         (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
         (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
@@ -135,9 +189,9 @@ export const exportTEPToHtml = async (data: TEPData) => {
     <body>
       <div class="page">
         <div class="header">
-          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
+          ${processedLogoUrl ? `<img src="${processedLogoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
           <h1 class="title">Relatório TEP</h1>
-          ${data.clienteLogoUrl ? `<img src="${data.clienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
+          ${processedClienteLogoUrl ? `<img src="${processedClienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
         <div class="info-grid">

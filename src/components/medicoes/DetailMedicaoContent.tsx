@@ -1054,13 +1054,14 @@ export function DetailMedicaoContent({
       await exportTEPToHtml({
         siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
         observacoes: siteObs,
-        fotos: diarioFotos.map(f => ({
-          url: f.url,
-          classificacao: f.classificacao,
-          legenda: f.legenda,
-          site_nome: f.site_nome,
-          site_id: f.site_id
-        })),
+      fotos: diarioFotos.map(f => ({
+        url: f.url,
+        thumb_600_url: f.thumb_600_url,
+        classificacao: f.classificacao,
+        legenda: f.legenda,
+        site_nome: f.site_nome,
+        site_id: f.site_id
+      })),
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
         clienteLogoUrl: base64ClienteLogo || finalClienteLogoUrl,
         isMultiSite: isMultiSite,
