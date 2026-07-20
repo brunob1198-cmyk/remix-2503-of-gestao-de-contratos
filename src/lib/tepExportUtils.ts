@@ -24,60 +24,14 @@ interface TEPData {
   addLog?: (message: string, type?: 'info' | 'error' | 'success' | 'debug') => void;
 }
 
-export const exportTEPToHtml = async (data: TEPData) => {
+export const exportTEPToHtml = (data: TEPData) => {
   const { addLog } = data;
-  addLog?.("Iniciando conversão de fotos para Base64...", "info");
-
-  // Converter fotos principais
-  const processedFotos = await Promise.all(
-    data.fotos.map(async (f, idx) => {
-      try {
-        const urlToConvert = f.thumb_600_url || f.url;
-        const base64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
-        return { ...f, url: base64 };
-      } catch (err) {
-        console.warn(`Erro ao converter foto ${idx} para base64:`, err);
-        return f;
-      }
-    })
-  );
-
-  // Se houver multi-site, converter fotos em sitesData também
-  if (data.isMultiSite && data.sitesData) {
-    addLog?.("Convertendo fotos dos sites...", "info");
-    for (const site of data.sitesData) {
-      for (const classGroup of site.classes) {
-        const photos = classGroup[1];
-        for (let i = 0; i < photos.length; i++) {
-          try {
-            const f = photos[i];
-            const urlToConvert = f.thumb_600_url || f.url;
-            const base64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
-            photos[i] = { ...f, url: base64 };
-          } catch (err) {
-            console.warn("Erro ao converter foto do site para base64", err);
-          }
-        }
-      }
-    }
-  }
-
-  // Converter logos
-  let processedLogoUrl = data.logoUrl;
-  if (data.logoUrl && !data.logoUrl.startsWith('data:')) {
-    try {
-      processedLogoUrl = await getPdfSafeImageDataUrl(data.logoUrl, { maxWidth: 400, quality: 0.9 });
-    } catch (e) { console.warn("Erro ao converter logo empresa para base64", e); }
-  }
-
-  let processedClienteLogoUrl = data.clienteLogoUrl;
-  if (data.clienteLogoUrl && !data.clienteLogoUrl.startsWith('data:')) {
-    try {
-      processedClienteLogoUrl = await getPdfSafeImageDataUrl(data.clienteLogoUrl, { maxWidth: 400, quality: 0.9 });
-    } catch (e) { console.warn("Erro ao converter logo cliente para base64", e); }
-  }
-
   addLog?.("Gerando Relatório TEP em formato HTML...", "info");
+
+  const processedFotos = data.fotos;
+  const processedLogoUrl = data.logoUrl;
+  const processedClienteLogoUrl = data.clienteLogoUrl;
+
 
 
   const buildPhotoCardHtml = (foto: any) => {
