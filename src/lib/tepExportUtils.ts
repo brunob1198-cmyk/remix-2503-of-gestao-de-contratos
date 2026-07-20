@@ -67,6 +67,7 @@ export const exportTEPToHtml = (data: TEPData) => {
             data-original-src="${primaryUrl}"
             data-fallback-src="${fallbackStr}"
             style="width: 100%; height: 100%; object-fit: contain;" 
+            loading="lazy"
             onerror="
               if(this.src.startsWith('data:')) return;
               if(!this.dataset.triedUrl){ 
@@ -79,8 +80,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                   this.dataset.fallbackIdx = idx + 1;
                   this.src = fallbacks[idx];
                 } else {
-                  this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem';
-                  this.onerror=null;
+                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center;&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; 
                 }
               }
             "/>
