@@ -6,6 +6,7 @@ interface TEPData {
   observacoes: string;
   fotos: {
     url: string;
+    thumb_600_url?: string | null;
     classificacao: string;
     legenda: string | null;
     site_nome?: string;
