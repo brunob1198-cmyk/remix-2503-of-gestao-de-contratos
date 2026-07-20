@@ -1089,7 +1089,7 @@ export function DetailMedicaoContent({
       .toLowerCase(); 
   }, []);
 
-  const generateHtmlReport = useCallback((forZip = false) => {
+  const generateHtmlReport = useCallback((forZip = false, overrides?: { logoEmpresa?: string | null, logoCliente?: string | null, fotosBase64?: Map<string, string> }) => {
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -1117,17 +1117,22 @@ export function DetailMedicaoContent({
       const primaryUrl = allUrls[0] || foto.url;
       const fallbackStr = allUrls.slice(1).join(',');
 
+      // Base64 conversion if provided in overrides
+      const b64Data = overrides?.fotosBase64?.get(foto.id);
+      const imgSrc = forZip ? safePath : (b64Data || safePath);
+
       return `
         <div class="photo-card">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
-                src="${safePath}" 
+                src="${imgSrc}" 
                 data-original-src="${primaryUrl}"
                 data-fallback-src="${fallbackStr}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
                 onerror="
+                  if(this.src.startsWith('data:')) return;
                   if(!this.dataset.triedUrl){ 
                     this.dataset.triedUrl=true; 
                     this.src=this.dataset.originalSrc; 
@@ -1426,7 +1431,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <header class="doc-header">
       <div class="doc-header-left">
-        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
+        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (overrides?.logoEmpresa || base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${overrides?.logoEmpresa || base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_nome || ''}</p>
@@ -1437,7 +1442,7 @@ export function DetailMedicaoContent({
           <p class="doc-num">Nº ${detailMedicao.numero_medicao || detailMedicao.id}</p>
           <p class="doc-date">Data: ${detailMedicao.data_medicao ? formatDate(detailMedicao.data_medicao) : ''}</p>
         </div>
-        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
+        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (overrides?.logoCliente || base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${overrides?.logoCliente || base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
       </div>
     </header>
 
@@ -1627,16 +1632,66 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={() => {
-            const htmlContent = generateHtmlReport();
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Relatorio_Online_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
-            a.click();
-            URL.revokeObjectURL(url);
-            addLog("Relatório HTML Online (leve) gerado. As imagens serão carregadas via internet ao abrir o arquivo.", "success");
+          onClick={async () => {
+            setIsExporting(true);
+            setExportProgress(10);
+            addLog("Iniciando geração de relatório HTML com imagens em Base64...", "info");
+            
+            try {
+              // Converter logos para base64 se ainda não estiverem
+              let logoEmpresa = base64EmpresaLogo;
+              if (finalEmpresaLogoUrl && !logoEmpresa) {
+                logoEmpresa = await getPdfSafeImageDataUrl(finalEmpresaLogoUrl, { maxWidth: 400, quality: 0.9 });
+              }
+              
+              let logoCliente = base64ClienteLogo;
+              if (finalClienteLogoUrl && !logoCliente) {
+                logoCliente = await getPdfSafeImageDataUrl(finalClienteLogoUrl, { maxWidth: 400, quality: 0.9 });
+              }
+
+              setExportProgress(30);
+              addLog("Convertendo fotos das evidências (isso pode levar alguns segundos)...", "info");
+
+              // Pré-carregar todas as fotos em base64 para o relatório ser autossuficiente
+              const fotosBase64Map = new Map<string, string>();
+              const totalFotos = diarioFotos.length;
+              
+              for (let i = 0; i < totalFotos; i++) {
+                const foto = diarioFotos[i];
+                try {
+                  const urlToConvert = foto.thumb_600_url || foto.url;
+                  const b64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
+                  if (b64) fotosBase64Map.set(foto.id, b64);
+                } catch (e) {
+                  console.warn(`Erro ao converter foto ${i} para base64`, e);
+                }
+                if (i % 5 === 0) {
+                  setExportProgress(30 + Math.floor((i / totalFotos) * 60));
+                }
+              }
+
+              const htmlContent = generateHtmlReport(false, {
+                logoEmpresa,
+                logoCliente,
+                fotosBase64: fotosBase64Map
+              });
+              
+              const blob = new Blob([htmlContent], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Relatorio_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
+              a.click();
+              URL.revokeObjectURL(url);
+              
+              setExportProgress(100);
+              addLog("Relatório HTML gerado com sucesso com todas as imagens embutidas.", "success");
+            } catch (error) {
+              console.error("Erro ao gerar HTML:", error);
+              addLog("Erro crítico ao gerar relatório HTML.", "error");
+            } finally {
+              setIsExporting(false);
+            }
           }} 
           variant="outline" 
           size="sm" 
