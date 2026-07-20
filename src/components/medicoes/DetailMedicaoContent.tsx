@@ -1089,7 +1089,7 @@ export function DetailMedicaoContent({
       .toLowerCase(); 
   }, []);
 
-  const generateHtmlReport = useCallback((forZip = false, overrides?: { logoEmpresa?: string | null, logoCliente?: string | null, fotosBase64?: Map<string, string> }) => {
+  const generateHtmlReport = useCallback((forZip = false) => {
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -1117,9 +1117,8 @@ export function DetailMedicaoContent({
       const primaryUrl = allUrls[0] || foto.url;
       const fallbackStr = allUrls.slice(1).join(',');
 
-      // Base64 conversion if provided in overrides
-      const b64Data = overrides?.fotosBase64?.get(foto.id);
-      const imgSrc = forZip ? safePath : (b64Data || safePath);
+      const imgSrc = forZip ? safePath : safePath; // We keep safePath for both to allow offline viewing if extraído
+
 
       return `
         <div class="photo-card">
@@ -1632,49 +1631,13 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={async () => {
+          onClick={() => {
             setIsExporting(true);
             setExportProgress(10);
-            addLog("Iniciando geração de relatório HTML com imagens em Base64...", "info");
+            addLog("Iniciando geração de relatório HTML...", "info");
             
             try {
-              // Converter logos para base64 se ainda não estiverem
-              let logoEmpresa = base64EmpresaLogo;
-              if (finalEmpresaLogoUrl && !logoEmpresa) {
-                logoEmpresa = await getPdfSafeImageDataUrl(finalEmpresaLogoUrl, { maxWidth: 400, quality: 0.9 });
-              }
-              
-              let logoCliente = base64ClienteLogo;
-              if (finalClienteLogoUrl && !logoCliente) {
-                logoCliente = await getPdfSafeImageDataUrl(finalClienteLogoUrl, { maxWidth: 400, quality: 0.9 });
-              }
-
-              setExportProgress(30);
-              addLog("Convertendo fotos das evidências (isso pode levar alguns segundos)...", "info");
-
-              // Pré-carregar todas as fotos em base64 para o relatório ser autossuficiente
-              const fotosBase64Map = new Map<string, string>();
-              const totalFotos = diarioFotos.length;
-              
-              for (let i = 0; i < totalFotos; i++) {
-                const foto = diarioFotos[i];
-                try {
-                  const urlToConvert = foto.thumb_600_url || foto.url;
-                  const b64 = await getPdfSafeImageDataUrl(urlToConvert, { maxWidth: 800, quality: 0.8 });
-                  if (b64) fotosBase64Map.set(foto.id, b64);
-                } catch (e) {
-                  console.warn(`Erro ao converter foto ${i} para base64`, e);
-                }
-                if (i % 5 === 0) {
-                  setExportProgress(30 + Math.floor((i / totalFotos) * 60));
-                }
-              }
-
-              const htmlContent = generateHtmlReport(false, {
-                logoEmpresa,
-                logoCliente,
-                fotosBase64: fotosBase64Map
-              });
+              const htmlContent = generateHtmlReport(false);
               
               const blob = new Blob([htmlContent], { type: 'text/html' });
               const url = URL.createObjectURL(blob);
@@ -1685,7 +1648,7 @@ export function DetailMedicaoContent({
               URL.revokeObjectURL(url);
               
               setExportProgress(100);
-              addLog("Relatório HTML gerado com sucesso com todas as imagens embutidas.", "success");
+              addLog("Relatório HTML gerado com sucesso.", "success");
             } catch (error) {
               console.error("Erro ao gerar HTML:", error);
               addLog("Erro crítico ao gerar relatório HTML.", "error");
@@ -1693,6 +1656,7 @@ export function DetailMedicaoContent({
               setIsExporting(false);
             }
           }} 
+
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
