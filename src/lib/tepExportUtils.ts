@@ -189,9 +189,9 @@ export const exportTEPToHtml = async (data: TEPData) => {
     <body>
       <div class="page">
         <div class="header">
-          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
+          ${processedLogoUrl ? `<img src="${processedLogoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
           <h1 class="title">Relatório TEP</h1>
-          ${data.clienteLogoUrl ? `<img src="${data.clienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
+          ${processedClienteLogoUrl ? `<img src="${processedClienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
         <div class="info-grid">
