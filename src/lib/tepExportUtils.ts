@@ -11,6 +11,8 @@ interface TEPData {
     legenda: string | null;
     site_nome?: string;
     site_id?: string;
+    diario_data?: string;
+    item_descricao?: string;
   }[];
   logoUrl?: string | null;
   clienteLogoUrl?: string | null;
@@ -43,10 +45,45 @@ export const exportTEPToHtml = (data: TEPData) => {
                  (clsLower === "execucao" || clsLower === "execução") ? "Execução" : 
                  foto.classificacao;
 
+    const extension = (foto.url?.split('.').pop() || 'jpg').toLowerCase();
+    const dateStr = foto.diario_data ? foto.diario_data.replace(/-/g, '') : '00000000';
+    const itemDesc = (foto.item_descricao || 'foto').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `foto_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
+    const siteName = (foto.site_nome || 'site').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const classification = (foto.classificacao || 'geral').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const relativeDir = `fotos/${siteName}/${classification}`;
+    const localPath = `${relativeDir}/${fileName}`;
+    const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+
+    const allUrls = [foto.thumb_600_url, foto.url].filter(Boolean);
+    const primaryUrl = allUrls[0];
+    const fallbackStr = allUrls.slice(1).join(',');
+
     return `
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
         <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
-          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
+          <img 
+            src="${safePath}" 
+            data-original-src="${primaryUrl}"
+            data-fallback-src="${fallbackStr}"
+            style="width: 100%; height: 100%; object-fit: contain;" 
+            onerror="
+              if(this.src.startsWith('data:')) return;
+              if(!this.dataset.triedUrl){ 
+                this.dataset.triedUrl=true; 
+                this.src=this.dataset.originalSrc; 
+              } else { 
+                const fallbacks = (this.dataset.fallbackSrc || '').split(',').filter(Boolean);
+                const nextIdx = parseInt(this.dataset.fallbackIdx || '0');
+                if(nextIdx < fallbacks.length) {
+                  this.dataset.fallbackIdx = (nextIdx + 1).toString();
+                  this.src = fallbacks[nextIdx];
+                } else {
+                  this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem';
+                  this.onerror=null;
+                }
+              }
+            "/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
