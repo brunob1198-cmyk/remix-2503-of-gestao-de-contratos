@@ -92,7 +92,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
     return `
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
         <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
-          <img src="${foto.thumb_600_url || foto.url}" style="width: 100%; height: 100%; object-fit: contain;" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
+          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
