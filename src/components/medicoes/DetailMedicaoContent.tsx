@@ -1430,7 +1430,7 @@ export function DetailMedicaoContent({
   <div class="page">
     <header class="doc-header">
       <div class="doc-header-left">
-        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (overrides?.logoEmpresa || base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${overrides?.logoEmpresa || base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
+        ${forZip ? (finalEmpresaLogoUrl ? `<img src=\"logos/logo_empresa.png\" alt=\"Empresa\">` : '') : (base64EmpresaLogo || finalEmpresaLogoUrl ? `<img src=\"${base64EmpresaLogo || finalEmpresaLogoUrl}\" alt=\"Empresa\">` : '')}
         <div>
           <h1 class="doc-title">Relatório de Medição</h1>
           <p class="doc-subtitle">${detailMedicao.projeto_nome || ''}</p>
@@ -1441,9 +1441,10 @@ export function DetailMedicaoContent({
           <p class="doc-num">Nº ${detailMedicao.numero_medicao || detailMedicao.id}</p>
           <p class="doc-date">Data: ${detailMedicao.data_medicao ? formatDate(detailMedicao.data_medicao) : ''}</p>
         </div>
-        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (overrides?.logoCliente || base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${overrides?.logoCliente || base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
+        ${forZip ? (finalClienteLogoUrl ? `<img src=\"logos/logo_cliente.png\" alt=\"Cliente\">` : '') : (base64ClienteLogo || finalClienteLogoUrl ? `<img src=\"${base64ClienteLogo || finalClienteLogoUrl}\" alt=\"Cliente\">` : '')}
       </div>
     </header>
+
 
     <div class="info-grid">
       <div class="info-item"><span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} - ${detailMedicao.site_nome}</span></div>
