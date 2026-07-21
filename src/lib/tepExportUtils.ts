@@ -85,34 +85,7 @@ export const exportTEPToHtml = (data: TEPData) => {
             data-fallback-src="${fallbackStr}"
             style="width: 100%; height: 100%; object-fit: contain;" 
             loading="lazy"
-            onerror="
-              if(this.src.startsWith('data:')) return;
-              if(!this.dataset.triedLocal){ 
-                this.dataset.triedLocal='true'; 
-                if(this.dataset.localSrc && this.dataset.localSrc !== 'undefined') {
-                  this.src=this.dataset.localSrc; 
-                } else {
-                  let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
-                  if(fallbacks.length > 0 && fallbacks[0] !== 'undefined') {
-                    this.src = fallbacks[0];
-                    this.dataset.fallbackIdx = '1';
-                  } else {
-                    this.style.display='none';
-                    this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>';
-                  }
-                }
-              } else { 
-                let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
-                let idx = parseInt(this.dataset.fallbackIdx || '0');
-                if (idx < fallbacks.length && fallbacks[idx] !== 'undefined') {
-                  this.dataset.fallbackIdx = (idx + 1).toString();
-                  this.src = fallbacks[idx];
-                } else {
-                  this.style.display='none';
-                  this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>'; 
-                }
-              }
-            "/>
+            onerror="handleImageError(this)"/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
