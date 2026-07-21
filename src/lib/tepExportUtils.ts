@@ -63,24 +63,25 @@ export const exportTEPToHtml = (data: TEPData) => {
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
         <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
           <img 
-            src="${safePath}" 
-            data-original-src="${primaryUrl}"
+            src="${primaryUrl}" 
+            data-local-src="${safePath}"
             data-fallback-src="${fallbackStr}"
             style="width: 100%; height: 100%; object-fit: contain;" 
             loading="lazy"
             onerror="
               if(this.src.startsWith('data:')) return;
-              if(!this.dataset.triedUrl){ 
-                this.dataset.triedUrl='true'; 
-                if(this.dataset.originalSrc && this.dataset.originalSrc !== 'undefined') {
-                  this.src=this.dataset.originalSrc; 
+              if(!this.dataset.triedLocal){ 
+                this.dataset.triedLocal='true'; 
+                if(this.dataset.localSrc && this.dataset.localSrc !== 'undefined') {
+                  this.src=this.dataset.localSrc; 
                 } else {
                   let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
                   if(fallbacks.length > 0 && fallbacks[0] !== 'undefined') {
                     this.src = fallbacks[0];
                     this.dataset.fallbackIdx = '1';
                   } else {
-                    this.onerror();
+                    this.style.display='none';
+                    this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>';
                   }
                 }
               } else { 
@@ -91,7 +92,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                   this.src = fallbacks[idx];
                 } else {
                   this.style.display='none';
-                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível online</b><br><br><i>Para visualização offline, certifique-se de extrair o arquivo do relatório da pasta ZIP.</i></div>'; 
+                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>'; 
                 }
               }
             "/>
