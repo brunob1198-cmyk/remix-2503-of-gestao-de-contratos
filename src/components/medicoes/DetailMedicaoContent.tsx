@@ -1133,22 +1133,7 @@ export function DetailMedicaoContent({
                 data-fallback-src="${fallbackStr}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
-                onerror="
-                  if(this.src.startsWith('data:')) return;
-                  if(!this.dataset.triedLocal){ 
-                    this.dataset.triedLocal='true'; 
-                    this.src=this.dataset.localSrc; 
-                  } else { 
-                    let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
-                    let idx = parseInt(this.dataset.fallbackIdx || '0');
-                    if (idx < fallbacks.length && fallbacks[idx] !== 'undefined') {
-                      this.dataset.fallbackIdx = (idx + 1).toString();
-                      this.src = fallbacks[idx];
-                    } else {
-                      this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b></div>'; 
-                    }
-                  }
-                ">
+                onerror="handleImageError(this)">
             ` : `
               <div class="non-image-file">
                 <span>📄 Arquivo ${extension.toUpperCase()}</span>
@@ -1347,6 +1332,35 @@ export function DetailMedicaoContent({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
+  <script>
+    function handleImageError(img) {
+      if (!img || img.dataset.errorHandled) return;
+      if (img.src.startsWith('data:')) return;
+      
+      if (!img.dataset.triedLocal) {
+        img.dataset.triedLocal = 'true';
+        if (img.dataset.localSrc && img.dataset.localSrc !== 'undefined' && img.dataset.localSrc !== '') {
+          img.src = img.dataset.localSrc;
+          return;
+        }
+      }
+      
+      let fallbacks = img.dataset.fallbackSrc ? img.dataset.fallbackSrc.split(',') : [];
+      let idx = parseInt(img.dataset.fallbackIdx || '0');
+      
+      if (idx < fallbacks.length && fallbacks[idx] && fallbacks[idx] !== 'undefined' && fallbacks[idx] !== '') {
+        img.dataset.fallbackIdx = (idx + 1).toString();
+        img.src = fallbacks[idx];
+        return;
+      }
+      
+      img.dataset.errorHandled = 'true';
+      const parent = img.parentElement;
+      if (parent) {
+        parent.innerHTML = '<div class="err-msg"><b>Imagem não encontrada</b></div>';
+      }
+    }
+  </script>
   <style>
     :root { --primary: #1e3a5f; --accent: #10b981; --muted: #64748b; --border: #e2e8f0; --bg-soft: #f8fafc; }
     * { box-sizing: border-box; }
