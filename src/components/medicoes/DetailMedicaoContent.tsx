@@ -1136,13 +1136,13 @@ export function DetailMedicaoContent({
                 onerror="
                   if(this.src.startsWith('data:')) return;
                   if(!this.dataset.triedLocal){ 
-                    this.dataset.triedLocal=true; 
+                    this.dataset.triedLocal='true'; 
                     this.src=this.dataset.localSrc; 
                   } else { 
                     let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
                     let idx = parseInt(this.dataset.fallbackIdx || '0');
-                    if (idx < fallbacks.length) {
-                      this.dataset.fallbackIdx = idx + 1;
+                    if (idx < fallbacks.length && fallbacks[idx] !== 'undefined') {
+                      this.dataset.fallbackIdx = (idx + 1).toString();
                       this.src = fallbacks[idx];
                     } else {
                       this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b></div>'; 
