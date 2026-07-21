@@ -57,24 +57,9 @@ export const exportTEPToHtml = (data: TEPData) => {
     const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
     // Pega as URLs base para fallbacks progressivos
-    const allUrls = [foto.thumb_600_url, foto.url, foto.thumb_url].filter(Boolean);
+    const expandedUrls = buildPossibleImageUrls(foto.url, [foto.thumb_600_url, foto.thumb_url], "diario_fotos");
     
-    // Se a primeira URL for R2, adiciona a versão Supabase como fallback imediato
-    const expandedUrls: string[] = [];
-    allUrls.forEach(u => {
-      if (u) {
-        expandedUrls.push(u);
-        if (u.includes('r2.dev') && !u.includes('supabase.co')) {
-          try {
-            const urlObj = new URL(u);
-            const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
-            expandedUrls.push(`https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public/${path}`);
-          } catch (e) {}
-        }
-      }
-    });
-
-    const primaryUrl = expandedUrls[0];
+    const primaryUrl = expandedUrls[0] || foto.url;
     const fallbackStr = expandedUrls.slice(1).join(',');
 
     return `
