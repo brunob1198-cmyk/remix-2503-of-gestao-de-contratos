@@ -71,16 +71,27 @@ export const exportTEPToHtml = (data: TEPData) => {
             onerror="
               if(this.src.startsWith('data:')) return;
               if(!this.dataset.triedUrl){ 
-                this.dataset.triedUrl=true; 
-                this.src=this.dataset.originalSrc; 
+                this.dataset.triedUrl='true'; 
+                if(this.dataset.originalSrc && this.dataset.originalSrc !== 'undefined') {
+                  this.src=this.dataset.originalSrc; 
+                } else {
+                  let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
+                  if(fallbacks.length > 0 && fallbacks[0] !== 'undefined') {
+                    this.src = fallbacks[0];
+                    this.dataset.fallbackIdx = '1';
+                  } else {
+                    this.onerror();
+                  }
+                }
               } else { 
                 let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
                 let idx = parseInt(this.dataset.fallbackIdx || '0');
-                if (idx < fallbacks.length) {
-                  this.dataset.fallbackIdx = idx + 1;
+                if (idx < fallbacks.length && fallbacks[idx] !== 'undefined') {
+                  this.dataset.fallbackIdx = (idx + 1).toString();
                   this.src = fallbacks[idx];
                 } else {
-                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center;&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; 
+                  this.style.display='none';
+                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível online</b><br><br><i>Para visualização offline, certifique-se de extrair o arquivo do relatório da pasta ZIP.</i></div>'; 
                 }
               }
             "/>
