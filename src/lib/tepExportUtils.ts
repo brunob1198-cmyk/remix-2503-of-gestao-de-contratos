@@ -55,9 +55,26 @@ export const exportTEPToHtml = (data: TEPData) => {
     const localPath = `${relativeDir}/${fileName}`;
     const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
-    const allUrls = [foto.thumb_600_url, foto.url].filter(Boolean);
-    const primaryUrl = allUrls[0];
-    const fallbackStr = allUrls.slice(1).join(',');
+    // Pega as URLs base para fallbacks progressivos
+    const allUrls = [foto.thumb_600_url, foto.url, foto.thumb_url].filter(Boolean);
+    
+    // Se a primeira URL for R2, adiciona a versão Supabase como fallback imediato
+    const expandedUrls: string[] = [];
+    allUrls.forEach(u => {
+      if (u) {
+        expandedUrls.push(u);
+        if (u.includes('r2.dev') && !u.includes('supabase.co')) {
+          try {
+            const urlObj = new URL(u);
+            const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname;
+            expandedUrls.push(`https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public/${path}`);
+          } catch (e) {}
+        }
+      }
+    });
+
+    const primaryUrl = expandedUrls[0];
+    const fallbackStr = expandedUrls.slice(1).join(',');
 
     return `
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
@@ -81,7 +98,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                     this.dataset.fallbackIdx = '1';
                   } else {
                     this.style.display='none';
-                    this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>';
+                    this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>';
                   }
                 }
               } else { 
@@ -92,7 +109,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                   this.src = fallbacks[idx];
                 } else {
                   this.style.display='none';
-                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>'; 
+                  this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>'; 
                 }
               }
             "/>
