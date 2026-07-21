@@ -1119,7 +1119,8 @@ export function DetailMedicaoContent({
       const primaryUrl = allUrls[0] || foto.url;
       const fallbackStr = allUrls.slice(1).join(',');
 
-      const imgSrc = forZip ? safePath : safePath; // We keep safePath for both to allow offline viewing if extraído
+      const imgSrc = primaryUrl; 
+      const localImgSrc = safePath;
 
 
       return `
@@ -1128,15 +1129,15 @@ export function DetailMedicaoContent({
             ${isImage ? `
               <img 
                 src="${imgSrc}" 
-                data-original-src="${primaryUrl}"
+                data-local-src="${localImgSrc}"
                 data-fallback-src="${fallbackStr}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
                 onerror="
                   if(this.src.startsWith('data:')) return;
-                  if(!this.dataset.triedUrl){ 
-                    this.dataset.triedUrl=true; 
-                    this.src=this.dataset.originalSrc; 
+                  if(!this.dataset.triedLocal){ 
+                    this.dataset.triedLocal=true; 
+                    this.src=this.dataset.localSrc; 
                   } else { 
                     let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
                     let idx = parseInt(this.dataset.fallbackIdx || '0');
@@ -1144,7 +1145,7 @@ export function DetailMedicaoContent({
                       this.dataset.fallbackIdx = idx + 1;
                       this.src = fallbacks[idx];
                     } else {
-                      this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; 
+                      this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b></div>'; 
                     }
                   }
                 ">
