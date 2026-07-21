@@ -164,6 +164,40 @@ export const exportTEPToHtml = (data: TEPData) => {
     <head>
       <meta charset="UTF-8">
       <title>Relatório TEP - ${data.siteNome}</title>
+      <script>
+        function handleImageError(img) {
+          if (!img || img.dataset.errorHandled) return;
+          
+          if (img.src.startsWith('data:')) return;
+          
+          // 1. Tentar o path local (relativo ao ZIP) se ainda não tentou
+          if (!img.dataset.triedLocal) {
+            img.dataset.triedLocal = 'true';
+            if (img.dataset.localSrc && img.dataset.localSrc !== 'undefined' && img.dataset.localSrc !== '') {
+              img.src = img.dataset.localSrc;
+              return;
+            }
+          }
+          
+          // 2. Tentar os fallbacks (Supabase, Thumbs, etc)
+          let fallbacks = img.dataset.fallbackSrc ? img.dataset.fallbackSrc.split(',') : [];
+          let idx = parseInt(img.dataset.fallbackIdx || '0');
+          
+          if (idx < fallbacks.length && fallbacks[idx] && fallbacks[idx] !== 'undefined' && fallbacks[idx] !== '') {
+            img.dataset.fallbackIdx = (idx + 1).toString();
+            img.src = fallbacks[idx];
+            return;
+          }
+          
+          // 3. Se tudo falhar, mostra placeholder
+          img.dataset.errorHandled = 'true';
+          img.style.display = 'none';
+          const parent = img.parentElement;
+          if (parent) {
+            parent.innerHTML = '<div style="padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1px dashed #fecaca; border-radius: 4px;"><b>Imagem não disponível</b></div>';
+          }
+        }
+      </script>
       <style>
         body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f3f4f6; }
         .page { background: white; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
