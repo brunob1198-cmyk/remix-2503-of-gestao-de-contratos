@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { getPdfSafeImageDataUrl } from "./pdfExportUtils";
+import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
 
 interface TEPData {
   siteNome: string;
