@@ -98,7 +98,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                     this.dataset.fallbackIdx = '1';
                   } else {
                     this.style.display='none';
-                    this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>';
+                    this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>';
                   }
                 }
               } else { 
@@ -109,7 +109,7 @@ export const exportTEPToHtml = (data: TEPData) => {
                   this.src = fallbacks[idx];
                 } else {
                   this.style.display='none';
-                  this.parentElement.innerHTML='<div style=&quot;padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;&quot;><b>Imagem não disponível</b></div>'; 
+                  this.parentElement.innerHTML='<div style=\"padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center;\"><b>Imagem não disponível</b></div>'; 
                 }
               }
             "/>
