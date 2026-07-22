@@ -313,13 +313,58 @@ export function GerarMedicaoDialog({
             </div>
             <div className="space-y-4 pt-4 border-t">
               <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Editar Legendas</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto p-1">
-                {geracaoFotos.map(foto => (
-                  <div key={foto.id} className="space-y-2 p-2 border rounded bg-card">
-                    <div className="aspect-video relative rounded overflow-hidden bg-muted"><SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" /></div>
-                    <Input className="h-7 text-xs" value={editLegendas[foto.id] ?? foto.legenda ?? ""} onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} />
+              <div className="max-h-[400px] overflow-y-auto space-y-6 pr-2">
+                {gerarTipoMedicao === "mista" ? (
+                  // Group photos by site for "Mista" type
+                  Object.entries(
+                    geracaoFotos.reduce((acc, foto) => {
+                      const siteName = sites.find(s => s.id === foto.site_id)?.nome || "Site não identificado";
+                      if (!acc[siteName]) acc[siteName] = [];
+                      acc[siteName].push(foto);
+                      return acc;
+                    }, {} as Record<string, GeracaoFoto[]>)
+                  ).map(([siteName, photos]) => (
+                    <div key={siteName} className="space-y-3">
+                      <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
+                        <MapPin className="h-3 w-3 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
+                        <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
+                        {photos.map(foto => (
+                          <div key={foto.id} className="space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-colors">
+                            <div className="aspect-video relative rounded overflow-hidden bg-muted">
+                              <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" />
+                            </div>
+                            <Input 
+                              className="h-7 text-xs" 
+                              placeholder="Legenda da foto..."
+                              value={editLegendas[foto.id] ?? foto.legenda ?? ""} 
+                              onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // Standard grid for other types
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
+                    {geracaoFotos.map(foto => (
+                      <div key={foto.id} className="space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-colors">
+                        <div className="aspect-video relative rounded overflow-hidden bg-muted">
+                          <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" />
+                        </div>
+                        <Input 
+                          className="h-7 text-xs" 
+                          placeholder="Legenda da foto..."
+                          value={editLegendas[foto.id] ?? foto.legenda ?? ""} 
+                          onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} 
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
