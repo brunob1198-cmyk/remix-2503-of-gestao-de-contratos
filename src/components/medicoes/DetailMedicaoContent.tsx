@@ -2255,6 +2255,17 @@ export function DetailMedicaoContent({
         </div>
       )}
 
+      {/* HTML Preview Overlay */}
+      {isExporting && exportProgress === 100 && downloadUrl && (
+        <div className="fixed bottom-4 right-4 z-[50] flex flex-col gap-2">
+          <Button size="lg" className="shadow-lg gap-2" asChild>
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+              <FileText className="h-5 w-5" /> Abrir Relatório HTML
+            </a>
+          </Button>
+        </div>
+      )}
+
       {/* Logs Panel */}
       {showLogPanel && (
         <Card className="mt-8 border-primary/20 bg-primary/5">
