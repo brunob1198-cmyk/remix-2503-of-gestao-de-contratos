@@ -163,13 +163,25 @@ export function GerarMedicaoDialog({
 
     const grouped = new Map<string, GeracaoItem>();
     filteredProducao.forEach(p => {
-      const key = `${p.site_id}_${p.item_lpu_id}`;
       const site = sites.find(s => s.id === p.site_id);
       const item = allItensLpu.find(i => i.id === p.item_lpu_id) || p.item_lpu;
       if (!site || !item) return;
+      // separada: uma linha por (site, item); agrupada/mista: consolida itens iguais entre sites
+      const isConsolidated = gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista";
+      const key = isConsolidated ? `all_${p.item_lpu_id}` : `${p.site_id}_${p.item_lpu_id}`;
       if (!grouped.has(key)) {
-        const pendente = pendingBySiteItem.get(key) || 0;
-        grouped.set(key, { site_id: p.site_id, site_codigo: site.codigo, site_nome: site.nome, item_lpu_id: p.item_lpu_id, item_codigo: item.codigo, item_descricao: item.descricao, unidade: item.unidade, preco_unitario: Number(item.preco_unitario), quantidade: 0, quantidade_pendente: pendente, valor_total: pendente * Number(item.preco_unitario), selected: true });
+        const pendente = isConsolidated
+          ? Array.from(pendingBySiteItem.entries()).filter(([k]) => k.endsWith(`_${p.item_lpu_id}`)).reduce((s, [, v]) => s + v, 0)
+          : (pendingBySiteItem.get(`${p.site_id}_${p.item_lpu_id}`) || 0);
+        grouped.set(key, {
+          site_id: isConsolidated ? "" : p.site_id,
+          site_codigo: isConsolidated ? "(Consolidado)" : site.codigo,
+          site_nome: isConsolidated ? "Todos os sites" : site.nome,
+          item_lpu_id: p.item_lpu_id, item_codigo: item.codigo, item_descricao: item.descricao,
+          unidade: item.unidade, preco_unitario: Number(item.preco_unitario),
+          quantidade: 0, quantidade_pendente: pendente,
+          valor_total: pendente * Number(item.preco_unitario), selected: true
+        });
       }
       const g = grouped.get(key)!;
       g.quantidade += p.quantidade;
@@ -215,7 +227,8 @@ export function GerarMedicaoDialog({
       await supabase.from("report_templates").upsert({ projeto_id: gerarProjetoId, nome: `Template ${gerarProjetoId}`, tipo_medicao: gerarTipoMedicao, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos, is_default: true });
     }
     const selectedItems = geracaoItens.filter(i => i.selected);
-    const items = selectedItems.map(i => ({ site_id: i.site_id, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
+    const fallbackSiteId = gerarSiteId || sites.find(s => s.projeto_id === gerarProjetoId)?.id || sites[0]?.id || null;
+    const items = selectedItems.map(i => ({ site_id: i.site_id || fallbackSiteId, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
     
     await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     if (Object.keys(editLegendas).length > 0) await supabase.from("medicao_report_photo_captions").upsert(Object.entries(editLegendas).map(([foto_id, legenda]) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda })));
@@ -243,7 +256,7 @@ export function GerarMedicaoDialog({
                <div className="space-y-2"><Label>Site</Label><Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)}><SelectTrigger><SelectValue placeholder="Todos os sites" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os sites</SelectItem>{sites.filter(s => !gerarProjetoId || s.projeto_id === gerarProjetoId).map(s => <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>)}</SelectContent></Select></div>
                <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label>Início</Label><Input type="date" value={gerarPeriodoInicio} onChange={(e) => setGerarPeriodoInicio(e.target.value)} /></div><div className="space-y-2"><Label>Fim</Label><Input type="date" value={gerarPeriodoFim} onChange={(e) => setGerarPeriodoFim(e.target.value)} /></div></div>
                <div className="space-y-2"><Label>Nº Medição</Label><Input value={gerarNumeroMedicao} onChange={(e) => setGerarNumeroMedicao(e.target.value)} /></div>
-               <div className="space-y-2"><Label>Tipo</Label><RadioGroup value={gerarTipoMedicao} onValueChange={(v: any) => setGerarTipoMedicao(v)} className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="separada" id="sep" /><Label htmlFor="sep">Separada</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="agrupada" id="agr" /><Label htmlFor="agr">Agrupada</Label></div></RadioGroup></div>
+               <div className="space-y-2"><Label>Tipo de Medição</Label><RadioGroup value={gerarTipoMedicao} onValueChange={(v: any) => setGerarTipoMedicao(v)} className="flex flex-col gap-2"><div className="flex items-center space-x-2"><RadioGroupItem value="separada" id="sep" /><Label htmlFor="sep">Separada por Site</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="agrupada" id="agr" /><Label htmlFor="agr">Agrupada por Projeto</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="mista" id="mis" /><Label htmlFor="mis">Mista (Consolidado)</Label></div>{gerarTipoMedicao === "mista" && <p className="text-xs text-muted-foreground pl-6">Consolida itens iguais de diferentes sites em uma única linha.</p>}</RadioGroup></div>
              </div>
           </div>
         ) : step === "config" ? (
