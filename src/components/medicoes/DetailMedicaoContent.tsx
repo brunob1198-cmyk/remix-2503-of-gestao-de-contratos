@@ -1129,7 +1129,7 @@ export function DetailMedicaoContent({
 
 
       return `
-        <div class="photo-card">
+        <div class="photo-card" style="width: ${detailMedicao.fotos_por_pagina === 2 ? '48%' : detailMedicao.fotos_por_pagina === 6 ? '31%' : '48%'}">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
