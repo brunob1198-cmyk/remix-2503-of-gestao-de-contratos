@@ -1485,6 +1485,7 @@ export function DetailMedicaoContent({
 
     ${includedSitesHtml}
 
+    ${detailMedicao.modo_somente_fotos !== true ? `
     <h2 class="sec">📝 Resumo da Produção</h2>
     <table class="main">
       <thead>
@@ -1498,6 +1499,7 @@ export function DetailMedicaoContent({
       </thead>
       <tbody>
         ${itemsTableRows}
+    ` : ''}
       </tbody>
       <tfoot>
         <tr>
