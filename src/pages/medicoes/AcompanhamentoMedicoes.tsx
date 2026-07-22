@@ -196,7 +196,15 @@ export default function AcompanhamentoMedicoesPage() {
     }
 
 
-    const itemsWithCapa = data.items.map((item: any) => ({ ...item, capa_url: capaUrl }));
+    const itemsWithCapa = data.items.map((item: any) => ({ 
+      ...item, 
+      capa_url: capaUrl,
+      mostrar_lpu: data.reportConfig?.mostrar_lpu,
+      mostrar_valores_site: data.reportConfig?.mostrar_valores_site,
+      modo_somente_fotos: data.reportConfig?.modo_somente_fotos,
+      fotos_por_pagina: data.reportConfig?.fotos_por_pagina,
+      legenda_padrao_fotos: data.reportConfig?.legenda_padrao_fotos
+    }));
 
     bulkCreateLancamento.mutate(itemsWithCapa, {
       onSuccess: () => {
