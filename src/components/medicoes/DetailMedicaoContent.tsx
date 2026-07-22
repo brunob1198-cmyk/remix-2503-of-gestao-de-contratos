@@ -1111,15 +1111,12 @@ export function DetailMedicaoContent({
       enabled: !!detailMedicao.numero_medicao,
     });
 
-    const reportCaptionsMap = useMemo(() => {
-      const map = new Map<string, string>();
-      if (reportCaptions && Array.isArray(reportCaptions)) {
-        reportCaptions.forEach(c => {
-          if (c.legenda) map.set(c.foto_id, c.legenda);
-        });
+    const reportCaptionsMap = {
+      get: (fotoId: string) => {
+        const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
+        return found?.legenda || null;
       }
-      return map;
-    }, [reportCaptions]);
+    };
 
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
