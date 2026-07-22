@@ -1153,7 +1153,7 @@ export function DetailMedicaoContent({
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
               <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
             </div>
-            ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
+            ${(foto.legenda || detailMedicao.legenda_padrao_fotos) ? `<p class="photo-legenda">“${foto.legenda || detailMedicao.legenda_padrao_fotos}”</p>` : ''}
           </div>
         </div>
       `;
