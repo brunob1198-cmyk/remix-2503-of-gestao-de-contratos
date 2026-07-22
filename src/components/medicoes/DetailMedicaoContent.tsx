@@ -495,6 +495,16 @@ export function DetailMedicaoContent({
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
+  const diarioFotos = useMemo(() => {
+    if (fotoOrdemMap.size === 0) return rawDiarioFotos;
+    return [...rawDiarioFotos].sort((a, b) => {
+      const oa = fotoOrdemMap.has(a.id) ? fotoOrdemMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const ob = fotoOrdemMap.has(b.id) ? fotoOrdemMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
+  }, [rawDiarioFotos, fotoOrdemMap]);
+
+
   const { data: rdoSummary = [] } = useQuery({
     queryKey: ["medicao_rdo_summary", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
