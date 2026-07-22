@@ -160,7 +160,7 @@ export function DetailMedicaoContent({
       if (!detailMedicao.numero_medicao) return [];
       const { data, error } = await supabase
         .from("medicao_report_photo_captions")
-        .select("foto_id, legenda")
+        .select("foto_id, legenda, ordem")
         .eq("numero_medicao", detailMedicao.numero_medicao);
       if (error) throw error;
       return data || [];
@@ -174,6 +174,14 @@ export function DetailMedicaoContent({
       return found?.legenda || null;
     }
   }), [reportCaptions]);
+
+  const fotoOrdemMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (reportCaptions as any[]).forEach(c => {
+      if (c.ordem != null) m.set(c.foto_id, c.ordem);
+    });
+    return m;
+  }, [reportCaptions]);
 
 
 
@@ -391,7 +399,7 @@ export function DetailMedicaoContent({
   });
 
   // Fetch diary photos
-  const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
+  const { data: rawDiarioFotos = [], isLoading: loadingFotos } = useQuery({
     queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
@@ -486,6 +494,16 @@ export function DetailMedicaoContent({
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
+
+  const diarioFotos = useMemo(() => {
+    if (fotoOrdemMap.size === 0) return rawDiarioFotos;
+    return [...rawDiarioFotos].sort((a, b) => {
+      const oa = fotoOrdemMap.has(a.id) ? fotoOrdemMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const ob = fotoOrdemMap.has(b.id) ? fotoOrdemMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
+  }, [rawDiarioFotos, fotoOrdemMap]);
+
 
   const { data: rdoSummary = [] } = useQuery({
     queryKey: ["medicao_rdo_summary", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],

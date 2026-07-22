@@ -2944,6 +2944,7 @@ export type Database = {
           id: string
           legenda: string | null
           numero_medicao: string
+          ordem: number | null
         }
         Insert: {
           created_at?: string | null
@@ -2951,6 +2952,7 @@ export type Database = {
           id?: string
           legenda?: string | null
           numero_medicao: string
+          ordem?: number | null
         }
         Update: {
           created_at?: string | null
@@ -2958,6 +2960,7 @@ export type Database = {
           id?: string
           legenda?: string | null
           numero_medicao?: string
+          ordem?: number | null
         }
         Relationships: [
           {

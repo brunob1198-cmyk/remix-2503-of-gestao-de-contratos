@@ -102,6 +102,8 @@ export function GerarMedicaoDialog({
   const [fotosPorPagina, setFotosPorPagina] = useState(4);
   const [legendaPadraoFotos, setLegendaPadraoFotos] = useState("");
   const [editLegendas, setEditLegendas] = useState<Record<string, string>>({});
+  const [fotoOrder, setFotoOrder] = useState<string[]>([]);
+  const [dragFotoId, setDragFotoId] = useState<string | null>(null);
   const [salvarComoPadrao, setSalvarComoPadrao] = useState(false);
 
   const { data: templates = [] } = useQuery({
@@ -232,7 +234,9 @@ export function GerarMedicaoDialog({
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
           const { count, data: fotos } = await supabase.from("diario_fotos").select("*", { count: 'exact' }).in("diario_id", diarios.map(d => d.id)).limit(50);
           setGeracaoFotosTotal(count || 0);
-          setGeracaoFotos((fotos || []).map(f => ({ id: f.id, url: f.url, classificacao: f.classificacao, legenda: f.legenda, diario_data: diarioMap.get(f.diario_id)?.data, site_id: diarioMap.get(f.diario_id)?.site_id, selected: true })));
+          const mapped = (fotos || []).map(f => ({ id: f.id, url: f.url, classificacao: f.classificacao, legenda: f.legenda, diario_data: diarioMap.get(f.diario_id)?.data, site_id: diarioMap.get(f.diario_id)?.site_id, selected: true }));
+          setGeracaoFotos(mapped);
+          setFotoOrder(mapped.map(m => m.id));
         }
       }
     } catch (err) { console.error(err); }
@@ -263,8 +267,9 @@ export function GerarMedicaoDialog({
     const items = selectedItems.map(i => ({ site_id: i.site_id || fallbackSiteId, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
     
     await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
-    if (Object.keys(editLegendas).length > 0) await supabase.from("medicao_report_photo_captions").upsert(Object.entries(editLegendas).map(([foto_id, legenda]) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda })));
-    setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
+    const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
+    if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
+    setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
   const selectedItens = geracaoItens.filter(i => i.selected);
@@ -344,81 +349,88 @@ export function GerarMedicaoDialog({
               </div>
             </div>
             <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Editar Legendas</h3>
+              <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Editar Legendas <span className="text-[10px] font-normal text-muted-foreground">(arraste as fotos para reordenar)</span></h3>
               <div className="max-h-[400px] overflow-y-auto space-y-6 pr-2">
-                {gerarTipoMedicao === "mista" ? (
-                  // Group photos by site for "Mista" type
-                  Object.entries(
-                    geracaoFotos.reduce((acc, foto) => {
-                      const siteName = sites.find(s => s.id === foto.site_id)?.nome || "Site não identificado";
-                      if (!acc[siteName]) acc[siteName] = [];
-                      acc[siteName].push(foto);
-                      return acc;
-                    }, {} as Record<string, GeracaoFoto[]>)
-                  ).map(([siteName, photos]) => (
-                    <div key={siteName} className="space-y-3">
-                      <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-3 w-3 text-primary" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
-                          <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                {(() => {
+                  const orderedFotos = fotoOrder.map(id => geracaoFotos.find(f => f.id === id)).filter(Boolean) as GeracaoFoto[];
+                  const handleDrop = (targetId: string) => {
+                    if (!dragFotoId || dragFotoId === targetId) return;
+                    const current = [...fotoOrder];
+                    const from = current.indexOf(dragFotoId);
+                    const to = current.indexOf(targetId);
+                    if (from < 0 || to < 0) return;
+                    current.splice(from, 1);
+                    current.splice(to, 0, dragFotoId);
+                    setFotoOrder(current);
+                    setDragFotoId(null);
+                  };
+                  const renderCard = (foto: GeracaoFoto) => (
+                    <div 
+                      key={foto.id} 
+                      draggable 
+                      onDragStart={() => setDragFotoId(foto.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(foto.id)}
+                      onDragEnd={() => setDragFotoId(null)}
+                      className={`space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-all cursor-move ${dragFotoId === foto.id ? 'opacity-40 border-primary' : ''}`}
+                    >
+                      <div className="aspect-video relative rounded overflow-hidden bg-muted">
+                        <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full pointer-events-none" />
+                        <div className="absolute top-1 left-1 bg-background/90 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                          #{fotoOrder.indexOf(foto.id) + 1}
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 text-[10px] gap-1 hover:text-primary"
-                          onClick={() => {
-                            if (!legendaPadraoFotos) {
-                              toast.error("Defina uma legenda padrão primeiro");
-                              return;
-                            }
-                            const newLegendas = { ...editLegendas };
-                            photos.forEach(f => {
-                              newLegendas[f.id] = legendaPadraoFotos;
-                            });
-                            setEditLegendas(newLegendas);
-                            toast.success(`Legenda aplicada a ${photos.length} fotos`);
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                          Aplicar Legenda Padrão
-                        </Button>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                        {photos.map(foto => (
-                          <div key={foto.id} className="space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-colors">
-                            <div className="aspect-video relative rounded overflow-hidden bg-muted">
-                              <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" />
-                            </div>
-                            <Input 
-                              className="h-7 text-xs" 
-                              placeholder="Legenda da foto..."
-                              value={editLegendas[foto.id] ?? foto.legenda ?? ""} 
-                              onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} 
-                            />
-                          </div>
-                        ))}
-                      </div>
+                      <Input 
+                        className="h-7 text-xs" 
+                        placeholder="Legenda da foto..."
+                        value={editLegendas[foto.id] ?? foto.legenda ?? ""} 
+                        onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} 
+                      />
                     </div>
-                  ))
-                ) : (
-                  // Standard grid for other types
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                    {geracaoFotos.map(foto => (
-                      <div key={foto.id} className="space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-colors">
-                        <div className="aspect-video relative rounded overflow-hidden bg-muted">
-                          <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" />
+                  );
+                  if (gerarTipoMedicao === "mista") {
+                    const bySite = new Map<string, GeracaoFoto[]>();
+                    orderedFotos.forEach(foto => {
+                      const siteName = sites.find(s => s.id === foto.site_id)?.nome || "Site não identificado";
+                      if (!bySite.has(siteName)) bySite.set(siteName, []);
+                      bySite.get(siteName)!.push(foto);
+                    });
+                    return Array.from(bySite.entries()).map(([siteName, photos]) => (
+                      <div key={siteName} className="space-y-3">
+                        <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
+                            <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 text-[10px] gap-1 hover:text-primary"
+                            onClick={() => {
+                              if (!legendaPadraoFotos) { toast.error("Defina uma legenda padrão primeiro"); return; }
+                              const newLegendas = { ...editLegendas };
+                              photos.forEach(f => { newLegendas[f.id] = legendaPadraoFotos; });
+                              setEditLegendas(newLegendas);
+                              toast.success(`Legenda aplicada a ${photos.length} fotos`);
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                            Aplicar Legenda Padrão
+                          </Button>
                         </div>
-                        <Input 
-                          className="h-7 text-xs" 
-                          placeholder="Legenda da foto..."
-                          value={editLegendas[foto.id] ?? foto.legenda ?? ""} 
-                          onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} 
-                        />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
+                          {photos.map(renderCard)}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    ));
+                  }
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
+                      {orderedFotos.map(renderCard)}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
