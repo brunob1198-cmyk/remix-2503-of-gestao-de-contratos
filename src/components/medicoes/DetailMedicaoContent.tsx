@@ -1057,13 +1057,13 @@ export function DetailMedicaoContent({
       })) : undefined;
 
       await exportTEPToHtml({
-        siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        siteNome: isMultiSite ? detailMedicao.projeto_nome : `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
           url: f.url,
           thumb_600_url: f.thumb_600_url,
           classificacao: f.classificacao,
-          legenda: f.legenda,
+          legenda: reportCaptionsMap[f.id] || f.legenda || detailMedicao.legenda_padrao_fotos || null,
           site_nome: f.site_nome,
           site_id: f.site_id,
           diario_data: f.diario_data,
