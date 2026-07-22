@@ -133,6 +133,13 @@ export interface LancamentoMedicao {
   data_resposta?: string;
   quantidade_aprovada?: number;
   quantidade_rejeitada?: number;
+  capa_url?: string | null;
+  logo_empresa_url?: string | null;
+  mostrar_lpu?: boolean;
+  mostrar_valores_site?: boolean;
+  modo_somente_fotos?: boolean;
+  fotos_por_pagina?: number;
+  legenda_padrao_fotos?: string;
   created_at: string;
   updated_at: string;
   site?: Site;
@@ -210,6 +217,16 @@ export interface MedicaoAgrupada {
   status: string;
   numero_po?: string;
   observacao_acompanhamento?: string;
+  periodo_inicio?: string;
+  periodo_fim?: string;
+  logo_empresa_url?: string;
+  capa_url?: string | null;
+  mostrar_lpu?: boolean;
+  mostrar_valores_site?: boolean;
+  modo_somente_fotos?: boolean;
+  fotos_por_pagina?: number;
+  legenda_padrao_fotos?: string;
+  lancamentoIds: string[];
 }
 
 export interface EscopoItem {

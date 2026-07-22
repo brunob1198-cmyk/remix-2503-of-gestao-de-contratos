@@ -146,7 +146,22 @@ export function useLancamentosMedicao(siteId?: string) {
   });
 
   const bulkCreateLancamento = useMutation({
-    mutationFn: async (lancamentos: { site_id?: string; item_lpu_id: string; data_medicao: string; quantidade: number; numero_medicao?: string; status?: string; observacao?: string; capa_url?: string | null }[]) => {
+    mutationFn: async (lancamentos: { 
+      site_id?: string; 
+      item_lpu_id: string; 
+      data_medicao: string; 
+      quantidade: number; 
+      numero_medicao?: string; 
+      status?: string; 
+      observacao?: string; 
+      capa_url?: string | null;
+      logo_empresa_url?: string | null;
+      mostrar_lpu?: boolean;
+      mostrar_valores_site?: boolean;
+      modo_somente_fotos?: boolean;
+      fotos_por_pagina?: number;
+      legenda_padrao_fotos?: string;
+    }[]) => {
       const { data, error } = await supabase
         .from("lancamentos_medicao")
         .insert(lancamentos)

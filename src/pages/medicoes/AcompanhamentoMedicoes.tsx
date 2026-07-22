@@ -77,8 +77,13 @@ export default function AcompanhamentoMedicoesPage() {
           site_codigo: l.site?.codigo || "",
           site_nome: l.site?.nome || "",
           projeto_codigo: l.site?.projeto?.codigo || "",
-          logo_empresa_url: (l as any).logo_empresa_url,
-          capa_url: (l as any).capa_url,
+          logo_empresa_url: l.logo_empresa_url,
+          capa_url: l.capa_url,
+          mostrar_lpu: l.mostrar_lpu,
+          mostrar_valores_site: l.mostrar_valores_site,
+          modo_somente_fotos: l.modo_somente_fotos,
+          fotos_por_pagina: l.fotos_por_pagina,
+          legenda_padrao_fotos: l.legenda_padrao_fotos,
           projeto_nome: l.site?.projeto?.nome || "",
           uf: l.site?.uf || "",
           data_medicao: l.data_medicao,
@@ -191,7 +196,15 @@ export default function AcompanhamentoMedicoesPage() {
     }
 
 
-    const itemsWithCapa = data.items.map((item: any) => ({ ...item, capa_url: capaUrl }));
+    const itemsWithCapa = data.items.map((item: any) => ({ 
+      ...item, 
+      capa_url: capaUrl,
+      mostrar_lpu: data.reportConfig?.mostrar_lpu,
+      mostrar_valores_site: data.reportConfig?.mostrar_valores_site,
+      modo_somente_fotos: data.reportConfig?.modo_somente_fotos,
+      fotos_por_pagina: data.reportConfig?.fotos_por_pagina,
+      legenda_padrao_fotos: data.reportConfig?.legenda_padrao_fotos
+    }));
 
     bulkCreateLancamento.mutate(itemsWithCapa, {
       onSuccess: () => {

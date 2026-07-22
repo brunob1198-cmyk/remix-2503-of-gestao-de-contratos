@@ -52,6 +52,11 @@ interface DetailMedicaoContentProps {
     lancamentoIds: string[];
     logo_empresa_url?: string;
     capa_url?: string | null;
+    mostrar_lpu?: boolean;
+    mostrar_valores_site?: boolean;
+    modo_somente_fotos?: boolean;
+    fotos_por_pagina?: number;
+    legenda_padrao_fotos?: string;
   };
   detailLancamentos: any[];
   sites: any[];
@@ -1124,7 +1129,7 @@ export function DetailMedicaoContent({
 
 
       return `
-        <div class="photo-card">
+        <div class="photo-card" style="width: ${detailMedicao.fotos_por_pagina === 2 ? '48%' : detailMedicao.fotos_por_pagina === 6 ? '31%' : '48%'}">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
@@ -1142,13 +1147,13 @@ export function DetailMedicaoContent({
             `}
           </div>
           <div class="photo-info">
-            ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
+            ${showItem && foto.item_codigo ? `<p class="photo-title">${detailMedicao.mostrar_lpu !== false ? `${foto.item_codigo} — ` : ''}${foto.item_descricao || ''}</p>` : ''}
             <div class="photo-meta">
               ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
               <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
             </div>
-            ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
+            ${(foto.legenda || detailMedicao.legenda_padrao_fotos) ? `<p class="photo-legenda">“${foto.legenda || detailMedicao.legenda_padrao_fotos}”</p>` : ''}
           </div>
         </div>
       `;
@@ -1172,7 +1177,7 @@ export function DetailMedicaoContent({
               <tbody>
                 ${siteItems.map(si => `
                   <tr>
-                    <td>${si.item_codigo} — ${si.item_descricao}</td>
+                    <td>${detailMedicao.mostrar_lpu !== false ? `${si.item_codigo} — ` : ''}${si.item_descricao}</td>
                     <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
                     <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
                   </tr>
@@ -1236,7 +1241,7 @@ export function DetailMedicaoContent({
               <span>📍 ${siteName}</span>
               ${statusAtivoBySite.get(siteId) ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:2px solid ${statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3"};background:${statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2"};color:${statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c"};">STATUS DO ATIVO: ${statusAtivoBySite.get(siteId)}</span>` : ''}
             </div>
-            ${itemsTableHtml}
+            ${detailMedicao.mostrar_valores_site !== false ? itemsTableHtml : ''}
             ${recursosHtml}
             ${obsHtml}
             ${photosHtml}
@@ -1272,7 +1277,7 @@ export function DetailMedicaoContent({
       const qtd = Number(l.quantidade);
       return `
         <tr>
-          <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
+          <td>${detailMedicao.mostrar_lpu !== false ? `${l.item_lpu?.codigo || '-'} - ` : ''}${l.item_lpu?.descricao || ''}</td>
           <td>${l.item_lpu?.unidade || '-'}</td>
           <td class="num">${qtd.toLocaleString("pt-BR")}</td>
           <td class="num">${formatCurrency(preco)}</td>
@@ -1405,7 +1410,7 @@ export function DetailMedicaoContent({
     .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .photo-grid { display: grid; grid-template-columns: ${detailMedicao.fotos_por_pagina === 2 ? '1fr 1fr' : detailMedicao.fotos_por_pagina === 6 ? 'repeat(3, 1fr)' : '1fr 1fr'}; gap: 8px; }
     .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
@@ -1480,6 +1485,7 @@ export function DetailMedicaoContent({
 
     ${includedSitesHtml}
 
+    ${detailMedicao.modo_somente_fotos !== true ? `
     <h2 class="sec">📝 Resumo da Produção</h2>
     <table class="main">
       <thead>
@@ -1501,6 +1507,7 @@ export function DetailMedicaoContent({
         </tr>
       </tfoot>
     </table>
+    ` : ''}
     
     ${!isMultiSite ? recursosHtml : ''}
 
