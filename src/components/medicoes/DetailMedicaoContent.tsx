@@ -1241,7 +1241,7 @@ export function DetailMedicaoContent({
               <span>📍 ${siteName}</span>
               ${statusAtivoBySite.get(siteId) ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:2px solid ${statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3"};background:${statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2"};color:${statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c"};">STATUS DO ATIVO: ${statusAtivoBySite.get(siteId)}</span>` : ''}
             </div>
-            ${itemsTableHtml}
+            ${detailMedicao.mostrar_valores_site !== false ? itemsTableHtml : ''}
             ${recursosHtml}
             ${obsHtml}
             ${photosHtml}
