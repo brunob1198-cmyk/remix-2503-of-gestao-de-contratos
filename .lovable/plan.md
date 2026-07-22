@@ -1,17 +1,26 @@
-I will update the `extract-contract` Edge Function to use a valid model name and implement the requested fallback mechanism.
+## Objetivo
+Restaurar as três modalidades de geração de medição no diálogo "Gerar Medição do Período", como aparecia no modelo antigo (imagem 242):
 
-### Technical Details
+- **Separada por Site** — uma linha por item de cada site (comportamento atual).
+- **Agrupada por Projeto** — consolida tudo do projeto em uma única medição agrupada.
+- **Mista (Consolidado)** — mantém os sites separados dentro da mesma medição, mas consolida itens iguais de diferentes sites em uma única linha somando as quantidades/valores.
 
-1. **Update Model Name**: The logs indicate `gemini-2.0-flash` is currently invalid in the AI Gateway environment. I will use `google/gemini-2.5-flash` as suggested by the error message's allowed models list (or `google/gemini-2.0-flash` if I can verify it works, but I'll stick to what the log explicitly allowed).
-2. **Implement Fallback Logic**:
-   - I'll create a function to encapsulate the AI Gateway call.
-   - If the first attempt (e.g., as `image_url`) fails with a 400 error, the code will retry with the document structured as a `file`.
-   - I will also ensure that `file_data` for the `file` type can be either a URL or a base64 string.
-3. **Handle R2 URLs**: Ensure the logic correctly identifies R2 URLs and passes them to the AI Gateway.
-4. **Improved Error Handling**: Better logging of why an attempt failed and what the fallback is doing.
+Atualmente o diálogo (`GerarMedicaoDialog.tsx`) só oferece "Separada" e "Agrupada", tendo perdido a opção "Mista" no redesenho de 3 etapas.
 
-### Steps
+## Alterações
 
-- Modify `supabase/functions/extract-contract/index.ts` to include the fallback logic and update the model name.
-- Deploy the updated Edge Function.
-- Verify the logs after deployment.
+### 1. `src/components/medicoes/acompanhamento/GerarMedicaoDialog.tsx`
+- Adicionar terceira opção no RadioGroup do "Tipo de Medição": `mista` com o rótulo **"Mista (Consolidado)"** e a descrição de apoio **"Consolida itens iguais de diferentes sites em uma única linha."**.
+- Ajustar o tipo do estado `tipoMedicao` para `"separada" | "agrupada" | "mista"` (o schema em `src/lib/schemas/medicao.ts` já aceita os três valores).
+- Na etapa de "Ver Itens", adaptar o agrupamento dos itens produzidos:
+  - `separada`: uma linha por (site, item_lpu) — atual.
+  - `agrupada`: uma linha por item_lpu do projeto todo (soma quantidades entre sites), sem `site_id`.
+  - `mista`: mantém `site_id` de cada linha, mas dentro do mesmo site consolida itens duplicados (mesmo `item_lpu_id`) somando quantidades. Marca a observação com `tipo:mista` para que o agrupamento em `AcompanhamentoMedicoes.tsx` reconheça (regex já existe: `obs.includes("tipo:mista")`).
+
+### 2. `src/pages/medicoes/AcompanhamentoMedicoes.tsx`
+- Nenhuma alteração de lógica: a chave de agrupamento em `medicoesAgrupadas` já trata `tipo:agrupada` e `tipo:mista` como consolidados por projeto.
+
+## Detalhes técnicos
+- O schema `gerarMedicaoSchema` já suporta `z.enum(["separada", "agrupada", "mista"])`.
+- Os campos persistidos em `lancamentos_medicao.observacao` seguem o padrão `tipo:<modalidade>` para permitir reagrupamento posterior.
+- Nenhuma migração de banco necessária.
