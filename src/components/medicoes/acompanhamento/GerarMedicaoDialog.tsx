@@ -163,13 +163,25 @@ export function GerarMedicaoDialog({
 
     const grouped = new Map<string, GeracaoItem>();
     filteredProducao.forEach(p => {
-      const key = `${p.site_id}_${p.item_lpu_id}`;
       const site = sites.find(s => s.id === p.site_id);
       const item = allItensLpu.find(i => i.id === p.item_lpu_id) || p.item_lpu;
       if (!site || !item) return;
+      // separada: uma linha por (site, item); agrupada/mista: consolida itens iguais entre sites
+      const isConsolidated = gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista";
+      const key = isConsolidated ? `all_${p.item_lpu_id}` : `${p.site_id}_${p.item_lpu_id}`;
       if (!grouped.has(key)) {
-        const pendente = pendingBySiteItem.get(key) || 0;
-        grouped.set(key, { site_id: p.site_id, site_codigo: site.codigo, site_nome: site.nome, item_lpu_id: p.item_lpu_id, item_codigo: item.codigo, item_descricao: item.descricao, unidade: item.unidade, preco_unitario: Number(item.preco_unitario), quantidade: 0, quantidade_pendente: pendente, valor_total: pendente * Number(item.preco_unitario), selected: true });
+        const pendente = isConsolidated
+          ? Array.from(pendingBySiteItem.entries()).filter(([k]) => k.endsWith(`_${p.item_lpu_id}`)).reduce((s, [, v]) => s + v, 0)
+          : (pendingBySiteItem.get(`${p.site_id}_${p.item_lpu_id}`) || 0);
+        grouped.set(key, {
+          site_id: isConsolidated ? "" : p.site_id,
+          site_codigo: isConsolidated ? "(Consolidado)" : site.codigo,
+          site_nome: isConsolidated ? "Todos os sites" : site.nome,
+          item_lpu_id: p.item_lpu_id, item_codigo: item.codigo, item_descricao: item.descricao,
+          unidade: item.unidade, preco_unitario: Number(item.preco_unitario),
+          quantidade: 0, quantidade_pendente: pendente,
+          valor_total: pendente * Number(item.preco_unitario), selected: true
+        });
       }
       const g = grouped.get(key)!;
       g.quantidade += p.quantidade;
