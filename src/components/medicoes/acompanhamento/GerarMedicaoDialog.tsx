@@ -353,31 +353,41 @@ export function GerarMedicaoDialog({
               <div className="max-h-[400px] overflow-y-auto space-y-6 pr-2">
                 {(() => {
                   const orderedFotos = fotoOrder.map(id => geracaoFotos.find(f => f.id === id)).filter(Boolean) as GeracaoFoto[];
-                  const handleDrop = (targetId: string) => {
-                    if (!dragFotoId || dragFotoId === targetId) return;
+                  const handleDrop = (targetFoto: GeracaoFoto) => {
+                    if (!dragFotoId || dragFotoId === targetFoto.id) return;
+                    
+                    const dragFoto = geracaoFotos.find(f => f.id === dragFotoId);
+                    if (!dragFoto) return;
+
+                    // Impedir reordenação entre sites diferentes
+                    if (dragFoto.site_id !== targetFoto.site_id) {
+                      toast.error("A reordenação só é permitida dentro do mesmo site");
+                      return;
+                    }
+
                     const current = [...fotoOrder];
                     const from = current.indexOf(dragFotoId);
-                    const to = current.indexOf(targetId);
+                    const to = current.indexOf(targetFoto.id);
                     if (from < 0 || to < 0) return;
                     current.splice(from, 1);
                     current.splice(to, 0, dragFotoId);
                     setFotoOrder(current);
                     setDragFotoId(null);
                   };
-                  const renderCard = (foto: GeracaoFoto) => (
+                  const renderCard = (foto: GeracaoFoto, siteIndex: number = 0) => (
                     <div 
                       key={foto.id} 
                       draggable 
                       onDragStart={() => setDragFotoId(foto.id)}
                       onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => handleDrop(foto.id)}
+                      onDrop={() => handleDrop(foto)}
                       onDragEnd={() => setDragFotoId(null)}
                       className={`space-y-2 p-2 border rounded bg-card hover:border-primary/50 transition-all cursor-move ${dragFotoId === foto.id ? 'opacity-40 border-primary' : ''}`}
                     >
                       <div className="aspect-video relative rounded overflow-hidden bg-muted">
                         <SmartImage src={foto.url} alt="P" className="object-cover w-full h-full pointer-events-none" />
-                        <div className="absolute top-1 left-1 bg-background/90 rounded px-1.5 py-0.5 text-[10px] font-bold">
-                          #{fotoOrder.indexOf(foto.id) + 1}
+                        <div className="absolute top-1 left-1 bg-background/90 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-sm">
+                          #{siteIndex + 1}
                         </div>
                       </div>
                       <Input 
@@ -420,14 +430,14 @@ export function GerarMedicaoDialog({
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                          {photos.map(renderCard)}
+                          {photos.map((foto, idx) => renderCard(foto, idx))}
                         </div>
                       </div>
                     ));
                   }
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                      {orderedFotos.map(renderCard)}
+                      {orderedFotos.map((foto, idx) => renderCard(foto, idx))}
                     </div>
                   );
                 })()}
