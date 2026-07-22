@@ -1338,6 +1338,16 @@ export function DetailMedicaoContent({
       `;
     }).join('');
     
+    const totalProduzido = detailLancamentos.reduce((acc, l) => acc + (Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0)), 0);
+    const totalFooter = detailMedicao.mostrar_lpu !== false ? `
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num bold">TOTAL PRODUZIDO NO PERÍODO:</td>
+          <td class="num bold" style="font-size: 12px; color: var(--primary);">${formatCurrency(totalProduzido)}</td>
+        </tr>
+      </tfoot>
+    ` : '';
+    
     const recursosHtml = (recursosAgregadosGerais.equipe.length > 0 || recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) ? `
       <h2 class="sec">👷 Recursos Utilizados no Período</h2>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
