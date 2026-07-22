@@ -52,6 +52,11 @@ interface DetailMedicaoContentProps {
     lancamentoIds: string[];
     logo_empresa_url?: string;
     capa_url?: string | null;
+    mostrar_lpu?: boolean;
+    mostrar_valores_site?: boolean;
+    modo_somente_fotos?: boolean;
+    fotos_por_pagina?: number;
+    legenda_padrao_fotos?: string;
   };
   detailLancamentos: any[];
   sites: any[];
