@@ -1318,8 +1318,10 @@ export function DetailMedicaoContent({
           <td>${detailMedicao.mostrar_lpu !== false ? `${l.item_lpu?.codigo || '-'} - ` : ''}${l.item_lpu?.descricao || ''}</td>
           <td>${l.item_lpu?.unidade || '-'}</td>
           <td class="num">${qtd.toLocaleString("pt-BR")}</td>
-          <td class="num">${formatCurrency(preco)}</td>
-          <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <td class="num">${formatCurrency(preco)}</td>
+            <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ` : ''}
         </tr>
       `;
     }).join('');
