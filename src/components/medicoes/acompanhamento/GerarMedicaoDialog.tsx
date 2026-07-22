@@ -560,7 +560,14 @@ export function GerarMedicaoDialog({
     await onEnviar({
       items,
       selectedItens,
-      capaFile
+      capaFile,
+      reportConfig: {
+        mostrar_lpu: mostrarLpu,
+        mostrar_valores_site: mostrarValoresSite,
+        modo_somente_fotos: modoSomenteFotos,
+        fotos_por_pagina: fotosPorPagina,
+        legenda_padrao_fotos: legendaPadraoFotos
+      }
     });
 
     // Reset local state
