@@ -399,7 +399,7 @@ export function DetailMedicaoContent({
   });
 
   // Fetch diary photos
-  const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
+  const { data: rawDiarioFotos = [], isLoading: loadingFotos } = useQuery({
     queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
