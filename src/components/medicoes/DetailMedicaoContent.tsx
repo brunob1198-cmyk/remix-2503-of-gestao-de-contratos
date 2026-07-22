@@ -1499,7 +1499,6 @@ export function DetailMedicaoContent({
       </thead>
       <tbody>
         ${itemsTableRows}
-    ` : ''}
       </tbody>
       <tfoot>
         <tr>
@@ -1508,6 +1507,7 @@ export function DetailMedicaoContent({
         </tr>
       </tfoot>
     </table>
+    ` : ''}
     
     ${!isMultiSite ? recursosHtml : ''}
 
