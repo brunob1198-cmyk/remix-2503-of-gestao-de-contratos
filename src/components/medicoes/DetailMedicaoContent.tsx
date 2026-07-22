@@ -1097,6 +1097,27 @@ export function DetailMedicaoContent({
   }, []);
 
   const generateHtmlReport = useCallback((forZip = false) => {
+    const { data: reportCaptions = [] } = useQuery({
+      queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
+      queryFn: async () => {
+        if (!detailMedicao.numero_medicao) return [];
+        const { data, error } = await supabase
+          .from("medicao_report_photo_captions")
+          .select("foto_id, legenda")
+          .eq("numero_medicao", detailMedicao.numero_medicao);
+        if (error) throw error;
+        return data || [];
+      },
+      enabled: !!detailMedicao.numero_medicao,
+    });
+
+    const reportCaptionsMap = {
+      get: (fotoId: string) => {
+        const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
+        return found?.legenda || null;
+      }
+    };
+
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -1127,9 +1148,13 @@ export function DetailMedicaoContent({
       const imgSrc = primaryUrl; 
       const localImgSrc = safePath;
 
+      const caption = reportCaptionsMap.get(foto.id) || foto.legenda || detailMedicao.legenda_padrao_fotos || '';
+
+      const fotosPerPage = detailMedicao.fotos_por_pagina || 4;
+      const cardWidth = fotosPerPage === 2 ? '48%' : fotosPerPage === 6 ? '31%' : '48%';
 
       return `
-        <div class="photo-card" style="width: ${detailMedicao.fotos_por_pagina === 2 ? '48%' : detailMedicao.fotos_por_pagina === 6 ? '31%' : '48%'}">
+        <div class="photo-card" style="width: ${cardWidth}">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
@@ -1153,7 +1178,7 @@ export function DetailMedicaoContent({
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
               <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
             </div>
-            ${(foto.legenda || detailMedicao.legenda_padrao_fotos) ? `<p class="photo-legenda">“${foto.legenda || detailMedicao.legenda_padrao_fotos}”</p>` : ''}
+            ${caption ? `<p class="photo-legenda">“${caption}”</p>` : ''}
           </div>
         </div>
       `;
@@ -1172,19 +1197,19 @@ export function DetailMedicaoContent({
             <p class="site-production-title">Produção do Site:</p>
             <table class="site-table">
               <thead>
-                <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
+                <tr><th>Item</th><th class="num">Qtd</th>${detailMedicao.mostrar_valores_site !== false ? '<th class="num">Valor</th>' : ''}</tr>
               </thead>
               <tbody>
                 ${siteItems.map(si => `
                   <tr>
                     <td>${detailMedicao.mostrar_lpu !== false ? `${si.item_codigo} — ` : ''}${si.item_descricao}</td>
                     <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
-                    <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
+                    ${detailMedicao.mostrar_valores_site !== false ? `<td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>` : ''}
                   </tr>
                 `).join('')}
               </tbody>
             </table>
-            <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+            ${detailMedicao.mostrar_valores_site !== false ? `<div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>` : ''}
           </div>
         ` : '';
 
@@ -1229,9 +1254,13 @@ export function DetailMedicaoContent({
         const photosHtml = classes.map(([className, photos]) => `
           <div class="class-group">
             <h3 class="class-header">${className} (${photos.length})</h3>
-            <div class="photo-grid">
-              ${photos.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
-            </div>
+          <div class="photo-grid">
+            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
+              </div>
+            `).join('')}
+          </div>
           </div>
         `).join('');
 
@@ -1257,7 +1286,11 @@ export function DetailMedicaoContent({
         <div class="item-group">
           <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
           <div class="photo-grid">
-            ${photos.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+              </div>
+            `).join('')}
           </div>
         </div>
       `).join('');
@@ -1265,7 +1298,11 @@ export function DetailMedicaoContent({
         <div class="item-group">
           <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
           <div class="photo-grid">
-            ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            ${chunkArray(fotosByItem.gerais, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+              </div>
+            `).join('')}
           </div>
         </div>
       ` : '';
@@ -1280,8 +1317,10 @@ export function DetailMedicaoContent({
           <td>${detailMedicao.mostrar_lpu !== false ? `${l.item_lpu?.codigo || '-'} - ` : ''}${l.item_lpu?.descricao || ''}</td>
           <td>${l.item_lpu?.unidade || '-'}</td>
           <td class="num">${qtd.toLocaleString("pt-BR")}</td>
-          <td class="num">${formatCurrency(preco)}</td>
-          <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <td class="num">${formatCurrency(preco)}</td>
+            <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ` : ''}
         </tr>
       `;
     }).join('');
@@ -1410,8 +1449,9 @@ export function DetailMedicaoContent({
     .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-    .photo-grid { display: grid; grid-template-columns: ${detailMedicao.fotos_por_pagina === 2 ? '1fr 1fr' : detailMedicao.fotos_por_pagina === 6 ? 'repeat(3, 1fr)' : '1fr 1fr'}; gap: 8px; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
+    .photo-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .photo-grid-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
@@ -1443,7 +1483,7 @@ export function DetailMedicaoContent({
             }
           </div>
         ` : `
-          <SmartImage src={detailMedicao.capa_url} alt="Capa da Medição" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+          <img src="${resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
         `}
       </div>
     </div>
@@ -1493,19 +1533,23 @@ export function DetailMedicaoContent({
           <th>Item / Descrição</th>
           <th>Unid.</th>
           <th class="num">Qtd.</th>
-          <th class="num">Preço Unit.</th>
-          <th class="num">Total</th>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <th class="num">Preço Unit.</th>
+            <th class="num">Total</th>
+          ` : ''}
         </tr>
       </thead>
       <tbody>
         ${itemsTableRows}
       </tbody>
+      ${detailMedicao.mostrar_lpu !== false ? `
       <tfoot>
         <tr>
           <td colspan="4" class="num bold">VALOR TOTAL DA MEDIÇÃO:</td>
           <td class="num bold">${formatCurrency(detailMedicao.total_valor)}</td>
         </tr>
       </tfoot>
+      ` : ''}
     </table>
     ` : ''}
     
