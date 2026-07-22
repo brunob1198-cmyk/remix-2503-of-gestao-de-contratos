@@ -234,7 +234,9 @@ export function GerarMedicaoDialog({
           const diarioMap = new Map(diarios.map(d => [d.id, d]));
           const { count, data: fotos } = await supabase.from("diario_fotos").select("*", { count: 'exact' }).in("diario_id", diarios.map(d => d.id)).limit(50);
           setGeracaoFotosTotal(count || 0);
-          setGeracaoFotos((fotos || []).map(f => ({ id: f.id, url: f.url, classificacao: f.classificacao, legenda: f.legenda, diario_data: diarioMap.get(f.diario_id)?.data, site_id: diarioMap.get(f.diario_id)?.site_id, selected: true })));
+          const mapped = (fotos || []).map(f => ({ id: f.id, url: f.url, classificacao: f.classificacao, legenda: f.legenda, diario_data: diarioMap.get(f.diario_id)?.data, site_id: diarioMap.get(f.diario_id)?.site_id, selected: true }));
+          setGeracaoFotos(mapped);
+          setFotoOrder(mapped.map(m => m.id));
         }
       }
     } catch (err) { console.error(err); }
