@@ -16,7 +16,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
 import { toast } from "sonner";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { uploadImage } from "@/services/uploadImage";
 
 interface GeracaoItem {
   site_id: string;
@@ -177,10 +176,12 @@ export function GerarMedicaoDialog({
       g.valor_total += p.valor_total;
     });
 
-    setGeracaoItens(Array.from(grouped.values()));
+    const itemsArray = Array.from(grouped.values());
+    setGeracaoItens(itemsArray);
+
     setLoadingGeracaoFotos(true);
     try {
-      const siteIds = gerarSiteId ? [gerarSiteId] : (gerarProjetoId ? sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id) : [...new Set(Array.from(grouped.values()).map(g => g.site_id))]);
+      const siteIds = gerarSiteId ? [gerarSiteId] : (gerarProjetoId ? sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id) : [...new Set(itemsArray.map(g => g.site_id))]);
       if (siteIds.length > 0) {
         const { data: diarios } = await supabase.from("diarios_obra").select("id, data, site_id").in("site_id", siteIds).gte("data", gerarPeriodoInicio).lte("data", gerarPeriodoFim);
         if (diarios && diarios.length > 0) {
@@ -191,6 +192,19 @@ export function GerarMedicaoDialog({
         }
       }
     } catch (err) { console.error(err); }
+
+    const warnings: string[] = [];
+    const siteIdsInGeracao = [...new Set(itemsArray.map(g => g.site_id))];
+    for (const sid of siteIdsInGeracao) {
+      const existingForSite = lancamentos.filter(l => l.site_id === sid && (l.status === "aprovado" || l.status === "enviada") && l.periodo_inicio && l.periodo_fim);
+      for (const existing of existingForSite) {
+        if (gerarPeriodoInicio <= existing.periodo_fim! && gerarPeriodoFim >= existing.periodo_inicio!) {
+          warnings.push(`Sobreposição no site ${sid}`);
+          break;
+        }
+      }
+    }
+    setDuplicateWarnings(warnings);
     setLoadingGeracaoFotos(false);
     setStep("config");
   };
@@ -200,35 +214,87 @@ export function GerarMedicaoDialog({
       await supabase.from("report_templates").update({ is_default: false }).eq("projeto_id", gerarProjetoId);
       await supabase.from("report_templates").upsert({ projeto_id: gerarProjetoId, nome: `Template ${gerarProjetoId}`, tipo_medicao: gerarTipoMedicao, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos, is_default: true });
     }
-    const items = geracaoItens.filter(i => i.selected).map(i => ({ site_id: i.site_id, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
-    await onEnviar({ items, selectedItens: geracaoItens.filter(i => i.selected), capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
+    const selectedItems = geracaoItens.filter(i => i.selected);
+    const items = selectedItems.map(i => ({ site_id: i.site_id, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
+    
+    await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     if (Object.keys(editLegendas).length > 0) await supabase.from("medicao_report_photo_captions").upsert(Object.entries(editLegendas).map(([foto_id, legenda]) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda })));
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
+
+  const selectedItens = geracaoItens.filter(i => i.selected);
+  const geracaoTotal = selectedItens.reduce((s, i) => s + i.valor_total, 0);
+
+  useMemo(() => {
+    if (step === "config" && templates.length > 0) {
+      const defaultTemplate = templates.find(t => t.is_default);
+      if (defaultTemplate) applyTemplate(defaultTemplate);
+    }
+  }, [step, templates]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setEditLegendas({}); } onOpenChange(open); }}>
       <DialogContent className={step !== "filtros" ? "max-w-5xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
         <DialogHeader><DialogTitle>{step === "filtros" ? "Gerar Medição" : step === "config" ? "Configurar Relatório" : "Preview"}</DialogTitle></DialogHeader>
         {step === "filtros" ? (
-          <div className="space-y-4">
-             <div className="space-y-2"><Label>Projeto</Label><Select value={gerarProjetoId || "all"} onValueChange={(v) => setGerarProjetoId(v === "all" ? "" : v)}><SelectTrigger><SelectValue placeholder="Todos os projetos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os projetos</SelectItem>{projetos.map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}</SelectContent></Select></div>
-             <div className="space-y-2"><Label>Período de Início</Label><Input type="date" value={gerarPeriodoInicio} onChange={(e) => setGerarPeriodoInicio(e.target.value)} /></div>
-             <div className="space-y-2"><Label>Período de Fim</Label><Input type="date" value={gerarPeriodoFim} onChange={(e) => setGerarPeriodoFim(e.target.value)} /></div>
-             <Button onClick={handleGerarPreview} className="w-full">Ver Itens</Button>
+          <div className="space-y-4 py-4">
+             <div className="grid grid-cols-1 gap-4">
+               <div className="space-y-2"><Label>Projeto</Label><Select value={gerarProjetoId || "all"} onValueChange={(v) => { setGerarProjetoId(v === "all" ? "" : v); setGerarSiteId(""); }}><SelectTrigger><SelectValue placeholder="Todos os projetos" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os projetos</SelectItem>{projetos.map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>)}</SelectContent></Select></div>
+               <div className="space-y-2"><Label>Site</Label><Select value={gerarSiteId || "all"} onValueChange={(v) => setGerarSiteId(v === "all" ? "" : v)}><SelectTrigger><SelectValue placeholder="Todos os sites" /></SelectTrigger><SelectContent><SelectItem value="all">Todos os sites</SelectItem>{sites.filter(s => !gerarProjetoId || s.projeto_id === gerarProjetoId).map(s => <SelectItem key={s.id} value={s.id}>{s.codigo} - {s.nome}</SelectItem>)}</SelectContent></Select></div>
+               <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label>Início</Label><Input type="date" value={gerarPeriodoInicio} onChange={(e) => setGerarPeriodoInicio(e.target.value)} /></div><div className="space-y-2"><Label>Fim</Label><Input type="date" value={gerarPeriodoFim} onChange={(e) => setGerarPeriodoFim(e.target.value)} /></div></div>
+               <div className="space-y-2"><Label>Nº Medição</Label><Input value={gerarNumeroMedicao} onChange={(e) => setGerarNumeroMedicao(e.target.value)} /></div>
+               <div className="space-y-2"><Label>Tipo</Label><RadioGroup value={gerarTipoMedicao} onValueChange={(v: any) => setGerarTipoMedicao(v)} className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="separada" id="sep" /><Label htmlFor="sep">Separada</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="agrupada" id="agr" /><Label htmlFor="agr">Agrupada</Label></div></RadioGroup></div>
+             </div>
           </div>
         ) : step === "config" ? (
-          <div className="space-y-4">
-             <div className="flex items-center space-x-2"><Checkbox checked={mostrarLpu} onCheckedChange={(c) => setMostrarLpu(!!c)} /><Label>Mostrar LPU</Label></div>
-             <div className="space-y-2"><Label>Legenda</Label><Input value={legendaPadraoFotos} onChange={(e) => setLegendaPadraoFotos(e.target.value)} /></div>
-             <DialogFooter><Button variant="outline" onClick={() => setStep("filtros")}>Voltar</Button><Button onClick={() => setStep("preview")}>Continuar</Button></DialogFooter>
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm flex items-center gap-2"><FileText className="h-4 w-4" /> Conteúdo</h3>
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center space-x-2"><Checkbox id="lpu" checked={modoSomenteFotos ? false : mostrarLpu} onCheckedChange={(c) => setMostrarLpu(!!c)} disabled={modoSomenteFotos} /><Label htmlFor="lpu">Exibir LPU</Label></div>
+                  <div className="flex items-center space-x-2"><Checkbox id="vals" checked={modoSomenteFotos ? false : mostrarValoresSite} onCheckedChange={(c) => setMostrarValoresSite(!!c)} disabled={modoSomenteFotos} /><Label htmlFor="vals">Exibir Valores</Label></div>
+                  <div className="flex items-center space-x-2"><Checkbox id="only" checked={modoSomenteFotos} onCheckedChange={(c) => setModoSomenteFotos(!!c)} /><Label htmlFor="only" className="font-medium text-primary">Somente fotos</Label></div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Layout</h3>
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                  <div className="space-y-2"><Label>Fotos por página</Label><RadioGroup value={fotosPorPagina.toString()} onValueChange={(v) => setFotosPorPagina(parseInt(v))} className="flex gap-4">{[2, 4, 6].map(n => <div key={n} className="flex items-center space-x-2"><RadioGroupItem value={n.toString()} id={`f-${n}`} /><Label htmlFor={`f-${n}`}>{n}</Label></div>)}</RadioGroup></div>
+                  <div className="space-y-2"><Label>Legenda padrão</Label><Input value={legendaPadraoFotos} onChange={(e) => setLegendaPadraoFotos(e.target.value)} /></div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Editar Legendas</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[300px] overflow-y-auto p-1">
+                {geracaoFotos.map(foto => (
+                  <div key={foto.id} className="space-y-2 p-2 border rounded bg-card">
+                    <div className="aspect-video relative rounded overflow-hidden bg-muted"><SmartImage src={foto.url} alt="P" className="object-cover w-full h-full" /></div>
+                    <Input className="h-7 text-xs" value={editLegendas[foto.id] ?? foto.legenda ?? ""} onChange={(e) => setEditLegendas(prev => ({ ...prev, [foto.id]: e.target.value }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <Table><TableHeader><TableRow><TableHead>Site/Item</TableHead><TableHead>Valor</TableHead></TableRow></TableHeader><TableBody>{geracaoItens.map((i, idx) => <TableRow key={idx}><TableCell>{i.item_descricao}</TableCell><TableCell>{formatCurrency(i.valor_total)}</TableCell></TableRow>)}</TableBody></Table>
-            <DialogFooter><Button variant="outline" onClick={() => setStep("config")}>Voltar</Button><Button onClick={handleConfirmarMedicao}>Confirmar</Button></DialogFooter>
+          <div className="space-y-6 py-4">
+            <div className="border rounded-md max-h-[300px] overflow-y-auto">
+              <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Qtd</TableHead><TableHead className="text-right">Valor</TableHead></TableRow></TableHeader>
+              <TableBody>{geracaoItens.map((item, idx) => <TableRow key={idx}><TableCell><div className="text-xs font-medium">{item.item_codigo}</div><div className="text-[10px] text-muted-foreground truncate max-w-[200px]">{item.item_descricao}</div></TableCell><TableCell className="text-right text-xs">{item.quantidade + item.quantidade_pendente}</TableCell><TableCell className="text-right text-xs font-bold">{formatCurrency(item.valor_total)}</TableCell></TableRow>)}</TableBody></Table>
+            </div>
+            <div className="text-right font-bold text-lg text-primary">Total: {formatCurrency(geracaoTotal)}</div>
           </div>
         )}
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 border-t pt-4">
+          {step === "filtros" ? (
+            <div className="flex w-full justify-end gap-2"><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={handleGerarPreview} disabled={!gerarProjetoId || !gerarPeriodoInicio || !gerarPeriodoFim || !gerarNumeroMedicao || isLoadingDiarios || isFetchingDiarios}>Ver Itens</Button></div>
+          ) : step === "config" ? (
+            <div className="flex w-full justify-between items-center"><div className="flex items-center space-x-2"><Checkbox id="save" checked={salvarComoPadrao} onCheckedChange={(c) => setSalvarComoPadrao(!!c)} /><Label htmlFor="save" className="text-sm">Salvar padrão</Label></div><div className="flex gap-2"><Button variant="outline" onClick={() => setStep("filtros")}>Voltar</Button><Button onClick={() => setStep("preview")}>Resumo</Button></div></div>
+          ) : (
+            <div className="flex w-full justify-end gap-2"><Button variant="outline" onClick={() => setStep("config")}>Voltar</Button><Button onClick={handleConfirmarMedicao}>Confirmar</Button></div>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
