@@ -1483,7 +1483,7 @@ export function DetailMedicaoContent({
             }
           </div>
         ` : `
-          <SmartImage src={detailMedicao.capa_url} alt="Capa da Medição" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+          <img src="${resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
         `}
       </div>
     </div>
