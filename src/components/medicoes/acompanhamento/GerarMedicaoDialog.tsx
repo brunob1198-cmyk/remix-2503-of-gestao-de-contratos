@@ -496,7 +496,7 @@ export function GerarMedicaoDialog({
     }
     
     setDuplicateWarnings(warnings);
-    setShowPreview(true);
+    setStep("config");
   };
 
   const handleEnviarMedicao = async () => {
@@ -573,7 +573,7 @@ export function GerarMedicaoDialog({
     });
 
     // Reset local state
-    setShowPreview(false);
+    setStep("filtros");
     setGeracaoItens([]);
     setGeracaoFotos([]);
     setGeracaoFotosTotal(0);
@@ -595,13 +595,29 @@ export function GerarMedicaoDialog({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setStep("filtros");
+        setGerarProjetoId("");
+        setGerarSiteId("");
+        setGerarPeriodoInicio("");
+        setGerarPeriodoFim("");
+        setGerarNumeroMedicao("");
+        setGeracaoItens([]);
+        setGeracaoFotos([]);
+        setDuplicateWarnings([]);
+        setEditLegendas({});
+      }
+      onOpenChange(open);
+    }}>
+      <DialogContent className={step !== "filtros" ? "max-w-5xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
         <DialogHeader>
-          <DialogTitle>Gerar Medição do Período</DialogTitle>
+          <DialogTitle>
+            {step === "filtros" ? "Gerar Medição do Período" : step === "config" ? "Configurar Relatório" : "Preview da Medição"}
+          </DialogTitle>
         </DialogHeader>
 
-        {!showPreview ? (
+        {step === "filtros" ? (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
