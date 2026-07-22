@@ -1210,7 +1210,7 @@ export function DetailMedicaoContent({
                 `).join('')}
               </tbody>
             </table>
-            <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
+            ${detailMedicao.mostrar_valores_site !== false ? `<div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>` : ''}
           </div>
         ` : '';
 
