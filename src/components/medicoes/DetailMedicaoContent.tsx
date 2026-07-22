@@ -126,18 +126,23 @@ export function DetailMedicaoContent({
       if (error) throw error;
       if (!data) return null;
 
-      // The storage_path is now likely a direct URL or R2 URL
-      // If it's already a full URL, just return it
       if (data.storage_path.startsWith('http')) {
         return { ...data, signedUrl: data.storage_path };
       }
 
-      // Legacy records might just have a path, but we are moving away from Supabase Storage
-      // If it's not a URL, we return it as is (it might fail to load if it's just a path)
       return { ...data, signedUrl: data.storage_path };
     },
     enabled: !!detailMedicao.id
   });
+
+  // Calculate total produced in the period (for debugging zero total issues)
+  const totalProduzidoPeriodo = useMemo(() => {
+    return detailLancamentos.reduce((acc, l) => {
+      const preco = Number(l.item_lpu?.preco_unitario || 0);
+      const qtd = Number(l.quantidade);
+      return acc + (qtd * preco);
+    }, 0);
+  }, [detailLancamentos]);
 
   // Set download URL if existing export found
   useEffect(() => {
