@@ -1299,7 +1299,11 @@ export function DetailMedicaoContent({
         <div class="item-group">
           <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
           <div class="photo-grid">
-            ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            ${chunkArray(fotosByItem.gerais, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+              </div>
+            `).join('')}
           </div>
         </div>
       ` : '';
