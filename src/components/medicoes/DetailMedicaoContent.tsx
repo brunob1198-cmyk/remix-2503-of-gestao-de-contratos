@@ -1198,7 +1198,7 @@ export function DetailMedicaoContent({
             <p class="site-production-title">Produção do Site:</p>
             <table class="site-table">
               <thead>
-                <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
+                <tr><th>Item</th><th class="num">Qtd</th>${detailMedicao.mostrar_valores_site !== false ? '<th class="num">Valor</th>' : ''}</tr>
               </thead>
               <tbody>
                 ${siteItems.map(si => `
