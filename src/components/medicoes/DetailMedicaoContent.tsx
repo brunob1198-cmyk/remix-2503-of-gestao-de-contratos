@@ -1700,32 +1700,7 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={() => {
-            setIsExporting(true);
-            setExportProgress(10);
-            addLog("Iniciando geração de relatório HTML...", "info");
-            
-            try {
-              const htmlContent = generateHtmlReport(false);
-              
-              const blob = new Blob([htmlContent], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `Relatorio_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
-              a.click();
-              URL.revokeObjectURL(url);
-              
-              setExportProgress(100);
-              addLog("Relatório HTML gerado com sucesso.", "success");
-            } catch (error) {
-              console.error("Erro ao gerar HTML:", error);
-              addLog("Erro crítico ao gerar relatório HTML.", "error");
-            } finally {
-              setIsExporting(false);
-            }
-          }} 
-
+          onClick={handleExportTEP} 
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
