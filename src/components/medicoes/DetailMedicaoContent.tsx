@@ -1113,9 +1113,11 @@ export function DetailMedicaoContent({
 
     const reportCaptionsMap = useMemo(() => {
       const map = new Map<string, string>();
-      reportCaptions.forEach(c => {
-        if (c.legenda) map.set(c.foto_id, c.legenda);
-      });
+      if (reportCaptions && Array.isArray(reportCaptions)) {
+        reportCaptions.forEach(c => {
+          if (c.legenda) map.set(c.foto_id, c.legenda);
+        });
+      }
       return map;
     }, [reportCaptions]);
 
