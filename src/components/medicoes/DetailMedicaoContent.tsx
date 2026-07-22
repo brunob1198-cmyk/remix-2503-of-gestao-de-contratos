@@ -754,8 +754,15 @@ export function DetailMedicaoContent({
           <span className="text-sm font-medium text-slate-700">{detailMedicao.numero_po || "N/A"}</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total</span>
-          <span className="text-sm font-bold text-primary">{formatCurrency(detailMedicao.total_valor)}</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total (Produção do Período)</span>
+          <div className="flex flex-col">
+            <span className={cn("text-sm font-bold", totalProduzidoPeriodo > 0 ? "text-primary" : "text-rose-600")}>
+              {formatCurrency(totalProduzidoPeriodo)}
+            </span>
+            {totalProduzidoPeriodo === 0 && detailMedicao.total_valor > 0 && (
+              <span className="text-[9px] text-muted-foreground">Nota: Valor do lote: {formatCurrency(detailMedicao.total_valor)}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
