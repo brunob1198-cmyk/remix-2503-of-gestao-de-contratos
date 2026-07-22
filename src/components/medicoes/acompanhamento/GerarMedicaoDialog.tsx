@@ -148,7 +148,7 @@ export function GerarMedicaoDialog({
   const [gerarTipoMedicao, setGerarTipoMedicao] = useState<"separada" | "agrupada" | "mista">("separada");
   const [geracaoFotos, setGeracaoFotos] = useState<GeracaoFoto[]>([]);
   const [geracaoFotosTotal, setGeracaoFotosTotal] = useState<number>(0);
-  const [showPreview, setShowPreview] = useState(false);
+  const [step, setStep] = useState<"filtros" | "config" | "preview">("filtros");
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
   const [capaFile, setCapaFile] = useState<File | null>(null);
@@ -160,6 +160,8 @@ export function GerarMedicaoDialog({
   const [modoSomenteFotos, setModoSomenteFotos] = useState(false);
   const [fotosPorPagina, setFotosPorPagina] = useState(4);
   const [legendaPadraoFotos, setLegendaPadraoFotos] = useState("");
+  const [editLegendas, setEditLegendas] = useState<Record<string, string>>({});
+  const [salvarComoPadrao, setSalvarComoPadrao] = useState(false);
 
   const { data: templates = [] } = useQuery({
     queryKey: ["report_templates", gerarProjetoId],
