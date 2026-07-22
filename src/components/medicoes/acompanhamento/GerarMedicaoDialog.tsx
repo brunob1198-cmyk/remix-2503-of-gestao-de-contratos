@@ -267,8 +267,9 @@ export function GerarMedicaoDialog({
     const items = selectedItems.map(i => ({ site_id: i.site_id || fallbackSiteId, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
     
     await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
-    if (Object.keys(editLegendas).length > 0) await supabase.from("medicao_report_photo_captions").upsert(Object.entries(editLegendas).map(([foto_id, legenda]) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda })));
-    setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
+    const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
+    if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
+    setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
   const selectedItens = geracaoItens.filter(i => i.selected);
