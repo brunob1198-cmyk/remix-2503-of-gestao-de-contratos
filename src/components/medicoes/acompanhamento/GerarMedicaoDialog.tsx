@@ -153,39 +153,71 @@ export function GerarMedicaoDialog({
     const validation = gerarMedicaoSchema.safeParse({ periodoInicio: gerarPeriodoInicio, periodoFim: gerarPeriodoFim, numeroMedicao: gerarNumeroMedicao, tipoMedicao: gerarTipoMedicao, projetoId: gerarProjetoId || undefined, siteId: gerarSiteId || undefined });
     if (!validation.success) { toast.error(validation.error.issues[0].message); return; }
 
-    const allProducao = [...producoes.map(p => ({ site_id: p.site_id, item_lpu_id: p.item_lpu_id, data_producao: p.data_producao, quantidade: Number(p.quantidade), item_lpu: p.item_lpu, valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0) })), ...diarioProducoes.map(dp => ({ site_id: dp.site_id, item_lpu_id: dp.item_lpu_id, data_producao: dp.data_producao, quantidade: dp.quantidade, item_lpu: dp.item_lpu, valor_total: dp.valor_total }))];
+    const allProducao = [
+      ...producoes.map(p => ({ 
+        site_id: p.site_id, 
+        item_lpu_id: p.item_lpu_id, 
+        data_producao: p.data_producao, 
+        quantidade: Number(p.quantidade), 
+        item_lpu: p.item_lpu, 
+        valor_total: Number(p.quantidade) * Number(p.item_lpu?.preco_unitario || 0) 
+      })), 
+      ...diarioProducoes.map(dp => ({ 
+        site_id: dp.site_id, 
+        item_lpu_id: dp.item_lpu_id, 
+        data_producao: dp.data_producao, 
+        quantidade: dp.quantidade, 
+        item_lpu: dp.item_lpu, 
+        valor_total: dp.valor_total 
+      }))
+    ];
+    
     let filteredProducao = allProducao.filter(p => p.data_producao >= gerarPeriodoInicio && p.data_producao <= gerarPeriodoFim);
     if (gerarProjetoId) filteredProducao = filteredProducao.filter(p => sites.filter(s => s.projeto_id === gerarProjetoId).map(s => s.id).includes(p.site_id));
     if (gerarSiteId) filteredProducao = filteredProducao.filter(p => p.site_id === gerarSiteId);
 
     const pendingBySiteItem = new Map<string, number>();
-    lancamentos.forEach(l => { if ((l as any).quantidade_pendente && Number((l as any).quantidade_pendente) > 0) { const key = `${l.site_id}_${l.item_lpu_id}`; pendingBySiteItem.set(key, (pendingBySiteItem.get(key) || 0) + Number((l as any).quantidade_pendente)); } });
+    lancamentos.forEach(l => { 
+      if ((l as any).quantidade_pendente && Number((l as any).quantidade_pendente) > 0) { 
+        const key = `${l.site_id}_${l.item_lpu_id}`; 
+        pendingBySiteItem.set(key, (pendingBySiteItem.get(key) || 0) + Number((l as any).quantidade_pendente)); 
+      } 
+    });
 
     const grouped = new Map<string, GeracaoItem>();
     filteredProducao.forEach(p => {
       const site = sites.find(s => s.id === p.site_id);
       const item = allItensLpu.find(i => i.id === p.item_lpu_id) || p.item_lpu;
       if (!site || !item) return;
-      // separada: uma linha por (site, item); agrupada/mista: consolida itens iguais entre sites
+      
       const isConsolidated = gerarTipoMedicao === "agrupada" || gerarTipoMedicao === "mista";
       const key = isConsolidated ? `all_${p.item_lpu_id}` : `${p.site_id}_${p.item_lpu_id}`;
+      
       if (!grouped.has(key)) {
         const pendente = isConsolidated
           ? Array.from(pendingBySiteItem.entries()).filter(([k]) => k.endsWith(`_${p.item_lpu_id}`)).reduce((s, [, v]) => s + v, 0)
           : (pendingBySiteItem.get(`${p.site_id}_${p.item_lpu_id}`) || 0);
+        
         grouped.set(key, {
           site_id: isConsolidated ? "" : p.site_id,
           site_codigo: isConsolidated ? "(Consolidado)" : site.codigo,
           site_nome: isConsolidated ? "Todos os sites" : site.nome,
-          item_lpu_id: p.item_lpu_id, item_codigo: item.codigo, item_descricao: item.descricao,
-          unidade: item.unidade, preco_unitario: Number(item.preco_unitario),
-          quantidade: 0, quantidade_pendente: pendente,
-          valor_total: pendente * Number(item.preco_unitario), selected: true
+          item_lpu_id: p.item_lpu_id, 
+          item_codigo: item.codigo, 
+          item_descricao: item.descricao,
+          unidade: item.unidade, 
+          preco_unitario: Number(item.preco_unitario),
+          quantidade: 0, 
+          quantidade_pendente: pendente,
+          valor_total: 0, // Reset and calculate below
+          selected: true
         });
       }
+      
       const g = grouped.get(key)!;
       g.quantidade += p.quantidade;
-      g.valor_total += p.valor_total;
+      // Recalculate valor_total based on (total quantity) * unit price
+      g.valor_total = (g.quantidade + g.quantidade_pendente) * g.preco_unitario;
     });
 
     const itemsArray = Array.from(grouped.values());
@@ -325,10 +357,32 @@ export function GerarMedicaoDialog({
                     }, {} as Record<string, GeracaoFoto[]>)
                   ).map(([siteName, photos]) => (
                     <div key={siteName} className="space-y-3">
-                      <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
-                        <MapPin className="h-3 w-3 text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
-                        <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                      <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-3 w-3 text-primary" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
+                          <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-[10px] gap-1 hover:text-primary"
+                          onClick={() => {
+                            if (!legendaPadraoFotos) {
+                              toast.error("Defina uma legenda padrão primeiro");
+                              return;
+                            }
+                            const newLegendas = { ...editLegendas };
+                            photos.forEach(f => {
+                              newLegendas[f.id] = legendaPadraoFotos;
+                            });
+                            setEditLegendas(newLegendas);
+                            toast.success(`Legenda aplicada a ${photos.length} fotos`);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Aplicar Legenda Padrão
+                        </Button>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
                         {photos.map(foto => (

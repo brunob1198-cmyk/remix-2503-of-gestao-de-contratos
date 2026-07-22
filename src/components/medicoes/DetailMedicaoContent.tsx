@@ -126,18 +126,23 @@ export function DetailMedicaoContent({
       if (error) throw error;
       if (!data) return null;
 
-      // The storage_path is now likely a direct URL or R2 URL
-      // If it's already a full URL, just return it
       if (data.storage_path.startsWith('http')) {
         return { ...data, signedUrl: data.storage_path };
       }
 
-      // Legacy records might just have a path, but we are moving away from Supabase Storage
-      // If it's not a URL, we return it as is (it might fail to load if it's just a path)
       return { ...data, signedUrl: data.storage_path };
     },
     enabled: !!detailMedicao.id
   });
+
+  // Calculate total produced in the period (for debugging zero total issues)
+  const totalProduzidoPeriodo = useMemo(() => {
+    return detailLancamentos.reduce((acc, l) => {
+      const preco = Number(l.item_lpu?.preco_unitario || 0);
+      const qtd = Number(l.quantidade);
+      return acc + (qtd * preco);
+    }, 0);
+  }, [detailLancamentos]);
 
   // Set download URL if existing export found
   useEffect(() => {
@@ -749,8 +754,15 @@ export function DetailMedicaoContent({
           <span className="text-sm font-medium text-slate-700">{detailMedicao.numero_po || "N/A"}</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total</span>
-          <span className="text-sm font-bold text-primary">{formatCurrency(detailMedicao.total_valor)}</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total (Produção do Período)</span>
+          <div className="flex flex-col">
+            <span className={cn("text-sm font-bold", totalProduzidoPeriodo > 0 ? "text-primary" : "text-rose-600")}>
+              {formatCurrency(totalProduzidoPeriodo)}
+            </span>
+            {totalProduzidoPeriodo === 0 && detailMedicao.total_valor > 0 && (
+              <span className="text-[9px] text-muted-foreground">Nota: Valor do lote: {formatCurrency(detailMedicao.total_valor)}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1209,8 +1221,8 @@ export function DetailMedicaoContent({
                   </tr>
                 `).join('')}
               </tbody>
+              ${totalFooter}
             </table>
-            ${detailMedicao.mostrar_valores_site !== false ? `<div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>` : ''}
           </div>
         ` : '';
 
@@ -1325,6 +1337,16 @@ export function DetailMedicaoContent({
         </tr>
       `;
     }).join('');
+    
+    const totalProduzido = detailLancamentos.reduce((acc, l) => acc + (Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0)), 0);
+    const totalFooter = detailMedicao.mostrar_lpu !== false ? `
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num bold">TOTAL PRODUZIDO NO PERÍODO:</td>
+          <td class="num bold" style="font-size: 12px; color: var(--primary);">${formatCurrency(totalProduzido)}</td>
+        </tr>
+      </tfoot>
+    ` : '';
     
     const recursosHtml = (recursosAgregadosGerais.equipe.length > 0 || recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) ? `
       <h2 class="sec">👷 Recursos Utilizados no Período</h2>
@@ -2230,6 +2252,17 @@ export function DetailMedicaoContent({
               />
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* HTML Preview Overlay */}
+      {isExporting && exportProgress === 100 && downloadUrl && (
+        <div className="fixed bottom-4 right-4 z-[50] flex flex-col gap-2">
+          <Button size="lg" className="shadow-lg gap-2" asChild>
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+              <FileText className="h-5 w-5" /> Abrir Relatório HTML
+            </a>
+          </Button>
         </div>
       )}
 
