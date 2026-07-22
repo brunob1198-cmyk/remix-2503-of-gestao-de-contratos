@@ -1277,7 +1277,7 @@ export function DetailMedicaoContent({
       const qtd = Number(l.quantidade);
       return `
         <tr>
-          <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
+          <td>${detailMedicao.mostrar_lpu !== false ? `${l.item_lpu?.codigo || '-'} - ` : ''}${l.item_lpu?.descricao || ''}</td>
           <td>${l.item_lpu?.unidade || '-'}</td>
           <td class="num">${qtd.toLocaleString("pt-BR")}</td>
           <td class="num">${formatCurrency(preco)}</td>
