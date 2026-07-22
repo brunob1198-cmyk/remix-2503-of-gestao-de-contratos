@@ -262,6 +262,39 @@ export function GerarMedicaoDialog({
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                   <div className="space-y-2"><Label>Fotos por página</Label><RadioGroup value={fotosPorPagina.toString()} onValueChange={(v) => setFotosPorPagina(parseInt(v))} className="flex gap-4">{[2, 4, 6].map(n => <div key={n} className="flex items-center space-x-2"><RadioGroupItem value={n.toString()} id={`f-${n}`} /><Label htmlFor={`f-${n}`}>{n}</Label></div>)}</RadioGroup></div>
                   <div className="space-y-2"><Label>Legenda padrão</Label><Input value={legendaPadraoFotos} onChange={(e) => setLegendaPadraoFotos(e.target.value)} /></div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" /> Capa personalizada (PDF/Img)
+                    </Label>
+                    <div 
+                      onClick={() => capaInputRef.current?.click()}
+                      className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <input 
+                        type="file" 
+                        ref={capaInputRef} 
+                        className="hidden" 
+                        accept="application/pdf,image/*" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setCapaFile(file);
+                        }}
+                      />
+                      {capaFile ? (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="truncate max-w-[200px]">{capaFile.name}</span>
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setCapaFile(null); }}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                          <Upload className="h-6 w-6" />
+                          <span className="text-xs">Clique ou arraste para enviar</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
