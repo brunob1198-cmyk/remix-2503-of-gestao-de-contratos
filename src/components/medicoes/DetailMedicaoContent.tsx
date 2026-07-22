@@ -1147,7 +1147,7 @@ export function DetailMedicaoContent({
             `}
           </div>
           <div class="photo-info">
-            ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
+            ${showItem && foto.item_codigo ? `<p class="photo-title">${detailMedicao.mostrar_lpu !== false ? `${foto.item_codigo} — ` : ''}${foto.item_descricao || ''}</p>` : ''}
             <div class="photo-meta">
               ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
