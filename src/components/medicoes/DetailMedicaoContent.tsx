@@ -1410,7 +1410,7 @@ export function DetailMedicaoContent({
     .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .photo-grid { display: grid; grid-template-columns: ${detailMedicao.fotos_por_pagina === 2 ? '1fr 1fr' : detailMedicao.fotos_por_pagina === 6 ? 'repeat(3, 1fr)' : '1fr 1fr'}; gap: 8px; }
     .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
