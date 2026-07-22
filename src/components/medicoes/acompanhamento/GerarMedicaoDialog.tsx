@@ -102,6 +102,8 @@ export function GerarMedicaoDialog({
   const [fotosPorPagina, setFotosPorPagina] = useState(4);
   const [legendaPadraoFotos, setLegendaPadraoFotos] = useState("");
   const [editLegendas, setEditLegendas] = useState<Record<string, string>>({});
+  const [fotoOrder, setFotoOrder] = useState<string[]>([]);
+  const [dragFotoId, setDragFotoId] = useState<string | null>(null);
   const [salvarComoPadrao, setSalvarComoPadrao] = useState(false);
 
   const { data: templates = [] } = useQuery({
