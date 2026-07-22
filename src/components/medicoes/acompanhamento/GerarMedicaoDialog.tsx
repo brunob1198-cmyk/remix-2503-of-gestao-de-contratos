@@ -430,14 +430,14 @@ export function GerarMedicaoDialog({
                           </Button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                          {photos.map(renderCard)}
+                          {photos.map((foto, idx) => renderCard(foto, idx))}
                         </div>
                       </div>
                     ));
                   }
                   return (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
-                      {orderedFotos.map(renderCard)}
+                      {orderedFotos.map((foto, idx) => renderCard(foto, idx))}
                     </div>
                   );
                 })()}
