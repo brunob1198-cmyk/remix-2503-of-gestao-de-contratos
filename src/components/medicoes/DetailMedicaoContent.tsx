@@ -1097,6 +1097,28 @@ export function DetailMedicaoContent({
   }, []);
 
   const generateHtmlReport = useCallback((forZip = false) => {
+    const { data: reportCaptions = [] } = useQuery({
+      queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
+      queryFn: async () => {
+        if (!detailMedicao.numero_medicao) return [];
+        const { data, error } = await supabase
+          .from("medicao_report_photo_captions")
+          .select("foto_id, legenda")
+          .eq("numero_medicao", detailMedicao.numero_medicao);
+        if (error) throw error;
+        return data || [];
+      },
+      enabled: !!detailMedicao.numero_medicao,
+    });
+
+    const reportCaptionsMap = useMemo(() => {
+      const map = new Map<string, string>();
+      reportCaptions.forEach(c => {
+        if (c.legenda) map.set(c.foto_id, c.legenda);
+      });
+      return map;
+    }, [reportCaptions]);
+
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -1127,9 +1149,13 @@ export function DetailMedicaoContent({
       const imgSrc = primaryUrl; 
       const localImgSrc = safePath;
 
+      const caption = reportCaptionsMap.get(foto.id) || foto.legenda || detailMedicao.legenda_padrao_fotos || '';
+
+      const fotosPerPage = detailMedicao.fotos_por_pagina || 4;
+      const cardWidth = fotosPerPage === 2 ? '48%' : fotosPerPage === 6 ? '31%' : '48%';
 
       return `
-        <div class="photo-card" style="width: ${detailMedicao.fotos_por_pagina === 2 ? '48%' : detailMedicao.fotos_por_pagina === 6 ? '31%' : '48%'}">
+        <div class="photo-card" style="width: ${cardWidth}">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
@@ -1153,7 +1179,7 @@ export function DetailMedicaoContent({
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
               <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
             </div>
-            ${(foto.legenda || detailMedicao.legenda_padrao_fotos) ? `<p class="photo-legenda">“${foto.legenda || detailMedicao.legenda_padrao_fotos}”</p>` : ''}
+            ${caption ? `<p class="photo-legenda">“${caption}”</p>` : ''}
           </div>
         </div>
       `;
