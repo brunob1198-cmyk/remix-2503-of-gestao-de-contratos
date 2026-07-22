@@ -149,6 +149,27 @@ export function DetailMedicaoContent({
     }
   }, [existingExport, addLog]);
 
+  const { data: reportCaptions = [] } = useQuery({
+    queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
+    queryFn: async () => {
+      if (!detailMedicao.numero_medicao) return [];
+      const { data, error } = await supabase
+        .from("medicao_report_photo_captions")
+        .select("foto_id, legenda")
+        .eq("numero_medicao", detailMedicao.numero_medicao);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!detailMedicao.numero_medicao,
+  });
+
+  const reportCaptionsMap = useMemo(() => ({
+    get: (fotoId: string) => {
+      const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
+      return found?.legenda || null;
+    }
+  }), [reportCaptions]);
+
 
 
   useEffect(() => {
@@ -1097,26 +1118,6 @@ export function DetailMedicaoContent({
   }, []);
 
   const generateHtmlReport = useCallback((forZip = false) => {
-    const { data: reportCaptions = [] } = useQuery({
-      queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
-      queryFn: async () => {
-        if (!detailMedicao.numero_medicao) return [];
-        const { data, error } = await supabase
-          .from("medicao_report_photo_captions")
-          .select("foto_id, legenda")
-          .eq("numero_medicao", detailMedicao.numero_medicao);
-        if (error) throw error;
-        return data || [];
-      },
-      enabled: !!detailMedicao.numero_medicao,
-    });
-
-    const reportCaptionsMap = {
-      get: (fotoId: string) => {
-        const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
-        return found?.legenda || null;
-      }
-    };
 
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
