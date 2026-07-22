@@ -357,10 +357,32 @@ export function GerarMedicaoDialog({
                     }, {} as Record<string, GeracaoFoto[]>)
                   ).map(([siteName, photos]) => (
                     <div key={siteName} className="space-y-3">
-                      <div className="flex items-center gap-2 sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
-                        <MapPin className="h-3 w-3 text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
-                        <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                      <div className="flex items-center justify-between sticky top-0 bg-background/95 backdrop-blur-sm py-1 z-10 border-b">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-3 w-3 text-primary" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{siteName}</span>
+                          <Badge variant="outline" className="text-[10px] h-4">{photos.length} fotos</Badge>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-[10px] gap-1 hover:text-primary"
+                          onClick={() => {
+                            if (!legendaPadraoFotos) {
+                              toast.error("Defina uma legenda padrão primeiro");
+                              return;
+                            }
+                            const newLegendas = { ...editLegendas };
+                            photos.forEach(f => {
+                              newLegendas[f.id] = legendaPadraoFotos;
+                            });
+                            setEditLegendas(newLegendas);
+                            toast.success(`Legenda aplicada a ${photos.length} fotos`);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Aplicar Legenda Padrão
+                        </Button>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-1">
                         {photos.map(foto => (
