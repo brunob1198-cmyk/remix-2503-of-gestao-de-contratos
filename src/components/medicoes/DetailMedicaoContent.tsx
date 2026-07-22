@@ -149,6 +149,27 @@ export function DetailMedicaoContent({
     }
   }, [existingExport, addLog]);
 
+  const { data: reportCaptions = [] } = useQuery({
+    queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
+    queryFn: async () => {
+      if (!detailMedicao.numero_medicao) return [];
+      const { data, error } = await supabase
+        .from("medicao_report_photo_captions")
+        .select("foto_id, legenda")
+        .eq("numero_medicao", detailMedicao.numero_medicao);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!detailMedicao.numero_medicao,
+  });
+
+  const reportCaptionsMap = useMemo(() => ({
+    get: (fotoId: string) => {
+      const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
+      return found?.legenda || null;
+    }
+  }), [reportCaptions]);
+
 
 
   useEffect(() => {
@@ -1057,13 +1078,13 @@ export function DetailMedicaoContent({
       })) : undefined;
 
       await exportTEPToHtml({
-        siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        siteNome: isMultiSite ? detailMedicao.projeto_nome : `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
           url: f.url,
           thumb_600_url: f.thumb_600_url,
           classificacao: f.classificacao,
-          legenda: f.legenda,
+          legenda: reportCaptionsMap.get(f.id) || f.legenda || detailMedicao.legenda_padrao_fotos || null,
           site_nome: f.site_nome,
           site_id: f.site_id,
           diario_data: f.diario_data,
@@ -1097,26 +1118,6 @@ export function DetailMedicaoContent({
   }, []);
 
   const generateHtmlReport = useCallback((forZip = false) => {
-    const { data: reportCaptions = [] } = useQuery({
-      queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
-      queryFn: async () => {
-        if (!detailMedicao.numero_medicao) return [];
-        const { data, error } = await supabase
-          .from("medicao_report_photo_captions")
-          .select("foto_id, legenda")
-          .eq("numero_medicao", detailMedicao.numero_medicao);
-        if (error) throw error;
-        return data || [];
-      },
-      enabled: !!detailMedicao.numero_medicao,
-    });
-
-    const reportCaptionsMap = {
-      get: (fotoId: string) => {
-        const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
-        return found?.legenda || null;
-      }
-    };
 
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
@@ -1700,32 +1701,7 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={() => {
-            setIsExporting(true);
-            setExportProgress(10);
-            addLog("Iniciando geração de relatório HTML...", "info");
-            
-            try {
-              const htmlContent = generateHtmlReport(false);
-              
-              const blob = new Blob([htmlContent], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `Relatorio_Medicao_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
-              a.click();
-              URL.revokeObjectURL(url);
-              
-              setExportProgress(100);
-              addLog("Relatório HTML gerado com sucesso.", "success");
-            } catch (error) {
-              console.error("Erro ao gerar HTML:", error);
-              addLog("Erro crítico ao gerar relatório HTML.", "error");
-            } finally {
-              setIsExporting(false);
-            }
-          }} 
-
+          onClick={handleExportTEP} 
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
