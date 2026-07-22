@@ -53,6 +53,13 @@ interface GerarMedicaoDialogProps {
     items: any[];
     selectedItens: GeracaoItem[];
     capaFile: File | null;
+    reportConfig?: {
+      mostrar_lpu: boolean;
+      mostrar_valores_site: boolean;
+      modo_somente_fotos: boolean;
+      fotos_por_pagina: number;
+      legenda_padrao_fotos: string;
+    };
   }) => Promise<void>;
   formatDate: (d: string) => string;
   formatCurrency: (v: number) => string;
@@ -147,6 +154,35 @@ export function GerarMedicaoDialog({
   const [capaFile, setCapaFile] = useState<File | null>(null);
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
+
+  const [mostrarLpu, setMostrarLpu] = useState(true);
+  const [mostrarValoresSite, setMostrarValoresSite] = useState(true);
+  const [modoSomenteFotos, setModoSomenteFotos] = useState(false);
+  const [fotosPorPagina, setFotosPorPagina] = useState(4);
+  const [legendaPadraoFotos, setLegendaPadraoFotos] = useState("");
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ["report_templates", gerarProjetoId],
+    queryFn: async () => {
+      if (!gerarProjetoId) return [];
+      const { data, error } = await supabase
+        .from("report_templates")
+        .select("*")
+        .eq("projeto_id", gerarProjetoId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!gerarProjetoId && isOpen
+  });
+
+  const applyTemplate = (template: any) => {
+    setMostrarLpu(template.mostrar_lpu);
+    setMostrarValoresSite(template.mostrar_valores_site);
+    setModoSomenteFotos(template.modo_somente_fotos);
+    setFotosPorPagina(template.fotos_por_pagina);
+    setLegendaPadraoFotos(template.legenda_padrao_fotos || "");
+    if (template.tipo_medicao) setGerarTipoMedicao(template.tipo_medicao);
+  };
 
   const { data: diarioProducoes = [], isLoading: isLoadingDiarios, isFetching: isFetchingDiarios } = useQuery({
     queryKey: ["diario_producao_all_dialog", gerarPeriodoInicio, gerarPeriodoFim, gerarProjetoId, gerarSiteId, sites.length],
@@ -464,6 +500,14 @@ export function GerarMedicaoDialog({
   const handleEnviarMedicao = async () => {
     const selectedItens = geracaoItens.filter(i => i.selected);
     if (selectedItens.length === 0) return;
+
+    const reportConfig = {
+      mostrar_lpu: mostrarLpu,
+      mostrar_valores_site: mostrarValoresSite,
+      modo_somente_fotos: modoSomenteFotos,
+      fotos_por_pagina: fotosPorPagina,
+      legenda_padrao_fotos: legendaPadraoFotos,
+    };
 
     const today = new Date().toISOString().split("T")[0];
     const customLogo = empresaLogoUrl || localStorage.getItem("custom_logo_url") || "";
