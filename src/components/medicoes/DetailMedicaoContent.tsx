@@ -1533,19 +1533,23 @@ export function DetailMedicaoContent({
           <th>Item / Descrição</th>
           <th>Unid.</th>
           <th class="num">Qtd.</th>
-          <th class="num">Preço Unit.</th>
-          <th class="num">Total</th>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <th class="num">Preço Unit.</th>
+            <th class="num">Total</th>
+          ` : ''}
         </tr>
       </thead>
       <tbody>
         ${itemsTableRows}
       </tbody>
+      ${detailMedicao.mostrar_lpu !== false ? `
       <tfoot>
         <tr>
           <td colspan="4" class="num bold">VALOR TOTAL DA MEDIÇÃO:</td>
           <td class="num bold">${formatCurrency(detailMedicao.total_valor)}</td>
         </tr>
       </tfoot>
+      ` : ''}
     </table>
     ` : ''}
     
