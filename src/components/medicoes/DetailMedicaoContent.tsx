@@ -1177,7 +1177,7 @@ export function DetailMedicaoContent({
               <tbody>
                 ${siteItems.map(si => `
                   <tr>
-                    <td>${si.item_codigo} — ${si.item_descricao}</td>
+                    <td>${detailMedicao.mostrar_lpu !== false ? `${si.item_codigo} — ` : ''}${si.item_descricao}</td>
                     <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
                     <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
                   </tr>
