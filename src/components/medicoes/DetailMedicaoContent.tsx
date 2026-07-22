@@ -160,7 +160,7 @@ export function DetailMedicaoContent({
       if (!detailMedicao.numero_medicao) return [];
       const { data, error } = await supabase
         .from("medicao_report_photo_captions")
-        .select("foto_id, legenda")
+        .select("foto_id, legenda, ordem")
         .eq("numero_medicao", detailMedicao.numero_medicao);
       if (error) throw error;
       return data || [];
@@ -174,6 +174,14 @@ export function DetailMedicaoContent({
       return found?.legenda || null;
     }
   }), [reportCaptions]);
+
+  const fotoOrdemMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (reportCaptions as any[]).forEach(c => {
+      if (c.ordem != null) m.set(c.foto_id, c.ordem);
+    });
+    return m;
+  }, [reportCaptions]);
 
 
 
