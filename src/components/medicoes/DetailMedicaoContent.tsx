@@ -1574,7 +1574,7 @@ export function DetailMedicaoContent({
   ` : ''}
 </body>
 </html>`;
-  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite, reportCaptionsMap]);
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
