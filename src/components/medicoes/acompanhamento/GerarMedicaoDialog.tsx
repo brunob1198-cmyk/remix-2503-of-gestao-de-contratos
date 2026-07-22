@@ -682,6 +682,68 @@ export function GerarMedicaoDialog({
               </div>
             </div>
 
+            <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Configurações do Relatório
+                </h3>
+                {templates.length > 0 && (
+                  <Select onValueChange={(v) => {
+                    const t = templates.find(temp => temp.id === v);
+                    if (t) applyTemplate(t);
+                  }}>
+                    <SelectTrigger className="h-8 w-[200px]">
+                      <SelectValue placeholder="Aplicar Template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="show-lpu" checked={mostrarLpu} onCheckedChange={(c) => setMostrarLpu(!!c)} />
+                  <Label htmlFor="show-lpu" className="text-xs">Mostrar código/descrição LPU</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="show-site-vals" checked={mostrarValoresSite} onCheckedChange={(c) => setMostrarValoresSite(!!c)} />
+                  <Label htmlFor="show-site-vals" className="text-xs">Mostrar valores por site</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="only-photos" checked={modoSomenteFotos} onCheckedChange={(c) => setModoSomenteFotos(!!c)} />
+                  <Label htmlFor="only-photos" className="text-xs">Modo somente fotos (Anexo)</Label>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-bold">Fotos por Página</Label>
+                  <Select value={fotosPorPagina.toString()} onValueChange={(v) => setFotosPorPagina(parseInt(v))}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 fotos</SelectItem>
+                      <SelectItem value="4">4 fotos</SelectItem>
+                      <SelectItem value="6">6 fotos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase text-muted-foreground font-bold">Legenda Padrão das Fotos</Label>
+                <Input 
+                  value={legendaPadraoFotos} 
+                  onChange={(e) => setLegendaPadraoFotos(e.target.value)} 
+                  placeholder="Deixe vazio para usar a legenda original"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
             <DialogFooter className="pt-4">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
               <Button onClick={handleGerarPreview} disabled={!gerarPeriodoInicio || !gerarPeriodoFim || isLoadingDiarios || isFetchingDiarios}>
