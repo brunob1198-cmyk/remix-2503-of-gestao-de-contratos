@@ -1063,7 +1063,7 @@ export function DetailMedicaoContent({
           url: f.url,
           thumb_600_url: f.thumb_600_url,
           classificacao: f.classificacao,
-          legenda: reportCaptionsMap[f.id] || f.legenda || detailMedicao.legenda_padrao_fotos || null,
+          legenda: reportCaptionsMap.get(f.id) || f.legenda || detailMedicao.legenda_padrao_fotos || null,
           site_nome: f.site_nome,
           site_id: f.site_id,
           diario_data: f.diario_data,
