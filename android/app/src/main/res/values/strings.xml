@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gestão Contratos</string>
+    <string name="title_activity_main">Gestão Contratos</string>
+    <string name="package_name">br.com.aivx.gestaocontratos</string>
+    <string name="custom_url_scheme">br.com.aivx.gestaocontratos</string>
+</resources>
