@@ -52,6 +52,11 @@ interface DetailMedicaoContentProps {
     lancamentoIds: string[];
     logo_empresa_url?: string;
     capa_url?: string | null;
+    mostrar_lpu?: boolean;
+    mostrar_valores_site?: boolean;
+    modo_somente_fotos?: boolean;
+    fotos_por_pagina?: number;
+    legenda_padrao_fotos?: string;
   };
   detailLancamentos: any[];
   sites: any[];
@@ -121,18 +126,23 @@ export function DetailMedicaoContent({
       if (error) throw error;
       if (!data) return null;
 
-      // The storage_path is now likely a direct URL or R2 URL
-      // If it's already a full URL, just return it
       if (data.storage_path.startsWith('http')) {
         return { ...data, signedUrl: data.storage_path };
       }
 
-      // Legacy records might just have a path, but we are moving away from Supabase Storage
-      // If it's not a URL, we return it as is (it might fail to load if it's just a path)
       return { ...data, signedUrl: data.storage_path };
     },
     enabled: !!detailMedicao.id
   });
+
+  // Calculate total produced in the period (for debugging zero total issues)
+  const totalProduzidoPeriodo = useMemo(() => {
+    return detailLancamentos.reduce((acc, l) => {
+      const preco = Number(l.item_lpu?.preco_unitario || 0);
+      const qtd = Number(l.quantidade);
+      return acc + (qtd * preco);
+    }, 0);
+  }, [detailLancamentos]);
 
   // Set download URL if existing export found
   useEffect(() => {
@@ -143,6 +153,35 @@ export function DetailMedicaoContent({
       setExportProgress(100);
     }
   }, [existingExport, addLog]);
+
+  const { data: reportCaptions = [] } = useQuery({
+    queryKey: ["medicao_report_captions", detailMedicao.numero_medicao],
+    queryFn: async () => {
+      if (!detailMedicao.numero_medicao) return [];
+      const { data, error } = await supabase
+        .from("medicao_report_photo_captions")
+        .select("foto_id, legenda, ordem")
+        .eq("numero_medicao", detailMedicao.numero_medicao);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!detailMedicao.numero_medicao,
+  });
+
+  const reportCaptionsMap = useMemo(() => ({
+    get: (fotoId: string) => {
+      const found = Array.isArray(reportCaptions) ? reportCaptions.find(c => c.foto_id === fotoId) : null;
+      return found?.legenda || null;
+    }
+  }), [reportCaptions]);
+
+  const fotoOrdemMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (reportCaptions as any[]).forEach(c => {
+      if (c.ordem != null) m.set(c.foto_id, c.ordem);
+    });
+    return m;
+  }, [reportCaptions]);
 
 
 
@@ -360,7 +399,7 @@ export function DetailMedicaoContent({
   });
 
   // Fetch diary photos
-  const { data: diarioFotos = [], isLoading: loadingFotos } = useQuery({
+  const { data: rawDiarioFotos = [], isLoading: loadingFotos } = useQuery({
     queryKey: ["medicao_fotos", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
@@ -456,13 +495,23 @@ export function DetailMedicaoContent({
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
 
+  const diarioFotos = useMemo(() => {
+    if (fotoOrdemMap.size === 0) return rawDiarioFotos;
+    return [...rawDiarioFotos].sort((a, b) => {
+      const oa = fotoOrdemMap.has(a.id) ? fotoOrdemMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
+      const ob = fotoOrdemMap.has(b.id) ? fotoOrdemMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
+  }, [rawDiarioFotos, fotoOrdemMap]);
+
+
   const { data: rdoSummary = [] } = useQuery({
     queryKey: ["medicao_rdo_summary", allSiteIds, detailMedicao.periodo_inicio, detailMedicao.periodo_fim],
     queryFn: async () => {
       if (!detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) return [];
       const { data } = await supabase
         .from("diarios_obra")
-        .select("id, site_id, status_ativo")
+        .select("id, site_id, status_ativo, data")
         .in("site_id", allSiteIds)
         .gte("data", detailMedicao.periodo_inicio)
         .lte("data", detailMedicao.periodo_fim);
@@ -470,6 +519,21 @@ export function DetailMedicaoContent({
     },
     enabled: !!detailMedicao.periodo_inicio && !!detailMedicao.periodo_fim,
   });
+
+  // Latest status_ativo per site (based on most recent diary in the period)
+  const statusAtivoBySite = useMemo(() => {
+    const map = new Map<string, string>();
+    const latestDate = new Map<string, string>();
+    (rdoSummary as any[]).forEach(d => {
+      if (!d.status_ativo || !d.site_id) return;
+      const cur = latestDate.get(d.site_id);
+      if (!cur || (d.data || "") > cur) {
+        latestDate.set(d.site_id, d.data || "");
+        map.set(d.site_id, d.status_ativo);
+      }
+    });
+    return map;
+  }, [rdoSummary]);
 
   // Fetch all RDO data for resources used
   const { data: rdoDataBySite = new Map<string, { equipe: any[], equipamentos: any[], veiculos: any[] }>() } = useQuery({
@@ -708,8 +772,15 @@ export function DetailMedicaoContent({
           <span className="text-sm font-medium text-slate-700">{detailMedicao.numero_po || "N/A"}</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total</span>
-          <span className="text-sm font-bold text-primary">{formatCurrency(detailMedicao.total_valor)}</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Valor Total (Produção do Período)</span>
+          <div className="flex flex-col">
+            <span className={cn("text-sm font-bold", totalProduzidoPeriodo > 0 ? "text-primary" : "text-rose-600")}>
+              {formatCurrency(totalProduzidoPeriodo)}
+            </span>
+            {totalProduzidoPeriodo === 0 && detailMedicao.total_valor > 0 && (
+              <span className="text-[9px] text-muted-foreground">Nota: Valor do lote: {formatCurrency(detailMedicao.total_valor)}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -723,13 +794,14 @@ export function DetailMedicaoContent({
         data-pdf-element="photo" 
         style={{ minHeight: '320px', breakInside: 'avoid', pageBreakInside: 'avoid' }}
       >
-        <div className="aspect-[4/3] bg-muted/10 p-0.5 flex items-center justify-center overflow-hidden">
+        <div className="aspect-[4/3] bg-muted/10 flex items-center justify-center overflow-hidden">
           <SmartImage
             src={foto.url}
             context="diario_fotos"
             fallbackUrls={[foto.thumb_600_url, foto.thumb_url]}
             alt={foto.item_descricao || foto.site_nome || "foto"}
-            className="h-full w-full object-contain"
+            className="h-full w-full object-cover"
+            containerClassName="h-full w-full"
             crossOrigin="anonymous"
           />
         </div>
@@ -1036,14 +1108,17 @@ export function DetailMedicaoContent({
       })) : undefined;
 
       await exportTEPToHtml({
-        siteNome: `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        siteNome: isMultiSite ? detailMedicao.projeto_nome : `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
           url: f.url,
+          thumb_600_url: f.thumb_600_url,
           classificacao: f.classificacao,
-          legenda: f.legenda,
+          legenda: reportCaptionsMap.get(f.id) || f.legenda || detailMedicao.legenda_padrao_fotos || null,
           site_nome: f.site_nome,
-          site_id: f.site_id
+          site_id: f.site_id,
+          diario_data: f.diario_data,
+          item_descricao: f.item_descricao
         })),
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
         clienteLogoUrl: base64ClienteLogo || finalClienteLogoUrl,
@@ -1073,6 +1148,7 @@ export function DetailMedicaoContent({
   }, []);
 
   const generateHtmlReport = useCallback((forZip = false) => {
+
     const buildPhotoCardHtml = (foto: DiarioFotoWithItem, opts?: { showItem?: boolean; showSiteName?: boolean }) => {
       const idx = diarioFotos.findIndex(df => df.id === foto.id);
       const siteName = sanitize(foto.site_nome || "geral");
@@ -1100,31 +1176,25 @@ export function DetailMedicaoContent({
       const primaryUrl = allUrls[0] || foto.url;
       const fallbackStr = allUrls.slice(1).join(',');
 
+      const imgSrc = primaryUrl; 
+      const localImgSrc = safePath;
+
+      const caption = reportCaptionsMap.get(foto.id) || foto.legenda || detailMedicao.legenda_padrao_fotos || '';
+
+      const fotosPerPage = detailMedicao.fotos_por_pagina || 4;
+      const cardWidth = fotosPerPage === 2 ? '48%' : fotosPerPage === 6 ? '31%' : '48%';
+
       return `
-        <div class="photo-card">
+        <div class="photo-card" style="width: ${cardWidth}">
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
-                src="${safePath}" 
-                data-original-src="${primaryUrl}"
+                src="${imgSrc}" 
+                data-local-src="${localImgSrc}"
                 data-fallback-src="${fallbackStr}"
                 alt="${(foto.item_descricao || foto.site_nome || 'foto').replace(/"/g, '&quot;')}" 
                 loading="lazy" 
-                onerror="
-                  if(!this.dataset.triedUrl){ 
-                    this.dataset.triedUrl=true; 
-                    this.src=this.dataset.originalSrc; 
-                  } else { 
-                    let fallbacks = this.dataset.fallbackSrc ? this.dataset.fallbackSrc.split(',') : [];
-                    let idx = parseInt(this.dataset.fallbackIdx || '0');
-                    if (idx < fallbacks.length) {
-                      this.dataset.fallbackIdx = idx + 1;
-                      this.src = fallbacks[idx];
-                    } else {
-                      this.parentElement.innerHTML='<div class=&quot;err-msg&quot;><b>Imagem não encontrada</b><br><br><i>Certifique-se de extrair o ZIP antes de abrir o relatório ou verifique sua conexão.</i></div>'; 
-                    }
-                  }
-                ">
+                onerror="handleImageError(this)">
             ` : `
               <div class="non-image-file">
                 <span>📄 Arquivo ${extension.toUpperCase()}</span>
@@ -1133,13 +1203,13 @@ export function DetailMedicaoContent({
             `}
           </div>
           <div class="photo-info">
-            ${showItem && foto.item_codigo ? `<p class="photo-title">${foto.item_codigo} — ${foto.item_descricao || ''}</p>` : ''}
+            ${showItem && foto.item_codigo ? `<p class="photo-title">${detailMedicao.mostrar_lpu !== false ? `${foto.item_codigo} — ` : ''}${foto.item_descricao || ''}</p>` : ''}
             <div class="photo-meta">
               ${showSiteName && foto.site_nome ? `<span class="photo-site">📍 ${foto.site_nome}</span>` : ''}
               ${foto.diario_data ? `<span class="photo-date">📅 ${formatDate(foto.diario_data)}</span>` : ''}
               <span class="badge" style="background-color: ${color}">${classLabel(foto.classificacao)}</span>
             </div>
-            ${foto.legenda ? `<p class="photo-legenda">“${foto.legenda}”</p>` : ''}
+            ${caption ? `<p class="photo-legenda">“${caption}”</p>` : ''}
           </div>
         </div>
       `;
@@ -1158,19 +1228,19 @@ export function DetailMedicaoContent({
             <p class="site-production-title">Produção do Site:</p>
             <table class="site-table">
               <thead>
-                <tr><th>Item</th><th class="num">Qtd</th><th class="num">Valor</th></tr>
+                <tr><th>Item</th><th class="num">Qtd</th>${detailMedicao.mostrar_valores_site !== false ? '<th class="num">Valor</th>' : ''}</tr>
               </thead>
               <tbody>
                 ${siteItems.map(si => `
                   <tr>
-                    <td>${si.item_codigo} — ${si.item_descricao}</td>
+                    <td>${detailMedicao.mostrar_lpu !== false ? `${si.item_codigo} — ` : ''}${si.item_descricao}</td>
                     <td class="num">${si.quantidade.toLocaleString("pt-BR")} ${si.unidade}</td>
-                    <td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>
+                    ${detailMedicao.mostrar_valores_site !== false ? `<td class="num">${formatCurrency(si.quantidade * si.preco_unitario)}</td>` : ''}
                   </tr>
                 `).join('')}
               </tbody>
+              ${totalFooter}
             </table>
-            <div class="site-total-bar">Total do site: <strong>${formatCurrency(siteTotal)}</strong></div>
           </div>
         ` : '';
 
@@ -1215,16 +1285,23 @@ export function DetailMedicaoContent({
         const photosHtml = classes.map(([className, photos]) => `
           <div class="class-group">
             <h3 class="class-header">${className} (${photos.length})</h3>
-            <div class="photo-grid">
-              ${photos.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
-            </div>
+          <div class="photo-grid">
+            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
+              </div>
+            `).join('')}
+          </div>
           </div>
         `).join('');
 
         return `
           <section class="site-block">
-            <div class="site-header">📍 ${siteName}</div>
-            ${itemsTableHtml}
+            <div class="site-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span>📍 ${siteName}</span>
+              ${statusAtivoBySite.get(siteId) ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:2px solid ${statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3"};background:${statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2"};color:${statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c"};">STATUS DO ATIVO: ${statusAtivoBySite.get(siteId)}</span>` : ''}
+            </div>
+            ${detailMedicao.mostrar_valores_site !== false ? itemsTableHtml : ''}
             ${recursosHtml}
             ${obsHtml}
             ${photosHtml}
@@ -1240,7 +1317,11 @@ export function DetailMedicaoContent({
         <div class="item-group">
           <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
           <div class="photo-grid">
-            ${photos.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+              </div>
+            `).join('')}
           </div>
         </div>
       `).join('');
@@ -1248,7 +1329,11 @@ export function DetailMedicaoContent({
         <div class="item-group">
           <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
           <div class="photo-grid">
-            ${fotosByItem.gerais.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+            ${chunkArray(fotosByItem.gerais, detailMedicao.fotos_por_pagina || 4).map(chunk => `
+              <div class="photo-grid-row">
+                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
+              </div>
+            `).join('')}
           </div>
         </div>
       ` : '';
@@ -1260,14 +1345,26 @@ export function DetailMedicaoContent({
       const qtd = Number(l.quantidade);
       return `
         <tr>
-          <td>${l.item_lpu?.codigo || '-'} - ${l.item_lpu?.descricao || ''}</td>
+          <td>${detailMedicao.mostrar_lpu !== false ? `${l.item_lpu?.codigo || '-'} - ` : ''}${l.item_lpu?.descricao || ''}</td>
           <td>${l.item_lpu?.unidade || '-'}</td>
           <td class="num">${qtd.toLocaleString("pt-BR")}</td>
-          <td class="num">${formatCurrency(preco)}</td>
-          <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <td class="num">${formatCurrency(preco)}</td>
+            <td class="num bold">${formatCurrency(qtd * preco)}</td>
+          ` : ''}
         </tr>
       `;
     }).join('');
+    
+    const totalProduzido = detailLancamentos.reduce((acc, l) => acc + (Number(l.quantidade) * Number(l.item_lpu?.preco_unitario || 0)), 0);
+    const totalFooter = detailMedicao.mostrar_lpu !== false ? `
+      <tfoot>
+        <tr>
+          <td colspan="4" class="num bold">TOTAL PRODUZIDO NO PERÍODO:</td>
+          <td class="num bold" style="font-size: 12px; color: var(--primary);">${formatCurrency(totalProduzido)}</td>
+        </tr>
+      </tfoot>
+    ` : '';
     
     const recursosHtml = (recursosAgregadosGerais.equipe.length > 0 || recursosAgregadosGerais.equipamentos.length > 0 || recursosAgregadosGerais.veiculos.length > 0) ? `
       <h2 class="sec">👷 Recursos Utilizados no Período</h2>
@@ -1320,6 +1417,35 @@ export function DetailMedicaoContent({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Relatório de Medição - ${detailMedicao.numero_medicao || detailMedicao.id}</title>
+  <script>
+    function handleImageError(img) {
+      if (!img || img.dataset.errorHandled) return;
+      if (img.src.startsWith('data:')) return;
+      
+      if (!img.dataset.triedLocal) {
+        img.dataset.triedLocal = 'true';
+        if (img.dataset.localSrc && img.dataset.localSrc !== 'undefined' && img.dataset.localSrc !== '') {
+          img.src = img.dataset.localSrc;
+          return;
+        }
+      }
+      
+      let fallbacks = img.dataset.fallbackSrc ? img.dataset.fallbackSrc.split(',') : [];
+      let idx = parseInt(img.dataset.fallbackIdx || '0');
+      
+      if (idx < fallbacks.length && fallbacks[idx] && fallbacks[idx] !== 'undefined' && fallbacks[idx] !== '') {
+        img.dataset.fallbackIdx = (idx + 1).toString();
+        img.src = fallbacks[idx];
+        return;
+      }
+      
+      img.dataset.errorHandled = 'true';
+      const parent = img.parentElement;
+      if (parent) {
+        parent.innerHTML = '<div class="err-msg"><b>Imagem não encontrada</b></div>';
+      }
+    }
+  </script>
   <style>
     :root { --primary: #1e3a5f; --accent: #10b981; --muted: #64748b; --border: #e2e8f0; --bg-soft: #f8fafc; }
     * { box-sizing: border-box; }
@@ -1364,8 +1490,9 @@ export function DetailMedicaoContent({
     .class-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
-    .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; min-height: 220px; }
+    .photo-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    .photo-grid-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-height: 220px; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
@@ -1397,7 +1524,7 @@ export function DetailMedicaoContent({
             }
           </div>
         ` : `
-          <SmartImage src={detailMedicao.capa_url} alt="Capa da Medição" style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+          <img src="${resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
         `}
       </div>
     </div>
@@ -1421,6 +1548,7 @@ export function DetailMedicaoContent({
       </div>
     </header>
 
+
     <div class="info-grid">
       <div class="info-item"><span class="label">Site:</span> <span class="value">${detailMedicao.site_codigo} - ${detailMedicao.site_nome}</span></div>
       <div class="info-item"><span class="label">Status do Ativo:</span> 
@@ -1438,6 +1566,7 @@ export function DetailMedicaoContent({
 
     ${includedSitesHtml}
 
+    ${detailMedicao.modo_somente_fotos !== true ? `
     <h2 class="sec">📝 Resumo da Produção</h2>
     <table class="main">
       <thead>
@@ -1445,20 +1574,25 @@ export function DetailMedicaoContent({
           <th>Item / Descrição</th>
           <th>Unid.</th>
           <th class="num">Qtd.</th>
-          <th class="num">Preço Unit.</th>
-          <th class="num">Total</th>
+          ${detailMedicao.mostrar_lpu !== false ? `
+            <th class="num">Preço Unit.</th>
+            <th class="num">Total</th>
+          ` : ''}
         </tr>
       </thead>
       <tbody>
         ${itemsTableRows}
       </tbody>
+      ${detailMedicao.mostrar_lpu !== false ? `
       <tfoot>
         <tr>
           <td colspan="4" class="num bold">VALOR TOTAL DA MEDIÇÃO:</td>
           <td class="num bold">${formatCurrency(detailMedicao.total_valor)}</td>
         </tr>
       </tfoot>
+      ` : ''}
     </table>
+    ` : ''}
     
     ${!isMultiSite ? recursosHtml : ''}
 
@@ -1478,7 +1612,7 @@ export function DetailMedicaoContent({
   ` : ''}
 </body>
 </html>`;
-  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite]);
+  }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1607,17 +1741,7 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={() => {
-            const htmlContent = generateHtmlReport();
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Relatorio_Online_${detailMedicao.numero_medicao || detailMedicao.id}.html`;
-            a.click();
-            URL.revokeObjectURL(url);
-            addLog("Relatório HTML Online (leve) gerado. As imagens serão carregadas via internet ao abrir o arquivo.", "success");
-          }} 
+          onClick={handleExportTEP} 
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
@@ -1924,7 +2048,19 @@ export function DetailMedicaoContent({
                     >
                       <div className="px-4 py-3 font-semibold text-sm flex items-center gap-2 text-white" style={{ backgroundColor: "hsl(var(--primary))", lineHeight: '1.4', minHeight: '32px' }}>
                         <MapPin className="h-4 w-4 shrink-0" />
-                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{siteName}</span>
+                        <span style={{ lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="flex-1">{siteName}</span>
+                        {statusAtivoBySite.get(siteId) && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded border-2 shrink-0"
+                            style={{
+                              backgroundColor: statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2",
+                              color: statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c",
+                              borderColor: statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3",
+                            }}
+                          >
+                            STATUS DO ATIVO: {statusAtivoBySite.get(siteId)}
+                          </span>
+                        )}
                       </div>
 
                       {siteItems.length > 0 && (
@@ -2134,6 +2270,17 @@ export function DetailMedicaoContent({
               />
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* HTML Preview Overlay */}
+      {isExporting && exportProgress === 100 && downloadUrl && (
+        <div className="fixed bottom-4 right-4 z-[50] flex flex-col gap-2">
+          <Button size="lg" className="shadow-lg gap-2" asChild>
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+              <FileText className="h-5 w-5" /> Abrir Relatório HTML
+            </a>
+          </Button>
         </div>
       )}
 

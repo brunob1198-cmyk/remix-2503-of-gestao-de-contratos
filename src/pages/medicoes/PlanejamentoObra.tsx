@@ -13,7 +13,7 @@ import { usePersistedState } from "@/hooks/usePersistedState";
 import { GanttChart } from "@/components/planejamento/GanttChart";
 import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailSheet";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
-// AtividadeForm removed - escopo linking is done in FrenteForm
+import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 
 // SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
@@ -120,22 +120,22 @@ export default function PlanejamentoObra() {
   }, [queryClient]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <CalendarRange className="h-6 w-6" />
-            Planejamento de Obra
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
+            <CalendarRange className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
+            <span className="truncate">Planejamento de Obra</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Planeje e acompanhe a execução das frentes de obra com visualização Gantt
           </p>
         </div>
       </div>
 
       {/* Project selector */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="w-64">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end">
+        <div className="w-full sm:w-64">
           <label className="text-sm font-medium mb-1 block">Projeto</label>
           <Select value={projetoId} onValueChange={(v) => { setProjetoId(v); setFrenteFilter("all"); setSelectedSiteIds([]); }}>
             <SelectTrigger>
@@ -150,20 +150,22 @@ export default function PlanejamentoObra() {
         </div>
         
         {projetoId && sites.length > 0 && (
-          <div className="w-64">
+          <div className="w-full sm:w-64">
             <label className="text-sm font-medium mb-1 block">Filtrar por Site</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-between font-normal">
-                  {selectedSiteIds.length === 0
-                    ? "Todos os sites"
-                    : selectedSiteIds.length === 1
-                      ? sites.find(s => s.id === selectedSiteIds[0])?.nome || "1 site"
-                      : `${selectedSiteIds.length} sites`}
-                  <MapPin className="h-4 w-4 ml-2 opacity-50" />
+                  <span className="truncate">
+                    {selectedSiteIds.length === 0
+                      ? "Todos os sites"
+                      : selectedSiteIds.length === 1
+                        ? sites.find(s => s.id === selectedSiteIds[0])?.nome || "1 site"
+                        : `${selectedSiteIds.length} sites`}
+                  </span>
+                  <MapPin className="h-4 w-4 ml-2 opacity-50 shrink-0" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" align="start">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-64 p-2" align="start">
                 <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
                   <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm font-medium text-primary">
                     <Checkbox
@@ -194,17 +196,19 @@ export default function PlanejamentoObra() {
 
       {projetoId ? (
         <Tabs defaultValue="gantt" className="w-full">
-          <TabsList>
-            <TabsTrigger value="gantt" className="gap-1.5">
-              <BarChart3 className="h-4 w-4" /> Gantt
-            </TabsTrigger>
-            <TabsTrigger value="produtividade" className="gap-1.5">
-              <MapPin className="h-4 w-4" /> Produtividade
-            </TabsTrigger>
-            <TabsTrigger value="producao" className="gap-1.5">
-              <ClipboardList className="h-4 w-4" /> Produção
-            </TabsTrigger>
-          </TabsList>
+          <div className="-mx-3 sm:mx-0 overflow-x-auto">
+            <TabsList className="w-max sm:w-auto">
+              <TabsTrigger value="gantt" className="gap-1.5 whitespace-nowrap">
+                <BarChart3 className="h-4 w-4" /> Gantt
+              </TabsTrigger>
+              <TabsTrigger value="produtividade" className="gap-1.5 whitespace-nowrap">
+                <MapPin className="h-4 w-4" /> Produtividade
+              </TabsTrigger>
+              <TabsTrigger value="producao" className="gap-1.5 whitespace-nowrap">
+                <ClipboardList className="h-4 w-4" /> Produção
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="gantt" className="space-y-4 mt-4">
             {/* Gantt controls */}
@@ -234,7 +238,8 @@ export default function PlanejamentoObra() {
                     className="gap-1.5"
                   >
                     <Sparkles className="h-4 w-4 text-purple-600" />
-                    {analyzeGanttAi.isPending ? "Analisando Cronograma..." : "Analisar via IA"}
+                    {analyzeGanttAi.isPending ? "Recalculando..." : "Recalcular Cronograma"}
+
                   </Button>
                 )}
                 <FrenteForm
@@ -247,6 +252,15 @@ export default function PlanejamentoObra() {
                   }}
                   isLoading={createFrente.isPending}
                 />
+                {frentes.length > 0 && (
+                  <AtividadeForm
+                    frentes={frentes}
+                    atividades={atividades}
+                    projetoId={projetoId}
+                    onCreate={(data) => createAtividade.mutate(data)}
+                    isLoading={createAtividade.isPending}
+                  />
+                )}
               </div>
 
               {/* Frentes list with delete */}

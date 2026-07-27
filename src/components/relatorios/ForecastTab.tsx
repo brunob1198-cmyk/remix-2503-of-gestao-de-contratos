@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { pickForecastValue, sumForecastValues } from "@/lib/forecastValue";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -145,39 +146,19 @@ export default function ForecastTab() {
     const totalProduzido = filteredData.reduce((acc, p) => acc + p.totalProduzido, 0);
     const totalSaldo = filteredData.reduce((acc, p) => acc + p.saldo, 0);
 
-    const next3Months = columns.filter(c => c.isFuture).slice(0, 3).map(c => c.key);
-    const totalTrimestre = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      next3Months.forEach(m => {
-        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
-      });
-      return acc + sum;
-    }, 0);
+    // Regra centralizada em `@/lib/forecastValue`: real em passados, forecast em futuros
+    const next3Months = columns.filter(c => c.isFuture).slice(0, 3);
+    const totalTrimestre = sumForecastValues(filteredData, next3Months);
 
-    const next6Months = columns.filter(c => c.isFuture).slice(0, 6).map(c => c.key);
-    const totalSemestre = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      next6Months.forEach(m => {
-        sum += (p.mensal[m] || 0) + (p.forecast[m] || 0);
-      });
-      return acc + sum;
-    }, 0);
+    const next6Months = columns.filter(c => c.isFuture).slice(0, 6);
+    const totalSemestre = sumForecastValues(filteredData, next6Months);
 
     const currentYear = format(new Date(), "yyyy");
-    const totalAno = filteredData.reduce((acc, p) => {
-      let sum = 0;
-      columns.forEach(col => {
-        if (col.key.startsWith(currentYear)) {
-          sum += (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
-        }
-      });
-      return acc + sum;
-    }, 0);
+    const yearCols = columns.filter(c => c.key.startsWith(currentYear));
+    const totalAno = sumForecastValues(filteredData, yearCols);
 
     const columnTotals = columns.reduce((acc, col) => {
-      acc[col.key] = filteredData.reduce((sum, p) => {
-        return sum + (p.mensal[col.key] || 0) + (p.forecast[col.key] || 0);
-      }, 0);
+      acc[col.key] = filteredData.reduce((sum, p) => sum + pickForecastValue(p, col), 0);
       return acc;
     }, {} as Record<string, number>);
 
@@ -381,8 +362,8 @@ export default function ForecastTab() {
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
-                        const realValue = p.mensal[col.key] || 0;
-                        const forecastValue = (p as any).forecast_data?.[col.key] || 0;
+                        const realValue = pickForecastValue(p, { ...col, isFuture: false });
+                        const forecastValue = pickForecastValue(p, { ...col, isFuture: true });
                         const isEditing = editing?.id === p.id && editing?.month === col.key;
 
                         return (

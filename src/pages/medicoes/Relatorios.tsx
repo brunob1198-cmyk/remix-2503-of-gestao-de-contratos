@@ -20,6 +20,7 @@ import { FileDown, FileSpreadsheet, Filter, ArrowUpDown, ArrowUp, ArrowDown, Lay
 import QuadroGeral from "@/components/relatorios/QuadroGeral";
 import ProducaoMensal from "@/components/relatorios/ProducaoMensal";
 import ForecastTab from "@/components/relatorios/ForecastTab";
+import RelatorioAvancado from "@/components/relatorios/RelatorioAvancado";
 import { exportDashboardToExcel, exportLancamentosToExcel } from "@/lib/medicoesExport";
 import * as XLSX from "xlsx";
 import { usePersistedState } from "@/hooks/usePersistedState";
@@ -378,25 +379,27 @@ export default function RelatoriosPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Relatórios</h1>
-        <p className="text-muted-foreground">Exporte relatórios personalizados em Excel para análise</p>
+        <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold">Relatórios</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Exporte relatórios personalizados em Excel para análise</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="quadro_geral">
-            <LayoutGrid className="h-4 w-4 mr-2" />
-            Quadro Geral
-          </TabsTrigger>
-          <TabsTrigger value="cruzado">Relatórios Cruzados</TabsTrigger>
-          <TabsTrigger value="producao_mensal">Produção Mensal</TabsTrigger>
-          <TabsTrigger value="forecast">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Forecast
-          </TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 sm:mx-0 overflow-x-auto">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="quadro_geral" className="whitespace-nowrap">
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Quadro Geral
+            </TabsTrigger>
+            <TabsTrigger value="cruzado" className="whitespace-nowrap">Relatórios Avançados</TabsTrigger>
+            <TabsTrigger value="producao_mensal" className="whitespace-nowrap">Produção Mensal</TabsTrigger>
+            <TabsTrigger value="forecast" className="whitespace-nowrap">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Forecast
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="quadro_geral" className="space-y-4">
           <QuadroGeral />
@@ -514,141 +517,15 @@ export default function RelatoriosPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                  <CardTitle>
-                    Resultado: {crossType === "producao_medicao" 
-                      ? "Produção x Medição" 
-                      : crossType === "medicao_faturamento"
-                        ? "Medição x Faturamento"
-                        : "Produção x Faturamento"} ({filteredAndSortedCrossData.length})
-                  </CardTitle>
-                  {filteredAndSortedCrossData.length > 0 && (
-                    <Button variant="outline" onClick={handleExportCrossReference}>
-                      <FileDown className="h-4 w-4 mr-2" />
-                      Exportar Excel
-                    </Button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    placeholder="Filtrar por projeto..."
-                    value={crossProjetoFilter}
-                    onChange={(e) => setCrossProjetoFilter(e.target.value)}
-                    className="w-48"
-                  />
-                  <Input
-                    placeholder="Filtrar por site/nome..."
-                    value={crossSiteFilter}
-                    onChange={(e) => setCrossSiteFilter(e.target.value)}
-                    className="w-48"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {crossReferenceData.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum dado encontrado para os filtros selecionados
-                </p>
-              ) : filteredAndSortedCrossData.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum resultado para os filtros de tabela aplicados
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("projeto")} className="h-8 px-2 -ml-2">
-                            Projeto {getCrossSortIcon("projeto")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("site")} className="h-8 px-2 -ml-2">
-                            Site {getCrossSortIcon("site")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("nome")} className="h-8 px-2 -ml-2">
-                            Nome {getCrossSortIcon("nome")}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("origem")} className="h-8 px-2">
-                            {labels.origem} {getCrossSortIcon("origem")}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("destino")} className="h-8 px-2">
-                            {labels.destino} {getCrossSortIcon("destino")}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => handleCrossSort("diferenca")} className="h-8 px-2">
-                            {labels.diff} {getCrossSortIcon("diferenca")}
-                          </Button>
-                        </TableHead>
-                        <TableHead className="min-w-[300px]">Relatório Descritivo / Observações Diário</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredAndSortedCrossData.map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{row.projeto_codigo}</TableCell>
-                          <TableCell>{row.site_codigo}</TableCell>
-                          <TableCell>{row.site_nome}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.total_origem)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.total_destino)}</TableCell>
-                          <TableCell className={`text-right font-semibold ${row.diferenca > 0 ? "text-orange-600" : row.diferenca < 0 ? "text-red-600" : ""}`}>
-                            {formatCurrency(row.diferenca)}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground whitespace-pre-wrap break-words max-w-md">
-                            {row.observacoes_diario.length > 0 ? (
-                              <div className="space-y-2 group">
-                                {row.observacoes_diario.map((obs, i) => (
-                                  <div key={i} className={i > 0 ? "pt-2 border-t border-border/50" : ""}>
-                                    {obs}
-                                  </div>
-                                ))}
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 px-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(row.observacoes_diario.join("\n---\n"));
-                                    toast({
-                                      description: "Relatório Descritivo / Observações copiados para a área de transferência",
-                                    });
-                                  }}
-                                >
-                                  Copiar observações
-                                </Button>
-                              </div>
-                            ) : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow className="bg-muted/50 font-bold">
-                        <TableCell colSpan={3} className="text-right">TOTAL:</TableCell>
-                        <TableCell className="text-right">{formatCurrency(crossReferenceTotals.totalOrigem)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(crossReferenceTotals.totalDestino)}</TableCell>
-                        <TableCell className={`text-right ${crossReferenceTotals.diferenca > 0 ? "text-orange-600" : crossReferenceTotals.diferenca < 0 ? "text-red-600" : ""}`}>
-                          {formatCurrency(crossReferenceTotals.diferenca)}
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
+
+
+          <RelatorioAvancado
+            projetoId={projetoId}
+            selectedSiteIds={selectedSiteIds}
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+          />
         </TabsContent>
 
         <TabsContent value="producao_mensal" className="space-y-4">

@@ -1,0 +1,1 @@
+ALTER TABLE public.medicao_report_photo_captions ADD COLUMN IF NOT EXISTS ordem INTEGER;

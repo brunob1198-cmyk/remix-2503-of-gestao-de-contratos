@@ -64,7 +64,10 @@ export default function AcompanhamentoMedicoesPage() {
         ? `agrupada_${projetoId}_${l.numero_medicao || 'sem_numero'}`
         : `${l.site_id}_${l.numero_medicao || 'sem_numero'}`;
       const preco = Number(l.item_lpu?.preco_unitario || 0);
-      const valor = Number(l.quantidade) * preco;
+      // Após revisão (data_resposta preenchida), o valor da medição reflete a quantidade aprovada
+      const foiRespondida = l.data_resposta != null || l.quantidade_aprovada != null;
+      const qtdParaValor = foiRespondida ? Number(l.quantidade_aprovada || 0) : Number(l.quantidade);
+      const valor = qtdParaValor * preco;
 
       if (!grouped.has(key)) {
         grouped.set(key, {
@@ -76,6 +79,11 @@ export default function AcompanhamentoMedicoesPage() {
           projeto_codigo: l.site?.projeto?.codigo || "",
           logo_empresa_url: (l as any).logo_empresa_url,
           capa_url: (l as any).capa_url,
+          mostrar_lpu: (l as any).mostrar_lpu,
+          mostrar_valores_site: (l as any).mostrar_valores_site,
+          modo_somente_fotos: (l as any).modo_somente_fotos,
+          fotos_por_pagina: (l as any).fotos_por_pagina,
+          legenda_padrao_fotos: (l as any).legenda_padrao_fotos,
           projeto_nome: l.site?.projeto?.nome || "",
           uf: l.site?.uf || "",
           data_medicao: l.data_medicao,
@@ -188,7 +196,15 @@ export default function AcompanhamentoMedicoesPage() {
     }
 
 
-    const itemsWithCapa = data.items.map((item: any) => ({ ...item, capa_url: capaUrl }));
+    const itemsWithCapa = data.items.map((item: any) => ({ 
+      ...item, 
+      capa_url: capaUrl,
+      mostrar_lpu: data.reportConfig?.mostrar_lpu,
+      mostrar_valores_site: data.reportConfig?.mostrar_valores_site,
+      modo_somente_fotos: data.reportConfig?.modo_somente_fotos,
+      fotos_por_pagina: data.reportConfig?.fotos_por_pagina,
+      legenda_padrao_fotos: data.reportConfig?.legenda_padrao_fotos
+    }));
 
     bulkCreateLancamento.mutate(itemsWithCapa, {
       onSuccess: () => {
@@ -282,19 +298,19 @@ export default function AcompanhamentoMedicoesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Acompanhamento de Medições</h1>
-          <p className="text-muted-foreground">Acompanhe e gerencie o status das medições</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold truncate">Acompanhamento de Medições</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Acompanhe e gerencie o status das medições</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowGerarDialog(true)}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Button onClick={() => setShowGerarDialog(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Gerar Medição do Período
           </Button>
           {tableMedicoes.processedItems.length > 0 && (
-            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)}>
+            <Button variant="outline" onClick={() => exportAcompanhamentoToExcel(tableMedicoes.processedItems)} className="w-full sm:w-auto">
               <FileDown className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
@@ -306,7 +322,7 @@ export default function AcompanhamentoMedicoesPage() {
         <CardHeader>
           <CardTitle>Histórico de Medições</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6 overflow-x-auto">
           <MedicoesTable 
             tableMedicoes={tableMedicoes}
             localEdits={localEdits}

@@ -358,6 +358,9 @@ export default function RdoPage() {
 
   const [dataInicio, setDataInicio] = usePersistedState("rdo-data-inicio", format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dataFim, setDataFim] = usePersistedState("rdo-data-fim", format(new Date(), "yyyy-MM-dd"));
+  // Filtro independente do card "Contrato vs Produção": afeta apenas Produção Acumulada e Saldo
+  const [contratoDataInicio, setContratoDataInicio] = usePersistedState<string>("rdo-contrato-data-inicio", "");
+  const [contratoDataFim, setContratoDataFim] = usePersistedState<string>("rdo-contrato-data-fim", "");
   const [itemFilter, setItemFilter] = useState<string>("");
   const [busca, setBusca] = useState("");
 
@@ -433,18 +436,31 @@ export default function RdoPage() {
 
   const isMultiSite = selectedSiteIds.length !== 1;
 
-  // Use aggregated totals from DB, with local calculation as fallback
-  const totalDias = (totaisAgregados as any)?.total_dias ?? dayGroups.length;
-  const totalFotos = (totaisAgregados as any)?.total_fotos ?? diarios.reduce((s, d) => s + d.totalFotos, 0);
-  const totalProd = (totaisAgregados as any)?.total_producao ?? diarios.reduce((s, d) => s + d.totalProducao, 0);
-  const mediaPorDia = (totaisAgregados as any)?.media_por_dia ?? (totalDias > 0 ? totalProd / totalDias : 0);
+  // Quando há filtros que o RPC não conhece (item LPU / busca textual),
+  // calcula os totais localmente a partir dos diários já filtrados.
+  const hasLocalFilters = !!(itemFilter.trim() || (busca && busca.trim()));
 
   const qtdSitesAtendidosLocal = useMemo(() => {
     const set = new Set<string>();
     diarios.forEach(d => set.add(d.site_id));
     return set.size;
   }, [diarios]);
-  const qtdSitesAtendidos = (totaisAgregados as any)?.total_sites ?? qtdSitesAtendidosLocal;
+
+  const totalDias = hasLocalFilters
+    ? dayGroups.length
+    : ((totaisAgregados as any)?.total_dias ?? dayGroups.length);
+  const totalFotos = hasLocalFilters
+    ? diarios.reduce((s, d) => s + d.totalFotos, 0)
+    : ((totaisAgregados as any)?.total_fotos ?? diarios.reduce((s, d) => s + d.totalFotos, 0));
+  const totalProd = hasLocalFilters
+    ? diarios.reduce((s, d) => s + d.totalProducao, 0)
+    : ((totaisAgregados as any)?.total_producao ?? diarios.reduce((s, d) => s + d.totalProducao, 0));
+  const mediaPorDia = hasLocalFilters
+    ? (totalDias > 0 ? totalProd / totalDias : 0)
+    : ((totaisAgregados as any)?.media_por_dia ?? (totalDias > 0 ? totalProd / totalDias : 0));
+  const qtdSitesAtendidos = hasLocalFilters
+    ? qtdSitesAtendidosLocal
+    : ((totaisAgregados as any)?.total_sites ?? qtdSitesAtendidosLocal);
 
   const escopoProjetoIds = useMemo(() => {
     if (selectedProjetoIds.length > 0) return selectedProjetoIds;
@@ -460,7 +476,7 @@ export default function RdoPage() {
   }, [projetos, escopoProjetoIds]);
 
   const { data: producaoAcumuladaProjeto = 0 } = useQuery({
-    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds, dataInicio, dataFim],
+    queryKey: ["rdo-producao-acumulada-projeto", escopoProjetoIds, contratoDataInicio, contratoDataFim],
     queryFn: async () => {
       if (escopoProjetoIds.length === 0) return 0;
       const { data: sitesData, error: sitesErr } = await supabase
@@ -474,8 +490,8 @@ export default function RdoPage() {
         .from("diarios_obra")
         .select("id")
         .in("site_id", siteIds);
-      if (dataInicio) dq = dq.gte("data", dataInicio);
-      if (dataFim) dq = dq.lte("data", dataFim);
+      if (contratoDataInicio) dq = dq.gte("data", contratoDataInicio);
+      if (contratoDataFim) dq = dq.lte("data", contratoDataFim);
       const { data: diariosData, error: diariosErr } = await dq;
       if (diariosErr) throw diariosErr;
       const diarioIds = (diariosData || []).map((d: any) => d.id);
@@ -624,41 +640,41 @@ export default function RdoPage() {
       : `${selectedSiteIds.length} sites`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-start sm:items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <FileText className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight leading-none">RDO — Relatório Diário de Obra</h1>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">RDO — Relatório Diário de Obra</h1>
           {selectedSite && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
               {selectedSite.codigo} — {selectedSite.nome}
               {selectedSite.municipio && ` · ${selectedSite.municipio}`}
               {selectedSite.uf && `/${selectedSite.uf}`}
             </p>
           )}
           {!selectedSite && selectedProjeto && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
               {selectedProjeto.codigo} — {selectedProjeto.nome} · Todos os sites
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-[220px]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 sm:flex-wrap">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-xs">
           <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
-                {projetoLabel}
+                <span className="truncate">{projetoLabel}</span>
                 {selectedProjetoIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedProjetoIds.length}</Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3 space-y-2" align="start">
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -697,18 +713,18 @@ export default function RdoPage() {
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex items-center gap-2 min-w-[220px]">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[220px] sm:flex-1 sm:max-w-xs">
           <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between font-normal focus-visible:ring-2 focus-visible:ring-primary">
-                {siteLabel}
+                <span className="truncate">{siteLabel}</span>
                 {selectedSiteIds.length > 0 && (
                   <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">{selectedSiteIds.length}</Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-72 p-3 space-y-2" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-72 p-3 space-y-2" align="start">
               <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -752,7 +768,7 @@ export default function RdoPage() {
           variant="ghost" 
           size="sm" 
           onClick={clearFilters}
-          className="text-muted-foreground hover:text-primary gap-1.5 h-9"
+          className="text-muted-foreground hover:text-primary gap-1.5 h-9 w-full sm:w-auto justify-center"
         >
           <X className="h-4 w-4" />
           Limpar filtros
@@ -777,15 +793,15 @@ export default function RdoPage() {
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Início
                   </label>
-                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" /> Fim
                   </label>
-                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-[160px]" />
+                  <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="w-full sm:w-[160px]" />
                 </div>
-                <div className="space-y-1 min-w-[260px]">
+                <div className="space-y-1 w-full sm:min-w-[260px] sm:w-auto sm:flex-1">
                   <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Tag className="h-3 w-3" /> Item LPU
                   </label>
@@ -802,7 +818,7 @@ export default function RdoPage() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[360px] p-0" align="start">
+                    <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[360px] p-0" align="start">
                       <Command
                         filter={(value, search) => {
                           if (!search) return 1;
@@ -951,11 +967,39 @@ export default function RdoPage() {
             {!isCliente && escopoProjetoIds.length > 0 && (
               <Card className="border-primary/20">
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Wallet className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold">
-                      Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold">
+                        Contrato vs Produção {escopoProjetoIds.length === 1 ? "do Projeto" : `(${escopoProjetoIds.length} projetos)`}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Período acumulado:</span>
+                      <Input
+                        type="date"
+                        value={contratoDataInicio}
+                        onChange={e => setContratoDataInicio(e.target.value)}
+                        className="h-8 w-[150px] text-xs"
+                      />
+                      <span className="text-xs text-muted-foreground">até</span>
+                      <Input
+                        type="date"
+                        value={contratoDataFim}
+                        onChange={e => setContratoDataFim(e.target.value)}
+                        className="h-8 w-[150px] text-xs"
+                      />
+                      {(contratoDataInicio || contratoDataFim) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => { setContratoDataInicio(""); setContratoDataFim(""); }}
+                        >
+                          Limpar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center md:text-left">

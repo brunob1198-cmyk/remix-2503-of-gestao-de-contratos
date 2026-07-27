@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRequisicoes, useScItens } from "@/hooks/useSupplyChain";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useProjetos } from "@/hooks/useProjetos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -16,20 +17,7 @@ import { parseLocalDate } from "@/lib/utils";
 import { RequisitionTimeline } from "./RequisitionTimeline";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-
-const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  DRAFT: { label: "Rascunho", variant: "secondary" },
-  SUBMITTED: { label: "Aguardando Aprovação", variant: "outline" },
-  PENDING_APPROVAL: { label: "Aguardando Aprovação", variant: "outline" },
-  APPROVED: { label: "Aprovada", variant: "default" },
-  REJECTED: { label: "Rejeitada", variant: "destructive" },
-  QUOTING: { label: "Em Cotação", variant: "outline" },
-  PURCHASE_ORDER_CREATED: { label: "Pedido Emitido", variant: "outline" },
-  PURCHASED: { label: "Pedido Emitido", variant: "outline" },
-  PARTIALLY_RECEIVED: { label: "Recebimento Parcial", variant: "secondary" },
-  RECEIVED: { label: "Recebido", variant: "default" },
-  CLOSED: { label: "Encerrada", variant: "default" },
-};
+import { WORKFLOW_STATUS_MAP, getStatusLabel, getStatusVariant } from "@/lib/requisicaoStatus";
 
 const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   baixa: { label: "Baixa", variant: "secondary" },
@@ -41,7 +29,9 @@ const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "seco
 export function RequisicoesTab({ filter }: { filter?: string }) {
   const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
-  const { itens: scItens } = useScItens();
+  const [scItensSearch, setScItensSearch] = useState("");
+  const debouncedScItensSearch = useDebounce(scItensSearch, 250);
+  const { itens: scItens } = useScItens({ search: debouncedScItensSearch });
   const { hasActionPermission } = usePermissions();
 
   const [open, setOpen] = useState(false);
@@ -240,7 +230,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {(r.workflow_status === "DRAFT" || r.status === "rascunho") && (
+            {r.workflow_status === "DRAFT" && (
               <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             )}
           </div>
@@ -290,9 +280,17 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               <div><Label>Justificativa</Label><Textarea value={form.justificativa} onChange={e => setForm(p => ({ ...p, justificativa: e.target.value }))} /></div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <Label className="text-base font-semibold">Itens</Label>
-                  <Button variant="outline" size="sm" onClick={addItemRow}><Plus className="h-3 w-3 mr-1" /> Adicionar Item</Button>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Buscar item por código/descrição..."
+                      value={scItensSearch}
+                      onChange={(e) => setScItensSearch(e.target.value)}
+                      className="h-8 w-64"
+                    />
+                    <Button variant="outline" size="sm" onClick={addItemRow}><Plus className="h-3 w-3 mr-1" /> Adicionar Item</Button>
+                  </div>
                 </div>
                 {itemRows.map((row, idx) => (
                   <div key={idx} className="flex gap-2 items-end">

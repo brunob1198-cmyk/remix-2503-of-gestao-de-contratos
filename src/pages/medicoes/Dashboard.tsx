@@ -82,27 +82,9 @@ export default function DashboardPage() {
     }
   });
 
-  // Buscar status dos projetos para excluir os Finalizados/Concluídos (alinhar com Análise de Custos)
-  const { data: projetosStatus = [] } = useQuery({
-    queryKey: ["projetos_status_dashboard"],
-    staleTime: 1000 * 60 * 30,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("projetos").select("id, status");
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const projetosExcluidos = useMemo(() => {
-    const set = new Set<string>();
-    projetosStatus.forEach((p: any) => {
-      const s = (p.status || "").toString().toLowerCase().trim();
-      if (s === "finalizado" || s === "concluído" || s === "concluido") set.add(p.id);
-    });
-    return set;
-  }, [projetosStatus]);
-
-  // Predicado comum para exclusão (nomes Comercial/Administrativo + projetos finalizados/concluídos)
+  // Predicado comum para exclusão (apenas nomes Comercial/Administrativo).
+  // Projetos com status "Finalizado/Concluído" NÃO devem ser excluídos do dashboard,
+  // pois sua produção histórica precisa aparecer nos gráficos anuais/mensais.
   const isProjetoExcluido = (p: any) => {
     const projetoNome = p.Projeto || "";
     if (
@@ -111,9 +93,9 @@ export default function DashboardPage() {
       projetoNome.startsWith("Comercial -") ||
       projetoNome.startsWith("Administrativo -")
     ) return true;
-    if (p["ID Projeto"] && projetosExcluidos.has(p["ID Projeto"])) return true;
     return false;
   };
+
 
   // Filtrar dados por período e desconsiderar centros de custo específicos
   const filteredData = useMemo(() => {
@@ -126,7 +108,7 @@ export default function DashboardPage() {
         end: endOfMonth(periodoFim) 
       });
     });
-  }, [biAnalise, periodoInicio, periodoFim, projetosExcluidos]);
+  }, [biAnalise, periodoInicio, periodoFim]);
 
 
   // 1. Gráfico de Produção Total Anual vs MB Real Atingido
@@ -161,7 +143,7 @@ export default function DashboardPage() {
         "Produção Total": d.total,
         "MB Real": d.mb
       }));
-  }, [biAnalise, periodoInicioAnual, periodoFimAnual, projetosExcluidos]);
+  }, [biAnalise, periodoInicioAnual, periodoFimAnual]);
 
   // 2. Gráfico de Produção por Área
   const areaData = useMemo(() => {
@@ -226,18 +208,20 @@ export default function DashboardPage() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <LayoutDashboard className="h-8 w-8 text-primary" />
-            Dashboard (Produção: {formatCurrency(filteredData.reduce((acc, p: any) => acc + Number(p["Produção (POC)"] || 0), 0))})
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight flex items-center gap-2">
+            <LayoutDashboard className="h-6 w-6 sm:h-8 sm:w-8 text-primary shrink-0" />
+            <span className="truncate">Dashboard</span>
           </h1>
-          <p className="text-muted-foreground">Indicadores de performance e visão geral da produção</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Produção: {formatCurrency(filteredData.reduce((acc, p: any) => acc + Number(p["Produção (POC)"] || 0), 0))}
+          </p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 bg-card p-2 rounded-lg border shadow-sm">
-          <Label className="flex items-center gap-2 text-sm font-medium whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-card p-2 rounded-lg border shadow-sm w-full md:w-auto">
+          <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium whitespace-nowrap">
             <Filter className="h-4 w-4" /> Período:
           </Label>
           <MonthRangePicker
@@ -249,7 +233,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Gráfico 1: Produção Anual vs MB Real */}
         <Card className="shadow-md">
           <CardHeader className="flex flex-col space-y-4 pb-2">
@@ -375,7 +359,7 @@ export default function DashboardPage() {
               <CardDescription>Distribuição dos valores produzidos por área de atuação</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-center gap-8">
+          <CardContent className="pt-4 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
             <div className="h-[300px] w-full md:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

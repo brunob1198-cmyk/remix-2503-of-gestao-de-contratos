@@ -1,6 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,7 +40,6 @@ export function TransferirApontamentoButton({
   const [tab, setTab] = useState<"data" | "projeto">(moverDiarioMutation ? "data" : "projeto");
   const [novaData, setNovaData] = useState(currentDate);
   const [destinoProjetoId, setDestinoProjetoId] = useState<string>("");
-  const [destinoSiteId, setDestinoSiteId] = useState<string>("");
 
   const { projetos } = useProjetos();
   const { transferirParaProjeto } = useTransferirDiario();
@@ -51,7 +48,6 @@ export function TransferirApontamentoButton({
     if (open) {
       setNovaData(currentDate);
       setDestinoProjetoId("");
-      setDestinoSiteId("");
       setTab(moverDiarioMutation ? "data" : "projeto");
     }
   }, [open, currentDate, moverDiarioMutation]);
@@ -60,20 +56,6 @@ export function TransferirApontamentoButton({
     () => (projetos || []).filter((p: any) => p.id !== currentProjetoId),
     [projetos, currentProjetoId]
   );
-
-  const { data: sitesDestino = [], isLoading: loadingSites } = useQuery({
-    queryKey: ["sites_destino_transferencia", destinoProjetoId],
-    enabled: !!destinoProjetoId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sites")
-        .select("id, codigo, nome")
-        .eq("projeto_id", destinoProjetoId)
-        .order("codigo");
-      if (error) throw error;
-      return data || [];
-    },
-  });
 
   const handleTransferirData = async () => {
     if (!moverDiarioMutation || !novaData || novaData === currentDate) return;
@@ -87,17 +69,16 @@ export function TransferirApontamentoButton({
   };
 
   const handleTransferirProjeto = async () => {
-    if (!destinoProjetoId || !destinoSiteId) return;
+    if (!destinoProjetoId) return;
     try {
       const result = await transferirParaProjeto.mutateAsync({
         diarioId,
         destinoProjetoId,
-        destinoSiteId,
         novaData: novaData !== currentDate ? novaData : undefined,
       });
       onTransferredProjeto?.({
         targetDiarioId: result.targetDiarioId,
-        destinoSiteId,
+        destinoSiteId: result.destinoSiteId,
         destinoProjetoId,
       });
       setOpen(false);
@@ -146,31 +127,18 @@ export function TransferirApontamentoButton({
             <div>
               <h4 className="font-medium text-sm mb-1">Transferir para outro projeto</h4>
               <p className="text-xs text-muted-foreground">
+                O site atual será replicado no projeto destino (ou reutilizado se já existir com o mesmo código).
                 O projeto destino precisa ter os mesmos itens da LPU (por código).
               </p>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-medium">Projeto destino</label>
-              <Select value={destinoProjetoId} onValueChange={(v) => { setDestinoProjetoId(v); setDestinoSiteId(""); }}>
+              <Select value={destinoProjetoId} onValueChange={setDestinoProjetoId}>
                 <SelectTrigger><SelectValue placeholder="Selecione o projeto" /></SelectTrigger>
                 <SelectContent>
                   {projetosDestino.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium">Site destino</label>
-              <Select value={destinoSiteId} onValueChange={setDestinoSiteId} disabled={!destinoProjetoId || loadingSites}>
-                <SelectTrigger>
-                  <SelectValue placeholder={destinoProjetoId ? (loadingSites ? "Carregando..." : "Selecione o site") : "Selecione um projeto primeiro"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sitesDestino.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.codigo} — {s.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -193,7 +161,7 @@ export function TransferirApontamentoButton({
             <Button
               className="w-full"
               onClick={handleTransferirProjeto}
-              disabled={!destinoProjetoId || !destinoSiteId || transferirParaProjeto.isPending}
+              disabled={!destinoProjetoId || transferirParaProjeto.isPending}
             >
               {transferirParaProjeto.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
               Transferir Apontamento
@@ -204,3 +172,4 @@ export function TransferirApontamentoButton({
     </Popover>
   );
 }
+

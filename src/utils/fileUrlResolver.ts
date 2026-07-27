@@ -44,11 +44,13 @@ export function resolveFileUrl(
     // Se o bucket atual for um UUID ou diferente do bucket esperado do contexto, forçamos a reconstrução
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentBucket);
     
-    if (isUuid || currentBucket !== bucket.split('/')[0]) {
-      console.log(`[RESOLVER] Corrigindo URL Supabase com bucket inválido (${currentBucket}). Contexto: ${context}`);
+    if (isUuid) {
+      console.log(`[RESOLVER] Corrigindo URL Supabase com bucket tipo UUID (${currentBucket}). Contexto: ${context}`);
       // Se for UUID, o UUID é o início do path real (pasta da obra)
       trimmedPath = urlContent; 
     } else {
+      // Se já tem um bucket e não é UUID, assumimos que está correto, a menos que queiramos forçar a troca
+      // Para fotos antigas, é melhor manter o bucket original se ele existir
       return trimmedPath;
     }
   } else if (trimmedPath.startsWith("http://") || (trimmedPath.startsWith("https://") && !isSupabaseUrl)) {

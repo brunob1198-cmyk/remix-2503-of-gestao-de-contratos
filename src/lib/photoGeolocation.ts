@@ -9,43 +9,39 @@ export interface PhotoCoords {
 
 function isImageUrl(url: string): boolean {
   const cleanUrl = url.split("?")[0].toLowerCase();
-  return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic"].some((ext) =>
-    cleanUrl.endsWith(ext)
-  );
+
+  return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic"].some((ext) => cleanUrl.endsWith(ext));
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 8192;
+
   let binary = "";
+
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
+
     binary += String.fromCharCode.apply(null, Array.from(chunk));
   }
+
   return btoa(binary);
 }
 
 const photoCoordsCache = new Map<string, PhotoCoords | null>();
 
-/**
- * Resolve coordinates of a single photo following the priority:
- * 1. Database Cache (foto_geolocalizacao_cache)
- * 2. EXIF metadata
- * 3. OCR (coordinates written/burned in the image) via AI
- * 4. null (caller may fallback to municipio)
- */
-export async function resolvePhotoCoords(
-  url: string,
-  options: { tryOcr?: boolean } = {}
-): Promise<PhotoCoords | null> {
+export async function resolvePhotoCoords(url: string, options: { tryOcr?: boolean } = {}): Promise<PhotoCoords | null> {
   const { tryOcr = true } = options;
+
   if (!isImageUrl(url)) return null;
-  
-  // Memory cache first
-  if (photoCoordsCache.has(url)) return photoCoordsCache.get(url) ?? null;
+
+  if (photoCoordsCache.has(url)) {
+    return photoCoordsCache.get(url) ?? null;
+  }
 
   try {
-    // 1. Check Database Cache
+    // Cache banco
+
     const { data: cached } = await supabase
       .from("foto_geolocalizacao_cache")
       .select("latitude, longitude, source")
@@ -58,21 +54,27 @@ export async function resolvePhotoCoords(
         lng: cached.longitude,
         source: cached.source as any,
       };
+
       photoCoordsCache.set(url, result);
+
       return result;
     }
 
     const response = await fetch(url);
+
     if (!response.ok) {
       photoCoordsCache.set(url, null);
       return null;
     }
+
     const arrayBuffer = await response.arrayBuffer();
 
     let result: PhotoCoords | null = null;
 
-    // 2. EXIF
+    // EXIF
+
     const exif = extractExifGeoDataFromArrayBuffer(arrayBuffer);
+
     if (exif.hasGps && exif.latitude !== null && exif.longitude !== null) {
       result = {
         lat: exif.latitude,
@@ -81,35 +83,48 @@ export async function resolvePhotoCoords(
       };
     }
 
-    // 3. OCR via edge function
+    // OCR VIA CLOUDFLARE WORKER
+
     if (!result && tryOcr) {
       try {
         const base64 = arrayBufferToBase64(arrayBuffer);
-        const { data, error } = await supabase.functions.invoke(
-          "extract-geolocation",
-          { body: { imageBase64: base64 } }
-        );
-        if (!error && data?.latitude != null && data?.longitude != null) {
-          result = {
-            lat: Number(data.latitude),
-            lng: Number(data.longitude),
-            source: "ocr",
-          };
+
+        const workerResponse = await fetch("https://obras-ai-api.brunob1198.workers.dev/extract-geolocation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageBase64: base64,
+          }),
+        });
+
+        if (workerResponse.ok) {
+          const data = await workerResponse.json();
+
+          if (data?.latitude != null && data?.longitude != null) {
+            result = {
+              lat: Number(data.latitude),
+              lng: Number(data.longitude),
+              source: "ocr",
+            };
+          }
         }
       } catch (e) {
-        console.warn("OCR geolocation failed:", e);
+        console.warn("Worker geolocation failed:", e);
       }
     }
 
     if (result) {
-      // Save to both caches
       photoCoordsCache.set(url, result);
+
       await supabase.from("foto_geolocalizacao_cache").upsert({
         url,
         latitude: result.lat,
         longitude: result.lng,
         source: result.source,
       });
+
       return result;
     }
   } catch (e) {
@@ -117,21 +132,26 @@ export async function resolvePhotoCoords(
   }
 
   photoCoordsCache.set(url, null);
+
   return null;
 }
 
-/**
- * Try to resolve coordinates from a list of photo URLs.
- * Returns the first non-null match.
- */
 export async function resolveCoordsFromPhotos(
   urls: string[],
-  options: { tryOcr?: boolean; maxPhotos?: number } = {}
+  options: {
+    tryOcr?: boolean;
+    maxPhotos?: number;
+  } = {},
 ): Promise<PhotoCoords | null> {
   const { maxPhotos = 3, tryOcr = true } = options;
+
   for (const url of urls.filter(isImageUrl).slice(0, maxPhotos)) {
     const coords = await resolvePhotoCoords(url, { tryOcr });
-    if (coords) return coords;
+
+    if (coords) {
+      return coords;
+    }
   }
+
   return null;
 }

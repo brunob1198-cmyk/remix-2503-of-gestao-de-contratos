@@ -302,7 +302,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                                    "h-1/2 flex items-center justify-center text-[9px] font-medium border-b border-black/5",
                                    qtyPrev > 0 ? "bg-muted/80 text-muted-foreground" : "bg-transparent text-transparent"
                                  )}>
-                                   {qtyPrev > 0 ? (qtyPrev > 999 ? '999+' : qtyPrev.toFixed(0)) : ''}
+                                   {qtyPrev > 0 ? (qtyPrev > 999 ? '999+' : qtyPrev.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : ''}
                                  </div>
                                  <div className={cn(
                                    "h-1/2 flex items-center justify-center text-[10px] font-bold",
@@ -311,7 +311,7 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: Gant
                                       (qtyPrev > 0 ? "bg-amber-500/20 text-amber-700" : "bg-emerald-500/10 text-emerald-600")
                                    ) : "bg-transparent text-transparent"
                                  )}>
-                                   {qtyReal > 0 ? (qtyReal > 999 ? '999+' : qtyReal) : ''}
+                                   {qtyReal > 0 ? (qtyReal > 999 ? '999+' : qtyReal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : ''}
                                  </div>
                                </div>
                              );

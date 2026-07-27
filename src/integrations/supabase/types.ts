@@ -1598,6 +1598,7 @@ export type Database = {
           created_at: string | null
           data_emissao: string
           descricao: string | null
+          empresa_id: string | null
           erp_id: string
           id: string
           numero_nota: string | null
@@ -1616,6 +1617,7 @@ export type Database = {
           created_at?: string | null
           data_emissao: string
           descricao?: string | null
+          empresa_id?: string | null
           erp_id: string
           id?: string
           numero_nota?: string | null
@@ -1634,6 +1636,7 @@ export type Database = {
           created_at?: string | null
           data_emissao?: string
           descricao?: string | null
+          empresa_id?: string | null
           erp_id?: string
           id?: string
           numero_nota?: string | null
@@ -1647,6 +1650,13 @@ export type Database = {
           valor_total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "faturamentos_conta_azul_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "faturamentos_conta_azul_projeto_id_fkey"
             columns: ["projeto_id"]
@@ -1797,6 +1807,10 @@ export type Database = {
           flash_description_pattern: string | null
           flash_type: string
           id: string
+          last_feedback_at: string | null
+          last_feedback_source: string | null
+          learned: boolean
+          manual_confirmations: number
           tipo_operacao: string
           updated_at: string
         }
@@ -1812,6 +1826,10 @@ export type Database = {
           flash_description_pattern?: string | null
           flash_type: string
           id?: string
+          last_feedback_at?: string | null
+          last_feedback_source?: string | null
+          learned?: boolean
+          manual_confirmations?: number
           tipo_operacao?: string
           updated_at?: string
         }
@@ -1827,6 +1845,10 @@ export type Database = {
           flash_description_pattern?: string | null
           flash_type?: string
           id?: string
+          last_feedback_at?: string | null
+          last_feedback_source?: string | null
+          learned?: boolean
+          manual_confirmations?: number
           tipo_operacao?: string
           updated_at?: string
         }
@@ -2624,9 +2646,14 @@ export type Database = {
           created_at: string
           data_medicao: string
           data_resposta: string | null
+          fotos_por_pagina: number | null
           id: string
           item_lpu_id: string
+          legenda_padrao_fotos: string | null
           logo_empresa_url: string | null
+          modo_somente_fotos: boolean | null
+          mostrar_lpu: boolean | null
+          mostrar_valores_site: boolean | null
           numero_medicao: string | null
           numero_po: string | null
           observacao: string | null
@@ -2646,9 +2673,14 @@ export type Database = {
           created_at?: string
           data_medicao: string
           data_resposta?: string | null
+          fotos_por_pagina?: number | null
           id?: string
           item_lpu_id: string
+          legenda_padrao_fotos?: string | null
           logo_empresa_url?: string | null
+          modo_somente_fotos?: boolean | null
+          mostrar_lpu?: boolean | null
+          mostrar_valores_site?: boolean | null
           numero_medicao?: string | null
           numero_po?: string | null
           observacao?: string | null
@@ -2668,9 +2700,14 @@ export type Database = {
           created_at?: string
           data_medicao?: string
           data_resposta?: string | null
+          fotos_por_pagina?: number | null
           id?: string
           item_lpu_id?: string
+          legenda_padrao_fotos?: string | null
           logo_empresa_url?: string | null
+          modo_somente_fotos?: boolean | null
+          mostrar_lpu?: boolean | null
+          mostrar_valores_site?: boolean | null
           numero_medicao?: string | null
           numero_po?: string | null
           observacao?: string | null
@@ -2896,6 +2933,41 @@ export type Database = {
             columns: ["medicao_id"]
             isOneToOne: false
             referencedRelation: "lancamentos_medicao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicao_report_photo_captions: {
+        Row: {
+          created_at: string | null
+          foto_id: string
+          id: string
+          legenda: string | null
+          numero_medicao: string
+          ordem: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          foto_id: string
+          id?: string
+          legenda?: string | null
+          numero_medicao: string
+          ordem?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          foto_id?: string
+          id?: string
+          legenda?: string | null
+          numero_medicao?: string
+          ordem?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicao_report_photo_captions_foto_id_fkey"
+            columns: ["foto_id"]
+            isOneToOne: false
+            referencedRelation: "diario_fotos"
             referencedColumns: ["id"]
           },
         ]
@@ -3951,6 +4023,98 @@ export type Database = {
           },
         ]
       }
+      report_templates: {
+        Row: {
+          created_at: string | null
+          fotos_por_pagina: number | null
+          id: string
+          is_default: boolean | null
+          legenda_padrao_fotos: string | null
+          modo_somente_fotos: boolean | null
+          mostrar_lpu: boolean | null
+          mostrar_valores_site: boolean | null
+          nome: string
+          projeto_id: string
+          tipo_medicao: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fotos_por_pagina?: number | null
+          id?: string
+          is_default?: boolean | null
+          legenda_padrao_fotos?: string | null
+          modo_somente_fotos?: boolean | null
+          mostrar_lpu?: boolean | null
+          mostrar_valores_site?: boolean | null
+          nome: string
+          projeto_id: string
+          tipo_medicao?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fotos_por_pagina?: number | null
+          id?: string
+          is_default?: boolean | null
+          legenda_padrao_fotos?: string | null
+          modo_somente_fotos?: boolean | null
+          mostrar_lpu?: boolean | null
+          mostrar_valores_site?: boolean | null
+          nome?: string
+          projeto_id?: string
+          tipo_medicao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "report_templates_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       requisicao_historico: {
         Row: {
           created_at: string
@@ -4155,6 +4319,50 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
+      sc_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          id: string
+          observacoes: string | null
+          status_anterior: string | null
+          status_novo: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          entidade_id?: string
+          entidade_tipo?: string
+          id?: string
+          observacoes?: string | null
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sc_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5270,6 +5478,10 @@ export type Database = {
       fn_get_bdi: {
         Args: { p_competencia: string; p_projeto_id: string }
         Returns: number
+      }
+      gerar_proximo_numero_sc: {
+        Args: { p_empresa_id: string; p_prefixo: string }
+        Returns: string
       }
       get_bi_analise_obras: {
         Args: never

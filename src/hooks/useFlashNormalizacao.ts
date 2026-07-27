@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buildContaAzulPayload,
-  buildMappingIndex,
   normalizeFlashTransaction,
+  translateFlashCategory,
   type FlashCategoryMappingLike,
 } from "@/lib/flashNormalization";
 
@@ -50,12 +50,38 @@ export interface FlashTransactionRow {
 interface CategoryMapping {
   id: string;
   flash_type: string;
+  flash_category?: string | null;
+  flash_cost_center?: string | null;
+  flash_description_pattern?: string | null;
   conta_azul_category_id: string | null;
   conta_azul_category_name: string | null;
   conta_azul_account_id: string | null;
   conta_azul_account_name: string | null;
   tipo_operacao: "receita" | "despesa";
+  manual_confirmations?: number | null;
+  learned?: boolean | null;
+  last_feedback_at?: string | null;
+  last_feedback_source?: string | null;
+  updated_at?: string | null;
 }
+
+type SaveNormalizationOptions = {
+  allowEditEnviado?: boolean;
+  saveMapping?: boolean;
+  saveMappingPerType?: boolean;
+  learnFromEdit?: boolean;
+};
+
+const LEARNING_THRESHOLD = 3;
+
+const normalizeMappingDimension = (value?: string | null): string => {
+  const clean = value?.trim();
+  return clean && clean !== "—" ? clean : "*";
+};
+
+const isSameMappingDimension = (left?: string | null, right?: string | null): boolean => {
+  return normalizeMappingDimension(left).toLowerCase() === normalizeMappingDimension(right).toLowerCase();
+};
 
 const pickPayloadValue = (payload: any, paths: string[]): string | null => {
   if (!payload) return null;
@@ -139,15 +165,7 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   };
   const flash_type = typeTranslations[flash_type_raw] || flash_type_raw;
   const flash_category_raw = pickPayloadValue(p, ["category.name", "transaction.category", "categoria.nome", "category", "categoria", "transaction.categoryName"]) || "—";
-  let flash_category = flash_category_raw;
-  const categoryTranslations: Record<string, string> = {
-    "Refeição": "Refeição", "MEAL": "Refeição", "Alimentação": "Alimentação", "FOOD": "Alimentação",
-    "Combustível": "Combustível", "FUEL": "Combustível", "Mobilidade": "Mobilidade", "MOBILITY": "Mobilidade",
-    "Saúde": "Saúde", "HEALTH": "Saúde", "Cultura": "Cultura", "CULTURE": "Cultura", "Educação": "Educação",
-    "EDUCATION": "Educação", "Outros": "Outros", "OTHERS": "Outros", "Toll": "Pedágio", "TOLL": "Pedágio",
-    "Parking": "Estacionamento", "PARKING": "Estacionamento"
-  };
-  if (categoryTranslations[flash_category_raw]) flash_category = categoryTranslations[flash_category_raw];
+  const flash_category = translateFlashCategory(flash_category_raw) || "—";
   const flash_prestacao_contas_raw = pickPayloadValue(p, ["status", "accountabilityStatus", "accountability_status", "prestacao_de_contas", "prestacaoDeContas", "accountability", "expenseStatus", "expense_status"]) || "—";
   const statusMap: Record<string, string> = {
     "DRAFT": "Em fechamento", "PENDING_ACCOUNTING": "Em aprovação", "PENDING": "Pendente", "APPROVED": "Aprovado",
@@ -183,6 +201,11 @@ export function useFlashNormalizacao() {
   const [contas, setContas] = useState<ContaAzulOption[]>([]);
   const [saasCostCenters, setSaasCostCenters] = useState<string[]>([]);
   const processedRef = useRef<Set<string>>(new Set());
+  const transactionsRef = useRef<FlashTransactionRow[]>([]);
+
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
 
   // 1. Query para buscar transações e normalizações (dados brutos do banco)
   const { data: rawData, isLoading: loadingRaw, refetch: refetchRaw } = useQuery({
@@ -224,6 +247,17 @@ export function useFlashNormalizacao() {
     enabled: !!empresaId,
     staleTime: 5 * 60 * 1000,
   });
+
+  const mappingByType = useMemo(() => {
+    const index = new Map<string, CategoryMapping[]>();
+    (mappings as CategoryMapping[]).forEach((mapping) => {
+      if (mapping.learned === false && (mapping.manual_confirmations ?? 0) < LEARNING_THRESHOLD) return;
+      const current = index.get(mapping.flash_type) || [];
+      current.push(mapping);
+      index.set(mapping.flash_type, current);
+    });
+    return index;
+  }, [mappings]);
 
   // 3. Transformação e Normalização Automática (gera o estado mutável transactions)
   useEffect(() => {
@@ -268,6 +302,51 @@ export function useFlashNormalizacao() {
         if (n.conta_azul_payload?.cost_center) {
           base.flash_cost_center = n.conta_azul_payload.cost_center;
         }
+
+        if (!n.conta_azul_category_id && n.status !== "enviado") {
+          const learnedNormalization = normalizeFlashTransaction({
+            id: rawTx.id,
+            external_id: rawTx.external_id,
+            payload_json: rawTx.payload_json,
+            flash_type: base.flash_type,
+            flash_category: base.flash_category,
+            flash_cost_center: base.flash_cost_center,
+            descricao: base.descricao,
+          }, mappings as any[]);
+
+          if (learnedNormalization.status === "normalizado") {
+            base.tipo_operacao = learnedNormalization.tipo_operacao;
+            base.status = learnedNormalization.status;
+            base.conta_azul_category_id = learnedNormalization.conta_azul_category_id;
+            base.conta_azul_category_name = learnedNormalization.conta_azul_category_name;
+            base.conta_azul_account_id = flashAccount?.id ?? learnedNormalization.conta_azul_account_id;
+            base.conta_azul_account_name = flashAccount?.name ?? learnedNormalization.conta_azul_account_name;
+            base.motivo = learnedNormalization.motivo;
+            base.flash_type_detectado = learnedNormalization.flash_type;
+            base.mapping_id_usado = learnedNormalization.mapping_id_usado;
+            base.conta_azul_payload = learnedNormalization.conta_azul_payload;
+
+            const reprocessKey = `mapped:${rawTx.id}:${learnedNormalization.mapping_id_usado || "sem-id"}`;
+            if (!processedRef.current.has(reprocessKey)) {
+              autoNormPayloads.push({
+                empresa_id: empresaId,
+                flash_transaction_id: rawTx.id,
+                conta_azul_category_id: base.conta_azul_category_id ?? null,
+                conta_azul_category_name: base.conta_azul_category_name ?? null,
+                conta_azul_account_id: base.conta_azul_account_id ?? null,
+                conta_azul_account_name: base.conta_azul_account_name ?? null,
+                tipo_operacao: base.tipo_operacao ?? "despesa",
+                status: base.status ?? "pendente",
+                conta_azul_payload: base.conta_azul_payload,
+                normalizado_at: new Date().toISOString(),
+                flash_type_detectado: base.flash_type_detectado,
+                mapping_id_usado: base.mapping_id_usado,
+                motivo: base.motivo,
+              });
+              processedRef.current.add(reprocessKey);
+            }
+          }
+        }
         return base;
       }
 
@@ -301,6 +380,9 @@ export function useFlashNormalizacao() {
           status: base.status ?? "pendente",
           conta_azul_payload: base.conta_azul_payload,
           normalizado_at: (base.status === "normalizado") ? new Date().toISOString() : null,
+          flash_type_detectado: base.flash_type_detectado,
+          mapping_id_usado: base.mapping_id_usado,
+          motivo: base.motivo,
         });
         processedRef.current.add(rawTx.id);
       }
@@ -351,32 +433,111 @@ export function useFlashNormalizacao() {
     fetchSaasData();
   }, [empresaId]);
 
-  const saveNormalization = useCallback(async (row: FlashTransactionRow, patch: any, opts?: any) => {
+  const learnCategoryMapping = useCallback(async (
+    row: FlashTransactionRow,
+    merged: FlashTransactionRow,
+    opts: SaveNormalizationOptions = {}
+  ) => {
+    if (!empresaId || !row.flash_type || !merged.conta_azul_category_id) return;
+
+    const flashCategory = normalizeMappingDimension(row.flash_category);
+    const flashCostCenter = normalizeMappingDimension(merged.flash_cost_center || row.flash_cost_center);
+    const forceLearned = !!(opts.saveMapping || opts.saveMappingPerType);
+    const now = new Date().toISOString();
+
+    const localExisting = (mappings as CategoryMapping[]).find((mapping) =>
+      mapping.flash_type === row.flash_type &&
+      isSameMappingDimension(mapping.flash_category, flashCategory) &&
+      isSameMappingDimension(mapping.flash_cost_center, flashCostCenter)
+    );
+
+    const { data: databaseExisting, error: existingError } = await supabase
+      .from("flash_category_mapping")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .eq("flash_type", row.flash_type)
+      .eq("flash_category", flashCategory)
+      .eq("flash_cost_center", flashCostCenter)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    const existing = (databaseExisting as CategoryMapping | null) ?? localExisting;
+
+    const nextConfirmations = Math.max(existing?.manual_confirmations ?? 0, forceLearned ? LEARNING_THRESHOLD - 1 : 0) + 1;
+    const learned = forceLearned || nextConfirmations >= LEARNING_THRESHOLD;
+    const payload = {
+      empresa_id: empresaId,
+      flash_type: row.flash_type,
+      flash_category: flashCategory,
+      flash_cost_center: flashCostCenter,
+      conta_azul_category_id: merged.conta_azul_category_id,
+      conta_azul_category_name: merged.conta_azul_category_name,
+      conta_azul_account_id: merged.conta_azul_account_id,
+      conta_azul_account_name: merged.conta_azul_account_name,
+      tipo_operacao: merged.tipo_operacao ?? "despesa",
+      manual_confirmations: nextConfirmations,
+      learned,
+      last_feedback_at: now,
+      last_feedback_source: forceLearned ? "save_mapping_button" : "category_edit",
+      updated_at: now,
+    };
+
+    const result = existing?.id
+      ? await supabase.from("flash_category_mapping").update(payload).eq("id", existing.id)
+      : await supabase.from("flash_category_mapping").upsert(payload, {
+          onConflict: "empresa_id,flash_type,flash_category,flash_cost_center",
+        });
+
+    if (result.error) throw result.error;
+    await queryClient.invalidateQueries({ queryKey: ["flash_mappings", empresaId] });
+
+    if (forceLearned) {
+      toast.success("Mapeamento salvo", {
+        description: `Novos lançamentos de ${row.flash_category} usarão ${merged.conta_azul_category_name}.`,
+      });
+    } else if (nextConfirmations === LEARNING_THRESHOLD) {
+      toast.success("Aprendizado incorporado", {
+        description: `Após ${LEARNING_THRESHOLD} ajustes, ${row.flash_category} passará a sugerir ${merged.conta_azul_category_name}.`,
+      });
+    }
+  }, [empresaId, mappings, queryClient]);
+
+  const saveNormalization = useCallback(async (row: FlashTransactionRow, patch: any, opts: SaveNormalizationOptions = {}) => {
     if (!empresaId || (row.status === "enviado" && !opts?.allowEditEnviado)) return;
     setSavingId(row.id);
+    let previousTransactions: FlashTransactionRow[] | null = null;
     try {
+      const currentRow = transactionsRef.current.find((transaction) => transaction.id === row.id) ?? row;
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
       const merged = { 
-        ...row, 
+        ...currentRow, 
         ...patch, 
-        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? row.conta_azul_account_id,
-        enviado_at: patch.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : row.enviado_at)
+        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? currentRow.conta_azul_account_id,
+        enviado_at: patch.status === "enviado" ? (currentRow.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : currentRow.enviado_at)
       };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
+      previousTransactions = transactionsRef.current;
+      setTransactions(prev => {
+        const next = prev.map(t => t.id === currentRow.id ? { ...t, ...merged } : t);
+        transactionsRef.current = next;
+        return next;
+      });
+
       const payload = buildContaAzulPayload({
-        descricao: row.descricao, usuario: row.usuario, valor: row.valor, data: row.data, tipo_operacao: merged.tipo_operacao,
+        descricao: currentRow.descricao, usuario: currentRow.usuario, valor: currentRow.valor, data: currentRow.data, tipo_operacao: merged.tipo_operacao,
         conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
         conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
-        external_id: row.external_id, flash_type: row.flash_type,
-        comentarios: merged.comentarios !== "—" ? merged.comentarios : (row.comentarios !== "—" ? row.comentarios : null),
-        cost_center: merged.flash_cost_center !== "—" ? merged.flash_cost_center : (row.flash_cost_center !== "—" ? row.flash_cost_center : null),
+        external_id: currentRow.external_id, flash_type: currentRow.flash_type,
+        comentarios: merged.comentarios !== "—" ? merged.comentarios : (currentRow.comentarios !== "—" ? currentRow.comentarios : null),
+        cost_center: merged.flash_cost_center !== "—" ? merged.flash_cost_center : (currentRow.flash_cost_center !== "—" ? currentRow.flash_cost_center : null),
         force_pago: true
       });
 
       const { data: normData, error } = await supabase.from("flash_normalizacao").upsert({
         empresa_id: empresaId,
-        flash_transaction_id: row.id,
+        flash_transaction_id: currentRow.id,
         conta_azul_category_id: merged.conta_azul_category_id ?? null,
         conta_azul_category_name: merged.conta_azul_category_name ?? null,
         conta_azul_account_id: merged.conta_azul_account_id ?? null,
@@ -385,29 +546,57 @@ export function useFlashNormalizacao() {
         status: merged.status ?? "pendente",
         conta_azul_payload: payload,
         normalizado_at: (merged.status === "normalizado" || merged.status === "enviado") ? new Date().toISOString() : null,
-        enviado_at: merged.status === "enviado" ? (row.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : row.enviado_at),
+        enviado_at: merged.status === "enviado" ? (currentRow.enviado_at || new Date().toISOString()) : (merged.status === "normalizado" ? null : currentRow.enviado_at),
+        flash_type_detectado: currentRow.flash_type,
+        mapping_id_usado: merged.mapping_id_usado ?? currentRow.mapping_id_usado ?? null,
+        motivo: opts.saveMapping
+          ? `Normalizado manualmente e mapeamento salvo para Categoria Flash "${currentRow.flash_category}" e Centro de Custo "${merged.flash_cost_center || currentRow.flash_cost_center}".`
+          : (currentRow.motivo ?? null),
       }, { onConflict: "flash_transaction_id" }).select().single();
       if (error) throw error;
 
-      setTransactions(prev => prev.map(t => t.id === row.id ? { ...t, ...merged, norm_id: normData.id, conta_azul_payload: payload } : t));
+      queryClient.setQueryData(["flash_transactions", empresaId], (old: any) => {
+        if (!old) return old;
+        const previousNorms = Array.isArray(old.norm) ? old.norm : [];
+        const hasNorm = previousNorms.some((norm: any) => norm.flash_transaction_id === currentRow.id);
+        const norm = hasNorm
+          ? previousNorms.map((item: any) => item.flash_transaction_id === currentRow.id ? normData : item)
+          : [...previousNorms, normData];
+        return { ...old, norm };
+      });
 
-      if (opts?.saveMapping && row.flash_type) {
-        await supabase.from("flash_category_mapping").upsert({
-          empresa_id: empresaId, flash_type: row.flash_type, flash_category: row.flash_category, flash_cost_center: row.flash_cost_center,
-          conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
-          conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
-          tipo_operacao: merged.tipo_operacao,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "empresa_id,flash_type,flash_category,flash_cost_center" });
+      setTransactions(prev => {
+        const next = prev.map(t => t.id === currentRow.id ? {
+        ...t,
+        ...merged,
+        norm_id: normData.id,
+        conta_azul_payload: payload,
+        flash_type_detectado: currentRow.flash_type,
+        motivo: normData.motivo ?? t.motivo,
+        } : t);
+        transactionsRef.current = next;
+        return next;
+      });
 
-        queryClient.invalidateQueries({ queryKey: ["flash_mappings", empresaId] });
+      if ((opts.saveMapping || opts.saveMappingPerType || opts.learnFromEdit) && currentRow.flash_type) {
+        try {
+          await learnCategoryMapping(currentRow, { ...currentRow, ...merged, conta_azul_payload: payload }, opts);
+        } catch (mappingError: any) {
+          toast.warning("Categoria salva, mas o aprendizado não foi atualizado", {
+            description: mappingError?.message,
+          });
+        }
       }
     } catch (e: any) {
+      if (previousTransactions) {
+        transactionsRef.current = previousTransactions;
+        setTransactions(previousTransactions);
+      }
       toast.error("Erro ao salvar", { description: e.message });
     } finally {
       setSavingId(null);
     }
-  }, [empresaId, contas, queryClient]);
+  }, [empresaId, contas, learnCategoryMapping, queryClient]);
 
   const sendToContaAzul = async (ids: string[]) => {
     setSending(true);
@@ -502,11 +691,30 @@ export function useFlashNormalizacao() {
     }
   };
 
-  const bulkApplyToPending = async (ids: string[], params: any) => {
+  const bulkUpdateCategoriaCA = async (ids: string[], categoria: { id: string; name: string }) => {
     for (const id of ids) {
       const row = transactions.find(t => t.id === id);
       if (row) {
-        await saveNormalization(row, params);
+        await saveNormalization(
+          row,
+          { conta_azul_category_id: categoria.id, conta_azul_category_name: categoria.name },
+          { allowEditEnviado: true, learnFromEdit: true }
+        );
+      }
+    }
+  };
+
+  const bulkApplyToPending = async (ids: string[], params: any) => {
+    const { saveMappingPerType, learnFromEdit, allowEditEnviado, saveMapping, ...patch } = params;
+    for (const id of ids) {
+      const row = transactions.find(t => t.id === id);
+      if (row) {
+        await saveNormalization(row, patch, {
+          saveMappingPerType,
+          learnFromEdit,
+          allowEditEnviado,
+          saveMapping,
+        });
       }
     }
   };
@@ -532,8 +740,8 @@ export function useFlashNormalizacao() {
   return {
     loading: loadingRaw || loadingMappings, savingId, sending, transactions, mappings, categorias, contas, loadingMetadata, metadataError,
     refresh, refreshMetadata: fetchMetadata, saveNormalization, sendToContaAzul, updateCostCenter, saasCostCenters,
-    updateStatus, mappingByType: new Map(),
-    applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter
+    updateStatus, mappingByType,
+    applyMappingToAllPending, bulkApplyToPending, reopenEnviado, reprocessAll, bulkUpdateCostCenter, bulkUpdateCategoriaCA
   };
 }
 

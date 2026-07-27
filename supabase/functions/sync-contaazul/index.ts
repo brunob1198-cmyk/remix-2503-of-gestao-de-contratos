@@ -587,6 +587,44 @@ function resolveProjetoESite(
     return { projetoId: null, siteId: null, strategy: "none" };
   }
 
+  // 1) Prioridade: extrair código do projeto (ex.: "O003.26") do centro de custo
+  const extractedCode = extractProjectCode(centroCusto);
+  let matchedProject = extractedCode ? projetosByCode.get(normalizeText(extractedCode)) || null : null;
+
+  // 2) Se achou projeto pelo código, tenta casar um site DENTRO desse projeto
+  if (matchedProject) {
+    const candidateSites = sitesByProjeto.get(matchedProject.id) || [];
+    const scopedSiteMatch = candidateSites
+      .map((site) => ({
+        site,
+        score: Math.max(
+          scoreMatch(normalizedCentro, site.normalizedCode),
+          scoreMatch(normalizedCentro, site.normalizedName),
+        ),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (scopedSiteMatch) {
+      return {
+        projetoId: matchedProject.id,
+        siteId: scopedSiteMatch.site.id,
+        strategy: "code-project-site",
+      };
+    }
+
+    if (candidateSites.length === 1) {
+      return {
+        projetoId: matchedProject.id,
+        siteId: candidateSites[0].id,
+        strategy: "code-project-single-site",
+      };
+    }
+
+    return { projetoId: matchedProject.id, siteId: null, strategy: "code-project-only" };
+  }
+
+  // 3) Fallback: direct site match global (apenas quando não há código de projeto)
   const directSiteMatch = sites
     .map((site) => ({
       site,
@@ -606,56 +644,35 @@ function resolveProjetoESite(
     };
   }
 
-  const extractedCode = extractProjectCode(centroCusto);
-  let matchedProject = extractedCode ? projetosByCode.get(normalizeText(extractedCode)) || null : null;
 
-  if (!matchedProject) {
-    matchedProject = projetos
-      .map((projeto) => ({
-        projeto,
-        score: Math.max(
-          scoreMatch(normalizedCentro, projeto.normalizedCode),
-          scoreMatch(normalizedCentro, projeto.normalizedName),
-        ),
-      }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score)[0]?.projeto || null;
-  }
-
-  if (!matchedProject) {
-    return { projetoId: null, siteId: null, strategy: "unmatched" };
-  }
-
-  const candidateSites = sitesByProjeto.get(matchedProject.id) || [];
-  const scopedSiteMatch = candidateSites
-    .map((site) => ({
-      site,
+  // 4) Último fallback: fuzzy match por nome/código de projeto
+  const fuzzyProject = projetos
+    .map((projeto) => ({
+      projeto,
       score: Math.max(
-        scoreMatch(normalizedCentro, site.normalizedCode),
-        scoreMatch(normalizedCentro, site.normalizedName),
+        scoreMatch(normalizedCentro, projeto.normalizedCode),
+        scoreMatch(normalizedCentro, projeto.normalizedName),
       ),
     }))
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score)[0];
+    .sort((a, b) => b.score - a.score)[0]?.projeto || null;
 
-  if (scopedSiteMatch) {
+  if (!fuzzyProject) {
+    return { projetoId: null, siteId: null, strategy: "unmatched" };
+  }
+
+  const fuzzySites = sitesByProjeto.get(fuzzyProject.id) || [];
+  if (fuzzySites.length === 1) {
     return {
-      projetoId: matchedProject.id,
-      siteId: scopedSiteMatch.site.id,
-      strategy: "project-site",
+      projetoId: fuzzyProject.id,
+      siteId: fuzzySites[0].id,
+      strategy: "fuzzy-project-single-site",
     };
   }
 
-  if (candidateSites.length === 1) {
-    return {
-      projetoId: matchedProject.id,
-      siteId: candidateSites[0].id,
-      strategy: "project-single-site",
-    };
-  }
-
-  return { projetoId: matchedProject.id, siteId: null, strategy: "project-only" };
+  return { projetoId: fuzzyProject.id, siteId: null, strategy: "fuzzy-project-only" };
 }
+
 
 /**
  * Fetch with retry and rate-limit handling.

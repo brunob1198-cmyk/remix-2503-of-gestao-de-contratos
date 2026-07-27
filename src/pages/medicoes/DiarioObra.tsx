@@ -413,23 +413,23 @@ export default function DiarioObraPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <HardHat className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Diário de Obra</h1>
+          <HardHat className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Diário de Obra</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 min-w-[300px]">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 w-full sm:min-w-[280px] sm:flex-1 sm:max-w-md">
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-between">
-                  {selectedProjetoId ? projetos.find(p => p.id === selectedProjetoId)?.nome : "Selecione o projeto"}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                  <span className="truncate">{selectedProjetoId ? projetos.find(p => p.id === selectedProjetoId)?.nome : "Selecione o projeto"}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0">
                 <Command>
                   <CommandInput placeholder="Pesquisar projeto..." />
                   <CommandList>
@@ -446,21 +446,21 @@ export default function DiarioObraPage() {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex items-center gap-2 min-w-[300px]">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 w-full sm:min-w-[280px] sm:flex-1 sm:max-w-md">
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full justify-between" disabled={!selectedProjetoId}>
-                  {selectedSiteId ? (
+                  <span className="truncate">{selectedSiteId ? (
                     (() => {
                       const s = sites.find(s => s.id === selectedSiteId);
                       return s ? `${s.codigo} — ${s.nome}` : "Selecione o site";
                     })()
-                  ) : "Selecione o site"}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                  ) : "Selecione o site"}</span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0">
                 <Command>
                   <CommandInput placeholder="Pesquisar site..." />
                   <CommandList>
@@ -498,11 +498,11 @@ export default function DiarioObraPage() {
         <TabsContent value="lancamento">
           <div className="space-y-4">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-[180px]" />
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                  <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full sm:w-[180px]" />
                   <Select value={diarioClima} onValueChange={setDiarioClima}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="🌤️ Clima" /></SelectTrigger>
                     <SelectContent>
                       {CLIMA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>

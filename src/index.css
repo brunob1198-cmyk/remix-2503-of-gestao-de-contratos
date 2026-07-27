@@ -133,9 +133,25 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
+
+  /* Avoid iOS auto-zoom on focus by ensuring form fields >= 16px on mobile */
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+    button, [role="button"], a {
+      touch-action: manipulation;
+    }
+  }
+}
+
+/* Responsive table wrapper — horizontal scroll on narrow screens */
+.table-responsive {
+  @apply w-full overflow-x-auto;
 }
 
 /* Gantt scroll area - always show scrollbar */

@@ -1,14 +1,19 @@
 import { format } from "date-fns";
+import { getPdfSafeImageDataUrl } from "./pdfExportUtils";
+import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
 
 interface TEPData {
   siteNome: string;
   observacoes: string;
   fotos: {
     url: string;
+    thumb_600_url?: string | null;
     classificacao: string;
     legenda: string | null;
     site_nome?: string;
     site_id?: string;
+    diario_data?: string;
+    item_descricao?: string;
   }[];
   logoUrl?: string | null;
   clienteLogoUrl?: string | null;
@@ -22,9 +27,15 @@ interface TEPData {
   addLog?: (message: string, type?: 'info' | 'error' | 'success' | 'debug') => void;
 }
 
-export const exportTEPToHtml = async (data: TEPData) => {
+export const exportTEPToHtml = (data: TEPData) => {
   const { addLog } = data;
   addLog?.("Gerando Relatório TEP em formato HTML...", "info");
+
+  const processedFotos = data.fotos;
+  const processedLogoUrl = data.logoUrl;
+  const processedClienteLogoUrl = data.clienteLogoUrl;
+
+
 
   const buildPhotoCardHtml = (foto: any) => {
     const clsLower = foto.classificacao?.toLowerCase();
@@ -35,10 +46,32 @@ export const exportTEPToHtml = async (data: TEPData) => {
                  (clsLower === "execucao" || clsLower === "execução") ? "Execução" : 
                  foto.classificacao;
 
+    const extension = (foto.url?.split('.').pop() || 'jpg').toLowerCase();
+    const dateStr = foto.diario_data ? foto.diario_data.replace(/-/g, '') : '00000000';
+    const itemDesc = (foto.item_descricao || 'foto').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `foto_${dateStr}_${itemDesc.substring(0, 20)}.${extension}`.toLowerCase();
+    const siteName = (foto.site_nome || 'site').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const classification = (foto.classificacao || 'geral').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const relativeDir = `fotos/${siteName}/${classification}`;
+    const localPath = `${relativeDir}/${fileName}`;
+    const safePath = localPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+
+    // Pega as URLs base para fallbacks progressivos
+    const expandedUrls = buildPossibleImageUrls(foto.url, [foto.thumb_600_url, foto.thumb_url], "diario_fotos");
+    
+    const primaryUrl = expandedUrls[0] || foto.url;
+    const fallbackStr = expandedUrls.slice(1).join(',');
+
     return `
       <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
         <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
-          <img src="${foto.url}" style="width: 100%; height: 100%; object-fit: contain;" crossorigin="anonymous" onerror="this.src='https://via.placeholder.com/400x300?text=Erro+ao+carregar+imagem'"/>
+          <img 
+            src="${primaryUrl}" 
+            data-local-src="${safePath}"
+            data-fallback-src="${fallbackStr}"
+            style="width: 100%; height: 100%; object-fit: contain;" 
+            loading="lazy"
+            onerror="handleImageError(this)"/>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
@@ -83,7 +116,7 @@ export const exportTEPToHtml = async (data: TEPData) => {
   } else {
     const groups = ["Vistoria", "Execução"];
     const sectionsHtml = groups.map(group => {
-      const groupFotos = data.fotos.filter(f => 
+      const groupFotos = processedFotos.filter(f => 
         f.classificacao.toLowerCase() === group.toLowerCase() || 
         (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
         (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
@@ -117,6 +150,40 @@ export const exportTEPToHtml = async (data: TEPData) => {
     <head>
       <meta charset="UTF-8">
       <title>Relatório TEP - ${data.siteNome}</title>
+      <script>
+        function handleImageError(img) {
+          if (!img || img.dataset.errorHandled) return;
+          
+          if (img.src.startsWith('data:')) return;
+          
+          // 1. Tentar o path local (relativo ao ZIP) se ainda não tentou
+          if (!img.dataset.triedLocal) {
+            img.dataset.triedLocal = 'true';
+            if (img.dataset.localSrc && img.dataset.localSrc !== 'undefined' && img.dataset.localSrc !== '') {
+              img.src = img.dataset.localSrc;
+              return;
+            }
+          }
+          
+          // 2. Tentar os fallbacks (Supabase, Thumbs, etc)
+          let fallbacks = img.dataset.fallbackSrc ? img.dataset.fallbackSrc.split(',') : [];
+          let idx = parseInt(img.dataset.fallbackIdx || '0');
+          
+          if (idx < fallbacks.length && fallbacks[idx] && fallbacks[idx] !== 'undefined' && fallbacks[idx] !== '') {
+            img.dataset.fallbackIdx = (idx + 1).toString();
+            img.src = fallbacks[idx];
+            return;
+          }
+          
+          // 3. Se tudo falhar, mostra placeholder
+          img.dataset.errorHandled = 'true';
+          img.style.display = 'none';
+          const parent = img.parentElement;
+          if (parent) {
+            parent.innerHTML = '<div style="padding: 10px; font-size: 10px; color: #991b1b; text-align: center; height: 100%; display: flex; align-items: center; justify-content: center; background: #fef2f2; border: 1px dashed #fecaca; border-radius: 4px;"><b>Imagem não disponível</b></div>';
+          }
+        }
+      </script>
       <style>
         body { font-family: 'Helvetica', 'Arial', sans-serif; line-height: 1.5; color: #1f2937; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f3f4f6; }
         .page { background: white; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-radius: 8px; }
@@ -135,9 +202,9 @@ export const exportTEPToHtml = async (data: TEPData) => {
     <body>
       <div class="page">
         <div class="header">
-          ${data.logoUrl ? `<img src="${data.logoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
+          ${processedLogoUrl ? `<img src="${processedLogoUrl}" class="logo" alt="Logo Empresa" />` : "<div></div>"}
           <h1 class="title">Relatório TEP</h1>
-          ${data.clienteLogoUrl ? `<img src="${data.clienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
+          ${processedClienteLogoUrl ? `<img src="${processedClienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
         <div class="info-grid">

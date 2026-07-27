@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Eye, Clock, AlertCircle } from "lucide-react";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+import {
+  WORKFLOW_STATUS_OPTIONS,
+  getStatusLabel,
+  getStatusVariant,
+} from "@/lib/requisicaoStatus";
 
-const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+// Pedido (purchase order) statuses remain in Portuguese lowercase for now.
+const PEDIDO_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   rascunho: { label: "Rascunho", variant: "secondary" },
-  pendente_aprovacao: { label: "Pendente Aprovação", variant: "outline" },
-  em_cotacao: { label: "Em Cotação", variant: "outline" },
-  aprovada: { label: "Aprovada", variant: "default" },
-  rejeitada: { label: "Rejeitada", variant: "destructive" },
-  pedido_emitido: { label: "Pedido Emitido", variant: "default" },
   emitido: { label: "Emitido", variant: "default" },
   confirmado: { label: "Confirmado", variant: "default" },
   entrega_parcial: { label: "Entrega Parcial", variant: "outline" },
@@ -21,8 +22,16 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   cancelado: { label: "Cancelado", variant: "destructive" },
 };
 
-function statusBadge(status: string) {
-  const cfg = STATUS_MAP[status] || { label: status, variant: "outline" as const };
+function requisicaoStatusBadge(workflow_status: string) {
+  return (
+    <Badge variant={getStatusVariant(workflow_status)} className="text-[10px] px-1.5 py-0">
+      {getStatusLabel(workflow_status)}
+    </Badge>
+  );
+}
+
+function pedidoStatusBadge(status: string) {
+  const cfg = PEDIDO_STATUS_MAP[status] || { label: status, variant: "outline" as const };
   return (
     <Badge variant={cfg.variant} className="text-[10px] px-1.5 py-0">
       {cfg.label}
@@ -52,19 +61,19 @@ const reqColumns: ColumnDef<any>[] = [
     },
   },
   {
-    accessorKey: "status",
+    accessorKey: "workflow_status",
     header: ({ column }) => (
       <div className="flex items-center">
         <DataTableColumnHeader column={column} title="Status" />
-        <DataTableColumnFilter 
-          column={column} 
-          title="Filtro Status" 
-          options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
+        <DataTableColumnFilter
+          column={column}
+          title="Filtro Status"
+          options={WORKFLOW_STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
         />
       </div>
     ),
     filterFn: multiSelectFilter,
-    cell: ({ row }) => statusBadge(row.getValue("status")),
+    cell: ({ row }) => requisicaoStatusBadge(row.getValue("workflow_status")),
   },
   {
     id: "actions",
@@ -100,15 +109,15 @@ const pedColumns: ColumnDef<any>[] = [
     header: ({ column }) => (
       <div className="flex items-center">
         <DataTableColumnHeader column={column} title="Status" />
-        <DataTableColumnFilter 
-          column={column} 
-          title="Filtro Status" 
-          options={Object.keys(STATUS_MAP).map(k => ({ label: STATUS_MAP[k].label, value: k }))} 
+        <DataTableColumnFilter
+          column={column}
+          title="Filtro Status"
+          options={Object.keys(PEDIDO_STATUS_MAP).map(k => ({ label: PEDIDO_STATUS_MAP[k].label, value: k }))}
         />
       </div>
     ),
     filterFn: multiSelectFilter,
-    cell: ({ row }) => statusBadge(row.getValue("status")),
+    cell: ({ row }) => pedidoStatusBadge(row.getValue("status")),
   },
   {
     id: "actions",
@@ -117,6 +126,7 @@ const pedColumns: ColumnDef<any>[] = [
     ),
   },
 ];
+
 
 export function MinhaFilaTab() {
   const { data, isLoading } = useMinhaFila();

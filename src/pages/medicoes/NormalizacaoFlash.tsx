@@ -320,6 +320,7 @@ export default function NormalizacaoFlashPage() {
     saasCostCenters,
     reprocessAll,
     bulkUpdateCostCenter,
+    bulkUpdateCategoriaCA,
     updateStatus,
   } = useFlashNormalizacao();
 
@@ -450,6 +451,9 @@ export default function NormalizacaoFlashPage() {
   // Bulk CC state
   const [bulkCCValue, setBulkCCValue] = useState("");
   const [bulkCCOpen, setBulkCCOpen] = useState(false);
+  // Bulk Categoria CA state
+  const [bulkCatCAOpen, setBulkCatCAOpen] = useState(false);
+  const [bulkCatCASearch, setBulkCatCASearch] = useState("");
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // Efeito para fixar a conta financeira padrão "Flash" (qualquer conta com 'flash' no nome)
@@ -484,20 +488,89 @@ export default function NormalizacaoFlashPage() {
     });
   }, [transactions, dateFrom, dateTo]);
 
-  // Extract unique values for filters (from all transactions to avoid hiding options)
+  // Cascading filter options: each dimension's available values respect ALL other active filters.
   const filterOptions = useMemo(() => {
-    const users = Array.from(new Set(transactions.map(t => t.usuario))).filter(Boolean).sort();
-    const types = Array.from(new Set(transactions.map(t => t.flash_type))).filter(Boolean).sort();
-    const categories = Array.from(new Set(transactions.map(t => t.flash_category))).filter(Boolean).sort();
-    const costCenters = Array.from(new Set(transactions.map(t => t.flash_cost_center))).filter(Boolean).sort();
-    const prestacaoContas = Array.from(new Set(transactions.map(t => t.flash_prestacao_contas))).filter(Boolean).sort();
-    
-    // Novas opções para filtros CA
-    const caCategories = Array.from(new Set(transactions.map(t => t.conta_azul_category_name))).filter(Boolean).sort();
-    const caStatus = ["pendente", "normalizado", "enviado"];
-    
-    return { users, types, categories, costCenters, prestacaoContas, caCategories, caStatus };
-  }, [transactions]);
+    const dataFilter = searchParams.get("data")?.split(",").filter(Boolean) || [];
+    const descFilter = searchParams.get("desc")?.split(",").filter(Boolean) || [];
+    const valFilter = searchParams.get("val")?.split(",").filter(Boolean) || [];
+    const userHeaderFilter = searchParams.get("user")?.split(",").filter(Boolean) || [];
+    const typeHeaderFilter = searchParams.get("type")?.split(",").filter(Boolean) || [];
+    const catHeaderFilter = searchParams.get("cat")?.split(",").filter(Boolean) || [];
+    const ccHeaderFilter = searchParams.get("cc")?.split(",").filter(Boolean) || [];
+    const caCatFilter = searchParams.get("ca_cat")?.split(",").filter(Boolean) || [];
+    const caStatusFilter = searchParams.get("ca_status")?.split(",").filter(Boolean) || [];
+    const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
+
+    // Predicates keyed by dimension. When computing options for X, we apply every predicate EXCEPT X.
+    const predicates: Record<string, (t: typeof transactions[number]) => boolean> = {
+      status: (t) => statusFilter === "todos" || t.status === statusFilter,
+      users: (t) =>
+        (selectedUsers.length === 0 || selectedUsers.includes(t.usuario)) &&
+        (userHeaderFilter.length === 0 || userHeaderFilter.includes(t.usuario)),
+      types: (t) =>
+        (selectedTypes.length === 0 || selectedTypes.includes(t.flash_type)) &&
+        (typeHeaderFilter.length === 0 || typeHeaderFilter.includes(t.flash_type)),
+      categories: (t) =>
+        (selectedCategories.length === 0 || selectedCategories.includes(t.flash_category)) &&
+        (catHeaderFilter.length === 0 || catHeaderFilter.includes(t.flash_category)),
+      costCenters: (t) =>
+        (selectedCostCenters.length === 0 || selectedCostCenters.includes(t.flash_cost_center)) &&
+        (ccHeaderFilter.length === 0 || ccHeaderFilter.includes(t.flash_cost_center)),
+      prestacaoContas: (t) =>
+        (selectedPrestacao.length === 0 || selectedPrestacao.includes(t.flash_prestacao_contas)) &&
+        (prestHeaderFilter.length === 0 || prestHeaderFilter.includes(t.flash_prestacao_contas)),
+      caCategories: (t) => caCatFilter.length === 0 || caCatFilter.includes(t.conta_azul_category_name || ""),
+      caStatus: (t) => caStatusFilter.length === 0 || caStatusFilter.includes(t.status || "pendente"),
+      data: (t) => dataFilter.length === 0 || dataFilter.includes(formatDate(t.data)),
+      desc: (t) => descFilter.length === 0 || descFilter.includes(t.descricao),
+      val: (t) => valFilter.length === 0 || valFilter.includes(formatCurrency(t.valor)),
+      coment: (t) => {
+        const tokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (tokens.length === 0) return true;
+        const hay = (t.comentarios || "").toLowerCase();
+        return tokens.every((tok) => hay.includes(tok));
+      },
+      search: (t) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return (
+          t.descricao.toLowerCase().includes(q) ||
+          t.usuario.toLowerCase().includes(q) ||
+          t.flash_type.toLowerCase().includes(q) ||
+          (t.flash_prestacao_contas || "").toLowerCase().includes(q)
+        );
+      },
+    };
+
+    const filterExcept = (exclude: string) => {
+      const keys = Object.keys(predicates).filter((k) => k !== exclude);
+      return dateFiltered.filter((t) => keys.every((k) => predicates[k](t)));
+    };
+
+    const uniq = (arr: any[]) => Array.from(new Set(arr)).filter(Boolean).sort();
+
+    return {
+      users: uniq(filterExcept("users").map((t) => t.usuario)),
+      types: uniq(filterExcept("types").map((t) => t.flash_type)),
+      categories: uniq(filterExcept("categories").map((t) => t.flash_category)),
+      costCenters: uniq(filterExcept("costCenters").map((t) => t.flash_cost_center)),
+      prestacaoContas: uniq(filterExcept("prestacaoContas").map((t) => t.flash_prestacao_contas)),
+      caCategories: uniq(filterExcept("caCategories").map((t) => t.conta_azul_category_name)),
+      caStatus: ["pendente", "normalizado", "enviado"],
+      status: uniq(filterExcept("status").map((t) => t.status).filter(Boolean)) as string[],
+    };
+  }, [
+    dateFiltered,
+    transactions,
+    statusFilter,
+    search,
+    selectedUsers,
+    selectedTypes,
+    selectedCategories,
+    selectedCostCenters,
+    selectedPrestacao,
+    searchParams,
+  ]);
 
   const filtered = useMemo(() => {
     let result = dateFiltered.filter((t) => {
@@ -541,6 +614,12 @@ export default function NormalizacaoFlashPage() {
 
       const prestHeaderFilter = searchParams.get("prest")?.split(",").filter(Boolean) || [];
       if (prestHeaderFilter.length > 0 && !prestHeaderFilter.includes(t.flash_prestacao_contas)) return false;
+
+      const comentTokens = (searchParams.get("coment") || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (comentTokens.length > 0) {
+        const hay = (t.comentarios || "").toLowerCase();
+        if (!comentTokens.every((tok) => hay.includes(tok))) return false;
+      }
 
       if (search) {
         const q = search.toLowerCase();
@@ -1292,6 +1371,55 @@ export default function NormalizacaoFlashPage() {
                         </PopoverContent>
                       </Popover>
                     )}
+                    {selectedToSendIds.length > 0 && (
+                      <Popover open={bulkCatCAOpen} onOpenChange={setBulkCatCAOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-2 border-primary/50 bg-primary/5 text-primary hover:bg-primary/10"
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            Categoria CA em Massa ({selectedToSendIds.length})
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="end">
+                          <Command>
+                            <CommandInput
+                              placeholder="Buscar categoria CA..."
+                              value={bulkCatCASearch}
+                              onValueChange={setBulkCatCASearch}
+                            />
+                            <CommandList>
+                              <CommandEmpty>
+                                {loadingMetadata ? "Carregando categorias..." : "Nenhuma categoria encontrada."}
+                              </CommandEmpty>
+                              <CommandGroup heading="Categorias Conta Azul">
+                                {categorias.map((opt) => (
+                                  <CommandItem
+                                    key={opt.id}
+                                    value={opt.name}
+                                    onSelect={() => {
+                                      const confirmText = `Deseja aplicar a Categoria CA "${opt.name}" em ${selectedToSendIds.length} lançamentos selecionados?`;
+                                      if (window.confirm(confirmText)) {
+                                        bulkUpdateCategoriaCA(selectedToSendIds, { id: opt.id, name: opt.name }).then(() => {
+                                          setSelectedToSendIds([]);
+                                          setBulkCatCAOpen(false);
+                                          setBulkCatCASearch("");
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 opacity-0" />
+                                    {opt.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -1307,20 +1435,36 @@ export default function NormalizacaoFlashPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="todos">Todos os status</SelectItem>
-                        <SelectItem value="pendente">Pendente</SelectItem>
-                        <SelectItem value="normalizado">Normalizado</SelectItem>
-                        <SelectItem value="enviado">Enviado</SelectItem>
+                        {["pendente", "normalizado", "enviado"]
+                          .filter((s) => statusFilter === s || filterOptions.status.includes(s))
+                          .map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                {(searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
+                {(statusFilter !== "todos" || !!search ||
+                  searchParams.get("users") || searchParams.get("types") || searchParams.get("categories") || searchParams.get("costCenters") || searchParams.get("prestacao") ||
                   searchParams.get("data") || searchParams.get("desc") || searchParams.get("val") ||
-                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") || 
-                  searchParams.get("cc") || searchParams.get("prest")) && (
+                  searchParams.get("user") || searchParams.get("type") || searchParams.get("cat") ||
+                  searchParams.get("cc") || searchParams.get("prest") ||
+                  searchParams.get("ca_status") || searchParams.get("ca_cat")) && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Filtros ativos nas colunas:</span>
+                    <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+                    {statusFilter !== "todos" && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Status: {statusFilter}
+                      </Badge>
+                    )}
+                    {!!search && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Busca: "{search}"
+                      </Badge>
+                    )}
                     {(searchParams.get("users") || searchParams.get("user")) && (
                       <Badge variant="secondary" className="text-[11px]">
                         Usuário
@@ -1361,24 +1505,30 @@ export default function NormalizacaoFlashPage() {
                         Valor
                       </Badge>
                     )}
+                    {searchParams.get("ca_status") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Status CA
+                      </Badge>
+                    )}
+                    {searchParams.get("ca_cat") && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Categoria CA
+                      </Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
+                        setStatusFilter("todos");
+                        setSearch("");
                         setSelectedUsers([]);
                         setSelectedTypes([]);
                         setSelectedCategories([]);
                         setSelectedCostCenters([]);
                         setSelectedPrestacao([]);
+                        setCurrentPage(1);
                         const params = new URLSearchParams(searchParams);
-                        params.delete("data");
-                        params.delete("desc");
-                        params.delete("val");
-                        params.delete("user");
-                        params.delete("type");
-                        params.delete("cat");
-                        params.delete("cc");
-                        params.delete("prest");
+                        ["data","desc","val","user","type","cat","cc","prest","ca_status","ca_cat","status","q","users","types","categories","costCenters","prestacao"].forEach((k) => params.delete(k));
                         setSearchParams(params, { replace: true });
                       }}
                       className="h-7 px-2"
@@ -1408,15 +1558,9 @@ export default function NormalizacaoFlashPage() {
                     setSelectedCategories([]);
                     setSelectedCostCenters([]);
                     setSelectedPrestacao([]);
+                    setCurrentPage(1);
                     const params = new URLSearchParams(searchParams);
-                    params.delete("data");
-                    params.delete("desc");
-                    params.delete("val");
-                    params.delete("user");
-                    params.delete("type");
-                    params.delete("cat");
-                    params.delete("cc");
-                    params.delete("prest");
+                    ["data","desc","val","user","type","cat","cc","prest","ca_status","ca_cat","status","q","users","types","categories","costCenters","prestacao"].forEach((k) => params.delete(k));
                     setSearchParams(params, { replace: true });
                   }}>
                     Limpar todos os filtros
@@ -1523,11 +1667,58 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead 
-                            className="w-[150px] cursor-pointer group"
-                            onClick={() => toggleSort('comentarios')}
-                          >
-                            <div className="flex items-center">Comentários <SortIcon column="comentarios" /></div>
+                          <TableHead className="w-[150px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                className="flex items-center group"
+                                onClick={() => toggleSort('comentarios')}
+                              >
+                                Comentários <SortIcon column="comentarios" />
+                              </button>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn("h-6 w-6 shrink-0", searchParams.get("coment") && "text-primary")}
+                                    aria-label="Filtrar Comentários"
+                                  >
+                                    <Filter className={cn("h-3 w-3", searchParams.get("coment") && "fill-current")} />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[240px] p-2" align="start">
+                                  <Input
+                                    autoFocus
+                                    placeholder="Pesquisar comentário..."
+                                    value={searchParams.get("coment") || ""}
+                                    onChange={(e) => {
+                                      const params = new URLSearchParams(searchParams);
+                                      if (e.target.value) params.set("coment", e.target.value);
+                                      else params.delete("coment");
+                                      setSearchParams(params, { replace: true });
+                                    }}
+                                    className="h-8"
+                                  />
+                                  {searchParams.get("coment") && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full mt-2 h-7 text-xs"
+                                      onClick={() => {
+                                        const params = new URLSearchParams(searchParams);
+                                        params.delete("coment");
+                                        setSearchParams(params, { replace: true });
+                                      }}
+                                    >
+                                      Limpar
+                                    </Button>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </TableHead>
                           <TableHead className="w-[150px]">
                             <div className="flex items-center gap-1">
@@ -1699,12 +1890,12 @@ export default function NormalizacaoFlashPage() {
                               </TableCell>
                               <TableCell className="text-xs truncate w-[140px]">{row.usuario}</TableCell>
                               <TableCell className="text-xs truncate w-[150px]">
-                                <Tooltip>
+                                <Tooltip delayDuration={100}>
                                   <TooltipTrigger asChild>
-                                    <span className="block truncate">{row.comentarios}</span>
+                                    <span className="block truncate cursor-help">{row.comentarios}</span>
                                   </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs break-words">{row.comentarios}</p>
+                                  <TooltipContent side="top" align="start" className="max-w-[480px] whitespace-pre-wrap break-words text-xs leading-relaxed">
+                                    {row.comentarios || "—"}
                                   </TooltipContent>
                                 </Tooltip>
                               </TableCell>
@@ -1753,7 +1944,7 @@ export default function NormalizacaoFlashPage() {
                                     saveNormalization(row, {
                                       conta_azul_category_id: id,
                                       conta_azul_category_name: name,
-                                    })
+                                    }, { learnFromEdit: true })
                                   }
                                   placeholder="Selecionar categoria..."
                                   disabled={fieldsDisabled}
@@ -1926,7 +2117,7 @@ export default function NormalizacaoFlashPage() {
                       checked={bulkSaveMapping}
                       onCheckedChange={(c) => setBulkSaveMapping(!!c)}
                     />
-                    Salvar mapeamento por tipo
+                    Salvar aprendizado por categoria/centro de custo
                   </label>
                   <Button
                     size="sm"
@@ -2027,9 +2218,9 @@ export default function NormalizacaoFlashPage() {
         <TabsContent value="mapeamentos">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Mapeamentos automáticos por tipo Flash</CardTitle>
+              <CardTitle className="text-base">Mapeamentos automáticos inteligentes</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Estes mapeamentos preenchem automaticamente novos lançamentos do mesmo tipo.
+                Estes mapeamentos priorizam Categoria Flash, Centro de Custo e confirmações manuais para sugerir categorias nos próximos lançamentos.
               </p>
             </CardHeader>
             <CardContent>
@@ -2046,6 +2237,7 @@ export default function NormalizacaoFlashPage() {
                         <TableHead>Categoria Flash</TableHead>
                         <TableHead>Centro de Custo Flash</TableHead>
                         <TableHead>Operação</TableHead>
+                        <TableHead>Aprendizado</TableHead>
                         <TableHead>Categoria Conta Azul</TableHead>
                         <TableHead>Conta financeira CA</TableHead>
                       </TableRow>
@@ -2059,7 +2251,7 @@ export default function NormalizacaoFlashPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
-                            {m.flash_category ? (
+                            {m.flash_category && m.flash_category !== "*" ? (
                               <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600">
                                 {m.flash_category}
                               </Badge>
@@ -2068,7 +2260,7 @@ export default function NormalizacaoFlashPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-xs">
-                            {m.flash_cost_center ? (
+                            {m.flash_cost_center && m.flash_cost_center !== "*" ? (
                               <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
                                 {m.flash_cost_center}
                               </Badge>
@@ -2077,6 +2269,13 @@ export default function NormalizacaoFlashPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-xs capitalize">{m.tipo_operacao}</TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant={m.learned === false ? "outline" : "secondary"} className="text-[10px]">
+                              {m.learned === false
+                                ? `${m.manual_confirmations || 0}/3 ajustes`
+                                : `${m.manual_confirmations || 0} ajuste(s)`}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-xs">{m.conta_azul_category_name || "—"}</TableCell>
                           <TableCell className="text-xs">{m.conta_azul_account_name || "—"}</TableCell>
                         </TableRow>
