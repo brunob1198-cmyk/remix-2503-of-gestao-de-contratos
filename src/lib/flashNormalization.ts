@@ -302,7 +302,6 @@ export const normalizeFlashTransaction = (
   const mapping = sortedMappings.find(m => {
     if (m.learned === false) return false;
     if (m.flash_type !== flash_type) return false;
-    if (!hasSpecificScope(m) && (normalizeText(flash_category) || normalizeText(flash_cost_center))) return false;
     
     // Se o mapping define padrão de descrição, ele tem precedência absoluta
     if (m.flash_description_pattern) {
