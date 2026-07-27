@@ -275,7 +275,7 @@ export function useFlashNormalizacao() {
       const normalized = normalizeFlashTransaction({
         id: rawTx.id, external_id: rawTx.external_id, payload_json: rawTx.payload_json,
         flash_type: base.flash_type, flash_category: base.flash_category,
-        flash_cost_center: base.flash_cost_center, descricao: base.descricao
+        flash_cost_center: base.flash_cost_center, descricao: base.descricao, usuario: base.usuario
       }, mappings as any[]);
 
       base.tipo_operacao = normalized.tipo_operacao;
@@ -365,7 +365,7 @@ export function useFlashNormalizacao() {
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
 
       const payload = buildContaAzulPayload({
-        descricao: row.descricao, valor: row.valor, data: row.data, tipo_operacao: merged.tipo_operacao,
+        descricao: row.descricao, usuario: row.usuario, valor: row.valor, data: row.data, tipo_operacao: merged.tipo_operacao,
         conta_azul_category_id: merged.conta_azul_category_id, conta_azul_category_name: merged.conta_azul_category_name,
         conta_azul_account_id: merged.conta_azul_account_id, conta_azul_account_name: merged.conta_azul_account_name,
         external_id: row.external_id, flash_type: row.flash_type,

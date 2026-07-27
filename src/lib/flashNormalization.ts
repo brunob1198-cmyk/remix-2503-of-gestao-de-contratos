@@ -191,6 +191,7 @@ export const normalizeFlashTransaction = (
     "employee.centro_custo",
     "employee.centroCusto"
   ]) || "—";
+  const usuario = transaction.usuario || pickValue(payload, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || null;
   const descricao = transaction.descricao || pickValue(payload, ["description", "descricao", "merchant", "establishment", "name", "comments"]) || "—";
   const comentarios = pickValue(payload, [
     "comments", "comment", "observacao", "observation", "note", "notes", 
@@ -296,6 +297,10 @@ export const normalizeFlashTransaction = (
     ? `Normalizado automaticamente via mapping inteligente ("${flash_type}" + detalhes) → ${categoryName || categoryId}.`
     : `Pendente: mapping encontrado mas incompleto.`;
 
+  const finalDescription = usuario && usuario !== "—"
+    ? `${descricao} - ${usuario}`
+    : descricao;
+
   return {
     flash_transaction_id: transaction.id,
     external_id: transaction.external_id ?? null,
@@ -309,7 +314,7 @@ export const normalizeFlashTransaction = (
     mapping_id_usado: mapping.id ?? null,
     conta_azul_payload: hasFullMapping
       ? {
-          description: descricao,
+          description: finalDescription,
           amount: valor,
           date: data,
           type: mapping.tipo_operacao,
@@ -331,6 +336,7 @@ export const normalizeFlashTransaction = (
 
 export const buildContaAzulPayload = (params: {
   descricao: string;
+  usuario?: string | null;
   valor: number;
   data: string | null;
   tipo_operacao: "receita" | "despesa";
@@ -345,8 +351,14 @@ export const buildContaAzulPayload = (params: {
   force_pago?: boolean;
 }) => {
   if (!params.conta_azul_category_id || !params.conta_azul_account_id) return null;
+
+  let description = params.descricao;
+  if (params.usuario && params.usuario !== "—" && !description.includes(` - ${params.usuario}`)) {
+    description = `${description} - ${params.usuario}`;
+  }
+
   return {
-    description: params.descricao,
+    description,
     amount: params.valor,
     date: params.data,
     type: params.tipo_operacao,

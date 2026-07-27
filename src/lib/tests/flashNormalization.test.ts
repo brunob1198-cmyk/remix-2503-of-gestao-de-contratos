@@ -124,4 +124,23 @@ describe('Flash Normalization - Cost Center Extraction', () => {
     
     expect(result.conta_azul_payload?.cost_center).toBeNull();
   });
+
+  it('deve anexar o nome do usuario na descricao usando " - "', () => {
+    const payload = {
+      amount: 2050,
+      type: "Refeição",
+      employee: { name: "Rodrigo Tiago Santos" },
+      merchant: "rp3*ROUTE 60 SALGADOS ABADIANIA BRA"
+    };
+
+    const transaction: FlashRawTransactionLike = {
+      id: "tx-desc-user",
+      payload_json: payload,
+      descricao: "rp3*ROUTE 60 SALGADOS ABADIANIA BRA",
+      usuario: "Rodrigo Tiago Santos"
+    };
+
+    const result = normalizeFlashTransaction(transaction, mockMappings);
+    expect(result.conta_azul_payload?.description).toBe("rp3*ROUTE 60 SALGADOS ABADIANIA BRA - Rodrigo Tiago Santos");
+  });
 });
