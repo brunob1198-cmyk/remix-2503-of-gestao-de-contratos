@@ -388,7 +388,7 @@ async function sendOne(
         {
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
-          descricao: `Parcela única - ${input.description}`,
+          descricao: `Parcela única - ${finalDescription}`,
           valor: transactionValue,
           situacao: "LIQUIDADO",
           baixa: {
