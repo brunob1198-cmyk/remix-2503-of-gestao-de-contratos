@@ -352,7 +352,7 @@ export const normalizeFlashTransaction = (
     : `Pendente: mapping encontrado mas incompleto.`;
 
   const finalDescription = usuario && usuario !== "—"
-    ? `${descricao} - ${usuario}`
+    ? `${descricao} (Flash: ${usuario})`
     : descricao;
 
   return {
