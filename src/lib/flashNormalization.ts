@@ -281,8 +281,8 @@ export const normalizeFlashTransaction = (
 
   // A conta financeira correta para o Conta Azul é apenas "Flash"
   // Vamos buscar dinamicamente no hook, mas deixamos um ID fallback aqui se necessário
-  const fallbackAccountId = "679d675b-006f-474a-be93-b68480396557"; 
-  const fallbackAccountName = "Flash";
+  const fallbackAccountId = null; 
+  const fallbackAccountName = null;
 
   // Encontrar o melhor mapping baseado em especificidade e reforço de aprendizado
   const sortedMappings = [...mappings].sort((a, b) => {

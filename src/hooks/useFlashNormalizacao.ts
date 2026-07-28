@@ -277,8 +277,9 @@ export function useFlashNormalizacao() {
         base.norm_id = n.id;
         base.conta_azul_category_id = n.conta_azul_category_id;
         base.conta_azul_category_name = n.conta_azul_category_name;
-        base.conta_azul_account_id = n.conta_azul_account_id || (flashAccount?.id ?? null);
-        base.conta_azul_account_name = n.conta_azul_account_name || (flashAccount?.name ?? null);
+        const isOldHardcodedAccount = n.conta_azul_account_id === "679d675b-006f-474a-be93-b68480396557";
+        base.conta_azul_account_id = (isOldHardcodedAccount || !n.conta_azul_account_id) ? (flashAccount?.id ?? null) : n.conta_azul_account_id;
+        base.conta_azul_account_name = (isOldHardcodedAccount || !n.conta_azul_account_name) ? (flashAccount?.name ?? null) : n.conta_azul_account_name;
         base.tipo_operacao = n.tipo_operacao;
         base.status = n.status;
         base.motivo = n.motivo;
@@ -519,10 +520,14 @@ export function useFlashNormalizacao() {
     try {
       const currentRow = transactionsRef.current.find((transaction) => transaction.id === row.id) ?? row;
       const flashAccount = contas.find(c => c.name?.toLowerCase().includes("flash"));
+      const isOldHardcodedAccount = currentRow.conta_azul_account_id === "679d675b-006f-474a-be93-b68480396557";
+      const finalAccountId = flashAccount?.id ?? patch.conta_azul_account_id ?? (isOldHardcodedAccount ? null : currentRow.conta_azul_account_id);
+      const finalAccountName = flashAccount?.name ?? patch.conta_azul_account_name ?? (isOldHardcodedAccount ? null : currentRow.conta_azul_account_name);
       const merged = { 
         ...currentRow, 
         ...patch, 
-        conta_azul_account_id: flashAccount?.id ?? patch.conta_azul_account_id ?? currentRow.conta_azul_account_id,
+        conta_azul_account_id: finalAccountId,
+        conta_azul_account_name: finalAccountName,
         enviado_at: patch.status === "enviado" ? (currentRow.enviado_at || new Date().toISOString()) : (patch.status === "normalizado" ? null : currentRow.enviado_at)
       };
       if (merged.status === "pendente" && merged.conta_azul_category_id && merged.conta_azul_account_id) merged.status = "normalizado";
