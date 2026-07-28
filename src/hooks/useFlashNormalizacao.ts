@@ -303,6 +303,14 @@ export function useFlashNormalizacao() {
           base.flash_cost_center = n.conta_azul_payload.cost_center;
         }
 
+        // Se o payload existente ainda não possui o nome do usuário na descrição, atualiza a descrição do payload
+        if (base.conta_azul_payload?.description && base.usuario && base.usuario !== "—" && !base.conta_azul_payload.description.includes(` - ${base.usuario}`)) {
+          base.conta_azul_payload = {
+            ...base.conta_azul_payload,
+            description: `${base.conta_azul_payload.description} - ${base.usuario}`
+          };
+        }
+
         if (!n.conta_azul_category_id && n.status !== "enviado") {
           const learnedNormalization = normalizeFlashTransaction({
             id: rawTx.id,
@@ -312,6 +320,7 @@ export function useFlashNormalizacao() {
             flash_category: base.flash_category,
             flash_cost_center: base.flash_cost_center,
             descricao: base.descricao,
+            usuario: base.usuario,
           }, mappings as any[]);
 
           if (learnedNormalization.status === "normalizado") {

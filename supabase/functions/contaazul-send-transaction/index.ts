@@ -951,9 +951,15 @@ serve(async (req) => {
           valueInReais = typeof rawAmountCents === "number" ? rawAmountCents / 100 : 0;
         }
 
+        let description = snap.description || raw?.payload_json?.description || "Lançamento Flash";
+        const userName = raw?.payload_json?.employee?.name || raw?.payload_json?.user?.name || raw?.payload_json?.user?.email || raw?.payload_json?.usuario || raw?.payload_json?.user_name || null;
+        if (userName && userName !== "—" && !description.includes(` - ${userName}`)) {
+          description = `${description} - ${userName}`;
+        }
+
         const r = await sendOne(admin, empresaId, accessToken, {
           flash_transaction_id: n.flash_transaction_id,
-          description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
+          description: description,
           value: valueInReais,
           category_id: n.conta_azul_category_id,
           financial_account_id: financialAccountId,
