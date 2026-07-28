@@ -955,7 +955,7 @@ serve(async (req) => {
 
         const r = await sendOne(admin, empresaId, accessToken, {
           flash_transaction_id: n.flash_transaction_id,
-          description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
+          description: snap.description || (raw?.payload_json?.description ? (raw?.payload_json?.employee?.name ? `${raw.payload_json.description} (Flash: ${raw.payload_json.employee.name})` : raw.payload_json.description) : "Lançamento Flash"),
           value: valueInReais,
           category_id: n.conta_azul_category_id,
           financial_account_id: financialAccountId,
