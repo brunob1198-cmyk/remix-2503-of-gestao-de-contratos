@@ -373,10 +373,12 @@ async function sendOne(
     rateioItem.centro_custo = input.cost_center.trim();
   }
 
+  const finalDescription = input.description; // description já vem montado do hook (e.g. "Desc (Flash: Nome)")
+  
   const payload: any = {
     data_competencia: transactionDate,
     valor: transactionValue,
-    descricao: input.description,
+    descricao: finalDescription,
     observacao: obsText,
     contato: contatoId,
     conta_financeira: input.financial_account_id,
@@ -386,7 +388,7 @@ async function sendOne(
         {
           data_vencimento: transactionDate,
           conta_financeira: input.financial_account_id,
-          descricao: `Parcela única - ${input.description}`,
+          descricao: `Parcela única - ${finalDescription}`,
           valor: transactionValue,
           situacao: "LIQUIDADO",
           baixa: {
@@ -953,7 +955,7 @@ serve(async (req) => {
 
         const r = await sendOne(admin, empresaId, accessToken, {
           flash_transaction_id: n.flash_transaction_id,
-          description: snap.description || raw?.payload_json?.description || "Lançamento Flash",
+          description: snap.description || (raw?.payload_json?.description ? (raw?.payload_json?.employee?.name ? `${raw.payload_json.description} (Flash: ${raw.payload_json.employee.name})` : raw.payload_json.description) : "Lançamento Flash"),
           value: valueInReais,
           category_id: n.conta_azul_category_id,
           financial_account_id: financialAccountId,
