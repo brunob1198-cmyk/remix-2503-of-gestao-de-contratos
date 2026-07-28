@@ -407,8 +407,8 @@ export const buildContaAzulPayload = (params: {
   if (!params.conta_azul_category_id || !params.conta_azul_account_id) return null;
 
   let description = params.descricao;
-  if (params.usuario && params.usuario !== "—" && !description.includes(` - ${params.usuario}`)) {
-    description = `${description} - ${params.usuario}`;
+  if (params.usuario && params.usuario !== "—" && !description.includes(` (Flash: ${params.usuario})`)) {
+    description = `${description} (Flash: ${params.usuario})`;
   }
 
   return {
