@@ -373,10 +373,12 @@ async function sendOne(
     rateioItem.centro_custo = input.cost_center.trim();
   }
 
+  const finalDescription = input.description; // description já vem montado do hook (e.g. "Desc (Flash: Nome)")
+  
   const payload: any = {
     data_competencia: transactionDate,
     valor: transactionValue,
-    descricao: input.description,
+    descricao: finalDescription,
     observacao: obsText,
     contato: contatoId,
     conta_financeira: input.financial_account_id,
