@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "vite-react-shadcn-ts"
+name = "remix-2503-of-gestao-de-contratos"
 compatibility_date = "2026-05-11"
 
 [assets]
