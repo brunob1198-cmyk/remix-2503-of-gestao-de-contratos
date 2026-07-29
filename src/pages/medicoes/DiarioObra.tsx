@@ -157,7 +157,8 @@ export default function DiarioObraPage() {
       setDiarioStatusAtivo("");
       setHeaderSaved(false);
     }
-  }, [diario?.id, setDiarioUf, setDiarioMunicipio, atividadesCampo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diario?.id, atividadesCampo]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
@@ -930,6 +931,7 @@ export default function DiarioObraPage() {
               fallbackUrls={[photoView.url]}
               className="w-full h-full object-contain" 
               alt="Visualização"
+              key={photoView.id}
             />
           </DialogContent>
         </Dialog>

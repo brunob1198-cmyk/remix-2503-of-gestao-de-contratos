@@ -25,6 +25,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    // Log explicit removeChild failures to help identify the source
+    if (error.message.includes('removeChild')) {
+      console.error("DOM Exception detected: Failed to execute removeChild on Node.");
+    }
   }
 
   handleReset = () => {

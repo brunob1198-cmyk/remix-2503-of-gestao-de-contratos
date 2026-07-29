@@ -239,10 +239,10 @@ export function DiarioCalendario({
                 }
 
                 return (
-                  <button
-                    key={di}
+                  <div
+                    key={dateStr}
                     onClick={() => onDayClick?.(dateStr)}
-                    className={`relative border-r last:border-r-0 p-1.5 transition-colors hover:bg-accent/50 active:scale-[0.97]
+                    className={`relative border-r last:border-r-0 p-1.5 transition-colors hover:bg-accent/50 cursor-pointer
                       ${viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]"}
                       ${bgClass}
                       ${!isCurrentMonth ? "opacity-40" : ""}
@@ -301,7 +301,7 @@ export function DiarioCalendario({
                         </Badge>
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
