@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import {
   ChevronLeft, ChevronRight, Sun, Cloud, CloudRain, CloudSnow,
-  CloudLightning, CloudDrizzle, CloudSun, Wind, Droplets, Eye,
+  CloudLightning, CloudDrizzle, CloudSun, Wind, Droplets,
 } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths,
@@ -39,9 +39,10 @@ const CLIMA_OPTIONS = [
 
 export { CLIMA_OPTIONS };
 
-function getClimaIcon(clima: string | null) {
-  if (!clima) return null;
-  const opt = CLIMA_OPTIONS.find(o => o.value === clima);
+const CLIMA_MAP = new Map(CLIMA_OPTIONS.map(o => [o.value, o] as const));
+
+const ClimaIcon = memo(function ClimaIcon({ clima }: { clima: string }) {
+  const opt = CLIMA_MAP.get(clima);
   if (!opt) return null;
   const Icon = opt.icon;
   return (
@@ -50,7 +51,7 @@ function getClimaIcon(clima: string | null) {
       <span className="text-[8px] leading-none text-muted-foreground font-medium">{opt.label}</span>
     </div>
   );
-}
+});
 
 interface DiarioCalendarioProps {
   entries: DiarioCalendarioEntry[];
@@ -61,6 +62,104 @@ interface DiarioCalendarioProps {
 }
 
 type ViewMode = "semanal" | "mensal";
+
+interface DayCellProps {
+  dateStr: string;
+  dayNum: string;
+  dayOfWeek: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  isPastOrToday: boolean;
+  isInPeriod: boolean;
+  viewMode: ViewMode;
+  entry: DiarioCalendarioEntry | undefined;
+  onDayClick?: (date: string) => void;
+}
+
+const DayCell = memo(function DayCell({
+  dateStr, dayNum, dayOfWeek, isCurrentMonth, isToday, isPastOrToday,
+  isInPeriod, viewMode, entry, onDayClick,
+}: DayCellProps) {
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const hasEntry = !!entry;
+  const isWorkday = !isWeekend && isCurrentMonth && isInPeriod;
+
+  let bgClass = "bg-background";
+  if (!isCurrentMonth) {
+    bgClass = "bg-muted/30";
+  } else if (hasEntry) {
+    bgClass = "bg-emerald-50 dark:bg-emerald-950/30";
+  } else if (isWorkday && isPastOrToday) {
+    bgClass = "bg-red-50 dark:bg-red-950/20";
+  } else if (isWeekend) {
+    bgClass = "bg-muted/20";
+  }
+
+  const handleClick = useCallback(() => onDayClick?.(dateStr), [onDayClick, dateStr]);
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`relative border-r last:border-r-0 p-1.5 transition-colors hover:bg-accent/50 cursor-pointer
+        ${viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]"}
+        ${bgClass}
+        ${!isCurrentMonth ? "opacity-40" : ""}
+      `}
+    >
+      <div className="flex items-start justify-between">
+        <span
+          className={`text-sm font-medium tabular-nums leading-none
+            ${isToday ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center" : ""}
+            ${isWeekend && !isToday ? "text-muted-foreground" : ""}
+          `}
+        >
+          {dayNum}
+        </span>
+        {entry?.clima && (
+          <span className="shrink-0"><ClimaIcon clima={entry.clima} /></span>
+        )}
+      </div>
+
+      {hasEntry && (
+        <div className="mt-1 space-y-0.5">
+          {entry.totalItens > 0 && (
+            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+              {entry.totalItens} {entry.totalItens === 1 ? "item" : "itens"}
+            </Badge>
+          )}
+          {entry.totalEquipe > 0 && viewMode === "semanal" && (
+            <div className="text-[10px] text-muted-foreground">
+              👷 {entry.totalEquipe}
+            </div>
+          )}
+          {entry.totalProducao > 0 && viewMode === "semanal" && (
+            <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
+              R$ {entry.totalProducao.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!hasEntry && isWorkday && isPastOrToday && isCurrentMonth && (
+        <div className="mt-1">
+          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-red-300 text-red-500">
+            Sem Produção
+          </Badge>
+        </div>
+      )}
+
+      {hasEntry && entry.totalItens === 0 && isCurrentMonth && (
+        <div className="mt-1">
+          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-amber-300 text-amber-600">
+            Sem Produção
+          </Badge>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function DiarioCalendario({
   entries,
@@ -77,8 +176,6 @@ export function DiarioCalendario({
     entries.forEach(e => map.set(e.data, e));
     return map;
   }, [entries]);
-
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   const calendarDays = useMemo(() => {
     if (viewMode === "mensal") {
@@ -103,19 +200,22 @@ export function DiarioCalendario({
     }
   }, [currentDate, viewMode]);
 
-  const navigate = (direction: number) => {
-    if (viewMode === "mensal") {
-      setCurrentDate(direction > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
-    } else {
-      setCurrentDate(direction > 0 ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1));
-    }
-  };
+  const navigate = useCallback((direction: number) => {
+    setCurrentDate(prev => {
+      if (viewMode === "mensal") {
+        return direction > 0 ? addMonths(prev, 1) : subMonths(prev, 1);
+      }
+      return direction > 0 ? addWeeks(prev, 1) : subWeeks(prev, 1);
+    });
+  }, [viewMode]);
 
   const title = viewMode === "mensal"
     ? format(currentDate, "MMMM / yyyy", { locale: ptBR }).toUpperCase()
     : `Semana de ${format(startOfWeek(currentDate, { weekStartsOn: 0 }), "dd/MM", { locale: ptBR })} a ${format(endOfWeek(currentDate, { weekStartsOn: 0 }), "dd/MM/yyyy", { locale: ptBR })}`;
 
-  const today = startOfDay(new Date());
+  const todayTs = useMemo(() => startOfDay(new Date()).getTime(), []);
+  const periodoInicioDate = useMemo(() => parseISO(periodoInicio), [periodoInicio]);
+  const periodoFimDate = useMemo(() => parseISO(periodoFim), [periodoFim]);
 
   const weeks = useMemo(() => {
     const result: Date[][] = [];
@@ -124,6 +224,28 @@ export function DiarioCalendario({
     }
     return result;
   }, [calendarDays]);
+
+  // Precompute cell props so DayCell can be memoized on primitive props
+  const rows = useMemo(() => {
+    return weeks.map((week, wi) => ({
+      key: wi,
+      cells: week.map(day => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const isCurrentMonth = viewMode === "mensal" ? isSameMonth(day, currentDate) : true;
+        return {
+          dateStr,
+          dayNum: format(day, "dd"),
+          dayOfWeek: day.getDay(),
+          isCurrentMonth,
+          isToday: isSameDay(day, new Date(todayTs)),
+          isPastOrToday: day.getTime() <= todayTs,
+          isInPeriod: isWithinInterval(day, { start: periodoInicioDate, end: periodoFimDate }),
+        };
+      }),
+    }));
+  }, [weeks, viewMode, currentDate, todayTs, periodoInicioDate, periodoFimDate]);
+
+  const goToday = useCallback(() => setCurrentDate(new Date()), []);
 
   return (
     <div className="space-y-4">
@@ -171,12 +293,7 @@ export function DiarioCalendario({
             className="w-[150px] h-8 text-sm"
           />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={() => setCurrentDate(new Date())}
-        >
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={goToday}>
           Hoje
         </Button>
       </div>
@@ -200,110 +317,31 @@ export function DiarioCalendario({
       {/* Calendar Grid */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Week headers */}
           <div className="grid grid-cols-7 border-b bg-muted/50">
-            {weekDays.map(d => (
+            {WEEK_DAYS.map(d => (
               <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2 border-r last:border-r-0">
                 {d}
               </div>
             ))}
           </div>
 
-          {/* Day cells */}
-          {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 border-b last:border-b-0">
-              {week.map((day, di) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const entry = entriesByDate.get(dateStr);
-                const isCurrentMonth = viewMode === "mensal" ? isSameMonth(day, currentDate) : true;
-                const isToday = isSameDay(day, today);
-                const dayOfWeek = day.getDay();
-                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                const isInPeriod = isWithinInterval(day, {
-                  start: parseISO(periodoInicio),
-                  end: parseISO(periodoFim),
-                });
-
-                const hasEntry = !!entry;
-                const isWorkday = !isWeekend && isCurrentMonth && isInPeriod;
-
-                let bgClass = "bg-background";
-                if (!isCurrentMonth) {
-                  bgClass = "bg-muted/30";
-                } else if (hasEntry) {
-                  bgClass = "bg-emerald-50 dark:bg-emerald-950/30";
-                } else if (isWorkday && day <= today) {
-                  bgClass = "bg-red-50 dark:bg-red-950/20";
-                } else if (isWeekend) {
-                  bgClass = "bg-muted/20";
-                }
-
-                return (
-                  <div
-                    key={dateStr}
-                    onClick={() => onDayClick?.(dateStr)}
-                    className={`relative border-r last:border-r-0 p-1.5 transition-colors hover:bg-accent/50 cursor-pointer
-                      ${viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]"}
-                      ${bgClass}
-                      ${!isCurrentMonth ? "opacity-40" : ""}
-                    `}
-                  >
-                    {/* Day number */}
-                    <div className="flex items-start justify-between">
-                      <span
-                        className={`text-sm font-medium tabular-nums leading-none
-                          ${isToday ? "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center" : ""}
-                          ${isWeekend && !isToday ? "text-muted-foreground" : ""}
-                        `}
-                      >
-                        {format(day, "dd")}
-                      </span>
-                      {entry?.clima && (
-                        <span className="shrink-0">{getClimaIcon(entry.clima)}</span>
-                      )}
-                    </div>
-
-                    {/* Entry info */}
-                    {hasEntry && (
-                      <div className="mt-1 space-y-0.5">
-                        {entry.totalItens > 0 && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                            {entry.totalItens} {entry.totalItens === 1 ? "item" : "itens"}
-                          </Badge>
-                        )}
-                        {entry.totalEquipe > 0 && viewMode === "semanal" && (
-                          <div className="text-[10px] text-muted-foreground">
-                            👷 {entry.totalEquipe}
-                          </div>
-                        )}
-                        {entry.totalProducao > 0 && viewMode === "semanal" && (
-                          <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
-                            R$ {entry.totalProducao.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* No entry indicator for past workdays */}
-                    {!hasEntry && isWorkday && day <= today && isCurrentMonth && (
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-red-300 text-red-500">
-                          Sem Produção
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Entry exists but no production items */}
-                    {hasEntry && entry.totalItens === 0 && isCurrentMonth && (
-                      <div className="mt-1">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-amber-300 text-amber-600">
-                          Sem Produção
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+          {rows.map(row => (
+            <div key={row.key} className="grid grid-cols-7 border-b last:border-b-0">
+              {row.cells.map(cell => (
+                <DayCell
+                  key={cell.dateStr}
+                  dateStr={cell.dateStr}
+                  dayNum={cell.dayNum}
+                  dayOfWeek={cell.dayOfWeek}
+                  isCurrentMonth={cell.isCurrentMonth}
+                  isToday={cell.isToday}
+                  isPastOrToday={cell.isPastOrToday}
+                  isInPeriod={cell.isInPeriod}
+                  viewMode={viewMode}
+                  entry={entriesByDate.get(cell.dateStr)}
+                  onDayClick={onDayClick}
+                />
+              ))}
             </div>
           ))}
         </CardContent>
