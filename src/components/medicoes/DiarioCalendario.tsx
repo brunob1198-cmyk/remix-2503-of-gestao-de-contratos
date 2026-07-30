@@ -270,8 +270,9 @@ export function DiarioCalendario({
 
   // Precompute cell props so DayCell can be memoized on primitive props
   const rows = useMemo(() => {
-    return weeks.map((week, wi) => ({
-      key: wi,
+    return weeks.map(week => ({
+      // Chave estável por semana (data do primeiro dia) em vez do índice.
+      key: format(week[0], "yyyy-MM-dd"),
       cells: week.map(day => {
         const dateStr = format(day, "yyyy-MM-dd");
         const isCurrentMonth = viewMode === "mensal" ? isSameMonth(day, currentDate) : true;
