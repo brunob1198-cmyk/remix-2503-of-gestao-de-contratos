@@ -106,7 +106,11 @@ export const exportTEPToHtml = (data: TEPData) => {
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
-            <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor}; margin-bottom: 6px;">${badgeText}</span>
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor};">${badgeText}</span>
+              ${foto.diario_data ? `<span style="font-size: 10.5px; color: #475569; font-weight: 600;">📅 ${formatBrDate(foto.diario_data)}</span>` : ""}
+              ${foto.site_nome ? `<span style="font-size: 10.5px; color: #64748b;">📍 ${foto.site_nome}</span>` : ""}
+            </div>
             ${foto.legenda ? `<p style="font-family: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: 12.5px; color: #334155; margin: 0; line-height: 1.35; background: #f1f5f9; border-left: 3px solid #cbd5e1; border-radius: 4px; padding: 6px 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${foto.legenda}</p>` : ""}
           </div>
         </div>
