@@ -58,7 +58,56 @@ interface FotosSectionProps {
   setPhotoView: (foto: any) => void;
   producoes?: any[];
   onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
+  onUpdateLegenda?: (id: string, legenda: string) => void;
 }
+
+/** Campo de descrição individual da foto, com salvamento no blur/Enter. */
+const PhotoCaptionField = React.memo(function PhotoCaptionField({
+  fotoId,
+  legenda,
+  onSave,
+}: {
+  fotoId: string;
+  legenda: string | null;
+  onSave: (id: string, legenda: string) => void;
+}) {
+  const [value, setValue] = useState(legenda || "");
+  const savedRef = useRef(legenda || "");
+
+  React.useEffect(() => {
+    setValue(legenda || "");
+    savedRef.current = legenda || "";
+  }, [legenda]);
+
+  const commit = () => {
+    const next = value.trim();
+    if (next === savedRef.current) return;
+    savedRef.current = next;
+    onSave(fotoId, next);
+  };
+
+  return (
+    <div className="px-2 pb-2 pt-1">
+      <textarea
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          }
+        }}
+        onClick={e => e.stopPropagation()}
+        onDragStart={e => e.stopPropagation()}
+        rows={2}
+        placeholder="Descrição da foto..."
+        className="w-full resize-none rounded-md bg-muted/50 px-2 py-1.5 text-xs leading-snug text-foreground placeholder:text-muted-foreground/70 outline-none ring-offset-background transition-colors focus:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+      />
+    </div>
+  );
+});
+
 
 /** Normaliza acentos/caixa para casar classificações como "Execução" e "execucao". */
 const norm = (v?: string | null) =>
@@ -79,6 +128,7 @@ interface PhotoGridProps {
   onRemove: (id: string) => void;
   setPhotoView: (foto: any) => void;
   onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
+  onUpdateLegenda?: (id: string, legenda: string) => void;
   emptyHint?: boolean;
 }
 
@@ -93,6 +143,7 @@ function PhotoGrid({
   onRemove,
   setPhotoView,
   onReorder,
+  onUpdateLegenda,
   emptyHint = true,
 }: PhotoGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -217,6 +268,9 @@ function PhotoGrid({
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+          {onUpdateLegenda && (
+            <PhotoCaptionField fotoId={f.id} legenda={f.legenda} onSave={onUpdateLegenda} />
+          )}
         </div>
       ))}
 
@@ -239,6 +293,7 @@ function FotosSection({
   setPhotoView,
   producoes = [],
   onReorder,
+  onUpdateLegenda,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
   const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
@@ -379,6 +434,7 @@ function FotosSection({
                 onRemove={onRemove}
                 setPhotoView={setPhotoView}
                 onReorder={onReorder}
+                onUpdateLegenda={onUpdateLegenda}
               />
             </div>
           );
@@ -408,6 +464,7 @@ function FotosSection({
               onRemove={onRemove}
               setPhotoView={setPhotoView}
               onReorder={onReorder}
+              onUpdateLegenda={onUpdateLegenda}
               emptyHint={false}
             />
           </div>
@@ -437,6 +494,7 @@ function FotosSection({
               onRemove={onRemove}
               setPhotoView={setPhotoView}
               onReorder={onReorder}
+              onUpdateLegenda={onUpdateLegenda}
               emptyHint={false}
             />
           </div>

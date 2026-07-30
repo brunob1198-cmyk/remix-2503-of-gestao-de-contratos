@@ -912,6 +912,7 @@ export default function DiarioObraPage() {
               onRemove={handleRemoveFoto}
               setPhotoView={setPhotoView}
               onReorder={ordens => reordenarFotos.mutate(ordens)}
+              onUpdateLegenda={(id, legenda) => atualizarFoto.mutate({ id, legenda })}
             />
 
             <Card>

@@ -100,7 +100,7 @@ export const exportTEPToHtml = (data: TEPData) => {
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
             <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor}; margin-bottom: 6px;">${badgeText}</span>
-            ${foto.legenda ? `<p style="font-size: 12px; color: #4b5563; font-style: italic; margin: 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">“${foto.legenda}”</p>` : ""}
+            ${foto.legenda ? `<p style="font-family: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: 12.5px; color: #334155; margin: 0; line-height: 1.35; background: #f1f5f9; border-left: 3px solid #cbd5e1; border-radius: 4px; padding: 6px 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${foto.legenda}</p>` : ""}
           </div>
         </div>
       </div>
