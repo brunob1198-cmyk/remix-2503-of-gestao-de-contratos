@@ -907,6 +907,7 @@ export type Database = {
           diario_producao_id: string | null
           id: string
           legenda: string | null
+          ordem: number
           thumb_600_url: string | null
           thumb_url: string | null
           url: string
@@ -918,6 +919,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          ordem?: number
           thumb_600_url?: string | null
           thumb_url?: string | null
           url: string
@@ -929,6 +931,7 @@ export type Database = {
           diario_producao_id?: string | null
           id?: string
           legenda?: string | null
+          ordem?: number
           thumb_600_url?: string | null
           thumb_url?: string | null
           url?: string

@@ -1,10 +1,10 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Camera, Plus, Trash2, Upload } from "lucide-react";
+import { Camera, Plus, Trash2, Upload, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FotosSectionProps {
@@ -14,6 +14,142 @@ interface FotosSectionProps {
   onUpload: (e: React.ChangeEvent<HTMLInputElement>, classificacao: string) => void;
   onRemove: (id: string) => void;
   setPhotoView: (foto: any) => void;
+  producoes?: any[];
+  onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
+}
+
+/** Normaliza acentos/caixa para casar classificações como "Execução" e "execucao". */
+const norm = (v?: string | null) =>
+  (v || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+interface PhotoGridProps {
+  photos: any[];
+  groupKey: string;
+  dragActive: boolean;
+  onDragEnter: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDropFiles: (e: React.DragEvent) => void;
+  onRemove: (id: string) => void;
+  setPhotoView: (foto: any) => void;
+  onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
+  emptyHint?: boolean;
+}
+
+function PhotoGrid({
+  photos,
+  groupKey,
+  dragActive,
+  onDragEnter,
+  onDragOver,
+  onDragLeave,
+  onDropFiles,
+  onRemove,
+  setPhotoView,
+  onReorder,
+  emptyHint = true,
+}: PhotoGridProps) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  const handlePhotoDrop = (targetIndex: number) => {
+    if (dragIndex === null || dragIndex === targetIndex || !onReorder) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const next = [...photos];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    onReorder(next.map((p, i) => ({ id: p.id, ordem: i })));
+    setDragIndex(null);
+    setOverIndex(null);
+  };
+
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg border-2 border-transparent transition-all",
+        dragActive ? "border-dashed border-primary bg-primary/5" : "border-transparent",
+      )}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDropFiles}
+    >
+      {photos.map((f, index) => (
+        <div
+          key={f.id}
+          draggable={!!onReorder}
+          onDragStart={e => {
+            if (!onReorder) return;
+            e.stopPropagation();
+            e.dataTransfer.setData("text/plain", `${groupKey}:${f.id}`);
+            setDragIndex(index);
+          }}
+          onDragOver={e => {
+            if (dragIndex === null) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setOverIndex(index);
+          }}
+          onDrop={e => {
+            if (dragIndex === null) return;
+            e.preventDefault();
+            e.stopPropagation();
+            handlePhotoDrop(index);
+          }}
+          onDragEnd={() => {
+            setDragIndex(null);
+            setOverIndex(null);
+          }}
+          className={cn(
+            "relative group rounded overflow-hidden border bg-background transition-all",
+            dragIndex === index && "opacity-40",
+            overIndex === index && dragIndex !== null && dragIndex !== index && "ring-2 ring-primary",
+          )}
+        >
+          <SmartImage
+            src={f.thumb_url || f.url}
+            context="diario_fotos"
+            fallbackUrls={[f.thumb_600_url, f.url]}
+            className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
+            onClick={() => setPhotoView(f)}
+          />
+          <span className="absolute bottom-1 left-1 z-10 rounded bg-background/85 px-1.5 py-0.5 text-[10px] font-semibold">
+            #{index + 1}
+          </span>
+          {onReorder && (
+            <span className="absolute top-1 left-1 z-10 rounded bg-background/85 p-1 cursor-grab active:cursor-grabbing">
+              <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </span>
+          )}
+          <Button
+            variant="destructive"
+            size="icon"
+            className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={e => {
+              e.stopPropagation();
+              onRemove(f.id);
+            }}
+            type="button"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+      {photos.length === 0 && emptyHint && (
+        <div className="col-span-2 md:col-span-4 py-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/30 flex flex-col items-center gap-2">
+          <Upload className="h-8 w-8 text-muted-foreground/50" />
+          <p>Arraste fotos aqui ou use o botão adicionar</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FotosSection({
@@ -23,6 +159,8 @@ function FotosSection({
   onUpload,
   onRemove,
   setPhotoView,
+  producoes = [],
+  onReorder,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
   const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
@@ -38,23 +176,46 @@ function FotosSection({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, group: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActiveGroup(null);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const syntheticEvent = {
-        target: {
-          files: e.dataTransfer.files
-        }
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      onUpload(syntheticEvent, group);
-    }
-  }, [onUpload]);
-
-  const unlistedPhotos = fotos.filter(
-    f => !f.diario_producao_id && (!f.classificacao || !photoGroups.includes(f.classificacao)),
+  const handleDrop = useCallback(
+    (e: React.DragEvent, group: string) => {
+      setDragActiveGroup(null);
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        e.preventDefault();
+        e.stopPropagation();
+        const syntheticEvent = {
+          target: { files: e.dataTransfer.files },
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        onUpload(syntheticEvent, group);
+      }
+    },
+    [onUpload],
   );
+
+  const gerais = useMemo(() => fotos.filter(f => !f.diario_producao_id), [fotos]);
+  const normGroups = useMemo(() => photoGroups.map(norm), [photoGroups]);
+
+  const unlistedPhotos = useMemo(
+    () => gerais.filter(f => !normGroups.includes(norm(f.classificacao))),
+    [gerais, normGroups],
+  );
+
+  // Fotos vinculadas a itens de produção — antes ficavam invisíveis na tela.
+  const fotosPorProducao = useMemo(() => {
+    const map = new Map<string, any[]>();
+    fotos.forEach(f => {
+      if (!f.diario_producao_id) return;
+      const arr = map.get(f.diario_producao_id) || [];
+      arr.push(f);
+      map.set(f.diario_producao_id, arr);
+    });
+    return Array.from(map.entries()).map(([producaoId, list]) => {
+      const prod = producoes.find((p: any) => p.id === producaoId);
+      const label = prod
+        ? `${prod.item_lpu?.codigo ? `${prod.item_lpu.codigo} — ` : ""}${prod.item_lpu?.descricao || "Item de produção"}`
+        : "Item de produção removido";
+      return { producaoId, label, list };
+    });
+  }, [fotos, producoes]);
 
   return (
     <Card>
@@ -90,7 +251,7 @@ function FotosSection({
       </CardHeader>
       <CardContent className="space-y-6">
         {photoGroups.map(group => {
-          const groupPhotos = fotos.filter(f => !f.diario_producao_id && f.classificacao === group);
+          const groupPhotos = gerais.filter(f => norm(f.classificacao) === norm(group));
           return (
             <div key={group} className="space-y-3">
               <div className="flex items-center justify-between border-b pb-1">
@@ -123,80 +284,63 @@ function FotosSection({
                   )}
                 </div>
               </div>
-              <div 
-                className={cn(
-                  "grid grid-cols-4 gap-4 p-4 rounded-lg border-2 border-transparent transition-all",
-                  dragActiveGroup === group ? "border-dashed border-primary bg-primary/5 scale-[1.01]" : "border-transparent"
-                )}
-                onDragEnter={(e) => handleDrag(e, group)}
-                onDragOver={(e) => handleDrag(e, group)}
-                onDragLeave={(e) => handleDrag(e, null)}
-                onDrop={(e) => handleDrop(e, group)}
-              >
-                {groupPhotos.map(f => (
-                  <div key={f.id} className="relative group rounded overflow-hidden border bg-background">
-                    <SmartImage
-                      src={f.thumb_url || f.url}
-                      context="diario_fotos"
-                      fallbackUrls={[f.thumb_600_url, f.url]}
-                      className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
-                      onClick={() => setPhotoView(f)}
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemove(f.id);
-                      }}
-                      type="button"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-                {groupPhotos.length === 0 && (
-                  <div className="col-span-4 py-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/30 flex flex-col items-center gap-2">
-                    <Upload className="h-8 w-8 text-muted-foreground/50" />
-                    <p>Arraste fotos aqui ou use o botão adicionar</p>
-                  </div>
-                )}
-              </div>
+              <PhotoGrid
+                photos={groupPhotos}
+                groupKey={`grupo-${group}`}
+                dragActive={dragActiveGroup === group}
+                onDragEnter={e => handleDrag(e, group)}
+                onDragOver={e => handleDrag(e, group)}
+                onDragLeave={e => handleDrag(e, null)}
+                onDropFiles={e => handleDrop(e, group)}
+                onRemove={onRemove}
+                setPhotoView={setPhotoView}
+                onReorder={onReorder}
+              />
             </div>
           );
         })}
 
+        {fotosPorProducao.map(({ producaoId, label, list }) => (
+          <div key={producaoId} className="space-y-3">
+            <div className="flex items-center gap-2 border-b pb-1">
+              <h3 className="font-semibold text-sm">Produção: {label}</h3>
+              <Badge variant="outline" className="text-[10px]">{list.length}</Badge>
+            </div>
+            <PhotoGrid
+              photos={list}
+              groupKey={`producao-${producaoId}`}
+              dragActive={false}
+              onDragEnter={() => {}}
+              onDragOver={() => {}}
+              onDragLeave={() => {}}
+              onDropFiles={() => {}}
+              onRemove={onRemove}
+              setPhotoView={setPhotoView}
+              onReorder={onReorder}
+              emptyHint={false}
+            />
+          </div>
+        ))}
+
         {unlistedPhotos.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b pb-1">
+            <div className="flex items-center gap-2 border-b pb-1">
               <h3 className="font-semibold text-sm">Outras / Geral</h3>
+              <Badge variant="outline" className="text-[10px]">{unlistedPhotos.length}</Badge>
             </div>
-            <div className="grid grid-cols-4 gap-4">
-              {unlistedPhotos.map(f => (
-                <div key={f.id} className="relative group rounded overflow-hidden border">
-                  <SmartImage
-                    src={f.thumb_url || f.url}
-                    context="diario_fotos"
-                    fallbackUrls={[f.thumb_600_url, f.url]}
-                    className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
-                    onClick={() => setPhotoView(f)}
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-6 w-6 z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(f.id);
-                    }}
-                    type="button"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+            <PhotoGrid
+              photos={unlistedPhotos}
+              groupKey="outras"
+              dragActive={false}
+              onDragEnter={() => {}}
+              onDragOver={() => {}}
+              onDragLeave={() => {}}
+              onDropFiles={() => {}}
+              onRemove={onRemove}
+              setPhotoView={setPhotoView}
+              onReorder={onReorder}
+              emptyHint={false}
+            />
           </div>
         )}
       </CardContent>

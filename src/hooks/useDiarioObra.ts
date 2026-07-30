@@ -66,6 +66,7 @@ export interface DiarioFoto {
   thumb_600_url: string | null;
   classificacao: string;
   legenda: string | null;
+  ordem?: number | null;
 }
 
 export function useDiarioObra(siteId?: string, data?: string) {
@@ -724,8 +725,10 @@ export function useDiarioObra(siteId?: string, data?: string) {
       while (true) {
         const { data: d, error } = await supabase
           .from("diario_fotos")
-          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at")
+          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem")
           .eq("diario_id", diario.id)
+          .order("ordem", { ascending: true })
+          .order("created_at", { ascending: true })
           .range(from, to);
         if (error) throw error;
         if (!d || d.length === 0) break;
@@ -762,6 +765,20 @@ export function useDiarioObra(siteId?: string, data?: string) {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
   });
+
+  /** Persiste a nova sequência das fotos (drag and drop). */
+  const reordenarFotos = useMutation({
+    mutationFn: async (ordens: Array<{ id: string; ordem: number }>) => {
+      for (const { id, ordem } of ordens) {
+        const { error } = await supabase.from("diario_fotos").update({ ordem }).eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
+    onError: (e: Error) => toast({ title: "Erro ao reordenar fotos", description: e.message, variant: "destructive" }),
+  });
+
+
 
   const removeFoto = useMutation({
     mutationFn: async (id: string) => {
@@ -814,7 +831,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
-    fotos, addFoto, atualizarFoto, removeFoto,
+    fotos, addFoto, atualizarFoto, removeFoto, reordenarFotos,
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior, previsoes,

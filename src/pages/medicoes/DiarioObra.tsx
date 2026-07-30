@@ -123,7 +123,7 @@ export default function DiarioObraPage() {
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
-    fotos, addFoto, atualizarFoto, removeFoto,
+    fotos, addFoto, atualizarFoto, removeFoto, reordenarFotos,
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior,
@@ -907,9 +907,11 @@ export default function DiarioObraPage() {
               fotos={fotos}
               photoGroups={photoGroups}
               setPhotoGroups={setPhotoGroups}
+              producoes={producoes}
               onUpload={(e, group) => handleUploadFoto(e, group)}
               onRemove={handleRemoveFoto}
               setPhotoView={setPhotoView}
+              onReorder={ordens => reordenarFotos.mutate(ordens)}
             />
 
             <Card>
