@@ -66,6 +66,7 @@ export interface DiarioFoto {
   thumb_600_url: string | null;
   classificacao: string;
   legenda: string | null;
+  ordem?: number | null;
 }
 
 export function useDiarioObra(siteId?: string, data?: string) {
