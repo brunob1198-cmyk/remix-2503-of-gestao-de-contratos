@@ -121,9 +121,8 @@ export const exportTEPToHtml = (data: TEPData) => {
       const photoSectionsHtml = site.classes.map(([className, photos]) => `
         <div style="margin-top: 20px;">
           <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">${className}</h3>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-            ${photos.map(f => buildPhotoCardHtml(f)).join("")}
-          </div>
+          ${buildPhotoGridHtml(photos)}
+
         </div>
       `).join("");
 
