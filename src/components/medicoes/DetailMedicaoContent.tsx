@@ -1115,6 +1115,13 @@ export function DetailMedicaoContent({
 
       await exportTEPToHtml({
         siteNome: isMultiSite ? detailMedicao.projeto_nome : `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        projetoNome: `${detailMedicao.projeto_codigo || ''} - ${detailMedicao.projeto_nome || ''}`.replace(/^ - /, ''),
+        numeroMedicao: detailMedicao.numero_medicao || undefined,
+        dataMedicao: detailMedicao.data_medicao || undefined,
+        periodoInicio: detailMedicao.periodo_inicio || undefined,
+        periodoFim: detailMedicao.periodo_fim || undefined,
+        uf: detailMedicao.uf || undefined,
+        sitesIncluidos: isMultiSite ? includedSites : [`${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`],
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
           url: f.url,
