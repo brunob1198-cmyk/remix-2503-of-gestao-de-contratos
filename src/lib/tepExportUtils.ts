@@ -18,6 +18,7 @@ interface TEPData {
   logoUrl?: string | null;
   clienteLogoUrl?: string | null;
   isMultiSite?: boolean;
+  fotosPorPagina?: number;
   sitesData?: {
     siteId: string;
     siteName: string;
@@ -35,9 +36,31 @@ export const exportTEPToHtml = (data: TEPData) => {
   const processedLogoUrl = data.logoUrl;
   const processedClienteLogoUrl = data.clienteLogoUrl;
 
+  // Layout dinâmico conforme a quantidade de fotos por página escolhida
+  const perPage = [2, 4, 6].includes(Number(data.fotosPorPagina)) ? Number(data.fotosPorPagina) : 6;
+  const columns = perPage === 2 ? 1 : perPage === 4 ? 2 : 3;
+  const imgHeight = perPage === 2 ? 520 : perPage === 4 ? 400 : 240;
+  const cardHeight = imgHeight + 80;
 
+  const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  };
+
+  const buildPhotoGridHtml = (photos: any[]) =>
+    chunk(photos, perPage)
+      .map(
+        (page) => `
+          <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always;">
+            ${page.map((f) => buildPhotoCardHtml(f)).join("")}
+          </div>
+        `
+      )
+      .join("");
 
   const buildPhotoCardHtml = (foto: any) => {
+
     const clsLower = foto.classificacao?.toLowerCase();
     const badgeColor = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
                   (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
