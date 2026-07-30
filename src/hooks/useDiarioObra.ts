@@ -766,6 +766,20 @@ export function useDiarioObra(siteId?: string, data?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
   });
 
+  /** Persiste a nova sequência das fotos (drag and drop). */
+  const reordenarFotos = useMutation({
+    mutationFn: async (ordens: Array<{ id: string; ordem: number }>) => {
+      for (const { id, ordem } of ordens) {
+        const { error } = await supabase.from("diario_fotos").update({ ordem }).eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),
+    onError: (e: Error) => toast({ title: "Erro ao reordenar fotos", description: e.message, variant: "destructive" }),
+  });
+
+
+
   const removeFoto = useMutation({
     mutationFn: async (id: string) => {
       // The database trigger handle_r2_file_cleanup handles the R2 file deletion automatically
