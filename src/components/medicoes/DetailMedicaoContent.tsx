@@ -1195,11 +1195,9 @@ export function DetailMedicaoContent({
 
       const caption = reportCaptionsMap.get(foto.id) || foto.legenda || detailMedicao.legenda_padrao_fotos || '';
 
-      const fotosPerPage = detailMedicao.fotos_por_pagina || 4;
-      const cardWidth = fotosPerPage === 2 ? '48%' : fotosPerPage === 6 ? '31%' : '48%';
-
       return `
-        <div class="photo-card" style="width: ${cardWidth}">
+        <div class="photo-card">
+
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
@@ -1228,6 +1226,20 @@ export function DetailMedicaoContent({
         </div>
       `;
     };
+
+    // Fotos por PÁGINA A4: 2 (1x2), 4 (2x2) ou 6 (2x3)
+    const perPage = [2, 4, 6].includes(Number(detailMedicao.fotos_por_pagina)) ? Number(detailMedicao.fotos_por_pagina) : 4;
+    const buildPhotoPagesHtml = (photos: any[], opts: any) => `
+      <div class="photo-grid">
+        ${chunkArray(photos, perPage).map(pagePhotos => `
+          <div class="photo-page ppp-${perPage}">
+            ${pagePhotos.map(f => buildPhotoCardHtml(f, opts)).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+
 
     const buildSiteBlocksHtml = () => {
       if (!isMultiSite) return '';
@@ -1299,15 +1311,10 @@ export function DetailMedicaoContent({
         const photosHtml = classes.map(([className, photos]) => `
           <div class="class-group">
             <h3 class="class-header">${className} (${photos.length})</h3>
-          <div class="photo-grid">
-            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+            ${buildPhotoPagesHtml(photos, { showItem: true, showSiteName: false })}
           </div>
         `).join('');
+
 
         return `
           <section class="site-block">
@@ -1330,27 +1337,16 @@ export function DetailMedicaoContent({
       const blocks = items.map(([key, photos]) => `
         <div class="item-group">
           <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
-          <div class="photo-grid">
-            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+          ${buildPhotoPagesHtml(photos, { showItem: false })}
         </div>
       `).join('');
       const geraisBlock = fotosByItem.gerais.length > 0 ? `
         <div class="item-group">
           <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
-          <div class="photo-grid">
-            ${chunkArray(fotosByItem.gerais, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+          ${buildPhotoPagesHtml(fotosByItem.gerais, { showItem: false })}
         </div>
       ` : '';
+
       return blocks + geraisBlock;
     };
 
@@ -1505,11 +1501,21 @@ export function DetailMedicaoContent({
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .photo-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    /* Cada .photo-page comporta exatamente N fotos em uma folha A4 */
+    .photo-page { display: grid; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; page-break-after: always; break-after: page; }
+    .photo-page:last-child { page-break-after: auto; break-after: auto; }
+    .photo-page.ppp-2 { grid-template-columns: 1fr; }
+    .photo-page.ppp-4 { grid-template-columns: 1fr 1fr; }
+    .photo-page.ppp-6 { grid-template-columns: 1fr 1fr; }
     .photo-grid-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-height: 220px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
+    .ppp-2 .photo-img-wrap { height: 105mm; aspect-ratio: auto; }
+    .ppp-4 .photo-img-wrap { height: 95mm; aspect-ratio: auto; }
+    .ppp-6 .photo-img-wrap { height: 60mm; aspect-ratio: auto; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
+
     .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; padding-top: 4px; font-size: 9px; }
     .photo-site { color: var(--muted); }
@@ -1519,7 +1525,9 @@ export function DetailMedicaoContent({
     .err-msg { padding: 12px; font-size: 10px; color: #991b1b; text-align: center; }
     .non-image-file { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 11px; }
     .non-image-file a { color: var(--primary); text-decoration: none; font-weight: 600; border: 1px solid var(--primary); padding: 4px 8px; border-radius: 4px; }
-    @media print { body { background: none; } .page { margin: 0; box-shadow: none; width: 100%; } }
+    @page { size: A4 portrait; margin: 10mm; }
+    @media print { body { background: none; padding: 0; } .page { margin: 0; box-shadow: none; width: 100%; padding: 0; } }
+
   </style>
 </head>
 <body>
