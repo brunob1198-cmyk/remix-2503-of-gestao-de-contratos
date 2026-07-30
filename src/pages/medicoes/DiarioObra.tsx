@@ -123,7 +123,7 @@ export default function DiarioObraPage() {
     equipe, isLoadingEquipe, addEquipe, updateEquipe, removeEquipe,
     equipamentos, isLoadingEquipamentos, addEquipamento, updateEquipamento, removeEquipamento,
     veiculos, isLoadingVeiculos, addVeiculo, updateVeiculo, removeVeiculo,
-    fotos, addFoto, atualizarFoto, removeFoto,
+    fotos, addFoto, atualizarFoto, removeFoto, reordenarFotos,
     totalProducao, custoTotal, margem,
     custoEquipe, custoEquipamentos, custoVeiculos,
     duplicarDiarioAnterior,
