@@ -4,6 +4,13 @@ import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
 
 interface TEPData {
   siteNome: string;
+  projetoNome?: string;
+  numeroMedicao?: string;
+  dataMedicao?: string;
+  periodoInicio?: string;
+  periodoFim?: string;
+  uf?: string;
+  sitesIncluidos?: string[];
   observacoes: string;
   fotos: {
     url: string;
