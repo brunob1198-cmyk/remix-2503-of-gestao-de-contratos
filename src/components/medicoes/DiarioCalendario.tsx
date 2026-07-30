@@ -72,16 +72,20 @@ interface DayCellProps {
   isPastOrToday: boolean;
   isInPeriod: boolean;
   viewMode: ViewMode;
-  entry: DiarioCalendarioEntry | undefined;
+  /** Props do lançamento normalizadas em primitivos para manter identidade estável. */
+  hasEntry: boolean;
+  clima: string | null;
+  totalItens: number;
+  totalEquipe: number;
+  totalProducao: number;
   onDayClick?: (date: string) => void;
 }
 
 const DayCell = memo(function DayCell({
   dateStr, dayNum, dayOfWeek, isCurrentMonth, isToday, isPastOrToday,
-  isInPeriod, viewMode, entry, onDayClick,
+  isInPeriod, viewMode, hasEntry, clima, totalItens, totalEquipe, totalProducao, onDayClick,
 }: DayCellProps) {
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  const hasEntry = !!entry;
   const isWorkday = !isWeekend && isCurrentMonth && isInPeriod;
 
   let bgClass = "bg-background";
@@ -115,26 +119,26 @@ const DayCell = memo(function DayCell({
         >
           {dayNum}
         </span>
-        {entry?.clima && (
-          <span className="shrink-0"><ClimaIcon clima={entry.clima} /></span>
+        {clima && (
+          <span className="shrink-0"><ClimaIcon clima={clima} /></span>
         )}
       </div>
 
       {hasEntry && (
         <div className="mt-1 space-y-0.5">
-          {entry.totalItens > 0 && (
+          {totalItens > 0 && (
             <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-              {entry.totalItens} {entry.totalItens === 1 ? "item" : "itens"}
+              {totalItens} {totalItens === 1 ? "item" : "itens"}
             </Badge>
           )}
-          {entry.totalEquipe > 0 && viewMode === "semanal" && (
+          {totalEquipe > 0 && viewMode === "semanal" && (
             <div className="text-[10px] text-muted-foreground">
-              👷 {entry.totalEquipe}
+              👷 {totalEquipe}
             </div>
           )}
-          {entry.totalProducao > 0 && viewMode === "semanal" && (
+          {totalProducao > 0 && viewMode === "semanal" && (
             <div className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 tabular-nums">
-              R$ {entry.totalProducao.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              R$ {totalProducao.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
           )}
         </div>
@@ -148,7 +152,7 @@ const DayCell = memo(function DayCell({
         </div>
       )}
 
-      {hasEntry && entry.totalItens === 0 && isCurrentMonth && (
+      {hasEntry && totalItens === 0 && isCurrentMonth && (
         <div className="mt-1">
           <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-amber-300 text-amber-600">
             Sem Produção
@@ -158,6 +162,7 @@ const DayCell = memo(function DayCell({
     </div>
   );
 });
+
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -265,8 +270,9 @@ export function DiarioCalendario({
 
   // Precompute cell props so DayCell can be memoized on primitive props
   const rows = useMemo(() => {
-    return weeks.map((week, wi) => ({
-      key: wi,
+    return weeks.map(week => ({
+      // Chave estável por semana (data do primeiro dia) em vez do índice.
+      key: format(week[0], "yyyy-MM-dd"),
       cells: week.map(day => {
         const dateStr = format(day, "yyyy-MM-dd");
         const isCurrentMonth = viewMode === "mensal" ? isSameMonth(day, currentDate) : true;
@@ -371,21 +377,29 @@ export function DiarioCalendario({
           {rows.map((row, rowIndex) => (
             <div key={row.key} className="grid grid-cols-7 border-b last:border-b-0">
               {rowIndex < visibleRows
-                ? row.cells.map(cell => (
-                    <DayCell
-                      key={cell.dateStr}
-                      dateStr={cell.dateStr}
-                      dayNum={cell.dayNum}
-                      dayOfWeek={cell.dayOfWeek}
-                      isCurrentMonth={cell.isCurrentMonth}
-                      isToday={cell.isToday}
-                      isPastOrToday={cell.isPastOrToday}
-                      isInPeriod={cell.isInPeriod}
-                      viewMode={viewMode}
-                      entry={entriesByDate.get(cell.dateStr)}
-                      onDayClick={onDayClick}
-                    />
-                  ))
+                ? row.cells.map(cell => {
+                    const entry = entriesByDate.get(cell.dateStr);
+                    return (
+                      <DayCell
+                        key={cell.dateStr}
+                        dateStr={cell.dateStr}
+                        dayNum={cell.dayNum}
+                        dayOfWeek={cell.dayOfWeek}
+                        isCurrentMonth={cell.isCurrentMonth}
+                        isToday={cell.isToday}
+                        isPastOrToday={cell.isPastOrToday}
+                        isInPeriod={cell.isInPeriod}
+                        viewMode={viewMode}
+                        hasEntry={!!entry}
+                        clima={entry?.clima ?? null}
+                        totalItens={entry?.totalItens ?? 0}
+                        totalEquipe={entry?.totalEquipe ?? 0}
+                        totalProducao={entry?.totalProducao ?? 0}
+                        onDayClick={onDayClick}
+                      />
+                    );
+                  })
+
                 : row.cells.map(cell => (
                     <div
                       key={cell.dateStr}
