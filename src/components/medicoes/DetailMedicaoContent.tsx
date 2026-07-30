@@ -1505,11 +1505,21 @@ export function DetailMedicaoContent({
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .photo-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+    /* Cada .photo-page comporta exatamente N fotos em uma folha A4 */
+    .photo-page { display: grid; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; page-break-after: always; break-after: page; }
+    .photo-page:last-child { page-break-after: auto; break-after: auto; }
+    .photo-page.ppp-2 { grid-template-columns: 1fr; }
+    .photo-page.ppp-4 { grid-template-columns: 1fr 1fr; }
+    .photo-page.ppp-6 { grid-template-columns: 1fr 1fr; }
     .photo-grid-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-height: 220px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
     .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
+    .ppp-2 .photo-img-wrap { height: 105mm; aspect-ratio: auto; }
+    .ppp-4 .photo-img-wrap { height: 95mm; aspect-ratio: auto; }
+    .ppp-6 .photo-img-wrap { height: 60mm; aspect-ratio: auto; }
     .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
+
     .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .photo-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: auto; padding-top: 4px; font-size: 9px; }
     .photo-site { color: var(--muted); }
