@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useGruposFotosSite } from "@/hooks/useGruposFotosSite";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
@@ -83,10 +84,20 @@ export default function DiarioObraPage() {
   const [headerSaved, setHeaderSaved] = useState(false);
   const [photoView, setPhotoView] = useState<any>(null);
 
-  const [photoGroups, setPhotoGroups] = usePersistedState<string[]>(
+  const [localPhotoGroups, setPhotoGroups] = usePersistedState<string[]>(
     `diario_photo_groups_${selectedSiteId || "default"}`,
     ["Execução", "Vistoria"]
   );
+  // Grupos criados por outros usuários (persistidos no banco) + grupos locais
+  const gruposCompartilhados = useGruposFotosSite(selectedSiteId || undefined);
+  const photoGroups = useMemo(() => {
+    const seen = new Map<string, string>();
+    [...localPhotoGroups, ...gruposCompartilhados].forEach(g => {
+      const key = g.trim().toLowerCase();
+      if (key && !seen.has(key)) seen.set(key, g.trim());
+    });
+    return Array.from(seen.values());
+  }, [localPhotoGroups, gruposCompartilhados]);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleProjetoChange = (projetoId: string) => {
