@@ -128,6 +128,7 @@ interface PhotoGridProps {
   onRemove: (id: string) => void;
   setPhotoView: (foto: any) => void;
   onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
+  onUpdateLegenda?: (id: string, legenda: string) => void;
   emptyHint?: boolean;
 }
 
@@ -142,6 +143,7 @@ function PhotoGrid({
   onRemove,
   setPhotoView,
   onReorder,
+  onUpdateLegenda,
   emptyHint = true,
 }: PhotoGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -266,6 +268,9 @@ function PhotoGrid({
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+          {onUpdateLegenda && (
+            <PhotoCaptionField fotoId={f.id} legenda={f.legenda} onSave={onUpdateLegenda} />
+          )}
         </div>
       ))}
 
@@ -288,6 +293,7 @@ function FotosSection({
   setPhotoView,
   producoes = [],
   onReorder,
+  onUpdateLegenda,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
   const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
@@ -428,6 +434,7 @@ function FotosSection({
                 onRemove={onRemove}
                 setPhotoView={setPhotoView}
                 onReorder={onReorder}
+                onUpdateLegenda={onUpdateLegenda}
               />
             </div>
           );
@@ -457,6 +464,7 @@ function FotosSection({
               onRemove={onRemove}
               setPhotoView={setPhotoView}
               onReorder={onReorder}
+              onUpdateLegenda={onUpdateLegenda}
               emptyHint={false}
             />
           </div>
@@ -486,6 +494,7 @@ function FotosSection({
               onRemove={onRemove}
               setPhotoView={setPhotoView}
               onReorder={onReorder}
+              onUpdateLegenda={onUpdateLegenda}
               emptyHint={false}
             />
           </div>
