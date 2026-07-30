@@ -1195,11 +1195,9 @@ export function DetailMedicaoContent({
 
       const caption = reportCaptionsMap.get(foto.id) || foto.legenda || detailMedicao.legenda_padrao_fotos || '';
 
-      const fotosPerPage = detailMedicao.fotos_por_pagina || 4;
-      const cardWidth = fotosPerPage === 2 ? '48%' : fotosPerPage === 6 ? '31%' : '48%';
-
       return `
-        <div class="photo-card" style="width: ${cardWidth}">
+        <div class="photo-card">
+
           <div class="photo-img-wrap">
             ${isImage ? `
               <img 
