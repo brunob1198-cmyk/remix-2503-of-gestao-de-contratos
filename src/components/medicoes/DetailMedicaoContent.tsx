@@ -1227,6 +1227,20 @@ export function DetailMedicaoContent({
       `;
     };
 
+    // Fotos por PÁGINA A4: 2 (1x2), 4 (2x2) ou 6 (2x3)
+    const perPage = [2, 4, 6].includes(Number(detailMedicao.fotos_por_pagina)) ? Number(detailMedicao.fotos_por_pagina) : 4;
+    const buildPhotoPagesHtml = (photos: any[], opts: any) => `
+      <div class="photo-grid">
+        ${chunkArray(photos, perPage).map(pagePhotos => `
+          <div class="photo-page ppp-${perPage}">
+            ${pagePhotos.map(f => buildPhotoCardHtml(f, opts)).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+
+
     const buildSiteBlocksHtml = () => {
       if (!isMultiSite) return '';
       return fotosBySiteAndClass.map(({ siteName, siteId, classes }) => {
