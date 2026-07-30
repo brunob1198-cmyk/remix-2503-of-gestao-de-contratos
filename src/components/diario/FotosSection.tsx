@@ -97,19 +97,25 @@ function PhotoGrid({
 }: PhotoGridProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+
+  const resetDrag = () => {
+    dragIndexRef.current = null;
+    setDragIndex(null);
+    setOverIndex(null);
+  };
 
   const handlePhotoDrop = (targetIndex: number) => {
-    if (dragIndex === null || dragIndex === targetIndex || !onReorder) {
-      setDragIndex(null);
-      setOverIndex(null);
+    const from = dragIndexRef.current;
+    if (from === null || from === targetIndex || !onReorder) {
+      resetDrag();
       return;
     }
     const next = [...photos];
-    const [moved] = next.splice(dragIndex, 1);
+    const [moved] = next.splice(from, 1);
     next.splice(targetIndex, 0, moved);
     onReorder(next.map((p, i) => ({ id: p.id, ordem: i })));
-    setDragIndex(null);
-    setOverIndex(null);
+    resetDrag();
   };
 
   return (
@@ -118,10 +124,32 @@ function PhotoGrid({
         "grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg border-2 border-transparent transition-all",
         dragActive ? "border-dashed border-primary bg-primary/5" : "border-transparent",
       )}
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDropFiles}
+      onDragEnter={e => {
+        if (dragIndexRef.current !== null) return;
+        onDragEnter(e);
+      }}
+      onDragOver={e => {
+        if (dragIndexRef.current !== null) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          return;
+        }
+        onDragOver(e);
+      }}
+      onDragLeave={e => {
+        if (dragIndexRef.current !== null) return;
+        onDragLeave(e);
+      }}
+      onDrop={e => {
+        if (dragIndexRef.current !== null) {
+          e.preventDefault();
+          e.stopPropagation();
+          // soltou fora de uma foto: manda para o fim da lista
+          handlePhotoDrop(photos.length - 1);
+          return;
+        }
+        onDropFiles(e);
+      }}
     >
       {photos.map((f, index) => (
         <div
@@ -130,25 +158,31 @@ function PhotoGrid({
           onDragStart={e => {
             if (!onReorder) return;
             e.stopPropagation();
+            e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", `${groupKey}:${f.id}`);
+            dragIndexRef.current = index;
             setDragIndex(index);
           }}
-          onDragOver={e => {
-            if (dragIndex === null) return;
+          onDragEnter={e => {
+            if (dragIndexRef.current === null) return;
             e.preventDefault();
             e.stopPropagation();
             setOverIndex(index);
           }}
+          onDragOver={e => {
+            if (dragIndexRef.current === null) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "move";
+            if (overIndex !== index) setOverIndex(index);
+          }}
           onDrop={e => {
-            if (dragIndex === null) return;
+            if (dragIndexRef.current === null) return;
             e.preventDefault();
             e.stopPropagation();
             handlePhotoDrop(index);
           }}
-          onDragEnd={() => {
-            setDragIndex(null);
-            setOverIndex(null);
-          }}
+          onDragEnd={resetDrag}
           className={cn(
             "relative group rounded overflow-hidden border bg-background transition-all",
             dragIndex === index && "opacity-40",
@@ -159,6 +193,7 @@ function PhotoGrid({
             src={f.thumb_url || f.url}
             context="diario_fotos"
             fallbackUrls={[f.thumb_600_url, f.url]}
+            draggable={false}
             className="w-full h-32 object-cover cursor-pointer hover:scale-105 transition-transform"
             onClick={() => setPhotoView(f)}
           />
@@ -184,6 +219,7 @@ function PhotoGrid({
           </Button>
         </div>
       ))}
+
       {photos.length === 0 && emptyHint && (
         <div className="col-span-2 md:col-span-4 py-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/30 flex flex-col items-center gap-2">
           <Upload className="h-8 w-8 text-muted-foreground/50" />
