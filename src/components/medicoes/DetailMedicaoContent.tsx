@@ -1525,7 +1525,9 @@ export function DetailMedicaoContent({
     .err-msg { padding: 12px; font-size: 10px; color: #991b1b; text-align: center; }
     .non-image-file { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 11px; }
     .non-image-file a { color: var(--primary); text-decoration: none; font-weight: 600; border: 1px solid var(--primary); padding: 4px 8px; border-radius: 4px; }
-    @media print { body { background: none; } .page { margin: 0; box-shadow: none; width: 100%; } }
+    @page { size: A4 portrait; margin: 10mm; }
+    @media print { body { background: none; padding: 0; } .page { margin: 0; box-shadow: none; width: 100%; padding: 0; } }
+
   </style>
 </head>
 <body>
