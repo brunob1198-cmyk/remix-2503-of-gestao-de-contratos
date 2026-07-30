@@ -374,39 +374,30 @@ export function DiarioCalendario({
             ))}
           </div>
 
-          {rows.map((row, rowIndex) => (
+          {rows.map(row => (
             <div key={row.key} className="grid grid-cols-7 border-b last:border-b-0">
-              {rowIndex < visibleRows
-                ? row.cells.map(cell => {
-                    const entry = entriesByDate.get(cell.dateStr);
-                    return (
-                      <DayCell
-                        key={cell.dateStr}
-                        dateStr={cell.dateStr}
-                        dayNum={cell.dayNum}
-                        dayOfWeek={cell.dayOfWeek}
-                        isCurrentMonth={cell.isCurrentMonth}
-                        isToday={cell.isToday}
-                        isPastOrToday={cell.isPastOrToday}
-                        isInPeriod={cell.isInPeriod}
-                        viewMode={viewMode}
-                        hasEntry={!!entry}
-                        clima={entry?.clima ?? null}
-                        totalItens={entry?.totalItens ?? 0}
-                        totalEquipe={entry?.totalEquipe ?? 0}
-                        totalProducao={entry?.totalProducao ?? 0}
-                        onDayClick={onDayClick}
-                      />
-                    );
-                  })
-
-                : row.cells.map(cell => (
-                    <div
-                      key={cell.dateStr}
-                      aria-hidden="true"
-                      className={`border-r last:border-r-0 bg-muted/20 animate-pulse ${rowHeightClass}`}
-                    />
-                  ))}
+              {row.cells.map(cell => {
+                const entry = entriesByDate.get(cell.dateStr);
+                return (
+                  <DayCell
+                    key={cell.dateStr}
+                    dateStr={cell.dateStr}
+                    dayNum={cell.dayNum}
+                    dayOfWeek={cell.dayOfWeek}
+                    isCurrentMonth={cell.isCurrentMonth}
+                    isToday={cell.isToday}
+                    isPastOrToday={cell.isPastOrToday}
+                    isInPeriod={cell.isInPeriod}
+                    viewMode={viewMode}
+                    hasEntry={!!entry}
+                    clima={entry?.clima ?? null}
+                    totalItens={entry?.totalItens ?? 0}
+                    totalEquipe={entry?.totalEquipe ?? 0}
+                    totalProducao={entry?.totalProducao ?? 0}
+                    onDayClick={onDayClick}
+                  />
+                );
+              })}
             </div>
           ))}
         </CardContent>
