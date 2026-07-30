@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useGruposFotosSite } from "@/hooks/useGruposFotosSite";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useQueryClient } from "@tanstack/react-query";
