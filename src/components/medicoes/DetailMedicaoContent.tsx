@@ -1337,27 +1337,16 @@ export function DetailMedicaoContent({
       const blocks = items.map(([key, photos]) => `
         <div class="item-group">
           <h3 class="item-group-header">${key} (${photos.length} fotos)</h3>
-          <div class="photo-grid">
-            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+          ${buildPhotoPagesHtml(photos, { showItem: false })}
         </div>
       `).join('');
       const geraisBlock = fotosByItem.gerais.length > 0 ? `
         <div class="item-group">
           <h3 class="item-group-header">Fotos Gerais (${fotosByItem.gerais.length})</h3>
-          <div class="photo-grid">
-            ${chunkArray(fotosByItem.gerais, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+          ${buildPhotoPagesHtml(fotosByItem.gerais, { showItem: false })}
         </div>
       ` : '';
+
       return blocks + geraisBlock;
     };
 
