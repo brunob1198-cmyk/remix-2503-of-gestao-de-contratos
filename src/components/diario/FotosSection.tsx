@@ -379,9 +379,16 @@ function FotosSection({
 
         {unlistedPhotos.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 border-b pb-1">
-              <h3 className="font-semibold text-sm">Outras / Geral</h3>
-              <Badge variant="outline" className="text-[10px]">{unlistedPhotos.length}</Badge>
+            <div className="flex items-center justify-between border-b pb-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm">Outras / Geral</h3>
+                <Badge variant="outline" className="text-[10px]">{unlistedPhotos.length}</Badge>
+              </div>
+              <DeleteAllButton
+                label="Outras / Geral"
+                count={unlistedPhotos.length}
+                onConfirm={() => unlistedPhotos.forEach(f => onRemove(f.id))}
+              />
             </div>
             <PhotoGrid
               photos={unlistedPhotos}
