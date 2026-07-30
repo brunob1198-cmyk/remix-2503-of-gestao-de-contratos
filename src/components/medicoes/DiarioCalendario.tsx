@@ -368,23 +368,31 @@ export function DiarioCalendario({
             ))}
           </div>
 
-          {rows.map(row => (
+          {rows.map((row, rowIndex) => (
             <div key={row.key} className="grid grid-cols-7 border-b last:border-b-0">
-              {row.cells.map(cell => (
-                <DayCell
-                  key={cell.dateStr}
-                  dateStr={cell.dateStr}
-                  dayNum={cell.dayNum}
-                  dayOfWeek={cell.dayOfWeek}
-                  isCurrentMonth={cell.isCurrentMonth}
-                  isToday={cell.isToday}
-                  isPastOrToday={cell.isPastOrToday}
-                  isInPeriod={cell.isInPeriod}
-                  viewMode={viewMode}
-                  entry={entriesByDate.get(cell.dateStr)}
-                  onDayClick={onDayClick}
-                />
-              ))}
+              {rowIndex < visibleRows
+                ? row.cells.map(cell => (
+                    <DayCell
+                      key={cell.dateStr}
+                      dateStr={cell.dateStr}
+                      dayNum={cell.dayNum}
+                      dayOfWeek={cell.dayOfWeek}
+                      isCurrentMonth={cell.isCurrentMonth}
+                      isToday={cell.isToday}
+                      isPastOrToday={cell.isPastOrToday}
+                      isInPeriod={cell.isInPeriod}
+                      viewMode={viewMode}
+                      entry={entriesByDate.get(cell.dateStr)}
+                      onDayClick={onDayClick}
+                    />
+                  ))
+                : row.cells.map(cell => (
+                    <div
+                      key={cell.dateStr}
+                      aria-hidden="true"
+                      className={`border-r last:border-r-0 bg-muted/20 animate-pulse ${rowHeightClass}`}
+                    />
+                  ))}
             </div>
           ))}
         </CardContent>
