@@ -248,10 +248,17 @@ export const exportTEPToHtml = (data: TEPData) => {
           ${processedClienteLogoUrl ? `<img src="${processedClienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
-        <div class="info-grid">
+        <div class="info-grid" style="grid-template-columns: 130px 1fr;">
+          ${data.projetoNome ? `<div class="label">Projeto:</div><div>${data.projetoNome}</div>` : ""}
           <div class="label">Site:</div>
           <div>${data.siteNome}</div>
-          <div class="label">Data:</div>
+          ${data.uf ? `<div class="label">UF:</div><div>${data.uf}</div>` : ""}
+          ${data.numeroMedicao ? `<div class="label">Nº Medição:</div><div>${data.numeroMedicao}</div>` : ""}
+          ${(data.periodoInicio || data.periodoFim) ? `<div class="label">Período:</div><div>${formatBrDate(data.periodoInicio)} até ${formatBrDate(data.periodoFim)}</div>` : ""}
+          <div class="label">Data da Medição:</div>
+          <div>${formatBrDate(data.dataMedicao) || format(new Date(), "dd/MM/yyyy")}</div>
+          ${data.sitesIncluidos && data.sitesIncluidos.length > 0 ? `<div class="label">Sites incluídos:</div><div>${data.sitesIncluidos.join(" | ")}</div>` : ""}
+          <div class="label">Emissão:</div>
           <div>${format(new Date(), "dd/MM/yyyy")}</div>
         </div>
 
