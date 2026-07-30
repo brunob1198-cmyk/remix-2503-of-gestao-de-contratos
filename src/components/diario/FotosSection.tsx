@@ -4,8 +4,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SmartImage } from "@/components/ui/SmartImage";
-import { Camera, Plus, Trash2, Upload, GripVertical } from "lucide-react";
+import { Camera, Plus, Trash2, Upload, GripVertical, Trash } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+
+interface DeleteAllButtonProps {
+  label: string;
+  count: number;
+  onConfirm: () => void;
+}
+
+function DeleteAllButton({ label, count, onConfirm }: DeleteAllButtonProps) {
+  if (count === 0) return null;
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" type="button">
+          <Trash className="h-3.5 w-3.5 mr-1" /> Excluir todas
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir todas as fotos?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {count} foto(s) do grupo "{label}" serão excluídas permanentemente. Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Excluir todas</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 interface FotosSectionProps {
   fotos: any[];
