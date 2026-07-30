@@ -86,8 +86,9 @@ export const exportTEPToHtml = (data: TEPData) => {
     const fallbackStr = expandedUrls.slice(1).join(',');
 
     return `
-      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
-        <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: ${cardHeight}px;">
+        <div style="width: 100%; height: ${imgHeight}px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+
           <img 
             src="${primaryUrl}" 
             data-local-src="${safePath}"
