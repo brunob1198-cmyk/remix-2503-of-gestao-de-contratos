@@ -1129,6 +1129,7 @@ export function DetailMedicaoContent({
         logoUrl: base64EmpresaLogo || finalEmpresaLogoUrl,
         clienteLogoUrl: base64ClienteLogo || finalClienteLogoUrl,
         isMultiSite: isMultiSite,
+        fotosPorPagina: detailMedicao.fotos_por_pagina || 6,
         sitesData: sitesData,
         addLog
       });
