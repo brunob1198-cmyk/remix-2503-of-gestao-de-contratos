@@ -17,7 +17,7 @@ interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
  * Tenta carregar várias versões da imagem (thumb -> original -> fallback)
  * antes de desistir.
  */
-export const SmartImage: React.FC<SmartImageProps> = ({
+export const SmartImage = React.forwardRef<HTMLDivElement, SmartImageProps>(function SmartImage({
   src,
   fallbackUrls = [],
   className,
@@ -26,7 +26,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   alt = "Imagem",
   context,
   ...props
-}) => {
+}, ref) {
   const [possibleUrls, setPossibleUrls] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +62,7 @@ export const SmartImage: React.FC<SmartImageProps> = ({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", containerClassName)}>
+    <div ref={ref} className={cn("relative overflow-hidden", containerClassName)}>
       {isLoading && showSkeleton && (
         <Skeleton className={cn("absolute inset-0 z-10", className)} />
       )}
@@ -87,4 +87,6 @@ export const SmartImage: React.FC<SmartImageProps> = ({
       )}
     </div>
   );
-};
+});
+
+SmartImage.displayName = "SmartImage";

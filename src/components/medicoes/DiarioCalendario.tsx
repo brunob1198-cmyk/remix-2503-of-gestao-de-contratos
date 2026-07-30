@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,44 +166,6 @@ const DayCell = memo(function DayCell({
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-/** Primeiro lote pintado de forma síncrona (acima da dobra). */
-const INITIAL_ROWS = 2;
-/** Linhas adicionadas por frame durante o render incremental. */
-const ROWS_PER_FRAME = 1;
-
-/**
- * Monta as linhas do calendário de forma incremental (uma por frame),
- * evitando bloquear a thread quando o período muda bruscamente.
- * Retorna quantas linhas já podem ser renderizadas com células reais.
- */
-function useIncrementalRows(totalRows: number, resetKey: string) {
-  const [visibleRows, setVisibleRows] = useState(() => Math.min(totalRows, INITIAL_ROWS));
-  const frameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Novo período/modo: recomeça do lote inicial.
-    setVisibleRows(Math.min(totalRows, INITIAL_ROWS));
-  }, [resetKey, totalRows]);
-
-  useEffect(() => {
-    if (visibleRows >= totalRows) return;
-
-    frameRef.current = requestAnimationFrame(() => {
-      setVisibleRows(prev => Math.min(totalRows, prev + ROWS_PER_FRAME));
-    });
-
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      }
-    };
-  }, [visibleRows, totalRows]);
-
-  return visibleRows;
-}
-
-
 export function DiarioCalendario({
   entries,
   onDayClick,
@@ -291,11 +253,6 @@ export function DiarioCalendario({
 
   const goToday = useCallback(() => setCurrentDate(new Date()), []);
 
-  // Render incremental: só as linhas já liberadas montam células reais.
-  const resetKey = `${viewMode}|${rows[0]?.cells[0]?.dateStr ?? ""}`;
-  const visibleRows = useIncrementalRows(rows.length, resetKey);
-  const rowHeightClass = viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]";
-
   return (
     <div className="space-y-4">
       {/* Controls */}
@@ -374,39 +331,30 @@ export function DiarioCalendario({
             ))}
           </div>
 
-          {rows.map((row, rowIndex) => (
+          {rows.map(row => (
             <div key={row.key} className="grid grid-cols-7 border-b last:border-b-0">
-              {rowIndex < visibleRows
-                ? row.cells.map(cell => {
-                    const entry = entriesByDate.get(cell.dateStr);
-                    return (
-                      <DayCell
-                        key={cell.dateStr}
-                        dateStr={cell.dateStr}
-                        dayNum={cell.dayNum}
-                        dayOfWeek={cell.dayOfWeek}
-                        isCurrentMonth={cell.isCurrentMonth}
-                        isToday={cell.isToday}
-                        isPastOrToday={cell.isPastOrToday}
-                        isInPeriod={cell.isInPeriod}
-                        viewMode={viewMode}
-                        hasEntry={!!entry}
-                        clima={entry?.clima ?? null}
-                        totalItens={entry?.totalItens ?? 0}
-                        totalEquipe={entry?.totalEquipe ?? 0}
-                        totalProducao={entry?.totalProducao ?? 0}
-                        onDayClick={onDayClick}
-                      />
-                    );
-                  })
-
-                : row.cells.map(cell => (
-                    <div
-                      key={cell.dateStr}
-                      aria-hidden="true"
-                      className={`border-r last:border-r-0 bg-muted/20 animate-pulse ${rowHeightClass}`}
-                    />
-                  ))}
+              {row.cells.map(cell => {
+                const entry = entriesByDate.get(cell.dateStr);
+                return (
+                  <DayCell
+                    key={cell.dateStr}
+                    dateStr={cell.dateStr}
+                    dayNum={cell.dayNum}
+                    dayOfWeek={cell.dayOfWeek}
+                    isCurrentMonth={cell.isCurrentMonth}
+                    isToday={cell.isToday}
+                    isPastOrToday={cell.isPastOrToday}
+                    isInPeriod={cell.isInPeriod}
+                    viewMode={viewMode}
+                    hasEntry={!!entry}
+                    clima={entry?.clima ?? null}
+                    totalItens={entry?.totalItens ?? 0}
+                    totalEquipe={entry?.totalEquipe ?? 0}
+                    totalProducao={entry?.totalProducao ?? 0}
+                    onDayClick={onDayClick}
+                  />
+                );
+              })}
             </div>
           ))}
         </CardContent>
