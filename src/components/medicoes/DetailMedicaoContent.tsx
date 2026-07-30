@@ -1770,7 +1770,7 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={handleExportTEP} 
+          onClick={handleExportStandardHtml} 
           variant="outline" 
           size="sm" 
           disabled={isExporting} 
