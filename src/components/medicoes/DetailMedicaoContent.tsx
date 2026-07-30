@@ -1620,6 +1620,28 @@ export function DetailMedicaoContent({
 </body>
 </html>`;
   }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
+
+  const handleExportStandardHtml = useCallback(() => {
+    try {
+      setShowLogPanel(true);
+      addLog("Gerando Relatório HTML (Modelo Padrão)...", "info");
+      const html = generateHtmlReport(false);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Relatorio_Medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      addLog("Relatório HTML gerado com sucesso!", "success");
+    } catch (err: any) {
+      console.error("Erro na exportação HTML:", err);
+      addLog(`Erro ao gerar HTML: ${err?.message || String(err)}`, "error");
+    }
+  }, [generateHtmlReport, detailMedicao, sanitize]);
+
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
