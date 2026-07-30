@@ -35,6 +35,14 @@ interface TEPData {
   addLog?: (message: string, type?: 'info' | 'error' | 'success' | 'debug') => void;
 }
 
+const formatBrDate = (value?: string | null) => {
+  if (!value) return "";
+  const iso = value.slice(0, 10);
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return value;
+  return `${d}/${m}/${y}`;
+};
+
 export const exportTEPToHtml = (data: TEPData) => {
   const { addLog } = data;
   addLog?.("Gerando Relatório TEP em formato HTML...", "info");
