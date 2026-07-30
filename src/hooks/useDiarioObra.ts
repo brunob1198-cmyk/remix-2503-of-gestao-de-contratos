@@ -725,8 +725,10 @@ export function useDiarioObra(siteId?: string, data?: string) {
       while (true) {
         const { data: d, error } = await supabase
           .from("diario_fotos")
-          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at")
+          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem")
           .eq("diario_id", diario.id)
+          .order("ordem", { ascending: true })
+          .order("created_at", { ascending: true })
           .range(from, to);
         if (error) throw error;
         if (!d || d.length === 0) break;
