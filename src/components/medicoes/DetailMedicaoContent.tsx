@@ -496,13 +496,19 @@ export function DetailMedicaoContent({
   });
 
   const diarioFotos = useMemo(() => {
-    if (fotoOrdemMap.size === 0) return rawDiarioFotos;
-    return [...rawDiarioFotos].sort((a, b) => {
+    // Aplica a legenda salva na configuração do relatório (prioridade máxima)
+    const withCaptions = rawDiarioFotos.map((f) => {
+      const custom = reportCaptionsMap.get(f.id);
+      return custom ? { ...f, legenda: custom } : f;
+    });
+    if (fotoOrdemMap.size === 0) return withCaptions;
+    return [...withCaptions].sort((a, b) => {
       const oa = fotoOrdemMap.has(a.id) ? fotoOrdemMap.get(a.id)! : Number.MAX_SAFE_INTEGER;
       const ob = fotoOrdemMap.has(b.id) ? fotoOrdemMap.get(b.id)! : Number.MAX_SAFE_INTEGER;
       return oa - ob;
     });
-  }, [rawDiarioFotos, fotoOrdemMap]);
+  }, [rawDiarioFotos, fotoOrdemMap, reportCaptionsMap]);
+
 
 
   const { data: rdoSummary = [] } = useQuery({
