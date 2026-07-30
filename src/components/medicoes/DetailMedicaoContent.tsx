@@ -1115,6 +1115,13 @@ export function DetailMedicaoContent({
 
       await exportTEPToHtml({
         siteNome: isMultiSite ? detailMedicao.projeto_nome : `${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`,
+        projetoNome: `${detailMedicao.projeto_codigo || ''} - ${detailMedicao.projeto_nome || ''}`.replace(/^ - /, ''),
+        numeroMedicao: detailMedicao.numero_medicao || undefined,
+        dataMedicao: detailMedicao.data_medicao || undefined,
+        periodoInicio: detailMedicao.periodo_inicio || undefined,
+        periodoFim: detailMedicao.periodo_fim || undefined,
+        uf: detailMedicao.uf || undefined,
+        sitesIncluidos: isMultiSite ? includedSites : [`${detailMedicao.site_codigo} - ${detailMedicao.site_nome}`],
         observacoes: siteObs,
         fotos: diarioFotos.map(f => ({
           url: f.url,
@@ -1620,6 +1627,28 @@ export function DetailMedicaoContent({
 </body>
 </html>`;
   }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
+
+  const handleExportStandardHtml = useCallback(() => {
+    try {
+      setShowLogPanel(true);
+      addLog("Gerando Relatório HTML (Modelo Padrão)...", "info");
+      const html = generateHtmlReport(false);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Relatorio_Medicao_${sanitize(detailMedicao.numero_medicao || detailMedicao.id)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      addLog("Relatório HTML gerado com sucesso!", "success");
+    } catch (err: any) {
+      console.error("Erro na exportação HTML:", err);
+      addLog(`Erro ao gerar HTML: ${err?.message || String(err)}`, "error");
+    }
+  }, [generateHtmlReport, detailMedicao, sanitize]);
+
   return (
     <div className="space-y-4">
       {/* Progress and Logs UI */}
@@ -1748,7 +1777,7 @@ export function DetailMedicaoContent({
         </DropdownMenu>
 
         <Button 
-          onClick={handleExportTEP} 
+          onClick={handleExportStandardHtml} 
           variant="outline" 
           size="sm" 
           disabled={isExporting} 

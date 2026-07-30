@@ -4,6 +4,13 @@ import { buildPossibleImageUrls } from "@/utils/imageFallbackUtils";
 
 interface TEPData {
   siteNome: string;
+  projetoNome?: string;
+  numeroMedicao?: string;
+  dataMedicao?: string;
+  periodoInicio?: string;
+  periodoFim?: string;
+  uf?: string;
+  sitesIncluidos?: string[];
   observacoes: string;
   fotos: {
     url: string;
@@ -27,6 +34,14 @@ interface TEPData {
   }[];
   addLog?: (message: string, type?: 'info' | 'error' | 'success' | 'debug') => void;
 }
+
+const formatBrDate = (value?: string | null) => {
+  if (!value) return "";
+  const iso = value.slice(0, 10);
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return value;
+  return `${d}/${m}/${y}`;
+};
 
 export const exportTEPToHtml = (data: TEPData) => {
   const { addLog } = data;
@@ -99,7 +114,11 @@ export const exportTEPToHtml = (data: TEPData) => {
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
           <div>
-            <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor}; margin-bottom: 6px;">${badgeText}</span>
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 10px; font-weight: bold; background-color: ${badgeColor};">${badgeText}</span>
+              ${foto.diario_data ? `<span style="font-size: 10.5px; color: #475569; font-weight: 600;">📅 ${formatBrDate(foto.diario_data)}</span>` : ""}
+              ${foto.site_nome ? `<span style="font-size: 10.5px; color: #64748b;">📍 ${foto.site_nome}</span>` : ""}
+            </div>
             ${foto.legenda ? `<p style="font-family: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: 12.5px; color: #334155; margin: 0; line-height: 1.35; background: #f1f5f9; border-left: 3px solid #cbd5e1; border-radius: 4px; padding: 6px 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${foto.legenda}</p>` : ""}
           </div>
         </div>
@@ -229,10 +248,17 @@ export const exportTEPToHtml = (data: TEPData) => {
           ${processedClienteLogoUrl ? `<img src="${processedClienteLogoUrl}" class="logo" alt="Logo Cliente" />` : "<div></div>"}
         </div>
 
-        <div class="info-grid">
+        <div class="info-grid" style="grid-template-columns: 130px 1fr;">
+          ${data.projetoNome ? `<div class="label">Projeto:</div><div>${data.projetoNome}</div>` : ""}
           <div class="label">Site:</div>
           <div>${data.siteNome}</div>
-          <div class="label">Data:</div>
+          ${data.uf ? `<div class="label">UF:</div><div>${data.uf}</div>` : ""}
+          ${data.numeroMedicao ? `<div class="label">Nº Medição:</div><div>${data.numeroMedicao}</div>` : ""}
+          ${(data.periodoInicio || data.periodoFim) ? `<div class="label">Período:</div><div>${formatBrDate(data.periodoInicio)} até ${formatBrDate(data.periodoFim)}</div>` : ""}
+          <div class="label">Data da Medição:</div>
+          <div>${formatBrDate(data.dataMedicao) || format(new Date(), "dd/MM/yyyy")}</div>
+          ${data.sitesIncluidos && data.sitesIncluidos.length > 0 ? `<div class="label">Sites incluídos:</div><div>${data.sitesIncluidos.join(" | ")}</div>` : ""}
+          <div class="label">Emissão:</div>
           <div>${format(new Date(), "dd/MM/yyyy")}</div>
         </div>
 
