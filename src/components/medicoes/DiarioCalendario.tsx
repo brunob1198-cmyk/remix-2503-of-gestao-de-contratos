@@ -285,6 +285,11 @@ export function DiarioCalendario({
 
   const goToday = useCallback(() => setCurrentDate(new Date()), []);
 
+  // Render incremental: só as linhas já liberadas montam células reais.
+  const resetKey = `${viewMode}|${rows[0]?.cells[0]?.dateStr ?? ""}`;
+  const visibleRows = useIncrementalRows(rows.length, resetKey);
+  const rowHeightClass = viewMode === "semanal" ? "min-h-[140px]" : "min-h-[90px]";
+
   return (
     <div className="space-y-4">
       {/* Controls */}
