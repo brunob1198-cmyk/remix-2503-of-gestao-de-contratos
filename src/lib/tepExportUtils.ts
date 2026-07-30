@@ -18,6 +18,7 @@ interface TEPData {
   logoUrl?: string | null;
   clienteLogoUrl?: string | null;
   isMultiSite?: boolean;
+  fotosPorPagina?: number;
   sitesData?: {
     siteId: string;
     siteName: string;
@@ -35,9 +36,31 @@ export const exportTEPToHtml = (data: TEPData) => {
   const processedLogoUrl = data.logoUrl;
   const processedClienteLogoUrl = data.clienteLogoUrl;
 
+  // Layout dinâmico conforme a quantidade de fotos por página escolhida
+  const perPage = [2, 4, 6].includes(Number(data.fotosPorPagina)) ? Number(data.fotosPorPagina) : 6;
+  const columns = perPage === 2 ? 1 : perPage === 4 ? 2 : 3;
+  const imgHeight = perPage === 2 ? 520 : perPage === 4 ? 400 : 240;
+  const cardHeight = imgHeight + 80;
 
+  const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  };
+
+  const buildPhotoGridHtml = (photos: any[]) =>
+    chunk(photos, perPage)
+      .map(
+        (page) => `
+          <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always;">
+            ${page.map((f) => buildPhotoCardHtml(f)).join("")}
+          </div>
+        `
+      )
+      .join("");
 
   const buildPhotoCardHtml = (foto: any) => {
+
     const clsLower = foto.classificacao?.toLowerCase();
     const badgeColor = (clsLower === "antes" || clsLower === "vistoria") ? "#16a34a" :
                   (clsLower === "execucao" || clsLower === "execução") ? "#2563eb" :
@@ -63,8 +86,9 @@ export const exportTEPToHtml = (data: TEPData) => {
     const fallbackStr = expandedUrls.slice(1).join(',');
 
     return `
-      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: 320px;">
-        <div style="width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+      <div style="break-inside: avoid; margin-bottom: 20px; text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; height: ${cardHeight}px;">
+        <div style="width: 100%; height: ${imgHeight}px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc; border-radius: 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 8px;">
+
           <img 
             src="${primaryUrl}" 
             data-local-src="${safePath}"
@@ -97,9 +121,8 @@ export const exportTEPToHtml = (data: TEPData) => {
       const photoSectionsHtml = site.classes.map(([className, photos]) => `
         <div style="margin-top: 20px;">
           <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">${className}</h3>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-            ${photos.map(f => buildPhotoCardHtml(f)).join("")}
-          </div>
+          ${buildPhotoGridHtml(photos)}
+
         </div>
       `).join("");
 
@@ -128,9 +151,8 @@ export const exportTEPToHtml = (data: TEPData) => {
       return `
         <div style="margin-top: 30px;">
           <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-            ${groupFotos.map(f => buildPhotoCardHtml(f)).join("")}
-          </div>
+          ${buildPhotoGridHtml(groupFotos)}
+
         </div>
       `;
     }).join("");
