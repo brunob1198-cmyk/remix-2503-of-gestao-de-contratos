@@ -1311,15 +1311,10 @@ export function DetailMedicaoContent({
         const photosHtml = classes.map(([className, photos]) => `
           <div class="class-group">
             <h3 class="class-header">${className} (${photos.length})</h3>
-          <div class="photo-grid">
-            ${chunkArray(photos, detailMedicao.fotos_por_pagina || 4).map(chunk => `
-              <div class="photo-grid-row">
-                ${chunk.map(f => buildPhotoCardHtml(f, { showItem: true, showSiteName: false })).join('')}
-              </div>
-            `).join('')}
-          </div>
+            ${buildPhotoPagesHtml(photos, { showItem: true, showSiteName: false })}
           </div>
         `).join('');
+
 
         return `
           <section class="site-block">
