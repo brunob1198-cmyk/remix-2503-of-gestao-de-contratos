@@ -161,6 +161,44 @@ const DayCell = memo(function DayCell({
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+/** Primeiro lote pintado de forma síncrona (acima da dobra). */
+const INITIAL_ROWS = 2;
+/** Linhas adicionadas por frame durante o render incremental. */
+const ROWS_PER_FRAME = 1;
+
+/**
+ * Monta as linhas do calendário de forma incremental (uma por frame),
+ * evitando bloquear a thread quando o período muda bruscamente.
+ * Retorna quantas linhas já podem ser renderizadas com células reais.
+ */
+function useIncrementalRows(totalRows: number, resetKey: string) {
+  const [visibleRows, setVisibleRows] = useState(() => Math.min(totalRows, INITIAL_ROWS));
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Novo período/modo: recomeça do lote inicial.
+    setVisibleRows(Math.min(totalRows, INITIAL_ROWS));
+  }, [resetKey, totalRows]);
+
+  useEffect(() => {
+    if (visibleRows >= totalRows) return;
+
+    frameRef.current = requestAnimationFrame(() => {
+      setVisibleRows(prev => Math.min(totalRows, prev + ROWS_PER_FRAME));
+    });
+
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [visibleRows, totalRows]);
+
+  return visibleRows;
+}
+
+
 export function DiarioCalendario({
   entries,
   onDayClick,
