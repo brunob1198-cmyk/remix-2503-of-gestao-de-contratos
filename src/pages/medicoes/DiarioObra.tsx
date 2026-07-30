@@ -907,9 +907,11 @@ export default function DiarioObraPage() {
               fotos={fotos}
               photoGroups={photoGroups}
               setPhotoGroups={setPhotoGroups}
+              producoes={producoes}
               onUpload={(e, group) => handleUploadFoto(e, group)}
               onRemove={handleRemoveFoto}
               setPhotoView={setPhotoView}
+              onReorder={ordens => reordenarFotos.mutate(ordens)}
             />
 
             <Card>
