@@ -350,9 +350,16 @@ function FotosSection({
 
         {fotosPorProducao.map(({ producaoId, label, list }) => (
           <div key={producaoId} className="space-y-3">
-            <div className="flex items-center gap-2 border-b pb-1">
-              <h3 className="font-semibold text-sm">Produção: {label}</h3>
-              <Badge variant="outline" className="text-[10px]">{list.length}</Badge>
+            <div className="flex items-center justify-between border-b pb-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm">Produção: {label}</h3>
+                <Badge variant="outline" className="text-[10px]">{list.length}</Badge>
+              </div>
+              <DeleteAllButton
+                label={`Produção: ${label}`}
+                count={list.length}
+                onConfirm={() => list.forEach(f => onRemove(f.id))}
+              />
             </div>
             <PhotoGrid
               photos={list}
