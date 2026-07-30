@@ -151,9 +151,8 @@ export const exportTEPToHtml = (data: TEPData) => {
       return `
         <div style="margin-top: 30px;">
           <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-            ${groupFotos.map(f => buildPhotoCardHtml(f)).join("")}
-          </div>
+          ${buildPhotoGridHtml(groupFotos)}
+
         </div>
       `;
     }).join("");
