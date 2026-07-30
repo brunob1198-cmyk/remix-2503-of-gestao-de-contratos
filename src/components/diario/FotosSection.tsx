@@ -314,6 +314,12 @@ function FotosSection({
                   <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
                     <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos
                   </Button>
+                  <DeleteAllButton
+                    label={group}
+                    count={groupPhotos.length}
+                    onConfirm={() => groupPhotos.forEach(f => onRemove(f.id))}
+                  />
+
                   {!["Execução", "Vistoria"].includes(group) && (
                     <Button
                       variant="ghost"
