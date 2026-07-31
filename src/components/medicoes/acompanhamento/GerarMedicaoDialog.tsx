@@ -301,6 +301,9 @@ export function GerarMedicaoDialog({
     await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
     if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
+    await clearMedicaoAttachments(anexosKey);
+    setAnexosRestaurados(false);
+    setCapaFile(null);
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
