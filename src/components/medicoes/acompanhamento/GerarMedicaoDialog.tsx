@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
 import { toast } from "sonner";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { saveMedicaoAttachments, loadMedicaoAttachments, clearMedicaoAttachments } from "@/lib/medicaoAttachments";
 
 interface GeracaoItem {
   site_id: string;
