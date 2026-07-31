@@ -299,6 +299,26 @@ function FotosSection({
   const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
   const photoGroupUploadRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  /** Aceita PDFs (ex: ART) convertendo cada página em imagem antes do upload normal. */
+  const handleUploadWithPdf = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>, group: string) => {
+      const input = e.currentTarget;
+      const files = Array.from(input.files || []);
+      const hasPdf = files.some(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+      if (!hasPdf) {
+        onUpload(e, group);
+        return;
+      }
+      const { expandPdfsToImages } = await import("@/lib/pdfToImages");
+      const images = await expandPdfsToImages(files);
+      const dt = new DataTransfer();
+      images.forEach(f => dt.items.add(f));
+      input.files = dt.files;
+      onUpload({ ...e, target: input, currentTarget: input } as React.ChangeEvent<HTMLInputElement>, group);
+    },
+    [onUpload]
+  );
+
   const handleDrag = useCallback((e: React.DragEvent, group: string | null) => {
     e.preventDefault();
     e.stopPropagation();
@@ -396,14 +416,14 @@ function FotosSection({
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     className="hidden"
                     id={`foto-${group}`}
                     ref={el => (photoGroupUploadRefs.current[group] = el)}
-                    onChange={e => onUpload(e, group)}
+                    onChange={e => handleUploadWithPdf(e, group)}
                   />
                   <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
-                    <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos
+                    <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos/PDF
                   </Button>
                   <DeleteAllButton
                     label={group}
