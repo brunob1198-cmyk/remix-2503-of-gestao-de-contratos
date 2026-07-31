@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { gerarMedicaoSchema } from "@/lib/schemas/medicao";
 import { toast } from "sonner";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { saveMedicaoAttachments, loadMedicaoAttachments, clearMedicaoAttachments } from "@/lib/medicaoAttachments";
 
 interface GeracaoItem {
   site_id: string;
@@ -95,6 +96,37 @@ export function GerarMedicaoDialog({
   const [capaFile, setCapaFile] = useState<File | null>(null);
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
+  const [anexosRestaurados, setAnexosRestaurados] = useState(false);
+
+  /** Chave local dos anexos: número da medição (ou rascunho enquanto não informado). */
+  const anexosKey = gerarNumeroMedicao?.trim() ? `medicao:${gerarNumeroMedicao.trim()}` : "medicao:__rascunho__";
+
+  // Restaura anexos guardados localmente ao reabrir a medição
+  useEffect(() => {
+    if (!isOpen) {
+      setAnexosRestaurados(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const files = await loadMedicaoAttachments(anexosKey);
+      if (cancelled) return;
+      if (files.length > 0) {
+        setCapaFile(prev => prev ?? files[0]);
+        toast.info("Anexos restaurados desta medição — não precisa reenviar.");
+      }
+      setAnexosRestaurados(true);
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, anexosKey]);
+
+  // Persiste a capa anexada para não precisar reenviar
+  useEffect(() => {
+    if (!isOpen || !anexosRestaurados) return;
+    saveMedicaoAttachments(anexosKey, capaFile ? [capaFile] : []);
+  }, [isOpen, anexosRestaurados, anexosKey, capaFile]);
+
+
 
   const [mostrarLpu, setMostrarLpu] = useState(true);
   const [mostrarValoresSite, setMostrarValoresSite] = useState(true);
@@ -269,6 +301,9 @@ export function GerarMedicaoDialog({
     await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
     if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
+    await clearMedicaoAttachments(anexosKey);
+    setAnexosRestaurados(false);
+    setCapaFile(null);
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
