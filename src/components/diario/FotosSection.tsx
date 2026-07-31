@@ -396,14 +396,14 @@ function FotosSection({
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     className="hidden"
                     id={`foto-${group}`}
                     ref={el => (photoGroupUploadRefs.current[group] = el)}
-                    onChange={e => onUpload(e, group)}
+                    onChange={e => handleUploadWithPdf(e, group)}
                   />
                   <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
-                    <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos
+                    <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos/PDF
                   </Button>
                   <DeleteAllButton
                     label={group}
