@@ -1,5 +1,4 @@
 import * as pdfjsLib from "pdfjs-dist";
-// @ts-expect-error - worker é resolvido como URL pelo Vite
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker as unknown as string;
