@@ -96,6 +96,37 @@ export function GerarMedicaoDialog({
   const [capaFile, setCapaFile] = useState<File | null>(null);
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
+  const [anexosRestaurados, setAnexosRestaurados] = useState(false);
+
+  /** Chave local dos anexos: número da medição (ou rascunho enquanto não informado). */
+  const anexosKey = gerarNumeroMedicao?.trim() ? `medicao:${gerarNumeroMedicao.trim()}` : "medicao:__rascunho__";
+
+  // Restaura anexos guardados localmente ao reabrir a medição
+  useEffect(() => {
+    if (!isOpen) {
+      setAnexosRestaurados(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const files = await loadMedicaoAttachments(anexosKey);
+      if (cancelled) return;
+      if (files.length > 0) {
+        setCapaFile(prev => prev ?? files[0]);
+        toast.info("Anexos restaurados desta medição — não precisa reenviar.");
+      }
+      setAnexosRestaurados(true);
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, anexosKey]);
+
+  // Persiste a capa anexada para não precisar reenviar
+  useEffect(() => {
+    if (!isOpen || !anexosRestaurados) return;
+    saveMedicaoAttachments(anexosKey, capaFile ? [capaFile] : []);
+  }, [isOpen, anexosRestaurados, anexosKey, capaFile]);
+
+
 
   const [mostrarLpu, setMostrarLpu] = useState(true);
   const [mostrarValoresSite, setMostrarValoresSite] = useState(true);
