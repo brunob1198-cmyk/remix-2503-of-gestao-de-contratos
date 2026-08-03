@@ -1076,6 +1076,18 @@ export function DetailMedicaoContent({
       .sort();
   }, [isMultiSite, siteProduction, sites]);
 
+  /** Ordenação cronológica padrão: data do diário e, em empate, id estável. */
+  const sortCronologico = useCallback((a: DiarioFotoWithItem, b: DiarioFotoWithItem) => {
+    const da = (a as any).diario_data || "";
+    const db = (b as any).diario_data || "";
+    if (da !== db) {
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    }
+    return String(a.id).localeCompare(String(b.id));
+  }, []);
+
   // Group photos by site AND classification (Vistoria/Execução) for mista
   const fotosBySiteAndClass = useMemo(() => {
     const map = new Map<string, Map<string, DiarioFotoWithItem[]>>();
@@ -1099,13 +1111,15 @@ export function DetailMedicaoContent({
       .map(([siteName, classMap]) => ({
         siteName,
         siteId: diarioFotos.find(f => (f.site_nome || "Sem site") === siteName)?.site_id || "",
-        classes: Array.from(classMap.entries()).sort((a, b) => {
-          if (a[0] === "Vistoria") return -1;
-          if (b[0] === "Vistoria") return 1;
-          return a[0].localeCompare(b[0]);
-        })
+        classes: Array.from(classMap.entries())
+          .map(([cls, fotos]) => [cls, [...fotos].sort(sortCronologico)] as [string, DiarioFotoWithItem[]])
+          .sort((a, b) => {
+            if (a[0] === "Vistoria") return -1;
+            if (b[0] === "Vistoria") return 1;
+            return a[0].localeCompare(b[0]);
+          })
       }));
-  }, [diarioFotos]);
+  }, [diarioFotos, sortCronologico]);
 
   // Group photos by item (for separada single-site)
   const fotosByItem = useMemo(() => {
@@ -1120,8 +1134,11 @@ export function DetailMedicaoContent({
         gerais.push(f);
       }
     });
+    map.forEach(list => list.sort(sortCronologico));
+    gerais.sort(sortCronologico);
     return { byItem: map, gerais };
-  }, [diarioFotos]);
+  }, [diarioFotos, sortCronologico]);
+
 
   // Helper to sanitize strings for files/paths
   const handleExportTEP = async () => {
