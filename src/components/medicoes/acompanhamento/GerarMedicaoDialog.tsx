@@ -53,6 +53,7 @@ interface GerarMedicaoDialogProps {
     items: any[];
     selectedItens: GeracaoItem[];
     capaFile: File | null;
+    anexoFile: File | null;
     reportConfig?: {
       mostrar_lpu: boolean;
       mostrar_valores_site: boolean;
