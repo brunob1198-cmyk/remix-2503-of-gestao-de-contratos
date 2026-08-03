@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
+import { pdfToImageFiles } from "@/lib/pdfToImages";
 import { useLancamentosMedicao } from "@/hooks/useLancamentos";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -201,7 +202,15 @@ export default function AcompanhamentoMedicoesPage() {
     let anexoUrl = null;
     if (data.anexoFile) {
       try {
-        anexoUrl = await uploadImage(data.anexoFile);
+        const isPdf = data.anexoFile.type === "application/pdf" || /\.pdf$/i.test(data.anexoFile.name);
+        if (isPdf) {
+          // Converte cada página do PDF (ex.: ART) em imagem para exibição no relatório
+          const paginas = await pdfToImageFiles(data.anexoFile);
+          const urls = await Promise.all(paginas.map(p => uploadImage(p)));
+          anexoUrl = urls.filter(Boolean).join(",");
+        } else {
+          anexoUrl = await uploadImage(data.anexoFile);
+        }
       } catch (err) {
         console.error("Erro upload anexo", err);
         toast({ title: "Erro no upload do anexo", description: err instanceof Error ? err.message : "Erro desconhecido", variant: "destructive" });
