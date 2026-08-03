@@ -293,12 +293,20 @@ export function DetailMedicaoContent({
 
   const isMultiSite = tipoMedicao === "mista" || tipoMedicao === "agrupada";
 
+  /** Capa: pode conter várias URLs (páginas de PDF já convertidas em imagem). */
+  const capaUrls = useMemo(
+    () => (detailMedicao.capa_url || "").split(",").map(u => u.trim()).filter(Boolean),
+    [detailMedicao.capa_url]
+  );
+  const capaIsPdf = capaUrls.length === 1 && capaUrls[0].toLowerCase().includes(".pdf");
+
   /** Anexo final: pode conter várias URLs (páginas de PDF já convertidas em imagem). */
   const anexoUrls = useMemo(
     () => (detailMedicao.anexo_url || "").split(",").map(u => u.trim()).filter(Boolean),
     [detailMedicao.anexo_url]
   );
   const anexoIsPdf = anexoUrls.length === 1 && anexoUrls[0].toLowerCase().includes(".pdf");
+
 
 
 
