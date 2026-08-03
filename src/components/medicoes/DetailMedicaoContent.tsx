@@ -2165,7 +2165,7 @@ export function DetailMedicaoContent({
                         )}
                       </div>
 
-                      {siteItems.length > 0 && (
+                      {detailMedicao.modo_somente_fotos !== true && detailMedicao.mostrar_valores_site !== false && siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
                           <p className="text-xs font-semibold mb-2 py-1" style={{ lineHeight: '1.6' }}>Produção do Site:</p>
                           <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
