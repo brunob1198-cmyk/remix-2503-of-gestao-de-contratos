@@ -54,7 +54,7 @@ interface GerarMedicaoDialogProps {
     items: any[];
     selectedItens: GeracaoItem[];
     capaFile: File | null;
-    anexoFile: File | null;
+    anexoFiles: File[];
     reportConfig?: {
       mostrar_lpu: boolean;
       mostrar_valores_site: boolean;
@@ -96,7 +96,7 @@ export function GerarMedicaoDialog({
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
   const [capaFile, setCapaFile] = useState<File | null>(null);
-  const [anexoFile, setAnexoFile] = useState<File | null>(null);
+  const [anexoFiles, setAnexoFiles] = useState<File[]>([]);
   const [dragCapa, setDragCapa] = useState(false);
   const [dragAnexo, setDragAnexo] = useState(false);
   const [uploadingCapa, setUploadingCapa] = useState(false);
@@ -122,7 +122,7 @@ export function GerarMedicaoDialog({
       if (cancelled) return;
       if (capas.length > 0 || anexos.length > 0) {
         if (capas[0]) setCapaFile(prev => prev ?? capas[0]);
-        if (anexos[0]) setAnexoFile(prev => prev ?? anexos[0]);
+        if (anexos.length > 0) setAnexoFiles(prev => (prev.length > 0 ? prev : anexos));
         toast.info("Anexos restaurados desta medição — não precisa reenviar.");
       }
       setAnexosRestaurados(true);
@@ -134,8 +134,8 @@ export function GerarMedicaoDialog({
   useEffect(() => {
     if (!isOpen || !anexosRestaurados) return;
     saveMedicaoAttachments(anexosKey, capaFile ? [capaFile] : []);
-    saveMedicaoAttachments(`${anexosKey}:anexo`, anexoFile ? [anexoFile] : []);
-  }, [isOpen, anexosRestaurados, anexosKey, capaFile, anexoFile]);
+    saveMedicaoAttachments(`${anexosKey}:anexo`, anexoFiles);
+  }, [isOpen, anexosRestaurados, anexosKey, capaFile, anexoFiles]);
 
 
 
@@ -309,14 +309,14 @@ export function GerarMedicaoDialog({
     const fallbackSiteId = gerarSiteId || sites.find(s => s.projeto_id === gerarProjetoId)?.id || sites[0]?.id || null;
     const items = selectedItems.map(i => ({ site_id: i.site_id || fallbackSiteId, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
     
-    await onEnviar({ items, selectedItens: selectedItems, capaFile, anexoFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
+    await onEnviar({ items, selectedItens: selectedItems, capaFile, anexoFiles, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
     if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
     await clearMedicaoAttachments(anexosKey);
     await clearMedicaoAttachments(`${anexosKey}:anexo`);
     setAnexosRestaurados(false);
     setCapaFile(null);
-    setAnexoFile(null);
+    setAnexoFiles([]);
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
@@ -406,7 +406,7 @@ export function GerarMedicaoDialog({
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" /> Anexo final (PDF/Img) — ex.: ART
+                      <FileText className="h-4 w-4" /> Anexos finais (PDF/Img) — ex.: ART
                     </Label>
                     <div
                       onClick={() => anexoInputRef.current?.click()}
@@ -415,8 +415,8 @@ export function GerarMedicaoDialog({
                       onDrop={(e) => {
                         e.preventDefault();
                         setDragAnexo(false);
-                        const file = e.dataTransfer.files?.[0];
-                        if (file) setAnexoFile(file);
+                        const files = Array.from(e.dataTransfer.files || []);
+                        if (files.length) setAnexoFiles(prev => [...prev, ...files]);
                       }}
                       className={cn(
                         "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors",
@@ -427,23 +427,30 @@ export function GerarMedicaoDialog({
                         type="file"
                         ref={anexoInputRef}
                         className="hidden"
+                        multiple
                         accept="application/pdf,image/*"
                         onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setAnexoFile(file);
+                          const files = Array.from(e.target.files || []);
+                          if (files.length) setAnexoFiles(prev => [...prev, ...files]);
+                          e.target.value = "";
                         }}
                       />
-                      {anexoFile ? (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="truncate max-w-[200px]">{anexoFile.name}</span>
-                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAnexoFile(null); }}>
-                            <X className="h-4 w-4" />
-                          </Button>
+                      {anexoFiles.length > 0 ? (
+                        <div className="space-y-1 text-left">
+                          {anexoFiles.map((f, i) => (
+                            <div key={`${f.name}-${i}`} className="flex items-center justify-between text-sm">
+                              <span className="truncate max-w-[200px]">{i + 1}. {f.name}</span>
+                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAnexoFiles(prev => prev.filter((_, idx) => idx !== i)); }}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <p className="text-[10px] text-muted-foreground pt-1">Clique ou arraste para adicionar mais.</p>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-1 text-muted-foreground">
                           <Upload className="h-6 w-6" />
-                          <span className="text-xs">Exibido após o relatório fotográfico</span>
+                          <span className="text-xs">Exibidos após o relatório fotográfico</span>
                         </div>
                       )}
                     </div>
