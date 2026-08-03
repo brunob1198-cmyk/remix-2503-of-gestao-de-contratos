@@ -1641,6 +1641,27 @@ export function DetailMedicaoContent({
       ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
     </div>
   ` : ''}
+
+  ${detailMedicao.anexo_url ? `
+    <div class="page">
+      <h2 class="sec">📎 Anexos</h2>
+      <div style="display: flex; justify-content: center; align-items: center; min-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; overflow: hidden;">
+        ${detailMedicao.anexo_url.toLowerCase().includes('.pdf') ? `
+          <div style="text-align: center; padding: 40px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h3 style="margin: 0; font-size: 18px; color: #1e3a5f;">Documento Anexo (PDF)</h3>
+            <p style="color: #64748b; margin: 10px 0 20px;">Anexado ao final do relatório (ex.: ART dos serviços).</p>
+            ${forZip ?
+              `<a href="anexo/anexo_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Anexo Local</a>` :
+              `<a href="${resolveFileUrl(detailMedicao.anexo_url)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Anexo Online</a>`
+            }
+          </div>
+        ` : `
+          <img src="${resolveFileUrl(detailMedicao.anexo_url)}" alt="Anexo da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+        `}
+      </div>
+    </div>
+  ` : ''}
 </body>
 </html>`;
   }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
