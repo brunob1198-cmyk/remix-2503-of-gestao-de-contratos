@@ -155,6 +155,7 @@ export function useLancamentosMedicao(siteId?: string) {
       status?: string; 
       observacao?: string; 
       capa_url?: string | null;
+      anexo_url?: string | null;
       logo_empresa_url?: string | null;
       mostrar_lpu?: boolean;
       mostrar_valores_site?: boolean;

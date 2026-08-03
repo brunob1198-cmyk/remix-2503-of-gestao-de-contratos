@@ -52,6 +52,7 @@ interface DetailMedicaoContentProps {
     lancamentoIds: string[];
     logo_empresa_url?: string;
     capa_url?: string | null;
+    anexo_url?: string | null;
     mostrar_lpu?: boolean;
     mostrar_valores_site?: boolean;
     modo_somente_fotos?: boolean;
@@ -969,6 +970,14 @@ export function DetailMedicaoContent({
           url: detailMedicao.capa_url,
           filename: `capa_medicao.${extension}`,
           folder: 'capa'
+        });
+      }
+      if (detailMedicao.anexo_url) {
+        const extension = detailMedicao.anexo_url.split('.').pop()?.split('?')[0] || 'pdf';
+        photosToZip.push({
+          url: detailMedicao.anexo_url,
+          filename: `anexo_medicao.${extension}`,
+          folder: 'anexo'
         });
       }
 
