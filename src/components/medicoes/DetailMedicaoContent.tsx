@@ -2328,14 +2328,14 @@ export function DetailMedicaoContent({
           </>
         )}
 
-        {detailMedicao.anexo_url && (
+        {anexoUrls.length > 0 && (
           <div
             className="pdf-keep-together mt-6 pt-4 border-t-2 border-primary"
             data-pdf-section="anexo"
             style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
           >
             <h2 className="pdf-section-heading text-base font-bold text-primary mb-4">Anexos</h2>
-            {detailMedicao.anexo_url.toLowerCase().includes('.pdf') ? (
+            {anexoIsPdf ? (
               <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
                 <FileText className="h-16 w-16 text-primary mb-4" />
                 <h3 className="text-lg font-bold text-primary">Documento Anexo (PDF)</h3>
@@ -2343,20 +2343,23 @@ export function DetailMedicaoContent({
                   Este documento será anexado como as últimas páginas do relatório final (ex.: ART).
                 </p>
                 <Button variant="outline" size="sm" className="mt-4" asChild>
-                  <a href={resolveFileUrl(detailMedicao.anexo_url)} target="_blank" rel="noopener noreferrer">
+                  <a href={resolveFileUrl(anexoUrls[0])} target="_blank" rel="noopener noreferrer">
                     Visualizar Anexo em Nova Aba
                   </a>
                 </Button>
               </div>
             ) : (
-              <div className="w-full flex justify-center">
-                <SmartImage
-                  src={detailMedicao.anexo_url}
-                  context="medicoes"
-                  alt="Anexo da Medição"
-                  className="max-w-full h-auto rounded-lg shadow-sm"
-                  style={{ maxHeight: '800px', objectFit: 'contain' }}
-                />
+              <div className="w-full flex flex-col items-center gap-4">
+                {anexoUrls.map((u, i) => (
+                  <SmartImage
+                    key={u}
+                    src={u}
+                    context="medicoes"
+                    alt={`Anexo da Medição - página ${i + 1}`}
+                    className="max-w-full h-auto rounded-lg shadow-sm"
+                    style={{ maxHeight: '800px', objectFit: 'contain' }}
+                  />
+                ))}
               </div>
             )}
           </div>
