@@ -907,8 +907,9 @@ export function DetailMedicaoContent({
             debugMode: debugMode
           },
           onPreviewGenerated: (url) => setPreviewUrl(url),
-          capaUrl: detailMedicao.capa_url,
+          capaUrl: capaIsPdf ? capaUrls[0] : undefined,
           anexoUrl: anexoIsPdf ? anexoUrls[0] : undefined
+
         }
       );
 
