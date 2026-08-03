@@ -57,22 +57,12 @@ export const exportTEPToHtml = (data: TEPData) => {
   const imgHeight = perPage === 2 ? 520 : perPage === 4 ? 400 : 240;
   const cardHeight = imgHeight + 80;
 
-  const chunk = <T,>(arr: T[], size: number): T[][] => {
-    const out: T[][] = [];
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-    return out;
-  };
 
-  const buildPhotoGridHtml = (photos: any[]) =>
-    chunk(photos, perPage)
-      .map(
-        (page) => `
-          <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always;">
-            ${page.map((f) => buildPhotoCardHtml(f)).join("")}
-          </div>
-        `
-      )
-      .join("");
+  const buildPhotoGridHtml = (photos: any[]) => `
+    <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-after: page; page-break-after: always;">
+      ${photos.map((f) => buildPhotoCardHtml(f)).join("")}
+    </div>
+  `;
 
   const buildPhotoCardHtml = (foto: any) => {
 
