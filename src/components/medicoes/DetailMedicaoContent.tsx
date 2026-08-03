@@ -983,14 +983,15 @@ export function DetailMedicaoContent({
           folder: 'logos'
         });
       }
-      if (detailMedicao.capa_url) {
-        const extension = detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'pdf';
+      capaUrls.forEach((u, i) => {
+        const extension = u.split('.').pop()?.split('?')[0] || 'jpg';
         photosToZip.push({
-          url: detailMedicao.capa_url,
-          filename: `capa_medicao.${extension}`,
+          url: u,
+          filename: capaIsPdf ? `capa_medicao.${extension}` : `capa_medicao_p${String(i + 1).padStart(2, '0')}.${extension}`,
           folder: 'capa'
         });
-      }
+      });
+
       anexoUrls.forEach((u, i) => {
         const extension = u.split('.').pop()?.split('?')[0] || 'jpg';
         photosToZip.push({
