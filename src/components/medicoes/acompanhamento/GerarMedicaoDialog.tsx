@@ -306,12 +306,14 @@ export function GerarMedicaoDialog({
     const fallbackSiteId = gerarSiteId || sites.find(s => s.projeto_id === gerarProjetoId)?.id || sites[0]?.id || null;
     const items = selectedItems.map(i => ({ site_id: i.site_id || fallbackSiteId, item_lpu_id: i.item_lpu_id, data_medicao: new Date().toISOString().split("T")[0], quantidade: i.quantidade + i.quantidade_pendente, numero_medicao: gerarNumeroMedicao, status: "enviada", periodo_inicio: gerarPeriodoInicio, periodo_fim: gerarPeriodoFim, observacao: `tipo:${gerarTipoMedicao}`, mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos }));
     
-    await onEnviar({ items, selectedItens: selectedItems, capaFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
+    await onEnviar({ items, selectedItens: selectedItems, capaFile, anexoFile, reportConfig: { mostrar_lpu: mostrarLpu, mostrar_valores_site: mostrarValoresSite, modo_somente_fotos: modoSomenteFotos, fotos_por_pagina: fotosPorPagina, legenda_padrao_fotos: legendaPadraoFotos } });
     const captionRows = fotoOrder.map((foto_id, idx) => ({ numero_medicao: gerarNumeroMedicao, foto_id, legenda: editLegendas[foto_id] ?? null, ordem: idx }));
     if (captionRows.length > 0) await supabase.from("medicao_report_photo_captions").upsert(captionRows, { onConflict: "numero_medicao,foto_id" });
     await clearMedicaoAttachments(anexosKey);
+    await clearMedicaoAttachments(`${anexosKey}:anexo`);
     setAnexosRestaurados(false);
     setCapaFile(null);
+    setAnexoFile(null);
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
