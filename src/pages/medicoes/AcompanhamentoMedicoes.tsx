@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
+import { pdfToImageFiles } from "@/lib/pdfToImages";
 import { useLancamentosMedicao } from "@/hooks/useLancamentos";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
