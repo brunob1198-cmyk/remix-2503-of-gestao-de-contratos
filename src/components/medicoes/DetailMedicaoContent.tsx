@@ -1351,8 +1351,8 @@ export function DetailMedicaoContent({
               <span>📍 ${siteName}</span>
               ${statusAtivoBySite.get(siteId) ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:2px solid ${statusAtivoBySite.get(siteId) === "ON" ? "#a7f3d0" : "#fecdd3"};background:${statusAtivoBySite.get(siteId) === "ON" ? "#ecfdf5" : "#fff1f2"};color:${statusAtivoBySite.get(siteId) === "ON" ? "#047857" : "#be123c"};">STATUS DO ATIVO: ${statusAtivoBySite.get(siteId)}</span>` : ''}
             </div>
-            ${detailMedicao.mostrar_valores_site !== false ? itemsTableHtml : ''}
-            ${recursosHtml}
+            ${detailMedicao.modo_somente_fotos === true ? '' : (detailMedicao.mostrar_valores_site !== false ? itemsTableHtml : '')}
+            ${detailMedicao.modo_somente_fotos === true ? '' : recursosHtml}
             ${obsHtml}
             ${photosHtml}
           </section>
@@ -2165,7 +2165,7 @@ export function DetailMedicaoContent({
                         )}
                       </div>
 
-                      {siteItems.length > 0 && (
+                      {detailMedicao.modo_somente_fotos !== true && detailMedicao.mostrar_valores_site !== false && siteItems.length > 0 && (
                         <div className="p-3 border-b bg-muted/20">
                           <p className="text-xs font-semibold mb-2 py-1" style={{ lineHeight: '1.6' }}>Produção do Site:</p>
                           <Table style={{ pageBreakInside: "avoid", breakInside: "avoid" }}>
@@ -2205,6 +2205,7 @@ export function DetailMedicaoContent({
                       )}
 
                       {(() => {
+                        if (detailMedicao.modo_somente_fotos === true) return null;
                         const siteRecursos = recursosAgregadosPorSite.get(siteId);
                         if (!siteRecursos || (siteRecursos.equipe.length === 0 && siteRecursos.equipamentos.length === 0 && siteRecursos.veiculos.length === 0)) return null;
                         
