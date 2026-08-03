@@ -112,10 +112,14 @@ export function GerarMedicaoDialog({
     }
     let cancelled = false;
     (async () => {
-      const files = await loadMedicaoAttachments(anexosKey);
+      const [capas, anexos] = await Promise.all([
+        loadMedicaoAttachments(anexosKey),
+        loadMedicaoAttachments(`${anexosKey}:anexo`),
+      ]);
       if (cancelled) return;
-      if (files.length > 0) {
-        setCapaFile(prev => prev ?? files[0]);
+      if (capas.length > 0 || anexos.length > 0) {
+        if (capas[0]) setCapaFile(prev => prev ?? capas[0]);
+        if (anexos[0]) setAnexoFile(prev => prev ?? anexos[0]);
         toast.info("Anexos restaurados desta medição — não precisa reenviar.");
       }
       setAnexosRestaurados(true);
@@ -123,11 +127,12 @@ export function GerarMedicaoDialog({
     return () => { cancelled = true; };
   }, [isOpen, anexosKey]);
 
-  // Persiste a capa anexada para não precisar reenviar
+  // Persiste a capa e o anexo final para não precisar reenviar
   useEffect(() => {
     if (!isOpen || !anexosRestaurados) return;
     saveMedicaoAttachments(anexosKey, capaFile ? [capaFile] : []);
-  }, [isOpen, anexosRestaurados, anexosKey, capaFile]);
+    saveMedicaoAttachments(`${anexosKey}:anexo`, anexoFile ? [anexoFile] : []);
+  }, [isOpen, anexosRestaurados, anexosKey, capaFile, anexoFile]);
 
 
 
