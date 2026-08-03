@@ -96,6 +96,8 @@ export function GerarMedicaoDialog({
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
   const [capaFile, setCapaFile] = useState<File | null>(null);
   const [anexoFile, setAnexoFile] = useState<File | null>(null);
+  const [dragCapa, setDragCapa] = useState(false);
+  const [dragAnexo, setDragAnexo] = useState(false);
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
   const anexoInputRef = useRef<HTMLInputElement>(null);
@@ -363,7 +365,18 @@ export function GerarMedicaoDialog({
                     </Label>
                     <div 
                       onClick={() => capaInputRef.current?.click()}
-                      className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                      onDragOver={(e) => { e.preventDefault(); setDragCapa(true); }}
+                      onDragLeave={() => setDragCapa(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragCapa(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) setCapaFile(file);
+                      }}
+                      className={cn(
+                        "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors",
+                        dragCapa && "border-primary bg-primary/10"
+                      )}
                     >
                       <input 
                         type="file" 
@@ -396,7 +409,18 @@ export function GerarMedicaoDialog({
                     </Label>
                     <div
                       onClick={() => anexoInputRef.current?.click()}
-                      className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                      onDragOver={(e) => { e.preventDefault(); setDragAnexo(true); }}
+                      onDragLeave={() => setDragAnexo(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragAnexo(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) setAnexoFile(file);
+                      }}
+                      className={cn(
+                        "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors",
+                        dragAnexo && "border-primary bg-primary/10"
+                      )}
                     >
                       <input
                         type="file"
