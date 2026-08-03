@@ -67,7 +67,7 @@ export const exportTEPToHtml = (data: TEPData) => {
     chunk(photos, perPage)
       .map(
         (page) => `
-          <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-inside: avoid; page-break-inside: avoid; break-after: page; page-break-after: always;">
+          <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px;">
             ${page.map((f) => buildPhotoCardHtml(f)).join("")}
           </div>
         `
