@@ -95,8 +95,10 @@ export function GerarMedicaoDialog({
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [loadingGeracaoFotos, setLoadingGeracaoFotos] = useState(false);
   const [capaFile, setCapaFile] = useState<File | null>(null);
+  const [anexoFile, setAnexoFile] = useState<File | null>(null);
   const [uploadingCapa, setUploadingCapa] = useState(false);
   const capaInputRef = useRef<HTMLInputElement>(null);
+  const anexoInputRef = useRef<HTMLInputElement>(null);
   const [anexosRestaurados, setAnexosRestaurados] = useState(false);
 
   /** Chave local dos anexos: número da medição (ou rascunho enquanto não informado). */
