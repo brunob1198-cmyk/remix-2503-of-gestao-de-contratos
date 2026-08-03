@@ -190,13 +190,22 @@ export default function AcompanhamentoMedicoesPage() {
     let capaUrl = null;
     if (data.capaFile) {
       try {
-        capaUrl = await uploadImage(data.capaFile);
+        const isPdf = data.capaFile.type === "application/pdf" || /\.pdf$/i.test(data.capaFile.name);
+        if (isPdf) {
+          // Converte cada página da capa em imagem para exibição no relatório
+          const paginas = await pdfToImageFiles(data.capaFile);
+          const pageUrls = (await Promise.all(paginas.map(p => uploadImage(p)))).filter(Boolean);
+          capaUrl = pageUrls.length > 0 ? pageUrls.join(",") : null;
+        } else {
+          capaUrl = await uploadImage(data.capaFile);
+        }
       } catch (err) {
         console.error("Erro upload capa", err);
         toast({ title: "Erro no upload da capa", description: err instanceof Error ? err.message : "Erro desconhecido", variant: "destructive" });
         return;
       }
     }
+
 
 
     let anexoUrl = null;

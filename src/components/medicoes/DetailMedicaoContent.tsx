@@ -293,12 +293,20 @@ export function DetailMedicaoContent({
 
   const isMultiSite = tipoMedicao === "mista" || tipoMedicao === "agrupada";
 
+  /** Capa: pode conter várias URLs (páginas de PDF já convertidas em imagem). */
+  const capaUrls = useMemo(
+    () => (detailMedicao.capa_url || "").split(",").map(u => u.trim()).filter(Boolean),
+    [detailMedicao.capa_url]
+  );
+  const capaIsPdf = capaUrls.length === 1 && capaUrls[0].toLowerCase().includes(".pdf");
+
   /** Anexo final: pode conter várias URLs (páginas de PDF já convertidas em imagem). */
   const anexoUrls = useMemo(
     () => (detailMedicao.anexo_url || "").split(",").map(u => u.trim()).filter(Boolean),
     [detailMedicao.anexo_url]
   );
   const anexoIsPdf = anexoUrls.length === 1 && anexoUrls[0].toLowerCase().includes(".pdf");
+
 
 
 
@@ -899,8 +907,9 @@ export function DetailMedicaoContent({
             debugMode: debugMode
           },
           onPreviewGenerated: (url) => setPreviewUrl(url),
-          capaUrl: detailMedicao.capa_url,
+          capaUrl: capaIsPdf ? capaUrls[0] : undefined,
           anexoUrl: anexoIsPdf ? anexoUrls[0] : undefined
+
         }
       );
 
@@ -974,14 +983,15 @@ export function DetailMedicaoContent({
           folder: 'logos'
         });
       }
-      if (detailMedicao.capa_url) {
-        const extension = detailMedicao.capa_url.split('.').pop()?.split('?')[0] || 'pdf';
+      capaUrls.forEach((u, i) => {
+        const extension = u.split('.').pop()?.split('?')[0] || 'jpg';
         photosToZip.push({
-          url: detailMedicao.capa_url,
-          filename: `capa_medicao.${extension}`,
+          url: u,
+          filename: capaIsPdf ? `capa_medicao.${extension}` : `capa_medicao_p${String(i + 1).padStart(2, '0')}.${extension}`,
           folder: 'capa'
         });
-      }
+      });
+
       anexoUrls.forEach((u, i) => {
         const extension = u.split('.').pop()?.split('?')[0] || 'jpg';
         photosToZip.push({
@@ -1550,26 +1560,27 @@ export function DetailMedicaoContent({
   </style>
 </head>
 <body>
-  ${detailMedicao.capa_url ? `
+  ${capaUrls.length > 0 ? (capaIsPdf ? `
     <div class="page">
       <h2 class="sec">📄 Capa da Medição</h2>
       <div style="display: flex; justify-content: center; align-items: center; min-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; overflow: hidden;">
-        ${detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? `
-          <div style="text-align: center; padding: 40px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <h3 style="margin: 0; font-size: 18px; color: #1e3a5f;">Documento de Capa (PDF)</h3>
-            <p style="color: #64748b; margin: 10px 0 20px;">Este documento foi anexado como as primeiras páginas do relatório.</p>
-            ${forZip ? 
-              `<a href="capa/capa_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Local</a>` :
-              `<a href="${resolveFileUrl(detailMedicao.capa_url)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Online</a>`
-            }
-          </div>
-        ` : `
-          <img src="${resolveFileUrl(detailMedicao.capa_url)}" alt="Capa da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
-        `}
+        <div style="text-align: center; padding: 40px;">
+          <h3 style="margin: 0; font-size: 18px; color: #1e3a5f;">Documento de Capa (PDF)</h3>
+          <p style="color: #64748b; margin: 10px 0 20px;">Este documento foi anexado como as primeiras páginas do relatório.</p>
+          ${forZip ?
+            `<a href="capa/capa_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Local</a>` :
+            `<a href="${resolveFileUrl(capaUrls[0])}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Capa Online</a>`
+          }
+        </div>
       </div>
     </div>
-  ` : ''}
+  ` : capaUrls.map((u, i) => `
+    <div class="page">
+      ${i === 0 ? '<h2 class="sec">📄 Capa da Medição</h2>' : ''}
+      <img src="${resolveFileUrl(u)}" alt="Capa da Medição ${i + 1}" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+    </div>
+  `).join('')) : ''}
+
 
   <div class="page">
     <header class="doc-header">
@@ -1876,9 +1887,9 @@ export function DetailMedicaoContent({
           data-pdf-section="capa"
           style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
         >
-          {detailMedicao.capa_url && (
+          {capaUrls.length > 0 && (
             <div className="mb-6 border-b-2 border-primary pb-4">
-              {detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? (
+              {capaIsPdf ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
                   <FileText className="h-16 w-16 text-primary mb-4" />
                   <h3 className="text-lg font-bold text-primary">Capa da Medição (PDF)</h3>
@@ -1886,24 +1897,28 @@ export function DetailMedicaoContent({
                     Este documento será anexado como as primeiras páginas do relatório final gerado.
                   </p>
                   <Button variant="outline" size="sm" className="mt-4" asChild>
-                    <a href={resolveFileUrl(detailMedicao.capa_url)} target="_blank" rel="noopener noreferrer">
+                    <a href={resolveFileUrl(capaUrls[0])} target="_blank" rel="noopener noreferrer">
                       Visualizar Capa em Nova Aba
                     </a>
                   </Button>
                 </div>
               ) : (
-                <div className="w-full flex justify-center">
-                  <SmartImage 
-                    src={detailMedicao.capa_url!} 
-                    context="medicoes"
-                    alt="Capa da Medição" 
-                    className="max-w-full h-auto rounded-lg shadow-sm"
-                    style={{ maxHeight: '800px', objectFit: 'contain' }}
-                  />
+                <div className="w-full flex flex-col items-center gap-4">
+                  {capaUrls.map((u, i) => (
+                    <SmartImage
+                      key={u}
+                      src={u}
+                      context="medicoes"
+                      alt={`Capa da Medição ${i + 1}`}
+                      className="max-w-full h-auto rounded-lg shadow-sm"
+                      style={{ maxHeight: '800px', objectFit: 'contain' }}
+                    />
+                  ))}
                 </div>
               )}
             </div>
           )}
+
         </div>
 
         <div
