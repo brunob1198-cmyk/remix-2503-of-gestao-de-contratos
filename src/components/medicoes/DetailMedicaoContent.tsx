@@ -982,14 +982,14 @@ export function DetailMedicaoContent({
           folder: 'capa'
         });
       }
-      if (detailMedicao.anexo_url) {
-        const extension = detailMedicao.anexo_url.split('.').pop()?.split('?')[0] || 'pdf';
+      anexoUrls.forEach((u, i) => {
+        const extension = u.split('.').pop()?.split('?')[0] || 'jpg';
         photosToZip.push({
-          url: detailMedicao.anexo_url,
-          filename: `anexo_medicao.${extension}`,
+          url: u,
+          filename: anexoIsPdf ? `anexo_medicao.${extension}` : `anexo_medicao_p${String(i + 1).padStart(2, '0')}.${extension}`,
           folder: 'anexo'
         });
-      }
+      });
 
       // 2. Prepare JSON Data and HTML Content
       const htmlContent = generateHtmlReport(true);
