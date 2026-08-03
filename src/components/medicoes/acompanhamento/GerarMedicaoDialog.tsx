@@ -390,6 +390,39 @@ export function GerarMedicaoDialog({
                       )}
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" /> Anexo final (PDF/Img) — ex.: ART
+                    </Label>
+                    <div
+                      onClick={() => anexoInputRef.current?.click()}
+                      className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <input
+                        type="file"
+                        ref={anexoInputRef}
+                        className="hidden"
+                        accept="application/pdf,image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setAnexoFile(file);
+                        }}
+                      />
+                      {anexoFile ? (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="truncate max-w-[200px]">{anexoFile.name}</span>
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setAnexoFile(null); }}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                          <Upload className="h-6 w-6" />
+                          <span className="text-xs">Exibido após o relatório fotográfico</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
