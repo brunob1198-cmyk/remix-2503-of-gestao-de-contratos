@@ -80,6 +80,7 @@ export default function AcompanhamentoMedicoesPage() {
           projeto_codigo: l.site?.projeto?.codigo || "",
           logo_empresa_url: (l as any).logo_empresa_url,
           capa_url: (l as any).capa_url,
+          anexo_url: (l as any).anexo_url,
           mostrar_lpu: (l as any).mostrar_lpu,
           mostrar_valores_site: (l as any).mostrar_valores_site,
           modo_somente_fotos: (l as any).modo_somente_fotos,
@@ -197,9 +198,21 @@ export default function AcompanhamentoMedicoesPage() {
     }
 
 
+    let anexoUrl = null;
+    if (data.anexoFile) {
+      try {
+        anexoUrl = await uploadImage(data.anexoFile);
+      } catch (err) {
+        console.error("Erro upload anexo", err);
+        toast({ title: "Erro no upload do anexo", description: err instanceof Error ? err.message : "Erro desconhecido", variant: "destructive" });
+        return;
+      }
+    }
+
     const itemsWithCapa = data.items.map((item: any) => ({ 
       ...item, 
       capa_url: capaUrl,
+      anexo_url: anexoUrl,
       mostrar_lpu: data.reportConfig?.mostrar_lpu,
       mostrar_valores_site: data.reportConfig?.mostrar_valores_site,
       modo_somente_fotos: data.reportConfig?.modo_somente_fotos,

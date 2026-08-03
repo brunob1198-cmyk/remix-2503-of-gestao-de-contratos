@@ -52,6 +52,7 @@ interface DetailMedicaoContentProps {
     lancamentoIds: string[];
     logo_empresa_url?: string;
     capa_url?: string | null;
+    anexo_url?: string | null;
     mostrar_lpu?: boolean;
     mostrar_valores_site?: boolean;
     modo_somente_fotos?: boolean;
@@ -889,7 +890,8 @@ export function DetailMedicaoContent({
             debugMode: debugMode
           },
           onPreviewGenerated: (url) => setPreviewUrl(url),
-          capaUrl: detailMedicao.capa_url
+          capaUrl: detailMedicao.capa_url,
+          anexoUrl: detailMedicao.anexo_url
         }
       );
 
@@ -969,6 +971,14 @@ export function DetailMedicaoContent({
           url: detailMedicao.capa_url,
           filename: `capa_medicao.${extension}`,
           folder: 'capa'
+        });
+      }
+      if (detailMedicao.anexo_url) {
+        const extension = detailMedicao.anexo_url.split('.').pop()?.split('?')[0] || 'pdf';
+        photosToZip.push({
+          url: detailMedicao.anexo_url,
+          filename: `anexo_medicao.${extension}`,
+          folder: 'anexo'
         });
       }
 
@@ -1632,6 +1642,27 @@ export function DetailMedicaoContent({
       ${isMultiSite ? buildSiteBlocksHtml() : buildPhotosByItemHtml()}
     </div>
   ` : ''}
+
+  ${detailMedicao.anexo_url ? `
+    <div class="page">
+      <h2 class="sec">📎 Anexos</h2>
+      <div style="display: flex; justify-content: center; align-items: center; min-height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; overflow: hidden;">
+        ${detailMedicao.anexo_url.toLowerCase().includes('.pdf') ? `
+          <div style="text-align: center; padding: 40px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h3 style="margin: 0; font-size: 18px; color: #1e3a5f;">Documento Anexo (PDF)</h3>
+            <p style="color: #64748b; margin: 10px 0 20px;">Anexado ao final do relatório (ex.: ART dos serviços).</p>
+            ${forZip ?
+              `<a href="anexo/anexo_medicao.pdf" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Anexo Local</a>` :
+              `<a href="${resolveFileUrl(detailMedicao.anexo_url)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 4px; font-weight: 600;">Visualizar Anexo Online</a>`
+            }
+          </div>
+        ` : `
+          <img src="${resolveFileUrl(detailMedicao.anexo_url)}" alt="Anexo da Medição" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+        `}
+      </div>
+    </div>
+  ` : ''}
 </body>
 </html>`;
   }, [diarioFotos, detailMedicao, isMultiSite, fotosBySiteAndClass, productionBySite, getSiteItemsTotal, observacoesBySite, formatDate, formatCurrency, classLabel, sanitize, includedSites, fotosByItem, detailLancamentos, finalEmpresaLogoUrl, finalClienteLogoUrl, recursosAgregadosGerais, recursosAgregadosPorSite, statusAtivoBySite]);
@@ -2283,6 +2314,40 @@ export function DetailMedicaoContent({
               </div>
             )}
           </>
+        )}
+
+        {detailMedicao.anexo_url && (
+          <div
+            className="pdf-keep-together mt-6 pt-4 border-t-2 border-primary"
+            data-pdf-section="anexo"
+            style={{ pageBreakInside: "avoid", breakInside: "avoid" }}
+          >
+            <h2 className="pdf-section-heading text-base font-bold text-primary mb-4">Anexos</h2>
+            {detailMedicao.anexo_url.toLowerCase().includes('.pdf') ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
+                <FileText className="h-16 w-16 text-primary mb-4" />
+                <h3 className="text-lg font-bold text-primary">Documento Anexo (PDF)</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md mt-2">
+                  Este documento será anexado como as últimas páginas do relatório final (ex.: ART).
+                </p>
+                <Button variant="outline" size="sm" className="mt-4" asChild>
+                  <a href={resolveFileUrl(detailMedicao.anexo_url)} target="_blank" rel="noopener noreferrer">
+                    Visualizar Anexo em Nova Aba
+                  </a>
+                </Button>
+              </div>
+            ) : (
+              <div className="w-full flex justify-center">
+                <SmartImage
+                  src={detailMedicao.anexo_url}
+                  context="medicoes"
+                  alt="Anexo da Medição"
+                  className="max-w-full h-auto rounded-lg shadow-sm"
+                  style={{ maxHeight: '800px', objectFit: 'contain' }}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
 

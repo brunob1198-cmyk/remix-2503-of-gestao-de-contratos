@@ -134,6 +134,7 @@ export interface LancamentoMedicao {
   quantidade_aprovada?: number;
   quantidade_rejeitada?: number;
   capa_url?: string | null;
+  anexo_url?: string | null;
   logo_empresa_url?: string | null;
   mostrar_lpu?: boolean;
   mostrar_valores_site?: boolean;
@@ -221,6 +222,7 @@ export interface MedicaoAgrupada {
   periodo_fim?: string;
   logo_empresa_url?: string;
   capa_url?: string | null;
+  anexo_url?: string | null;
   mostrar_lpu?: boolean;
   mostrar_valores_site?: boolean;
   modo_somente_fotos?: boolean;

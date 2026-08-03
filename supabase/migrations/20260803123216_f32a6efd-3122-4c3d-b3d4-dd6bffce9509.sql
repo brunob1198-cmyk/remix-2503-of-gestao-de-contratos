@@ -1,0 +1,1 @@
+ALTER TABLE public.lancamentos_medicao ADD COLUMN IF NOT EXISTS anexo_url text;

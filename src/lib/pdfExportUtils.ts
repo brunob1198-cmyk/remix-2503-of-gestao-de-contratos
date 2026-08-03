@@ -457,6 +457,7 @@ export async function exportMedicaoToPdf(
     config?: PDFTemplateConfig;
     onPreviewGenerated?: (previewUrl: string) => void;
     capaUrl?: string | null;
+    anexoUrl?: string | null;
   }
 ) {
   // Declare variables at top to avoid TDZ (Temporal Dead Zone) issues in minified builds
@@ -568,6 +569,10 @@ export async function exportMedicaoToPdf(
       const section = sections[i];
       
       // Skip rendering the 'capa' section if we're going to merge it as a PDF later
+      if (section.getAttribute('data-pdf-section') === 'anexo' && options.anexoUrl?.toLowerCase().includes('.pdf')) {
+        addLog("Pulando renderização da seção de anexo (será anexada como PDF real)...", 'debug');
+        continue;
+      }
       if (section.getAttribute('data-pdf-section') === 'capa' && options.capaUrl?.toLowerCase().endsWith('.pdf')) {
         addLog("Pulando renderização da seção de capa (será anexada como PDF real)...", 'debug');
         continue;
@@ -834,6 +839,21 @@ export async function exportMedicaoToPdf(
         addLog(`Lote ${pIdx + 1}/${partials.length} combinado com sucesso.`, 'debug');
       } catch (mergeErr) {
         addLog(`Erro ao combinar lote ${pIdx + 1}: ${mergeErr instanceof Error ? mergeErr.message : 'Erro desconhecido'}`, 'error');
+      }
+    }
+
+    if (options.anexoUrl && options.anexoUrl.toLowerCase().includes('.pdf')) {
+      try {
+        addLog("Baixando e processando anexo PDF...", 'info');
+        const anexoRes = await fetch(options.anexoUrl);
+        const anexoBytes = await anexoRes.arrayBuffer();
+        const anexoDoc = await PDFDocument.load(anexoBytes);
+        const copiedAnexoPages = await finalPdf.copyPages(anexoDoc, anexoDoc.getPageIndices());
+        copiedAnexoPages.forEach((page) => finalPdf.addPage(page));
+        addLog("Anexo PDF adicionado ao final com sucesso.", 'success');
+      } catch (anexoErr) {
+        addLog("Não foi possível anexar o PDF final. O relatório continuará sem ele.", 'error');
+        console.error("Anexo PDF Merge Error:", anexoErr);
       }
     }
 
