@@ -293,6 +293,15 @@ export function DetailMedicaoContent({
 
   const isMultiSite = tipoMedicao === "mista" || tipoMedicao === "agrupada";
 
+  /** Anexo final: pode conter várias URLs (páginas de PDF já convertidas em imagem). */
+  const anexoUrls = useMemo(
+    () => (detailMedicao.anexo_url || "").split(",").map(u => u.trim()).filter(Boolean),
+    [detailMedicao.anexo_url]
+  );
+  const anexoIsPdf = anexoUrls.length === 1 && anexoUrls[0].toLowerCase().includes(".pdf");
+
+
+
   // For mista/agrupada, find all sites that had production in the period
   const allSiteIds = useMemo(() => {
     if (!isMultiSite || !detailMedicao.periodo_inicio || !detailMedicao.periodo_fim) {
