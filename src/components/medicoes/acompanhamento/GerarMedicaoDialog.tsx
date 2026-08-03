@@ -316,7 +316,7 @@ export function GerarMedicaoDialog({
     await clearMedicaoAttachments(`${anexosKey}:anexo`);
     setAnexosRestaurados(false);
     setCapaFile(null);
-    setAnexoFile(null);
+    setAnexoFiles([]);
     setStep("filtros"); setGeracaoItens([]); setGeracaoFotos([]); setFotoOrder([]); setGerarNumeroMedicao(""); setGerarPeriodoInicio(""); setGerarPeriodoFim(""); setGerarProjetoId(""); setGerarSiteId(""); setEditLegendas({});
   };
 
