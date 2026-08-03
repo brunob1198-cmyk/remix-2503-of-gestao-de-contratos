@@ -900,7 +900,7 @@ export function DetailMedicaoContent({
           },
           onPreviewGenerated: (url) => setPreviewUrl(url),
           capaUrl: detailMedicao.capa_url,
-          anexoUrl: detailMedicao.anexo_url
+          anexoUrl: anexoIsPdf ? anexoUrls[0] : undefined
         }
       );
 
