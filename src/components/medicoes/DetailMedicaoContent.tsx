@@ -1887,9 +1887,9 @@ export function DetailMedicaoContent({
           data-pdf-section="capa"
           style={{ pageBreakInside: "avoid", breakInside: "avoid", printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
         >
-          {detailMedicao.capa_url && (
+          {capaUrls.length > 0 && (
             <div className="mb-6 border-b-2 border-primary pb-4">
-              {detailMedicao.capa_url.toLowerCase().endsWith('.pdf') ? (
+              {capaIsPdf ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-muted/10 rounded-lg border-2 border-dashed border-primary/20">
                   <FileText className="h-16 w-16 text-primary mb-4" />
                   <h3 className="text-lg font-bold text-primary">Capa da Medição (PDF)</h3>
@@ -1897,24 +1897,28 @@ export function DetailMedicaoContent({
                     Este documento será anexado como as primeiras páginas do relatório final gerado.
                   </p>
                   <Button variant="outline" size="sm" className="mt-4" asChild>
-                    <a href={resolveFileUrl(detailMedicao.capa_url)} target="_blank" rel="noopener noreferrer">
+                    <a href={resolveFileUrl(capaUrls[0])} target="_blank" rel="noopener noreferrer">
                       Visualizar Capa em Nova Aba
                     </a>
                   </Button>
                 </div>
               ) : (
-                <div className="w-full flex justify-center">
-                  <SmartImage 
-                    src={detailMedicao.capa_url!} 
-                    context="medicoes"
-                    alt="Capa da Medição" 
-                    className="max-w-full h-auto rounded-lg shadow-sm"
-                    style={{ maxHeight: '800px', objectFit: 'contain' }}
-                  />
+                <div className="w-full flex flex-col items-center gap-4">
+                  {capaUrls.map((u, i) => (
+                    <SmartImage
+                      key={u}
+                      src={u}
+                      context="medicoes"
+                      alt={`Capa da Medição ${i + 1}`}
+                      className="max-w-full h-auto rounded-lg shadow-sm"
+                      style={{ maxHeight: '800px', objectFit: 'contain' }}
+                    />
+                  ))}
                 </div>
               )}
             </div>
           )}
+
         </div>
 
         <div
