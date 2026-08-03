@@ -2205,6 +2205,7 @@ export function DetailMedicaoContent({
                       )}
 
                       {(() => {
+                        if (detailMedicao.modo_somente_fotos === true) return null;
                         const siteRecursos = recursosAgregadosPorSite.get(siteId);
                         if (!siteRecursos || (siteRecursos.equipe.length === 0 && siteRecursos.equipamentos.length === 0 && siteRecursos.veiculos.length === 0)) return null;
                         
