@@ -150,20 +150,20 @@ export const exportTEPToHtml = (data: TEPData) => {
     }).join("");
   } else {
     const groups = ["Vistoria", "Execução"];
-    const sectionsHtml = groups.map(group => {
-      const groupFotos = processedFotos.filter(f => 
-        f.classificacao.toLowerCase() === group.toLowerCase() || 
-        (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
-        (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
-        (group === "Execução" && f.classificacao.toLowerCase() === "execução")
-      );
-
-      if (groupFotos.length === 0) return "";
+    const matchesGroup = (f: any, group: string) => {
+      const c = f.classificacao.toLowerCase();
+      return c === group.toLowerCase() ||
+        (group === "Vistoria" && c === "antes") ||
+        (group === "Execução" && (c === "execucao" || c === "execução"));
+    };
+    const gruposComFotos = groups.filter(g => processedFotos.some(f => matchesGroup(f, g)));
+    const sectionsHtml = gruposComFotos.map((group, idx) => {
+      const groupFotos = processedFotos.filter(f => matchesGroup(f, group));
 
       return `
         <div style="margin-top: 30px;">
-          <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-          ${buildPhotoGridHtml(groupFotos)}
+          <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px; break-inside: avoid; break-after: avoid; page-break-after: avoid;">Fotos de ${group}</h2>
+          ${buildPhotoGridHtml(groupFotos, idx === gruposComFotos.length - 1)}
 
         </div>
       `;
