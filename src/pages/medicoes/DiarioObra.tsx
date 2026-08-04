@@ -448,7 +448,7 @@ export default function DiarioObraPage() {
                     <CommandEmpty>Nenhum projeto encontrado.</CommandEmpty>
                     <CommandGroup>
                       {projetos.map(p => (
-                        <CommandItem key={p.id} value={p.nome} onSelect={() => handleProjetoChange(p.id)}>
+                        <CommandItem key={p.id} value={`${p.codigo} ${p.nome}`} onSelect={() => handleProjetoChange(p.id)}>
                           {p.codigo} — {p.nome}
                         </CommandItem>
                       ))}
@@ -479,7 +479,7 @@ export default function DiarioObraPage() {
                     <CommandEmpty>Nenhum site encontrado.</CommandEmpty>
                     <CommandGroup>
                       {sites.map(s => (
-                        <CommandItem key={s.id} value={s.nome} onSelect={() => setSelectedSiteId(s.id)}>
+                        <CommandItem key={s.id} value={`${s.codigo} ${s.nome}`} onSelect={() => setSelectedSiteId(s.id)}>
                           {s.codigo} — {s.nome}
                         </CommandItem>
                       ))}
