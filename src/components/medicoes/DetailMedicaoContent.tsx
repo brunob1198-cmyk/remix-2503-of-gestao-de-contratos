@@ -1311,7 +1311,14 @@ export function DetailMedicaoContent({
                   </tr>
                 `).join('')}
               </tbody>
-              ${totalFooter}
+              ${detailMedicao.mostrar_valores_site !== false ? `
+                <tfoot>
+                  <tr>
+                    <td colspan="2" class="num bold">TOTAL DO SITE:</td>
+                    <td class="num bold" style="color: var(--primary);">${formatCurrency(siteTotal)}</td>
+                  </tr>
+                </tfoot>
+              ` : ''}
             </table>
           </div>
         ` : '';
