@@ -58,8 +58,10 @@ export const exportTEPToHtml = (data: TEPData) => {
   const cardHeight = imgHeight + 80;
 
 
-  const buildPhotoGridHtml = (photos: any[]) => `
-    <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-after: page; page-break-after: always;">
+  // isLast: evita quebra de página após o último grupo (senão gera página em branco).
+  // A quebra só é aplicada entre grupos; os cards fluem e preenchem a página disponível.
+  const buildPhotoGridHtml = (photos: any[], isLast = false) => `
+    <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px;${isLast ? "" : " break-after: page; page-break-after: always;"}">
       ${photos.map((f) => buildPhotoCardHtml(f)).join("")}
     </div>
   `;
