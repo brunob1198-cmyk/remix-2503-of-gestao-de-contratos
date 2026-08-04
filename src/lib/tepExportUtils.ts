@@ -58,8 +58,10 @@ export const exportTEPToHtml = (data: TEPData) => {
   const cardHeight = imgHeight + 80;
 
 
-  const buildPhotoGridHtml = (photos: any[]) => `
-    <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px; break-after: page; page-break-after: always;">
+  // isLast: evita quebra de página após o último grupo (senão gera página em branco).
+  // A quebra só é aplicada entre grupos; os cards fluem e preenchem a página disponível.
+  const buildPhotoGridHtml = (photos: any[], isLast = false) => `
+    <div style="display: grid; grid-template-columns: repeat(${columns}, 1fr); gap: 15px; margin-top: 15px;${isLast ? "" : " break-after: page; page-break-after: always;"}">
       ${photos.map((f) => buildPhotoCardHtml(f)).join("")}
     </div>
   `;
@@ -119,18 +121,19 @@ export const exportTEPToHtml = (data: TEPData) => {
   let contentHtml = "";
 
   if (data.isMultiSite && data.sitesData) {
-    contentHtml = data.sitesData.map(site => {
+    contentHtml = data.sitesData.map((site, siteIdx) => {
+      const isLastSite = siteIdx === data.sitesData!.length - 1;
       const siteObsHtml = site.observacoes.length > 0 ? `
-        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px; margin-bottom: 20px;">
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px; margin-bottom: 20px; break-inside: avoid; break-after: avoid;">
           <p style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; color: #92400e;">📋 Relatório Descritivo / Observações</p>
           ${site.observacoes.map(o => `<p style="font-size: 12px; margin: 0 0 4px 0; color: #4b5563; white-space: pre-line;">${o}</p>`).join("")}
         </div>
       ` : "";
 
-      const photoSectionsHtml = site.classes.map(([className, photos]) => `
+      const photoSectionsHtml = site.classes.map(([className, photos], classIdx) => `
         <div style="margin-top: 20px;">
-          <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0;">${className}</h3>
-          ${buildPhotoGridHtml(photos)}
+          <h3 style="color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 6px 12px; font-size: 14px; margin-bottom: 15px; border-radius: 0 4px 4px 0; break-inside: avoid; break-after: avoid; page-break-after: avoid;">${className}</h3>
+          ${buildPhotoGridHtml(photos, isLastSite && classIdx === site.classes.length - 1)}
 
         </div>
       `).join("");
@@ -147,20 +150,20 @@ export const exportTEPToHtml = (data: TEPData) => {
     }).join("");
   } else {
     const groups = ["Vistoria", "Execução"];
-    const sectionsHtml = groups.map(group => {
-      const groupFotos = processedFotos.filter(f => 
-        f.classificacao.toLowerCase() === group.toLowerCase() || 
-        (group === "Vistoria" && f.classificacao.toLowerCase() === "antes") ||
-        (group === "Execução" && f.classificacao.toLowerCase() === "execucao") ||
-        (group === "Execução" && f.classificacao.toLowerCase() === "execução")
-      );
-
-      if (groupFotos.length === 0) return "";
+    const matchesGroup = (f: any, group: string) => {
+      const c = f.classificacao.toLowerCase();
+      return c === group.toLowerCase() ||
+        (group === "Vistoria" && c === "antes") ||
+        (group === "Execução" && (c === "execucao" || c === "execução"));
+    };
+    const gruposComFotos = groups.filter(g => processedFotos.some(f => matchesGroup(f, g)));
+    const sectionsHtml = gruposComFotos.map((group, idx) => {
+      const groupFotos = processedFotos.filter(f => matchesGroup(f, group));
 
       return `
         <div style="margin-top: 30px;">
-          <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px;">Fotos de ${group}</h2>
-          ${buildPhotoGridHtml(groupFotos)}
+          <h2 style="color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px; font-size: 18px; break-inside: avoid; break-after: avoid; page-break-after: avoid;">Fotos de ${group}</h2>
+          ${buildPhotoGridHtml(groupFotos, idx === gruposComFotos.length - 1)}
 
         </div>
       `;
