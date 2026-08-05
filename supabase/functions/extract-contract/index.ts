@@ -56,12 +56,20 @@ serve(async (req) => {
     if (!fileData) return new Response(JSON.stringify({ error: 'Content is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const systemPrompt = `Você é um assistente especializado em extrair dados estruturados de Contratos e Aditivos contratuais de engenharia/serviços. Analise o documento rigorosamente. NUNCA INVENTE DADOS. Se um campo não for encontrado, retorne null.
-Retorne JSON:
+    const systemPrompt = `Você é um assistente especializado em extrair dados estruturados de Contratos e Aditivos contratuais de engenharia/serviços. Analise o documento rigorosamente. 
+NUNCA INVENTE DADOS. Se um campo não for encontrado, retorne null.
+
+DICAS PARA EXTRAÇÃO:
+1. Prazos: Procure por cláusulas de "Prazos", "Vigência" ou "Cronograma". 
+2. Datas: As datas de início e fim podem estar expressas como "Data de Assinatura", "Ordem de Serviço" ou períodos (ex: 6 meses a partir de X). Tente converter para o formato YYYY-MM-DD sempre que possível.
+3. Se o contrato menciona "6 meses a partir do término do prazo de execução", procure o prazo de execução e calcule a data final se a data de início estiver disponível.
+4. Valor: Procure por "Valor do Contrato", "Preço" ou "Dotação Orçamentária".
+
+Retorne APENAS o JSON no formato:
 {
-  "valor_total": "string ou null",
-  "prazo_inicio": "string ou null",
-  "prazo_fim": "string ou null",
+  "valor_total": "string ou null (ex: '536250.00')",
+  "prazo_inicio": "string ou null (formato ISO YYYY-MM-DD)",
+  "prazo_fim": "string ou null (formato ISO YYYY-MM-DD)",
   "cnpjs_clientes": ["string"],
   "escopo": "string ou null",
   "condicoes_pagamento": "string ou null",

@@ -125,8 +125,12 @@ export default function ContratosForm({ contratoToEdit, onClose, contratos }: Pr
       const { data: extractedData, path } = result;
       setArquivoUrl(path);
       setValorTotal(extractedData.valor_total ? cleanCurrencyOrNumber(extractedData.valor_total) : "");
-      setPrazoInicio(extractedData.prazo_inicio || "");
-      setPrazoFim(extractedData.prazo_fim || "");
+      
+      // Validação básica de data para evitar formatos inválidos que quebrem o input date
+      const isValidDate = (d: string | null) => d && d.match(/^\d{4}-\d{2}-\d{2}$/);
+      
+      setPrazoInicio(isValidDate(extractedData.prazo_inicio) ? extractedData.prazo_inicio! : "");
+      setPrazoFim(isValidDate(extractedData.prazo_fim) ? extractedData.prazo_fim! : "");
       setEscopo(extractedData.escopo || "");
       setCondicoesPagamento(extractedData.condicoes_pagamento || "");
       setGarantias(extractedData.garantias || "");
