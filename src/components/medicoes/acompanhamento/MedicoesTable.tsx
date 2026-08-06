@@ -150,7 +150,7 @@ export function MedicoesTable({
                   onClearAll={() => tableMedicoes.clearAll("status")}
                 />
               </TableHead>
-              <TableHead>Nº PO</TableHead>
+              <TableHead className="min-w-[150px]">Nº PO</TableHead>
               <TableHead>Observações</TableHead>
               <TableHead>
                 <div className="flex items-center gap-1">
@@ -209,7 +209,7 @@ export function MedicoesTable({
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Input value={currentPo} onChange={(e) => handleFieldChange(m.id, "numero_po", e.target.value)} placeholder="Nº PO" className="w-24" />
+                    <Input value={currentPo} onChange={(e) => handleFieldChange(m.id, "numero_po", e.target.value)} placeholder="Nº PO" title={currentPo} className="w-[140px] min-w-[140px]" />
                   </TableCell>
                   <TableCell>
                     <Tooltip>
