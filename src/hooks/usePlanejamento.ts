@@ -308,10 +308,8 @@ export function useAtividades(projetoId?: string) {
           const qtdId = sitesMapById[siteId] || 0;
           const qtdCode = sitesMapByCode[siteId] || 0;
           
-          // Se tiver os dois, somamos para garantir que pegamos tudo (ex: troca de ID no meio do mês)
-          // Mas cuidado para não duplicar se o ID for o mesmo que o Código (raro mas possível)
-          // Se tivermos dados por ID e por Código, agregamos ambos para cobrir itens que mudaram de ID
-          // ou que estão sendo apontados de formas mistas.
+          // Agregamos produções por ID e por Código para cobrir itens que mudaram de ID
+          // ou que estão sendo apontados de formas mistas, garantindo que nenhum lançamento seja perdido.
           const qtd = qtdId + qtdCode;
           
           const matId = matrizSitesById[siteId] || {};
