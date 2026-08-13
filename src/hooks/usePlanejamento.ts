@@ -250,10 +250,12 @@ export function useAtividades(projetoId?: string) {
             diariosDoSite.map((d: any) => [d.id, { data: d.data, site_id: d.site_id }])
           );
 
-          const { data: prods } = await supabase
+          const { data: prods, error: pErr } = await supabase
             .from("diario_producao")
             .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
             .in("diario_id", diarioIds);
+
+          if (pErr) console.error("Erro ao buscar producao do diario:", pErr);
 
           (prods ?? []).forEach((p: any) => {
             const info = diarioInfo[p.diario_id];
@@ -263,22 +265,20 @@ export function useAtividades(projetoId?: string) {
             const itemCodigo = p.item_lpu?.codigo;
             
             const normalizedItemCode = String(itemCodigo || "").trim();
-            const matchesId = itemLpuIds.includes(item);
-            const matchesCode = normalizedItemCode && itemLpuCodigos.includes(normalizedItemCode);
-            
-            if (!matchesId && !matchesCode) return;
             const site = info.site_id as string;
 
-            // Mapeamento por ID (padrão)
-            if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
-            prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
+            // Mapeamento por ID
+            if (item) {
+              if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
+              prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
 
-            if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
-            if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
-            matrizPorItemSite[item][site][info.data] =
-              (matrizPorItemSite[item][site][info.data] || 0) + qtd;
+              if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
+              if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
+              matrizPorItemSite[item][site][info.data] =
+                (matrizPorItemSite[item][site][info.data] || 0) + qtd;
+            }
 
-            // Mapeamento redundante por Código (para casos de itens recriados/desvinculados)
+            // Mapeamento redundante por Código
             if (normalizedItemCode) {
               if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
               prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
