@@ -312,7 +312,7 @@ export function useAtividades(projetoId?: string) {
         }
 
         // Sem site vinculado: agrega todos os sites do projeto
-        let qtd = 0;
+        // Sem site vinculado: agrega todos os sites do projeto
         const matrizAgreg: Record<string, number> = {};
         
         // Agrega por ID
