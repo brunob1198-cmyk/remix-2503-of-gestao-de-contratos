@@ -103,27 +103,35 @@ export function AtividadeDetailSheet({
     <Sheet open={!!atividade} onOpenChange={() => onClose()}>
       <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg">{atividade.nome}</SheetTitle>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-4">
+            <SheetTitle className="text-lg flex-1 leading-tight">{atividade.nome}</SheetTitle>
+            <div className="flex items-center gap-1 shrink-0">
               {onRemove && (
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    if (confirm("Deseja realmente excluir este item da LPU desta frente?")) {
+                  className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm("Deseja realmente excluir este item da LPU desta frente?")) {
                       onRemove(atividade.id);
                       onClose();
                     }
                   }}
+                  title="Excluir item"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5" />
                 </Button>
               )}
               {onUpdate && !editing && (
-                <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
-                  <Pencil className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9"
+                  onClick={() => setEditing(true)}
+                  title="Editar"
+                >
+                  <Pencil className="h-5 w-5" />
                 </Button>
               )}
             </div>
