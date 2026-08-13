@@ -131,7 +131,7 @@ export function AtividadeDetailSheet({
                   onClick={() => setEditing(true)}
                   title="Editar"
                 >
-                  <Pencil className="h-4.5 w-4.5" />
+                  <Pencil className="h-5 w-5" />
                 </Button>
               )}
             </div>
