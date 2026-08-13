@@ -331,6 +331,34 @@ export function FornecedoresTab() {
       filterFn: multiSelectFilter,
     },
     {
+      accessorKey: "contato_telefone",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Telefone" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Telefone" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_telefone).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "contato_email",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="E-mail" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar E-mail" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_email).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
       accessorKey: "categoria",
       header: ({ column }) => (
         <div className="flex items-center gap-1">
