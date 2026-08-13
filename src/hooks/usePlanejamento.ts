@@ -204,7 +204,7 @@ export function useAtividades(projetoId?: string) {
 
       const { data: atividades, error: aErr } = await supabase
         .from("atividades_planejamento")
-        .select("*, lpu:itens_lpu(unidade, codigo)")
+        .select("*, item_lpu:itens_lpu(unidade, codigo)")
         .in("frente_id", frenteIds)
         .order("ordem");
       if (aErr) throw aErr;
