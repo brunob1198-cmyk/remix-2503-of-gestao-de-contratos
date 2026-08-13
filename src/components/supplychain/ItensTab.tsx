@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useScItens } from "@/hooks/useSupplyChain";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -13,9 +14,10 @@ import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFil
 import { ColumnDef } from "@tanstack/react-table";
 
 export function ItensTab() {
-  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens();
+  const { itens, isLoading, create, update, remove, bulkCreate, bulkRemove } = useScItens();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({ codigo: "", descricao: "", unidade: "UN", categoria: "", especificacao: "" });
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
