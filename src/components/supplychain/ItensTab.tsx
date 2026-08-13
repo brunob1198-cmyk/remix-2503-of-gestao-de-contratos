@@ -59,11 +59,15 @@ export function ItensTab() {
         for (const k of keys) {
           const kl = k.toLowerCase().trim();
           const norm = kl.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          console.log(`Mapping column: "${k}" -> normalized: "${norm}"`);
           if (norm.includes("codigo") || norm === "cod") colMap.codigo = k;
           else if (norm.includes("descri")) colMap.descricao = k;
           else if (norm.includes("unid")) colMap.unidade = k;
-          else if (norm.includes("categ")) colMap.categoria = k;
-          else if (norm.includes("espec")) colMap.especificacao = k;
+          else if (norm === "categoria" || norm === "categ") colMap.categoria = k;
+          else if (norm === "especificacao" || norm === "espec") colMap.especificacao = k;
+          // Fallback patterns if exact match failed
+          else if (!colMap.categoria && norm.includes("categ")) colMap.categoria = k;
+          else if (!colMap.especificacao && norm.includes("espec")) colMap.especificacao = k;
         }
 
         if (!colMap.codigo || !colMap.descricao) {
@@ -73,13 +77,19 @@ export function ItensTab() {
 
         const items = rows
           .filter(r => r[colMap.codigo] && r[colMap.descricao])
-          .map(r => ({
-            codigo: String(r[colMap.codigo]).trim(),
-            descricao: String(r[colMap.descricao]).trim(),
-            unidade: colMap.unidade ? String(r[colMap.unidade] || "UN").trim() : "UN",
-            categoria: colMap.categoria ? String(r[colMap.categoria] || "").trim() : "",
-            especificacao: colMap.especificacao ? String(r[colMap.especificacao] || "").trim() : "",
-          }));
+          .map(r => {
+            const rowData: any = {
+              codigo: String(r[colMap.codigo] || "").trim(),
+              descricao: String(r[colMap.descricao] || "").trim(),
+              unidade: colMap.unidade ? String(r[colMap.unidade] || "UN").trim() : "UN",
+              categoria: colMap.categoria ? String(r[colMap.categoria] || "").trim() : "",
+              especificacao: colMap.especificacao ? String(r[colMap.especificacao] || "").trim() : "",
+            };
+            // Se o valor for "null", "undefined" ou vazio (XLSX.json_to_sheet pode retornar strings para vazios)
+            if (rowData.categoria.toLowerCase() === "nan" || rowData.categoria.toLowerCase() === "undefined") rowData.categoria = "";
+            if (rowData.especificacao.toLowerCase() === "nan" || rowData.especificacao.toLowerCase() === "undefined") rowData.especificacao = "";
+            return rowData;
+          });
 
         if (items.length === 0) {
           toast({ title: "Nenhum item válido", description: "Verifique se as colunas Código e Descrição estão preenchidas.", variant: "destructive" });
