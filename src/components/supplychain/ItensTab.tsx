@@ -46,26 +46,29 @@ export function ItensTab() {
       try {
         const wb = XLSX.read(evt.target?.result, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        // defval garante que colunas vazias na 1a linha ainda existam nos objetos
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
 
         if (rows.length === 0) {
           toast({ title: "Planilha vazia", description: "Nenhuma linha encontrada.", variant: "destructive" });
           return;
         }
 
+        // Cabeçalhos lidos direto da linha 1 da planilha (não do primeiro objeto)
+        const headerRow = (XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, blankrows: false })[0] || [])
+          .map((h: any) => String(h ?? "").trim())
+          .filter(Boolean);
+        const keys = Array.from(new Set([...headerRow, ...rows.flatMap(r => Object.keys(r))]));
+
         const colMap: Record<string, string> = {};
-        const firstRow = rows[0];
-        const keys = Object.keys(firstRow);
+        const normalize = (s: string) =>
+          s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
         for (const k of keys) {
-          const kl = k.toLowerCase().trim();
-          const norm = kl.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          console.log(`Mapping column: "${k}" -> normalized: "${norm}"`);
-          if (norm.includes("codigo") || norm === "cod") colMap.codigo = k;
-          else if (norm.includes("descri")) colMap.descricao = k;
-          else if (norm.includes("unid")) colMap.unidade = k;
-          else if (norm === "categoria" || norm === "categ") colMap.categoria = k;
-          else if (norm === "especificacao" || norm === "espec") colMap.especificacao = k;
-          // Fallback patterns if exact match failed
+          const norm = normalize(k);
+          if (!colMap.codigo && (norm.includes("codigo") || norm === "cod")) colMap.codigo = k;
+          else if (!colMap.descricao && norm.includes("descri")) colMap.descricao = k;
+          else if (!colMap.unidade && norm.includes("unid")) colMap.unidade = k;
           else if (!colMap.categoria && norm.includes("categ")) colMap.categoria = k;
           else if (!colMap.especificacao && norm.includes("espec")) colMap.especificacao = k;
         }
