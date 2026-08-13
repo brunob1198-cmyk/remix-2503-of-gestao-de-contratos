@@ -86,46 +86,50 @@ export function InspecaoFormDialog({
   });
 
   // Load pgrs
-  const { data: pgrs = [] } = useQuery({
+  const { data: pgrs = [] } = useQuery<any[]>({
     queryKey: ["pgrs_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_pgr")
+        .from("sgsst_pgr" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
   });
 
   // Load aprs
-  const { data: aprs = [] } = useQuery({
+  const { data: aprs = [] } = useQuery<any[]>({
     queryKey: ["aprs_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_apr")
+        .from("sgsst_apr" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
   });
 
   // Load pts
-  const { data: pts = [] } = useQuery({
+  const { data: pts = [] } = useQuery<any[]>({
     queryKey: ["pts_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_pt")
+        .from("sgsst_pt" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
   });
+
 
   // Load responsaveis
   const { data: responsaveis = [] } = useQuery({
@@ -318,11 +322,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhum --</SelectItem>
-                  {pgrs.map((p) => (
+                  {pgrs.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.codigo ? `[${p.codigo}] ` : ""}{p.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -335,11 +340,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {aprs.map((a) => (
+                  {aprs.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.codigo ? `[${a.codigo}] ` : ""}{a.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -352,11 +358,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {pts.map((ptItem) => (
+                  {pts.map((ptItem: any) => (
                     <SelectItem key={ptItem.id} value={ptItem.id}>
                       {ptItem.codigo ? `[${ptItem.codigo}] ` : ""}{ptItem.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
