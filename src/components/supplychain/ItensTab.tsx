@@ -108,6 +108,25 @@ export function ItensTab() {
 
   const columns: ColumnDef<any>[] = [
     {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Selecionar todos"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Selecionar linha"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
       accessorKey: "codigo",
       header: ({ column }) => (
         <div className="flex items-center gap-1">
@@ -183,6 +202,21 @@ export function ItensTab() {
 
   const processedItems = useMemo(() => itens, [itens]);
 
+  const handleBulkDelete = () => {
+    const selectedIds = Object.keys(rowSelection).filter(key => rowSelection[key]);
+    if (selectedIds.length === 0) return;
+    
+    if (confirm(`Deseja excluir ${selectedIds.length} itens selecionados?`)) {
+      bulkRemove.mutate(selectedIds, {
+        onSuccess: () => {
+          setRowSelection({});
+        }
+      });
+    }
+  };
+
+  const selectedCount = Object.keys(rowSelection).filter(key => rowSelection[key]).length;
+
 
   return (
     <Card>
@@ -229,6 +263,21 @@ export function ItensTab() {
             searchKey="descricao"
             searchPlaceholder="Buscar itens..."
             persistKey="sc_itens"
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            bulkActions={
+              selectedCount > 0 && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleBulkDelete}
+                  disabled={bulkRemove.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Excluir ({selectedCount})
+                </Button>
+              )
+            }
           />
 
         )}
