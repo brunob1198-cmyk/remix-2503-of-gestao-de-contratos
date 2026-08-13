@@ -213,6 +213,10 @@ export function useAtividades(projetoId?: string) {
       const itemLpuIds = (atividades ?? [])
         .filter((a) => a.item_lpu_id)
         .map((a) => a.item_lpu_id!);
+      
+      const itemLpuCodigos = (atividades ?? [])
+        .map((a: any) => a.lpu?.codigo)
+        .filter(Boolean);
 
       const [depsResult, sitesResult] = await Promise.all([
         atIds.length
@@ -234,7 +238,7 @@ export function useAtividades(projetoId?: string) {
       const prodPorItemSite: Record<string, Record<string, number>> = {};
       const matrizPorItemSite: Record<string, Record<string, Record<string, number>>> = {};
 
-      if (itemLpuIds.length && siteIds.length) {
+      if (siteIds.length) {
         const { data: diariosDoSite } = await supabase
           .from("diarios_obra")
           .select("id, data, site_id")
@@ -249,8 +253,7 @@ export function useAtividades(projetoId?: string) {
           const { data: prods } = await supabase
             .from("diario_producao")
             .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
-            .in("diario_id", diarioIds)
-            .in("item_lpu_id", itemLpuIds);
+            .in("diario_id", diarioIds);
 
           (prods ?? []).forEach((p: any) => {
             const info = diarioInfo[p.diario_id];
@@ -258,6 +261,12 @@ export function useAtividades(projetoId?: string) {
             const qtd = Number(p.quantidade) || 0;
             const item = p.item_lpu_id as string;
             const itemCodigo = p.item_lpu?.codigo;
+            
+            // Filtra em memória para garantir que estamos pegando ou o ID exato ou o Código correspondente
+            const matchesId = itemLpuIds.includes(item);
+            const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
+            
+            if (!matchesId && !matchesCode) return;
             const site = info.site_id as string;
 
             // Mapeamento por ID (padrão)
