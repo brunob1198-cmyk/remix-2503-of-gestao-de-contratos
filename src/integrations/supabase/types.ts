@@ -4529,6 +4529,140 @@ export type Database = {
           },
         ]
       }
+      sgsst_colaborador_dados: {
+        Row: {
+          area_id: string | null
+          created_at: string | null
+          created_by: string | null
+          data_admissao: string | null
+          data_demissao: string | null
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          matricula: string | null
+          profile_id: string | null
+          recurso_id: string | null
+          status: string
+          tipo_vinculo: string
+          updated_at: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_admissao?: string | null
+          data_demissao?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          matricula?: string | null
+          profile_id?: string | null
+          recurso_id?: string | null
+          status?: string
+          tipo_vinculo: string
+          updated_at?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_admissao?: string | null
+          data_demissao?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          matricula?: string | null
+          profile_id?: string | null
+          recurso_id?: string | null
+          status?: string
+          tipo_vinculo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_colaborador_dados_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_funcoes: {
+        Row: {
+          cbo: string | null
+          created_at: string | null
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          requisitos_minimos: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          cbo?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          requisitos_minimos?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          cbo?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          requisitos_minimos?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_funcoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           codigo: string

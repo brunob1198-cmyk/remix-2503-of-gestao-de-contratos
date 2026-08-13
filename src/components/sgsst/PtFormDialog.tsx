@@ -87,18 +87,20 @@ export function PtFormDialog({
   });
 
   // Load aprs
-  const { data: aprs = [] } = useQuery({
+  const { data: aprs = [] } = useQuery<any[]>({
     queryKey: ["aprs_pt", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_apr")
+        .from("sgsst_apr" as any)
         .select("id, codigo, titulo, atividade")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
   });
+
 
   // Load responsaveis
   const { data: responsaveis = [] } = useQuery({
@@ -152,11 +154,12 @@ export function PtFormDialog({
   const handleSelectApr = (id: string) => {
     setAprId(id);
     if (id !== "none") {
-      const found = aprs.find((a) => a.id === id);
+      const found = aprs.find((a: any) => a.id === id);
       if (found) {
         if (!titulo) setTitulo(`PT — ${found.titulo}`);
         if (!atividade) setAtividade(found.atividade);
       }
+
     }
   };
 
@@ -270,11 +273,12 @@ export function PtFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Sem APR Vinculada --</SelectItem>
-                  {aprs.map((a) => (
+                  {aprs.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.codigo ? `[${a.codigo}] ` : ""}{a.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
