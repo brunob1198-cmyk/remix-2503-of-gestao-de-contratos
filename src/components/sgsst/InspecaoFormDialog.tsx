@@ -86,7 +86,7 @@ export function InspecaoFormDialog({
   });
 
   // Load pgrs
-  const { data: pgrs = [] } = useQuery({
+  const { data: pgrs = [] } = useQuery<any[]>({
     queryKey: ["pgrs_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -101,7 +101,7 @@ export function InspecaoFormDialog({
   });
 
   // Load aprs
-  const { data: aprs = [] } = useQuery({
+  const { data: aprs = [] } = useQuery<any[]>({
     queryKey: ["aprs_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -116,7 +116,7 @@ export function InspecaoFormDialog({
   });
 
   // Load pts
-  const { data: pts = [] } = useQuery({
+  const { data: pts = [] } = useQuery<any[]>({
     queryKey: ["pts_insp", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -129,6 +129,7 @@ export function InspecaoFormDialog({
       return data || [];
     },
   });
+
 
   // Load responsaveis
   const { data: responsaveis = [] } = useQuery({

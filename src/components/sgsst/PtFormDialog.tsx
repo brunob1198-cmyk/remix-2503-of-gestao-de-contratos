@@ -87,7 +87,7 @@ export function PtFormDialog({
   });
 
   // Load aprs
-  const { data: aprs = [] } = useQuery({
+  const { data: aprs = [] } = useQuery<any[]>({
     queryKey: ["aprs_pt", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -100,6 +100,7 @@ export function PtFormDialog({
       return data || [];
     },
   });
+
 
   // Load responsaveis
   const { data: responsaveis = [] } = useQuery({

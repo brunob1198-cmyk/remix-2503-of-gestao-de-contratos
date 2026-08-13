@@ -105,7 +105,7 @@ export function IncidenteFormDialog({
   });
 
   // Load pgrs, aprs, pts, inspecoes
-  const { data: pgrs = [] } = useQuery({
+  const { data: pgrs = [] } = useQuery<any[]>({
     queryKey: ["pgrs_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -116,7 +116,7 @@ export function IncidenteFormDialog({
     },
   });
 
-  const { data: aprs = [] } = useQuery({
+  const { data: aprs = [] } = useQuery<any[]>({
     queryKey: ["aprs_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -127,7 +127,7 @@ export function IncidenteFormDialog({
     },
   });
 
-  const { data: pts = [] } = useQuery({
+  const { data: pts = [] } = useQuery<any[]>({
     queryKey: ["pts_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -138,7 +138,7 @@ export function IncidenteFormDialog({
     },
   });
 
-  const { data: inspecoes = [] } = useQuery({
+  const { data: inspecoes = [] } = useQuery<any[]>({
     queryKey: ["inspecoes_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
@@ -148,6 +148,7 @@ export function IncidenteFormDialog({
       return data || [];
     },
   });
+
 
   useEffect(() => {
     if (incidente) {
