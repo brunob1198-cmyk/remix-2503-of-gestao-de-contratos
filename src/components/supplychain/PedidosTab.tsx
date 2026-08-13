@@ -279,7 +279,14 @@ export function PedidosTab({ filter }: { filter?: string }) {
           <p className="text-muted-foreground text-center py-8">Nenhum pedido</p>
         ) : (
           <div className="space-y-4">
-            <DataTable columns={columns} data={pedidos} searchKey="numero" searchPlaceholder="Buscar por número do pedido..." />
+            <DataTable 
+              columns={columns} 
+              data={pedidos} 
+              searchKey="numero" 
+              searchPlaceholder="Buscar por número do pedido..." 
+              persistKey="sc_pedidos"
+            />
+
           </div>
         )}
       </CardContent>
