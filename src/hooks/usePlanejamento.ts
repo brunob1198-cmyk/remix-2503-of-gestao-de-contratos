@@ -248,7 +248,7 @@ export function useAtividades(projetoId?: string) {
 
           const { data: prods } = await supabase
             .from("diario_producao")
-            .select("item_lpu_id, quantidade, diario_id")
+            .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
             .in("diario_id", diarioIds)
             .in("item_lpu_id", itemLpuIds);
 
@@ -257,8 +257,10 @@ export function useAtividades(projetoId?: string) {
             if (!info) return;
             const qtd = Number(p.quantidade) || 0;
             const item = p.item_lpu_id as string;
+            const itemCodigo = p.item_lpu?.codigo;
             const site = info.site_id as string;
 
+            // Mapeamento por ID (padrão)
             if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
             prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
 
@@ -266,6 +268,17 @@ export function useAtividades(projetoId?: string) {
             if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
             matrizPorItemSite[item][site][info.data] =
               (matrizPorItemSite[item][site][info.data] || 0) + qtd;
+
+            // Mapeamento redundante por Código (para casos de itens recriados/desvinculados)
+            if (itemCodigo) {
+              if (!prodPorItemSite[itemCodigo]) prodPorItemSite[itemCodigo] = {};
+              prodPorItemSite[itemCodigo][site] = (prodPorItemSite[itemCodigo][site] || 0) + qtd;
+
+              if (!matrizPorItemSite[itemCodigo]) matrizPorItemSite[itemCodigo] = {};
+              if (!matrizPorItemSite[itemCodigo][site]) matrizPorItemSite[itemCodigo][site] = {};
+              matrizPorItemSite[itemCodigo][site][info.data] =
+                (matrizPorItemSite[itemCodigo][site][info.data] || 0) + qtd;
+            }
           });
         }
       }
