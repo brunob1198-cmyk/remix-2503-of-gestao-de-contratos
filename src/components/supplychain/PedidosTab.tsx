@@ -120,7 +120,17 @@ export function PedidosTab({ filter }: { filter?: string }) {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "numero",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Número" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Número" 
+            options={Array.from(new Set(allPedidos.map((p: any) => p.numero).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
       cell: ({ row }) => {
         const p = row.original;
         return (
@@ -135,14 +145,34 @@ export function PedidosTab({ filter }: { filter?: string }) {
     },
     {
       accessorKey: "fornecedor",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Fornecedor" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Fornecedor" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Fornecedor" 
+            options={Array.from(new Set(allPedidos.map((p: any) => p.fornecedor?.razao_social).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
       accessorFn: (row) => row.fornecedor?.razao_social || "—",
+      filterFn: multiSelectFilter,
       cell: ({ row }) => row.getValue("fornecedor"),
     },
     {
       accessorKey: "projeto",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Projeto" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Projeto" 
+            options={Array.from(new Set(allPedidos.map((p: any) => p.projeto?.codigo).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
       accessorFn: (row) => row.projeto ? `${row.projeto.codigo} ${row.projeto.nome}` : "—",
+      filterFn: multiSelectFilter,
       cell: ({ row }) => {
         const p = row.original;
         return p.projeto ? (
@@ -160,11 +190,11 @@ export function PedidosTab({ filter }: { filter?: string }) {
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Status" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Status" 
             options={STATUS_LIST.map(s => ({ label: s.label, value: s.value }))} 
           />
         </div>
