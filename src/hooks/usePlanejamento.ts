@@ -213,6 +213,10 @@ export function useAtividades(projetoId?: string) {
       const itemLpuIds = (atividades ?? [])
         .filter((a) => a.item_lpu_id)
         .map((a) => a.item_lpu_id!);
+      
+      const itemLpuCodigos = (atividades ?? [])
+        .map((a: any) => a.lpu?.codigo)
+        .filter(Boolean);
 
       const [depsResult, sitesResult] = await Promise.all([
         atIds.length
