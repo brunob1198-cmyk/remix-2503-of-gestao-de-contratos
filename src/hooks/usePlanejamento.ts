@@ -253,12 +253,20 @@ export function useAtividades(projetoId?: string) {
           const { data: prods } = await supabase
             .from("diario_producao")
             .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
-            .in("diario_id", diarioIds)
-            .in("item_lpu_id", itemLpuIds);
+            .in("diario_id", diarioIds);
 
           (prods ?? []).forEach((p: any) => {
             const info = diarioInfo[p.diario_id];
             if (!info) return;
+            const qtd = Number(p.quantidade) || 0;
+            const item = p.item_lpu_id as string;
+            const itemCodigo = p.item_lpu?.codigo;
+            
+            // Filtra em memória para garantir que estamos pegando ou o ID exato ou o Código correspondente
+            const matchesId = itemLpuIds.includes(item);
+            const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
+            
+            if (!matchesId && !matchesCode) return;
             const qtd = Number(p.quantidade) || 0;
             const item = p.item_lpu_id as string;
             const itemCodigo = p.item_lpu?.codigo;
