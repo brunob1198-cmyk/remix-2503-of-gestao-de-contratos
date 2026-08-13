@@ -599,8 +599,11 @@ export function FornecedoresTab() {
           <DataTable 
             columns={columns} 
             data={fornecedores} 
+            searchKey="razao_social"
             searchPlaceholder="Buscar fornecedores..."
+            persistKey="sc_fornecedores"
           />
+
         )}
       </CardContent>
     </Card>
