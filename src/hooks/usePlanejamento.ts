@@ -288,24 +288,41 @@ export function useAtividades(projetoId?: string) {
         const siteId = frenteSiteMap[frenteId];
         
         // Tenta buscar por ID primeiro, depois por Código se disponível
-        const sitesMap = prodPorItemSite[itemId || ""] || (itemCodigo ? prodPorItemSite[itemCodigo] : {}) || {};
-        const matrizSites = matrizPorItemSite[itemId || ""] || (itemCodigo ? matrizPorItemSite[itemCodigo] : {}) || {};
+        const sitesMapById = itemId ? prodPorItemSite[itemId] || {} : {};
+        const sitesMapByCode = itemCodigo ? prodPorItemSite[itemCodigo] || {} : {};
+        
+        const matrizSitesById = itemId ? matrizPorItemSite[itemId] || {} : {};
+        const matrizSitesByCode = itemCodigo ? matrizPorItemSite[itemCodigo] || {} : {};
 
         if (siteId) {
-          return {
-            qtd: sitesMap[siteId] || 0,
-            matriz: matrizSites[siteId] || {},
-          };
+          const qtd = (sitesMapById[siteId] || 0) || (sitesMapByCode[siteId] || 0);
+          const matriz = (matrizSitesById[siteId] || matrizSitesByCode[siteId] || {});
+          return { qtd, matriz };
         }
+
         // Sem site vinculado: agrega todos os sites do projeto
         let qtd = 0;
         const matrizAgreg: Record<string, number> = {};
-        for (const s of Object.keys(sitesMap)) qtd += sitesMap[s];
-        for (const s of Object.keys(matrizSites)) {
-          for (const d of Object.keys(matrizSites[s])) {
-            matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSites[s][d];
+        
+        // Agrega por ID
+        for (const s of Object.keys(sitesMapById)) qtd += sitesMapById[s];
+        for (const s of Object.keys(matrizSitesById)) {
+          for (const d of Object.keys(matrizSitesById[s])) {
+            matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSitesById[s][d];
           }
         }
+        
+        // Se ainda estiver zerado, tenta pelo código (evita duplicar se ID e código baterem, 
+        // mas aqui a prioridade é o dado real)
+        if (qtd === 0 && Object.keys(sitesMapByCode).length > 0) {
+          for (const s of Object.keys(sitesMapByCode)) qtd += sitesMapByCode[s];
+          for (const s of Object.keys(matrizSitesByCode)) {
+            for (const d of Object.keys(matrizSitesByCode[s])) {
+              matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSitesByCode[s][d];
+            }
+          }
+        }
+
         return { qtd, matriz: matrizAgreg };
       };
 
