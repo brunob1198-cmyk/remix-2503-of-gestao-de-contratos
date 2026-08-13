@@ -1,21 +1,19 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useScItens } from "@/hooks/useSupplyChain";
-import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 export function ItensTab() {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 250);
-  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens({ search: debouncedSearch });
+  const { itens, isLoading, create, update, remove, bulkCreate } = useScItens();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ codigo: "", descricao: "", unidade: "UN", categoria: "", especificacao: "" });
@@ -106,6 +104,54 @@ export function ItensTab() {
     XLSX.writeFile(wb, "modelo_itens_suprimentos.xlsx");
   };
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "codigo",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Código" />,
+      cell: ({ row }) => <span className="font-mono">{row.getValue("codigo")}</span>,
+    },
+    {
+      accessorKey: "descricao",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Descrição" />,
+    },
+    {
+      accessorKey: "unidade",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Unidade" />,
+    },
+    {
+      accessorKey: "categoria",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Categoria" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Array.from(new Set(itens.map((i: any) => i.categoria).filter(Boolean))).map(c => ({ label: String(c), value: String(c) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const cat = row.getValue("categoria") as string;
+        return cat ? <Badge variant="outline">{cat}</Badge> : "—";
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ação</div>,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => remove.mutate(row.original.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+        </div>
+      ),
+    },
+  ];
+
+
+  const processedItems = useMemo(() => itens, [itens]);
+
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -141,47 +187,15 @@ export function ItensTab() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <Input
-            placeholder="Buscar por código ou descrição..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Mostrando até 200 resultados. Refine a busca para localizar mais.</p>
-        </div>
+
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
-        ) : itens.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">{search ? "Nenhum item encontrado" : "Nenhum item cadastrado"}</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Unidade</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {itens.map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono">{item.codigo}</TableCell>
-                  <TableCell>{item.descricao}</TableCell>
-                  <TableCell>{item.unidade}</TableCell>
-                  <TableCell>{item.categoria ? <Badge variant="outline">{item.categoria}</Badge> : "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(item.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable 
+            columns={columns} 
+            data={processedItems} 
+            searchPlaceholder="Buscar itens..."
+          />
         )}
       </CardContent>
     </Card>
