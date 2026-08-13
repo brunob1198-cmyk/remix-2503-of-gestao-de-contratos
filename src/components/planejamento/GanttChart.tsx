@@ -10,6 +10,7 @@ interface GanttChartProps {
   atividades: AtividadePlanejamento[];
   onSelectAtividade: (a: AtividadePlanejamento) => void;
   onDragUpdate?: (id: string, newStartDate: string) => void;
+  onRemoveAtividade?: (id: string) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -32,7 +33,7 @@ const ROW_H = 36;
 const LABEL_W = 450; // Increased width for more columns
 const DAY_W = 38; // Wider for numbers
 
-export function GanttChart({ atividades, onSelectAtividade, onDragUpdate }: GanttChartProps) {
+export function GanttChart({ atividades, onSelectAtividade, onDragUpdate, onRemoveAtividade }: GanttChartProps) {
   const today = startOfDay(new Date());
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Save, X, Link2, Users } from "lucide-react";
+import { Pencil, Save, X, Link2, Users, Trash2 } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
 import { Recurso, RecursoAlocacao } from "@/hooks/useRecursos";
 
@@ -25,6 +25,7 @@ interface Props {
   onClose: () => void;
   allAtividades: AtividadePlanejamento[];
   onUpdate?: (data: any) => void;
+  onRemove?: (id: string) => void;
   projetoRecursos?: Recurso[];
   atividadeRecursoIds?: string[];
   onUpdateRecursos?: (atividadeId: string, recursoIds: string[]) => void;
@@ -35,6 +36,7 @@ export function AtividadeDetailSheet({
   onClose,
   allAtividades,
   onUpdate,
+  onRemove,
   projetoRecursos = [],
   atividadeRecursoIds = [],
   onUpdateRecursos,
@@ -103,11 +105,28 @@ export function AtividadeDetailSheet({
         <SheetHeader>
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg">{atividade.nome}</SheetTitle>
-            {onUpdate && !editing && (
-              <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {onRemove && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    if (confirm("Deseja realmente excluir este item da LPU desta frente?")) {
+                      onRemove(atividade.id);
+                      onClose();
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              {onUpdate && !editing && (
+                <Button variant="ghost" size="icon" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </SheetHeader>
 

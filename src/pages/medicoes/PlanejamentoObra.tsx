@@ -41,7 +41,7 @@ export default function PlanejamentoObra() {
   const queryClient = useQueryClient();
 
   const { data: frentes = [], create: createFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
-  const { data: atividades = [], create: createAtividade, update: updateAtividade, analyzeGanttAi } = useAtividades(projetoId || undefined);
+  const { data: atividades = [], create: createAtividade, update: updateAtividade, remove: removeAtividade, analyzeGanttAi } = useAtividades(projetoId || undefined);
   const { sites } = useSites(projetoId || undefined);
   const { recursos, alocacoes } = useRecursos();
 
@@ -356,6 +356,7 @@ export default function PlanejamentoObra() {
               atividades={filteredAtividades}
               onSelectAtividade={setSelectedAtividade}
               onDragUpdate={handleDragUpdate}
+              onRemoveAtividade={(id) => removeAtividade.mutate(id)}
             />
           </TabsContent>
 
@@ -398,6 +399,7 @@ export default function PlanejamentoObra() {
         projetoRecursos={projetoRecursos}
         atividadeRecursoIds={atividadeRecursos}
         onUpdateRecursos={handleUpdateRecursos}
+        onRemove={(id) => removeAtividade.mutate(id)}
       />
     </div>
   );
