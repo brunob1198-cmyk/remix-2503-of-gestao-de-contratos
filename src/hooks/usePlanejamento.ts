@@ -340,8 +340,8 @@ export function useAtividades(projetoId?: string) {
           }
         }
         
-        // Agrega por Código
-        if (normalizedItemCode) {
+        // Agrega por Código (apenas se for diferente do ID para não duplicar)
+        if (normalizedItemCode && normalizedItemCode !== itemId) {
           for (const s of Object.keys(sitesMapByCode)) {
             totalQtd += sitesMapByCode[s];
             const m = matrizSitesByCode[s] || {};
