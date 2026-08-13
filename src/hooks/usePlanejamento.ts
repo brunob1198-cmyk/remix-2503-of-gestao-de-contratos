@@ -267,9 +267,6 @@ export function useAtividades(projetoId?: string) {
             const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
             
             if (!matchesId && !matchesCode) return;
-            const qtd = Number(p.quantidade) || 0;
-            const item = p.item_lpu_id as string;
-            const itemCodigo = p.item_lpu?.codigo;
             const site = info.site_id as string;
 
             // Mapeamento por ID (padrão)
