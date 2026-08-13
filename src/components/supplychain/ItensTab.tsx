@@ -58,12 +58,12 @@ export function ItensTab() {
         const keys = Object.keys(firstRow);
         for (const k of keys) {
           const kl = k.toLowerCase().trim();
-          if (kl.includes("codigo") || kl.includes("código") || kl === "cod") colMap.codigo = k;
-          else if (kl.includes("descri")) colMap.descricao = k;
-          else if (kl.includes("unid")) colMap.unidade = k;
-          else if (kl.includes("categ")) colMap.categoria = k;
-          else if (kl.includes("espec")) colMap.especificacao = k;
-          else if (kl === "categoria") colMap.categoria = k; // Backup mapping for exact match
+          const norm = kl.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (norm.includes("codigo") || norm === "cod") colMap.codigo = k;
+          else if (norm.includes("descri")) colMap.descricao = k;
+          else if (norm.includes("unid")) colMap.unidade = k;
+          else if (norm.includes("categ")) colMap.categoria = k;
+          else if (norm.includes("espec")) colMap.especificacao = k;
         }
 
         if (!colMap.codigo || !colMap.descricao) {
