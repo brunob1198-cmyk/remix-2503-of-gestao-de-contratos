@@ -63,6 +63,7 @@ export function ItensTab() {
           else if (kl.includes("unid")) colMap.unidade = k;
           else if (kl.includes("categ")) colMap.categoria = k;
           else if (kl.includes("espec")) colMap.especificacao = k;
+          else if (kl === "categoria") colMap.categoria = k; // Backup mapping for exact match
         }
 
         if (!colMap.codigo || !colMap.descricao) {
