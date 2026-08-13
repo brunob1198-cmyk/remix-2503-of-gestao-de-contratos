@@ -361,7 +361,9 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
               data={paginatedReqs} 
               searchKey="numero" 
               searchPlaceholder="Buscar por número..." 
+              persistKey="sc_cotacoes"
             />
+
           </div>
 
         )}
