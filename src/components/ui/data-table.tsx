@@ -362,9 +362,9 @@ export function DataTableColumnFilter<TData, TValue>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 border-dashed flex items-center text-xs font-semibold tracking-wider uppercase hover:bg-muted">
-          <Filter className="mr-2 h-3.5 w-3.5" />
-          {title}
+        <Button variant="ghost" size="sm" className="h-8 px-2 flex items-center hover:bg-muted" title={title}>
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          {selectedValues?.size > 0 && (
           {selectedValues?.size > 0 && (
             <>
               <div className="mx-2 h-4 w-[1px] bg-border" />
