@@ -14,6 +14,9 @@ import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, Che
 import { parseLocalDate } from "@/lib/utils";
 import { diasCotacaoAtrasada, isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 import { RequisitionTimeline } from "./RequisitionTimeline";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+
 
 // WORKFLOW_STATUS in the DB
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "warning" }> = {
@@ -182,6 +185,134 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Número" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Número" 
+            options={Array.from(new Set(requisicoesMestreDetalhe.map((r: any) => r.numero).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <span className="font-mono font-medium text-primary hover:underline cursor-pointer" onClick={() => { setSelectedReqForDetail(req); setDetailOpen(true); }}>
+            {req.numero}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "projeto",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Projeto" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Projeto" 
+            options={Array.from(new Set(requisicoesMestreDetalhe.map((r: any) => r.projeto?.codigo).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      accessorFn: (row) => row.projeto?.codigo || "—",
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">{row.original.projeto?.nome || "Sem projeto"}</span>
+          <span className="text-xs text-muted-foreground">{row.original.projeto?.codigo || "N/A"}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "prioridade",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Prioridade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Prioridade" 
+            options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const p = row.getValue("prioridade") as string;
+        const cfg = PRIORIDADE_MAP[p?.toLowerCase() || "normal"] || PRIORIDADE_MAP["normal"];
+        return <Badge variant={cfg.text.includes("red") ? "destructive" : "secondary"}>{cfg.label}</Badge>;
+      },
+    },
+    {
+      accessorKey: "workflow_status",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Status" 
+            options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const s = row.getValue("workflow_status") as string;
+        const cfg = WORKFLOW_STATUS_MAP[s] || { label: s, variant: "outline" };
+        return <Badge variant={cfg.variant as any}>{cfg.label}</Badge>;
+      },
+    },
+    {
+      id: "cotacoes",
+      header: "Cotações",
+      cell: ({ row }) => {
+        const req = row.original;
+        const count = req.cotacoes?.length || 0;
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium">{count} {count === 1 ? "cotação" : "cotações"}</span>
+            <div className="flex flex-wrap gap-1">
+              {req.cotacoes?.slice(0, 3).map((c: any) => (
+                <Badge key={c.id} variant="outline" className="text-[9px] px-1 py-0" onClick={(e) => { e.stopPropagation(); setSelectedCotacao({ ...c, requisicao: req }); setCotacaoDetailOpen(true); }}>
+                  {c.numero}
+                </Badge>
+              ))}
+              {count > 3 && <span className="text-[9px] text-muted-foreground">+{count - 3}</span>}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ações</div>,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" onClick={() => { setSelectedReqForDetail(req); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
+            {hasActionPermission("pode_criar_cotacao") && req.workflow_status !== "APPROVED" && (
+              <Button variant="outline" size="sm" onClick={() => openNewCotacaoModal(req.id)}>
+                + Cotação
+              </Button>
+            )}
+            {req.workflow_status === "APPROVED" && (
+              <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate("pedidos", req.numero)}>
+                Pedido
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+
   const selectedReq = requisicoesMestreDetalhe.find((r: any) => r.id === form.requisicao_id);
 
   return (
@@ -245,165 +376,19 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
           <p className="text-muted-foreground text-center py-12">Nenhuma requisição encontrada com os filtros atuais.</p>
         ) : (
           <div className="space-y-4">
-            {paginatedReqs.map((req: any) => {
-              const isExpanded = expandedReqs.has(req.id);
-              const prioridade = PRIORIDADE_MAP[req.prioridade?.toLowerCase() || "normal"] || PRIORIDADE_MAP["normal"];
-              const status = WORKFLOW_STATUS_MAP[req.workflow_status] || { label: req.workflow_status, variant: "outline" };
-              const cotacoesCount = req.cotacoes?.length || 0;
-              const hasAprovada = req.cotacoes?.some((c: any) => c.status === "aprovada");
+            <DataTable 
+              columns={columns} 
+              data={paginatedReqs} 
+              searchKey="numero" 
+              searchPlaceholder="Buscar por número..." 
+              persistKey="sc_cotacoes"
+            />
 
-              return (
-                <div key={req.id} className={`border rounded-lg overflow-hidden transition-all duration-200 ${isExpanded ? "ring-1 ring-primary/20 shadow-sm" : "hover:border-primary/30 hover:bg-muted/30"}`}>
-                  {/* Master Header */}
-                  <div 
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 cursor-pointer bg-background"
-                    onClick={() => toggleExpand(req.id)}
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`} />
-                      
-                      <div className="w-24 shrink-0">
-                        <span className="font-mono font-medium text-primary hover:underline" onClick={(e) => { e.stopPropagation(); setSelectedReqForDetail(req); setDetailOpen(true); }}>
-                          {req.numero}
-                        </span>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0 mr-4">
-                        <p className="text-sm font-semibold truncate text-foreground">{req.projeto?.nome || "Sem projeto"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{req.projeto?.codigo || "N/A"}</p>
-                      </div>
-                      
-                      <div className="hidden md:flex shrink-0 items-center gap-3 mr-4">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${prioridade.bg} ${prioridade.text}`}>
-                          {prioridade.label}
-                        </span>
-                        
-                        <Badge variant={status.variant === "warning" ? "secondary" : status.variant as any} className={status.variant === "warning" ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" : status.variant === "outline" ? "bg-blue-50 text-blue-700 border-blue-200" : ""}>
-                          {status.label}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-end mt-3 sm:mt-0 gap-4 sm:min-w-[120px]">
-                      <span className="text-xs text-muted-foreground font-medium">
-                        {cotacoesCount} {cotacoesCount === 1 ? "cotação" : "cotações"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Detail Body */}
-                  {isExpanded && (
-                    <div className="border-t bg-muted/20 p-4 pb-5">
-                      {cotacoesCount > 0 ? (
-                        <div className="space-y-2 mb-4">
-                          {req.cotacoes.map((cot: any) => {
-                            const isVencedora = cot.status === "aprovada";
-                            const isPerdida = cot.status === "rejeitada" || (hasAprovada && !isVencedora); // Se tem vencedora, as outras perdem opacidade
-                            const st = COTACAO_STATUS_MAP[isVencedora ? "aprovada" : (isPerdida ? "rejeitada" : "pendente")];
-                            const diasAtraso = diasCotacaoAtrasada(cot);
-                            
-                            return (
-                              <div 
-                                key={cot.id}
-                                onClick={() => { setSelectedCotacao({ ...cot, requisicao: req }); setCotacaoDetailOpen(true); }}
-                                className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-md bg-background border transition-colors cursor-pointer hover:border-primary/40
-                                  ${isVencedora ? 'border-green-500/50 shadow-sm' : ''} 
-                                  ${isPerdida ? 'opacity-60' : ''}
-                                `}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="font-mono text-xs text-muted-foreground">{cot.numero}</span>
-                                  <span className={`text-sm font-medium ${isPerdida ? 'line-through text-muted-foreground' : ''}`}>
-                                    {cot.fornecedor?.razao_social || "Fornecedor Removido"}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-4 mt-2 sm:mt-0 text-sm">
-                                  <span className="text-muted-foreground text-xs">
-                                    Prazo: {cot.prazo_entrega_dias ? `${cot.prazo_entrega_dias}d` : '--'}
-                                  </span>
-                                  <span className={`font-semibold ${isVencedora ? 'text-green-700' : ''}`}>
-                                    {fmt(cot.valor_total || 0)}
-                                  </span>
-                                  <Badge variant={st.variant} className={isVencedora ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
-                                    {st.label}
-                                  </Badge>
-                                  {diasAtraso > 0 && (
-                                    <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200">
-                                      <AlertCircle className="h-3 w-3 mr-1" />
-                                      Atrasada há {diasAtraso}d
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-center text-xs text-muted-foreground mb-4 py-2">
-                          Nenhuma cotação registrada ainda
-                        </p>
-                      )}
-
-                      {/* Action Buttons Container */}
-                      <div className="flex justify-end pt-2">
-                        {hasActionPermission("pode_criar_cotacao") && (
-                          <>
-                            {req.workflow_status === "APPROVED" ? (
-                              <Button 
-                                variant="link" 
-                                className="text-primary p-0 h-auto font-semibold"
-                                onClick={() => onNavigate && onNavigate("pedidos", req.numero)}
-                              >
-                                Ver pedido gerado <ChevronRight className="h-4 w-4 ml-1" />
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => openNewCotacaoModal(req.id)}
-                                className="bg-background shadow-sm"
-                              >
-                                {cotacoesCount === 0 ? <><Plus className="h-3 w-3 mr-1" /> Criar cotação</> : <><Plus className="h-3 w-3 mr-1" /> Adicionar cotação concorrente</>}
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
+
         )}
       </CardContent>
       
-      {/* Pagination Footer */}
-      {totalItems > 0 && (
-        <div className="border-t p-4 flex items-center justify-between mt-4">
-          <div className="text-sm text-muted-foreground">
-            {totalItems} {totalItems === 1 ? "registro encontrado" : "registros encontrados"}
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Linhas por página</span>
-              <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[70px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[10, 20, 30, 40, 50].map(v => <SelectItem key={v} value={String(v)}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-center text-sm font-medium">
-              Página {page} de {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Próxima</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODALS */}
       {/* Modal Nova Cotação */}

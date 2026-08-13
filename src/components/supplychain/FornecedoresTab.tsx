@@ -1,21 +1,21 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useFornecedores } from "@/hooks/useSupplyChain";
-import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Upload, Download, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 const SCORE_WEIGHTS = {
   prazo: 0.4,
@@ -25,9 +25,7 @@ const SCORE_WEIGHTS = {
 };
 
 export function FornecedoresTab() {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 250);
-  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ search: debouncedSearch, includeInactive: true });
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ includeInactive: true });
   const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
@@ -253,6 +251,238 @@ export function FornecedoresTab() {
     { name: "Resp.", value: form.score_responsividade, color: "#f59e0b" },
   ], [form.score_prazo, form.score_preco, form.score_qualidade, form.score_responsividade]);
 
+  const columns: ColumnDef<any>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate") || false}
+          onCheckedChange={(value) => {
+            table.toggleAllPageRowsSelected(!!value);
+            if (value) {
+              const allIds = new Set(fornecedores.map((f: any) => f.id));
+              setSelectedIds(allIds);
+            } else {
+              setSelectedIds(new Set());
+            }
+          }}
+          aria-label="Selecionar todos"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => {
+            row.toggleSelected(!!value);
+            setSelectedIds(prev => {
+              const next = new Set(prev);
+              if (value) next.add(row.original.id);
+              else next.delete(row.original.id);
+              return next;
+            });
+          }}
+          aria-label="Selecionar linha"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "razao_social",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Razão Social" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Razão Social" 
+            options={Array.from(new Set(fornecedores.map(f => f.razao_social).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => <span className="font-medium">{row.getValue("razao_social")}</span>,
+    },
+    {
+      accessorKey: "cnpj",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="CNPJ" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar CNPJ" 
+            options={Array.from(new Set(fornecedores.map(f => f.cnpj).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "contato_nome",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Contato" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Contato" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_nome).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "contato_telefone",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Telefone" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Telefone" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_telefone).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "contato_email",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="E-mail" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar E-mail" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_email).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "categoria",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Categoria" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Categoria" 
+            options={Array.from(new Set(fornecedores.map(f => f.categoria).filter(Boolean))).sort().map(c => ({ label: String(c), value: String(c) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => <Badge variant="outline">{row.getValue("categoria")}</Badge>,
+    },
+    {
+      accessorKey: "municipio",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Município" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Município" 
+            options={Array.from(new Set(fornecedores.map(f => f.municipio).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "uf",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="UF" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar UF" 
+            options={Array.from(new Set(fornecedores.map(f => f.uf).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+    },
+    {
+      accessorKey: "score",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Score" />,
+      cell: ({ row }) => {
+        const f = row.original;
+        return (
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Badge 
+                className="cursor-help"
+                variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}
+              >
+                {Number(f.score || 0).toFixed(1)}
+              </Badge>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-60">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  <span className="text-muted-foreground">Prazo (40%) - 0 a 100:</span>
+                  <span className="text-right font-medium">{f.score_prazo || 0}</span>
+                  <span className="text-muted-foreground">Preço (30%) - 0 a 100:</span>
+                  <span className="text-right font-medium">{f.score_preco || 0}</span>
+                  <span className="text-muted-foreground">Qualidade (20%) - 0 a 100:</span>
+                  <span className="text-right font-medium">{f.score_qualidade || 0}</span>
+                  <span className="text-muted-foreground">Resp. (10%) - 0 a 100:</span>
+                  <span className="text-right font-medium">{f.score_responsividade || 0}</span>
+                </div>
+                <div className="h-20 w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                      { subject: 'P', A: f.score_prazo || 0 },
+                      { subject: 'V', A: f.score_preco || 0 },
+                      { subject: 'Q', A: f.score_qualidade || 0 },
+                      { subject: 'R', A: f.score_responsividade || 0 },
+                    ]}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
+                      <Radar dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        );
+      },
+    },
+    {
+      accessorKey: "ativo",
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Status" 
+            options={[{ label: "Ativo", value: "true" }, { label: "Inativo", value: "false" }]} 
+          />
+        </div>
+      ),
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue || filterValue.length === 0) return true;
+        return filterValue.includes(String(row.getValue(columnId)));
+      },
+      cell: ({ row }) => {
+        const active = row.getValue("ativo");
+        return <Badge variant={active ? "default" : "secondary"}>{active ? "Ativo" : "Inativo"}</Badge>;
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ação</div>,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => remove.mutate(row.original.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+        </div>
+      ),
+    },
+  ];
+
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -441,121 +671,20 @@ export function FornecedoresTab() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
-          <Input
-            placeholder="Buscar por razão social..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Mostrando até 200 resultados. Refine a busca para localizar mais.</p>
-        </div>
         {isLoading ? (
           <p className="text-muted-foreground text-center py-8">Carregando...</p>
-        ) : fornecedores.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">{search ? "Nenhum fornecedor encontrado" : "Nenhum fornecedor cadastrado"}</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={fornecedores.length > 0 && selectedIds.size === fornecedores.length}
-                    onCheckedChange={(v) => {
-                      if (v) setSelectedIds(new Set(fornecedores.map((f: any) => f.id)));
-                      else setSelectedIds(new Set());
-                    }}
-                    aria-label="Selecionar todos"
-                  />
-                </TableHead>
-                <TableHead>Razão Social</TableHead>
-                <TableHead>CNPJ</TableHead>
-                <TableHead>Contato</TableHead>
-                 <TableHead>Categoria</TableHead>
-                <TableHead>Município</TableHead>
-                <TableHead>UF</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fornecedores.map(f => (
-                <TableRow key={f.id} data-state={selectedIds.has(f.id) ? "selected" : undefined}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.has(f.id)}
-                      onCheckedChange={(v) => {
-                        setSelectedIds(prev => {
-                          const next = new Set(prev);
-                          if (v) next.add(f.id); else next.delete(f.id);
-                          return next;
-                        });
-                      }}
-                      aria-label={`Selecionar ${f.razao_social}`}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{f.razao_social}</TableCell>
-                  <TableCell>{f.cnpj || "—"}</TableCell>
-                  <TableCell>{f.contato_nome || "—"}</TableCell>
-                   <TableCell><Badge variant="outline">{f.categoria}</Badge></TableCell>
-                  <TableCell>{f.municipio || "—"}</TableCell>
-                  <TableCell>{f.uf || "—"}</TableCell>
-                  <TableCell>
-                    <HoverCard>
-                      <HoverCardTrigger asChild>
-                        <Badge 
-                          className="cursor-help"
-                          variant={f.score >= 70 ? "default" : f.score >= 40 ? "secondary" : "destructive"}
-                        >
-                          {Number(f.score || 0).toFixed(1)}
-                        </Badge>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-60">
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
-                          <div className="grid grid-cols-2 gap-1 text-xs">
-                            <span className="text-muted-foreground">Prazo (40%) - 0 a 100:</span>
-                            <span className="text-right font-medium">{f.score_prazo || 0}</span>
-                            <span className="text-muted-foreground">Preço (30%) - 0 a 100:</span>
-                            <span className="text-right font-medium">{f.score_preco || 0}</span>
-                            <span className="text-muted-foreground">Qualidade (20%) - 0 a 100:</span>
-                            <span className="text-right font-medium">{f.score_qualidade || 0}</span>
-                            <span className="text-muted-foreground">Resp. (10%) - 0 a 100:</span>
-                            <span className="text-right font-medium">{f.score_responsividade || 0}</span>
-                          </div>
-                          <div className="h-20 w-full mt-2">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                                { subject: 'P', A: f.score_prazo || 0 },
-                                { subject: 'V', A: f.score_preco || 0 },
-                                { subject: 'Q', A: f.score_qualidade || 0 },
-                                { subject: 'R', A: f.score_responsividade || 0 },
-                              ]}>
-                                <PolarGrid />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
-                                <Radar dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                              </RadarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  </TableCell>
+          <DataTable 
+            columns={columns} 
+            data={fornecedores} 
+            searchKey="razao_social"
+            searchPlaceholder="Buscar fornecedores..."
+            persistKey="sc_fornecedores"
+          />
 
-                  <TableCell><Badge variant={f.ativo ? "default" : "secondary"}>{f.ativo ? "Ativo" : "Inativo"}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(f)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove.mutate(f.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
         )}
       </CardContent>
     </Card>
   );
 }
+

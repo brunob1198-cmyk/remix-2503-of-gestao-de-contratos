@@ -27,8 +27,13 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowDown, ArrowUp, ChevronsUpDown, Filter, Search, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Filter, Search, X, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/AuthContext"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+
 
 // A custom filter function for multi-select
 export const multiSelectFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -42,16 +47,115 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
+  persistKey?: string
+  rowSelection?: Record<string, boolean>
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void
+  bulkActions?: React.ReactNode
 }
+
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
   searchPlaceholder = "Buscar...",
+  persistKey,
+  rowSelection: externalRowSelection,
+  onRowSelectionChange: externalOnRowSelectionChange,
+  bulkActions,
 }: DataTableProps<TData, TValue>) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Load state from DB
+  const { data: dbPreferences, isLoading: isLoadingPrefs } = useQuery({
+    queryKey: ["user_preferences", persistKey, user?.id],
+    enabled: !!persistKey && !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .select("value")
+        .eq("user_id", user!.id)
+        .eq("key", `dt_${persistKey}`)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data?.value as any || null;
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (newValue: any) => {
+      if (!persistKey || !user?.id) return;
+      
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          key: `dt_${persistKey}`,
+          value: newValue,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,key' });
+
+      if (error) throw error;
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      if (!persistKey || !user?.id) return;
+      const { error } = await supabase
+        .from("user_preferences")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("key", `dt_${persistKey}`);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user_preferences", persistKey] });
+      setSorting([]);
+      setColumnFilters([]);
+      setPagination({ pageIndex: 0, pageSize: 10 });
+      toast.success("Filtros e ordenação resetados");
+    },
+  });
+
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+  const [internalRowSelection, setInternalRowSelection] = React.useState<Record<string, boolean>>({})
+
+  const actualRowSelection = externalRowSelection !== undefined ? externalRowSelection : internalRowSelection
+  const actualOnRowSelectionChange = externalOnRowSelectionChange !== undefined 
+    ? (updater: any) => {
+        const next = typeof updater === 'function' ? updater(actualRowSelection) : updater;
+        externalOnRowSelectionChange(next);
+      }
+    : setInternalRowSelection;
+
+  // Synchronize state when DB data arrives
+  React.useEffect(() => {
+    if (dbPreferences) {
+      if (dbPreferences.sorting) setSorting(dbPreferences.sorting);
+      if (dbPreferences.filters) setColumnFilters(dbPreferences.filters);
+      if (dbPreferences.pagination) setPagination(dbPreferences.pagination);
+    }
+  }, [dbPreferences]);
+
+  // Debounced save
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const saveState = React.useCallback((newState: any) => {
+    if (!persistKey) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      saveMutation.mutate(newState);
+    }, 1000);
+  }, [persistKey, saveMutation]);
+
+  React.useEffect(() => {
+    if (!persistKey || isLoadingPrefs) return;
+    saveState({ sorting, filters: columnFilters, pagination });
+  }, [sorting, columnFilters, pagination, persistKey, isLoadingPrefs, saveState]);
 
   const table = useReactTable({
     data,
@@ -62,26 +166,51 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    onPaginationChange: setPagination,
+    onRowSelectionChange: actualOnRowSelectionChange,
+    getRowId: (row: any) => row.id,
     state: {
       sorting,
       columnFilters,
+      pagination,
+      rowSelection: actualRowSelection,
     },
   })
 
+  const hasChanges = sorting.length > 0 || columnFilters.length > 0 || pagination.pageIndex !== 0 || pagination.pageSize !== 10;
+
+
   return (
     <div>
-      {searchKey && (
-        <div className="flex items-center py-4">
-          <Input
-            placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+        <div className="flex items-center gap-2 w-full sm:max-w-sm">
+          {searchKey && (
+            <Input
+              placeholder={searchPlaceholder}
+              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+              onChange={(event) =>
+                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              }
+              className="w-full"
+            />
+          )}
+          {bulkActions}
         </div>
-      )}
+        
+        {persistKey && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn("h-8 px-2 lg:px-3 text-muted-foreground hover:text-foreground transition-colors", !hasChanges && "opacity-50 cursor-not-allowed")}
+            onClick={() => clearMutation.mutate()}
+            disabled={!hasChanges || clearMutation.isPending}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Limpar Visão
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card text-card-foreground shadow-sm">
         <Table>
           <TableHeader className="bg-muted/50">
@@ -252,9 +381,8 @@ export function DataTableColumnFilter<TData, TValue>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 border-dashed flex items-center text-xs font-semibold tracking-wider uppercase hover:bg-muted">
-          <Filter className="mr-2 h-3.5 w-3.5" />
-          {title}
+        <Button variant="ghost" size="sm" className="h-8 px-2 flex items-center hover:bg-muted" title={title}>
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           {selectedValues?.size > 0 && (
             <>
               <div className="mx-2 h-4 w-[1px] bg-border" />

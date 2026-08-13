@@ -356,7 +356,20 @@ export function useScItens(options?: { search?: string; limit?: number }) {
     onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
   });
 
-  return { itens, isLoading, searchScItens, create, update, remove, bulkCreate };
+  const bulkRemove = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from("sc_itens").delete().in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
+      toast({ title: `${count} itens excluídos com sucesso!` });
+    },
+    onError: (e: Error) => toast({ title: "Erro na exclusão", description: e.message, variant: "destructive" }),
+  });
+
+  return { itens, isLoading, searchScItens, create, update, remove, bulkCreate, bulkRemove };
 }
 
 // ─── Requisições de Compra ───

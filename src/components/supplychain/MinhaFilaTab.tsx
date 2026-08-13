@@ -152,7 +152,14 @@ export function MinhaFilaTab() {
       {rows.length === 0 ? (
         <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
       ) : (
-        <DataTable columns={reqColumns} data={rows} searchKey="numero" searchPlaceholder="Buscar por número..." />
+        <DataTable 
+          columns={reqColumns} 
+          data={rows} 
+          searchKey="numero" 
+          searchPlaceholder="Buscar por número..." 
+          persistKey={`sc_fila_req_${title.toLowerCase().replace(/\s+/g, '_')}`}
+        />
+
       )}
     </div>
   );
@@ -166,7 +173,14 @@ export function MinhaFilaTab() {
       {rows.length === 0 ? (
         <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
       ) : (
-        <DataTable columns={pedColumns} data={rows} searchKey="numero" searchPlaceholder="Buscar por número..." />
+        <DataTable 
+          columns={pedColumns} 
+          data={rows} 
+          searchKey="numero" 
+          searchPlaceholder="Buscar por número..." 
+          persistKey={`sc_fila_ped_${title.toLowerCase().replace(/\s+/g, '_')}`}
+        />
+
       )}
     </div>
   );
