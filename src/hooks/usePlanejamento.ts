@@ -399,7 +399,7 @@ export function useAtividades(projetoId?: string) {
           is_principal: !!a.is_principal,
           matriz_producao: matriz,
           media_diaria_realizada: mediaDiaria,
-          unidade: a.lpu?.unidade || "-",
+          unidade: a.item_lpu?.unidade || "-",
         } as AtividadePlanejamento;
       });
     },
