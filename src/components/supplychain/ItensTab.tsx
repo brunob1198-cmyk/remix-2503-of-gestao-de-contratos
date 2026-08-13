@@ -194,8 +194,11 @@ export function ItensTab() {
           <DataTable 
             columns={columns} 
             data={processedItems} 
+            searchKey="descricao"
             searchPlaceholder="Buscar itens..."
+            persistKey="sc_itens"
           />
+
         )}
       </CardContent>
     </Card>

@@ -336,7 +336,14 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
         ) : requisicoes.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">Nenhuma requisição encontrada.</p>
         ) : (
-          <DataTable columns={columns} data={requisicoes} searchKey="numero" searchPlaceholder="Buscar por número..." />
+          <DataTable 
+            columns={columns} 
+            data={requisicoes} 
+            searchKey="numero" 
+            searchPlaceholder="Buscar por número..." 
+            persistKey="sc_requisicoes"
+          />
+
         )}
       </CardContent>
 
