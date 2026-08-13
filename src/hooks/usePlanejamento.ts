@@ -287,14 +287,14 @@ export function useAtividades(projetoId?: string) {
               (matrizPorItemSite[item][site][info.data] || 0) + qtd;
 
             // Mapeamento redundante por Código (para casos de itens recriados/desvinculados)
-            if (itemCodigo) {
-              if (!prodPorItemSite[itemCodigo]) prodPorItemSite[itemCodigo] = {};
-              prodPorItemSite[itemCodigo][site] = (prodPorItemSite[itemCodigo][site] || 0) + qtd;
+            if (normalizedItemCode) {
+              if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
+              prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
 
-              if (!matrizPorItemSite[itemCodigo]) matrizPorItemSite[itemCodigo] = {};
-              if (!matrizPorItemSite[itemCodigo][site]) matrizPorItemSite[itemCodigo][site] = {};
-              matrizPorItemSite[itemCodigo][site][info.data] =
-                (matrizPorItemSite[itemCodigo][site][info.data] || 0) + qtd;
+              if (!matrizPorItemSite[normalizedItemCode]) matrizPorItemSite[normalizedItemCode] = {};
+              if (!matrizPorItemSite[normalizedItemCode][site]) matrizPorItemSite[normalizedItemCode][site] = {};
+              matrizPorItemSite[normalizedItemCode][site][info.data] =
+                (matrizPorItemSite[normalizedItemCode][site][info.data] || 0) + qtd;
             }
           });
         }
