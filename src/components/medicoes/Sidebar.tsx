@@ -17,7 +17,7 @@ import {
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
   Percent, Settings2, Activity,
-  GripVertical, ShieldCheck, Briefcase, UserCheck
+  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -62,6 +62,13 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
   { id: "sgsst-funcoes", title: "SGSST - Funções", url: "/medicoes/sgsst/funcoes", icon: Briefcase, telaId: "sgsst-funcoes" },
   { id: "sgsst-colaboradores", title: "SGSST - Colaboradores", url: "/medicoes/sgsst/colaboradores", icon: UserCheck, telaId: "sgsst-colaboradores" },
+  { id: "sgsst-riscos", title: "SGSST - Riscos", url: "/medicoes/sgsst/riscos", icon: AlertTriangle, telaId: "sgsst-riscos" },
+  { id: "sgsst-pgr", title: "SGSST - PGR", url: "/medicoes/sgsst/pgr", icon: FileCheck, telaId: "sgsst-pgr" },
+  { id: "sgsst-apr", title: "SGSST - APR", url: "/medicoes/sgsst/apr", icon: ClipboardList, telaId: "sgsst-apr" },
+  { id: "sgsst-pt", title: "SGSST - PT", url: "/medicoes/sgsst/pt", icon: ShieldCheck, telaId: "sgsst-pt" },
+  { id: "sgsst-inspecoes", title: "SGSST - Inspeções", url: "/medicoes/sgsst/inspecoes", icon: SearchCheck, telaId: "sgsst-inspecoes" },
+  { id: "sgsst-incidentes", title: "SGSST - Incidentes", url: "/medicoes/sgsst/incidentes", icon: Siren, telaId: "sgsst-incidentes" },
+  { id: "sgsst-nao-conformidades", title: "SGSST - Não Conformidades", url: "/medicoes/sgsst/nao-conformidades", icon: AlertOctagon, telaId: "sgsst-nao-conformidades" },
   { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
   { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario" },
   { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },

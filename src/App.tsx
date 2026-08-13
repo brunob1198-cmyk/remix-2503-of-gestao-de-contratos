@@ -49,6 +49,19 @@ const MkpParametrosPage = React.lazy(() => import("./pages/configuracoes/MkpPara
 const ConfigImpostosPage = React.lazy(() => import("./pages/configuracoes/ConfigImpostos"));
 const SgsstFuncoesPage = React.lazy(() => import("./pages/sgsst/Funcoes"));
 const SgsstColaboradoresPage = React.lazy(() => import("./pages/sgsst/Colaboradores"));
+const SgsstRiscosPage = React.lazy(() => import("./pages/sgsst/Riscos"));
+const SgsstPgrListPage = React.lazy(() => import("./pages/sgsst/PgrList"));
+const SgsstPgrDetailPage = React.lazy(() => import("./pages/sgsst/PgrDetail"));
+const SgsstAprListPage = React.lazy(() => import("./pages/sgsst/AprList"));
+const SgsstAprDetailPage = React.lazy(() => import("./pages/sgsst/AprDetail"));
+const SgsstPtListPage = React.lazy(() => import("./pages/sgsst/PtList"));
+const SgsstPtDetailPage = React.lazy(() => import("./pages/sgsst/PtDetail"));
+const SgsstInspecoesListPage = React.lazy(() => import("./pages/sgsst/InspecoesList"));
+const SgsstInspecoesDetailPage = React.lazy(() => import("./pages/sgsst/InspecoesDetail"));
+const SgsstIncidentesListPage = React.lazy(() => import("./pages/sgsst/IncidentesList"));
+const SgsstIncidentesDetailPage = React.lazy(() => import("./pages/sgsst/IncidentesDetail"));
+const SgsstNaoConformidadesListPage = React.lazy(() => import("./pages/sgsst/NaoConformidadesList"));
+const SgsstNaoConformidadesDetailPage = React.lazy(() => import("./pages/sgsst/NaoConformidadesDetail"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -121,6 +134,19 @@ const App = () => {
                 <Route path="audit-log" element={<AuditLogPage />} />
                 <Route path="sgsst/funcoes" element={<SgsstFuncoesPage />} />
                 <Route path="sgsst/colaboradores" element={<SgsstColaboradoresPage />} />
+                <Route path="sgsst/riscos" element={<SgsstRiscosPage />} />
+                <Route path="sgsst/pgr" element={<SgsstPgrListPage />} />
+                <Route path="sgsst/pgr/:pgrId" element={<SgsstPgrDetailPage />} />
+                <Route path="sgsst/apr" element={<SgsstAprListPage />} />
+                <Route path="sgsst/apr/:aprId" element={<SgsstAprDetailPage />} />
+                <Route path="sgsst/pt" element={<SgsstPtListPage />} />
+                <Route path="sgsst/pt/:ptId" element={<SgsstPtDetailPage />} />
+                <Route path="sgsst/inspecoes" element={<SgsstInspecoesListPage />} />
+                <Route path="sgsst/inspecoes/:inspecaoId" element={<SgsstInspecoesDetailPage />} />
+                <Route path="sgsst/incidentes" element={<SgsstIncidentesListPage />} />
+                <Route path="sgsst/incidentes/:incidenteId" element={<SgsstIncidentesDetailPage />} />
+                <Route path="sgsst/nao-conformidades" element={<SgsstNaoConformidadesListPage />} />
+                <Route path="sgsst/nao-conformidades/:ncId" element={<SgsstNaoConformidadesDetailPage />} />
                 
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />

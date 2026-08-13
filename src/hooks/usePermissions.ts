@@ -34,6 +34,13 @@ export const TELAS = [
   { id: "audit-log", label: "Logs de Auditoria" },
   { id: "sgsst-funcoes", label: "SGSST - Funções" },
   { id: "sgsst-colaboradores", label: "SGSST - Colaboradores" },
+  { id: "sgsst-riscos", label: "SGSST - Catálogo de Riscos" },
+  { id: "sgsst-pgr", label: "SGSST - PGR / Inventário de Riscos" },
+  { id: "sgsst-apr", label: "SGSST - APR (Análise Preliminar de Riscos)" },
+  { id: "sgsst-pt", label: "SGSST - Permissão de Trabalho (PT)" },
+  { id: "sgsst-inspecoes", label: "SGSST - Inspeções de Segurança" },
+  { id: "sgsst-incidentes", label: "SGSST - Incidentes e Acidentes" },
+  { id: "sgsst-nao-conformidades", label: "SGSST - Não Conformidades" },
 ] as const;
 
 export function usePermissions() {
