@@ -356,6 +356,7 @@ export default function PlanejamentoObra() {
               atividades={filteredAtividades}
               onSelectAtividade={setSelectedAtividade}
               onDragUpdate={handleDragUpdate}
+              onRemoveAtividade={(id) => removeAtividade.mutate(id)}
             />
           </TabsContent>
 
