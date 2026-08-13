@@ -215,7 +215,7 @@ export function useAtividades(projetoId?: string) {
         .map((a) => a.item_lpu_id!);
       
       const itemLpuCodigos = (atividades ?? [])
-        .map((a: any) => a.lpu?.codigo)
+        .map((a: any) => String(a.lpu?.codigo || "").trim())
         .filter(Boolean);
 
       const [depsResult, sitesResult] = await Promise.all([
@@ -262,9 +262,9 @@ export function useAtividades(projetoId?: string) {
             const item = p.item_lpu_id as string;
             const itemCodigo = p.item_lpu?.codigo;
             
-            // Filtra em memória para garantir que estamos pegando ou o ID exato ou o Código correspondente
+            const normalizedItemCode = String(itemCodigo || "").trim();
             const matchesId = itemLpuIds.includes(item);
-            const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
+            const matchesCode = normalizedItemCode && itemLpuCodigos.includes(normalizedItemCode);
             
             if (!matchesId && !matchesCode) return;
             const site = info.site_id as string;
@@ -279,14 +279,14 @@ export function useAtividades(projetoId?: string) {
               (matrizPorItemSite[item][site][info.data] || 0) + qtd;
 
             // Mapeamento redundante por Código (para casos de itens recriados/desvinculados)
-            if (itemCodigo) {
-              if (!prodPorItemSite[itemCodigo]) prodPorItemSite[itemCodigo] = {};
-              prodPorItemSite[itemCodigo][site] = (prodPorItemSite[itemCodigo][site] || 0) + qtd;
+            if (normalizedItemCode) {
+              if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
+              prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
 
-              if (!matrizPorItemSite[itemCodigo]) matrizPorItemSite[itemCodigo] = {};
-              if (!matrizPorItemSite[itemCodigo][site]) matrizPorItemSite[itemCodigo][site] = {};
-              matrizPorItemSite[itemCodigo][site][info.data] =
-                (matrizPorItemSite[itemCodigo][site][info.data] || 0) + qtd;
+              if (!matrizPorItemSite[normalizedItemCode]) matrizPorItemSite[normalizedItemCode] = {};
+              if (!matrizPorItemSite[normalizedItemCode][site]) matrizPorItemSite[normalizedItemCode][site] = {};
+              matrizPorItemSite[normalizedItemCode][site][info.data] =
+                (matrizPorItemSite[normalizedItemCode][site][info.data] || 0) + qtd;
             }
           });
         }
@@ -297,11 +297,12 @@ export function useAtividades(projetoId?: string) {
         const siteId = frenteSiteMap[frenteId];
         
         // Tenta buscar por ID primeiro, depois por Código se disponível
+        const normalizedItemCode = String(itemCodigo || "").trim();
         const sitesMapById = itemId ? prodPorItemSite[itemId] || {} : {};
-        const sitesMapByCode = itemCodigo ? prodPorItemSite[itemCodigo] || {} : {};
+        const sitesMapByCode = normalizedItemCode ? prodPorItemSite[normalizedItemCode] || {} : {};
         
         const matrizSitesById = itemId ? matrizPorItemSite[itemId] || {} : {};
-        const matrizSitesByCode = itemCodigo ? matrizPorItemSite[itemCodigo] || {} : {};
+        const matrizSitesByCode = normalizedItemCode ? matrizPorItemSite[normalizedItemCode] || {} : {};
 
         if (siteId) {
           const qtdId = sitesMapById[siteId] || 0;
@@ -326,10 +327,12 @@ export function useAtividades(projetoId?: string) {
         // Agrega por Código
         let qtdCode = 0;
         const matrizCode: Record<string, number> = {};
-        for (const s of Object.keys(sitesMapByCode)) {
-          qtdCode += sitesMapByCode[s];
-          for (const d of Object.keys(matrizSitesByCode[s] || {})) {
-            matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+        if (normalizedItemCode) {
+          for (const s of Object.keys(sitesMapByCode)) {
+            qtdCode += sitesMapByCode[s];
+            for (const d of Object.keys(matrizSitesByCode[s] || {})) {
+              matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+            }
           }
         }
 
