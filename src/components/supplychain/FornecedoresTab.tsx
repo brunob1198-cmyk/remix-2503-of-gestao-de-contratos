@@ -173,7 +173,7 @@ export function FornecedoresTab() {
           else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("ender")) colMap.endereco = k;
           else if (kl.includes("cep")) colMap.cep = k;
-          else if (kl.includes("categ")) colMap.categoria = k;
+          else if (kl.includes("categ") || kl === "categoria") colMap.categoria = k;
           else if (kl.includes("prazo")) colMap.score_prazo = k;
           else if (kl.includes("preco") || kl.includes("preço")) colMap.score_preco = k;
           else if (kl.includes("qualidade")) colMap.score_qualidade = k;
