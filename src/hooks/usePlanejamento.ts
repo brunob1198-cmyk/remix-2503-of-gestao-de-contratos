@@ -304,8 +304,10 @@ export function useAtividades(projetoId?: string) {
         const matrizSitesByCode = itemCodigo ? matrizPorItemSite[itemCodigo] || {} : {};
 
         if (siteId) {
-          const qtd = (sitesMapById[siteId] || 0) || (sitesMapByCode[siteId] || 0);
-          const matriz = (matrizSitesById[siteId] || matrizSitesByCode[siteId] || {});
+          const qtdId = sitesMapById[siteId] || 0;
+          const qtdCode = sitesMapByCode[siteId] || 0;
+          const qtd = Math.max(qtdId, qtdCode);
+          const matriz = (qtdId >= qtdCode ? matrizSitesById[siteId] : matrizSitesByCode[siteId]) || {};
           return { qtd, matriz };
         }
 
