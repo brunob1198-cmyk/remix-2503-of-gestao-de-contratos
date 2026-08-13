@@ -266,7 +266,8 @@ export function useAtividades(projetoId?: string) {
             // Nota: Removemos o filtro estrito de 'itemLpuIds.includes' para garantir que produções 
             // de itens que possam ter códigos nulos ou alterados ainda sejam processadas se o código bater.
             const matchesId = itemLpuIds.includes(item);
-            const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
+            const normalizedItemCode = String(itemCodigo || "").trim();
+            const matchesCode = normalizedItemCode && itemLpuCodigos.includes(normalizedItemCode);
             
             // Log para debug interno (pode ser removido após validação)
             if (itemCodigo === '3' || itemCodigo === 3) {
