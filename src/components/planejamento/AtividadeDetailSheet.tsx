@@ -120,7 +120,7 @@ export function AtividadeDetailSheet({
                   }}
                   title="Excluir item"
                 >
-                  <Trash2 className="h-4.5 w-4.5" />
+                  <Trash2 className="h-5 w-5" />
                 </Button>
               )}
               {onUpdate && !editing && (
