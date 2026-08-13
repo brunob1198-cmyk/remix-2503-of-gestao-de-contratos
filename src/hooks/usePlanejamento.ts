@@ -360,7 +360,7 @@ export function useAtividades(projetoId?: string) {
 
       return (atividades ?? []).map((aBase) => {
         const a = aBase as any;
-        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.lpu?.codigo);
+        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.item_lpu?.codigo);
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
         const prodDiaria = Number(a.producao_diaria_prevista) || 1;
