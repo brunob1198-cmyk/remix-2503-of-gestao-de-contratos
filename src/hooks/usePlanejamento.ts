@@ -270,11 +270,13 @@ export function useAtividades(projetoId?: string) {
         }
       }
 
-      const sumQtdForAtividade = (itemId: string | null, frenteId: string) => {
-        if (!itemId) return { qtd: 0, matriz: {} as Record<string, number> };
+      const sumQtdForAtividade = (itemId: string | null, frenteId: string, itemCodigo?: string) => {
+        if (!itemId && !itemCodigo) return { qtd: 0, matriz: {} as Record<string, number> };
         const siteId = frenteSiteMap[frenteId];
-        const sitesMap = prodPorItemSite[itemId] || {};
-        const matrizSites = matrizPorItemSite[itemId] || {};
+        
+        // Tenta buscar por ID primeiro, depois por Código se disponível
+        const sitesMap = prodPorItemSite[itemId || ""] || (itemCodigo ? prodPorItemSite[itemCodigo] : {}) || {};
+        const matrizSites = matrizPorItemSite[itemId || ""] || (itemCodigo ? matrizPorItemSite[itemCodigo] : {}) || {};
 
         if (siteId) {
           return {
@@ -304,7 +306,7 @@ export function useAtividades(projetoId?: string) {
 
       return (atividades ?? []).map((aBase) => {
         const a = aBase as any;
-        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id);
+        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.lpu?.codigo);
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
         const prodDiaria = Number(a.producao_diaria_prevista) || 1;
