@@ -168,6 +168,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onPaginationChange: setPagination,
     onRowSelectionChange: actualOnRowSelectionChange,
+    getRowId: (row: any) => row.id,
     state: {
       sorting,
       columnFilters,
