@@ -1,33 +1,22 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useFornecedores } from "@/hooks/useSupplyChain";
-import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Upload, Download, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-
-const SCORE_WEIGHTS = {
-  prazo: 0.4,
-  preco: 0.3,
-  qualidade: 0.2,
-  responsividade: 0.1
-};
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 
 export function FornecedoresTab() {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 250);
-  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ search: debouncedSearch, includeInactive: true });
+  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ includeInactive: true });
   const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
