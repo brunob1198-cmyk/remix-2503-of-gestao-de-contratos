@@ -151,13 +151,38 @@ export function useFrentes(projetoId?: string) {
   });
 
   const update = useMutation({
-    mutationFn: async ({ id, ...rest }: Partial<FrenteObra> & { id: string }) => {
+    mutationFn: async ({ id, propagateDataInicio, ...rest }: Partial<FrenteObra> & { id: string; propagateDataInicio?: boolean }) => {
       const { error } = await supabase.from("frentes_obra").update(rest).eq("id", id);
       if (error) throw error;
+
+      if (propagateDataInicio && rest.data_inicio) {
+        const { data: atvs } = await supabase
+          .from("atividades_planejamento")
+          .select("id, quantidade_total, producao_diaria_prevista")
+          .eq("frente_id", id);
+
+        if (atvs && atvs.length > 0) {
+          for (const atv of atvs) {
+            const dur = Math.ceil((Number(atv.quantidade_total) || 1) / (Number(atv.producao_diaria_prevista) || 1));
+            const endD = new Date(rest.data_inicio);
+            endD.setDate(endD.getDate() + dur - 1);
+            const expectedEnd = endD.toISOString().split("T")[0];
+
+            await supabase
+              .from("atividades_planejamento")
+              .update({
+                data_inicio: rest.data_inicio,
+                data_fim_prevista: expectedEnd,
+              })
+              .eq("id", atv.id);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["frentes_obra", projetoId] });
-      toast.success("Frente atualizada");
+      queryClient.invalidateQueries({ queryKey: ["atividades_planejamento", projetoId] });
+      toast.success("Frente atualizada com sucesso");
     },
     onError: (e: any) => toast.error(e.message),
   });

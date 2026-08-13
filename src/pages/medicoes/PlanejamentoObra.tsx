@@ -12,6 +12,7 @@ import { useRecursos } from "@/hooks/useRecursos";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { GanttChart } from "@/components/planejamento/GanttChart";
 import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailSheet";
+import { FrenteEditDialog } from "@/components/planejamento/FrenteEditDialog";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
 
@@ -40,7 +41,7 @@ export default function PlanejamentoObra() {
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadePlanejamento | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: frentes = [], create: createFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
+  const { data: frentes = [], create: createFrente, update: updateFrente, remove: removeFrente } = useFrentes(projetoId || undefined);
   const { data: atividades = [], create: createAtividade, update: updateAtividade, remove: removeAtividade, analyzeGanttAi } = useAtividades(projetoId || undefined);
   const { sites } = useSites(projetoId || undefined);
   const { recursos, alocacoes } = useRecursos();
@@ -263,7 +264,7 @@ export default function PlanejamentoObra() {
                 )}
               </div>
 
-              {/* Frentes list with delete */}
+              {/* Frentes list with edit and delete */}
               {frentes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {frentes.map((f) => (
@@ -274,6 +275,12 @@ export default function PlanejamentoObra() {
                           ({sites.find((s) => s.id === (f as any).site_id)?.nome || "Site"})
                         </span>
                       )}
+                      <FrenteEditDialog
+                        frente={f}
+                        sites={sites as any}
+                        onSave={(data) => updateFrente.mutate(data)}
+                        isLoading={updateFrente.isPending}
+                      />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <button className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
@@ -303,45 +310,45 @@ export default function PlanejamentoObra() {
 
             {/* Stats cards */}
             {atividades.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
-                    <BarChart3 className="h-5 w-5 text-primary" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <Card className="py-2 px-3">
+                  <CardContent className="p-0 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Total</p>
                       <p className="text-lg font-bold">{stats.total}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                <Card className="py-2 px-3">
+                  <CardContent className="p-0 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     <div>
                       <p className="text-xs text-muted-foreground">Concluídas</p>
-                      <p className="text-lg font-bold">{stats.concluido}</p>
+                      <p className="text-lg font-bold text-emerald-600">{stats.concluido}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
+                <Card className="py-2 px-3">
+                  <CardContent className="p-0 flex items-center gap-2">
                     <Clock className="h-5 w-5 text-blue-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">No Prazo</p>
-                      <p className="text-lg font-bold">{stats.noPrazo + stats.adiantado}</p>
+                      <p className="text-lg font-bold text-blue-500">{stats.noPrazo}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
+                <Card className="py-2 px-3">
+                  <CardContent className="p-0 flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-red-500" />
                     <div>
                       <p className="text-xs text-muted-foreground">Atrasadas</p>
-                      <p className="text-lg font-bold">{stats.atrasado}</p>
+                      <p className="text-lg font-bold text-red-500">{stats.atrasado}</p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
+                <Card className="py-2 px-3">
+                  <CardContent className="p-0 flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">Progresso Médio</p>
@@ -354,9 +361,12 @@ export default function PlanejamentoObra() {
 
             <GanttChart
               atividades={filteredAtividades}
+              frentesList={frentes}
+              sites={sites}
               onSelectAtividade={setSelectedAtividade}
               onDragUpdate={handleDragUpdate}
               onRemoveAtividade={(id) => removeAtividade.mutate(id)}
+              onUpdateFrente={(data) => updateFrente.mutate(data)}
             />
           </TabsContent>
 

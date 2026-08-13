@@ -6,11 +6,17 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronRight, ChevronDown, CheckCircle2 } from "lucide-react";
 
+import { FrenteEditDialog } from "./FrenteEditDialog";
+import { FrenteObra } from "@/hooks/usePlanejamento";
+
 interface GanttChartProps {
   atividades: AtividadePlanejamento[];
+  frentesList?: FrenteObra[];
+  sites?: any[];
   onSelectAtividade: (a: AtividadePlanejamento) => void;
   onDragUpdate?: (id: string, newStartDate: string) => void;
   onRemoveAtividade?: (id: string) => void;
+  onUpdateFrente?: (data: any) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -33,7 +39,7 @@ const ROW_H = 36;
 const LABEL_W = 450; // Increased width for more columns
 const DAY_W = 38; // Wider for numbers
 
-export function GanttChart({ atividades, onSelectAtividade, onDragUpdate, onRemoveAtividade }: GanttChartProps) {
+export function GanttChart({ atividades, frentesList = [], sites = [], onSelectAtividade, onDragUpdate, onRemoveAtividade, onUpdateFrente }: GanttChartProps) {
   const today = startOfDay(new Date());
   const [collapsedFrentes, setCollapsedFrentes] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);
@@ -66,6 +72,15 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate, onRemo
       if (a.data_fim_prevista) {
         const d = startOfDay(parseISO(a.data_fim_prevista));
         if (d > maxDate) maxDate = d;
+      }
+      if (a.matriz_producao) {
+        Object.entries(a.matriz_producao).forEach(([dateStr, qty]) => {
+          if (qty > 0 && dateStr) {
+            const d = startOfDay(parseISO(dateStr));
+            if (d < minDate) minDate = d;
+            if (d > maxDate) maxDate = d;
+          }
+        });
       }
     });
     minDate = addDays(minDate, -3);
@@ -156,9 +171,24 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate, onRemo
                     style={{ height: ROW_H }}
                     onClick={() => toggleCollapse(frente.id)}
                   >
-                    <div className="flex items-center flex-1 overflow-hidden">
+                    <div className="flex items-center flex-1 overflow-hidden group/frente">
                        {isCollapsed ? <ChevronRight className="w-4 h-4 mr-1 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 mr-1 text-muted-foreground" />}
                        <span className="font-bold text-xs truncate uppercase tracking-tight">{frente.nome}</span>
+                       {onUpdateFrente && frentesList.length > 0 && (
+                         <div className="ml-1 opacity-0 group-hover/frente:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                           {(() => {
+                             const frenteObj = frentesList.find((f) => f.id === frente.id);
+                             if (!frenteObj) return null;
+                             return (
+                               <FrenteEditDialog
+                                 frente={frenteObj}
+                                 sites={sites}
+                                 onSave={onUpdateFrente}
+                               />
+                             );
+                           })()}
+                         </div>
+                       )}
                     </div>
                     <div className="w-10 text-center text-[11px] font-semibold text-muted-foreground">-</div>
                     <div className="w-[70px] text-right text-[11px] font-semibold text-muted-foreground">{totalFrente.toLocaleString('pt-BR')}</div>
@@ -282,9 +312,13 @@ export function GanttChart({ atividades, onSelectAtividade, onDragUpdate, onRemo
                              const dataStr = format(col.date, "yyyy-MM-dd");
                              const qtyReal = a.matriz_producao?.[dataStr] || 0;
                              
-                              const isDentroPlanejamento = hasStart && a.data_fim_prevista && 
-                                (col.date >= startOfDay(parseISO(a.data_inicio!))) && 
-                                (col.date <= startOfDay(parseISO(a.data_fim_prevista)));
+                             const endDate = a.data_fim_prevista 
+                               ? startOfDay(parseISO(a.data_fim_prevista)) 
+                               : (hasStart && a.duracao_dias ? addDays(start!, a.duracao_dias - 1) : null);
+                              
+                             const isDentroPlanejamento = hasStart && endDate && 
+                               (col.date >= start!) && 
+                               (col.date <= endDate);
                              
                              const qtyPrev = isDentroPlanejamento ? (a.producao_diaria_prevista || 0) : 0;
                              
