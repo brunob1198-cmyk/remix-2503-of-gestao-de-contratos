@@ -310,16 +310,16 @@ export function useAtividades(projetoId?: string) {
           
           // Se tiver os dois, somamos para garantir que pegamos tudo (ex: troca de ID no meio do mês)
           // Mas cuidado para não duplicar se o ID for o mesmo que o Código (raro mas possível)
-          const qtd = (itemId === normalizedItemCode) ? qtdId : (qtdId + qtdCode);
+          // Se tivermos dados por ID e por Código, agregamos ambos para cobrir itens que mudaram de ID
+          // ou que estão sendo apontados de formas mistas.
+          const qtd = qtdId + qtdCode;
           
           const matId = matrizSitesById[siteId] || {};
           const matCode = matrizSitesByCode[siteId] || {};
           const matriz: Record<string, number> = { ...matId };
           
-          if (itemId !== normalizedItemCode) {
-            for (const d of Object.keys(matCode)) {
-              matriz[d] = (matriz[d] || 0) + matCode[d];
-            }
+          for (const d of Object.keys(matCode)) {
+            matriz[d] = (matriz[d] || 0) + matCode[d];
           }
           
           return { qtd, matriz };
