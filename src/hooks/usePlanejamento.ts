@@ -263,9 +263,16 @@ export function useAtividades(projetoId?: string) {
             const itemCodigo = p.item_lpu?.codigo;
             
             // Filtra em memória para garantir que estamos pegando ou o ID exato ou o Código correspondente
+            // Nota: Removemos o filtro estrito de 'itemLpuIds.includes' para garantir que produções 
+            // de itens que possam ter códigos nulos ou alterados ainda sejam processadas se o código bater.
             const matchesId = itemLpuIds.includes(item);
             const matchesCode = itemCodigo && itemLpuCodigos.includes(itemCodigo);
             
+            // Log para debug interno (pode ser removido após validação)
+            if (itemCodigo === '3' || itemCodigo === 3) {
+              console.log(`Processando item 3: ID=${item}, Qtd=${qtd}, Data=${info.data}, matchesId=${matchesId}, matchesCode=${matchesCode}`);
+            }
+
             if (!matchesId && !matchesCode) return;
             const site = info.site_id as string;
 
