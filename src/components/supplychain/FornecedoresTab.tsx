@@ -150,7 +150,7 @@ export function FornecedoresTab() {
       try {
         const wb = XLSX.read(evt.target?.result, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
 
         if (rows.length === 0) {
           toast({ title: "Planilha vazia", variant: "destructive" });
@@ -158,7 +158,10 @@ export function FornecedoresTab() {
         }
 
         const colMap: Record<string, string> = {};
-        const keys = Object.keys(rows[0]);
+        const headerRow = (XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, blankrows: false })[0] || [])
+          .map((h: any) => String(h ?? "").trim())
+          .filter(Boolean);
+        const keys = Array.from(new Set([...headerRow, ...rows.flatMap(r => Object.keys(r))]));
         const norm = (s: string) =>
           s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         for (const k of keys) {
