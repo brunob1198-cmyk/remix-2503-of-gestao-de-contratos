@@ -365,7 +365,6 @@ export function DataTableColumnFilter<TData, TValue>({
         <Button variant="ghost" size="sm" className="h-8 px-2 flex items-center hover:bg-muted" title={title}>
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
           {selectedValues?.size > 0 && (
-          {selectedValues?.size > 0 && (
             <>
               <div className="mx-2 h-4 w-[1px] bg-border" />
               <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
