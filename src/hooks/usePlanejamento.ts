@@ -316,25 +316,29 @@ export function useAtividades(projetoId?: string) {
         const matrizAgreg: Record<string, number> = {};
         
         // Agrega por ID
-        for (const s of Object.keys(sitesMapById)) qtd += sitesMapById[s];
-        for (const s of Object.keys(matrizSitesById)) {
-          for (const d of Object.keys(matrizSitesById[s])) {
-            matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSitesById[s][d];
+        let qtdId = 0;
+        const matrizId: Record<string, number> = {};
+        for (const s of Object.keys(sitesMapById)) {
+          qtdId += sitesMapById[s];
+          for (const d of Object.keys(matrizSitesById[s] || {})) {
+            matrizId[d] = (matrizId[d] || 0) + matrizSitesById[s][d];
           }
         }
         
-        // Se ainda estiver zerado, tenta pelo código (evita duplicar se ID e código baterem, 
-        // mas aqui a prioridade é o dado real)
-        if (qtd === 0 && Object.keys(sitesMapByCode).length > 0) {
-          for (const s of Object.keys(sitesMapByCode)) qtd += sitesMapByCode[s];
-          for (const s of Object.keys(matrizSitesByCode)) {
-            for (const d of Object.keys(matrizSitesByCode[s])) {
-              matrizAgreg[d] = (matrizAgreg[d] || 0) + matrizSitesByCode[s][d];
-            }
+        // Agrega por Código
+        let qtdCode = 0;
+        const matrizCode: Record<string, number> = {};
+        for (const s of Object.keys(sitesMapByCode)) {
+          qtdCode += sitesMapByCode[s];
+          for (const d of Object.keys(matrizSitesByCode[s] || {})) {
+            matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
           }
         }
 
-        return { qtd, matriz: matrizAgreg };
+        const qtd = Math.max(qtdId, qtdCode);
+        const matriz = qtdId >= qtdCode ? matrizId : matrizCode;
+
+        return { qtd, matriz };
       };
 
       const depsMap: Record<string, string[]> = {};
