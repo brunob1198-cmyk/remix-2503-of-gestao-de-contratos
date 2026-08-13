@@ -305,11 +305,12 @@ export function useAtividades(projetoId?: string) {
         const siteId = frenteSiteMap[frenteId];
         
         // Tenta buscar por ID primeiro, depois por Código se disponível
+        const normalizedItemCode = String(itemCodigo || "").trim();
         const sitesMapById = itemId ? prodPorItemSite[itemId] || {} : {};
-        const sitesMapByCode = itemCodigo ? prodPorItemSite[itemCodigo] || {} : {};
+        const sitesMapByCode = normalizedItemCode ? prodPorItemSite[normalizedItemCode] || {} : {};
         
         const matrizSitesById = itemId ? matrizPorItemSite[itemId] || {} : {};
-        const matrizSitesByCode = itemCodigo ? matrizPorItemSite[itemCodigo] || {} : {};
+        const matrizSitesByCode = normalizedItemCode ? matrizPorItemSite[normalizedItemCode] || {} : {};
 
         if (siteId) {
           const qtdId = sitesMapById[siteId] || 0;
