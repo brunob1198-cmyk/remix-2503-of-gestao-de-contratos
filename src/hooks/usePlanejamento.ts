@@ -225,129 +225,73 @@ export function useAtividades(projetoId?: string) {
               .select("*")
               .in("atividade_id", atIds)
           : Promise.resolve({ data: [] as DependenciaAtividade[] }),
-        itemLpuIds.length
-          ? supabase.from("sites").select("id").eq("projeto_id", projetoId)
-          : Promise.resolve({ data: [] as { id: string }[] }),
+        supabase.from("sites").select("id").eq("projeto_id", projetoId),
       ]);
 
       const deps = (depsResult.data ?? []) as DependenciaAtividade[];
       const siteIds = (sitesResult.data ?? []).map((s: any) => s.id);
 
-      // Produção agregada por (item_lpu_id + site_id)
-      // Assim, frentes vinculadas a um site só contam a produção daquele site.
-      const prodPorItemSite: Record<string, Record<string, number>> = {};
-      const matrizPorItemSite: Record<string, Record<string, Record<string, number>>> = {};
-
+      const diarioInfo: Record<string, { data: string; site_id: string }> = {};
       if (siteIds.length) {
         const { data: diariosDoSite } = await supabase
           .from("diarios_obra")
           .select("id, data, site_id")
           .in("site_id", siteIds);
 
-        if (diariosDoSite && diariosDoSite.length > 0) {
-          const diarioIds = diariosDoSite.map((d) => d.id);
-          const diarioInfo = Object.fromEntries(
-            diariosDoSite.map((d: any) => [d.id, { data: d.data, site_id: d.site_id }])
-          );
+        (diariosDoSite ?? []).forEach((d: any) => {
+          if (d.data) {
+            diarioInfo[d.id] = {
+              data: String(d.data).split("T")[0].split(" ")[0].trim(),
+              site_id: d.site_id,
+            };
+          }
+        });
+      }
 
-          const { data: prods, error: pErr } = await supabase
+      const diarioIds = Object.keys(diarioInfo);
+      let prods: any[] = [];
+      if (diarioIds.length) {
+        const CHUNK_SIZE = 200;
+        for (let i = 0; i < diarioIds.length; i += CHUNK_SIZE) {
+          const chunk = diarioIds.slice(i, i + CHUNK_SIZE);
+          const { data: pChunk, error: pErr } = await supabase
             .from("diario_producao")
-            .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
-            .in("diario_id", diarioIds);
+            .select("id, item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
+            .in("diario_id", chunk);
 
           if (pErr) console.error("Erro ao buscar producao do diario:", pErr);
-
-          (prods ?? []).forEach((p: any) => {
-            const info = diarioInfo[p.diario_id];
-            if (!info) return;
-            const qtd = Number(p.quantidade) || 0;
-            const item = p.item_lpu_id as string;
-            const itemCodigo = p.item_lpu?.codigo;
-            
-            const normalizedItemCode = String(itemCodigo || "").trim();
-            const site = info.site_id as string;
-
-            // Mapeamento por ID
-            if (item) {
-              if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
-              prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
-
-              if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
-              if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
-              matrizPorItemSite[item][site][info.data] =
-                (matrizPorItemSite[item][site][info.data] || 0) + qtd;
-            }
-
-            // Mapeamento redundante por Código (apenas se for diferente do ID)
-            if (normalizedItemCode && normalizedItemCode !== item) {
-              if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
-              prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
-
-              if (!matrizPorItemSite[normalizedItemCode]) matrizPorItemSite[normalizedItemCode] = {};
-              if (!matrizPorItemSite[normalizedItemCode][site]) matrizPorItemSite[normalizedItemCode][site] = {};
-              matrizPorItemSite[normalizedItemCode][site][info.data] =
-                (matrizPorItemSite[normalizedItemCode][site][info.data] || 0) + qtd;
-            }
-          });
+          if (pChunk) prods.push(...pChunk);
         }
       }
 
       const sumQtdForAtividade = (itemId: string | null, frenteId: string, itemCodigo?: string) => {
         if (!itemId && !itemCodigo) return { qtd: 0, matriz: {} as Record<string, number> };
-        const siteId = frenteSiteMap[frenteId];
-        
-        // Tenta buscar por ID primeiro, depois por Código se disponível
+        const frenteSiteId = frenteSiteMap[frenteId];
         const normalizedItemCode = String(itemCodigo || "").trim();
-        const sitesMapById = itemId ? prodPorItemSite[itemId] || {} : {};
-        const sitesMapByCode = normalizedItemCode ? prodPorItemSite[normalizedItemCode] || {} : {};
-        
-        const matrizSitesById = itemId ? matrizPorItemSite[itemId] || {} : {};
-        const matrizSitesByCode = normalizedItemCode ? matrizPorItemSite[normalizedItemCode] || {} : {};
+        const normalizedItemId = String(itemId || "").trim();
 
-        if (siteId) {
-          const qtdId = sitesMapById[siteId] || 0;
-          const qtdCode = (normalizedItemCode && normalizedItemCode !== itemId) ? (sitesMapByCode[siteId] || 0) : 0;
-          
-          // Agregamos produções por ID e por Código para cobrir itens que mudaram de ID
-          // ou que estão sendo apontados de formas mistas, garantindo que nenhum lançamento seja perdido.
-          const qtd = qtdId + qtdCode;
-          
-          const matId = matrizSitesById[siteId] || {};
-          const matCode = (normalizedItemCode && normalizedItemCode !== itemId) ? (matrizSitesByCode[siteId] || {}) : {};
-          const matriz: Record<string, number> = { ...matId };
-          
-          if (normalizedItemCode && normalizedItemCode !== itemId) {
-            for (const d of Object.keys(matCode)) {
-              matriz[d] = (matriz[d] || 0) + matCode[d];
-            }
-          }
-          
-          return { qtd, matriz };
-        }
-
-        // Sem site vinculado: agrega todos os sites do projeto
         let totalQtd = 0;
         const totalMatriz: Record<string, number> = {};
 
-        // Agrega por ID
-        for (const s of Object.keys(sitesMapById)) {
-          totalQtd += sitesMapById[s];
-          const m = matrizSitesById[s] || {};
-          for (const d of Object.keys(m)) {
-            totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
+        prods.forEach((p: any) => {
+          const info = diarioInfo[p.diario_id];
+          if (!info || !info.data) return;
+
+          // Se a frente tiver site vinculado, filtra por ele. Caso contrário, considera produções de qualquer site do projeto.
+          if (frenteSiteId && info.site_id !== frenteSiteId) return;
+
+          const pItemId = String(p.item_lpu_id || "").trim();
+          const pCode = String(p.item_lpu?.codigo || "").trim();
+
+          const matchesId = Boolean(normalizedItemId && pItemId && normalizedItemId === pItemId);
+          const matchesCode = Boolean(normalizedItemCode && pCode && normalizedItemCode === pCode);
+
+          if (matchesId || matchesCode) {
+            const qtd = Number(p.quantidade) || 0;
+            totalQtd += qtd;
+            totalMatriz[info.data] = (totalMatriz[info.data] || 0) + qtd;
           }
-        }
-        
-        // Agrega por Código (apenas se for diferente do ID para não duplicar)
-        if (normalizedItemCode && normalizedItemCode !== itemId) {
-          for (const s of Object.keys(sitesMapByCode)) {
-            totalQtd += sitesMapByCode[s];
-            const m = matrizSitesByCode[s] || {};
-            for (const d of Object.keys(m)) {
-              totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
-            }
-          }
-        }
+        });
 
         return { qtd: totalQtd, matriz: totalMatriz };
       };
