@@ -278,8 +278,8 @@ export function useAtividades(projetoId?: string) {
                 (matrizPorItemSite[item][site][info.data] || 0) + qtd;
             }
 
-            // Mapeamento redundante por Código
-            if (normalizedItemCode) {
+            // Mapeamento redundante por Código (apenas se for diferente do ID)
+            if (normalizedItemCode && normalizedItemCode !== item) {
               if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
               prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
 
@@ -306,18 +306,20 @@ export function useAtividades(projetoId?: string) {
 
         if (siteId) {
           const qtdId = sitesMapById[siteId] || 0;
-          const qtdCode = sitesMapByCode[siteId] || 0;
+          const qtdCode = (normalizedItemCode && normalizedItemCode !== itemId) ? (sitesMapByCode[siteId] || 0) : 0;
           
           // Agregamos produções por ID e por Código para cobrir itens que mudaram de ID
           // ou que estão sendo apontados de formas mistas, garantindo que nenhum lançamento seja perdido.
           const qtd = qtdId + qtdCode;
           
           const matId = matrizSitesById[siteId] || {};
-          const matCode = matrizSitesByCode[siteId] || {};
+          const matCode = (normalizedItemCode && normalizedItemCode !== itemId) ? (matrizSitesByCode[siteId] || {}) : {};
           const matriz: Record<string, number> = { ...matId };
           
-          for (const d of Object.keys(matCode)) {
-            matriz[d] = (matriz[d] || 0) + matCode[d];
+          if (normalizedItemCode && normalizedItemCode !== itemId) {
+            for (const d of Object.keys(matCode)) {
+              matriz[d] = (matriz[d] || 0) + matCode[d];
+            }
           }
           
           return { qtd, matriz };
@@ -336,8 +338,8 @@ export function useAtividades(projetoId?: string) {
           }
         }
         
-        // Agrega por Código
-        if (normalizedItemCode) {
+        // Agrega por Código (apenas se for diferente do ID para não duplicar)
+        if (normalizedItemCode && normalizedItemCode !== itemId) {
           for (const s of Object.keys(sitesMapByCode)) {
             totalQtd += sitesMapByCode[s];
             const m = matrizSitesByCode[s] || {};
