@@ -307,39 +307,49 @@ export function useAtividades(projetoId?: string) {
         if (siteId) {
           const qtdId = sitesMapById[siteId] || 0;
           const qtdCode = sitesMapByCode[siteId] || 0;
-          const qtd = Math.max(qtdId, qtdCode);
-          const matriz = (qtdId >= qtdCode ? matrizSitesById[siteId] : matrizSitesByCode[siteId]) || {};
+          
+          // Se tiver os dois, somamos para garantir que pegamos tudo (ex: troca de ID no meio do mês)
+          // Mas cuidado para não duplicar se o ID for o mesmo que o Código (raro mas possível)
+          const qtd = (itemId === normalizedItemCode) ? qtdId : (qtdId + qtdCode);
+          
+          const matId = matrizSitesById[siteId] || {};
+          const matCode = matrizSitesByCode[siteId] || {};
+          const matriz: Record<string, number> = { ...matId };
+          
+          if (itemId !== normalizedItemCode) {
+            for (const d of Object.keys(matCode)) {
+              matriz[d] = (matriz[d] || 0) + matCode[d];
+            }
+          }
+          
           return { qtd, matriz };
         }
 
         // Sem site vinculado: agrega todos os sites do projeto
-        
+        let totalQtd = 0;
+        const totalMatriz: Record<string, number> = {};
+
         // Agrega por ID
-        let qtdId = 0;
-        const matrizId: Record<string, number> = {};
         for (const s of Object.keys(sitesMapById)) {
-          qtdId += sitesMapById[s];
-          for (const d of Object.keys(matrizSitesById[s] || {})) {
-            matrizId[d] = (matrizId[d] || 0) + matrizSitesById[s][d];
+          totalQtd += sitesMapById[s];
+          const m = matrizSitesById[s] || {};
+          for (const d of Object.keys(m)) {
+            totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
           }
         }
         
-        // Agrega por Código
-        let qtdCode = 0;
-        const matrizCode: Record<string, number> = {};
-        if (normalizedItemCode) {
+        // Agrega por Código (se for diferente do ID)
+        if (normalizedItemCode && normalizedItemCode !== itemId) {
           for (const s of Object.keys(sitesMapByCode)) {
-            qtdCode += sitesMapByCode[s];
-            for (const d of Object.keys(matrizSitesByCode[s] || {})) {
-              matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+            totalQtd += sitesMapByCode[s];
+            const m = matrizSitesByCode[s] || {};
+            for (const d of Object.keys(m)) {
+              totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
             }
           }
         }
 
-        const qtd = Math.max(qtdId, qtdCode);
-        const matriz = qtdId >= qtdCode ? matrizId : matrizCode;
-
-        return { qtd, matriz };
+        return { qtd: totalQtd, matriz: totalMatriz };
       };
 
       const depsMap: Record<string, string[]> = {};
