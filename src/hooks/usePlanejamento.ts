@@ -335,10 +335,12 @@ export function useAtividades(projetoId?: string) {
         // Agrega por Código
         let qtdCode = 0;
         const matrizCode: Record<string, number> = {};
-        for (const s of Object.keys(sitesMapByCode)) {
-          qtdCode += sitesMapByCode[s];
-          for (const d of Object.keys(matrizSitesByCode[s] || {})) {
-            matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+        if (normalizedItemCode) {
+          for (const s of Object.keys(sitesMapByCode)) {
+            qtdCode += sitesMapByCode[s];
+            for (const d of Object.keys(matrizSitesByCode[s] || {})) {
+              matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+            }
           }
         }
 
