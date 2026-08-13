@@ -62,6 +62,10 @@ const SgsstIncidentesListPage = React.lazy(() => import("./pages/sgsst/Incidente
 const SgsstIncidentesDetailPage = React.lazy(() => import("./pages/sgsst/IncidentesDetail"));
 const SgsstNaoConformidadesListPage = React.lazy(() => import("./pages/sgsst/NaoConformidadesList"));
 const SgsstNaoConformidadesDetailPage = React.lazy(() => import("./pages/sgsst/NaoConformidadesDetail"));
+const SgsstPcmsoListPage = React.lazy(() => import("./pages/sgsst/PcmsoList"));
+const SgsstPcmsoDetailPage = React.lazy(() => import("./pages/sgsst/PcmsoDetail"));
+const SgsstTreinamentosListPage = React.lazy(() => import("./pages/sgsst/TreinamentosList"));
+const SgsstEpisListPage = React.lazy(() => import("./pages/sgsst/EpisList"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -147,6 +151,10 @@ const App = () => {
                 <Route path="sgsst/incidentes/:incidenteId" element={<SgsstIncidentesDetailPage />} />
                 <Route path="sgsst/nao-conformidades" element={<SgsstNaoConformidadesListPage />} />
                 <Route path="sgsst/nao-conformidades/:ncId" element={<SgsstNaoConformidadesDetailPage />} />
+                <Route path="sgsst/pcmso" element={<SgsstPcmsoListPage />} />
+                <Route path="sgsst/pcmso/:pcmsoId" element={<SgsstPcmsoDetailPage />} />
+                <Route path="sgsst/treinamentos" element={<SgsstTreinamentosListPage />} />
+                <Route path="sgsst/epis" element={<SgsstEpisListPage />} />
                 
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />

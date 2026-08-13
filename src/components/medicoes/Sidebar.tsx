@@ -17,7 +17,7 @@ import {
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
   Percent, Settings2, Activity,
-  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon
+  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -69,6 +69,9 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "sgsst-inspecoes", title: "SGSST - Inspeções", url: "/medicoes/sgsst/inspecoes", icon: SearchCheck, telaId: "sgsst-inspecoes" },
   { id: "sgsst-incidentes", title: "SGSST - Incidentes", url: "/medicoes/sgsst/incidentes", icon: Siren, telaId: "sgsst-incidentes" },
   { id: "sgsst-nao-conformidades", title: "SGSST - Não Conformidades", url: "/medicoes/sgsst/nao-conformidades", icon: AlertOctagon, telaId: "sgsst-nao-conformidades" },
+  { id: "sgsst-pcmso", title: "SGSST - PCMSO", url: "/medicoes/sgsst/pcmso", icon: HeartPulse, telaId: "sgsst-pcmso" },
+  { id: "sgsst-treinamentos", title: "SGSST - Treinamentos", url: "/medicoes/sgsst/treinamentos", icon: GraduationCap, telaId: "sgsst-treinamentos" },
+  { id: "sgsst-epis", title: "SGSST - EPI", url: "/medicoes/sgsst/epis", icon: Shield, telaId: "sgsst-epis" },
   { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
   { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario" },
   { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },

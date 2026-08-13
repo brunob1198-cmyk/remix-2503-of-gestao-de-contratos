@@ -1,0 +1,575 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { addMonths, format, parseISO } from "date-fns";
+import { calculateVencimentoTreinamento, StatusVencimentoTreinamento } from "@/utils/sgsstTreinamentosUtils";
+
+export type CategoriaTreinamento =
+  | "NR"
+  | "Integração"
+  | "Segurança"
+  | "Saúde"
+  | "Operacional"
+  | "Comportamental"
+  | "Outros";
+
+export type StatusTreinamento = "ATIVO" | "INATIVO";
+export type ModalidadeTurma = "PRESENCIAL" | "ONLINE" | "HIBRIDO";
+export type StatusTurma = "PLANEJADA" | "EM_ANDAMENTO" | "CONCLUIDA" | "CANCELADA";
+export type ResultadoParticipante = "APROVADO" | "REPROVADO" | "PENDENTE";
+
+export interface SgsstTreinamento {
+  id: string;
+  empresa_id: string;
+  codigo?: string | null;
+  nome: string;
+  descricao?: string | null;
+  categoria: CategoriaTreinamento;
+  carga_horaria: number;
+  validade_meses?: number | null;
+  obrigatorio: boolean;
+  funcao_id?: string | null;
+  projeto_id?: string | null;
+  site_id?: string | null;
+  area_id?: string | null;
+  status: StatusTreinamento;
+  observacoes?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  // Joined Data
+  funcao?: { id: string; nome: string } | null;
+  projeto?: { id: string; codigo: string; nome: string } | null;
+}
+
+export type SgsstTreinamentoInput = Omit<
+  SgsstTreinamento,
+  "id" | "empresa_id" | "created_at" | "updated_at" | "funcao" | "projeto"
+>;
+
+export interface SgsstTreinamentoTurma {
+  id: string;
+  empresa_id: string;
+  treinamento_id: string;
+  codigo_turma?: string | null;
+  data_inicial: string;
+  data_final?: string | null;
+  carga_horaria?: number | null;
+  instrutor?: string | null;
+  local?: string | null;
+  modalidade: ModalidadeTurma;
+  capacidade?: number | null;
+  status: StatusTurma;
+  observacoes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  // Joined Data
+  treinamento?: SgsstTreinamento | null;
+}
+
+export type SgsstTreinamentoTurmaInput = Omit<
+  SgsstTreinamentoTurma,
+  "id" | "empresa_id" | "created_at" | "updated_at" | "treinamento"
+>;
+
+export interface SgsstTreinamentoParticipante {
+  id: string;
+  empresa_id: string;
+  turma_id: string;
+  colaborador_id: string;
+  presenca: boolean;
+  percentual_presenca: number;
+  resultado: ResultadoParticipante;
+  aprovacao: boolean;
+  data_conclusao?: string | null;
+  validade?: string | null;
+  certificado?: string | null;
+  observacoes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  // Joined Data
+  colaborador?: {
+    id: string;
+    cpf: string;
+    profile?: { id: string; nome: string } | null;
+    recurso?: { id: string; nome: string } | null;
+    funcao?: { id: string; nome: string } | null;
+  } | null;
+  turma?: SgsstTreinamentoTurma | null;
+  // Calculated
+  statusVencimento?: StatusVencimentoTreinamento;
+}
+
+export interface SgsstTreinamentoHistorico {
+  id: string;
+  empresa_id: string;
+  treinamento_id?: string | null;
+  turma_id?: string | null;
+  usuario_id?: string | null;
+  operacao: string;
+  observacao?: string | null;
+  created_at: string;
+  usuario?: { id: string; nome: string | null } | null;
+}
+
+// 1. Hook Catálogo de Treinamentos
+export function useSgsstTreinamentos() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const { data: treinamentos = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_treinamentos", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos" as any)
+        .select(`
+          *,
+          funcao:sgsst_funcoes(id, nome),
+          projeto:projetos(id, codigo, nome)
+        `)
+        .order("created_at", { ascending: false }) as any);
+
+      if (error) throw error;
+      return (data as SgsstTreinamento[]) || [];
+    },
+  });
+
+  const createTreinamento = useMutation({
+    mutationFn: async (input: SgsstTreinamentoInput) => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos" as any)
+        .insert({
+          ...input,
+          empresa_id: empresaId,
+          created_by: profile?.id,
+          updated_by: profile?.id,
+        })
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+
+      await supabase.from("sgsst_treinamentos_historico" as any).insert({
+        empresa_id: empresaId,
+        treinamento_id: data.id,
+        usuario_id: profile?.id,
+        operacao: "CRIACAO",
+        observacao: `Cadastro de novo treinamento no catálogo: ${data.nome}`,
+      });
+
+      return data as SgsstTreinamento;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos"] });
+      toast.success("Treinamento cadastrado com sucesso!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao cadastrar treinamento: ${err.message || err}`);
+    },
+  });
+
+  const updateTreinamento = useMutation({
+    mutationFn: async ({ id, ...input }: Partial<SgsstTreinamentoInput> & { id: string }) => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos" as any)
+        .update({
+          ...input,
+          updated_by: profile?.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+      return data as SgsstTreinamento;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos"] });
+      toast.success("Treinamento atualizado!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar treinamento: ${err.message || err}`);
+    },
+  });
+
+  const removeTreinamento = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("sgsst_treinamentos" as any)
+        .delete()
+        .eq("id", id) as any);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos"] });
+      toast.success("Treinamento removido!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao remover treinamento: ${err.message || err}`);
+    },
+  });
+
+  return {
+    treinamentos,
+    isLoading,
+    error,
+    refetch,
+    createTreinamento,
+    updateTreinamento,
+    removeTreinamento,
+  };
+}
+
+// 2. Hook Turmas de Treinamentos
+export function useSgsstTreinamentosTurmas() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const { data: turmas = [], isLoading, refetch } = useQuery({
+    queryKey: ["sgsst_treinamentos_turmas", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_turmas" as any)
+        .select(`
+          *,
+          treinamento:sgsst_treinamentos(*)
+        `)
+        .order("data_inicial", { ascending: false }) as any);
+
+      if (error) throw error;
+      return (data as SgsstTreinamentoTurma[]) || [];
+    },
+  });
+
+  const createTurma = useMutation({
+    mutationFn: async (input: SgsstTreinamentoTurmaInput) => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_turmas" as any)
+        .insert({
+          ...input,
+          empresa_id: empresaId,
+        })
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+
+      await supabase.from("sgsst_treinamentos_historico" as any).insert({
+        empresa_id: empresaId,
+        treinamento_id: input.treinamento_id,
+        turma_id: data.id,
+        usuario_id: profile?.id,
+        operacao: "CRIACAO_TURMA",
+        observacao: `Abertura de nova turma [Modalidade: ${data.modalidade}]`,
+      });
+
+      return data as SgsstTreinamentoTurma;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      toast.success("Turma de treinamento criada!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao criar turma: ${err.message || err}`);
+    },
+  });
+
+  const updateTurma = useMutation({
+    mutationFn: async ({ id, ...input }: Partial<SgsstTreinamentoTurmaInput> & { id: string }) => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_turmas" as any)
+        .update({
+          ...input,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+      return data as SgsstTreinamentoTurma;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      toast.success("Turma de treinamento atualizada!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar turma: ${err.message || err}`);
+    },
+  });
+
+  const removeTurma = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("sgsst_treinamentos_turmas" as any)
+        .delete()
+        .eq("id", id) as any);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      toast.success("Turma removida!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao remover turma: ${err.message || err}`);
+    },
+  });
+
+  return {
+    turmas,
+    isLoading,
+    refetch,
+    createTurma,
+    updateTurma,
+    removeTurma,
+  };
+}
+
+// 3. Hook Participantes da Turma
+export function useSgsstTreinamentosParticipantes(turmaId?: string) {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const { data: participantes = [], isLoading, refetch } = useQuery({
+    queryKey: ["sgsst_treinamentos_participantes", turmaId],
+    enabled: !!turmaId && !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_participantes" as any)
+        .select(`
+          *,
+          colaborador:sgsst_colaborador_dados(
+            id, cpf,
+            profile:profiles(id, nome),
+            recurso:recursos(id, nome),
+            funcao:sgsst_funcoes(id, nome)
+          ),
+          turma:sgsst_treinamentos_turmas(*, treinamento:sgsst_treinamentos(*))
+        `)
+        .eq("turma_id", turmaId!)
+        .order("created_at", { ascending: true }) as any);
+
+      if (error) throw error;
+
+      return ((data || []) as SgsstTreinamentoParticipante[]).map((p) => ({
+        ...p,
+        statusVencimento: calculateVencimentoTreinamento(p.validade),
+      }));
+    },
+  });
+
+  const addParticipante = useMutation({
+    mutationFn: async ({
+      colaboradorId,
+      turma,
+    }: {
+      colaboradorId: string;
+      turma: SgsstTreinamentoTurma;
+    }) => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_participantes" as any)
+        .insert({
+          empresa_id: empresaId,
+          turma_id: turma.id,
+          colaborador_id: colaboradorId,
+          presenca: false,
+          percentual_presenca: 100,
+          resultado: "PENDENTE",
+          aprovacao: false,
+        })
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+
+      await supabase.from("sgsst_treinamentos_historico" as any).insert({
+        empresa_id: empresaId,
+        treinamento_id: turma.treinamento_id,
+        turma_id: turma.id,
+        usuario_id: profile?.id,
+        operacao: "INCLUSAO_PARTICIPANTE",
+        observacao: `Matrícula do colaborador na turma`,
+      });
+
+      return data as SgsstTreinamentoParticipante;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_participantes"] });
+      toast.success("Participante matriculado com sucesso!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao matricular participante: ${err.message || err}`);
+    },
+  });
+
+  const updateParticipante = useMutation({
+    mutationFn: async ({
+      id,
+      presenca,
+      percentualPresenca,
+      resultado,
+      dataConclusao,
+      validadeMeses,
+      observacoes,
+    }: {
+      id: string;
+      presenca: boolean;
+      percentualPresenca: number;
+      resultado: ResultadoParticipante;
+      dataConclusao?: string;
+      validadeMeses?: number | null;
+      observacoes?: string;
+    }) => {
+      const aprovacao = resultado === "APROVADO";
+      let validadeCalc: string | null = null;
+
+      if (aprovacao && dataConclusao && validadeMeses && validadeMeses > 0) {
+        try {
+          const dateObj = parseISO(dataConclusao);
+          validadeCalc = format(addMonths(dateObj, validadeMeses), "yyyy-MM-dd");
+        } catch {}
+      }
+
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_participantes" as any)
+        .update({
+          presenca,
+          percentual_presenca: percentualPresenca,
+          resultado,
+          aprovacao,
+          data_conclusao: dataConclusao || null,
+          validade: validadeCalc,
+          observacoes: observacoes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+      return data as SgsstTreinamentoParticipante;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_participantes"] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_todos_participantes"] });
+      toast.success("Resultado e presença do participante atualizados!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar participante: ${err.message || err}`);
+    },
+  });
+
+  const removeParticipante = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("sgsst_treinamentos_participantes" as any)
+        .delete()
+        .eq("id", id) as any);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_participantes"] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_todos_participantes"] });
+      toast.success("Participante removido da turma!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao remover participante: ${err.message || err}`);
+    },
+  });
+
+  return {
+    participantes,
+    isLoading,
+    refetch,
+    addParticipante,
+    updateParticipante,
+    removeParticipante,
+  };
+}
+
+// 4. Hook Global Todos Participantes (Vencimentos & Relatório)
+export function useSgsstTodosParticipantes() {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data: todosParticipantes = [], isLoading } = useQuery({
+    queryKey: ["sgsst_todos_participantes", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_treinamentos_participantes" as any)
+        .select(`
+          *,
+          colaborador:sgsst_colaborador_dados(
+            id, cpf,
+            profile:profiles(id, nome),
+            recurso:recursos(id, nome),
+            funcao:sgsst_funcoes(id, nome)
+          ),
+          turma:sgsst_treinamentos_turmas(*, treinamento:sgsst_treinamentos(*))
+        `)
+        .order("validade", { ascending: true }) as any);
+
+      if (error) throw error;
+
+      return ((data || []) as SgsstTreinamentoParticipante[]).map((p) => ({
+        ...p,
+        statusVencimento: calculateVencimentoTreinamento(p.validade),
+      }));
+    },
+  });
+
+  return {
+    todosParticipantes,
+    isLoading,
+  };
+}
+
+// 5. Hook Histórico
+export function useSgsstTreinamentosHistorico(treinamentoId?: string, turmaId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data: historico = [], isLoading } = useQuery({
+    queryKey: ["sgsst_treinamentos_historico", treinamentoId, turmaId],
+    enabled: !!empresaId && (!!treinamentoId || !!turmaId),
+    queryFn: async () => {
+      let query = supabase
+        .from("sgsst_treinamentos_historico" as any)
+        .select(`
+          *,
+          usuario:profiles!sgsst_treinamentos_historico_usuario_id_fkey(id, nome)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (treinamentoId) query = query.eq("treinamento_id", treinamentoId);
+      if (turmaId) query = query.eq("turma_id", turmaId);
+
+      const { data, error } = await (query as any);
+      if (error) throw error;
+      return (data as SgsstTreinamentoHistorico[]) || [];
+    },
+  });
+
+  return {
+    historico,
+    isLoading,
+  };
+}

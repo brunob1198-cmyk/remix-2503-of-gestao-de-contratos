@@ -41,6 +41,9 @@ export const TELAS = [
   { id: "sgsst-inspecoes", label: "SGSST - Inspeções de Segurança" },
   { id: "sgsst-incidentes", label: "SGSST - Incidentes e Acidentes" },
   { id: "sgsst-nao-conformidades", label: "SGSST - Não Conformidades" },
+  { id: "sgsst-pcmso", label: "SGSST - Saúde Ocupacional (PCMSO)" },
+  { id: "sgsst-treinamentos", label: "SGSST - Treinamentos e Capacitações" },
+  { id: "sgsst-epis", label: "SGSST - Equipamentos de Proteção Individual (EPI)" },
 ] as const;
 
 export function usePermissions() {
