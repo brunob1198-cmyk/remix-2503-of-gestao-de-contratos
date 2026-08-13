@@ -321,11 +321,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhum --</SelectItem>
-                  {pgrs.map((p) => (
+                  {pgrs.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.codigo ? `[${p.codigo}] ` : ""}{p.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -338,11 +339,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {aprs.map((a) => (
+                  {aprs.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.codigo ? `[${a.codigo}] ` : ""}{a.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -355,11 +357,12 @@ export function InspecaoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {pts.map((ptItem) => (
+                  {pts.map((ptItem: any) => (
                     <SelectItem key={ptItem.id} value={ptItem.id}>
                       {ptItem.codigo ? `[${ptItem.codigo}] ` : ""}{ptItem.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
