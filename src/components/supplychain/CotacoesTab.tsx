@@ -188,7 +188,17 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "numero",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Número" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Número" 
+            options={Array.from(new Set(requisicoesMestreDetalhe.map((r: any) => r.numero).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
       cell: ({ row }) => {
         const req = row.original;
         return (
@@ -200,8 +210,18 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     },
     {
       accessorKey: "projeto",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Projeto" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Projeto" 
+            options={Array.from(new Set(requisicoesMestreDetalhe.map((r: any) => r.projeto?.codigo).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
       accessorFn: (row) => row.projeto?.codigo || "—",
+      filterFn: multiSelectFilter,
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="text-sm font-semibold">{row.original.projeto?.nome || "Sem projeto"}</span>
@@ -212,11 +232,11 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     {
       accessorKey: "prioridade",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Prioridade" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Prioridade" 
             options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
           />
         </div>
@@ -231,11 +251,11 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     {
       accessorKey: "workflow_status",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Status" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Status" 
             options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
           />
         </div>

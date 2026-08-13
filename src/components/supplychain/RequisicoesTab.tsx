@@ -95,13 +95,33 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "numero",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Número" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Número" 
+            options={Array.from(new Set(allRequisicoes.map((r: any) => r.numero).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
       cell: ({ row }) => <span className="font-mono text-primary cursor-pointer hover:underline" onClick={() => { setSelected(row.original); setDetailOpen(true); }}>{row.getValue("numero")}</span>,
     },
     {
       accessorKey: "projeto",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Projeto" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Projeto" 
+            options={Array.from(new Set(allRequisicoes.map((r: any) => r.projeto?.codigo).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
       accessorFn: (row) => row.projeto?.codigo || "—",
+      filterFn: multiSelectFilter,
       cell: ({ row }) => {
         const r = row.original;
         return (
@@ -115,11 +135,11 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
     {
       accessorKey: "prioridade",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Prioridade" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Prioridade" 
             options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
           />
         </div>
@@ -132,7 +152,22 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
     },
     {
       accessorKey: "data_necessidade",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Data Necessidade" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Data Necessidade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Data" 
+            options={Array.from(new Set(allRequisicoes.map((r: any) => r.data_necessidade ? parseLocalDate(r.data_necessidade).toLocaleDateString("pt-BR") : "—").filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: (row, columnId, value) => {
+        if (!value || value.length === 0) return true;
+        const val = row.getValue(columnId) as string;
+        const formatted = val ? parseLocalDate(val).toLocaleDateString("pt-BR") : "—";
+        return value.includes(formatted);
+      },
       cell: ({ row }) => {
         const val = row.getValue("data_necessidade") as string;
         return val ? parseLocalDate(val).toLocaleDateString("pt-BR") : "—";
@@ -152,11 +187,11 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
     {
       accessorKey: "workflow_status",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Status" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Status" 
             options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
           />
         </div>

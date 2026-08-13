@@ -107,26 +107,56 @@ export function ItensTab() {
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "codigo",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Código" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Código" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Código" 
+            options={Array.from(new Set(itens.map((i: any) => i.codigo).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
       cell: ({ row }) => <span className="font-mono">{row.getValue("codigo")}</span>,
     },
     {
       accessorKey: "descricao",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Descrição" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Descrição" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Descrição" 
+            options={Array.from(new Set(itens.map((i: any) => i.descricao).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "unidade",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Unidade" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Unidade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Unidade" 
+            options={Array.from(new Set(itens.map((i: any) => i.unidade).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "categoria",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Categoria" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
-            options={Array.from(new Set(itens.map((i: any) => i.categoria).filter(Boolean))).map(c => ({ label: String(c), value: String(c) }))} 
+            title="Filtrar Categoria" 
+            options={Array.from(new Set(itens.map((i: any) => i.categoria).filter(Boolean))).sort().map(c => ({ label: String(c), value: String(c) }))} 
           />
         </div>
       ),

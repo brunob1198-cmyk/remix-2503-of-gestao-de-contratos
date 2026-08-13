@@ -289,26 +289,56 @@ export function FornecedoresTab() {
     },
     {
       accessorKey: "razao_social",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Razão Social" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Razão Social" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Razão Social" 
+            options={Array.from(new Set(fornecedores.map(f => f.razao_social).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
       cell: ({ row }) => <span className="font-medium">{row.getValue("razao_social")}</span>,
     },
     {
       accessorKey: "cnpj",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="CNPJ" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="CNPJ" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar CNPJ" 
+            options={Array.from(new Set(fornecedores.map(f => f.cnpj).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "contato_nome",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Contato" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Contato" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Contato" 
+            options={Array.from(new Set(fornecedores.map(f => f.contato_nome).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "categoria",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Categoria" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
-            options={Array.from(new Set(fornecedores.map(f => f.categoria).filter(Boolean))).map(c => ({ label: String(c), value: String(c) }))} 
+            title="Filtrar Categoria" 
+            options={Array.from(new Set(fornecedores.map(f => f.categoria).filter(Boolean))).sort().map(c => ({ label: String(c), value: String(c) }))} 
           />
         </div>
       ),
@@ -317,11 +347,31 @@ export function FornecedoresTab() {
     },
     {
       accessorKey: "municipio",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Município" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Município" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar Município" 
+            options={Array.from(new Set(fornecedores.map(f => f.municipio).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "uf",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="UF" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="UF" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtrar UF" 
+            options={Array.from(new Set(fornecedores.map(f => f.uf).filter(Boolean))).sort().map(v => ({ label: String(v), value: String(v) }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
     },
     {
       accessorKey: "score",
@@ -374,11 +424,11 @@ export function FornecedoresTab() {
     {
       accessorKey: "ativo",
       header: ({ column }) => (
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <DataTableColumnHeader column={column} title="Status" />
           <DataTableColumnFilter 
             column={column} 
-            title="Filtro" 
+            title="Filtrar Status" 
             options={[{ label: "Ativo", value: "true" }, { label: "Inativo", value: "false" }]} 
           />
         </div>
