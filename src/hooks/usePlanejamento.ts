@@ -238,7 +238,7 @@ export function useAtividades(projetoId?: string) {
       const prodPorItemSite: Record<string, Record<string, number>> = {};
       const matrizPorItemSite: Record<string, Record<string, Record<string, number>>> = {};
 
-      if (itemLpuIds.length && siteIds.length) {
+      if (siteIds.length) {
         const { data: diariosDoSite } = await supabase
           .from("diarios_obra")
           .select("id, data, site_id")
