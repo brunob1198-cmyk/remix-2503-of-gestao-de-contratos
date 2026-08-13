@@ -204,7 +204,7 @@ export function useAtividades(projetoId?: string) {
 
       const { data: atividades, error: aErr } = await supabase
         .from("atividades_planejamento")
-        .select("*, lpu:itens_lpu(unidade, codigo)")
+        .select("*, item_lpu:itens_lpu(unidade, codigo)")
         .in("frente_id", frenteIds)
         .order("ordem");
       if (aErr) throw aErr;
@@ -215,7 +215,7 @@ export function useAtividades(projetoId?: string) {
         .map((a) => a.item_lpu_id!);
       
       const itemLpuCodigos = (atividades ?? [])
-        .map((a: any) => String(a.lpu?.codigo || "").trim())
+        .map((a: any) => String(a.item_lpu?.codigo || "").trim())
         .filter(Boolean);
 
       const [depsResult, sitesResult] = await Promise.all([
@@ -250,10 +250,12 @@ export function useAtividades(projetoId?: string) {
             diariosDoSite.map((d: any) => [d.id, { data: d.data, site_id: d.site_id }])
           );
 
-          const { data: prods } = await supabase
+          const { data: prods, error: pErr } = await supabase
             .from("diario_producao")
             .select("item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
             .in("diario_id", diarioIds);
+
+          if (pErr) console.error("Erro ao buscar producao do diario:", pErr);
 
           (prods ?? []).forEach((p: any) => {
             const info = diarioInfo[p.diario_id];
@@ -263,22 +265,20 @@ export function useAtividades(projetoId?: string) {
             const itemCodigo = p.item_lpu?.codigo;
             
             const normalizedItemCode = String(itemCodigo || "").trim();
-            const matchesId = itemLpuIds.includes(item);
-            const matchesCode = normalizedItemCode && itemLpuCodigos.includes(normalizedItemCode);
-            
-            if (!matchesId && !matchesCode) return;
             const site = info.site_id as string;
 
-            // Mapeamento por ID (padrão)
-            if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
-            prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
+            // Mapeamento por ID
+            if (item) {
+              if (!prodPorItemSite[item]) prodPorItemSite[item] = {};
+              prodPorItemSite[item][site] = (prodPorItemSite[item][site] || 0) + qtd;
 
-            if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
-            if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
-            matrizPorItemSite[item][site][info.data] =
-              (matrizPorItemSite[item][site][info.data] || 0) + qtd;
+              if (!matrizPorItemSite[item]) matrizPorItemSite[item] = {};
+              if (!matrizPorItemSite[item][site]) matrizPorItemSite[item][site] = {};
+              matrizPorItemSite[item][site][info.data] =
+                (matrizPorItemSite[item][site][info.data] || 0) + qtd;
+            }
 
-            // Mapeamento redundante por Código (para casos de itens recriados/desvinculados)
+            // Mapeamento redundante por Código
             if (normalizedItemCode) {
               if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
               prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
@@ -307,39 +307,47 @@ export function useAtividades(projetoId?: string) {
         if (siteId) {
           const qtdId = sitesMapById[siteId] || 0;
           const qtdCode = sitesMapByCode[siteId] || 0;
-          const qtd = Math.max(qtdId, qtdCode);
-          const matriz = (qtdId >= qtdCode ? matrizSitesById[siteId] : matrizSitesByCode[siteId]) || {};
+          
+          // Agregamos produções por ID e por Código para cobrir itens que mudaram de ID
+          // ou que estão sendo apontados de formas mistas, garantindo que nenhum lançamento seja perdido.
+          const qtd = qtdId + qtdCode;
+          
+          const matId = matrizSitesById[siteId] || {};
+          const matCode = matrizSitesByCode[siteId] || {};
+          const matriz: Record<string, number> = { ...matId };
+          
+          for (const d of Object.keys(matCode)) {
+            matriz[d] = (matriz[d] || 0) + matCode[d];
+          }
+          
           return { qtd, matriz };
         }
 
         // Sem site vinculado: agrega todos os sites do projeto
-        
+        let totalQtd = 0;
+        const totalMatriz: Record<string, number> = {};
+
         // Agrega por ID
-        let qtdId = 0;
-        const matrizId: Record<string, number> = {};
         for (const s of Object.keys(sitesMapById)) {
-          qtdId += sitesMapById[s];
-          for (const d of Object.keys(matrizSitesById[s] || {})) {
-            matrizId[d] = (matrizId[d] || 0) + matrizSitesById[s][d];
+          totalQtd += sitesMapById[s];
+          const m = matrizSitesById[s] || {};
+          for (const d of Object.keys(m)) {
+            totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
           }
         }
         
         // Agrega por Código
-        let qtdCode = 0;
-        const matrizCode: Record<string, number> = {};
         if (normalizedItemCode) {
           for (const s of Object.keys(sitesMapByCode)) {
-            qtdCode += sitesMapByCode[s];
-            for (const d of Object.keys(matrizSitesByCode[s] || {})) {
-              matrizCode[d] = (matrizCode[d] || 0) + matrizSitesByCode[s][d];
+            totalQtd += sitesMapByCode[s];
+            const m = matrizSitesByCode[s] || {};
+            for (const d of Object.keys(m)) {
+              totalMatriz[d] = (totalMatriz[d] || 0) + m[d];
             }
           }
         }
 
-        const qtd = Math.max(qtdId, qtdCode);
-        const matriz = qtdId >= qtdCode ? matrizId : matrizCode;
-
-        return { qtd, matriz };
+        return { qtd: totalQtd, matriz: totalMatriz };
       };
 
       const depsMap: Record<string, string[]> = {};
@@ -352,7 +360,7 @@ export function useAtividades(projetoId?: string) {
 
       return (atividades ?? []).map((aBase) => {
         const a = aBase as any;
-        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.lpu?.codigo);
+        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.item_lpu?.codigo);
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
         const prodDiaria = Number(a.producao_diaria_prevista) || 1;
@@ -391,7 +399,7 @@ export function useAtividades(projetoId?: string) {
           is_principal: !!a.is_principal,
           matriz_producao: matriz,
           media_diaria_realizada: mediaDiaria,
-          unidade: a.lpu?.unidade || "-",
+          unidade: a.item_lpu?.unidade || "-",
         } as AtividadePlanejamento;
       });
     },
