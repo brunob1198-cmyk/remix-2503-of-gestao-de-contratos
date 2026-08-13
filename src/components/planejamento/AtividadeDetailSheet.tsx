@@ -103,12 +103,14 @@ export function AtividadeDetailSheet({
     <Sheet open={!!atividade} onOpenChange={() => onClose()}>
       <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <div className="flex items-center justify-end gap-2 mb-2">
-            {onRemove && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-lg">{atividade.nome}</SheetTitle>
+            <div className="flex items-center gap-2">
+              {onRemove && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-destructive"
                   onClick={() => {
                     if (confirm("Deseja realmente excluir este item da LPU desta frente?")) {
                       onRemove(atividade.id);
