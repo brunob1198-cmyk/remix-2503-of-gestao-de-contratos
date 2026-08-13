@@ -256,7 +256,7 @@ export function useAtividades(projetoId?: string) {
           const chunk = diarioIds.slice(i, i + CHUNK_SIZE);
           const { data: pChunk, error: pErr } = await supabase
             .from("diario_producao")
-            .select("id, item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo)")
+            .select("id, item_lpu_id, quantidade, diario_id, item_lpu:itens_lpu(codigo, descricao)")
             .in("diario_id", chunk);
 
           if (pErr) console.error("Erro ao buscar producao do diario:", pErr);
@@ -264,29 +264,55 @@ export function useAtividades(projetoId?: string) {
         }
       }
 
-      const sumQtdForAtividade = (itemId: string | null, frenteId: string, itemCodigo?: string) => {
-        if (!itemId && !itemCodigo) return { qtd: 0, matriz: {} as Record<string, number> };
-        const frenteSiteId = frenteSiteMap[frenteId];
-        const normalizedItemCode = String(itemCodigo || "").trim();
-        const normalizedItemId = String(itemId || "").trim();
+      const cleanStr = (s?: string | null) => (s || "").trim().toLowerCase();
+      const cleanCode = (s?: string | null) => {
+        if (!s) return "";
+        const trimmed = s.trim().toLowerCase();
+        return trimmed.replace(/^0+/, "");
+      };
+
+      const sumQtdForAtividade = (
+        itemId: string | null,
+        frenteId: string,
+        itemCodigo?: string,
+        atividadeNome?: string
+      ) => {
+        const normActId = cleanStr(itemId);
+        let normActCode = cleanCode(itemCodigo);
+        if (!normActCode && atividadeNome) {
+          const firstPart = atividadeNome.split("-")[0];
+          if (firstPart && firstPart.trim()) {
+            normActCode = cleanCode(firstPart);
+          }
+        }
+        const normActName = cleanStr(atividadeNome);
 
         let totalQtd = 0;
         const totalMatriz: Record<string, number> = {};
+
+        if (!normActId && !normActCode && !normActName) {
+          return { qtd: 0, matriz: totalMatriz };
+        }
 
         prods.forEach((p: any) => {
           const info = diarioInfo[p.diario_id];
           if (!info || !info.data) return;
 
-          // Se a frente tiver site vinculado, filtra por ele. Caso contrário, considera produções de qualquer site do projeto.
-          if (frenteSiteId && info.site_id !== frenteSiteId) return;
+          const pItemId = cleanStr(p.item_lpu_id);
+          const pCode = cleanCode(p.item_lpu?.codigo);
+          const pDesc = cleanStr(p.item_lpu?.descricao);
 
-          const pItemId = String(p.item_lpu_id || "").trim();
-          const pCode = String(p.item_lpu?.codigo || "").trim();
+          const matchesId = Boolean(normActId && pItemId && normActId === pItemId);
+          const matchesCode = Boolean(normActCode && pCode && normActCode === pCode);
+          const matchesDesc = Boolean(
+            !matchesId &&
+              !matchesCode &&
+              normActName &&
+              pDesc &&
+              (normActName.includes(pDesc) || pDesc.includes(normActName))
+          );
 
-          const matchesId = Boolean(normalizedItemId && pItemId && normalizedItemId === pItemId);
-          const matchesCode = Boolean(normalizedItemCode && pCode && normalizedItemCode === pCode);
-
-          if (matchesId || matchesCode) {
+          if (matchesId || matchesCode || matchesDesc) {
             const qtd = Number(p.quantidade) || 0;
             totalQtd += qtd;
             totalMatriz[info.data] = (totalMatriz[info.data] || 0) + qtd;
@@ -306,7 +332,12 @@ export function useAtividades(projetoId?: string) {
 
       return (atividades ?? []).map((aBase) => {
         const a = aBase as any;
-        const { qtd: qtdProd, matriz } = sumQtdForAtividade(a.item_lpu_id, a.frente_id, a.item_lpu?.codigo);
+        const { qtd: qtdProd, matriz } = sumQtdForAtividade(
+          a.item_lpu_id,
+          a.frente_id,
+          a.item_lpu?.codigo,
+          a.nome
+        );
         const qtdTotal = Number(a.quantidade_total) || 1;
         const pct = Math.min(100, (qtdProd / qtdTotal) * 100);
         const prodDiaria = Number(a.producao_diaria_prevista) || 1;
