@@ -126,7 +126,7 @@ export function ItensTab() {
           <DataTableColumnFilter 
             column={column} 
             title="Filtro" 
-            options={Array.from(new Set(itens.map(i => i.categoria).filter(Boolean))).map(c => ({ label: String(c), value: String(c) }))} 
+            options={Array.from(new Set(itens.map((i: any) => i.categoria).filter(Boolean))).map(c => ({ label: String(c), value: String(c) }))} 
           />
         </div>
       ),
@@ -147,6 +147,7 @@ export function ItensTab() {
       ),
     },
   ];
+
 
   const processedItems = useMemo(() => itens, [itens]);
 
