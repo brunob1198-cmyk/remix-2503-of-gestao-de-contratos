@@ -91,9 +91,10 @@ export function InspecaoFormDialog({
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_pgr")
+        .from("sgsst_pgr" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
@@ -105,9 +106,10 @@ export function InspecaoFormDialog({
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_apr")
+        .from("sgsst_apr" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },
@@ -119,9 +121,10 @@ export function InspecaoFormDialog({
     enabled: !!projetoId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sgsst_pt")
+        .from("sgsst_pt" as any)
         .select("id, codigo, titulo")
         .eq("projeto_id", projetoId);
+
       if (error) throw error;
       return data || [];
     },

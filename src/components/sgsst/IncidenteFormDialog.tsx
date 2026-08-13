@@ -109,8 +109,9 @@ export function IncidenteFormDialog({
     queryKey: ["pgrs_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("sgsst_pgr").select("id, codigo, titulo").eq("projeto_id", projetoId);
+      const { data, error } = await supabase.from("sgsst_pgr" as any).select("id, codigo, titulo").eq("projeto_id", projetoId);
       if (error) throw error;
+
       return data || [];
     },
   });
@@ -119,8 +120,9 @@ export function IncidenteFormDialog({
     queryKey: ["aprs_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("sgsst_apr").select("id, codigo, titulo").eq("projeto_id", projetoId);
+      const { data, error } = await supabase.from("sgsst_apr" as any).select("id, codigo, titulo").eq("projeto_id", projetoId);
       if (error) throw error;
+
       return data || [];
     },
   });
@@ -129,8 +131,9 @@ export function IncidenteFormDialog({
     queryKey: ["pts_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("sgsst_pt").select("id, codigo, titulo").eq("projeto_id", projetoId);
+      const { data, error } = await supabase.from("sgsst_pt" as any).select("id, codigo, titulo").eq("projeto_id", projetoId);
       if (error) throw error;
+
       return data || [];
     },
   });
@@ -139,8 +142,9 @@ export function IncidenteFormDialog({
     queryKey: ["inspecoes_inc", projetoId],
     enabled: !!projetoId && open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("sgsst_inspecoes").select("id, codigo, titulo").eq("projeto_id", projetoId);
+      const { data, error } = await supabase.from("sgsst_inspecoes" as any).select("id, codigo, titulo").eq("projeto_id", projetoId);
       if (error) throw error;
+
       return data || [];
     },
   });
@@ -400,11 +404,12 @@ export function IncidenteFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhum --</SelectItem>
-                  {pgrs.map((p) => (
+                  {pgrs.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.codigo ? `[${p.codigo}] ` : ""}{p.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -417,11 +422,12 @@ export function IncidenteFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {aprs.map((a) => (
+                  {aprs.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.codigo ? `[${a.codigo}] ` : ""}{a.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -434,11 +440,12 @@ export function IncidenteFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {pts.map((p) => (
+                  {pts.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.codigo ? `[${p.codigo}] ` : ""}{p.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
@@ -451,11 +458,12 @@ export function IncidenteFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhuma --</SelectItem>
-                  {inspecoes.map((i) => (
+                  {inspecoes.map((i: any) => (
                     <SelectItem key={i.id} value={i.id}>
                       {i.codigo ? `[${i.codigo}] ` : ""}{i.titulo}
                     </SelectItem>
                   ))}
+
                 </SelectContent>
               </Select>
             </div>
