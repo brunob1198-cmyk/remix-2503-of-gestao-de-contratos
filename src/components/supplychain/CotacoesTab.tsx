@@ -14,6 +14,9 @@ import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, Che
 import { parseLocalDate } from "@/lib/utils";
 import { diasCotacaoAtrasada, isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 import { RequisitionTimeline } from "./RequisitionTimeline";
+import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+
 
 // WORKFLOW_STATUS in the DB
 const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "warning" }> = {
@@ -182,6 +185,114 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: "numero",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <span className="font-mono font-medium text-primary hover:underline cursor-pointer" onClick={() => { setSelectedReqForDetail(req); setDetailOpen(true); }}>
+            {req.numero}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "projeto",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Projeto" />,
+      accessorFn: (row) => row.projeto?.codigo || "—",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold">{row.original.projeto?.nome || "Sem projeto"}</span>
+          <span className="text-xs text-muted-foreground">{row.original.projeto?.codigo || "N/A"}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "prioridade",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Prioridade" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(PRIORIDADE_MAP).map(k => ({ label: PRIORIDADE_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const p = row.getValue("prioridade") as string;
+        const cfg = PRIORIDADE_MAP[p?.toLowerCase() || "normal"] || PRIORIDADE_MAP["normal"];
+        return <Badge variant={cfg.text.includes("red") ? "destructive" : "secondary"}>{cfg.label}</Badge>;
+      },
+    },
+    {
+      accessorKey: "workflow_status",
+      header: ({ column }) => (
+        <div className="flex items-center">
+          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnFilter 
+            column={column} 
+            title="Filtro" 
+            options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
+          />
+        </div>
+      ),
+      filterFn: multiSelectFilter,
+      cell: ({ row }) => {
+        const s = row.getValue("workflow_status") as string;
+        const cfg = WORKFLOW_STATUS_MAP[s] || { label: s, variant: "outline" };
+        return <Badge variant={cfg.variant as any}>{cfg.label}</Badge>;
+      },
+    },
+    {
+      id: "cotacoes",
+      header: "Cotações",
+      cell: ({ row }) => {
+        const req = row.original;
+        const count = req.cotacoes?.length || 0;
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium">{count} {count === 1 ? "cotação" : "cotações"}</span>
+            <div className="flex flex-wrap gap-1">
+              {req.cotacoes?.slice(0, 3).map((c: any) => (
+                <Badge key={c.id} variant="outline" className="text-[9px] px-1 py-0" onClick={(e) => { e.stopPropagation(); setSelectedCotacao({ ...c, requisicao: req }); setCotacaoDetailOpen(true); }}>
+                  {c.numero}
+                </Badge>
+              ))}
+              {count > 3 && <span className="text-[9px] text-muted-foreground">+{count - 3}</span>}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Ações</div>,
+      cell: ({ row }) => {
+        const req = row.original;
+        return (
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="icon" onClick={() => { setSelectedReqForDetail(req); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
+            {hasActionPermission("pode_criar_cotacao") && req.workflow_status !== "APPROVED" && (
+              <Button variant="outline" size="sm" onClick={() => openNewCotacaoModal(req.id)}>
+                + Cotação
+              </Button>
+            )}
+            {req.workflow_status === "APPROVED" && (
+              <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate("pedidos", req.numero)}>
+                Pedido
+              </Button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+
   const selectedReq = requisicoesMestreDetalhe.find((r: any) => r.id === form.requisicao_id);
 
   return (
@@ -256,32 +367,6 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
         )}
       </CardContent>
       
-      {/* Pagination Footer */}
-      {totalItems > 0 && (
-        <div className="border-t p-4 flex items-center justify-between mt-4">
-          <div className="text-sm text-muted-foreground">
-            {totalItems} {totalItems === 1 ? "registro encontrado" : "registros encontrados"}
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Linhas por página</span>
-              <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1); }}>
-                <SelectTrigger className="h-8 w-[70px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[10, 20, 30, 40, 50].map(v => <SelectItem key={v} value={String(v)}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-center text-sm font-medium">
-              Página {page} de {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Anterior</Button>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Próxima</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODALS */}
       {/* Modal Nova Cotação */}
