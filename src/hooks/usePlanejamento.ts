@@ -278,8 +278,8 @@ export function useAtividades(projetoId?: string) {
                 (matrizPorItemSite[item][site][info.data] || 0) + qtd;
             }
 
-            // Mapeamento redundante por Código
-            if (normalizedItemCode) {
+            // Mapeamento redundante por Código (apenas se for diferente do ID)
+            if (normalizedItemCode && normalizedItemCode !== item) {
               if (!prodPorItemSite[normalizedItemCode]) prodPorItemSite[normalizedItemCode] = {};
               prodPorItemSite[normalizedItemCode][site] = (prodPorItemSite[normalizedItemCode][site] || 0) + qtd;
 
