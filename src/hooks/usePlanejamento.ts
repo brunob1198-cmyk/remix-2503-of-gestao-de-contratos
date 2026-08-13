@@ -215,7 +215,7 @@ export function useAtividades(projetoId?: string) {
         .map((a) => a.item_lpu_id!);
       
       const itemLpuCodigos = (atividades ?? [])
-        .map((a: any) => a.lpu?.codigo)
+        .map((a: any) => String(a.lpu?.codigo || "").trim())
         .filter(Boolean);
 
       const [depsResult, sitesResult] = await Promise.all([
