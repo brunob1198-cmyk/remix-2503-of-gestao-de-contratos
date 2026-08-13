@@ -32,6 +32,8 @@ export const TELAS = [
   { id: "supply-chain", label: "Supply Chain" },
   { id: "power-bi", label: "Power BI" },
   { id: "audit-log", label: "Logs de Auditoria" },
+  { id: "sgsst-funcoes", label: "SGSST - Funções" },
+  { id: "sgsst-colaboradores", label: "SGSST - Colaboradores" },
 ] as const;
 
 export function usePermissions() {

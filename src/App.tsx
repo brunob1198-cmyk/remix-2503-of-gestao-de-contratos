@@ -47,6 +47,8 @@ const PlanejamentoObraPage = React.lazy(() => import("./pages/medicoes/Planejame
 const PowerBIPage = React.lazy(() => import("./pages/medicoes/PowerBI"));
 const MkpParametrosPage = React.lazy(() => import("./pages/configuracoes/MkpParametros"));
 const ConfigImpostosPage = React.lazy(() => import("./pages/configuracoes/ConfigImpostos"));
+const SgsstFuncoesPage = React.lazy(() => import("./pages/sgsst/Funcoes"));
+const SgsstColaboradoresPage = React.lazy(() => import("./pages/sgsst/Colaboradores"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -117,6 +119,8 @@ const App = () => {
                 <Route path="supply-chain" element={<SupplyChainPage />} />
                 
                 <Route path="audit-log" element={<AuditLogPage />} />
+                <Route path="sgsst/funcoes" element={<SgsstFuncoesPage />} />
+                <Route path="sgsst/colaboradores" element={<SgsstColaboradoresPage />} />
                 
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
