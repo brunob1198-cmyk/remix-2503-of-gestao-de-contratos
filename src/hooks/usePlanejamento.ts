@@ -310,14 +310,18 @@ export function useAtividades(projetoId?: string) {
           
           // Agregamos produções por ID e por Código para cobrir itens que mudaram de ID
           // ou que estão sendo apontados de formas mistas, garantindo que nenhum lançamento seja perdido.
-          const qtd = qtdId + qtdCode;
+          // CRITICAL: Se o itemId e o normalizedItemCode forem o mesmo (ex: item deletado e recriado), 
+          // evitamos duplicar a contagem se as chaves no objeto forem idênticas.
+          const qtd = (itemId === normalizedItemCode) ? qtdId : (qtdId + qtdCode);
           
           const matId = matrizSitesById[siteId] || {};
           const matCode = matrizSitesByCode[siteId] || {};
           const matriz: Record<string, number> = { ...matId };
           
-          for (const d of Object.keys(matCode)) {
-            matriz[d] = (matriz[d] || 0) + matCode[d];
+          if (itemId !== normalizedItemCode) {
+            for (const d of Object.keys(matCode)) {
+              matriz[d] = (matriz[d] || 0) + matCode[d];
+            }
           }
           
           return { qtd, matriz };
