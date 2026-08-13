@@ -42,16 +42,48 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
+  persistKey?: string
 }
+
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
   searchPlaceholder = "Buscar...",
+  persistKey,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  // Load persisted state if persistKey is provided
+  const loadPersisted = <T,>(subKey: string, fallback: T): T => {
+    if (!persistKey) return fallback;
+    try {
+      const stored = localStorage.getItem(`dt_${persistKey}_${subKey}`);
+      return stored ? JSON.parse(stored) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  };
+
+  const [sorting, setSorting] = React.useState<SortingState>(() => loadPersisted("sorting", []))
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(() => loadPersisted("filters", []))
+  const [pagination, setPagination] = React.useState(() => loadPersisted("pagination", { pageIndex: 0, pageSize: 10 }))
+
+  // Save state on changes
+  React.useEffect(() => {
+    if (!persistKey) return;
+    localStorage.setItem(`dt_${persistKey}_sorting`, JSON.stringify(sorting));
+  }, [persistKey, sorting]);
+
+  React.useEffect(() => {
+    if (!persistKey) return;
+    localStorage.setItem(`dt_${persistKey}_filters`, JSON.stringify(columnFilters));
+  }, [persistKey, columnFilters]);
+
+  React.useEffect(() => {
+    if (!persistKey) return;
+    localStorage.setItem(`dt_${persistKey}_pagination`, JSON.stringify(pagination));
+  }, [persistKey, pagination]);
+
 
   const table = useReactTable({
     data,
@@ -62,10 +94,13 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
+      pagination,
     },
+
   })
 
   return (
