@@ -173,13 +173,15 @@ export function FornecedoresTab() {
           else if (kl.includes("complem")) colMap.complemento = k;
           else if (kl.includes("ender")) colMap.endereco = k;
           else if (kl.includes("cep")) colMap.cep = k;
-          else if (kl === "categoria" || kl.includes("categ")) colMap.categoria = k;
+          else if (kl === "categoria" || kl === "categ") colMap.categoria = k;
           else if (kl.includes("prazo")) colMap.score_prazo = k;
           else if (kl.includes("preco") || kl.includes("preço")) colMap.score_preco = k;
           else if (kl.includes("qualidade")) colMap.score_qualidade = k;
           else if (kl.includes("responsi")) colMap.score_responsividade = k;
           else if (kl.includes("score") || kl.includes("pontua")) colMap.score = k;
           else if (kl.includes("obs")) colMap.observacoes = k;
+          // Redundancy for Category if not found by exact match
+          else if (!colMap.categoria && kl.includes("categ")) colMap.categoria = k;
         }
 
         if (!colMap.razao_social) {
@@ -189,26 +191,29 @@ export function FornecedoresTab() {
 
         const items = rows
           .filter(r => r[colMap.razao_social])
-          .map(r => ({
-            razao_social: String(r[colMap.razao_social]).trim(),
-            cnpj: colMap.cnpj ? String(r[colMap.cnpj] || "").trim() || undefined : undefined,
-            contato_nome: colMap.contato_nome ? String(r[colMap.contato_nome] || "").trim() || undefined : undefined,
-            contato_email: colMap.contato_email ? String(r[colMap.contato_email] || "").trim() || undefined : undefined,
-            contato_telefone: colMap.contato_telefone ? String(r[colMap.contato_telefone] || "").trim() || undefined : undefined,
-            endereco: colMap.endereco ? String(r[colMap.endereco] || "").trim() || undefined : undefined,
-            cep: colMap.cep ? String(r[colMap.cep] || "").trim() || undefined : undefined,
-            complemento: colMap.complemento ? String(r[colMap.complemento] || "").trim() || undefined : undefined,
-            categoria: colMap.categoria ? String(r[colMap.categoria] || "geral").trim() : "geral",
-            municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
-            uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
-            score: colMap.score ? Number(r[colMap.score]) || 0 : 0,
-            score_prazo: colMap.score_prazo ? Number(r[colMap.score_prazo]) || 0 : 0,
-            score_preco: colMap.score_preco ? Number(r[colMap.score_preco]) || 0 : 0,
-            score_qualidade: colMap.score_qualidade ? Number(r[colMap.score_qualidade]) || 0 : 0,
-            score_responsividade: colMap.score_responsividade ? Number(r[colMap.score_responsividade]) || 0 : 0,
-
-            observacoes: colMap.observacoes ? String(r[colMap.observacoes] || "").trim() || undefined : undefined,
-          }));
+          .map(r => {
+            const rowData: any = {
+              razao_social: String(r[colMap.razao_social] || "").trim(),
+              cnpj: colMap.cnpj ? String(r[colMap.cnpj] || "").trim() || undefined : undefined,
+              contato_nome: colMap.contato_nome ? String(r[colMap.contato_nome] || "").trim() || undefined : undefined,
+              contato_email: colMap.contato_email ? String(r[colMap.contato_email] || "").trim() || undefined : undefined,
+              contato_telefone: colMap.contato_telefone ? String(r[colMap.contato_telefone] || "").trim() || undefined : undefined,
+              endereco: colMap.endereco ? String(r[colMap.endereco] || "").trim() || undefined : undefined,
+              cep: colMap.cep ? String(r[colMap.cep] || "").trim() || undefined : undefined,
+              complemento: colMap.complemento ? String(r[colMap.complemento] || "").trim() || undefined : undefined,
+              categoria: colMap.categoria ? String(r[colMap.categoria] || "geral").trim() : "geral",
+              municipio: colMap.municipio ? String(r[colMap.municipio] || "").trim() || undefined : undefined,
+              uf: colMap.uf ? String(r[colMap.uf] || "").trim() || undefined : undefined,
+              score: colMap.score ? Number(r[colMap.score]) || 0 : 0,
+              score_prazo: colMap.score_prazo ? Number(r[colMap.score_prazo]) || 0 : 0,
+              score_preco: colMap.score_preco ? Number(r[colMap.score_preco]) || 0 : 0,
+              score_qualidade: colMap.score_qualidade ? Number(r[colMap.score_qualidade]) || 0 : 0,
+              score_responsividade: colMap.score_responsividade ? Number(r[colMap.score_responsividade]) || 0 : 0,
+              observacoes: colMap.observacoes ? String(r[colMap.observacoes] || "").trim() || undefined : undefined,
+            };
+            if (rowData.categoria && (rowData.categoria.toLowerCase() === "nan" || rowData.categoria.toLowerCase() === "undefined")) rowData.categoria = "geral";
+            return rowData;
+          });
 
         if (items.length === 0) {
           toast({ title: "Nenhum fornecedor válido", variant: "destructive" });
