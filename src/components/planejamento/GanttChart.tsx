@@ -10,6 +10,7 @@ interface GanttChartProps {
   atividades: AtividadePlanejamento[];
   onSelectAtividade: (a: AtividadePlanejamento) => void;
   onDragUpdate?: (id: string, newStartDate: string) => void;
+  onRemoveAtividade?: (id: string) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
