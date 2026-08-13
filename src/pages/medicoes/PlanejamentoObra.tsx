@@ -399,6 +399,7 @@ export default function PlanejamentoObra() {
         projetoRecursos={projetoRecursos}
         atividadeRecursoIds={atividadeRecursos}
         onUpdateRecursos={handleUpdateRecursos}
+        onRemove={(id) => removeAtividade.mutate(id)}
       />
     </div>
   );
