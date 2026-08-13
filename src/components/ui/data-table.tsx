@@ -48,6 +48,9 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string
   searchPlaceholder?: string
   persistKey?: string
+  rowSelection?: Record<string, boolean>
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void
+  bulkActions?: React.ReactNode
 }
 
 
@@ -57,6 +60,9 @@ export function DataTable<TData, TValue>({
   searchKey,
   searchPlaceholder = "Buscar...",
   persistKey,
+  rowSelection: externalRowSelection,
+  onRowSelectionChange: externalOnRowSelectionChange,
+  bulkActions,
 }: DataTableProps<TData, TValue>) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -117,6 +123,15 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+  const [internalRowSelection, setInternalRowSelection] = React.useState<Record<string, boolean>>({})
+
+  const actualRowSelection = externalRowSelection !== undefined ? externalRowSelection : internalRowSelection
+  const actualOnRowSelectionChange = externalOnRowSelectionChange !== undefined 
+    ? (updater: any) => {
+        const next = typeof updater === 'function' ? updater(actualRowSelection) : updater;
+        externalOnRowSelectionChange(next);
+      }
+    : setInternalRowSelection;
 
   // Synchronize state when DB data arrives
   React.useEffect(() => {
@@ -152,10 +167,13 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onPaginationChange: setPagination,
+    onRowSelectionChange: actualOnRowSelectionChange,
+    getRowId: (row: any) => row.id,
     state: {
       sorting,
       columnFilters,
       pagination,
+      rowSelection: actualRowSelection,
     },
   })
 
@@ -165,8 +183,8 @@ export function DataTable<TData, TValue>({
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-        {searchKey && (
-          <div className="flex items-center w-full sm:max-w-sm">
+        <div className="flex items-center gap-2 w-full sm:max-w-sm">
+          {searchKey && (
             <Input
               placeholder={searchPlaceholder}
               value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
@@ -175,8 +193,9 @@ export function DataTable<TData, TValue>({
               }
               className="w-full"
             />
-          </div>
-        )}
+          )}
+          {bulkActions}
+        </div>
         
         {persistKey && (
           <Button 
