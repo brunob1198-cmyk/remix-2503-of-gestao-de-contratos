@@ -27,8 +27,13 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowDown, ArrowUp, ChevronsUpDown, Filter, Search, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Filter, Search, X, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/integrations/supabase/client"
+import { useAuth } from "@/contexts/AuthContext"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+
 
 // A custom filter function for multi-select
 export const multiSelectFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -53,37 +58,89 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "Buscar...",
   persistKey,
 }: DataTableProps<TData, TValue>) {
-  // Load persisted state if persistKey is provided
-  const loadPersisted = <T,>(subKey: string, fallback: T): T => {
-    if (!persistKey) return fallback;
-    try {
-      const stored = localStorage.getItem(`dt_${persistKey}_${subKey}`);
-      return stored ? JSON.parse(stored) : fallback;
-    } catch (e) {
-      return fallback;
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Load state from DB
+  const { data: dbPreferences, isLoading: isLoadingPrefs } = useQuery({
+    queryKey: ["user_preferences", persistKey, user?.id],
+    enabled: !!persistKey && !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_preferences")
+        .select("value")
+        .eq("user_id", user!.id)
+        .eq("key", `dt_${persistKey}`)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data?.value as any || null;
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (newValue: any) => {
+      if (!persistKey || !user?.id) return;
+      
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          user_id: user.id,
+          key: `dt_${persistKey}`,
+          value: newValue,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,key' });
+
+      if (error) throw error;
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      if (!persistKey || !user?.id) return;
+      const { error } = await supabase
+        .from("user_preferences")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("key", `dt_${persistKey}`);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user_preferences", persistKey] });
+      setSorting([]);
+      setColumnFilters([]);
+      setPagination({ pageIndex: 0, pageSize: 10 });
+      toast.success("Filtros e ordenação resetados");
+    },
+  });
+
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
+
+  // Synchronize state when DB data arrives
+  React.useEffect(() => {
+    if (dbPreferences) {
+      if (dbPreferences.sorting) setSorting(dbPreferences.sorting);
+      if (dbPreferences.filters) setColumnFilters(dbPreferences.filters);
+      if (dbPreferences.pagination) setPagination(dbPreferences.pagination);
     }
-  };
+  }, [dbPreferences]);
 
-  const [sorting, setSorting] = React.useState<SortingState>(() => loadPersisted("sorting", []))
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(() => loadPersisted("filters", []))
-  const [pagination, setPagination] = React.useState(() => loadPersisted("pagination", { pageIndex: 0, pageSize: 10 }))
-
-  // Save state on changes
-  React.useEffect(() => {
+  // Debounced save
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const saveState = React.useCallback((newState: any) => {
     if (!persistKey) return;
-    localStorage.setItem(`dt_${persistKey}_sorting`, JSON.stringify(sorting));
-  }, [persistKey, sorting]);
-
-  React.useEffect(() => {
-    if (!persistKey) return;
-    localStorage.setItem(`dt_${persistKey}_filters`, JSON.stringify(columnFilters));
-  }, [persistKey, columnFilters]);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      saveMutation.mutate(newState);
+    }, 1000);
+  }, [persistKey, saveMutation]);
 
   React.useEffect(() => {
-    if (!persistKey) return;
-    localStorage.setItem(`dt_${persistKey}_pagination`, JSON.stringify(pagination));
-  }, [persistKey, pagination]);
-
+    if (!persistKey || isLoadingPrefs) return;
+    saveState({ sorting, filters: columnFilters, pagination });
+  }, [sorting, columnFilters, pagination, persistKey, isLoadingPrefs, saveState]);
 
   const table = useReactTable({
     data,
@@ -100,23 +157,41 @@ export function DataTable<TData, TValue>({
       columnFilters,
       pagination,
     },
-
   })
+
+  const hasChanges = sorting.length > 0 || columnFilters.length > 0 || pagination.pageIndex !== 0 || pagination.pageSize !== 10;
+
 
   return (
     <div>
-      {searchKey && (
-        <div className="flex items-center py-4">
-          <Input
-            placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
-        </div>
-      )}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+        {searchKey && (
+          <div className="flex items-center w-full sm:max-w-sm">
+            <Input
+              placeholder={searchPlaceholder}
+              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+              onChange={(event) =>
+                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              }
+              className="w-full"
+            />
+          </div>
+        )}
+        
+        {persistKey && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={cn("h-8 px-2 lg:px-3 text-muted-foreground hover:text-foreground transition-colors", !hasChanges && "opacity-50 cursor-not-allowed")}
+            onClick={() => clearMutation.mutate()}
+            disabled={!hasChanges || clearMutation.isPending}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Limpar Visão
+          </Button>
+        )}
+      </div>
+
       <div className="rounded-md border bg-card text-card-foreground shadow-sm">
         <Table>
           <TableHeader className="bg-muted/50">
