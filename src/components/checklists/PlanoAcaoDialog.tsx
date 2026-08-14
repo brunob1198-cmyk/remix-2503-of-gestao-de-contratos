@@ -37,8 +37,8 @@ export function PlanoAcaoDialog({
     try {
       setIsUploading(true);
       const res = await uploadImage(file);
-      if (res && res.path) {
-        setEvidenciaUrl(res.path);
+      if (res) {
+        setEvidenciaUrl(res);
         toast.success("Evidência de conclusão anexada no R2!");
       }
     } catch (err: any) {
