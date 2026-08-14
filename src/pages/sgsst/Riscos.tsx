@@ -12,6 +12,8 @@ import { RiscosFormDialog } from "@/components/sgsst/RiscosFormDialog";
 import { RiscosDetailDialog } from "@/components/sgsst/RiscosDetailDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
+
 export default function SgsstRiscosPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-riscos");
@@ -83,6 +85,8 @@ export default function SgsstRiscosPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstSegurancaHeaderNav />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

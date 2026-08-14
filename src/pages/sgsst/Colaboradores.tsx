@@ -12,6 +12,8 @@ import { ColaboradorFormDialog } from "@/components/sgsst/ColaboradorFormDialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
 
+import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
+
 export default function SgsstColaboradoresPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-colaboradores");
@@ -61,6 +63,8 @@ export default function SgsstColaboradoresPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstSegurancaHeaderNav />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

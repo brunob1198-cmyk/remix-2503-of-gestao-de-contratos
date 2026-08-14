@@ -12,6 +12,7 @@ import { PgrFormDialog } from "@/components/sgsst/PgrFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
+import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
 
 export default function SgsstPgrListPage() {
   const navigate = useNavigate();
@@ -92,17 +93,19 @@ export default function SgsstPgrListPage() {
         );
       case "ENCERRADO":
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 w-fit">
+          <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-300 flex items-center gap-1 w-fit">
             <Lock className="h-3 w-3" /> ENCERRADO
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return null;
     }
   };
 
   return (
     <div className="space-y-6">
+      <SgsstSegurancaHeaderNav />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

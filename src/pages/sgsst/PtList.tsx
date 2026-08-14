@@ -13,6 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 
+import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
+
 export default function SgsstPtListPage() {
   const navigate = useNavigate();
   const { canEdit } = usePermissions();
@@ -145,6 +147,8 @@ export default function SgsstPtListPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstSegurancaHeaderNav />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

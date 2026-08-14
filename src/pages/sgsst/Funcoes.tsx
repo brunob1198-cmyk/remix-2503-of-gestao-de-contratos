@@ -10,6 +10,8 @@ import { Plus, Search, Edit2, Trash2, Briefcase, CheckCircle2, XCircle } from "l
 import { FuncaoFormDialog } from "@/components/sgsst/FuncaoFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
+
 export default function SgsstFuncoesPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-funcoes");
@@ -45,6 +47,8 @@ export default function SgsstFuncoesPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstSegurancaHeaderNav />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
