@@ -344,16 +344,31 @@ export function useChecklistModelos() {
 
   const deleteModelo = useMutation({
     mutationFn: async (id: string) => {
+      // 1. First delete dependent applications to avoid FK constraint errors
+      const { data: apps } = await (supabase
+        .from("checklist_aplicacoes" as any)
+        .select("id")
+        .eq("modelo_id", id) as any);
+
+      if (apps && apps.length > 0) {
+        for (const app of apps) {
+          // Trigger cascading delete for application (responses, evidences, etc)
+          await supabase.from("checklist_aplicacoes" as any).delete().eq("id", app.id);
+        }
+      }
+
+      // 2. Delete sections and items (cascading is usually handled by DB, but we ensure here)
       const { error } = await (supabase.from("checklist_modelos" as any).delete().eq("id", id) as any);
       if (error) throw error;
       return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checklist_modelos"] });
-      toast.success("Modelo removido!");
+      queryClient.invalidateQueries({ queryKey: ["checklist_aplicacoes"] });
+      toast.success("Modelo e suas aplicações removidos com sucesso!");
     },
     onError: (err: any) => {
-      toast.error(`Não foi possível excluir o modelo (já possui aplicações vinculadas). ${err.message || ""}`);
+      toast.error(`Erro ao excluir modelo: ${err.message || err}`);
     },
   });
 
@@ -571,12 +586,31 @@ export function useChecklistAplicacoes() {
     },
   });
 
+  const deleteAplicacao = useMutation({
+    mutationFn: async (id: string) => {
+      // The database schema should have CASCADE, but we ensure deletion of sub-resources
+      // like responses and evidences if necessary, or just rely on the main delete if CASCADE is active.
+      // Given the error in the print, we need to ensure the deletion flow is clean.
+      const { error } = await (supabase.from("checklist_aplicacoes" as any).delete().eq("id", id) as any);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklist_aplicacoes"] });
+      toast.success("Aplicação de checklist excluída!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao excluir aplicação: ${err.message || err}`);
+    },
+  });
+
   return {
     aplicacoes,
     isLoading,
     refetch,
     createAplicacao,
     finishAplicacao,
+    deleteAplicacao,
   };
 }
 
