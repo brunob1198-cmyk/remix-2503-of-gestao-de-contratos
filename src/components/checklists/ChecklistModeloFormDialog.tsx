@@ -223,8 +223,8 @@ export function ChecklistModeloFormDialog({
         codigo: codigo || `CHK-${Math.floor(1000 + Math.random() * 9000)}`,
         descricao: descricao.trim() || null,
         periodicidade_sugerida: periodicidade,
-        projeto_id: projetoId || null,
-        area_id: areaId || null,
+        projeto_id: projetoId && projetoId !== "todas" && projetoId !== "todos" ? projetoId : null,
+        area_id: areaId && areaId !== "todas" && areaId !== "todos" ? areaId : null,
         secoes,
       });
       onOpenChange(false);

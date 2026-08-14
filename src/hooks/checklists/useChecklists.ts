@@ -220,7 +220,7 @@ export function useChecklistModelos() {
         }>;
       }>;
     }) => {
-      if (!empresaId) throw new Error("Empresa não identificada.");
+      const cleanUuid = (id?: string | null) => (id && id !== "todas" && id !== "todos" && id.trim() !== "" ? id : null);
 
       // 1. Insert Modelo
       const { data: modelo, error: mErr } = await (supabase
@@ -232,9 +232,9 @@ export function useChecklistModelos() {
           codigo: input.codigo || `CHK-${Math.floor(1000 + Math.random() * 9000)}`,
           descricao: input.descricao,
           periodicidade_sugerida: input.periodicidade_sugerida || "Diario",
-          responsavel_id: input.responsavel_id || null,
-          projeto_id: input.projeto_id || null,
-          area_id: input.area_id || null,
+          responsavel_id: cleanUuid(input.responsavel_id),
+          projeto_id: cleanUuid(input.projeto_id),
+          area_id: cleanUuid(input.area_id),
           tipo_aplicacao: input.tipo_aplicacao || "Geral",
           created_by: profile?.id,
           status: "ativo",
@@ -242,7 +242,12 @@ export function useChecklistModelos() {
         .select()
         .single() as any);
 
-      if (mErr) throw mErr;
+      if (mErr) {
+        if (mErr.message?.includes("schema cache") || mErr.code === "PGRST205") {
+          throw new Error("As tabelas de checklist estão sendo sincronizadas no banco. Por favor, execute a migration SQL no Supabase ou aguarde a atualização do cache do PostgREST.");
+        }
+        throw mErr;
+      }
 
       // 2. Insert Secoes & Itens
       for (const secao of input.secoes) {

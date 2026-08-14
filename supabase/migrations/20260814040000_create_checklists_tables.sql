@@ -229,3 +229,6 @@ CREATE TRIGGER audit_checklist_aplicacoes AFTER INSERT OR UPDATE OR DELETE ON pu
 
 DROP TRIGGER IF EXISTS audit_checklist_planos_acao ON public.checklist_planos_acao;
 CREATE TRIGGER audit_checklist_planos_acao AFTER INSERT OR UPDATE OR DELETE ON public.checklist_planos_acao FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger();
+
+-- Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
