@@ -155,7 +155,7 @@ export default function SgsstPtDetailPage() {
     const colab = colaboradores.find((c) => c.id === selectedColaboradorId);
     await addParticipante.mutateAsync({
       colaborador_dados_id: selectedColaboradorId,
-      funcao_id: colab?.funcao_id || null,
+      funcao_id: (colab as any)?.funcao_id ?? null,
       responsabilidade: responsabilidadeTexto,
     });
 

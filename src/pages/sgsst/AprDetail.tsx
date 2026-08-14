@@ -158,18 +158,18 @@ export default function SgsstAprDetailPage() {
 
   // Etapa actions
   const handleCreateEtapa = () => {
-    setEditingEtapa(null);
+    setEditingEtapaItem(null);
     setIsEtapaFormOpen(true);
   };
 
   const handleEditEtapa = (etapa: SgsstAprEtapa) => {
-    setEditingEtapa(etapa);
+    setEditingEtapaItem(etapa);
     setIsEtapaFormOpen(true);
   };
 
   const handleSaveEtapa = async (data: any) => {
-    if (editingEtapa) {
-      await updateEtapa.mutateAsync({ id: editingEtapa.id, ...data });
+    if (editingEtapaItem) {
+      await updateEtapa.mutateAsync({ id: editingEtapaItem.id, ...data });
     } else {
       await createEtapa.mutateAsync(data);
     }
@@ -229,7 +229,7 @@ export default function SgsstAprDetailPage() {
     const colab = colaboradores.find((c) => c.id === selectedColaboradorId);
     await addParticipante.mutateAsync({
       colaborador_dados_id: selectedColaboradorId,
-      funcao_id: colab?.funcao_id || null,
+      funcao_id: (colab as any)?.funcao_id ?? null,
       participacao: participacaoTexto,
     });
 
@@ -694,7 +694,7 @@ export default function SgsstAprDetailPage() {
         open={isEtapaFormOpen}
         onOpenChange={setIsEtapaFormOpen}
         aprId={currentApr.id}
-        etapa={editingEtapa}
+        etapa={editingEtapaItem}
         nextOrdem={etapas.length + 1}
         onSave={handleSaveEtapa}
         isLoading={createEtapa.isPending || updateEtapa.isPending}

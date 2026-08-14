@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSgsstPgr, useSgsstPgrDetail, useSgsstPgrInventario, useSgsstPgrMedidasControle, SgsstPgrInventario, SgsstPgrMedidaControle, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";

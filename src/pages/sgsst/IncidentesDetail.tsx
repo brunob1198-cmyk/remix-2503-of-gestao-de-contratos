@@ -187,7 +187,7 @@ export default function SgsstIncidentesDetailPage() {
     const colab = colaboradores.find((c) => c.id === selectedColabId);
     await addEnvolvido.mutateAsync({
       colaborador_dados_id: selectedColabId,
-      funcao_id: colab?.funcao_id || null,
+      funcao_id: (colab as any)?.funcao_id ?? null,
       tipo_envolvimento: tipoEnvolvimento,
       descricao: descEnvolvimento.trim() || undefined,
     });
