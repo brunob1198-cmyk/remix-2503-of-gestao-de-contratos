@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstNaoConformidades, SgsstNaoConformidade, StatusNC, CriticidadeNC, OrigemNC } from "@/hooks/sgsst/useSgsstNaoConformidades";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,13 +22,23 @@ export default function SgsstNaoConformidadesListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-nao-conformidades");
 
-  const { naoConformidades, isLoading, createNaoConformidade, updateNaoConformidade, removeNaoConformidade } = useSgsstNaoConformidades();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
   const [selectedCriticidade, setSelectedCriticidade] = useState<string>("todos");
   const [selectedOrigem, setSelectedOrigem] = useState<string>("todos");
   const [filterVencidasOnly, setFilterVencidasOnly] = useState(false);
+
+  const { naoConformidades, total, isLoading, createNaoConformidade, updateNaoConformidade, removeNaoConformidade } = useSgsstNaoConformidades({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNc, setEditingNc] = useState<SgsstNaoConformidade | null>(null);
@@ -327,14 +339,14 @@ export default function SgsstNaoConformidadesListPage() {
                     Carregando Não Conformidades...
                   </TableCell>
                 </TableRow>
-              ) : filteredNcs.length === 0 ? (
+              ) : naoConformidades.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhuma Não Conformidade encontrada nos filtros aplicados.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredNcs.map((nc) => {
+                naoConformidades.map((nc) => {
                   const vencida = isVencida(nc);
                   return (
                     <TableRow
@@ -430,6 +442,17 @@ export default function SgsstNaoConformidadesListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

@@ -10,6 +10,8 @@ import {
   CategoriaTreinamento,
 } from "@/hooks/sgsst/useSgsstTreinamentos";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,16 +47,43 @@ export default function SgsstTreinamentosListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-treinamentos");
 
-  const { treinamentos, isLoading: loadingTreinamentos, createTreinamento, updateTreinamento, removeTreinamento } = useSgsstTreinamentos();
-  const { turmas, isLoading: loadingTurmas, createTurma, updateTurma, removeTurma } = useSgsstTreinamentosTurmas();
-  const { todosParticipantes, isLoading: loadingTodosPart } = useSgsstTodosParticipantes();
-
   // Tab State
   const [activeTab, setActiveTab] = useState("catalogo");
 
-  // Catálogo Filters
+  // Catálogo pagination & filters
+  const [pageCat, setPageCat] = useState(0);
+  const [pageSizeCat, setPageSizeCat] = useState(25);
   const [searchTermCat, setSearchTermCat] = useState("");
+  const debouncedSearchCat = useDebounce(searchTermCat, 400);
   const [filterCat, setFilterCat] = useState("todos");
+
+  // Vencimentos pagination & filters
+  const [pageVenc, setPageVenc] = useState(0);
+  const [pageSizeVenc, setPageSizeVenc] = useState(25);
+  const [searchTermVenc, setSearchTermVenc] = useState("");
+  const debouncedSearchVenc = useDebounce(searchTermVenc, 400);
+  const [filterVencStatus, setFilterVencStatus] = useState("todos");
+
+  const { treinamentos, total: totalCat, isLoading: loadingTreinamentos, createTreinamento, updateTreinamento, removeTreinamento } = useSgsstTreinamentos({
+    page: pageCat,
+    pageSize: pageSizeCat,
+    search: debouncedSearchCat,
+    categoria: filterCat,
+  });
+
+  const { turmas, isLoading: loadingTurmas, createTurma, updateTurma, removeTurma } = useSgsstTreinamentosTurmas();
+
+  const { todosParticipantes, total: totalVenc, isLoading: loadingTodosPart } = useSgsstTodosParticipantes({
+    page: pageVenc,
+    pageSize: pageSizeVenc,
+    search: debouncedSearchVenc,
+    statusVencimento: filterVencStatus,
+    enabled: activeTab === "vencimentos",
+  });
+
+  const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
+  const totalPagesVenc = Math.ceil(totalVenc / pageSizeVenc) || 1;
+
   const [isTrFormOpen, setIsTrFormOpen] = useState(false);
   const [editingTr, setEditingTr] = useState<SgsstTreinamento | null>(null);
 
@@ -349,6 +378,17 @@ export default function SgsstTreinamentosListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageCat + 1}
+                totalPages={totalPagesCat}
+                onPageChange={(p) => setPageCat(p - 1)}
+                itemsPerPage={pageSizeCat}
+                onItemsPerPageChange={(s) => {
+                  setPageSizeCat(s);
+                  setPageCat(0);
+                }}
+                totalItems={totalCat}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -575,6 +615,17 @@ export default function SgsstTreinamentosListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageVenc + 1}
+                totalPages={totalPagesVenc}
+                onPageChange={(p) => setPageVenc(p - 1)}
+                itemsPerPage={pageSizeVenc}
+                onItemsPerPageChange={(s) => {
+                  setPageSizeVenc(s);
+                  setPageVenc(0);
+                }}
+                totalItems={totalVenc}
+              />
             </CardContent>
           </Card>
         </TabsContent>

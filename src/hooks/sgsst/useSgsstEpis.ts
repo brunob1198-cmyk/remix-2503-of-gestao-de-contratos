@@ -116,27 +116,42 @@ export interface SgsstEpiHistorico {
 }
 
 // 1. Hook Catálogo & Estoque EPIs
-export function useSgsstEpis() {
+export function useSgsstEpis(params?: { page?: number; pageSize?: number; search?: string; status?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: epis = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_epis", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_epis", empresaId, page, pageSize, params?.search, params?.status],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_epis" as any)
-        .select("*")
-        .order("nome", { ascending: true }) as any);
+        .select("*", { count: "exact" })
+        .order("nome", { ascending: true });
+
+      if (params?.search) {
+        query = query.or(`nome.ilike.%${params.search}%,ca.ilike.%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
 
-      return ((data || []) as SgsstEpi[]).map((e) => ({
+      const rows = ((data || []) as SgsstEpi[]).map((e) => ({
         ...e,
         statusValidadeCa: calculateValidadeCa(e.validade_ca),
         abaixoMinimo: e.estoque_atual <= e.estoque_minimo,
       }));
+
+      return { rows, total: count ?? 0 };
     },
   });
 
@@ -220,7 +235,8 @@ export function useSgsstEpis() {
   });
 
   return {
-    epis,
+    epis: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

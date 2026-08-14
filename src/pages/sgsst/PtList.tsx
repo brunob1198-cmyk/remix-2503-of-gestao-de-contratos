@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstPt, SgsstPt, StatusPt, TipoPt } from "@/hooks/sgsst/useSgsstPt";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,29 +22,24 @@ export default function SgsstPtListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pt");
 
-  const { pts, isLoading, createPt, updatePt, removePt } = useSgsstPt();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
+  const { pts, total, isLoading, createPt, updatePt, removePt } = useSgsstPt({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPt, setEditingPt] = useState<SgsstPt | null>(null);
-
-  const filteredPts = pts.filter((p) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      p.titulo.toLowerCase().includes(term) ||
-      p.atividade.toLowerCase().includes(term) ||
-      (p.codigo && p.codigo.toLowerCase().includes(term)) ||
-      (p.local_execucao && p.local_execucao.toLowerCase().includes(term)) ||
-      (p.projeto?.nome && p.projeto.nome.toLowerCase().includes(term));
-
-    const matchesTipo = selectedTipo === "todos" || p.tipo === selectedTipo;
-    const matchesStatus = selectedStatus === "todos" || p.status === selectedStatus;
-
-    return matchesSearch && matchesTipo && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingPt(null);
@@ -280,14 +277,14 @@ export default function SgsstPtListPage() {
                     Carregando Permissões de Trabalho...
                   </TableCell>
                 </TableRow>
-              ) : filteredPts.length === 0 ? (
+              ) : pts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma PT emitida ou encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPts.map((p) => (
+                pts.map((p) => (
                   <TableRow
                     key={p.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -374,6 +371,17 @@ export default function SgsstPtListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

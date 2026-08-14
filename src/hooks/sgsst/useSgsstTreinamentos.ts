@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { addMonths, format, parseISO } from "date-fns";
+import { addMonths, addDays, format, parseISO } from "date-fns";
 import { calculateVencimentoTreinamento, StatusVencimentoTreinamento } from "@/utils/sgsstTreinamentosUtils";
 
 export type CategoriaTreinamento =
@@ -115,26 +115,39 @@ export interface SgsstTreinamentoHistorico {
 }
 
 // 1. Hook Catálogo de Treinamentos
-export function useSgsstTreinamentos() {
+export function useSgsstTreinamentos(params?: { page?: number; pageSize?: number; search?: string; categoria?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: treinamentos = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_treinamentos", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_treinamentos", empresaId, page, pageSize, params?.search, params?.categoria],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_treinamentos" as any)
         .select(`
           *,
           funcao:sgsst_funcoes(id, nome),
           projeto:projetos(id, codigo, nome)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.ilike("nome", `%${params.search}%`);
+      }
+      if (params?.categoria && params.categoria !== "todos") {
+        query = query.eq("categoria", params.categoria);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
-      return (data as SgsstTreinamento[]) || [];
+      return { rows: (data as SgsstTreinamento[]) || [], total: count ?? 0 };
     },
   });
 
@@ -218,7 +231,8 @@ export function useSgsstTreinamentos() {
   });
 
   return {
-    treinamentos,
+    treinamentos: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,
@@ -505,15 +519,25 @@ export function useSgsstTreinamentosParticipantes(turmaId?: string) {
 }
 
 // 4. Hook Global Todos Participantes (Vencimentos & Relatório)
-export function useSgsstTodosParticipantes() {
+export function useSgsstTodosParticipantes(params?: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  statusVencimento?: string;
+  diasJanela?: number;
+  enabled?: boolean;
+}) {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+  const isEnabled = (params?.enabled ?? true) && !!empresaId;
 
-  const { data: todosParticipantes = [], isLoading } = useQuery({
-    queryKey: ["sgsst_todos_participantes", empresaId],
-    enabled: !!empresaId,
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["sgsst_todos_participantes", empresaId, page, pageSize, params?.search, params?.statusVencimento, params?.diasJanela],
+    enabled: isEnabled,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_treinamentos_participantes" as any)
         .select(`
           *,
@@ -524,21 +548,33 @@ export function useSgsstTodosParticipantes() {
             funcao:sgsst_funcoes(id, nome)
           ),
           turma:sgsst_treinamentos_turmas(*, treinamento:sgsst_treinamentos(*))
-        `)
-        .order("validade", { ascending: true }) as any);
+        `, { count: "exact" })
+        .order("validade", { ascending: true });
+
+      // Filtro por janela de validade: validade nos próximos 90 dias ou já vencidas (validade <= HOJE + diasJanela)
+      const maxValidade = format(addDays(new Date(), params?.diasJanela ?? 90), "yyyy-MM-dd");
+      query = query.lte("validade", maxValidade);
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
 
-      return ((data || []) as SgsstTreinamentoParticipante[]).map((p) => ({
+      const rows = ((data || []) as SgsstTreinamentoParticipante[]).map((p) => ({
         ...p,
         statusVencimento: calculateVencimentoTreinamento(p.validade),
       }));
+
+      return { rows, total: count ?? 0 };
     },
   });
 
   return {
-    todosParticipantes,
+    todosParticipantes: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
+    refetch,
   };
 }
 

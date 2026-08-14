@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstIncidentes, SgsstIncidente, StatusIncidente, TipoIncidente, GravidadeIncidente } from "@/hooks/sgsst/useSgsstIncidentes";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,31 +22,26 @@ export default function SgsstIncidentesListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-incidentes");
 
-  const { incidentes, isLoading, createIncidente, updateIncidente, removeIncidente } = useSgsstIncidentes();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedGravidade, setSelectedGravidade] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
+  const { incidentes, total, isLoading, createIncidente, updateIncidente, removeIncidente } = useSgsstIncidentes({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+    tipo: selectedTipo,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingIncidente, setEditingIncidente] = useState<SgsstIncidente | null>(null);
-
-  const filteredIncidentes = incidentes.filter((i) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      i.titulo.toLowerCase().includes(term) ||
-      i.descricao.toLowerCase().includes(term) ||
-      (i.codigo && i.codigo.toLowerCase().includes(term)) ||
-      (i.local_ocorrencia && i.local_ocorrencia.toLowerCase().includes(term)) ||
-      (i.projeto?.nome && i.projeto.nome.toLowerCase().includes(term));
-
-    const matchesTipo = selectedTipo === "todos" || i.tipo === selectedTipo;
-    const matchesGravidade = selectedGravidade === "todos" || i.gravidade === selectedGravidade;
-    const matchesStatus = selectedStatus === "todos" || i.status === selectedStatus;
-
-    return matchesSearch && matchesTipo && matchesGravidade && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingIncidente(null);
@@ -282,14 +279,14 @@ export default function SgsstIncidentesListPage() {
                     Carregando registros de ocorrências...
                   </TableCell>
                 </TableRow>
-              ) : filteredIncidentes.length === 0 ? (
+              ) : incidentes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhum incidente/acidente registrado ou encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredIncidentes.map((inc) => (
+                incidentes.map((inc) => (
                   <TableRow
                     key={inc.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -377,6 +374,17 @@ export default function SgsstIncidentesListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

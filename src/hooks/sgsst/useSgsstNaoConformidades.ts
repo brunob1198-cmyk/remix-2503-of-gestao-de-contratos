@@ -114,16 +114,18 @@ export function useSgsstNaoConformidadesDetail(ncId?: string) {
   });
 }
 
-export function useSgsstNaoConformidades() {
+export function useSgsstNaoConformidades(params?: { page?: number; pageSize?: number; search?: string; status?: string; severidade?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: naoConformidades = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_nao_conformidades", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_nao_conformidades", empresaId, page, pageSize, params?.search, params?.status, params?.severidade],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_nao_conformidades" as any)
         .select(`
           *,
@@ -132,11 +134,25 @@ export function useSgsstNaoConformidades() {
           area:areas(id, nome),
           responsavel:profiles!sgsst_nao_conformidades_responsavel_id_fkey(id, nome),
           verificador:profiles!sgsst_nao_conformidades_verificador_id_fkey(id, nome)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.ilike("titulo", `%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+      if (params?.severidade && params.severidade !== "todos") {
+        query = query.eq("severidade", params.severidade);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
-      return (data as SgsstNaoConformidade[]) || [];
+      return { rows: (data as SgsstNaoConformidade[]) || [], total: count ?? 0 };
     },
   });
 
@@ -324,7 +340,8 @@ export function useSgsstNaoConformidades() {
   });
 
   return {
-    naoConformidades,
+    naoConformidades: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

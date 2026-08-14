@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstApr, SgsstApr, StatusApr } from "@/hooks/sgsst/useSgsstApr";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,26 +22,23 @@ export default function SgsstAprListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-apr");
 
-  const { aprs, isLoading, createApr, updateApr, removeApr } = useSgsstApr();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
+
+  const { aprs, total, isLoading, createApr, updateApr, removeApr } = useSgsstApr({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingApr, setEditingApr] = useState<SgsstApr | null>(null);
-
-  const filteredAprs = aprs.filter((a) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      a.titulo.toLowerCase().includes(term) ||
-      a.atividade.toLowerCase().includes(term) ||
-      (a.codigo && a.codigo.toLowerCase().includes(term)) ||
-      (a.projeto?.nome && a.projeto.nome.toLowerCase().includes(term));
-
-    const matchesStatus = selectedStatus === "todos" || a.status === selectedStatus;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingApr(null);
@@ -227,14 +226,14 @@ export default function SgsstAprListPage() {
                     Carregando Análises Preliminares de Riscos...
                   </TableCell>
                 </TableRow>
-              ) : filteredAprs.length === 0 ? (
+              ) : aprs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma APR cadastrada ou encontrada.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAprs.map((a) => (
+                aprs.map((a) => (
                   <TableRow
                     key={a.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -318,6 +317,17 @@ export default function SgsstAprListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

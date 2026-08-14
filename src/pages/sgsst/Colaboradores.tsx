@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstColaboradores, SgsstColaboradorDados } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,23 +21,23 @@ export default function SgsstColaboradoresPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-colaboradores");
 
-  const { colaboradores, isLoading, createColaborador, updateColaborador, removeColaborador } = useSgsstColaboradores();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
+
+  const { colaboradores, total, isLoading, createColaborador, updateColaborador, removeColaborador } = useSgsstColaboradores({
+    page,
+    pageSize,
+    search: debouncedSearch,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingColaborador, setEditingColaborador] = useState<SgsstColaboradorDados | null>(null);
   const [selectedColaboradorForDetail, setSelectedColaboradorForDetail] = useState<SgsstColaboradorDados | null>(null);
-
-  const filteredColaboradores = colaboradores.filter((c) => {
-    const nome = (c.nome || c.profile?.nome || c.recurso?.nome || "").toLowerCase();
-    const cpf = (c.cpf || c.profile?.cpf || "").toLowerCase();
-    const matricula = (c.matricula || "").toLowerCase();
-    const funcao = (c.funcao?.nome || "").toLowerCase();
-    const term = searchTerm.toLowerCase();
-
-    return nome.includes(term) || cpf.includes(term) || matricula.includes(term) || funcao.includes(term);
-  });
 
   const handleCreateNew = () => {
     setEditingColaborador(null);
@@ -170,14 +172,14 @@ export default function SgsstColaboradoresPage() {
                     Carregando quadro de colaboradores...
                   </TableCell>
                 </TableRow>
-              ) : filteredColaboradores.length === 0 ? (
+              ) : colaboradores.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">
                     Nenhum colaborador cadastrado ou encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredColaboradores.map((c) => {
+                colaboradores.map((c) => {
                   const nomeColab = c.nome || c.profile?.nome || c.recurso?.nome || "Sem Nome";
                   const fotoColab = c.foto_url || c.profile?.avatar_url || "";
                   const totalNrs = c.treinamentos?.length || 0;
@@ -298,6 +300,17 @@ export default function SgsstColaboradoresPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

@@ -116,27 +116,40 @@ export function useSgsstPgrDetail(pgrId?: string) {
   });
 }
 
-export function useSgsstPgr() {
+export function useSgsstPgr(params?: { page?: number; pageSize?: number; search?: string; status?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: pgrs = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_pgr", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_pgr", empresaId, page, pageSize, params?.search, params?.status],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_pgr" as any)
         .select(`
           *,
           projeto:projetos(id, codigo, nome),
           site:sites(id, codigo, nome),
           responsavel:profiles!sgsst_pgr_responsavel_id_fkey(id, nome)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.ilike("titulo", `%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
-      return (data as SgsstPgr[]) || [];
+      return { rows: (data as SgsstPgr[]) || [], total: count ?? 0 };
     },
   });
 
@@ -236,7 +249,8 @@ export function useSgsstPgr() {
   });
 
   return {
-    pgrs,
+    pgrs: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

@@ -120,16 +120,18 @@ export function useSgsstInspecoesDetail(inspecaoId?: string) {
   });
 }
 
-export function useSgsstInspecoes() {
+export function useSgsstInspecoes(params?: { page?: number; pageSize?: number; search?: string; status?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: inspecoes = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_inspecoes", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_inspecoes", empresaId, page, pageSize, params?.search, params?.status],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_inspecoes" as any)
         .select(`
           *,
@@ -140,11 +142,22 @@ export function useSgsstInspecoes() {
           apr:sgsst_apr(id, titulo),
           pt:sgsst_pt(id, titulo),
           responsavel:profiles!sgsst_inspecoes_responsavel_id_fkey(id, nome)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.ilike("titulo", `%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
-      return (data as SgsstInspecao[]) || [];
+      return { rows: (data as SgsstInspecao[]) || [], total: count ?? 0 };
     },
   });
 
@@ -299,7 +312,8 @@ export function useSgsstInspecoes() {
   });
 
   return {
-    inspecoes,
+    inspecoes: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

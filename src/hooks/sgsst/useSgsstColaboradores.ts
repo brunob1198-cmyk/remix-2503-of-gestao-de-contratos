@@ -65,16 +65,18 @@ export type SgsstColaboradorInput = Omit<
   "id" | "empresa_id" | "created_at" | "updated_at" | "profile" | "recurso" | "funcao" | "area" | "projeto" | "treinamentos"
 >;
 
-export function useSgsstColaboradores() {
+export function useSgsstColaboradores(params?: { page?: number; pageSize?: number; search?: string; status?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: colaboradores = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_colaboradores", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_colaboradores", empresaId, page, pageSize, params?.search, params?.status],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_colaborador_dados" as any)
         .select(`
           *,
@@ -84,8 +86,19 @@ export function useSgsstColaboradores() {
           area:areas(id, nome),
           projeto:projetos(id, nome, codigo),
           treinamentos:sgsst_colaborador_treinamentos(*)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.or(`nome.ilike.%${params.search}%,cpf.ilike.%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
 
@@ -95,7 +108,7 @@ export function useSgsstColaboradores() {
         displayNome: colab.nome || colab.profile?.nome || colab.recurso?.nome || "Colaborador sem nome",
       }));
 
-      return formatted as SgsstColaboradorDados[];
+      return { rows: formatted as SgsstColaboradorDados[], total: count ?? 0 };
     },
   });
 
@@ -222,7 +235,8 @@ export function useSgsstColaboradores() {
   });
 
   return {
-    colaboradores,
+    colaboradores: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

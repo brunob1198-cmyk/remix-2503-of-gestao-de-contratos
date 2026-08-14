@@ -6,6 +6,8 @@ import {
   CategoriaDocumento,
 } from "@/hooks/sgsst/useSgsstDocumentos";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,15 +36,29 @@ export default function SgsstDocumentosListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-documentos");
 
-  const { documentos, isLoading, uploadDocumento, uploadNovaVersao, arquivarDocumento } = useSgsstDocumentos();
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
+  const [filterCategory, setFilterCategory] = useState("todos");
+
+  const { documentos, total, isLoading, uploadDocumento, uploadNovaVersao, arquivarDocumento } = useSgsstDocumentos(
+    undefined,
+    undefined,
+    {
+      page,
+      pageSize,
+      search: debouncedSearch,
+      tipo: filterCategory,
+    }
+  );
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
   const { historico: historicoGeral, isLoading: loadingHist } = useSgsstDocumentosHistorico();
 
   // Active Tab
   const [activeTab, setActiveTab] = useState("todos");
-
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("todos");
   const [filterStatus, setFilterStatus] = useState("ATIVO");
 
   // Modals
@@ -311,6 +327,17 @@ export default function SgsstDocumentosListPage() {
                     )}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  currentPage={page + 1}
+                  totalPages={totalPages}
+                  onPageChange={(p) => setPage(p - 1)}
+                  itemsPerPage={pageSize}
+                  onItemsPerPageChange={(s) => {
+                    setPageSize(s);
+                    setPage(0);
+                  }}
+                  totalItems={total}
+                />
               </CardContent>
             </Card>
           </TabsContent>

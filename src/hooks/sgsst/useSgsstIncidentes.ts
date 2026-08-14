@@ -165,16 +165,18 @@ export function useSgsstIncidentesDetail(incidenteId?: string) {
   });
 }
 
-export function useSgsstIncidentes() {
+export function useSgsstIncidentes(params?: { page?: number; pageSize?: number; search?: string; status?: string; tipo?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: incidentes = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_incidentes", empresaId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_incidentes", empresaId, page, pageSize, params?.search, params?.status, params?.tipo],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_incidentes" as any)
         .select(`
           *,
@@ -186,11 +188,25 @@ export function useSgsstIncidentes() {
           apr:sgsst_apr(id, titulo),
           pt:sgsst_pt(id, titulo),
           inspecao:sgsst_inspecoes(id, titulo)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params?.search) {
+        query = query.ilike("titulo", `%${params.search}%`);
+      }
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+      if (params?.tipo && params.tipo !== "todos") {
+        query = query.eq("tipo", params.tipo);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
 
       if (error) throw error;
-      return (data as SgsstIncidente[]) || [];
+      return { rows: (data as SgsstIncidente[]) || [], total: count ?? 0 };
     },
   });
 
@@ -323,7 +339,8 @@ export function useSgsstIncidentes() {
   });
 
   return {
-    incidentes,
+    incidentes: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

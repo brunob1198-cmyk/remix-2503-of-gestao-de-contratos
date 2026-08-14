@@ -10,6 +10,8 @@ import {
 } from "@/hooks/sgsst/useSgsstEpis";
 import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +44,19 @@ export default function SgsstEpisListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-epis");
 
-  const { epis, isLoading: loadingEpis, createEpi, updateEpi, removeEpi } = useSgsstEpis();
+  const [pageCat, setPageCat] = useState(0);
+  const [pageSizeCat, setPageSizeCat] = useState(25);
+  const [searchTermCat, setSearchTermCat] = useState("");
+  const debouncedSearchCat = useDebounce(searchTermCat, 400);
+
+  const { epis, total: totalCat, isLoading: loadingEpis, createEpi, updateEpi, removeEpi } = useSgsstEpis({
+    page: pageCat,
+    pageSize: pageSizeCat,
+    search: debouncedSearchCat,
+  });
+
+  const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
+
   const { entregas, isLoading: loadingEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
   const { devolucoes, isLoading: loadingDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
   const { colaboradores } = useSgsstColaboradores();
@@ -357,6 +371,17 @@ export default function SgsstEpisListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageCat + 1}
+                totalPages={totalPagesCat}
+                onPageChange={(p) => setPageCat(p - 1)}
+                itemsPerPage={pageSizeCat}
+                onItemsPerPageChange={(s) => {
+                  setPageSizeCat(s);
+                  setPageCat(0);
+                }}
+                totalItems={totalCat}
+              />
             </CardContent>
           </Card>
         </TabsContent>

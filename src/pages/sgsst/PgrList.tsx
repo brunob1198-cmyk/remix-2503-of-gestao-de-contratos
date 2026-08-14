@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstPgr, SgsstPgr, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,25 +21,23 @@ export default function SgsstPgrListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pgr");
 
-  const { pgrs, isLoading, createPgr, updatePgr, updateStatusPgr, removePgr } = useSgsstPgr();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
+
+  const { pgrs, total, isLoading, createPgr, updatePgr, updateStatusPgr, removePgr } = useSgsstPgr({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPgr, setEditingPgr] = useState<SgsstPgr | null>(null);
-
-  const filteredPgrs = pgrs.filter((p) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      p.titulo.toLowerCase().includes(term) ||
-      (p.codigo && p.codigo.toLowerCase().includes(term)) ||
-      (p.projeto?.nome && p.projeto.nome.toLowerCase().includes(term));
-
-    const matchesStatus = selectedStatus === "todos" || p.status === selectedStatus;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingPgr(null);
@@ -216,14 +216,14 @@ export default function SgsstPgrListPage() {
                     Carregando PGRs...
                   </TableCell>
                 </TableRow>
-              ) : filteredPgrs.length === 0 ? (
+              ) : pgrs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhum PGR cadastrado ou encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPgrs.map((p) => (
+                pgrs.map((p) => (
                   <TableRow
                     key={p.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -259,13 +259,13 @@ export default function SgsstPgrListPage() {
                           <Eye className="h-4 w-4 text-primary" />
                         </Button>
 
-                        {allowEdit && p.status !== "ENCERRADO" && (
+                        {allowEdit && (
                           <>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={(e) => handleEdit(p, e)}
-                              title="Editar Documento"
+                              title="Editar PGR"
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -277,7 +277,7 @@ export default function SgsstPgrListPage() {
                                   size="icon"
                                   className="text-destructive hover:text-destructive"
                                   onClick={(e) => e.stopPropagation()}
-                                  title="Excluir"
+                                  title="Excluir PGR"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -286,7 +286,7 @@ export default function SgsstPgrListPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Excluir PGR "{p.titulo}"?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Todos os itens do inventário de riscos e medidas de controle deste PGR serão removidos.
+                                    Esta ação removerá permanentemente o PGR e todo seu inventário de riscos vinculado.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -306,6 +306,17 @@ export default function SgsstPgrListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

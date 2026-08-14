@@ -86,13 +86,19 @@ export interface CreateNovaVersaoParams {
 }
 
 // 1. Hook Documentos SGSST
-export function useSgsstDocumentos(entidadeTipo?: CategoriaDocumento, entidadeId?: string) {
+export function useSgsstDocumentos(
+  entidadeTipo?: CategoriaDocumento,
+  entidadeId?: string,
+  params?: { page?: number; pageSize?: number; search?: string; tipo?: string }
+) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
 
-  const { data: documentos = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_documentos", empresaId, entidadeTipo, entidadeId],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_documentos", empresaId, entidadeTipo, entidadeId, page, pageSize, params?.search, params?.tipo],
     enabled: !!empresaId,
     queryFn: async () => {
       let query = supabase
@@ -100,16 +106,26 @@ export function useSgsstDocumentos(entidadeTipo?: CategoriaDocumento, entidadeId
         .select(`
           *,
           autor:profiles!sgsst_documentos_created_by_fkey(id, nome)
-        `)
+        `, { count: "exact" })
         .order("created_at", { ascending: false });
 
       if (entidadeTipo && entidadeId) {
         query = query.eq("entidade_tipo", entidadeTipo).eq("entidade_id", entidadeId);
       }
 
-      const { data, error } = await (query as any);
+      if (params?.search) {
+        query = query.or(`nome.ilike.%${params.search}%,codigo.ilike.%${params.search}%`);
+      }
+
+      if (params?.tipo && params.tipo !== "todos") {
+        query = query.eq("categoria", params.tipo);
+      }
+
+      query = query.range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstDocumento[]) || [];
+      return { rows: (data as SgsstDocumento[]) || [], total: count ?? 0 };
     },
   });
 
@@ -315,7 +331,8 @@ export function useSgsstDocumentos(entidadeTipo?: CategoriaDocumento, entidadeId
   });
 
   return {
-    documentos,
+    documentos: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

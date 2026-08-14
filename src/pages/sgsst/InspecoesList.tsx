@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSgsstInspecoes, SgsstInspecao, StatusInspecao, TipoInspecao } from "@/hooks/sgsst/useSgsstInspecoes";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useDebounce } from "@/hooks/useDebounce";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,27 +22,24 @@ export default function SgsstInspecoesListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-inspecoes");
 
-  const { inspecoes, isLoading, createInspecao, updateInspecao, removeInspecao } = useSgsstInspecoes();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
+  const { inspecoes, total, isLoading, createInspecao, updateInspecao, removeInspecao } = useSgsstInspecoes({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: selectedStatus,
+  });
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingInspecao, setEditingInspecao] = useState<SgsstInspecao | null>(null);
-
-  const filteredInspecoes = inspecoes.filter((i) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      i.titulo.toLowerCase().includes(term) ||
-      (i.codigo && i.codigo.toLowerCase().includes(term)) ||
-      (i.projeto?.nome && i.projeto.nome.toLowerCase().includes(term));
-
-    const matchesTipo = selectedTipo === "todos" || i.tipo === selectedTipo;
-    const matchesStatus = selectedStatus === "todos" || i.status === selectedStatus;
-
-    return matchesSearch && matchesTipo && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingInspecao(null);
@@ -236,14 +235,14 @@ export default function SgsstInspecoesListPage() {
                     Carregando inspeções de segurança...
                   </TableCell>
                 </TableRow>
-              ) : filteredInspecoes.length === 0 ? (
+              ) : inspecoes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma inspeção agendada ou encontrada nos filtros.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredInspecoes.map((i) => (
+                inspecoes.map((i) => (
                   <TableRow
                     key={i.id}
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -328,6 +327,17 @@ export default function SgsstInspecoesListPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 
