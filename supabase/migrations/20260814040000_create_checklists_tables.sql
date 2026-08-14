@@ -75,14 +75,14 @@ CREATE TABLE IF NOT EXISTS public.checklist_aplicacoes (
   responsavel_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   projeto_id uuid REFERENCES public.projetos(id) ON DELETE SET NULL,
   area_id uuid REFERENCES public.areas(id) ON DELETE SET NULL,
-  colaborador_id uuid REFERENCES public.sgsst_colaborador_dados(id) ON DELETE SET NULL,
-  funcao_id uuid REFERENCES public.sgsst_funcoes(id) ON DELETE SET NULL,
-  pgr_id uuid REFERENCES public.sgsst_pgr(id) ON DELETE SET NULL,
-  apr_id uuid REFERENCES public.sgsst_apr(id) ON DELETE SET NULL,
-  pt_id uuid REFERENCES public.sgsst_pt(id) ON DELETE SET NULL,
-  inspecao_id uuid REFERENCES public.sgsst_inspecoes(id) ON DELETE SET NULL,
-  incidente_id uuid REFERENCES public.sgsst_incidentes(id) ON DELETE SET NULL,
-  nao_conformidade_id uuid REFERENCES public.sgsst_nao_conformidades(id) ON DELETE SET NULL,
+  colaborador_id uuid,
+  funcao_id uuid,
+  pgr_id uuid,
+  apr_id uuid,
+  pt_id uuid,
+  inspecao_id uuid,
+  incidente_id uuid,
+  nao_conformidade_id uuid,
   data_aplicacao timestamptz DEFAULT now(),
   data_conclusao timestamptz,
   pontuacao_obtida numeric DEFAULT 0,
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.checklist_planos_acao (
   data_conclusao date,
   validado_por_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   data_validacao timestamptz,
-  nao_conformidade_sgsst_id uuid REFERENCES public.sgsst_nao_conformidades(id) ON DELETE SET NULL,
+  nao_conformidade_sgsst_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -173,48 +173,80 @@ ALTER TABLE public.checklist_evidencias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.checklist_planos_acao ENABLE ROW LEVEL SECURITY;
 
 -- POLICIES MODELOS
+DROP POLICY IF EXISTS "Users view own empresa checklist_modelos" ON public.checklist_modelos;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_modelos" ON public.checklist_modelos;
+DROP POLICY IF EXISTS "Users update own empresa checklist_modelos" ON public.checklist_modelos;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_modelos" ON public.checklist_modelos;
 CREATE POLICY "Users view own empresa checklist_modelos" ON public.checklist_modelos FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_modelos" ON public.checklist_modelos FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_modelos" ON public.checklist_modelos FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_modelos" ON public.checklist_modelos FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES SECOES
+DROP POLICY IF EXISTS "Users view own empresa checklist_secoes" ON public.checklist_secoes;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_secoes" ON public.checklist_secoes;
+DROP POLICY IF EXISTS "Users update own empresa checklist_secoes" ON public.checklist_secoes;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_secoes" ON public.checklist_secoes;
 CREATE POLICY "Users view own empresa checklist_secoes" ON public.checklist_secoes FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_secoes" ON public.checklist_secoes FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_secoes" ON public.checklist_secoes FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_secoes" ON public.checklist_secoes FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES ITENS
+DROP POLICY IF EXISTS "Users view own empresa checklist_itens" ON public.checklist_itens;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_itens" ON public.checklist_itens;
+DROP POLICY IF EXISTS "Users update own empresa checklist_itens" ON public.checklist_itens;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_itens" ON public.checklist_itens;
 CREATE POLICY "Users view own empresa checklist_itens" ON public.checklist_itens FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_itens" ON public.checklist_itens FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_itens" ON public.checklist_itens FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_itens" ON public.checklist_itens FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES REGRAS
+DROP POLICY IF EXISTS "Users view own empresa checklist_regras" ON public.checklist_regras;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_regras" ON public.checklist_regras;
+DROP POLICY IF EXISTS "Users update own empresa checklist_regras" ON public.checklist_regras;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_regras" ON public.checklist_regras;
 CREATE POLICY "Users view own empresa checklist_regras" ON public.checklist_regras FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_regras" ON public.checklist_regras FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_regras" ON public.checklist_regras FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_regras" ON public.checklist_regras FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES APLICACOES
+DROP POLICY IF EXISTS "Users view own empresa checklist_aplicacoes" ON public.checklist_aplicacoes;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_aplicacoes" ON public.checklist_aplicacoes;
+DROP POLICY IF EXISTS "Users update own empresa checklist_aplicacoes" ON public.checklist_aplicacoes;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_aplicacoes" ON public.checklist_aplicacoes;
 CREATE POLICY "Users view own empresa checklist_aplicacoes" ON public.checklist_aplicacoes FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_aplicacoes" ON public.checklist_aplicacoes FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_aplicacoes" ON public.checklist_aplicacoes FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_aplicacoes" ON public.checklist_aplicacoes FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES RESPOSTAS
+DROP POLICY IF EXISTS "Users view own empresa checklist_respostas" ON public.checklist_respostas;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_respostas" ON public.checklist_respostas;
+DROP POLICY IF EXISTS "Users update own empresa checklist_respostas" ON public.checklist_respostas;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_respostas" ON public.checklist_respostas;
 CREATE POLICY "Users view own empresa checklist_respostas" ON public.checklist_respostas FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_respostas" ON public.checklist_respostas FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_respostas" ON public.checklist_respostas FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_respostas" ON public.checklist_respostas FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES EVIDENCIAS
+DROP POLICY IF EXISTS "Users view own empresa checklist_evidencias" ON public.checklist_evidencias;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_evidencias" ON public.checklist_evidencias;
+DROP POLICY IF EXISTS "Users update own empresa checklist_evidencias" ON public.checklist_evidencias;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_evidencias" ON public.checklist_evidencias;
 CREATE POLICY "Users view own empresa checklist_evidencias" ON public.checklist_evidencias FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_evidencias" ON public.checklist_evidencias FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_evidencias" ON public.checklist_evidencias FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users delete own empresa checklist_evidencias" ON public.checklist_evidencias FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 
 -- POLICIES PLANOS DE ACAO
+DROP POLICY IF EXISTS "Users view own empresa checklist_planos_acao" ON public.checklist_planos_acao;
+DROP POLICY IF EXISTS "Users insert own empresa checklist_planos_acao" ON public.checklist_planos_acao;
+DROP POLICY IF EXISTS "Users update own empresa checklist_planos_acao" ON public.checklist_planos_acao;
+DROP POLICY IF EXISTS "Users delete own empresa checklist_planos_acao" ON public.checklist_planos_acao;
 CREATE POLICY "Users view own empresa checklist_planos_acao" ON public.checklist_planos_acao FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users insert own empresa checklist_planos_acao" ON public.checklist_planos_acao FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
 CREATE POLICY "Users update own empresa checklist_planos_acao" ON public.checklist_planos_acao FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id(auth.uid())) WITH CHECK (empresa_id = public.get_user_empresa_id(auth.uid()));
