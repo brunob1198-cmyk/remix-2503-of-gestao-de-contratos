@@ -152,9 +152,9 @@ export function ColaboradorFormDialog({
     try {
       setIsUploadingFoto(true);
       const res = await uploadImage(file);
-      if (res && res.path) {
-        setFotoUrl(res.path);
-        setFotoR2Key(res.path);
+      if (res) {
+        setFotoUrl(res);
+        setFotoR2Key(res);
         toast.success("Foto do colaborador enviada com sucesso!");
       }
     } catch (err: any) {
@@ -469,7 +469,7 @@ export function ColaboradorFormDialog({
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Categoria</Label>
-                    <Input placeholder="Ex: AB, D" value={cnhCategoria} onChange={(e) => setCNHCategoria(e.target.value)} />
+                    <Input placeholder="Ex: AB, D" value={cnhCategoria} onChange={(e) => setCnhCategoria(e.target.value)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Validade CNH</Label>

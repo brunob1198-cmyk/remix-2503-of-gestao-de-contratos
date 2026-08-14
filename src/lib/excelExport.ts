@@ -1,7 +1,16 @@
 import * as XLSX from 'xlsx';
 import { ExtractionResult } from '@/types/extraction';
 
-export function exportToExcel(results: ExtractionResult[]) {
+export function exportToExcel(results: ExtractionResult[] | Record<string, any>[], fileName?: string) {
+  // Generic mode: exporta uma lista simples de objetos em uma única planilha
+  if (fileName) {
+    const rows = results as Record<string, any>[];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Dados');
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+    return;
+  }
+  results = results as ExtractionResult[];
   const successfulResults = results.filter(r => r.status === 'success' && r.data);
   
   if (successfulResults.length === 0) {

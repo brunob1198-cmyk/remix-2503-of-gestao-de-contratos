@@ -583,7 +583,7 @@ export default function SgsstEpisListPage() {
                       <TableRow key={h.id}>
                         <TableCell className="font-mono text-xs">{formatDateStr(h.created_at)}</TableCell>
                         <TableCell><Badge variant="outline" className="font-bold text-xs">{h.operacao}</Badge></TableCell>
-                        <TableCell className="text-xs font-semibold">{h.epi?.nome || "—"} (CA: {h.epi?.ca || "—"})</TableCell>
+                        <TableCell className="text-xs font-semibold">{(h as any).epi?.nome || "—"} (CA: {(h as any).epi?.ca || "—"})</TableCell>
                         <TableCell className="text-xs font-mono font-bold">{h.quantidade || 1}</TableCell>
                         <TableCell className="text-xs">{h.usuario?.nome || "Sistema"}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-xs">{h.observacao || "—"}</TableCell>

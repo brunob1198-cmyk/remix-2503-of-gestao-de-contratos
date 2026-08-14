@@ -105,10 +105,9 @@ export interface SgsstAsoHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
-import { calculateVencimentoAso, StatusVencimentoAso } from "@/utils/sgsstAsoUtils";
+import { calculateVencimentoAso } from "@/utils/sgsstAsoUtils";
 
 export { calculateVencimentoAso };
-export type { StatusVencimentoAso };
 
 // Hook for Exames Ocupacionais
 export function useSgsstExames() {
