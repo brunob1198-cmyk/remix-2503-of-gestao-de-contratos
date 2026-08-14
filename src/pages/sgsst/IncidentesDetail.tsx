@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstIncidentes,
@@ -13,7 +14,7 @@ import {
   StatusAcao,
   SgsstIncidenteAcao,
 } from "@/hooks/sgsst/useSgsstIncidentes";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,7 @@ export default function SgsstIncidentesDetailPage() {
   const { updateIncidente, updateStatusIncidente } = useSgsstIncidentes();
   const { data: currentIncidente, isLoading: loadingDetail } = useSgsstIncidentesDetail(incidenteId);
 
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { envolvidos, addEnvolvido, removeEnvolvido } = useSgsstIncidenteEnvolvidos(incidenteId);
   const { investigacao, saveInvestigacao, isLoading: loadingInv } = useSgsstIncidenteInvestigacao(incidenteId);
@@ -206,6 +207,8 @@ export default function SgsstIncidentesDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstBreadcrumb moduloLabel="Incidentes" moduloPath="/medicoes/sgsst/incidentes" itemTitle={currentIncidente.titulo} />
+
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate("/medicoes/sgsst/incidentes")}>
@@ -769,14 +772,11 @@ export default function SgsstIncidentesDetailPage() {
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {colaboradores.map((c) => {
-                    const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                    return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {nome} {c.funcao ? `(${c.funcao.nome})` : ""}
-                      </SelectItem>
-                    );
-                  })}
+                  {colaboradores.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.displayNome} {c.funcao ? `(${c.funcao})` : ""}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

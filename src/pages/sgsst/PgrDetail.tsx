@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSgsstPgr, useSgsstPgrDetail, useSgsstPgrInventario, useSgsstPgrMedidasControle, SgsstPgrInventario, SgsstPgrMedidaControle, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
@@ -152,6 +152,8 @@ export default function SgsstPgrDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstBreadcrumb moduloLabel="PGR" moduloPath="/medicoes/sgsst/pgr" itemTitle={currentPgr.titulo} />
+
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate("/medicoes/sgsst/pgr")}>

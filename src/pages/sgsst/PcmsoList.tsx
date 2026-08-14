@@ -10,7 +10,7 @@ import {
   StatusExameOcupacional,
   calculateVencimentoAso,
 } from "@/hooks/sgsst/useSgsstAsosAndExames";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ export default function SgsstPcmsoListPage() {
   const { pcmsoList, isLoading: loadingPcmso, createPcmso, updatePcmso, removePcmso } = useSgsstPcmso();
   const { asos, isLoading: loadingAsos, createAso, updateAso, cancelAso, removeAso } = useSgsstAsos();
   const { exames, isLoading: loadingExames, createExame, updateExame, removeExame } = useSgsstExames();
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
 
   // Tab State
   const [activeTab, setActiveTab] = useState("pcmso");

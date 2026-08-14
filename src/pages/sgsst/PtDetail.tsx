@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstPt,
@@ -10,7 +11,7 @@ import {
   StatusPt,
   SgsstPtChecklistItem,
 } from "@/hooks/sgsst/useSgsstPt";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +57,7 @@ export default function SgsstPtDetailPage() {
   const { updatePt, updateStatusPt } = useSgsstPt();
   const { data: currentPt, isLoading: loadingDetail } = useSgsstPtDetail(ptId);
 
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
   const { checklist, isLoading: loadingChecklist, updateRespostaItem, addChecklistItem, removeChecklistItem } = useSgsstPtChecklist(ptId);
   const { riscos, isLoading: loadingRiscos } = useSgsstPtRiscos(ptId);
   const { participantes, addParticipante, removeParticipante } = useSgsstPtParticipantes(ptId);
@@ -164,6 +165,8 @@ export default function SgsstPtDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstBreadcrumb moduloLabel="PT" moduloPath="/medicoes/sgsst/pt" itemTitle={`[${currentPt.codigo || "PT"}] ${currentPt.atividade}`} />
+
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate("/medicoes/sgsst/pt")}>
@@ -650,14 +653,11 @@ export default function SgsstPtDetailPage() {
                   <SelectValue placeholder="Selecione o colaborador..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {colaboradores.map((c) => {
-                    const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                    return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {nome} {c.funcao ? `(${c.funcao.nome})` : ""}
-                      </SelectItem>
-                    );
-                  })}
+                  {colaboradores.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.displayNome} {c.funcao ? `(${c.funcao})` : ""}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

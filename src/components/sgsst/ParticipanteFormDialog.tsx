@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { SgsstTreinamentoParticipante, SgsstTreinamentoTurma, ResultadoParticipante } from "@/hooks/sgsst/useSgsstTreinamentos";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { UserCheck } from "lucide-react";
 
 interface ParticipanteFormDialogProps {
@@ -29,7 +29,7 @@ export function ParticipanteFormDialog({
   onUpdate,
   isLoading = false,
 }: ParticipanteFormDialogProps) {
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
 
   const [colaboradorId, setColaboradorId] = useState("");
   const [presenca, setPresenca] = useState(true);
@@ -96,14 +96,11 @@ export function ParticipanteFormDialog({
                   <SelectValue placeholder="Selecione o trabalhador..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {colaboradores.map((c) => {
-                    const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                    return (
-                      <SelectItem key={c.id} value={c.id}>
-                        {nome} (CPF: {c.cpf}) — {c.funcao?.nome || "Sem função"}
-                      </SelectItem>
-                    );
-                  })}
+                  {colaboradores.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.displayNome} (CPF: {c.cpf || "—"}) — {c.funcao || "Sem função"}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

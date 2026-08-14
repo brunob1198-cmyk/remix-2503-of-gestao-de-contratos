@@ -8,7 +8,7 @@ import {
   SgsstEpiEntrega,
   CategoriaEpi,
 } from "@/hooks/sgsst/useSgsstEpis";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -59,7 +59,7 @@ export default function SgsstEpisListPage() {
 
   const { entregas, isLoading: loadingEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
   const { devolucoes, isLoading: loadingDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
 
   // Active Tab
   const [activeTab, setActiveTab] = useState("catalogo");

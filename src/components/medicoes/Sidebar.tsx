@@ -53,37 +53,40 @@ interface MenuItem {
   telaId?: string;
   telaIds?: string[];
   adminOnly?: boolean;
-  group?: string;
+  group: "gestao" | "sgsst";
 }
 
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
-  { id: "dashboard", title: "Dashboard", url: "/medicoes/dashboard", icon: LayoutDashboard },
-  { id: "acompanhamento", title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento" },
-  { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
-  { id: "checklists", title: "Checklists", url: "/medicoes/checklists", icon: ClipboardCheck, telaId: "checklists" },
-  { id: "sgsst-dashboard", title: "SGSST - Dashboard", url: "/medicoes/sgsst/dashboard", icon: Activity, telaId: "sgsst-dashboard" },
-  { id: "sgsst-seguranca", title: "SGSST - Segurança", url: "/medicoes/sgsst/pgr", icon: ShieldCheck, telaIds: ["sgsst-pgr", "sgsst-apr", "sgsst-pt", "sgsst-inspecoes", "sgsst-incidentes", "sgsst-nao-conformidades", "sgsst-riscos", "sgsst-funcoes", "sgsst-colaboradores"] },
-  { id: "sgsst-pcmso", title: "SGSST - Saúde Ocupacional", url: "/medicoes/sgsst/pcmso", icon: HeartPulse, telaId: "sgsst-pcmso" },
-  { id: "sgsst-treinamentos", title: "SGSST - Treinamentos", url: "/medicoes/sgsst/treinamentos", icon: GraduationCap, telaId: "sgsst-treinamentos" },
-  { id: "sgsst-epis", title: "SGSST - EPI", url: "/medicoes/sgsst/epis", icon: Shield, telaId: "sgsst-epis" },
-  { id: "sgsst-documentos", title: "SGSST - Documentos", url: "/medicoes/sgsst/documentos", icon: FolderArchive, telaId: "sgsst-documentos" },
-  { id: "sgsst-relatorios", title: "SGSST - Relatórios", url: "/medicoes/sgsst/relatorios", icon: FileBarChart, telaId: "sgsst-relatorios" },
-  { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
-  { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario" },
-  { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },
-  { id: "analise", title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise" },
-  { id: "planejamento", title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento" },
-  { id: "recursos", title: "Recursos", url: "/medicoes/recursos", icon: Boxes, telaId: "recursos" },
-  { id: "medicao", title: "Lançar Medição", url: "/medicoes/medicao", icon: Receipt, telaId: "medicao" },
-  { id: "faturamento", title: "Portal de Faturamento", url: "/medicoes/faturamento", icon: DollarSign, telaId: "faturamento" },
-  { id: "relatorios", title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios" },
-  { id: "supply-chain", title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain" },
-  { id: "power-bi", title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi" },
-  { id: "audit-log", title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true },
-  
-  { id: "integracao", title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true },
-  { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true },
-  { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle },
+  // Gestão de Contratos
+  { id: "dashboard", title: "Dashboard", url: "/medicoes/dashboard", icon: LayoutDashboard, group: "gestao" },
+  { id: "acompanhamento", title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento", group: "gestao" },
+  { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"], group: "gestao" },
+  { id: "checklists", title: "Checklists", url: "/medicoes/checklists", icon: ClipboardCheck, telaId: "checklists", group: "gestao" },
+  { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario", group: "gestao" },
+  { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario", group: "gestao" },
+  { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo", group: "gestao" },
+  { id: "analise", title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise", group: "gestao" },
+  { id: "planejamento", title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento", group: "gestao" },
+  { id: "recursos", title: "Recursos", url: "/medicoes/recursos", icon: Boxes, telaId: "recursos", group: "gestao" },
+  { id: "medicao", title: "Lançar Medição", url: "/medicoes/medicao", icon: Receipt, telaId: "medicao", group: "gestao" },
+  { id: "faturamento", title: "Portal de Faturamento", url: "/medicoes/faturamento", icon: DollarSign, telaId: "faturamento", group: "gestao" },
+  { id: "relatorios", title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios", group: "gestao" },
+  { id: "supply-chain", title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain", group: "gestao" },
+  { id: "power-bi", title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi", group: "gestao" },
+  { id: "audit-log", title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true, group: "gestao" },
+  { id: "integracao", title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true, group: "gestao" },
+  { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true, group: "gestao" },
+  { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle, group: "gestao" },
+
+  // SGSST PRO
+  { id: "sgsst-dashboard", title: "SGSST - Dashboard", url: "/medicoes/sgsst/dashboard", icon: Activity, telaId: "sgsst-dashboard", group: "sgsst" },
+  { id: "sgsst-colaboradores", title: "SGSST - Colaboradores", url: "/medicoes/sgsst/colaboradores", icon: UserCheck, telaId: "sgsst-colaboradores", group: "sgsst" },
+  { id: "sgsst-seguranca", title: "SGSST - Segurança", url: "/medicoes/sgsst/pgr", icon: ShieldCheck, telaIds: ["sgsst-pgr", "sgsst-apr", "sgsst-pt", "sgsst-inspecoes", "sgsst-incidentes", "sgsst-nao-conformidades", "sgsst-riscos", "sgsst-funcoes"], group: "sgsst" },
+  { id: "sgsst-pcmso", title: "SGSST - Saúde Ocupacional", url: "/medicoes/sgsst/pcmso", icon: HeartPulse, telaId: "sgsst-pcmso", group: "sgsst" },
+  { id: "sgsst-treinamentos", title: "SGSST - Treinamentos", url: "/medicoes/sgsst/treinamentos", icon: GraduationCap, telaId: "sgsst-treinamentos", group: "sgsst" },
+  { id: "sgsst-epis", title: "SGSST - EPI", url: "/medicoes/sgsst/epis", icon: Shield, telaId: "sgsst-epis", group: "sgsst" },
+  { id: "sgsst-documentos", title: "SGSST - Documentos", url: "/medicoes/sgsst/documentos", icon: FolderArchive, telaId: "sgsst-documentos", group: "sgsst" },
+  { id: "sgsst-relatorios", title: "SGSST - Relatórios", url: "/medicoes/sgsst/relatorios", icon: FileBarChart, telaId: "sgsst-relatorios", group: "sgsst" },
 ];
 
 interface SortableMenuItemProps {
@@ -122,11 +125,11 @@ function SortableMenuItem({ item, collapsed }: SortableMenuItemProps) {
         <SidebarMenuButton asChild tooltip={item.title}>
           <NavLink
             to={item.url}
-            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground w-full"
+            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground w-full text-xs sm:text-sm"
             activeClassName="bg-accent text-accent-foreground font-medium"
           >
-            <item.icon className="h-5 w-5" />
-            {!collapsed && <span>{item.title}</span>}
+            <item.icon className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate">{item.title}</span>}
           </NavLink>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -146,13 +149,14 @@ export function MedicoesSidebar() {
     if (saved) {
       try {
         const savedIds = JSON.parse(saved) as string[];
-        return [...DEFAULT_MENU_ITEMS].sort((a, b) => {
+        const sorted = [...DEFAULT_MENU_ITEMS].sort((a, b) => {
           const indexA = savedIds.indexOf(a.id);
           const indexB = savedIds.indexOf(b.id);
           if (indexA === -1) return 1;
           if (indexB === -1) return -1;
           return indexA - indexB;
         });
+        return sorted;
       } catch (e) {
         console.error("Error parsing saved sidebar order", e);
       }
@@ -176,6 +180,9 @@ export function MedicoesSidebar() {
     });
   }, [items, role, canView]);
 
+  const gestaoItems = useMemo(() => visibleItems.filter((i) => i.group === "gestao"), [visibleItems]);
+  const sgsstItems = useMemo(() => visibleItems.filter((i) => i.group === "sgsst"), [visibleItems]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -187,9 +194,19 @@ export function MedicoesSidebar() {
     })
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  function handleGestaoDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setItems((prevItems) => {
+        const oldIndex = prevItems.findIndex((item) => item.id === active.id);
+        const newIndex = prevItems.findIndex((item) => item.id === over.id);
+        return arrayMove(prevItems, oldIndex, newIndex);
+      });
+    }
+  }
 
+  function handleSgsstDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
     if (over && active.id !== over.id) {
       setItems((prevItems) => {
         const oldIndex = prevItems.findIndex((item) => item.id === active.id);
@@ -205,10 +222,15 @@ export function MedicoesSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent className="flex flex-col h-full">
-        <SidebarGroup className="flex-1">
+      <SidebarContent className="flex flex-col h-full overflow-y-auto">
+        {/* GRUPO 1: GESTÃO DE CONTRATOS */}
+        <SidebarGroup>
           <SidebarGroupLabel className="px-4 py-2 flex items-center justify-between">
-            {!collapsed && <span className="text-lg font-bold">Gestão de Contratos</span>}
+            {!collapsed && (
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Gestão de Contratos
+              </span>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -223,15 +245,15 @@ export function MedicoesSidebar() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+              onDragEnd={handleGestaoDragEnd}
               modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
             >
               <SidebarMenu>
                 <SortableContext
-                  items={visibleItems.map(i => i.id)}
+                  items={gestaoItems.map((i) => i.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {visibleItems.map((item) => (
+                  {gestaoItems.map((item) => (
                     <SortableMenuItem key={item.id} item={item} collapsed={collapsed} />
                   ))}
                 </SortableContext>
@@ -240,7 +262,40 @@ export function MedicoesSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="border-t p-3">
+        {/* GRUPO 2: SGSST PRO */}
+        {sgsstItems.length > 0 && (
+          <SidebarGroup className="mt-2 pt-2 border-t border-sidebar-border">
+            <SidebarGroupLabel className="px-4 py-2 flex items-center justify-between">
+              {!collapsed && (
+                <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5" />
+                  SGSST PRO
+                </span>
+              )}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSgsstDragEnd}
+                modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
+              >
+                <SidebarMenu>
+                  <SortableContext
+                    items={sgsstItems.map((i) => i.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {sgsstItems.map((item) => (
+                      <SortableMenuItem key={item.id} item={item} collapsed={collapsed} />
+                    ))}
+                  </SortableContext>
+                </SidebarMenu>
+              </DndContext>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <div className="mt-auto border-t p-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
               {avatarUrl && <AvatarImage src={resolveFileUrl(avatarUrl)} key={avatarUrl} />}

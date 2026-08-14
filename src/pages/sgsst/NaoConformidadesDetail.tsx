@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstNaoConformidades,
@@ -137,6 +138,8 @@ export default function SgsstNaoConformidadesDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstBreadcrumb moduloLabel="Não Conformidades" moduloPath="/medicoes/sgsst/nao-conformidades" itemTitle={currentNc.titulo || currentNc.codigo} />
+
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate("/medicoes/sgsst/nao-conformidades")}>

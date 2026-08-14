@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstInspecoes,
@@ -182,6 +183,8 @@ export default function SgsstInspecoesDetailPage() {
 
   return (
     <div className="space-y-6">
+      <SgsstBreadcrumb moduloLabel="Inspeções" moduloPath="/medicoes/sgsst/inspecoes" itemTitle={currentInspecao.titulo} />
+
       {/* Top Navigation */}
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate("/medicoes/sgsst/inspecoes")}>

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstAso, SgsstAsoInput, TipoExameOcupacional, AptidaoAso, StatusAso } from "@/hooks/sgsst/useSgsstAsosAndExames";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import { useSgsstExames } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { Stethoscope, AlertTriangle } from "lucide-react";
@@ -29,7 +29,7 @@ export function AsoFormDialog({
   onSave,
   isLoading = false,
 }: AsoFormDialogProps) {
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
   const { pcmsoList } = useSgsstPcmso();
   const { exames } = useSgsstExames();
 
@@ -159,14 +159,11 @@ export function AsoFormDialog({
                 <SelectValue placeholder="Selecione o colaborador..." />
               </SelectTrigger>
               <SelectContent>
-                {colaboradores.map((c) => {
-                  const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                  return (
-                    <SelectItem key={c.id} value={c.id}>
-                      {nome} (CPF: {c.cpf}) — {c.funcao?.nome || "Sem função"}
-                    </SelectItem>
-                  );
-                })}
+                {colaboradores.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.displayNome} (CPF: {c.cpf || "—"}) — {c.funcao || "Sem função"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

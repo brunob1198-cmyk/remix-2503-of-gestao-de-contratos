@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstExame, SgsstExameInput, TipoExameOcupacional, StatusExameOcupacional } from "@/hooks/sgsst/useSgsstAsosAndExames";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import { FileText } from "lucide-react";
 
@@ -25,7 +25,7 @@ export function ExameFormDialog({
   onSave,
   isLoading = false,
 }: ExameFormDialogProps) {
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
   const { pcmsoList } = useSgsstPcmso();
 
   const [colaboradorId, setColaboradorId] = useState("");
@@ -103,14 +103,11 @@ export function ExameFormDialog({
                 <SelectValue placeholder="Selecione o colaborador..." />
               </SelectTrigger>
               <SelectContent>
-                {colaboradores.map((c) => {
-                  const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                  return (
-                    <SelectItem key={c.id} value={c.id}>
-                      {nome} (CPF: {c.cpf}) — {c.funcao?.nome || "Sem função"}
-                    </SelectItem>
-                  );
-                })}
+                {colaboradores.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.displayNome} (CPF: {c.cpf || "—"}) — {c.funcao || "Sem função"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

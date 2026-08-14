@@ -247,3 +247,50 @@ export function useSgsstColaboradores(params?: { page?: number; pageSize?: numbe
     removeTreinamento,
   };
 }
+
+export interface SgsstColaboradorResumoItem {
+  id: string;
+  nome?: string | null;
+  displayNome: string;
+  cpf?: string | null;
+  funcao?: string | null;
+  profile?: { id: string; nome: string | null } | null;
+  recurso?: { id: string; nome: string } | null;
+}
+
+export function useSgsstColaboradoresResumo() {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data: colaboradores = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_colaboradores_resumo", empresaId],
+    enabled: !!empresaId,
+    staleTime: 1000 * 60 * 10,
+    queryFn: async (): Promise<SgsstColaboradorResumoItem[]> => {
+      const { data, error } = await supabase
+        .from("sgsst_colaborador_dados" as any)
+        .select("id, nome, cpf, profile:profiles(id, nome), recurso:recursos(id, nome), funcao:sgsst_funcoes(id, nome)")
+        .eq("status", "ativo")
+        .order("nome", { ascending: true });
+
+      if (error) throw error;
+
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        nome: c.nome,
+        displayNome: c.nome || c.profile?.nome || c.recurso?.nome || "Colaborador sem nome",
+        cpf: c.cpf,
+        funcao: c.funcao?.nome,
+        profile: c.profile,
+        recurso: c.recurso,
+      }));
+    },
+  });
+
+  return {
+    colaboradores,
+    isLoading,
+    error,
+    refetch,
+  };
+}

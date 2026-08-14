@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstEpiEntregaInput, MotivoEntregaEpi, useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
-import { useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { PackageCheck, AlertTriangle } from "lucide-react";
 
 interface EntregaEpiFormDialogProps {
@@ -22,7 +22,7 @@ export function EntregaEpiFormDialog({
   onSave,
   isLoading = false,
 }: EntregaEpiFormDialogProps) {
-  const { colaboradores } = useSgsstColaboradores();
+  const { colaboradores } = useSgsstColaboradoresResumo();
   const { epis } = useSgsstEpis();
 
   const [colaboradorId, setColaboradorId] = useState("");
@@ -82,14 +82,11 @@ export function EntregaEpiFormDialog({
                 <SelectValue placeholder="Selecione o trabalhador..." />
               </SelectTrigger>
               <SelectContent>
-                {colaboradores.map((c) => {
-                  const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
-                  return (
-                    <SelectItem key={c.id} value={c.id}>
-                      {nome} (CPF: {c.cpf}) — {c.funcao?.nome || "Sem função"}
-                    </SelectItem>
-                  );
-                })}
+                {colaboradores.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.displayNome} (CPF: {c.cpf || "—"}) — {c.funcao || "Sem função"}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
