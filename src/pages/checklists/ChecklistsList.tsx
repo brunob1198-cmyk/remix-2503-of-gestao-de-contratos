@@ -38,6 +38,7 @@ import {
   FileCheck,
   Activity,
   Clock,
+  FolderCheck,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
