@@ -571,12 +571,28 @@ export function useChecklistAplicacoes() {
     },
   });
 
+  const deleteAplicacao = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("checklist_aplicacoes" as any).delete().eq("id", id) as any);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklist_aplicacoes"] });
+      toast.success("Aplicação de checklist excluída!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao excluir aplicação: ${err.message || err}`);
+    },
+  });
+
   return {
     aplicacoes,
     isLoading,
     refetch,
     createAplicacao,
     finishAplicacao,
+    deleteAplicacao,
   };
 }
 
