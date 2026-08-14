@@ -17,7 +17,7 @@ import {
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
   Percent, Settings2, Activity,
-  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart
+  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,6 +60,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "dashboard", title: "Dashboard", url: "/medicoes/dashboard", icon: LayoutDashboard },
   { id: "acompanhamento", title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento" },
   { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
+  { id: "checklists", title: "Checklists", url: "/medicoes/checklists", icon: ClipboardCheck, telaId: "checklists" },
   { id: "sgsst-dashboard", title: "SGSST - Dashboard", url: "/medicoes/sgsst/dashboard", icon: Activity, telaId: "sgsst-dashboard" },
   { id: "sgsst-seguranca", title: "SGSST - Segurança", url: "/medicoes/sgsst/pgr", icon: ShieldCheck, telaIds: ["sgsst-pgr", "sgsst-apr", "sgsst-pt", "sgsst-inspecoes", "sgsst-incidentes", "sgsst-nao-conformidades", "sgsst-riscos", "sgsst-funcoes", "sgsst-colaboradores"] },
   { id: "sgsst-pcmso", title: "SGSST - Saúde Ocupacional", url: "/medicoes/sgsst/pcmso", icon: HeartPulse, telaId: "sgsst-pcmso" },

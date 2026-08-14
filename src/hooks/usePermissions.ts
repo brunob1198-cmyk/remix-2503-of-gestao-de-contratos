@@ -47,6 +47,7 @@ export const TELAS = [
   { id: "sgsst-documentos", label: "SGSST - Gestão de Documentos (R2)" },
   { id: "sgsst-dashboard", label: "SGSST - Dashboard Geral" },
   { id: "sgsst-relatorios", label: "SGSST - Relatórios Executivos" },
+  { id: "checklists", label: "Checklists Inteligentes" },
 ] as const;
 
 export function usePermissions() {
