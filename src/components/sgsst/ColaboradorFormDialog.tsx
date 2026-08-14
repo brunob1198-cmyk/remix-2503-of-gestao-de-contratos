@@ -164,6 +164,26 @@ export function ColaboradorFormDialog({
     }
   };
 
+  const formatCPF = (value: string) => {
+    const digits = value.replace(/\D/g, "").substring(0, 11);
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  };
+
+  const formatRG = (value: string) => {
+    // RG varies by state, but let's follow a common pattern: 00.000.000-0 or 00.000.000-X
+    const clean = value.replace(/[^0-9a-zA-Z]/g, "").toUpperCase();
+    if (clean.length <= 9) {
+      return clean
+        .replace(/(\d{2})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})([0-9X])$/, "$1-$2");
+    }
+    return clean;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) {
@@ -273,7 +293,8 @@ export function ColaboradorFormDialog({
                   <Input
                     placeholder="000.000.000-00"
                     value={cpf}
-                    onChange={(e) => setCpf(e.target.value)}
+                    onChange={(e) => setCpf(formatCPF(e.target.value))}
+                    maxLength={14}
                   />
                 </div>
 
@@ -282,7 +303,8 @@ export function ColaboradorFormDialog({
                   <Input
                     placeholder="Ex: 12.345.678-9"
                     value={rg}
-                    onChange={(e) => setRg(e.target.value)}
+                    onChange={(e) => setRg(formatRG(e.target.value))}
+                    maxLength={12}
                   />
                 </div>
 
