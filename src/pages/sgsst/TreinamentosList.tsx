@@ -99,9 +99,8 @@ export default function SgsstTreinamentosListPage() {
   const [isPartFormOpen, setIsPartFormOpen] = useState(false);
   const [editingPart, setEditingPart] = useState<SgsstTreinamentoParticipante | null>(null);
 
-  // Vencimentos Filter
-  const [searchTermVenc, setSearchTermVenc] = useState("");
-  const [filterVencStatus, setFilterVencStatus] = useState("todos");
+
+
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
