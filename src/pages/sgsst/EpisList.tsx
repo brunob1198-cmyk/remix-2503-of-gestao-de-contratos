@@ -65,7 +65,6 @@ export default function SgsstEpisListPage() {
   const [activeTab, setActiveTab] = useState("catalogo");
 
   // Catálogo Filters
-  const [searchTermCat, setSearchTermCat] = useState("");
   const [filterCat, setFilterCat] = useState("todos");
   const [isEpiFormOpen, setIsEpiFormOpen] = useState(false);
   const [editingEpi, setEditingEpi] = useState<SgsstEpi | null>(null);
