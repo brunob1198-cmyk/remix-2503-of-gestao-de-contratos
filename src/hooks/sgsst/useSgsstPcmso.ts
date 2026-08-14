@@ -66,6 +66,28 @@ export interface SgsstPcmsoHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+export function useSgsstPcmsoDetail(pcmsoId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_pcmso_detail", pcmsoId],
+    enabled: !!empresaId && !!pcmsoId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pcmso" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome)
+        `)
+        .eq("id", pcmsoId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstPcmso;
+    },
+  });
+}
+
 export function useSgsstPcmso() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

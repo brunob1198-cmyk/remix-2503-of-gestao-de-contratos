@@ -92,6 +92,30 @@ export type SgsstPgrMedidaControleInput = Omit<
 import { calcularClassificacaoRisco } from "@/utils/sgsstRiscoMatrix";
 export { calcularClassificacaoRisco };
 
+export function useSgsstPgrDetail(pgrId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_pgr_detail", pgrId],
+    enabled: !!empresaId && !!pgrId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pgr" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          responsavel:profiles!sgsst_pgr_responsavel_id_fkey(id, nome)
+        `)
+        .eq("id", pgrId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstPgr;
+    },
+  });
+}
+
 export function useSgsstPgr() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

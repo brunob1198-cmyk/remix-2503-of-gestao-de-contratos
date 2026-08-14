@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstPt,
+  useSgsstPtDetail,
   useSgsstPtChecklist,
   useSgsstPtRiscos,
   useSgsstPtParticipantes,
@@ -44,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstPtDetailPage() {
   const { ptId } = useParams<{ ptId: string }>();
@@ -51,8 +53,8 @@ export default function SgsstPtDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pt");
 
-  const { pts, updatePt, updateStatusPt } = useSgsstPt();
-  const currentPt = pts.find((p) => p.id === ptId);
+  const { updatePt, updateStatusPt } = useSgsstPt();
+  const { data: currentPt, isLoading: loadingDetail } = useSgsstPtDetail(ptId);
 
   const { colaboradores } = useSgsstColaboradores();
   const { checklist, isLoading: loadingChecklist, updateRespostaItem, addChecklistItem, removeChecklistItem } = useSgsstPtChecklist(ptId);
@@ -74,6 +76,16 @@ export default function SgsstPtDetailPage() {
   const [isAddParticipanteOpen, setIsAddParticipanteOpen] = useState(false);
   const [selectedColaboradorId, setSelectedColaboradorId] = useState("");
   const [responsabilidadeTexto, setResponsabilidadeTexto] = useState("Executante");
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentPt) {
     return (

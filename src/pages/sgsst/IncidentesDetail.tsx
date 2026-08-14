@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstIncidentes,
+  useSgsstIncidentesDetail,
   useSgsstIncidenteEnvolvidos,
   useSgsstIncidenteInvestigacao,
   useSgsstIncidenteAcoes,
@@ -49,6 +50,7 @@ import { IncidenteStatusDialog } from "@/components/sgsst/IncidenteStatusDialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstIncidentesDetailPage() {
   const { incidenteId } = useParams<{ incidenteId: string }>();
@@ -56,8 +58,8 @@ export default function SgsstIncidentesDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-incidentes");
 
-  const { incidentes, updateIncidente, updateStatusIncidente } = useSgsstIncidentes();
-  const currentIncidente = incidentes.find((i) => i.id === incidenteId);
+  const { updateIncidente, updateStatusIncidente } = useSgsstIncidentes();
+  const { data: currentIncidente, isLoading: loadingDetail } = useSgsstIncidentesDetail(incidenteId);
 
   const { colaboradores } = useSgsstColaboradores();
   const { riscos: riscosCatalogo } = useSgsstRiscos();
@@ -74,7 +76,7 @@ export default function SgsstIncidentesDetailPage() {
   const [causasRaiz, setCausasRaiz] = useState("");
   const [fatoresContrib, setFatoresContrib] = useState("");
   const [conclusaoInv, setConclusaoInv] = useState("");
-  const [riscoCatId, setRiscoCatId] = useState("none");
+  const [riscoCatId, setRiscoCatId] = useState<string>("none");
 
   useEffect(() => {
     if (investigacao) {
@@ -103,6 +105,16 @@ export default function SgsstIncidentesDetailPage() {
   // Acao Form Dialog State
   const [isAcaoFormOpen, setIsAcaoFormOpen] = useState(false);
   const [editingAcao, setEditingAcao] = useState<SgsstIncidenteAcao | null>(null);
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentIncidente) {
     return (

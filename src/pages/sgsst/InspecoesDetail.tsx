@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstInspecoes,
+  useSgsstInspecoesDetail,
   useSgsstInspecaoItens,
   useSgsstInspecaoNaoConformidades,
   useSgsstInspecaoHistorico,
@@ -44,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstInspecoesDetailPage() {
   const { inspecaoId } = useParams<{ inspecaoId: string }>();
@@ -51,8 +53,8 @@ export default function SgsstInspecoesDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-inspecoes");
 
-  const { inspecoes, updateInspecao, updateStatusInspecao } = useSgsstInspecoes();
-  const currentInspecao = inspecoes.find((i) => i.id === inspecaoId);
+  const { updateInspecao, updateStatusInspecao } = useSgsstInspecoes();
+  const { data: currentInspecao, isLoading: loadingDetail } = useSgsstInspecoesDetail(inspecaoId);
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { itens, isLoading: loadingItens, updateRespostaItem, addItem, removeItem } = useSgsstInspecaoItens(inspecaoId);
@@ -74,6 +76,16 @@ export default function SgsstInspecoesDetailPage() {
   const [isNcFormOpen, setIsNcFormOpen] = useState(false);
   const [editingNcItem, setEditingNcItem] = useState<SgsstInspecaoNaoConformidade | null>(null);
   const [activeItemIdForNc, setActiveItemIdForNc] = useState<string | null>(null);
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentInspecao) {
     return (

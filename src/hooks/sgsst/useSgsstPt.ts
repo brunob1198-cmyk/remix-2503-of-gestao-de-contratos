@@ -129,6 +129,32 @@ export interface SgsstPtHistorico {
 import { getDefaultChecklistItems } from "@/utils/sgsstChecklistDefaults";
 export { getDefaultChecklistItems };
 
+export function useSgsstPtDetail(ptId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_pt_detail", ptId],
+    enabled: !!empresaId && !!ptId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pt" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          area:areas(id, nome),
+          apr:sgsst_apr(id, codigo, titulo),
+          responsavel:profiles!sgsst_pt_responsavel_id_fkey(id, nome)
+        `)
+        .eq("id", ptId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstPt;
+    },
+  });
+}
+
 export function useSgsstPt() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

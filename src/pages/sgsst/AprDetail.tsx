@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstApr,
+  useSgsstAprDetail,
   useSgsstAprEtapas,
   useSgsstAprRiscos,
   useSgsstAprMedidas,
@@ -48,6 +49,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstAprDetailPage() {
   const { aprId } = useParams<{ aprId: string }>();
@@ -55,8 +57,8 @@ export default function SgsstAprDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-apr");
 
-  const { aprs, updateApr, updateStatusApr } = useSgsstApr();
-  const currentApr = aprs.find((a) => a.id === aprId);
+  const { updateApr, updateStatusApr } = useSgsstApr();
+  const { data: currentApr, isLoading: loadingDetail } = useSgsstAprDetail(aprId);
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { colaboradores } = useSgsstColaboradores();
@@ -75,7 +77,7 @@ export default function SgsstAprDetailPage() {
   // Dialog States
   const [isEditAprOpen, setIsEditAprOpen] = useState(false);
   const [isEtapaFormOpen, setIsEtapaFormOpen] = useState(false);
-  const [editingEtapa, setEditingEtapa] = useState<SgsstAprEtapa | null>(null);
+  const [editingEtapaItem, setEditingEtapaItem] = useState<SgsstAprEtapa | null>(null);
 
   const [isRiscoFormOpen, setIsRiscoFormOpen] = useState(false);
   const [editingRiscoItem, setEditingRiscoItem] = useState<SgsstAprRisco | null>(null);
@@ -91,6 +93,16 @@ export default function SgsstAprDetailPage() {
   const [isAddParticipanteOpen, setIsAddParticipanteOpen] = useState(false);
   const [selectedColaboradorId, setSelectedColaboradorId] = useState<string>("");
   const [participacaoTexto, setParticipacaoTexto] = useState("Executante");
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentApr) {
     return (

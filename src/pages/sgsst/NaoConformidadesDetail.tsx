@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstNaoConformidades,
+  useSgsstNaoConformidadesDetail,
   useSgsstNaoConformidadeAcoes,
   useSgsstNaoConformidadeHistorico,
   StatusNC,
@@ -41,6 +42,7 @@ import { NcStatusDialog } from "@/components/sgsst/NcStatusDialog";
 import { NcVerificacaoDialog } from "@/components/sgsst/NcVerificacaoDialog";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstNaoConformidadesDetailPage() {
   const { ncId } = useParams<{ ncId: string }>();
@@ -48,8 +50,8 @@ export default function SgsstNaoConformidadesDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-nao-conformidades");
 
-  const { naoConformidades, updateNaoConformidade, updateStatusNaoConformidade, verificarNaoConformidade } = useSgsstNaoConformidades();
-  const currentNc = naoConformidades.find((n) => n.id === ncId);
+  const { updateNaoConformidade, updateStatusNaoConformidade, verificarNaoConformidade } = useSgsstNaoConformidades();
+  const { data: currentNc, isLoading: loadingDetail } = useSgsstNaoConformidadesDetail(ncId);
 
   const { acoes, addAcao, updateAcao, removeAcao, isLoading: loadingAcoes } = useSgsstNaoConformidadeAcoes(ncId);
   const { historico } = useSgsstNaoConformidadeHistorico(ncId);
@@ -63,6 +65,16 @@ export default function SgsstNaoConformidadesDetailPage() {
   // Acao Form Dialog State
   const [isAcaoFormOpen, setIsAcaoFormOpen] = useState(false);
   const [editingAcao, setEditingAcao] = useState<SgsstNaoConformidadeAcao | null>(null);
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentNc) {
     return (

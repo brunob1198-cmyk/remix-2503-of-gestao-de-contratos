@@ -136,6 +136,35 @@ export interface SgsstIncidenteHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+export function useSgsstIncidentesDetail(incidenteId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_incidentes_detail", incidenteId],
+    enabled: !!empresaId && !!incidenteId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_incidentes" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          area:areas(id, nome),
+          responsavel_registro:profiles!sgsst_incidentes_responsavel_registro_id_fkey(id, nome),
+          pgr:sgsst_pgr(id, titulo),
+          apr:sgsst_apr(id, titulo),
+          pt:sgsst_pt(id, titulo),
+          inspecao:sgsst_inspecoes(id, titulo)
+        `)
+        .eq("id", incidenteId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstIncidente;
+    },
+  });
+}
+
 export function useSgsstIncidentes() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

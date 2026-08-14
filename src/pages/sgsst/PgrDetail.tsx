@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSgsstPgr, useSgsstPgrInventario, useSgsstPgrMedidasControle, SgsstPgrInventario, SgsstPgrMedidaControle, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
+import { useSgsstPgr, useSgsstPgrDetail, useSgsstPgrInventario, useSgsstPgrMedidasControle, SgsstPgrInventario, SgsstPgrMedidaControle, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { PgrMedidasFormDialog } from "@/components/sgsst/PgrMedidasFormDialog";
 import { PgrFormDialog } from "@/components/sgsst/PgrFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstPgrDetailPage() {
   const { pgrId } = useParams<{ pgrId: string }>();
@@ -21,8 +22,8 @@ export default function SgsstPgrDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pgr");
 
-  const { pgrs, updatePgr, updateStatusPgr } = useSgsstPgr();
-  const currentPgr = pgrs.find((p) => p.id === pgrId);
+  const { updatePgr, updateStatusPgr } = useSgsstPgr();
+  const { data: currentPgr, isLoading: loadingDetail } = useSgsstPgrDetail(pgrId);
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { inventario, isLoading: loadingInventario, createInventarioItem, updateInventarioItem, removeInventarioItem } = useSgsstPgrInventario(pgrId);
@@ -37,6 +38,16 @@ export default function SgsstPgrDetailPage() {
 
   const [isMedidaFormOpen, setIsMedidaFormOpen] = useState(false);
   const [editingMedida, setEditingMedida] = useState<SgsstPgrMedidaControle | null>(null);
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentPgr) {
     return (

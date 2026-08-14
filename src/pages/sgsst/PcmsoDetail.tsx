@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSgsstPcmso,
+  useSgsstPcmsoDetail,
   useSgsstPcmsoExames,
   useSgsstPcmsoHistorico,
   StatusPcmso,
@@ -37,6 +38,7 @@ import {
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
 import { PcmsoStatusDialog } from "@/components/sgsst/PcmsoStatusDialog";
 import { format, parseISO } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SgsstPcmsoDetailPage() {
   const { pcmsoId } = useParams<{ pcmsoId: string }>();
@@ -44,8 +46,8 @@ export default function SgsstPcmsoDetailPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pcmso");
 
-  const { pcmsoList, updatePcmso, updateStatusPcmso } = useSgsstPcmso();
-  const currentPcmso = pcmsoList.find((p) => p.id === pcmsoId);
+  const { updatePcmso, updateStatusPcmso } = useSgsstPcmso();
+  const { data: currentPcmso, isLoading: loadingDetail } = useSgsstPcmsoDetail(pcmsoId);
 
   const { funcoes } = useSgsstFuncoes();
   const { exames, isLoading: loadingExames, addExame, removeExame } = useSgsstPcmsoExames(pcmsoId);
@@ -64,6 +66,16 @@ export default function SgsstPcmsoDetailPage() {
   const [funcaoId, setFuncaoId] = useState("none");
   const [grupoRisco, setGrupoRisco] = useState("");
   const [obsExame, setObsExame] = useState("");
+
+  if (loadingDetail) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!currentPcmso) {
     return (

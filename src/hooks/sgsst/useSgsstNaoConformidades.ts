@@ -88,6 +88,32 @@ export interface SgsstNaoConformidadeHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+export function useSgsstNaoConformidadesDetail(ncId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_nao_conformidades_detail", ncId],
+    enabled: !!empresaId && !!ncId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_nao_conformidades" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          area:areas(id, nome),
+          responsavel:profiles!sgsst_nao_conformidades_responsavel_id_fkey(id, nome),
+          verificador:profiles!sgsst_nao_conformidades_verificador_id_fkey(id, nome)
+        `)
+        .eq("id", ncId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstNaoConformidade;
+    },
+  });
+}
+
 export function useSgsstNaoConformidades() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

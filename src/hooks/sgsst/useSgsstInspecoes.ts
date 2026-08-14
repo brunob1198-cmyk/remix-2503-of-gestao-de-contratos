@@ -92,6 +92,34 @@ export interface SgsstInspecaoHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+export function useSgsstInspecoesDetail(inspecaoId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_inspecoes_detail", inspecaoId],
+    enabled: !!empresaId && !!inspecaoId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_inspecoes" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          area:areas(id, nome),
+          pgr:sgsst_pgr(id, titulo),
+          apr:sgsst_apr(id, titulo),
+          pt:sgsst_pt(id, titulo),
+          responsavel:profiles!sgsst_inspecoes_responsavel_id_fkey(id, nome)
+        `)
+        .eq("id", inspecaoId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstInspecao;
+    },
+  });
+}
+
 export function useSgsstInspecoes() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

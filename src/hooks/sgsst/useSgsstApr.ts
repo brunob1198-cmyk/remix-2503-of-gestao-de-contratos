@@ -114,6 +114,31 @@ export interface SgsstAprHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+export function useSgsstAprDetail(aprId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  return useQuery({
+    queryKey: ["sgsst_apr_detail", aprId],
+    enabled: !!empresaId && !!aprId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_apr" as any)
+        .select(`
+          *,
+          projeto:projetos(id, codigo, nome),
+          site:sites(id, codigo, nome),
+          area:areas(id, nome),
+          responsavel:profiles!sgsst_apr_responsavel_id_fkey(id, nome)
+        `)
+        .eq("id", aprId)
+        .single() as any);
+      if (error) throw error;
+      return data as SgsstApr;
+    },
+  });
+}
+
 export function useSgsstApr() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
