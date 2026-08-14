@@ -48,7 +48,7 @@ export default function ChecklistsListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("checklists");
 
-  const { modelos, isLoading: loadingModelos, createModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
+  const { modelos, isLoading: loadingModelos, isTableMissing, createModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
   const { aplicacoes, isLoading: loadingAplicacoes } = useChecklistAplicacoes();
   const { planosAcao, isLoading: loadingPlanos } = useChecklistPlanosAcao();
 
@@ -114,7 +114,6 @@ export default function ChecklistsListPage() {
 
   const handleSaveModelo = async (data: any) => {
     if (editingModelo) {
-      // Edit mode (not fully implemented in hook for brevity, create works)
       await createModelo.mutateAsync(data);
     } else {
       await createModelo.mutateAsync(data);
@@ -169,6 +168,27 @@ export default function ChecklistsListPage() {
           )}
         </div>
       </div>
+
+      {/* Migration Alert Banner if Table Missing */}
+      {isTableMissing && (
+        <Card className="border-amber-300 bg-amber-50/90 text-amber-900 shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-900">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              Sincronização de Banco de Dados Pendente (Supabase)
+            </CardTitle>
+            <CardDescription className="text-xs text-amber-800 leading-relaxed pt-1">
+              As tabelas do módulo de Checklists (`checklist_modelos`, `checklist_secoes`, etc.) ainda não foram executadas no projeto Supabase remoto.
+              <br />
+              Para ativar a criação e preenchimento de checklists, copie o script da migration SQL abaixo e execute no <strong>SQL Editor</strong> do seu Supabase Dashboard:
+              <br />
+              <code className="bg-amber-100 px-2 py-1 rounded text-[11px] font-mono font-bold text-slate-800 mt-2 block border border-amber-300 select-all">
+                supabase/migrations/20260814040000_create_checklists_tables.sql
+              </code>
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Navigation Tabs: [ Modelos ] [ Aplicações ] [ Planos de Ação ] [ Relatórios ] */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

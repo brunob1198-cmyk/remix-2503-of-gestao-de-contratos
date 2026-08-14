@@ -169,7 +169,7 @@ export function useChecklistModelos() {
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: modelos = [], isLoading, refetch } = useQuery({
+  const { data: modelos = [], isLoading, error: queryError, refetch } = useQuery({
     queryKey: ["checklist_modelos", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -191,6 +191,10 @@ export function useChecklistModelos() {
       return (data as ChecklistModelo[]) || [];
     },
   });
+
+  const isTableMissing = Boolean(
+    queryError && ((queryError as any).code === "PGRST205" || (queryError as any).message?.includes("schema cache"))
+  );
 
   const createModelo = useMutation({
     mutationFn: async (input: {
@@ -356,6 +360,7 @@ export function useChecklistModelos() {
   return {
     modelos,
     isLoading,
+    isTableMissing,
     refetch,
     createModelo,
     duplicateModelo,
