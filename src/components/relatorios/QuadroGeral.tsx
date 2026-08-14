@@ -486,41 +486,63 @@ export default function QuadroGeral() {
 
   const handleExport = () => {
     const rows: any[] = [];
+    const isAreaVisible = visibleColumns.has("Area");
+    const isClienteVisible = visibleColumns.has("Cliente");
+    const isProjetoVisible = visibleColumns.has("Projeto");
+    const isSiteVisible = visibleColumns.has("Site");
+    const isStatusVisible = visibleColumns.has("Status");
+
     for (const ag of filteredAreaGroups) {
       for (const cg of ag.clientes) {
         for (const p of cg.projetos) {
-          if (p.siteRows.length > 0) {
+          const proj = projetos.find(pr => pr.id === p.projeto_id);
+          const status = proj?.status || "Sem status";
+
+          if (isSiteVisible && p.siteRows.length > 0) {
             for (const s of p.siteRows) {
-              rows.push({
-                Área: p.area,
-                Cliente: p.cliente,
-                "Código Projeto": p.projeto_codigo,
-                "Nome Projeto": p.projeto_nome,
-                "Código Site": s.site_codigo,
-                "Nome Site": s.site_nome,
-                "Valor Contrato": p.valor_contrato,
-                "Valor Executado": s.valor_executado,
-                "Valor Faturado": s.valor_faturado,
-                "Não Faturado": s.valor_nao_faturado,
-                "Saldo Contrato": "",
-                "% Evolução": Number(s.percentual_evolucao.toFixed(1)),
-              });
+              const row: any = {};
+              if (isAreaVisible) row["Área"] = p.area;
+              if (isClienteVisible) row["Cliente"] = p.cliente;
+              if (isProjetoVisible) {
+                row["Código Projeto"] = p.projeto_codigo;
+                row["Nome Projeto"] = p.projeto_nome;
+              }
+              if (isStatusVisible) row["Status"] = status;
+              
+              row["Código Site"] = s.site_codigo;
+              row["Nome Site"] = s.site_nome;
+              row["Valor Contrato"] = p.valor_contrato;
+              row["Valor Executado"] = s.valor_executado;
+              row["Valor Faturado"] = s.valor_faturado;
+              row["Não Faturado"] = s.valor_nao_faturado;
+              row["Saldo Contrato"] = p.saldo_contrato;
+              row["% Evolução"] = Number(s.percentual_evolucao.toFixed(1));
+              
+              rows.push(row);
             }
           } else {
-            rows.push({
-              Área: p.area,
-              Cliente: p.cliente,
-              "Código Projeto": p.projeto_codigo,
-              "Nome Projeto": p.projeto_nome,
-              "Código Site": "",
-              "Nome Site": "",
-              "Valor Contrato": p.valor_contrato,
-              "Valor Executado": p.valor_executado,
-              "Valor Faturado": p.valor_faturado,
-              "Não Faturado": p.valor_nao_faturado,
-              "Saldo Contrato": p.saldo_contrato,
-              "% Evolução": Number(p.percentual_evolucao.toFixed(1)),
-            });
+            const row: any = {};
+            if (isAreaVisible) row["Área"] = p.area;
+            if (isClienteVisible) row["Cliente"] = p.cliente;
+            if (isProjetoVisible) {
+              row["Código Projeto"] = p.projeto_codigo;
+              row["Nome Projeto"] = p.projeto_nome;
+            }
+            if (isStatusVisible) row["Status"] = status;
+            
+            if (isSiteVisible) {
+              row["Código Site"] = "";
+              row["Nome Site"] = "";
+            }
+            
+            row["Valor Contrato"] = p.valor_contrato;
+            row["Valor Executado"] = p.valor_executado;
+            row["Valor Faturado"] = p.valor_faturado;
+            row["Não Faturado"] = p.valor_nao_faturado;
+            row["Saldo Contrato"] = p.saldo_contrato;
+            row["% Evolução"] = Number(p.percentual_evolucao.toFixed(1));
+            
+            rows.push(row);
           }
         }
       }
