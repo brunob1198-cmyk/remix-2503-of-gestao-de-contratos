@@ -80,9 +80,9 @@ export function ColaboradorDetailDialog({
     try {
       setIsUploadingCert(true);
       const res = await uploadImage(file);
-      if (res && res.path) {
-        setCertificadoUrl(res.path);
-        setCertificadoR2Key(res.path);
+      if (res) {
+        setCertificadoUrl(res);
+        setCertificadoR2Key(res);
         toast.success("Certificado enviado ao Cloudflare R2 com sucesso!");
       }
     } catch (err: any) {

@@ -172,12 +172,12 @@ export function AplicarChecklistDialog({
     try {
       setUploadingItemId(itemId);
       const res = await uploadImage(file);
-      if (res && res.path) {
+      if (res) {
         setRespostas((prev) => ({
           ...prev,
           [itemId]: {
             ...prev[itemId],
-            evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), res.path],
+            evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), res],
           },
         }));
         toast.success("Foto anexada com sucesso no Cloudflare R2!");
