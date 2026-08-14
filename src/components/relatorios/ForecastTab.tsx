@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { pickForecastValue, sumForecastValues } from "@/lib/forecastValue";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -259,7 +260,8 @@ export default function ForecastTab() {
             ref={parentRef}
             className="overflow-auto border rounded-md relative h-[calc(100vh-420px)] min-h-[600px]"
           >
-            <Table className="border-collapse w-full">
+            <TooltipProvider>
+              <Table className="border-collapse w-full">
               <TableHeader className="sticky top-0 z-30 bg-background border-b shadow-sm">
                 <TableRow className="bg-muted/50 flex items-center">
                   <TableHead className="w-[140px] shrink-0 sticky left-0 bg-muted/50 z-40 border-r flex items-center">
@@ -348,9 +350,36 @@ export default function ForecastTab() {
                         transform: `translateY(${virtualRow.start}px)`
                       }}
                     >
-                      <TableCell className="w-[140px] shrink-0 sticky left-0 bg-background z-20 border-r truncate h-full flex items-center">{p.areaObj?.nome || "-"}</TableCell>
-                      <TableCell className="w-[200px] shrink-0 font-medium sticky left-[140px] bg-background z-20 border-r truncate h-full flex items-center">{p.nome}</TableCell>
-                      <TableCell className="w-[180px] shrink-0 truncate border-r h-full flex items-center">{p.clienteObj?.razao_social || p.cliente || "-"}</TableCell>
+                      <TableCell className="w-[140px] shrink-0 sticky left-0 bg-background z-20 border-r truncate h-full flex items-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate cursor-default">{p.areaObj?.nome || "-"}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{p.areaObj?.nome || "-"}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="w-[200px] shrink-0 font-medium sticky left-[140px] bg-background z-20 border-r truncate h-full flex items-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate cursor-default">{p.nome}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{p.nome}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell className="w-[180px] shrink-0 truncate border-r h-full flex items-center">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate cursor-default">{p.clienteObj?.razao_social || p.cliente || "-"}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{p.clienteObj?.razao_social || p.cliente || "-"}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableCell>
                       <TableCell className="w-[120px] shrink-0 border-r h-full flex items-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
                           p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
@@ -400,6 +429,7 @@ export default function ForecastTab() {
                 })}
               </TableBody>
             </Table>
+            </TooltipProvider>
             {filteredData.length === 0 && (
               <div className="p-12 text-center text-muted-foreground">Nenhum projeto encontrado com os filtros selecionados.</div>
             )}
