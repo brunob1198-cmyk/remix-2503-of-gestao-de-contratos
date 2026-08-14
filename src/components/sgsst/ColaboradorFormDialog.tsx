@@ -184,6 +184,18 @@ export function ColaboradorFormDialog({
     return clean;
   };
 
+  const formatTelefone = (value: string) => {
+    const digits = value.replace(/\D/g, "").substring(0, 11);
+    if (digits.length <= 10) {
+      return digits
+        .replace(/(\d{2})(\d)/, "($1) $2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim()) {
@@ -336,7 +348,8 @@ export function ColaboradorFormDialog({
                   <Input
                     placeholder="(00) 90000-0000"
                     value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                    onChange={(e) => setTelefone(formatTelefone(e.target.value))}
+                    maxLength={15}
                   />
                 </div>
 
