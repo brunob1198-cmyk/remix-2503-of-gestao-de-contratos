@@ -44,6 +44,9 @@ export const TELAS = [
   { id: "sgsst-pcmso", label: "SGSST - Saúde Ocupacional (PCMSO)" },
   { id: "sgsst-treinamentos", label: "SGSST - Treinamentos e Capacitações" },
   { id: "sgsst-epis", label: "SGSST - Equipamentos de Proteção Individual (EPI)" },
+  { id: "sgsst-documentos", label: "SGSST - Gestão de Documentos (R2)" },
+  { id: "sgsst-dashboard", label: "SGSST - Dashboard Geral" },
+  { id: "sgsst-relatorios", label: "SGSST - Relatórios Executivos" },
 ] as const;
 
 export function usePermissions() {

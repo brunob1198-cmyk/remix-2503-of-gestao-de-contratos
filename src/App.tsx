@@ -66,6 +66,9 @@ const SgsstPcmsoListPage = React.lazy(() => import("./pages/sgsst/PcmsoList"));
 const SgsstPcmsoDetailPage = React.lazy(() => import("./pages/sgsst/PcmsoDetail"));
 const SgsstTreinamentosListPage = React.lazy(() => import("./pages/sgsst/TreinamentosList"));
 const SgsstEpisListPage = React.lazy(() => import("./pages/sgsst/EpisList"));
+const SgsstDocumentosListPage = React.lazy(() => import("./pages/sgsst/DocumentosList"));
+const SgsstDashboardGeralPage = React.lazy(() => import("./pages/sgsst/DashboardGeral"));
+const SgsstRelatoriosListPage = React.lazy(() => import("./pages/sgsst/RelatoriosList"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -155,6 +158,9 @@ const App = () => {
                 <Route path="sgsst/pcmso/:pcmsoId" element={<SgsstPcmsoDetailPage />} />
                 <Route path="sgsst/treinamentos" element={<SgsstTreinamentosListPage />} />
                 <Route path="sgsst/epis" element={<SgsstEpisListPage />} />
+                <Route path="sgsst/documentos" element={<SgsstDocumentosListPage />} />
+                <Route path="sgsst/dashboard" element={<SgsstDashboardGeralPage />} />
+                <Route path="sgsst/relatorios" element={<SgsstRelatoriosListPage />} />
                 
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />

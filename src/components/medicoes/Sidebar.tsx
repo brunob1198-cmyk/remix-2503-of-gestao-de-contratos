@@ -17,7 +17,7 @@ import {
   CalendarRange, ShoppingCart, History, Zap, Wand2,
   Pin, PinOff,
   Percent, Settings2, Activity,
-  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield
+  GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,6 +60,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "dashboard", title: "Dashboard", url: "/medicoes/dashboard", icon: LayoutDashboard },
   { id: "acompanhamento", title: "Acompanhamento Medições", url: "/medicoes/acompanhamento", icon: ListChecks, telaId: "acompanhamento" },
   { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"] },
+  { id: "sgsst-dashboard", title: "SGSST - Dashboard", url: "/medicoes/sgsst/dashboard", icon: Activity, telaId: "sgsst-dashboard" },
   { id: "sgsst-funcoes", title: "SGSST - Funções", url: "/medicoes/sgsst/funcoes", icon: Briefcase, telaId: "sgsst-funcoes" },
   { id: "sgsst-colaboradores", title: "SGSST - Colaboradores", url: "/medicoes/sgsst/colaboradores", icon: UserCheck, telaId: "sgsst-colaboradores" },
   { id: "sgsst-riscos", title: "SGSST - Riscos", url: "/medicoes/sgsst/riscos", icon: AlertTriangle, telaId: "sgsst-riscos" },
@@ -72,6 +73,8 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "sgsst-pcmso", title: "SGSST - PCMSO", url: "/medicoes/sgsst/pcmso", icon: HeartPulse, telaId: "sgsst-pcmso" },
   { id: "sgsst-treinamentos", title: "SGSST - Treinamentos", url: "/medicoes/sgsst/treinamentos", icon: GraduationCap, telaId: "sgsst-treinamentos" },
   { id: "sgsst-epis", title: "SGSST - EPI", url: "/medicoes/sgsst/epis", icon: Shield, telaId: "sgsst-epis" },
+  { id: "sgsst-documentos", title: "SGSST - Documentos", url: "/medicoes/sgsst/documentos", icon: FolderArchive, telaId: "sgsst-documentos" },
+  { id: "sgsst-relatorios", title: "SGSST - Relatórios", url: "/medicoes/sgsst/relatorios", icon: FileBarChart, telaId: "sgsst-relatorios" },
   { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario" },
   { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario" },
   { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo" },
