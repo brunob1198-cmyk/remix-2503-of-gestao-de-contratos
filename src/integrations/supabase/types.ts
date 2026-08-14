@@ -318,6 +318,718 @@ export type Database = {
           },
         ]
       }
+      checklist_aplicacoes: {
+        Row: {
+          aplicador_id: string | null
+          apr_id: string | null
+          area_id: string | null
+          codigo: string | null
+          colaborador_id: string | null
+          created_at: string
+          data_aplicacao: string | null
+          data_conclusao: string | null
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          incidente_id: string | null
+          inspecao_id: string | null
+          modelo_id: string
+          nao_conformidade_id: string | null
+          observacoes_gerais: string | null
+          percentual_conformidade: number | null
+          pgr_id: string | null
+          pontuacao_maxima: number | null
+          pontuacao_obtida: number | null
+          projeto_id: string | null
+          pt_id: string | null
+          responsavel_id: string | null
+          status: string
+          total_conforme: number | null
+          total_itens: number | null
+          total_na: number | null
+          total_nao_conforme: number | null
+          updated_at: string
+        }
+        Insert: {
+          aplicador_id?: string | null
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          data_aplicacao?: string | null
+          data_conclusao?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          incidente_id?: string | null
+          inspecao_id?: string | null
+          modelo_id: string
+          nao_conformidade_id?: string | null
+          observacoes_gerais?: string | null
+          percentual_conformidade?: number | null
+          pgr_id?: string | null
+          pontuacao_maxima?: number | null
+          pontuacao_obtida?: number | null
+          projeto_id?: string | null
+          pt_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          total_conforme?: number | null
+          total_itens?: number | null
+          total_na?: number | null
+          total_nao_conforme?: number | null
+          updated_at?: string
+        }
+        Update: {
+          aplicador_id?: string | null
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          data_aplicacao?: string | null
+          data_conclusao?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          incidente_id?: string | null
+          inspecao_id?: string | null
+          modelo_id?: string
+          nao_conformidade_id?: string | null
+          observacoes_gerais?: string | null
+          percentual_conformidade?: number | null
+          pgr_id?: string | null
+          pontuacao_maxima?: number | null
+          pontuacao_obtida?: number | null
+          projeto_id?: string | null
+          pt_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          total_conforme?: number | null
+          total_itens?: number | null
+          total_na?: number | null
+          total_nao_conforme?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_aplicacoes_aplicador_id_fkey"
+            columns: ["aplicador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_modelos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_evidencias: {
+        Row: {
+          aplicacao_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          nome_arquivo: string | null
+          r2_key: string | null
+          r2_url: string
+          resposta_id: string | null
+          tamanho: number | null
+          tipo_mime: string | null
+        }
+        Insert: {
+          aplicacao_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome_arquivo?: string | null
+          r2_key?: string | null
+          r2_url: string
+          resposta_id?: string | null
+          tamanho?: number | null
+          tipo_mime?: string | null
+        }
+        Update: {
+          aplicacao_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome_arquivo?: string | null
+          r2_key?: string | null
+          r2_url?: string
+          resposta_id?: string | null
+          tamanho?: number | null
+          tipo_mime?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_evidencias_aplicacao_id_fkey"
+            columns: ["aplicacao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_aplicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_evidencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_evidencias_resposta_id_fkey"
+            columns: ["resposta_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_respostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_itens: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          exigir_comentario_nao_conforme: boolean
+          exigir_foto_nao_conforme: boolean
+          gerar_plano_acao_nao_conforme: boolean
+          id: string
+          obrigatorio: boolean
+          opcoes_selecao: string[] | null
+          ordem: number
+          peso_pontuacao: number
+          secao_id: string
+          tipo_resposta: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          exigir_comentario_nao_conforme?: boolean
+          exigir_foto_nao_conforme?: boolean
+          gerar_plano_acao_nao_conforme?: boolean
+          id?: string
+          obrigatorio?: boolean
+          opcoes_selecao?: string[] | null
+          ordem?: number
+          peso_pontuacao?: number
+          secao_id: string
+          tipo_resposta?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          exigir_comentario_nao_conforme?: boolean
+          exigir_foto_nao_conforme?: boolean
+          gerar_plano_acao_nao_conforme?: boolean
+          id?: string
+          obrigatorio?: boolean
+          opcoes_selecao?: string[] | null
+          ordem?: number
+          peso_pontuacao?: number
+          secao_id?: string
+          tipo_resposta?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_itens_secao_id_fkey"
+            columns: ["secao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_secoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_modelos: {
+        Row: {
+          area_id: string | null
+          categoria: string
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          periodicidade_sugerida: string | null
+          projeto_id: string | null
+          responsavel_id: string | null
+          status: string
+          tipo_aplicacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          area_id?: string | null
+          categoria?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          periodicidade_sugerida?: string | null
+          projeto_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo_aplicacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string | null
+          categoria?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          periodicidade_sugerida?: string | null
+          projeto_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo_aplicacao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_modelos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_modelos_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_planos_acao: {
+        Row: {
+          aplicacao_id: string
+          codigo: string | null
+          como_fazer: string | null
+          created_at: string
+          data_conclusao: string | null
+          data_validacao: string | null
+          empresa_id: string
+          evidencia_conclusao_r2_url: string | null
+          id: string
+          item_id: string | null
+          nao_conformidade_sgsst_id: string | null
+          o_que_fazer: string
+          onde: string | null
+          por_que: string | null
+          prioridade: string
+          quando_prazo: string | null
+          quanto_custo: number | null
+          quem_responsavel_id: string | null
+          resposta_id: string | null
+          status: string
+          updated_at: string
+          validado_por_id: string | null
+        }
+        Insert: {
+          aplicacao_id: string
+          codigo?: string | null
+          como_fazer?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          data_validacao?: string | null
+          empresa_id: string
+          evidencia_conclusao_r2_url?: string | null
+          id?: string
+          item_id?: string | null
+          nao_conformidade_sgsst_id?: string | null
+          o_que_fazer: string
+          onde?: string | null
+          por_que?: string | null
+          prioridade?: string
+          quando_prazo?: string | null
+          quanto_custo?: number | null
+          quem_responsavel_id?: string | null
+          resposta_id?: string | null
+          status?: string
+          updated_at?: string
+          validado_por_id?: string | null
+        }
+        Update: {
+          aplicacao_id?: string
+          codigo?: string | null
+          como_fazer?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          data_validacao?: string | null
+          empresa_id?: string
+          evidencia_conclusao_r2_url?: string | null
+          id?: string
+          item_id?: string | null
+          nao_conformidade_sgsst_id?: string | null
+          o_que_fazer?: string
+          onde?: string | null
+          por_que?: string | null
+          prioridade?: string
+          quando_prazo?: string | null
+          quanto_custo?: number | null
+          quem_responsavel_id?: string | null
+          resposta_id?: string | null
+          status?: string
+          updated_at?: string
+          validado_por_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_planos_acao_aplicacao_id_fkey"
+            columns: ["aplicacao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_aplicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_planos_acao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_planos_acao_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_planos_acao_quem_responsavel_id_fkey"
+            columns: ["quem_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_planos_acao_resposta_id_fkey"
+            columns: ["resposta_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_respostas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_planos_acao_validado_por_id_fkey"
+            columns: ["validado_por_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_regras: {
+        Row: {
+          acao_regra: string
+          created_at: string
+          empresa_id: string
+          id: string
+          item_id: string
+          resposta_gatilho: string
+        }
+        Insert: {
+          acao_regra: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          item_id: string
+          resposta_gatilho: string
+        }
+        Update: {
+          acao_regra?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          item_id?: string
+          resposta_gatilho?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_regras_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_regras_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_respostas: {
+        Row: {
+          aplicacao_id: string
+          comentario: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          is_critico: boolean | null
+          is_nao_conforme: boolean | null
+          item_id: string
+          pontos_obtidos: number | null
+          resposta_valor: string
+          updated_at: string
+        }
+        Insert: {
+          aplicacao_id: string
+          comentario?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          is_critico?: boolean | null
+          is_nao_conforme?: boolean | null
+          item_id: string
+          pontos_obtidos?: number | null
+          resposta_valor: string
+          updated_at?: string
+        }
+        Update: {
+          aplicacao_id?: string
+          comentario?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          is_critico?: boolean | null
+          is_nao_conforme?: boolean | null
+          item_id?: string
+          pontos_obtidos?: number | null
+          resposta_valor?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_respostas_aplicacao_id_fkey"
+            columns: ["aplicacao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_aplicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_respostas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_respostas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_secoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          modelo_id: string
+          ordem: number
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          modelo_id: string
+          ordem?: number
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          modelo_id?: string
+          ordem?: number
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_secoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_secoes_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_modelos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cep: string | null

@@ -49,7 +49,7 @@ export default function ChecklistsListPage() {
   const allowEdit = canEdit("checklists");
 
   const { modelos, isLoading: loadingModelos, isTableMissing, createModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
-  const { aplicacoes, isLoading: loadingAplicacoes } = useChecklistAplicacoes();
+  const { aplicacoes, isLoading: loadingAplicacoes, deleteAplicacao } = useChecklistAplicacoes();
   const { planosAcao, isLoading: loadingPlanos } = useChecklistPlanosAcao();
 
   const [activeTab, setActiveTab] = useState("modelos");
@@ -280,6 +280,22 @@ export default function ChecklistsListPage() {
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
+
+                      {allowEdit && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            if (window.confirm("Tem certeza que deseja excluir este modelo?")) {
+                              deleteModelo.mutate(m.id);
+                            }
+                          }}
+                          title="Excluir Modelo"
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -313,6 +329,7 @@ export default function ChecklistsListPage() {
                     <TableHead className="text-xs font-bold">Conformidade (%)</TableHead>
                     <TableHead className="text-xs font-bold">Resumo Respostas</TableHead>
                     <TableHead className="text-xs font-bold">Status</TableHead>
+                    <TableHead className="text-xs font-bold w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -355,6 +372,22 @@ export default function ChecklistsListPage() {
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">CONCLUÍDO</Badge>
                           ) : (
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">EM ANDAMENTO</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {allowEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                if (window.confirm("Tem certeza que deseja excluir esta aplicação?")) {
+                                  deleteAplicacao.mutate(app.id);
+                                }
+                              }}
+                              className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>
