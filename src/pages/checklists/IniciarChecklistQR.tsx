@@ -29,14 +29,14 @@ export default function IniciarChecklistQRPage() {
   const validateToken = async (t: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_public_checklist_qr_info", { p_token: t });
+      const { data, error } = await (supabase as any).rpc("get_public_checklist_qr_info", { p_token: t });
 
       if (error || !data) {
         setQrInfo({ valid: false, error: "QR Code inválido ou expirado." });
         return;
       }
 
-      const info = data as PublicChecklistQRInfo;
+      const info = data as unknown as PublicChecklistQRInfo;
       setQrInfo(info);
 
       if (info.valid && info.modelo_id) {
@@ -48,7 +48,7 @@ export default function IniciarChecklistQRPage() {
           .single();
 
         if (modeloData) {
-          setModeloObj(modeloData as ChecklistModelo);
+          setModeloObj(modeloData as unknown as ChecklistModelo);
         }
       }
     } catch (err) {
