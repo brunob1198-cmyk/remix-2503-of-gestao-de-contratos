@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Filter, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FolderKanban, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Filter, X, FileSpreadsheet } from "lucide-react";
+import { exportProjetosExcel, ProjetoExportRow } from "@/lib/projetosExport";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -272,6 +273,41 @@ export default function ProjetosPage() {
     setCurrentPage(1);
   }, []);
 
+  const handleExportExcel = useCallback(() => {
+    const rows: ProjetoExportRow[] = filteredSorted.map((p: any) => {
+      const ids: string[] = p.contrato_ids?.length ? p.contrato_ids : (p.contrato_id ? [p.contrato_id] : []);
+      const contratosStr = ids
+        .map((cid) => contratosById.get(cid)?.numero_contrato)
+        .filter(Boolean)
+        .join(", ") || (p.contratoObj?.numero_contrato ?? "-");
+
+      return {
+        codigo: p.codigo || "-",
+        nome: p.nome || "-",
+        area: p.areaObj?.nome || "-",
+        cliente: p.clienteObj?.razao_social || p.cliente || "-",
+        coordenador: p.coordenador || "-",
+        contratos: contratosStr,
+        descricao: p.descricao || "-",
+        valorTotal: Number(p.valor_total) || 0,
+        status: p.status || "A Iniciar",
+      };
+    });
+
+    if (rows.length === 0) {
+      toast({ title: "Nada para exportar", description: "Nenhum projeto encontrado com os filtros aplicados.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      exportProjetosExcel(rows, { geradoEm: new Date() });
+      toast({ title: "Exportação concluída", description: `${rows.length} projeto(s) exportado(s).` });
+    } catch (error) {
+      console.error("Erro ao exportar projetos:", error);
+      toast({ title: "Erro ao exportar", description: "Não foi possível gerar a planilha.", variant: "destructive" });
+    }
+  }, [filteredSorted, contratosById, toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -297,6 +333,11 @@ export default function ProjetosPage() {
           <h2 className="text-xl font-bold">Projetos</h2>
           <p className="text-sm text-muted-foreground">Gerencie os projetos e suas obras</p>
         </div>
+        <div className="flex gap-2">
+        <Button variant="outline" onClick={handleExportExcel} disabled={filteredSorted.length === 0}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Exportar Excel
+        </Button>
         <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>
@@ -428,6 +469,7 @@ export default function ProjetosPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
