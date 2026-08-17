@@ -35,6 +35,9 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignatureService } from "@/services/SignatureService";
 import { getCurrentDeviceLocation, isWithinRadius, GeoCoordinates } from "@/utils/geolocationUtils";
+import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
+import { useConnectionStatus } from "@/hooks/useConnectionStatus";
+import { saveOfflinePhoto } from "@/lib/checklistsOfflineDb";
 import { toast } from "sonner";
 
 interface AplicarChecklistDialogProps {
@@ -97,6 +100,11 @@ export function AplicarChecklistDialog({
     hashAssinado: string;
   } | null>(null);
 
+  // Hooks de Conectividade e AutoSave Offline (PROMPT 021)
+  const { isOnline, statusLabel } = useConnectionStatus();
+  const { autoSaveLocalApplication } = useChecklistsOffline();
+  const [localAppId, setLocalAppId] = useState<string>("");
+
   // Estados de Geolocalização
   const [geoStart, setGeoStart] = useState<GeoCoordinates | null>(null);
   const [geoFinish, setGeoFinish] = useState<GeoCoordinates | null>(null);
@@ -133,6 +141,7 @@ export function AplicarChecklistDialog({
       setProjetoId(modelo.projeto_id || "");
       setAreaId(modelo.area_id || "");
       setResponsavelId(modelo.responsavel_id || "");
+      setLocalAppId(typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `app_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     }
   }, [modelo, open]);
 
@@ -180,59 +189,72 @@ export function AplicarChecklistDialog({
       }
     }
 
-    try {
-      const app = await createAplicacao.mutateAsync({
-        modelo_id: modelo.id,
-        projeto_id: projetoId || undefined,
-        area_id: areaId || undefined,
-        responsavel_id: responsavelId || undefined,
-        colaborador_id: colaboradorId || undefined,
+    // Initialize respuestas
+    const init: Record<string, RespostaDraft> = {};
+    (modelo.secoes || []).forEach((secao) => {
+      (secao.itens || []).forEach((item) => {
+        init[item.id] = {
+          item_id: item.id,
+          resposta_valor: "",
+          comentario: "",
+          is_nao_conforme: false,
+          evidencias_urls: [],
+        };
       });
+    });
 
-      setAplicacaoIdCreated(app.id);
+    setRespostas(init);
+    setStep("execution");
 
-      // Salvar registro de geolocalização de início no banco se capturado
-      if (coordsCaptured && empresaId) {
-        await supabase.from("checklist_geolocalizacoes" as any).insert({
-          empresa_id: empresaId,
-          aplicacao_id: app.id,
-          momento: "inicio",
-          latitude: coordsCaptured.latitude,
-          longitude: coordsCaptured.longitude,
-          precisao: coordsCaptured.accuracy || null,
+    // AutoSave local inicial no IndexedDB
+    const targetId = localAppId || `app_${Date.now()}`;
+    setAplicacaoIdCreated(targetId);
+
+    autoSaveLocalApplication({
+      localAppId: targetId,
+      modeloId: modelo.id,
+      modeloNome: modelo.nome,
+      respostas: init,
+      observacoesGerais: "",
+      geoStart: coordsCaptured,
+    });
+
+    // Se estiver online, criar também registro remoto imediato
+    if (isOnline) {
+      try {
+        const app = await createAplicacao.mutateAsync({
+          modelo_id: modelo.id,
+          projeto_id: projetoId || undefined,
+          area_id: areaId || undefined,
+          responsavel_id: responsavelId || undefined,
+          colaborador_id: colaboradorId || undefined,
         });
+
+        if (coordsCaptured && empresaId) {
+          await supabase.from("checklist_geolocalizacoes" as any).insert({
+            empresa_id: empresaId,
+            aplicacao_id: app.id,
+            momento: "inicio",
+            latitude: coordsCaptured.latitude,
+            longitude: coordsCaptured.longitude,
+            precisao: coordsCaptured.accuracy || null,
+          });
+        }
+      } catch (err) {
+        // Ignora erro de rede se offline
       }
-
-      // Initialize respuestas
-      const init: Record<string, RespostaDraft> = {};
-      (modelo.secoes || []).forEach((secao) => {
-        (secao.itens || []).forEach((item) => {
-          init[item.id] = {
-            item_id: item.id,
-            resposta_valor: "",
-            comentario: "",
-            is_nao_conforme: false,
-            evidencias_urls: [],
-          };
-        });
-      });
-
-      setRespostas(init);
-      setStep("execution");
-    } catch (err) {
-      // Error handled by mutation
     }
   };
 
   const handleSetAnswer = (itemId: string, valor: string, isNaoConforme: boolean) => {
-    setRespostas((prev) => ({
-      ...prev,
+    const updated = {
+      ...respostas,
       [itemId]: {
-        ...prev[itemId],
+        ...respostas[itemId],
         resposta_valor: valor,
         is_nao_conforme: isNaoConforme,
         plano_acao: isNaoConforme
-          ? prev[itemId]?.plano_acao || {
+          ? respostas[itemId]?.plano_acao || {
               o_que_fazer: `Ação corretiva para item de ${modelo.nome}`,
               por_que: "Não conformidade identificada em checklist de campo",
               onde: "Canteiro de Obra",
@@ -244,7 +266,21 @@ export function AplicarChecklistDialog({
             }
           : undefined,
       },
-    }));
+    };
+
+    setRespostas(updated);
+
+    // AutoSave local no IndexedDB
+    if (aplicacaoIdCreated) {
+      autoSaveLocalApplication({
+        localAppId: aplicacaoIdCreated,
+        modeloId: modelo.id,
+        modeloNome: modelo.nome,
+        respostas: updated,
+        observacoesGerais,
+        geoStart,
+      });
+    }
   };
 
   const handlePhotoUpload = async (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,16 +289,45 @@ export function AplicarChecklistDialog({
 
     try {
       setUploadingItemId(itemId);
-      const res = await uploadImage(file);
-      if (res) {
-        setRespostas((prev) => ({
-          ...prev,
-          [itemId]: {
-            ...prev[itemId],
-            evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), res],
-          },
-        }));
-        toast.success("Foto anexada com sucesso no Cloudflare R2!");
+
+      if (isOnline) {
+        const res = await uploadImage(file);
+        if (res) {
+          setRespostas((prev) => ({
+            ...prev,
+            [itemId]: {
+              ...prev[itemId],
+              evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), res],
+            },
+          }));
+          toast.success("Foto anexada com sucesso no Cloudflare R2!");
+        }
+      } else {
+        // Fluxo Offline: Salvar Foto DataURL no IndexedDB
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const dataUrl = reader.result as string;
+          const photoId = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+          await saveOfflinePhoto({
+            id: photoId,
+            local_application_id: aplicacaoIdCreated || localAppId,
+            item_id: itemId,
+            data_url: dataUrl,
+            file_name: file.name,
+            status: "PENDENTE",
+            created_at: new Date().toISOString(),
+          });
+
+          setRespostas((prev) => ({
+            ...prev,
+            [itemId]: {
+              ...prev[itemId],
+              evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), dataUrl],
+            },
+          }));
+          toast.info("Foto salva localmente no dispositivo (Aguardando Sync R2)");
+        };
+        reader.readAsDataURL(file);
       }
     } catch (err: any) {
       toast.error(`Erro ao anexar foto: ${err.message || err}`);
@@ -323,6 +388,31 @@ export function AplicarChecklistDialog({
         });
       }
     });
+
+    if (!isOnline) {
+      // Conclusão Offline: Salvar payload final no IndexedDB e adicionar item na sync_queue
+      await autoSaveLocalApplication({
+        localAppId: aplicacaoIdCreated,
+        modeloId: modelo.id,
+        modeloNome: modelo.nome,
+        respostas,
+        observacoesGerais,
+        geoStart,
+        geoFinish: coordsCaptured,
+        isFinalizing: true,
+      });
+
+      setResultSummary({
+        id: aplicacaoIdCreated,
+        status: "AGUARDANDO SINCRONIZAÇÃO",
+        percentual_conformidade: 100,
+        total_conforme: listRespostas.length,
+        total_nao_conforme: 0,
+        total_na: 0,
+      });
+      setStep("result");
+      return;
+    }
 
     try {
       const summary = await finishAplicacao.mutateAsync({
@@ -412,9 +502,20 @@ export function AplicarChecklistDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <ClipboardCheck className="h-5 w-5 text-primary" />
-            Aplicação de Checklist: {modelo.nome}
+          <DialogTitle className="flex items-center justify-between gap-2 text-lg font-bold">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              <span>Aplicação de Checklist: {modelo.nome}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-bold font-mono">
+                {statusLabel}
+              </Badge>
+              <Badge variant="secondary" className="text-[10px] font-normal text-muted-foreground">
+                Salvo no dispositivo
+              </Badge>
+            </div>
           </DialogTitle>
         </DialogHeader>
 

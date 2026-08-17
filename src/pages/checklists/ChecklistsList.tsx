@@ -20,6 +20,9 @@ import { AplicarChecklistDialog } from "@/components/checklists/AplicarChecklist
 import { PlanoAcaoDialog } from "@/components/checklists/PlanoAcaoDialog";
 import { ChecklistAgendamentosTab } from "@/components/checklists/ChecklistAgendamentosTab";
 import { ChecklistQrCodeDialog } from "@/components/checklists/ChecklistQrCodeDialog";
+import { ChecklistSyncCenterDialog } from "@/components/checklists/ChecklistSyncCenterDialog";
+import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
+import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { exportToExcel } from "@/lib/excelExport";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import {
@@ -43,6 +46,8 @@ import {
   FolderCheck,
   Calendar,
   QrCode,
+  HardDrive,
+  DownloadCloud,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -75,6 +80,12 @@ export default function ChecklistsListPage() {
 
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [selectedModeloForQr, setSelectedModeloForQr] = useState<ChecklistModelo | null>(null);
+
+  const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
+
+  // Connection & Offline Hooks (PROMPT 021)
+  const { statusLabel } = useConnectionStatus();
+  const { offlineModels, toggleModelOfflineAvailability } = useChecklistsOffline();
 
   // Modelos Filtered
   const filteredModelos = modelos.filter((m) => {
@@ -168,6 +179,18 @@ export default function ChecklistsListPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-bold font-mono px-2.5 py-1">
+            {statusLabel}
+          </Badge>
+
+          <Button
+            variant="outline"
+            onClick={() => setIsSyncCenterOpen(true)}
+            className="gap-1.5 text-xs font-semibold"
+          >
+            <HardDrive className="h-4 w-4 text-primary" /> Central de Sincronização
+          </Button>
+
           {allowEdit && (
             <Button onClick={handleCreateModelo} className="gap-2 text-xs">
               <Plus className="h-4 w-4" /> Novo Modelo de Checklist
@@ -244,9 +267,16 @@ export default function ChecklistsListPage() {
                       <Badge variant="outline" className="font-mono text-[11px]">
                         {m.codigo || "CHK"}
                       </Badge>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[11px]">
-                        {m.categoria}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        {offlineModels.some((om) => om.id === m.id) && (
+                          <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold text-[10px]">
+                            Disponível offline
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[11px]">
+                          {m.categoria}
+                        </Badge>
+                      </div>
                     </div>
                     <CardTitle className="text-sm font-bold text-slate-800 pt-1 leading-snug">{m.nome}</CardTitle>
                     <CardDescription className="text-[11px] line-clamp-2">{m.descricao || "Sem descrição."}</CardDescription>
@@ -269,6 +299,16 @@ export default function ChecklistsListPage() {
                         className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex-1"
                       >
                         <Play className="h-3.5 w-3.5" /> Aplicar
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => toggleModelOfflineAvailability.mutate(m)}
+                        title={offlineModels.some((om) => om.id === m.id) ? "Remover do modo offline" : "Baixar para uso offline"}
+                        className={`h-8 w-8 ${offlineModels.some((om) => om.id === m.id) ? "text-emerald-600 bg-emerald-50 border-emerald-300" : ""}`}
+                      >
+                        <DownloadCloud className="h-3.5 w-3.5" />
                       </Button>
 
                       <Button
@@ -601,6 +641,12 @@ export default function ChecklistsListPage() {
         open={isQrDialogOpen}
         onOpenChange={setIsQrDialogOpen}
         modelo={selectedModeloForQr}
+      />
+
+      {/* Sync Center Dialog */}
+      <ChecklistSyncCenterDialog
+        open={isSyncCenterOpen}
+        onOpenChange={setIsSyncCenterOpen}
       />
     </div>
   );

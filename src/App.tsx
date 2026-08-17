@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { registerChecklistsServiceWorker } from "@/utils/pwaRegister";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
@@ -80,15 +81,15 @@ const RootRedirect = () => {
   const searchParams = new URLSearchParams(location.search);
   const hasContaAzulCallback = searchParams.has("code") || searchParams.has("error");
 
-  if (hasContaAzulCallback) {
-    return <Navigate to={`/medicoes/integracao?tab=erp${location.search.replace('?', '&')}`} replace />;
-  }
-
   return <Navigate to="/medicoes/dashboard" replace />;
 };
 
 const App = () => {
   useAppUpdate();
+  useEffect(() => {
+    registerChecklistsServiceWorker();
+  }, []);
+
   return (
   <PersistQueryClientProvider 
     client={queryClient} 
