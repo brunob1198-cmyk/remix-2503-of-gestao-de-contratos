@@ -116,7 +116,7 @@ export class ChecklistsSyncManager {
       .eq("id", localApp.local_application_id)
       .maybeSingle();
 
-    let remoteAppId = existingApp?.id;
+    let remoteAppId = (existingApp as any)?.id;
 
     if (!remoteAppId) {
       const { data: newApp, error: appErr } = await supabase
@@ -138,7 +138,7 @@ export class ChecklistsSyncManager {
       if (appErr && !appErr.message.includes("duplicate")) {
         throw new Error(`Erro ao salvar aplicação remota: ${appErr.message}`);
       }
-      remoteAppId = newApp?.id || localApp.local_application_id;
+      remoteAppId = (newApp as any)?.id || localApp.local_application_id;
     }
 
     // 3. Inserir Respostas e Planos de Ação 5W2H
@@ -203,25 +203,25 @@ export class ChecklistsSyncManager {
       .eq("id", remoteAppId);
 
     // 4. Sincronizar registros de Geolocalização
-    if (geoStart) {
+    if (geo_start) {
       await supabase.from("checklist_geolocalizacoes" as any).insert({
         empresa_id,
         aplicacao_id: remoteAppId,
         momento: "inicio",
-        latitude: geoStart.latitude,
-        longitude: geoStart.longitude,
-        precisao: geoStart.accuracy || null,
+        latitude: geo_start.latitude,
+        longitude: geo_start.longitude,
+        precisao: geo_start.accuracy || null,
       });
     }
 
-    if (geoFinish) {
+    if (geo_finish) {
       await supabase.from("checklist_geolocalizacoes" as any).insert({
         empresa_id,
         aplicacao_id: remoteAppId,
         momento: "conclusao",
-        latitude: geoFinish.latitude,
-        longitude: geoFinish.longitude,
-        precisao: geoFinish.accuracy || null,
+        latitude: geo_finish.latitude,
+        longitude: geo_finish.longitude,
+        precisao: geo_finish.accuracy || null,
       });
     }
 
