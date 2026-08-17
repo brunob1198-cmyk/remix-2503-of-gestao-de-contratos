@@ -94,6 +94,47 @@ export default function ContratosPage() {
     setIsOpen(true);
   };
 
+  const handleExportExcel = useCallback(() => {
+    const fmtDate = (v?: string) => (v ? parseISO(v).toLocaleDateString("pt-BR") : "-");
+    const rows: ContratoExportRow[] = [];
+
+    processedItems.forEach((c: any) => {
+      const aditivos = c.aditivos || [];
+      const valorAditivos = aditivos.reduce((acc: number, ad: any) => acc + (ad.valor_total || 0), 0);
+      rows.push({
+        tipo: "Contrato",
+        numero: c.numero_contrato || "-",
+        objeto: c.escopo || "Contrato s/ Objeto Definido",
+        clientes: getClientesNomes(c.cliente_ids),
+        projetos: getProjetosNomes(c.id),
+        valorOriginal: c.valor_total || 0,
+        valorAditivos,
+        valorIntegrado: (c.valor_total || 0) + valorAditivos,
+        prazoInicio: fmtDate(c.prazo_inicio),
+        prazoFim: fmtDate(c.prazo_fim),
+        status: calcularStatus(c.prazo_fim).label,
+      });
+
+      aditivos.forEach((ad: any, idx: number) => {
+        rows.push({
+          tipo: "Aditivo",
+          numero: `${c.numero_contrato || "-"} • Aditivo #${idx + 1}`,
+          objeto: ad.escopo || "-",
+          clientes: getClientesNomes(ad.cliente_ids?.length ? ad.cliente_ids : c.cliente_ids),
+          projetos: getProjetosNomes(c.id),
+          valorOriginal: ad.valor_total || 0,
+          valorAditivos: 0,
+          valorIntegrado: ad.valor_total || 0,
+          prazoInicio: fmtDate(ad.prazo_inicio),
+          prazoFim: fmtDate(ad.prazo_fim),
+          status: calcularStatus(ad.prazo_fim || c.prazo_fim).label,
+        });
+      });
+    });
+
+    exportContratosExcel(rows, { total: processedItems.length, geradoEm: new Date() });
+  }, [processedItems, getClientesNomes, getProjetosNomes]);
+
   const colLabels: Record<ColKey, string> = {
     numero: "Nº Contrato",
     objeto: "Contrato / Objeto",
