@@ -273,6 +273,41 @@ export default function ProjetosPage() {
     setCurrentPage(1);
   }, []);
 
+  const handleExportExcel = useCallback(() => {
+    const rows: ProjetoExportRow[] = filteredSorted.map((p: any) => {
+      const ids: string[] = p.contrato_ids?.length ? p.contrato_ids : (p.contrato_id ? [p.contrato_id] : []);
+      const contratosStr = ids
+        .map((cid) => contratosById.get(cid)?.numero_contrato)
+        .filter(Boolean)
+        .join(", ") || (p.contratoObj?.numero_contrato ?? "-");
+
+      return {
+        codigo: p.codigo || "-",
+        nome: p.nome || "-",
+        area: p.areaObj?.nome || "-",
+        cliente: p.clienteObj?.razao_social || p.cliente || "-",
+        coordenador: p.coordenador || "-",
+        contratos: contratosStr,
+        descricao: p.descricao || "-",
+        valorTotal: Number(p.valor_total) || 0,
+        status: p.status || "A Iniciar",
+      };
+    });
+
+    if (rows.length === 0) {
+      toast({ title: "Nada para exportar", description: "Nenhum projeto encontrado com os filtros aplicados.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      exportProjetosExcel(rows, { geradoEm: new Date() });
+      toast({ title: "Exportação concluída", description: `${rows.length} projeto(s) exportado(s).` });
+    } catch (error) {
+      console.error("Erro ao exportar projetos:", error);
+      toast({ title: "Erro ao exportar", description: "Não foi possível gerar a planilha.", variant: "destructive" });
+    }
+  }, [filteredSorted, contratosById, toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
