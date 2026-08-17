@@ -8,11 +8,11 @@ export async function calculateSHA256(data: string | ArrayBuffer | Blob | Uint8A
 
   if (typeof data === "string") {
     const encoder = new TextEncoder();
-    arrayBuffer = encoder.encode(data).buffer;
+    arrayBuffer = encoder.encode(data).buffer as ArrayBuffer;
   } else if (data instanceof Blob) {
     arrayBuffer = await data.arrayBuffer();
   } else if (data instanceof Uint8Array) {
-    arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
   } else {
     arrayBuffer = data;
   }

@@ -51,6 +51,9 @@ interface Profile {
   avatar_url: string | null;
   empresa_id: string | null;
   aprovado: boolean;
+  email?: string | null;
+  cargo?: string | null;
+  empresa_nome?: string | null;
 }
 
 interface AuthContextType {

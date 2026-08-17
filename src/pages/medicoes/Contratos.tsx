@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen, FilterX } from "lucide-react";
+import { Plus, ScrollText, Pencil, Trash2, AlertTriangle, CalendarCheck, CalendarX, FileText, FolderOpen, FilterX, FileSpreadsheet } from "lucide-react";
+import { exportContratosExcel, ContratoExportRow } from "@/lib/contratosExport";
 import ContratosForm from "@/components/medicoes/ContratosForm";
 import { supabase } from "@/integrations/supabase/client";
 import { Contrato } from "@/types/medicoes";
@@ -93,6 +94,47 @@ export default function ContratosPage() {
     setIsOpen(true);
   };
 
+  const handleExportExcel = useCallback(() => {
+    const fmtDate = (v?: string) => (v ? parseISO(v).toLocaleDateString("pt-BR") : "-");
+    const rows: ContratoExportRow[] = [];
+
+    processedItems.forEach((c: any) => {
+      const aditivos = c.aditivos || [];
+      const valorAditivos = aditivos.reduce((acc: number, ad: any) => acc + (ad.valor_total || 0), 0);
+      rows.push({
+        tipo: "Contrato",
+        numero: c.numero_contrato || "-",
+        objeto: c.escopo || "Contrato s/ Objeto Definido",
+        clientes: getClientesNomes(c.cliente_ids),
+        projetos: getProjetosNomes(c.id),
+        valorOriginal: c.valor_total || 0,
+        valorAditivos,
+        valorIntegrado: (c.valor_total || 0) + valorAditivos,
+        prazoInicio: fmtDate(c.prazo_inicio),
+        prazoFim: fmtDate(c.prazo_fim),
+        status: calcularStatus(c.prazo_fim).label,
+      });
+
+      aditivos.forEach((ad: any, idx: number) => {
+        rows.push({
+          tipo: "Aditivo",
+          numero: `${c.numero_contrato || "-"} • Aditivo #${idx + 1}`,
+          objeto: ad.escopo || "-",
+          clientes: getClientesNomes(ad.cliente_ids?.length ? ad.cliente_ids : c.cliente_ids),
+          projetos: getProjetosNomes(c.id),
+          valorOriginal: 0,
+          valorAditivos: ad.valor_total || 0,
+          valorIntegrado: 0,
+          prazoInicio: fmtDate(ad.prazo_inicio),
+          prazoFim: fmtDate(ad.prazo_fim),
+          status: calcularStatus(ad.prazo_fim || c.prazo_fim).label,
+        });
+      });
+    });
+
+    exportContratosExcel(rows, { total: processedItems.length, geradoEm: new Date() });
+  }, [processedItems, getClientesNomes, getProjetosNomes]);
+
   const colLabels: Record<ColKey, string> = {
     numero: "Nº Contrato",
     objeto: "Contrato / Objeto",
@@ -111,6 +153,10 @@ export default function ContratosPage() {
           <p className="text-sm text-muted-foreground">Gerencie todos os contratos da empresa.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportExcel} disabled={processedItems.length === 0}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setEditingContrato(null); }}>
             <DialogTrigger asChild>
               <Button>

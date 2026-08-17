@@ -35,7 +35,7 @@ export function useChecklistQRCodes(modeloId?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data as ChecklistQRCode[]) || [];
+      return (data as unknown as ChecklistQRCode[]) || [];
     },
   });
 
@@ -63,7 +63,7 @@ export function useChecklistQRCodes(modeloId?: string) {
         .single();
 
       if (error) throw error;
-      return data as ChecklistQRCode;
+      return data as unknown as ChecklistQRCode;
     },
     onSuccess: () => {
       toast.success("QR Code gerado com sucesso!");
@@ -113,7 +113,7 @@ export function useChecklistAgendamentos() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data as ChecklistAgendamento[]) || [];
+      return (data as unknown as ChecklistAgendamento[]) || [];
     },
   });
 
@@ -133,7 +133,7 @@ export function useChecklistAgendamentos() {
         .order("data_prevista", { ascending: true });
 
       if (error) throw error;
-      return (data as ChecklistAgendamentoExecucao[]) || [];
+      return (data as unknown as ChecklistAgendamentoExecucao[]) || [];
     },
   });
 
@@ -180,7 +180,7 @@ export function useChecklistAgendamentos() {
 
       await supabase.from("checklist_agendamento_execucoes" as any).insert({
         empresa_id: empresaId!,
-        agendamento_id: agendamento.id,
+        agendamento_id: (agendamento as any).id,
         competencia: dataPrevista.substring(0, 7),
         data_prevista: dataPrevista,
         prazo: prazoDate.toISOString().split("T")[0],
@@ -188,7 +188,7 @@ export function useChecklistAgendamentos() {
         status: "PENDENTE",
       });
 
-      return agendamento as ChecklistAgendamento;
+      return agendamento as unknown as ChecklistAgendamento;
     },
     onSuccess: () => {
       toast.success("Agendamento criado e primeira execução gerada!");
@@ -240,7 +240,7 @@ export function useChecklistNotificacoes() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data as ChecklistNotificacao[]) || [];
+      return (data as unknown as ChecklistNotificacao[]) || [];
     },
   });
 

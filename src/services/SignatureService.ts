@@ -68,12 +68,12 @@ export class SignatureService {
     // Registrar evento de auditoria: SOLICITACAO_CRIADA
     await this.recordAuditEvent({
       empresa_id,
-      signature_request_id: request.id,
+      signature_request_id: (request as any).id,
       evento: "SOLICITACAO_CRIADA",
       metadata: { modulo_origem, entidade_tipo, entidade_id, metodo },
     });
 
-    return request as SignatureRequest;
+    return request as unknown as SignatureRequest;
   }
 
   /**
@@ -111,7 +111,7 @@ export class SignatureService {
       throw new Error("Solicitação de assinatura não encontrada.");
     }
 
-    const request = reqData as SignatureRequest;
+    const request = reqData as unknown as SignatureRequest;
 
     if (request.status === "INVALIDADO" || request.status === "CANCELADO" || request.status === "EXPIRADO") {
       throw new Error(`Solicitação de assinatura não está ativa. Status atual: ${request.status}`);
@@ -223,9 +223,9 @@ export class SignatureService {
     });
 
     return {
-      request: updatedReqData as SignatureRequest,
-      signer: signerData as SignatureSigner,
-      document: docData as SignatureDocument,
+      request: updatedReqData as unknown as SignatureRequest,
+      signer: signerData as unknown as SignatureSigner,
+      document: docData as unknown as SignatureDocument,
       arquivo_assinado_url: arquivoAssinadoUrl,
     };
   }
@@ -248,7 +248,7 @@ export class SignatureService {
       .eq("id", signature_request_id);
 
     await this.recordAuditEvent({
-      empresa_id: req.empresa_id,
+      empresa_id: (req as any).empresa_id,
       signature_request_id,
       evento: "DOCUMENTO_INVALIDADO",
       usuario_id,
@@ -267,14 +267,14 @@ export class SignatureService {
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-    return (data as SignatureEvent[]) || [];
+    return (data as unknown as SignatureEvent[]) || [];
   }
 
   /**
    * 5. Obter validação pública de assinatura (QR Code pública)
    */
   static async getPublicVerification(signature_request_id: string): Promise<PublicSignatureVerification> {
-    const { data, error } = await supabase.rpc("get_public_signature_verification", {
+    const { data, error } = await (supabase as any).rpc("get_public_signature_verification", {
       p_request_id: signature_request_id,
     });
 
@@ -283,7 +283,7 @@ export class SignatureService {
       return { valid: false, error: "Falha na verificação pública do documento." };
     }
 
-    return data as PublicSignatureVerification;
+    return data as unknown as PublicSignatureVerification;
   }
 
   /**

@@ -30,6 +30,11 @@ export interface ChecklistModelo {
   projeto_id?: string | null;
   area_id?: string | null;
   tipo_aplicacao?: string | null;
+  exigir_geolocalizacao?: boolean | null;
+  latitude_alvo?: number | null;
+  longitude_alvo?: number | null;
+  raio_permitido_metros?: number | null;
+  bloquear_fora_raio?: boolean | null;
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
