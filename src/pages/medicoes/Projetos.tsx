@@ -433,6 +433,7 @@ export default function ProjetosPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>
