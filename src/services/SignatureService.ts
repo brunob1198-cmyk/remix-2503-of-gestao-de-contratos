@@ -68,7 +68,7 @@ export class SignatureService {
     // Registrar evento de auditoria: SOLICITACAO_CRIADA
     await this.recordAuditEvent({
       empresa_id,
-      signature_(request as any).id: request.id,
+      signature_request_id: (request as any).id,
       evento: "SOLICITACAO_CRIADA",
       metadata: { modulo_origem, entidade_tipo, entidade_id, metodo },
     });

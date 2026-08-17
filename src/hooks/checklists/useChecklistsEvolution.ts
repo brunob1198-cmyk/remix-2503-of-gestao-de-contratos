@@ -180,7 +180,7 @@ export function useChecklistAgendamentos() {
 
       await supabase.from("checklist_agendamento_execucoes" as any).insert({
         empresa_id: empresaId!,
-        (agendamento as any).id: agendamento.id,
+        agendamento_id: (agendamento as any).id,
         competencia: dataPrevista.substring(0, 7),
         data_prevista: dataPrevista,
         prazo: prazoDate.toISOString().split("T")[0],
