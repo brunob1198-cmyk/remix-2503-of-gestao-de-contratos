@@ -297,6 +297,11 @@ export default function ProjetosPage() {
           <h2 className="text-xl font-bold">Projetos</h2>
           <p className="text-sm text-muted-foreground">Gerencie os projetos e suas obras</p>
         </div>
+        <div className="flex gap-2">
+        <Button variant="outline" onClick={handleExportExcel} disabled={filteredSorted.length === 0}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Exportar Excel
+        </Button>
         <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button>
