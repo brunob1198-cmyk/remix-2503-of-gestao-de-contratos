@@ -153,6 +153,10 @@ export default function ContratosPage() {
           <p className="text-sm text-muted-foreground">Gerencie todos os contratos da empresa.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportExcel} disabled={processedItems.length === 0}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
           <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setEditingContrato(null); }}>
             <DialogTrigger asChild>
               <Button>
