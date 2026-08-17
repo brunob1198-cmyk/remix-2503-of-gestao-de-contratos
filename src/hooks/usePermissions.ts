@@ -48,6 +48,7 @@ export const TELAS = [
   { id: "sgsst-dashboard", label: "SGSST - Dashboard Geral" },
   { id: "sgsst-relatorios", label: "SGSST - Relatórios Executivos" },
   { id: "checklists", label: "Checklists Inteligentes" },
+  { id: "assinaturas", label: "Serviço Central de Assinaturas Digital" },
 ] as const;
 
 export function usePermissions() {
@@ -111,12 +112,24 @@ export function usePermissions() {
     return !!profile?.[action];
   };
 
+  const canSignatureAction = (action: "visualizar_assinatura" | "solicitar_assinatura" | "assinar" | "cancelar_assinatura" | "visualizar_auditoria" | "verificar_assinatura" | "baixar_documento_assinado") => {
+    if (role === "admin") return true;
+    return canView("assinaturas") || canEdit("checklists");
+  };
+
+  const canChecklistEvolutionAction = (action: "visualizar_qrcode" | "criar_qrcode" | "editar_qrcode" | "desativar_qrcode" | "visualizar_agendamentos" | "criar_agendamento" | "editar_agendamento" | "pausar_agendamento" | "visualizar_notificacoes") => {
+    if (role === "admin") return true;
+    return canView("checklists") || canEdit("checklists");
+  };
+
   return { 
     permissions, 
     loading: loadingPermissions || loadingProfile, 
     canView, 
     canEdit,
     hasActionPermission,
+    canSignatureAction,
+    canChecklistEvolutionAction,
     profile 
   };
 }

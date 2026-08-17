@@ -10,7 +10,7 @@ import { ChecklistModelo, TipoRespostaChecklist } from "@/hooks/checklists/useCh
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2, Layers, HelpCircle, CheckSquare, Settings2, FolderCheck } from "lucide-react";
+import { Plus, Trash2, Layers, HelpCircle, CheckSquare, Settings2, FolderCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChecklistModeloFormDialogProps {
@@ -53,6 +53,13 @@ export function ChecklistModeloFormDialog({
   const [periodicidade, setPeriodicidade] = useState("Diario");
   const [projetoId, setProjetoId] = useState("");
   const [areaId, setAreaId] = useState("");
+
+  // Estados de Geolocalização (PROMPT 020)
+  const [exigirGeolocalizacao, setExigirGeolocalizacao] = useState<"nao" | "iniciar" | "finalizar" | "ambos">("nao");
+  const [latitudeAlvo, setLatitudeAlvo] = useState<string>("");
+  const [longitudeAlvo, setLongitudeAlvo] = useState<string>("");
+  const [raioPermitidoMetros, setRaioPermitidoMetros] = useState<number>(200);
+  const [bloquearForaRaio, setBloquearForaRaio] = useState<boolean>(false);
 
   const [secoes, setSecoes] = useState<SecaoDraft[]>([
     {
@@ -106,6 +113,11 @@ export function ChecklistModeloFormDialog({
       setPeriodicidade(modeloToEdit.periodicidade_sugerida || "Diario");
       setProjetoId(modeloToEdit.projeto_id || "");
       setAreaId(modeloToEdit.area_id || "");
+      setExigirGeolocalizacao((modeloToEdit.exigir_geolocalizacao as any) || "nao");
+      setLatitudeAlvo(modeloToEdit.latitude_alvo ? String(modeloToEdit.latitude_alvo) : "");
+      setLongitudeAlvo(modeloToEdit.longitude_alvo ? String(modeloToEdit.longitude_alvo) : "");
+      setRaioPermitidoMetros(modeloToEdit.raio_permitido_metros || 200);
+      setBloquearForaRaio(!!modeloToEdit.bloquear_fora_raio);
 
       if (modeloToEdit.secoes && modeloToEdit.secoes.length > 0) {
         setSecoes(
@@ -135,6 +147,11 @@ export function ChecklistModeloFormDialog({
       setPeriodicidade("Diario");
       setProjetoId("");
       setAreaId("");
+      setExigirGeolocalizacao("nao");
+      setLatitudeAlvo("");
+      setLongitudeAlvo("");
+      setRaioPermitidoMetros(200);
+      setBloquearForaRaio(false);
       setSecoes([
         {
           titulo: "1. Inspeção Geral de Segurança",
@@ -225,6 +242,11 @@ export function ChecklistModeloFormDialog({
         periodicidade_sugerida: periodicidade,
         projeto_id: projetoId && projetoId !== "todas" && projetoId !== "todos" ? projetoId : null,
         area_id: areaId && areaId !== "todas" && areaId !== "todos" ? areaId : null,
+        exigir_geolocalizacao: exigirGeolocalizacao,
+        latitude_alvo: latitudeAlvo ? parseFloat(latitudeAlvo) : null,
+        longitude_alvo: longitudeAlvo ? parseFloat(longitudeAlvo) : null,
+        raio_permitido_metros: raioPermitidoMetros || 200,
+        bloquear_fora_raio: bloquearForaRaio,
         secoes,
       });
       onOpenChange(false);
@@ -331,6 +353,74 @@ export function ChecklistModeloFormDialog({
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
               />
+            </div>
+
+            {/* SEÇÃO CONFIGURAÇÃO GEOLOCALIZAÇÃO & RAIO */}
+            <div className="sm:col-span-3 p-3 bg-white border border-slate-200 rounded-lg space-y-3">
+              <div className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-emerald-600" /> Configuração de Regras de Geolocalização (GPS)
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Exigir Geolocalização</Label>
+                  <Select value={exigirGeolocalizacao} onValueChange={(v: any) => setExigirGeolocalizacao(v)}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nao">Não (Opcional)</SelectItem>
+                      <SelectItem value="iniciar">Sim, ao Iniciar</SelectItem>
+                      <SelectItem value="finalizar">Sim, ao Finalizar</SelectItem>
+                      <SelectItem value="ambos">Sim, ao Iniciar e Finalizar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Latitude Alvo (Alocação)</Label>
+                  <Input
+                    placeholder="-23.550520"
+                    value={latitudeAlvo}
+                    onChange={(e) => setLatitudeAlvo(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Longitude Alvo (Alocação)</Label>
+                  <Input
+                    placeholder="-46.633308"
+                    value={longitudeAlvo}
+                    onChange={(e) => setLongitudeAlvo(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold">Raio Permitido (Metros)</Label>
+                  <Input
+                    type="number"
+                    placeholder="200"
+                    value={raioPermitidoMetros}
+                    onChange={(e) => setRaioPermitidoMetros(Number(e.target.value))}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center space-x-2 pt-4">
+                  <input
+                    type="checkbox"
+                    id="chk_bloq_raio"
+                    checked={bloquearForaRaio}
+                    onChange={(e) => setBloquearForaRaio(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  <Label htmlFor="chk_bloq_raio" className="text-xs font-semibold cursor-pointer text-slate-800">
+                    Bloquear preenchimento se o usuário estiver fora da área permitida
+                  </Label>
+                </div>
+              </div>
             </div>
           </div>
 

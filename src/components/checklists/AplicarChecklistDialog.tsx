@@ -25,7 +25,16 @@ import {
   Printer,
   Award,
   FileCheck,
+  ShieldCheck,
+  ExternalLink,
+  QrCode,
+  FileText,
+  MapPin,
+  Navigation,
 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SignatureService } from "@/services/SignatureService";
+import { getCurrentDeviceLocation, isWithinRadius, GeoCoordinates } from "@/utils/geolocationUtils";
 import { toast } from "sonner";
 
 interface AplicarChecklistDialogProps {
@@ -76,6 +85,23 @@ export function AplicarChecklistDialog({
   const [aplicacaoIdCreated, setAplicacaoIdCreated] = useState<string | null>(null);
   const [resultSummary, setResultSummary] = useState<any>(null);
 
+  // Estados do Serviço Central de Assinatura
+  const [metodoAssinatura, setMetodoAssinatura] = useState<"ASSINATURA_ELETRONICA_INTERNA" | "GOV_BR">("ASSINATURA_ELETRONICA_INTERNA");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [signedData, setSignedData] = useState<{
+    requestId: string;
+    arquivoUrl: string;
+    signedAt: string;
+    hashOriginal: string;
+    hashAssinado: string;
+  } | null>(null);
+
+  // Estados de Geolocalização
+  const [geoStart, setGeoStart] = useState<GeoCoordinates | null>(null);
+  const [geoFinish, setGeoFinish] = useState<GeoCoordinates | null>(null);
+  const [isCapturingGeo, setIsCapturingGeo] = useState(false);
+
   // Load Selects
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_aplicar_chk", empresaId],
@@ -101,6 +127,9 @@ export function AplicarChecklistDialog({
       setRespostas({});
       setObservacoesGerais("");
       setResultSummary(null);
+      setSignedData(null);
+      setShowConfirmDialog(false);
+      setMetodoAssinatura("ASSINATURA_ELETRONICA_INTERNA");
       setProjetoId(modelo.projeto_id || "");
       setAreaId(modelo.area_id || "");
       setResponsavelId(modelo.responsavel_id || "");
@@ -110,6 +139,47 @@ export function AplicarChecklistDialog({
   if (!modelo) return null;
 
   const handleStartExecution = async () => {
+    const regraGeo = (modelo.exigir_geolocalizacao as any) || "nao";
+    const precisaGeoInicio = regraGeo === "iniciar" || regraGeo === "ambos";
+
+    let coordsCaptured: GeoCoordinates | null = null;
+
+    if (precisaGeoInicio || modelo.latitude_alvo) {
+      try {
+        setIsCapturingGeo(true);
+        coordsCaptured = await getCurrentDeviceLocation();
+        setGeoStart(coordsCaptured);
+
+        // Validar Raio de alcance se configurado no modelo
+        if (modelo.latitude_alvo && modelo.longitude_alvo && modelo.raio_permitido_metros) {
+          const radiusResult = isWithinRadius(
+            coordsCaptured.latitude,
+            coordsCaptured.longitude,
+            Number(modelo.latitude_alvo),
+            Number(modelo.longitude_alvo),
+            modelo.raio_permitido_metros
+          );
+
+          if (!radiusResult.inside) {
+            const msg = `Você está fora da área permitida para este checklist. Distância atual: ${radiusResult.distanceMeters}m (Raio máximo: ${modelo.raio_permitido_metros}m).`;
+            if (modelo.bloquear_fora_raio) {
+              toast.error(msg);
+              return;
+            } else {
+              toast.warning(msg);
+            }
+          }
+        }
+      } catch (geoErr: any) {
+        if (precisaGeoInicio) {
+          toast.error("Este checklist exige registro de localização para ser concluído.");
+          return;
+        }
+      } finally {
+        setIsCapturingGeo(false);
+      }
+    }
+
     try {
       const app = await createAplicacao.mutateAsync({
         modelo_id: modelo.id,
@@ -120,6 +190,18 @@ export function AplicarChecklistDialog({
       });
 
       setAplicacaoIdCreated(app.id);
+
+      // Salvar registro de geolocalização de início no banco se capturado
+      if (coordsCaptured && empresaId) {
+        await supabase.from("checklist_geolocalizacoes" as any).insert({
+          empresa_id: empresaId,
+          aplicacao_id: app.id,
+          momento: "inicio",
+          latitude: coordsCaptured.latitude,
+          longitude: coordsCaptured.longitude,
+          precisao: coordsCaptured.accuracy || null,
+        });
+      }
 
       // Initialize respuestas
       const init: Record<string, RespostaDraft> = {};
@@ -192,6 +274,44 @@ export function AplicarChecklistDialog({
   const handleFinish = async () => {
     if (!aplicacaoIdCreated) return;
 
+    const regraGeo = (modelo.exigir_geolocalizacao as any) || "nao";
+    const precisaGeoFim = regraGeo === "finalizar" || regraGeo === "ambos";
+
+    let coordsCaptured: GeoCoordinates | null = null;
+
+    if (precisaGeoFim) {
+      try {
+        setIsCapturingGeo(true);
+        coordsCaptured = await getCurrentDeviceLocation();
+        setGeoFinish(coordsCaptured);
+
+        if (modelo.latitude_alvo && modelo.longitude_alvo && modelo.raio_permitido_metros) {
+          const radiusResult = isWithinRadius(
+            coordsCaptured.latitude,
+            coordsCaptured.longitude,
+            Number(modelo.latitude_alvo),
+            Number(modelo.longitude_alvo),
+            modelo.raio_permitido_metros
+          );
+
+          if (!radiusResult.inside) {
+            const msg = `Você está fora da área permitida para este checklist. Distância atual: ${radiusResult.distanceMeters}m (Raio máximo: ${modelo.raio_permitido_metros}m).`;
+            if (modelo.bloquear_fora_raio) {
+              toast.error(msg);
+              return;
+            } else {
+              toast.warning(msg);
+            }
+          }
+        }
+      } catch (geoErr: any) {
+        toast.error("Este checklist exige registro de localização para ser concluído.");
+        return;
+      } finally {
+        setIsCapturingGeo(false);
+      }
+    }
+
     const listRespostas = Object.values(respostas);
     const listPlanosAcao: any[] = [];
 
@@ -212,10 +332,79 @@ export function AplicarChecklistDialog({
         planos_acao: listPlanosAcao,
       });
 
+      // Salvar registro de geolocalização de conclusão no banco se capturado
+      if (coordsCaptured && empresaId) {
+        await supabase.from("checklist_geolocalizacoes" as any).insert({
+          empresa_id: empresaId,
+          aplicacao_id: aplicacaoIdCreated,
+          momento: "conclusao",
+          latitude: coordsCaptured.latitude,
+          longitude: coordsCaptured.longitude,
+          precisao: coordsCaptured.accuracy || null,
+        });
+      }
+
       setResultSummary(summary);
       setStep("result");
     } catch (err) {
       // Handled
+    }
+  };
+
+  const handleStartSignatureProcess = () => {
+    if (metodoAssinatura === "GOV_BR") {
+      toast.info(
+        "GOV.BR preparado arquiteturalmente, porém não habilitado por ausência de autorização/elegibilidade da API."
+      );
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSignature = async () => {
+    if (!empresaId || !aplicacaoIdCreated || !modelo) {
+      toast.error("Identificador de aplicação ou empresa inválido.");
+      return;
+    }
+
+    try {
+      setIsSigning(true);
+
+      const req = await SignatureService.createRequest({
+        empresa_id: empresaId,
+        documento_id: aplicacaoIdCreated,
+        modulo_origem: "CHECKLISTS",
+        entidade_tipo: "checklist_aplicacao",
+        entidade_id: aplicacaoIdCreated,
+        metodo: "ASSINATURA_ELETRONICA_INTERNA",
+      });
+
+      const res = await SignatureService.sign({
+        signature_request_id: req.id,
+        user_id: profile?.id || "user-anon",
+        nome: profile?.nome || profile?.email || "Usuário Autenticado",
+        cargo: profile?.cargo || "Auditor / Inspetor",
+        empresa_nome: profile?.empresa_nome || "Empresa Cadastrada",
+        documento_titulo: `Checklist Finalizado - ${modelo.nome}`,
+        conteudo_resumo: `Checklist ${modelo.nome} concluído com ${resultSummary?.percentual_conformidade}% de conformidade. Total de itens: ${resultSummary?.total_itens}. Não conformidades: ${resultSummary?.total_nao_conforme}.`,
+        metodo: "ASSINATURA_ELETRONICA_INTERNA",
+      });
+
+      setSignedData({
+        requestId: req.id,
+        arquivoUrl: res.arquivo_assinado_url,
+        signedAt: res.signer.signed_at || new Date().toISOString(),
+        hashOriginal: res.document.hash_original,
+        hashAssinado: res.document.hash_assinado || "",
+      });
+
+      setShowConfirmDialog(false);
+      toast.success("Documento assinado eletronicamente e registrado com sucesso!");
+    } catch (err: any) {
+      console.error("Erro ao assinar documento:", err);
+      toast.error(`Erro na assinatura: ${err.message || err}`);
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -494,10 +683,94 @@ export function AplicarChecklistDialog({
                 <div className="text-xs text-red-800 font-semibold">Não Conforme</div>
                 <div className="text-lg font-bold text-red-700">{resultSummary.total_nao_conforme}</div>
               </div>
-              <div className="p-3 bg-slate-50 border rounded text-center">
-                <div className="text-xs text-muted-foreground">N/A</div>
-                <div className="text-lg font-bold">{resultSummary.total_na}</div>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded text-center">
+                <div className="text-xs text-amber-800 font-semibold">Planos de Ação</div>
+                <div className="text-lg font-bold text-amber-700">{resultSummary.total_nao_conforme || 0}</div>
               </div>
+            </div>
+
+            {/* SEÇÃO DE ASSINATURA CENTRAL */}
+            <div className="p-4 bg-slate-50 border rounded-lg text-left space-y-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> Assinatura do Documento
+                </div>
+                {signedData && (
+                  <Badge className="bg-emerald-600 text-white font-bold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> ASSINADO
+                  </Badge>
+                )}
+              </div>
+
+              {!signedData ? (
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-xs text-muted-foreground font-semibold">Responsável:</span>
+                    <p className="text-xs font-bold text-slate-800">
+                      {profile?.nome || profile?.email || "Usuário Autenticado no SaaS"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Método de Assinatura:</Label>
+                    <RadioGroup
+                      value={metodoAssinatura}
+                      onValueChange={(val: any) => setMetodoAssinatura(val)}
+                      className="space-y-1"
+                    >
+                      <div className="flex items-center space-x-2 bg-white p-2 border rounded">
+                        <RadioGroupItem value="ASSINATURA_ELETRONICA_INTERNA" id="m_interna" />
+                        <Label htmlFor="m_interna" className="text-xs font-medium cursor-pointer">
+                          Assinatura eletrônica do sistema (Gratuita & Auditável)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 bg-white p-2 border rounded opacity-80">
+                        <RadioGroupItem value="GOV_BR" id="m_govbr" />
+                        <Label htmlFor="m_govbr" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                          GOV.BR — somente se integração autorizada/disponível
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <Button
+                    onClick={handleStartSignatureProcess}
+                    disabled={isSigning}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold gap-2"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> ASSINAR E FINALIZAR
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-3 bg-white border border-emerald-300 rounded space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-emerald-800 font-bold">
+                    <span>Documento Assinado Eletronicamente</span>
+                    <span>{new Date(signedData.signedAt).toLocaleString("pt-BR")}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-mono truncate">
+                    Hash SHA-256: {signedData.hashOriginal}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <a
+                      href={signedData.arquivoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded font-medium border"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Baixar PDF Assinado (Cloudflare R2)
+                    </a>
+                    <a
+                      href={`/verificar-assinatura/${signedData.requestId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded font-medium border border-emerald-200"
+                    >
+                      <QrCode className="h-3.5 w-3.5" /> Ver Validação Pública (QR Code)
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="pt-4 border-t flex items-center justify-between">
@@ -508,6 +781,55 @@ export function AplicarChecklistDialog({
                 Finalizar e Fechar
               </Button>
             </DialogFooter>
+
+            {/* MODAL DE CONFIRMAÇÃO DA ASSINATURA INTERNA */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+              <DialogContent className="max-w-md text-xs space-y-3">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                    Confirma a assinatura deste documento?
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="p-3 bg-slate-50 border rounded-lg space-y-1.5 text-left">
+                  <div>
+                    <span className="font-semibold text-muted-foreground">Nome:</span>{" "}
+                    <strong className="text-slate-800">{profile?.nome || profile?.email || "Usuário Autenticado"}</strong>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground">Cargo:</span>{" "}
+                    <strong>{profile?.cargo || "Auditor / Inspetor"}</strong>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground">Empresa:</span>{" "}
+                    <strong>{profile?.empresa_nome || "Empresa Cadastrada"}</strong>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground">Data/Hora:</span>{" "}
+                    <strong>{new Date().toLocaleString("pt-BR")}</strong>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground">Método:</span>{" "}
+                    <span className="text-emerald-700 font-bold">Assinatura eletrônica do sistema</span>
+                  </div>
+                </div>
+
+                <DialogFooter className="pt-2 gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleConfirmSignature}
+                    disabled={isSigning}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5"
+                  >
+                    {isSigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {isSigning ? "Assinando..." : "CONFIRMAR ASSINATURA"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </DialogContent>

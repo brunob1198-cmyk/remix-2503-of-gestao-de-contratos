@@ -18,6 +18,8 @@ import {
 import { ChecklistModeloFormDialog } from "@/components/checklists/ChecklistModeloFormDialog";
 import { AplicarChecklistDialog } from "@/components/checklists/AplicarChecklistDialog";
 import { PlanoAcaoDialog } from "@/components/checklists/PlanoAcaoDialog";
+import { ChecklistAgendamentosTab } from "@/components/checklists/ChecklistAgendamentosTab";
+import { ChecklistQrCodeDialog } from "@/components/checklists/ChecklistQrCodeDialog";
 import { exportToExcel } from "@/lib/excelExport";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import {
@@ -39,6 +41,8 @@ import {
   Activity,
   Clock,
   FolderCheck,
+  Calendar,
+  QrCode,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -68,6 +72,9 @@ export default function ChecklistsListPage() {
 
   const [isPlanoDialogOpen, setIsPlanoDialogOpen] = useState(false);
   const [selectedPlanoForEdit, setSelectedPlanoForEdit] = useState<ChecklistPlanoAcao | null>(null);
+
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [selectedModeloForQr, setSelectedModeloForQr] = useState<ChecklistModelo | null>(null);
 
   // Modelos Filtered
   const filteredModelos = modelos.filter((m) => {
@@ -190,14 +197,17 @@ export default function ChecklistsListPage() {
         </Card>
       )}
 
-      {/* Navigation Tabs: [ Modelos ] [ Aplicações ] [ Planos de Ação ] [ Relatórios ] */}
+      {/* Navigation Tabs: [ Modelos ] [ Aplicações ] [ Agendamentos ] [ Planos de Ação ] [ Relatórios ] */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-4 w-full bg-slate-100 p-1 rounded-xl">
+        <TabsList className="grid grid-cols-5 w-full bg-slate-100 p-1 rounded-xl">
           <TabsTrigger value="modelos" className="gap-1.5 text-xs font-semibold">
             <FolderCheck className="h-3.5 w-3.5" /> Modelos ({modelos.length})
           </TabsTrigger>
           <TabsTrigger value="aplicacoes" className="gap-1.5 text-xs font-semibold">
             <ClipboardCheck className="h-3.5 w-3.5" /> Aplicações ({aplicacoes.length})
+          </TabsTrigger>
+          <TabsTrigger value="agendamentos" className="gap-1.5 text-xs font-semibold">
+            <Calendar className="h-3.5 w-3.5 text-blue-600" /> Agendamentos
           </TabsTrigger>
           <TabsTrigger value="planos" className="gap-1.5 text-xs font-semibold">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Planos de Ação 5W2H ({planosAcao.length})
@@ -259,6 +269,19 @@ export default function ChecklistsListPage() {
                         className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex-1"
                       >
                         <Play className="h-3.5 w-3.5" /> Aplicar
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedModeloForQr(m);
+                          setIsQrDialogOpen(true);
+                        }}
+                        title="QR Code de Campo"
+                        className="h-8 w-8 text-primary"
+                      >
+                        <QrCode className="h-3.5 w-3.5" />
                       </Button>
 
                       <Button
@@ -399,7 +422,12 @@ export default function ChecklistsListPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB 3: PLANOS DE AÇÃO 5W2H */}
+        {/* TAB 3: AGENDAMENTOS RECORRENTES */}
+        <TabsContent value="agendamentos">
+          <ChecklistAgendamentosTab />
+        </TabsContent>
+
+        {/* TAB 4: PLANOS DE AÇÃO 5W2H */}
         <TabsContent value="planos" className="space-y-4 pt-3">
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
@@ -476,7 +504,7 @@ export default function ChecklistsListPage() {
           </Card>
         </TabsContent>
 
-        {/* TAB 4: RELATÓRIOS & DASHBOARD */}
+        {/* TAB 5: RELATÓRIOS & DASHBOARD */}
         <TabsContent value="relatorios" className="space-y-6 pt-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -566,6 +594,13 @@ export default function ChecklistsListPage() {
         open={isPlanoDialogOpen}
         onOpenChange={setIsPlanoDialogOpen}
         plano={selectedPlanoForEdit}
+      />
+
+      {/* QR Code Dialog */}
+      <ChecklistQrCodeDialog
+        open={isQrDialogOpen}
+        onOpenChange={setIsQrDialogOpen}
+        modelo={selectedModeloForQr}
       />
     </div>
   );

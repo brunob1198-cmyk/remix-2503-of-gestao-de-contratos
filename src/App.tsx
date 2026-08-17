@@ -70,6 +70,8 @@ const SgsstDocumentosListPage = React.lazy(() => import("./pages/sgsst/Documento
 const SgsstDashboardGeralPage = React.lazy(() => import("./pages/sgsst/DashboardGeral"));
 const SgsstRelatoriosListPage = React.lazy(() => import("./pages/sgsst/RelatoriosList"));
 const ChecklistsListPage = React.lazy(() => import("./pages/checklists/ChecklistsList"));
+const VerificarAssinaturaPage = React.lazy(() => import("./pages/VerificarAssinatura"));
+const IniciarChecklistQRPage = React.lazy(() => import("./pages/checklists/IniciarChecklistQR"));
 
 const queryClient = createConfiguredQueryClient();
 
@@ -172,9 +174,12 @@ const App = () => {
                 <Route path="migracao-storage" element={<StorageMigrationPage />} />
               </Route>
 
-              {/* Extrator de PDF */}
+              {/* Extrator de PDF & Public Signature Verification & QR Code Mobile Start */}
               <Route path="/extrator" element={<Index />} />
               <Route path="/forecast-public" element={<ForecastPublicPage />} />
+              <Route path="/verificar-assinatura" element={<VerificarAssinaturaPage />} />
+              <Route path="/verificar-assinatura/:id" element={<VerificarAssinaturaPage />} />
+              <Route path="/checklists/iniciar/:token" element={<IniciarChecklistQRPage />} />
 
 
               <Route path="*" element={<NotFound />} />
