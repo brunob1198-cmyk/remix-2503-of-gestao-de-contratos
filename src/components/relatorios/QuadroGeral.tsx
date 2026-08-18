@@ -148,32 +148,27 @@ const formatPercent = (value: number) =>
 
 function MiniProgressBar({ value }: { value: number }) {
   const clamped = Math.min(Math.max(value, 0), 100);
-  const color =
-    clamped >= 80 ? "bg-emerald-500" :
-    clamped >= 50 ? "bg-amber-500" :
-    clamped >= 25 ? "bg-orange-500" :
-    "bg-red-400";
+  const tone =
+    value >= 80 ? { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" } :
+    value >= 50 ? { bar: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" } :
+    value >= 25 ? { bar: "bg-orange-500", text: "text-orange-600 dark:text-orange-400" } :
+    { bar: "bg-red-500", text: "text-red-600 dark:text-red-400" };
 
   return (
-    <div className="flex items-center gap-2 min-w-[140px]">
-      <div className="flex-1 h-5 bg-muted rounded-sm overflow-hidden relative">
-        {value > 100 && (
-          <div
-            className="absolute h-full bg-emerald-700/30 rounded-sm z-0"
-            style={{ width: '100%' }}
-          />
-        )}
+    <div className="flex items-center gap-2 min-w-[140px]" title={formatPercent(value)}>
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-sm transition-all duration-500 relative z-10", color)}
+          className={cn("h-full rounded-full transition-all duration-500", tone.bar)}
           style={{ width: `${clamped}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold tabular-nums mix-blend-difference text-white z-20">
-          {formatPercent(value)}
-        </span>
       </div>
+      <span className={cn("text-xs font-semibold tabular-nums w-[52px] text-right shrink-0", tone.text)}>
+        {formatPercent(value)}
+      </span>
     </div>
   );
 }
+
 
 export default function QuadroGeral() {
   const queryClient = useQueryClient();
