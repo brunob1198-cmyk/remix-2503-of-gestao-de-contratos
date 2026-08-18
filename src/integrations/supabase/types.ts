@@ -5328,6 +5328,251 @@ export type Database = {
           },
         ]
       }
+      sgsst_epi_devolucoes: {
+        Row: {
+          condicao_epi: string
+          created_at: string
+          data_devolucao: string
+          empresa_id: string
+          entrega_id: string
+          id: string
+          motivo: string | null
+          observacao: string | null
+          quantidade_devolvida: number
+          responsavel_devolucao_id: string | null
+        }
+        Insert: {
+          condicao_epi?: string
+          created_at?: string
+          data_devolucao?: string
+          empresa_id: string
+          entrega_id: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          quantidade_devolvida?: number
+          responsavel_devolucao_id?: string | null
+        }
+        Update: {
+          condicao_epi?: string
+          created_at?: string
+          data_devolucao?: string
+          empresa_id?: string
+          entrega_id?: string
+          id?: string
+          motivo?: string | null
+          observacao?: string | null
+          quantidade_devolvida?: number
+          responsavel_devolucao_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_epi_devolucoes_entrega_id_fkey"
+            columns: ["entrega_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epi_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_devolucoes_responsavel_devolucao_id_fkey"
+            columns: ["responsavel_devolucao_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_epi_entregas: {
+        Row: {
+          colaborador_id: string
+          confirmacao_recebimento: boolean
+          created_at: string
+          data_entrega: string
+          empresa_id: string
+          epi_id: string
+          id: string
+          motivo: string
+          observacao: string | null
+          quantidade: number
+          responsavel_entrega_id: string | null
+          tamanho_modelo: string | null
+          updated_at: string
+        }
+        Insert: {
+          colaborador_id: string
+          confirmacao_recebimento?: boolean
+          created_at?: string
+          data_entrega?: string
+          empresa_id: string
+          epi_id: string
+          id?: string
+          motivo?: string
+          observacao?: string | null
+          quantidade?: number
+          responsavel_entrega_id?: string | null
+          tamanho_modelo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          colaborador_id?: string
+          confirmacao_recebimento?: boolean
+          created_at?: string
+          data_entrega?: string
+          empresa_id?: string
+          epi_id?: string
+          id?: string
+          motivo?: string
+          observacao?: string | null
+          quantidade?: number
+          responsavel_entrega_id?: string | null
+          tamanho_modelo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_epi_entregas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_entregas_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_entregas_responsavel_entrega_id_fkey"
+            columns: ["responsavel_entrega_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_epi_historico: {
+        Row: {
+          colaborador_id: string | null
+          created_at: string
+          empresa_id: string
+          epi_id: string | null
+          id: string
+          observacao: string | null
+          operacao: string
+          quantidade: number | null
+          usuario_id: string | null
+        }
+        Insert: {
+          colaborador_id?: string | null
+          created_at?: string
+          empresa_id: string
+          epi_id?: string | null
+          id?: string
+          observacao?: string | null
+          operacao: string
+          quantidade?: number | null
+          usuario_id?: string | null
+        }
+        Update: {
+          colaborador_id?: string | null
+          created_at?: string
+          empresa_id?: string
+          epi_id?: string | null
+          id?: string
+          observacao?: string | null
+          operacao?: string
+          quantidade?: number | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_epi_historico_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_historico_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_epis: {
+        Row: {
+          ca: string
+          categoria: string
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          estoque_atual: number
+          estoque_minimo: number
+          fabricante: string | null
+          id: string
+          modelo: string | null
+          nome: string
+          status: string
+          unidade_medida: string
+          updated_at: string
+          updated_by: string | null
+          validade_ca: string | null
+        }
+        Insert: {
+          ca: string
+          categoria?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          estoque_atual?: number
+          estoque_minimo?: number
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          nome: string
+          status?: string
+          unidade_medida?: string
+          updated_at?: string
+          updated_by?: string | null
+          validade_ca?: string | null
+        }
+        Update: {
+          ca?: string
+          categoria?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          estoque_atual?: number
+          estoque_minimo?: number
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          nome?: string
+          status?: string
+          unidade_medida?: string
+          updated_at?: string
+          updated_by?: string | null
+          validade_ca?: string | null
+        }
+        Relationships: []
+      }
       sgsst_funcoes: {
         Row: {
           cbo: string | null
