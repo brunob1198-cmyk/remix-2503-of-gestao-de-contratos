@@ -63,15 +63,19 @@ if (shouldUpdate) {
 }
 
 const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+// A tolerância absorve a variação de contagem entre plataformas
+// (Windows/Node 24 x Ubuntu/Node 22). Ver comentário em .eslint-baseline.json.
+const tolerance = baseline.tolerance ?? 0;
 const limit = baseline.errors;
 const delta = errors - limit;
 
-console.log(`Erros de lint: ${errors} (baseline ${limit})`);
+console.log(`Erros de lint: ${errors} (baseline ${limit}, tolerância +${tolerance})`);
 console.log(`Warnings: ${warnings} (baseline ${baseline.warnings})`);
 
-if (delta > 0) {
+if (delta > tolerance) {
   console.error(
-    `\n❌ O passivo de lint aumentou em ${delta} erro(s).\n` +
+    `\n❌ O passivo de lint aumentou em ${delta} erro(s), ` +
+      `acima da tolerância de ${tolerance}.\n` +
       `Corrija os problemas introduzidos antes do merge.\n` +
       `Rode \`npm run lint\` para ver os detalhes.\n`,
   );
@@ -87,6 +91,11 @@ if (delta < 0) {
     `\n✅ Passivo reduzido em ${-delta} erro(s). ` +
       `Rode \`npm run lint:ratchet -- --update\` e commite o .eslint-baseline.json ` +
       `para travar esse ganho.\n`,
+  );
+} else if (delta > 0) {
+  console.log(
+    `\n✅ ${delta} erro(s) acima do baseline, dentro da tolerância de ${tolerance}. ` +
+      `Provavelmente variação de plataforma, não regressão.\n`,
   );
 } else {
   console.log("\n✅ Passivo de lint estável.\n");

@@ -1,10 +1,18 @@
 {
   "_comentario": [
     "Passivo de lint aceito atualmente. O CI falha se a contagem de ERROS subir",
-    "acima deste valor (ver scripts/lint-ratchet.mjs).",
+    "acima de (errors + tolerance). Ver scripts/lint-ratchet.mjs.",
     "Ao reduzir o passivo, rode `npm run lint:ratchet -- --update` e commite este arquivo.",
-    "Meta: chegar a 0 e então trocar o gate por `npm run lint`."
+    "Meta: chegar a 0 e então trocar o gate por `npm run lint`.",
+    "",
+    "Sobre `tolerance`: o mesmo commit produz contagens ligeiramente diferentes",
+    "entre plataformas — medido em 18/08/2026 no commit f93fc591:",
+    "  Ubuntu + Node 22 (CI):      1634 erros, 38 warnings",
+    "  Windows + Node 24 (local):  1635 erros, 40 warnings",
+    "Sem a tolerância, quem desenvolve no Windows veria falha enquanto o CI passa.",
+    "A folga é pequena de propósito: uma regressão real (dezenas de erros) ainda falha."
   ],
   "errors": 1634,
-  "warnings": 40
+  "warnings": 40,
+  "tolerance": 2
 }
