@@ -230,7 +230,11 @@ export function AplicarChecklistDialog({
           colaborador_id: colaboradorId || undefined,
         });
 
-        if (coordsCaptured && empresaId) {
+        if (app?.id) {
+          setAplicacaoIdCreated(app.id);
+        }
+
+        if (coordsCaptured && empresaId && app?.id) {
           await supabase.from("checklist_geolocalizacoes" as any).insert({
             empresa_id: empresaId,
             aplicacao_id: app.id,
@@ -241,7 +245,7 @@ export function AplicarChecklistDialog({
           });
         }
       } catch (err) {
-        // Ignora erro de rede se offline
+        console.error("Erro ao iniciar aplicação remota:", err);
       }
     }
   };
@@ -337,7 +341,23 @@ export function AplicarChecklistDialog({
   };
 
   const handleFinish = async () => {
-    if (!aplicacaoIdCreated) return;
+    // 1. Validar itens obrigatórios
+    const missingItems: string[] = [];
+    (modelo.secoes || []).forEach((secao) => {
+      (secao.itens || []).forEach((item) => {
+        if (item.obrigatorio) {
+          const resp = respostas[item.id];
+          if (!resp || !resp.resposta_valor) {
+            missingItems.push(item.titulo);
+          }
+        }
+      });
+    });
+
+    if (missingItems.length > 0) {
+      toast.error(`Responda todos os itens obrigatórios: ${missingItems.slice(0, 3).join(", ")}${missingItems.length > 3 ? "..." : ""}`);
+      return;
+    }
 
     const regraGeo = (modelo.exigir_geolocalizacao as any) || "nao";
     const precisaGeoFim = regraGeo === "finalizar" || regraGeo === "ambos";
@@ -389,10 +409,13 @@ export function AplicarChecklistDialog({
       }
     });
 
+    let currentAplicacaoId = aplicacaoIdCreated;
+
     if (!isOnline) {
+      const targetLocalId = currentAplicacaoId || localAppId || `app_${Date.now()}`;
       // Conclusão Offline: Salvar payload final no IndexedDB e adicionar item na sync_queue
       await autoSaveLocalApplication({
-        localAppId: aplicacaoIdCreated,
+        localAppId: targetLocalId,
         modeloId: modelo.id,
         modeloNome: modelo.nome,
         respostas,
@@ -403,7 +426,7 @@ export function AplicarChecklistDialog({
       });
 
       setResultSummary({
-        id: aplicacaoIdCreated,
+        id: targetLocalId,
         status: "AGUARDANDO SINCRONIZAÇÃO",
         percentual_conformidade: 100,
         total_conforme: listRespostas.length,
@@ -415,8 +438,21 @@ export function AplicarChecklistDialog({
     }
 
     try {
+      // Garantir que existe um ID de aplicação remoto válido no Supabase
+      if (!currentAplicacaoId || currentAplicacaoId.startsWith("app_")) {
+        const app = await createAplicacao.mutateAsync({
+          modelo_id: modelo.id,
+          projeto_id: projetoId || undefined,
+          area_id: areaId || undefined,
+          responsavel_id: responsavelId || undefined,
+          colaborador_id: colaboradorId || undefined,
+        });
+        currentAplicacaoId = app.id;
+        setAplicacaoIdCreated(app.id);
+      }
+
       const summary = await finishAplicacao.mutateAsync({
-        aplicacao_id: aplicacaoIdCreated,
+        aplicacao_id: currentAplicacaoId,
         observacoes_gerais: observacoesGerais,
         respostas: listRespostas,
         planos_acao: listPlanosAcao,
@@ -426,7 +462,7 @@ export function AplicarChecklistDialog({
       if (coordsCaptured && empresaId) {
         await supabase.from("checklist_geolocalizacoes" as any).insert({
           empresa_id: empresaId,
-          aplicacao_id: aplicacaoIdCreated,
+          aplicacao_id: currentAplicacaoId,
           momento: "conclusao",
           latitude: coordsCaptured.latitude,
           longitude: coordsCaptured.longitude,
@@ -436,8 +472,9 @@ export function AplicarChecklistDialog({
 
       setResultSummary(summary);
       setStep("result");
-    } catch (err) {
-      // Handled
+    } catch (err: any) {
+      console.error("Erro ao finalizar checklist:", err);
+      toast.error(`Erro ao finalizar checklist: ${err?.message || err}`);
     }
   };
 
