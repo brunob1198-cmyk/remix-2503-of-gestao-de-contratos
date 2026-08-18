@@ -59,21 +59,44 @@ jobs:
 
       # Sem esta checagem o build passaria "verde" gerando um bundle com
       # `undefined` na URL do Supabase — ou seja, um artefato quebrado.
+      #
+      # Também valida o FORMATO. Motivo: no .env local os valores estão entre
+      # aspas, e o dotenv/Vite as remove ao ler o arquivo. Já um secret do
+      # GitHub é literal — se alguém copiar o valor com as aspas (ou com um
+      # \r de arquivo CRLF), o bundle sai com uma URL inválida e o erro só
+      # aparece em runtime, no navegador.
       - name: Conferir variáveis de ambiente obrigatórias
         run: |
           set -eu
-          missing=""
+          fail=0
           for var in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
             eval "value=\${$var:-}"
-            [ -z "$value" ] && missing="$missing $var"
+            if [ -z "$value" ]; then
+              echo "::error::Secret ausente: $var"
+              fail=1
+              continue
+            fi
+            case "$value" in
+              \"*|\'*|*\"|*\')
+                echo "::error::$var está entre aspas. Cadastre o valor sem aspas."
+                fail=1
+                ;;
+            esac
+            if printf '%s' "$value" | grep -q '[[:space:]]'; then
+              echo "::error::$var contém espaço, tab ou quebra de linha. Remova."
+              fail=1
+            fi
           done
-          if [ -n "$missing" ]; then
-            echo "::error::Secrets ausentes:$missing"
-            echo "Cadastre em Settings > Secrets and variables > Actions."
-            echo "Os nomes esperados estão documentados em .env.example."
+          case "${VITE_SUPABASE_URL:-}" in
+            https://*) ;;
+            *) echo "::error::VITE_SUPABASE_URL deve começar com https://"; fail=1 ;;
+          esac
+          if [ "$fail" -ne 0 ]; then
+            echo "Cadastre/corrija em Settings > Secrets and variables > Actions."
+            echo "Os nomes e formatos esperados estão em .env.example."
             exit 1
           fi
-          echo "Variáveis obrigatórias presentes."
+          echo "Variáveis obrigatórias presentes e bem formatadas."
 
       - run: npm run build
 
