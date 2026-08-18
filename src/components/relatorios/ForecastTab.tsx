@@ -200,33 +200,33 @@ export default function ForecastTab() {
             <p className="text-xs text-muted-foreground">{((stats.totalProduzido / stats.totalContrato) * 100 || 0).toFixed(1)}% do total</p>
           </CardContent>
         </Card>
-        <Card className="bg-blue-500/5 border-blue-500/20">
+        <Card className="bg-blue-50/5 border-blue-500/20 dark:bg-blue-950/20 dark:border-blue-800/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Forecast Trimestre</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
+            <Calendar className="h-4 w-4 text-blue-500 dark:text-sky-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalTrimestre)}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-sky-300">{formatCurrency(stats.totalTrimestre)}</div>
             <p className="text-xs text-muted-foreground">Projeção próximos 3 meses</p>
           </CardContent>
         </Card>
-        <Card className="bg-blue-500/5 border-blue-500/20">
+        <Card className="bg-blue-50/5 border-blue-500/20 dark:bg-blue-950/20 dark:border-blue-800/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Forecast Semestre</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
+            <Calendar className="h-4 w-4 text-blue-500 dark:text-sky-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalSemestre)}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-sky-300">{formatCurrency(stats.totalSemestre)}</div>
             <p className="text-xs text-muted-foreground">Projeção próximos 6 meses</p>
           </CardContent>
         </Card>
-        <Card className="bg-orange-500/5 border-orange-500/20">
+        <Card className="bg-orange-50/5 border-orange-500/20 dark:bg-orange-950/20 dark:border-orange-800/40">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Forecast Anual</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-500" />
+            <TrendingUp className="h-4 w-4 text-orange-500 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{formatCurrency(stats.totalAno)}</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-300">{formatCurrency(stats.totalAno)}</div>
             <p className="text-xs text-muted-foreground">Projeção ano {format(new Date(), "yyyy")}</p>
           </CardContent>
         </Card>
@@ -246,7 +246,7 @@ export default function ForecastTab() {
               />
               <div className="min-w-0">
                 <CardTitle className="whitespace-nowrap">Acompanhamento e Forecast</CardTitle>
-                <p className="text-sm text-muted-foreground truncate">Meses em <span className="text-blue-600 font-semibold">azul</span> são projeções futuras.</p>
+                <p className="text-sm text-muted-foreground truncate">Meses em <span className="text-blue-600 dark:text-sky-400 font-semibold">azul</span> são projeções futuras.</p>
               </div>
             </div>
             <Button variant="outline" onClick={handleExport} size="sm" className="h-9 shrink-0 ml-auto">
@@ -315,7 +315,7 @@ export default function ForecastTab() {
                   {columns.map((col) => (
                     <TableHead 
                       key={col.key} 
-                      className={`text-center w-[110px] shrink-0 bg-muted/50 border-r flex items-center justify-center ${col.isFuture ? "text-blue-600 font-bold" : ""}`}
+                      className={`text-center w-[110px] shrink-0 bg-muted/50 border-r flex items-center justify-center ${col.isFuture ? "text-blue-600 dark:text-sky-300 font-bold" : ""}`}
                     >
                       {col.label}
                     </TableHead>
@@ -326,12 +326,12 @@ export default function ForecastTab() {
                   <TableCell className="w-[180px] shrink-0 border-r flex items-center"></TableCell>
                   <TableCell className="w-[120px] shrink-0 border-r flex items-center"></TableCell>
                   <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalContrato)}</TableCell>
-                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 border-r flex items-center justify-end">{formatCurrency(stats.totalProduzido)}</TableCell>
+                  <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 dark:text-emerald-400 border-r flex items-center justify-end">{formatCurrency(stats.totalProduzido)}</TableCell>
                   <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r flex items-center justify-end">{formatCurrency(stats.totalSaldo)}</TableCell>
                   {columns.map((col) => (
                     <TableCell 
                       key={col.key} 
-                      className={`text-center w-[110px] shrink-0 whitespace-nowrap border-r flex items-center justify-center ${col.isFuture ? "text-blue-700 bg-blue-100/30" : "text-muted-foreground"}`}
+                      className={`text-center w-[110px] shrink-0 whitespace-nowrap border-r flex items-center justify-center ${col.isFuture ? "text-blue-700 dark:text-sky-300 bg-blue-100/30 dark:bg-blue-950/60" : "text-muted-foreground"}`}
                     >
                       {stats.columnTotals[col.key] > 0 ? formatCurrency(stats.columnTotals[col.key]) : "-"}
                     </TableCell>
@@ -382,13 +382,13 @@ export default function ForecastTab() {
                       </TableCell>
                       <TableCell className="w-[120px] shrink-0 border-r h-full flex items-center">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase ${
-                          p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                          p.status === 'Em Andamento' || p.status === 'EXECUÇÃO' ? 'bg-green-100 text-green-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300'
                         }`}>
                           {p.status}
                         </span>
                       </TableCell>
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.valor_total)}</TableCell>
-                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
+                      <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap text-green-600 dark:text-emerald-400 font-medium border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.totalProduzido)}</TableCell>
                       <TableCell className="w-[120px] shrink-0 text-right whitespace-nowrap font-bold border-r text-xs h-full flex items-center justify-end">{formatCurrency(p.saldo)}</TableCell>
                       {columns.map((col) => {
                         const realValue = pickForecastValue(p, { ...col, isFuture: false });
@@ -398,7 +398,7 @@ export default function ForecastTab() {
                         return (
                           <TableCell 
                             key={col.key} 
-                            className={`text-center w-[110px] shrink-0 p-1 border-r h-full flex items-center justify-center ${col.isFuture ? "bg-blue-50/20" : ""}`}
+                            className={`text-center w-[110px] shrink-0 p-1 border-r h-full flex items-center justify-center ${col.isFuture ? "bg-blue-50/20 dark:bg-blue-950/30" : ""}`}
                           >
                             {!col.isFuture ? (
                                <span className="text-muted-foreground text-[10px]">{realValue > 0 ? formatCurrency(realValue) : "-"}</span>
@@ -413,10 +413,10 @@ export default function ForecastTab() {
                               />
                             ) : (
                               <div 
-                                className="cursor-pointer hover:bg-blue-100/50 rounded transition-colors min-h-[28px] flex items-center justify-center w-full"
+                                className="cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/40 rounded transition-colors min-h-[28px] flex items-center justify-center w-full"
                                 onClick={() => handleEdit(p.id, col.key, forecastValue)}
                               >
-                                <span className="text-blue-700 font-medium text-[10px]">
+                                <span className="text-blue-700 dark:text-sky-300 font-medium dark:font-semibold text-[10px]">
                                   {forecastValue > 0 ? formatCurrency(forecastValue) : "-"}
                                 </span>
                               </div>
