@@ -2,16 +2,26 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const DEFAULT_SUPABASE_URL = "https://xqdhyukmeklfczwiipen.supabase.co";
+const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxZGh5dWttZWtsZmN6d2lpcGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NDczNTksImV4cCI6MjA5MDAyMzM1OX0.DPbyonqvq2xg4Qvpz2qibikX29XLcLMGRCLcZF6TOjY";
+
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL.trim() !== "")
+  ? import.meta.env.VITE_SUPABASE_URL
+  : DEFAULT_SUPABASE_URL;
+
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY.trim() !== "")
+  ? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  : (import.meta.env.VITE_SUPABASE_ANON_KEY && import.meta.env.VITE_SUPABASE_ANON_KEY.trim() !== "")
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY
+  : DEFAULT_SUPABASE_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: typeof window !== "undefined" ? localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
   }
-});
+});
