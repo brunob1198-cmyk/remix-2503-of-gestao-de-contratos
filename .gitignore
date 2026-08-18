@@ -11,6 +11,20 @@ node_modules
 dist
 dist-ssr
 *.local
+coverage
+
+# Variáveis de ambiente — nunca versionar.
+# Use .env.example como referência do que precisa ser definido.
+.env
+.env.*
+!.env.example
+
+# Este projeto padroniza em npm (package-lock.json).
+# Lockfiles de outros gerenciadores geram divergência entre CI e máquina local.
+bun.lock
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
 
 # Editor directories and files
 .vscode/*

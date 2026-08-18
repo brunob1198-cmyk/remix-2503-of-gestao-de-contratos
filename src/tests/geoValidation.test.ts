@@ -1,33 +1,28 @@
-
+import { describe, it, expect } from "vitest";
 import { isPointInUF } from "../lib/geoUtils";
 
 /**
- * Simulação simples de teste de regressão.
- * Em um ambiente real com Vitest/Jest, usaríamos expect().
+ * Testes de regressão para ambiguidade de município x UF:
+ * coordenadas de cidades homônimas não devem validar na UF errada.
  */
-export function runGeoTests() {
-  const results = [];
+describe("isPointInUF", () => {
+  it("valida Montes Claros/MG na própria UF", () => {
+    expect(isPointInUF(-16.7269, -43.8609, "MG")).toBe(true);
+  });
 
-  // Caso 1: Montes Claros/MG (Correto)
-  const montesClarosMG = isPointInUF(-16.7269, -43.8609, "MG");
-  results.push({ name: "Montes Claros em MG", pass: montesClarosMG === true });
+  it("não valida Montes Claros/MG no ES", () => {
+    expect(isPointInUF(-16.7269, -43.8609, "ES")).toBe(false);
+  });
 
-  // Caso 2: Montes Claros em estado errado (Falso positivo antigo)
-  const montesClarosNoES = isPointInUF(-16.7269, -43.8609, "ES");
-  results.push({ name: "Montes Claros de MG NÃO deve estar no ES", pass: montesClarosNoES === false });
+  it("valida Bocaiúva/MG na própria UF", () => {
+    expect(isPointInUF(-17.1078, -43.8135, "MG")).toBe(true);
+  });
 
-  // Caso 3: Bocaiuva/MG
-  const bocaiuvaMG = isPointInUF(-17.1078, -43.8135, "MG");
-  results.push({ name: "Bocaiúva em MG", pass: bocaiuvaMG === true });
+  it("valida Bocaiúva do Sul/PR na própria UF", () => {
+    expect(isPointInUF(-25.2049, -49.1153, "PR")).toBe(true);
+  });
 
-  // Caso 4: Bocaiuva do Sul/PR (Mesmo nome, estado diferente)
-  const bocaiuvaPR = isPointInUF(-25.2049, -49.1153, "PR");
-  results.push({ name: "Bocaiúva do Sul no PR", pass: bocaiuvaPR === true });
-
-  // Caso 5: Bocaiuva de MG no PR (Erro de ambiguidade)
-  const bocaiuvaMGinPR = isPointInUF(-17.1078, -43.8135, "PR");
-  results.push({ name: "Bocaiúva de MG NÃO deve estar no PR", pass: bocaiuvaMGinPR === false });
-
-  console.table(results);
-  return results;
-}
+  it("não valida Bocaiúva/MG no PR (municípios homônimos)", () => {
+    expect(isPointInUF(-17.1078, -43.8135, "PR")).toBe(false);
+  });
+});

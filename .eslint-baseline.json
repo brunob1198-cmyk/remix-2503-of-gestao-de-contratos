@@ -1,0 +1,10 @@
+{
+  "_comentario": [
+    "Passivo de lint aceito atualmente. O CI falha se a contagem de ERROS subir",
+    "acima deste valor (ver scripts/lint-ratchet.mjs).",
+    "Ao reduzir o passivo, rode `npm run lint:ratchet -- --update` e commite este arquivo.",
+    "Meta: chegar a 0 e então trocar o gate por `npm run lint`."
+  ],
+  "errors": 1634,
+  "warnings": 40
+}
