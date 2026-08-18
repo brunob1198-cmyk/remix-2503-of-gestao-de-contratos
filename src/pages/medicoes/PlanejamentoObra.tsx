@@ -15,8 +15,6 @@ import { AtividadeDetailSheet } from "@/components/planejamento/AtividadeDetailS
 import { FrenteEditDialog } from "@/components/planejamento/FrenteEditDialog";
 import { FrenteForm } from "@/components/planejamento/FrenteForm";
 import { AtividadeForm } from "@/components/planejamento/AtividadeForm";
-
-// SimulacaoEquipes removed
 import { ProdutividadeMapa } from "@/components/planejamento/ProdutividadeMapa";
 import { ProducaoTab } from "@/components/analise/ProducaoTab";
 import { CalendarRange, BarChart3, AlertTriangle, CheckCircle2, Clock, Map, Users, MapPin, Trash2, Sparkles, ClipboardList } from "lucide-react";
