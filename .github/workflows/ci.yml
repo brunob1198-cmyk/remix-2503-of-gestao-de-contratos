@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execuções antigas do mesmo branch/PR quando um novo push chega.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # O Vite inlina as variáveis VITE_* no bundle em tempo de build. Como o .env
+    # não é mais versionado, elas vêm dos secrets do repositório.
+    # Configure em: Settings > Secrets and variables > Actions.
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      # Sem esta checagem o build passaria "verde" gerando um bundle com
+      # `undefined` na URL do Supabase — ou seja, um artefato quebrado.
+      - name: Conferir variáveis de ambiente obrigatórias
+        run: |
+          set -eu
+          missing=""
+          for var in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            eval "value=\${$var:-}"
+            [ -z "$value" ] && missing="$missing $var"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets ausentes:$missing"
+            echo "Cadastre em Settings > Secrets and variables > Actions."
+            echo "Os nomes esperados estão documentados em .env.example."
+            exit 1
+          fi
+          echo "Variáveis obrigatórias presentes."
+
+      - run: npm run build
+
+  # A base de código tem ~1.6k erros de lint pré-existentes (1.567 deles são
+  # @typescript-eslint/no-explicit-any). Rodar `eslint .` de forma bloqueante
+  # deixaria o CI vermelho para sempre; rodar sem bloquear deixaria o passivo
+  # crescer sem ninguém notar.
+  #
+  # Por isso o gate é um "ratchet": falha só se a contagem de erros SUBIR acima
+  # do baseline registrado em .eslint-baseline.json.
+  # Ver scripts/lint-ratchet.mjs.
+  lint:
+    name: Lint (ratchet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:ratchet
