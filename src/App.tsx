@@ -35,8 +35,6 @@ import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
 import SupplyChainPage from "./pages/medicoes/SupplyChain";
 import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
 import AuditLogPage from "./pages/medicoes/AuditLog";
-import UploadTestPage from "./pages/debug/UploadTest";
-import StorageMigrationPage from "./pages/medicoes/StorageMigration";
 import ForecastPublicPage from "./pages/ForecastPublic";
 
 // Lazy Loaded Pages
@@ -73,6 +71,10 @@ const SgsstRelatoriosListPage = React.lazy(() => import("./pages/sgsst/Relatorio
 const ChecklistsListPage = React.lazy(() => import("./pages/checklists/ChecklistsList"));
 const VerificarAssinaturaPage = React.lazy(() => import("./pages/VerificarAssinatura"));
 const IniciarChecklistQRPage = React.lazy(() => import("./pages/checklists/IniciarChecklistQR"));
+
+// Paginas de diagnostico: seguem acessiveis, mas fora do bundle principal.
+const UploadTestPage = React.lazy(() => import("./pages/debug/UploadTest"));
+const StorageMigrationPage = React.lazy(() => import("./pages/medicoes/StorageMigration"));
 
 const queryClient = createConfiguredQueryClient();
 
