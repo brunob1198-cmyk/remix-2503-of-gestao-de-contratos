@@ -3,12 +3,15 @@ import { useSgsstPt, SgsstPt, StatusPt, TipoPt } from "@/hooks/sgsst/useSgsstPt"
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { Plus, Search, Edit2, Trash2, ShieldCheck, Eye, CheckCircle2, XCircle, AlertCircle, Lock, RefreshCw, PlayCircle, PauseCircle } from "lucide-react";
 import { PtFormDialog } from "@/components/sgsst/PtFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -29,7 +32,16 @@ export default function SgsstPtListPage() {
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
-  const { pts, total, isLoading, createPt, updatePt, removePt } = useSgsstPt({
+  // Indicadores sobre a base inteira: derivar da página corrente fazia os
+  // cartões medirem apenas as linhas visíveis.
+  const { count: countPt } = useSgsstCounts("sgsst_pt", [
+    { key: "total" },
+    { key: "emExecucao", build: (q) => q.eq("status", "EM_EXECUCAO") },
+    { key: "aprovadas", build: (q) => q.eq("status", "APROVADA") },
+    { key: "suspensas", build: (q) => q.in("status", ["SUSPENSA", "EM_ANALISE"]) },
+  ]);
+
+  const { pts, total, isLoading, error, refetch, createPt, updatePt, removePt } = useSgsstPt({
     page,
     pageSize,
     search: debouncedSearch,
@@ -142,6 +154,39 @@ export default function SgsstPtListPage() {
     }
   };
 
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  // Rótulo legível para os chips de filtro ativo: os valores são enums em
+  // MAIÚSCULA_COM_UNDERSCORE, que não devem aparecer crus na interface.
+  const rotuloFiltro = (valor: string) =>
+    valor
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/^./, (c) => c.toUpperCase());
+
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedTipo !== "todos" || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedTipo("todos");
+    setSelectedStatus("todos");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: pts.length === 0,
+    modulo: "Permissões de Trabalho",
+    onRetry: refetch,
+    emptyTitulo: "Nenhuma PT emitida ainda",
+    emptyDescricao:
+      "A Permissão de Trabalho autoriza atividades de risco com checklist e assinaturas. Emita a primeira quando houver serviço crítico.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -171,7 +216,7 @@ export default function SgsstPtListPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total de PTs</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pts.length}</div>
+            <div className="text-2xl font-bold">{countPt("total")}</div>
           </CardContent>
         </Card>
         <Card>
@@ -180,7 +225,7 @@ export default function SgsstPtListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {pts.filter((p) => p.status === "EM_EXECUCAO").length}
+              {countPt("emExecucao")}
             </div>
           </CardContent>
         </Card>
@@ -190,7 +235,7 @@ export default function SgsstPtListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {pts.filter((p) => p.status === "APROVADA").length}
+              {countPt("aprovadas")}
             </div>
           </CardContent>
         </Card>
@@ -200,25 +245,29 @@ export default function SgsstPtListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {pts.filter((p) => p.status === "SUSPENSA" || p.status === "EM_ANALISE").length}
+              {countPt("suspensas")}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, atividade, código, local..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título da PT..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedTipo !== "todos"
+            ? [{ label: "Tipo", value: selectedTipo, onClear: () => setSelectedTipo("todos") }]
+            : []),
+          ...(selectedStatus !== "todos"
+            ? [{ label: "Status", value: rotuloFiltro(selectedStatus), onClear: () => setSelectedStatus("todos") }]
+            : []),
+        ]}
+      >
           <Select value={selectedTipo} onValueChange={setSelectedTipo}>
             <SelectTrigger className="w-[150px] text-xs">
               <SelectValue placeholder="Tipo de PT" />
@@ -252,8 +301,7 @@ export default function SgsstPtListPage() {
               <SelectItem value="CANCELADA">Cancelada</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -271,16 +319,10 @@ export default function SgsstPtListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando Permissões de Trabalho...
-                  </TableCell>
-                </TableRow>
-              ) : pts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhuma PT emitida ou encontrada.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

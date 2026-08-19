@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { SgsstStatCards } from "@/components/sgsst/SgsstStatCards";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { Plus, Search, Edit2, Trash2, ClipboardList, Eye, CheckCircle2, XCircle, AlertCircle, Lock, RefreshCw } from "lucide-react";
 import { AprFormDialog } from "@/components/sgsst/AprFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -28,7 +32,14 @@ export default function SgsstAprListPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
-  const { aprs, total, isLoading, createApr, updateApr, removeApr } = useSgsstApr({
+  const { count: countApr, isLoading: loadingResumo } = useSgsstCounts("sgsst_apr", [
+    { key: "total" },
+    { key: "aprovadas", build: (q) => q.eq("status", "APROVADA") },
+    { key: "emAnalise", build: (q) => q.in("status", ["EM_ANALISE", "RASCUNHO"]) },
+    { key: "encerradas", build: (q) => q.in("status", ["REJEITADA", "ENCERRADA", "CANCELADA"]) },
+  ]);
+
+  const { aprs, total, isLoading, error, refetch, createApr, updateApr, removeApr } = useSgsstApr({
     page,
     pageSize,
     search: debouncedSearch,
@@ -110,6 +121,38 @@ export default function SgsstAprListPage() {
     }
   };
 
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  // Rótulo legível para os chips de filtro ativo: os valores são enums em
+  // MAIÚSCULA_COM_UNDERSCORE, que não devem aparecer crus na interface.
+  const rotuloFiltro = (valor: string) =>
+    valor
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/^./, (c) => c.toUpperCase());
+
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedStatus("todos");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: aprs.length === 0,
+    modulo: "APR",
+    onRetry: refetch,
+    emptyTitulo: "Nenhuma APR cadastrada ainda",
+    emptyDescricao:
+      "A APR analisa os riscos de uma atividade antes dela começar. Crie a primeira para liberar execução em campo.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -132,61 +175,56 @@ export default function SgsstAprListPage() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de APRs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{aprs.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">APRs Aprovadas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {aprs.filter((a) => a.status === "APROVADA").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Em Análise / Rascunho</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {aprs.filter((a) => a.status === "EM_ANALISE" || a.status === "RASCUNHO").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rejeitadas / Encerradas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {aprs.filter((a) => a.status === "REJEITADA" || a.status === "ENCERRADA" || a.status === "CANCELADA").length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Indicadores — contagens sobre a base inteira, não sobre a página */}
+      <SgsstStatCards
+        isLoading={loadingResumo}
+        stats={[
+          {
+            label: "Total de APRs",
+            value: countApr("total"),
+            tone: "info",
+            icon: ClipboardList,
+            ajuda: "Todas as APRs da empresa, independente de status.",
+          },
+          {
+            label: "APRs Aprovadas",
+            value: countApr("aprovadas"),
+            tone: "positivo",
+            icon: CheckCircle2,
+            ajuda: "APRs liberadas para execução da atividade em campo.",
+          },
+          {
+            label: "Em Análise / Rascunho",
+            value: countApr("emAnalise"),
+            tone: "atencao",
+            icon: AlertCircle,
+            hint: "não liberam execução",
+            ajuda: "APRs ainda em elaboração ou aguardando aprovação técnica.",
+          },
+          {
+            label: "Rejeitadas / Encerradas",
+            value: countApr("encerradas"),
+            tone: "neutro",
+            icon: Lock,
+            ajuda: "APRs rejeitadas, encerradas ou canceladas, mantidas para histórico.",
+          },
+        ]}
+      />
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, atividade, código ou obra..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título da APR..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedStatus !== "todos"
+            ? [{ label: "Status", value: rotuloFiltro(selectedStatus), onClear: () => setSelectedStatus("todos") }]
+            : []),
+        ]}
+      >
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-[140px] text-xs">
               <SelectValue placeholder="Status" />
@@ -201,8 +239,7 @@ export default function SgsstAprListPage() {
               <SelectItem value="ENCERRADA">Encerrada</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -220,16 +257,10 @@ export default function SgsstAprListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando Análises Preliminares de Riscos...
-                  </TableCell>
-                </TableRow>
-              ) : aprs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhuma APR cadastrada ou encontrada.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

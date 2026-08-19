@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { useSgsstPgr, SgsstPgr, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
+import { useEffect, useState } from "react";
+import { useSgsstPgr, useSgsstPgrResumo, SgsstPgr, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { SgsstStatCards } from "@/components/sgsst/SgsstStatCards";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit2, Trash2, FileCheck, Eye, CheckCircle2, AlertCircle, Lock, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, FileCheck, Eye, CheckCircle2, AlertCircle, Lock, RefreshCw } from "lucide-react";
 import { PgrFormDialog } from "@/components/sgsst/PgrFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
@@ -27,14 +29,38 @@ export default function SgsstPgrListPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
-  const { pgrs, total, isLoading, createPgr, updatePgr, updateStatusPgr, removePgr } = useSgsstPgr({
-    page,
-    pageSize,
-    search: debouncedSearch,
-    status: selectedStatus,
-  });
+  const { pgrs, total, isLoading, error, refetch, createPgr, updatePgr, updateStatusPgr, removePgr } =
+    useSgsstPgr({
+      page,
+      pageSize,
+      search: debouncedSearch,
+      status: selectedStatus,
+    });
+
+  const { resumo, isLoading: loadingResumo } = useSgsstPgrResumo();
 
   const totalPages = Math.ceil(total / pageSize) || 1;
+
+  // Voltar para a primeira pagina quando os filtros mudam: sem isto, filtrar
+  // estando na pagina 4 pede um range que o resultado filtrado nao tem e a
+  // tabela aparece vazia mesmo havendo registros.
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, selectedStatus]);
+
+  const temFiltroAtivo = debouncedSearch.trim().length > 0 || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedStatus("todos");
+  };
+
+  const STATUS_LABEL: Record<string, string> = {
+    RASCUNHO: "Rascunho",
+    ATIVO: "Ativo",
+    EM_REVISAO: "Em revisão",
+    ENCERRADO: "Encerrado",
+  };
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPgr, setEditingPgr] = useState<SgsstPgr | null>(null);
@@ -102,6 +128,26 @@ export default function SgsstPgrListPage() {
     }
   };
 
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando há dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: pgrs.length === 0,
+    modulo: "PGR",
+    onRetry: refetch,
+    emptyTitulo: "Nenhum PGR cadastrado ainda",
+    emptyDescricao:
+      "O PGR reúne o inventário de riscos da obra e as medidas de controle. Crie o primeiro documento para começar.",
+    emptyAction: allowEdit ? (
+      <Button onClick={handleCreateNew} size="sm" className="gap-2">
+        <Plus className="h-4 w-4" /> Novo Documento PGR
+      </Button>
+    ) : undefined,
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -124,75 +170,75 @@ export default function SgsstPgrListPage() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de PGRs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pgrs.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">PGRs Ativos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {pgrs.filter((p) => p.status === "ATIVO").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Em Revisão / Rascunho</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {pgrs.filter((p) => p.status === "EM_REVISAO" || p.status === "RASCUNHO").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Encerrados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {pgrs.filter((p) => p.status === "ENCERRADO").length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Indicadores — contagens sobre a base inteira, não sobre a página */}
+      <SgsstStatCards
+        isLoading={loadingResumo}
+        stats={[
+          {
+            label: "Total de PGRs",
+            value: resumo.total,
+            tone: "info",
+            icon: FileCheck,
+            ajuda: "Todos os PGRs da empresa, independente de status.",
+          },
+          {
+            label: "PGRs Ativos",
+            value: resumo.ativos,
+            tone: "positivo",
+            icon: CheckCircle2,
+            ajuda: "PGRs com status Ativo — os que valem hoje para as obras.",
+          },
+          {
+            label: "Em Revisão / Rascunho",
+            value: resumo.emRevisao,
+            tone: "atencao",
+            icon: AlertCircle,
+            hint: "aguardando conclusão",
+            ajuda: "PGRs em elaboração ou revisão; ainda não valem como documento oficial.",
+          },
+          {
+            label: "Encerrados",
+            value: resumo.encerrados,
+            tone: "neutro",
+            icon: Lock,
+            ajuda: "PGRs encerrados, mantidos apenas para histórico e auditoria.",
+          },
+        ]}
+      />
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código, título ou obra..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[140px] text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Status</SelectItem>
-              <SelectItem value="RASCUNHO">Rascunho</SelectItem>
-              <SelectItem value="ATIVO">Ativo</SelectItem>
-              <SelectItem value="EM_REVISAO">Em Revisão</SelectItem>
-              <SelectItem value="ENCERRADO">Encerrado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título do PGR..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={
+          selectedStatus !== "todos"
+            ? [
+                {
+                  label: "Status",
+                  value: STATUS_LABEL[selectedStatus] ?? selectedStatus,
+                  onClear: () => setSelectedStatus("todos"),
+                },
+              ]
+            : []
+        }
+      >
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[150px]" aria-label="Filtrar por status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos Status</SelectItem>
+            <SelectItem value="RASCUNHO">Rascunho</SelectItem>
+            <SelectItem value="ATIVO">Ativo</SelectItem>
+            <SelectItem value="EM_REVISAO">Em Revisão</SelectItem>
+            <SelectItem value="ENCERRADO">Encerrado</SelectItem>
+          </SelectContent>
+        </Select>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -210,16 +256,10 @@ export default function SgsstPgrListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando PGRs...
-                  </TableCell>
-                </TableRow>
-              ) : pgrs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhum PGR cadastrado ou encontrado.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { parseISO, isBefore, isAfter, addDays, startOfDay } from "date-fns";
 
 export type TipoExameOcupacional =
@@ -110,18 +111,45 @@ import { calculateVencimentoAso } from "@/utils/sgsstAsoUtils";
 export { calculateVencimentoAso };
 
 // Hook for Exames Ocupacionais
-export function useSgsstExames() {
+export interface SgsstExamesParams {
+  page?: number;
+  pageSize?: number;
+  /** Busca no nome do exame e no medico responsavel. */
+  search?: string;
+  status?: string;
+}
+
+/** Teto para o uso como lista de apoio (select do dialogo de ASO). */
+export const EXAMES_LISTA_LIMITE = 1000;
+
+/**
+ * Sem `params`, devolve a lista inteira (uso como lista de apoio).
+ * Com `params`, pagina e filtra no servidor (uso na aba de Exames).
+ */
+export function useSgsstExames(params?: SgsstExamesParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: exames = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_exames", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_exames",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.status ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_exames" as any)
-        .select(`
+        .select(
+          `
           *,
           colaborador:sgsst_colaborador_dados(
             id, cpf,
@@ -130,13 +158,37 @@ export function useSgsstExames() {
             funcao:sgsst_funcoes(id, nome)
           ),
           pcmso:sgsst_pcmso(id, codigo, titulo)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `,
+          { count: "exact" }
+        )
+        .order("created_at", { ascending: false });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(
+            `nome_exame.ilike.%${term}%,medico_responsavel.ilike.%${term}%`
+          );
+        }
+      }
+
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(EXAMES_LISTA_LIMITE);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstExame[]) || [];
+
+      const rows = (data as SgsstExame[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
+
+  const exames = data?.rows ?? [];
 
   const createExame = useMutation({
     mutationFn: async (input: SgsstExameInput) => {
@@ -207,6 +259,7 @@ export function useSgsstExames() {
 
   return {
     exames,
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,
@@ -217,18 +270,59 @@ export function useSgsstExames() {
 }
 
 // Hook for ASOs
-export function useSgsstAsos() {
+export interface SgsstAsosParams {
+  page?: number;
+  pageSize?: number;
+  /** Busca no numero do documento do ASO. */
+  search?: string;
+  tipo?: string;
+  aptidao?: string;
+  colaboradorId?: string;
+  pcmsoId?: string;
+  /** "VALIDO" | "PROXIMO_VENCIMENTO" | "VENCIDO" */
+  vencimento?: string;
+}
+
+/** Mesma janela de 30 dias usada por calculateVencimentoAso. */
+const DIAS_AVISO_VENCIMENTO = 30;
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * ASOs crescem por colaborador e por ano — e a consulta nao tinha limite algum,
+ * entao a partir de ~1000 registros o PostgREST passava a cortar em silencio.
+ * Agora pagina no servidor, com todos os filtros aplicados antes do corte.
+ */
+export function useSgsstAsos(params?: SgsstAsosParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: asos = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_asos", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_asos",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.tipo ?? "",
+      params?.aptidao ?? "",
+      params?.colaboradorId ?? "",
+      params?.pcmsoId ?? "",
+      params?.vencimento ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_asos" as any)
-        .select(`
+        .select(
+          `
           *,
           colaborador:sgsst_colaborador_dados(
             id, cpf,
@@ -238,17 +332,58 @@ export function useSgsstAsos() {
           ),
           pcmso:sgsst_pcmso(id, codigo, titulo),
           exame:sgsst_exames(id, nome_exame, data_realizacao)
-        `)
-        .order("data_emissao", { ascending: false }) as any);
+        `,
+          { count: "exact" }
+        )
+        .order("data_emissao", { ascending: false });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) query = query.ilike("numero_documento", `%${term}%`);
+      }
+
+      if (params?.tipo && params.tipo !== "todos") query = query.eq("tipo", params.tipo);
+      if (params?.aptidao && params.aptidao !== "todos")
+        query = query.eq("aptidao", params.aptidao);
+      if (params?.colaboradorId && params.colaboradorId !== "todos")
+        query = query.eq("colaborador_id", params.colaboradorId);
+      if (params?.pcmsoId && params.pcmsoId !== "todos")
+        query = query.eq("pcmso_id", params.pcmsoId);
+
+      // O status de vencimento e derivado de `validade`, entao filtra por faixa
+      // de data em vez de depender do calculo feito no cliente — assim o filtro
+      // vale para a base inteira e nao so para a pagina carregada.
+      if (params?.vencimento && params.vencimento !== "todos") {
+        const hoje = new Date();
+        const limite = new Date(hoje);
+        limite.setDate(limite.getDate() + DIAS_AVISO_VENCIMENTO);
+
+        if (params.vencimento === "VENCIDO") {
+          query = query.lt("validade", isoDate(hoje));
+        } else if (params.vencimento === "PROXIMO_VENCIMENTO") {
+          query = query.gte("validade", isoDate(hoje)).lte("validade", isoDate(limite));
+        } else if (params.vencimento === "VALIDO") {
+          query = query.gt("validade", isoDate(limite));
+        }
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(1000);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
 
-      return ((data || []) as SgsstAso[]).map((aso) => ({
+      const rows = ((data || []) as SgsstAso[]).map((aso) => ({
         ...aso,
         statusVencimento: calculateVencimentoAso(aso.validade),
       }));
+
+      return { rows, total: count ?? rows.length };
     },
   });
+
+  const asos = data?.rows ?? [];
 
   const createAso = useMutation({
     mutationFn: async (input: SgsstAsoInput) => {
@@ -404,6 +539,7 @@ export function useSgsstAsos() {
 
   return {
     asos,
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

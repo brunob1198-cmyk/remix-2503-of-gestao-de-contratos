@@ -3,12 +3,15 @@ import { useSgsstInspecoes, SgsstInspecao, StatusInspecao, TipoInspecao } from "
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { Plus, Search, Edit2, Trash2, SearchCheck, Eye, CheckCircle2, XCircle, PlayCircle, Lock, Calendar } from "lucide-react";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -29,7 +32,16 @@ export default function SgsstInspecoesListPage() {
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
-  const { inspecoes, total, isLoading, createInspecao, updateInspecao, removeInspecao } = useSgsstInspecoes({
+  // Indicadores sobre a base inteira: derivar da página corrente fazia os
+  // cartões medirem apenas as linhas visíveis.
+  const { count: countInsp } = useSgsstCounts("sgsst_inspecoes", [
+    { key: "total" },
+    { key: "concluidas", build: (q) => q.eq("status", "CONCLUIDA") },
+    { key: "emExecucao", build: (q) => q.eq("status", "EM_EXECUCAO") },
+    { key: "planejadas", build: (q) => q.eq("status", "PLANEJADA") },
+  ]);
+
+  const { inspecoes, total, isLoading, error, refetch, createInspecao, updateInspecao, removeInspecao } = useSgsstInspecoes({
     page,
     pageSize,
     search: debouncedSearch,
@@ -104,6 +116,39 @@ export default function SgsstInspecoesListPage() {
     }
   };
 
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  // Rótulo legível para os chips de filtro ativo: os valores são enums em
+  // MAIÚSCULA_COM_UNDERSCORE, que não devem aparecer crus na interface.
+  const rotuloFiltro = (valor: string) =>
+    valor
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/^./, (c) => c.toUpperCase());
+
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedTipo !== "todos" || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedTipo("todos");
+    setSelectedStatus("todos");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: inspecoes.length === 0,
+    modulo: "Inspeções",
+    onRetry: refetch,
+    emptyTitulo: "Nenhuma inspeção agendada ainda",
+    emptyDescricao:
+      "As inspeções registram verificações de campo e geram não conformidades quando algo está fora do padrão.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -133,7 +178,7 @@ export default function SgsstInspecoesListPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total de Inspeções</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inspecoes.length}</div>
+            <div className="text-2xl font-bold">{countInsp("total")}</div>
           </CardContent>
         </Card>
         <Card>
@@ -142,7 +187,7 @@ export default function SgsstInspecoesListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {inspecoes.filter((i) => i.status === "CONCLUIDA").length}
+              {countInsp("concluidas")}
             </div>
           </CardContent>
         </Card>
@@ -152,7 +197,7 @@ export default function SgsstInspecoesListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {inspecoes.filter((i) => i.status === "EM_EXECUCAO").length}
+              {countInsp("emExecucao")}
             </div>
           </CardContent>
         </Card>
@@ -162,25 +207,29 @@ export default function SgsstInspecoesListPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
-              {inspecoes.filter((i) => i.status === "PLANEJADA").length}
+              {countInsp("planejadas")}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, código ou obra..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título da inspeção..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedTipo !== "todos"
+            ? [{ label: "Tipo", value: selectedTipo, onClear: () => setSelectedTipo("todos") }]
+            : []),
+          ...(selectedStatus !== "todos"
+            ? [{ label: "Status", value: rotuloFiltro(selectedStatus), onClear: () => setSelectedStatus("todos") }]
+            : []),
+        ]}
+      >
           <Select value={selectedTipo} onValueChange={setSelectedTipo}>
             <SelectTrigger className="w-[160px] text-xs">
               <SelectValue placeholder="Tipo de Inspeção" />
@@ -210,8 +259,7 @@ export default function SgsstInspecoesListPage() {
               <SelectItem value="CANCELADA">Cancelada</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -229,16 +277,10 @@ export default function SgsstInspecoesListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando inspeções de segurança...
-                  </TableCell>
-                </TableRow>
-              ) : inspecoes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhuma inspeção agendada ou encontrada nos filtros.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

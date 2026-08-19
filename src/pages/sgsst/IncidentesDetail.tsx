@@ -45,6 +45,8 @@ import {
   History,
   AlertTriangle,
 } from "lucide-react";
+import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { IncidenteFormDialog } from "@/components/sgsst/IncidenteFormDialog";
 import { IncidenteAcaoFormDialog } from "@/components/sgsst/IncidenteAcaoFormDialog";
 import { IncidenteStatusDialog } from "@/components/sgsst/IncidenteStatusDialog";
@@ -141,9 +143,9 @@ export default function SgsstIncidentesDetailPage() {
 
   const openStatusModal = (status: StatusIncidente) => {
     if (status === "ENCERRADO") {
-      const acoesPendentes = acoes.filter((a) => a.status === "ABERTA" || a.status === "EM_ANDAMENTO");
-      if (acoesPendentes.length > 0) {
-        toast.error(`Não é possível encerrar o incidente. Existem ${acoesPendentes.length} ação(ões) corretiva(s)/preventiva(s) pendentes ou em andamento.`);
+      const pendentes = acoesPendentes(acoes);
+      if (pendentes.length > 0) {
+        toast.error(mensagemBloqueioEncerramento(pendentes.length, "encerrar o incidente"));
         return;
       }
     }
@@ -373,15 +375,11 @@ export default function SgsstIncidentesDetailPage() {
                           <TableCell className="text-xs text-muted-foreground">{e.descricao || "—"}</TableCell>
                           <TableCell className="text-right">
                             {allowEdit && !isReadOnly && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeEnvolvido.mutate(e.id)}
-                                title="Desvincular"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                alvo="o vínculo deste envolvido"
+                                consequencia={"O colaborador deixa de constar como envolvido neste incidente. O registro sai da investigação e da comunicação de acidente."}
+                                onConfirm={() => removeEnvolvido.mutate(e.id)}
+                              />
                             )}
                           </TableCell>
                         </TableRow>
@@ -589,15 +587,11 @@ export default function SgsstIncidentesDetailPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeAcao.mutate(a.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                alvo="esta ação corretiva"
+                                consequencia={"A ação sai do plano de ação do incidente, junto com seu responsável e prazo. Incidentes só podem ser encerrados com o plano concluído."}
+                                onConfirm={() => removeAcao.mutate(a.id)}
+                              />
                             </div>
                           )}
                         </TableCell>

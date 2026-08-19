@@ -12,6 +12,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
 import {
   Plus,
   Search,
@@ -36,6 +38,7 @@ import {
   FileCheck,
   UserCheck,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { TreinamentoFormDialog } from "@/components/sgsst/TreinamentoFormDialog";
 import { TurmaFormDialog } from "@/components/sgsst/TurmaFormDialog";
 import { ParticipanteFormDialog } from "@/components/sgsst/ParticipanteFormDialog";
@@ -64,16 +67,16 @@ export default function SgsstTreinamentosListPage() {
   const debouncedSearchVenc = useDebounce(searchTermVenc, 400);
   const [filterVencStatus, setFilterVencStatus] = useState("todos");
 
-  const { treinamentos, total: totalCat, isLoading: loadingTreinamentos, createTreinamento, updateTreinamento, removeTreinamento } = useSgsstTreinamentos({
+  const { treinamentos, total: totalCat, isLoading: loadingTreinamentos, error: errTreinamentos, refetch: refetchTreinamentos, createTreinamento, updateTreinamento, removeTreinamento } = useSgsstTreinamentos({
     page: pageCat,
     pageSize: pageSizeCat,
     search: debouncedSearchCat,
     categoria: filterCat,
   });
 
-  const { turmas, isLoading: loadingTurmas, createTurma, updateTurma, removeTurma } = useSgsstTreinamentosTurmas();
+  const { turmas, isLoading: loadingTurmas, error: errTurmas, createTurma, updateTurma, removeTurma } = useSgsstTreinamentosTurmas();
 
-  const { todosParticipantes, total: totalVenc, isLoading: loadingTodosPart } = useSgsstTodosParticipantes({
+  const { todosParticipantes, total: totalVenc, isLoading: loadingTodosPart, error: errParticipantes } = useSgsstTodosParticipantes({
     page: pageVenc,
     pageSize: pageSizeVenc,
     search: debouncedSearchVenc,
@@ -151,11 +154,46 @@ export default function SgsstTreinamentosListPage() {
   });
 
   // Stats Calculations
-  const treinamentosAtivosCount = treinamentos.filter((t) => t.status === "ATIVO").length;
-  const turmasEmAndamentoCount = turmas.filter((t) => t.status === "EM_ANDAMENTO" || t.status === "PLANEJADA").length;
-  const participantesPendentesCount = todosParticipantes.filter((p) => p.resultado === "PENDENTE").length;
-  const proximosVencimentoCount = todosParticipantes.filter((p) => p.resultado === "APROVADO" && p.statusVencimento === "PROXIMO_VENCIMENTO").length;
-  const vencidosCount = todosParticipantes.filter((p) => p.resultado === "APROVADO" && p.statusVencimento === "VENCIDO").length;
+  // Indicadores sobre a base inteira. Antes vinham de `.filter(...)` sobre a
+  // página carregada, então "treinamentos vencidos" contava só os visíveis —
+  // exatamente o número que não pode ser subestimado numa auditoria.
+  // As faixas de data reproduzem calculateVencimentoTreinamento (janela de 30 dias).
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const limiteAvisoIso = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const { count: countTrein } = useSgsstCounts("sgsst_treinamentos", [
+    { key: "ativos", build: (q) => q.eq("status", "ATIVO") },
+  ]);
+
+  const { count: countTurmas } = useSgsstCounts("sgsst_treinamentos_turmas", [
+    { key: "emAndamento", build: (q) => q.in("status", ["EM_ANDAMENTO", "PLANEJADA"]) },
+  ]);
+
+  const { count: countPart } = useSgsstCounts("sgsst_treinamentos_participantes", [
+    { key: "pendentes", build: (q) => q.eq("resultado", "PENDENTE") },
+    {
+      key: "proximos",
+      build: (q) =>
+        q
+          .eq("resultado", "APROVADO")
+          .gte("validade", hojeIso)
+          .lte("validade", limiteAvisoIso),
+    },
+    {
+      key: "vencidos",
+      build: (q) => q.eq("resultado", "APROVADO").lt("validade", hojeIso),
+    },
+  ]);
+
+  const treinamentosAtivosCount = countTrein("ativos");
+  const turmasEmAndamentoCount = countTurmas("emAndamento");
+  const participantesPendentesCount = countPart("pendentes");
+  const proximosVencimentoCount = countPart("proximos");
+  const vencidosCount = countPart("vencidos");
 
   const getVencimentoBadge = (statusVenc?: string) => {
     switch (statusVenc) {
@@ -169,6 +207,10 @@ export default function SgsstTreinamentosListPage() {
         return null;
     }
   };
+
+  // Basta um dos hooks falhar para várias abas ficarem vazias; o banner diz
+  // qual é a causa em vez de deixar as tabelas parecerem sem cadastro.
+  const erroModulo = errTreinamentos ?? errTurmas ?? errParticipantes;
 
   return (
     <div className="space-y-6">
@@ -247,6 +289,10 @@ export default function SgsstTreinamentosListPage() {
           </CardContent>
         </Card>
       </div>
+
+      {erroModulo && (
+        <SgsstErrorState error={erroModulo} modulo="Treinamentos" onRetry={refetchTreinamentos} />
+      )}
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -476,15 +522,11 @@ export default function SgsstTreinamentosListPage() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => removeTurma.mutate(turma.id)}
-                                  title="Excluir"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <SgsstConfirmDelete
+                                    alvo="esta turma"
+                                    consequencia={"A turma é apagada com todos os seus inscritos, presenças e notas. Os certificados emitidos deixam de ter turma de origem."}
+                                    onConfirm={() => removeTurma.mutate(turma.id)}
+                                  />
                               </>
                             )}
                           </div>
@@ -685,15 +727,11 @@ export default function SgsstTreinamentosListPage() {
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => removeParticipante.mutate(p.id)}
-                                  title="Remover"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <SgsstConfirmDelete
+                                    alvo="este aluno da turma"
+                                    consequencia={"A inscrição é apagada com presença, nota e validade do treinamento — o colaborador volta a contar como não treinado nesta capacitação."}
+                                    onConfirm={() => removeParticipante.mutate(p.id)}
+                                  />
                               </div>
                             )}
                           </TableCell>

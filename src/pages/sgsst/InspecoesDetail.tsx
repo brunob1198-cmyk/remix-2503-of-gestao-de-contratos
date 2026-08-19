@@ -38,6 +38,7 @@ import {
   History,
   AlertTriangle,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
 import { InspecaoNaoConformidadeFormDialog } from "@/components/sgsst/InspecaoNaoConformidadeFormDialog";
 import { InspecaoStatusDialog } from "@/components/sgsst/InspecaoStatusDialog";
@@ -363,15 +364,11 @@ export default function SgsstInspecoesDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {allowEdit && !isReadOnly && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeItem.mutate(item.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <SgsstConfirmDelete
+                                alvo="este item do checklist"
+                                consequencia={"A pergunta e a resposta registrada em campo são apagadas, e o percentual de conformidade da inspeção é recalculado."}
+                                onConfirm={() => removeItem.mutate(item.id)}
+                              />
                           )}
                         </TableCell>
                       </TableRow>
@@ -452,15 +449,11 @@ export default function SgsstInspecoesDetailPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeNaoConformidade.mutate(nc.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                alvo="esta não conformidade"
+                                consequencia={"O desvio apontado nesta inspeção é apagado, junto com o prazo e o responsável pelo tratamento."}
+                                onConfirm={() => removeNaoConformidade.mutate(nc.id)}
+                              />
                             </div>
                           )}
                         </TableCell>

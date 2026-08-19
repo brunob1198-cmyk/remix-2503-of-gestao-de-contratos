@@ -3,12 +3,15 @@ import { useSgsstNaoConformidades, SgsstNaoConformidade, StatusNC, CriticidadeNC
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { Plus, Search, Edit2, Trash2, AlertOctagon, Eye, CheckCircle2, XCircle, PlayCircle, ShieldCheck, AlertTriangle, Clock } from "lucide-react";
 import { NcFormDialog } from "@/components/sgsst/NcFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -31,7 +34,7 @@ export default function SgsstNaoConformidadesListPage() {
   const [selectedOrigem, setSelectedOrigem] = useState<string>("todos");
   const [filterVencidasOnly, setFilterVencidasOnly] = useState(false);
 
-  const { naoConformidades, total, isLoading, createNaoConformidade, updateNaoConformidade, removeNaoConformidade } = useSgsstNaoConformidades({
+  const { naoConformidades, total, isLoading, error, refetch, createNaoConformidade, updateNaoConformidade, removeNaoConformidade } = useSgsstNaoConformidades({
     page,
     pageSize,
     search: debouncedSearch,
@@ -166,13 +169,74 @@ export default function SgsstNaoConformidadesListPage() {
     }
   };
 
-  // Stats Calculations
-  const totalAbertas = naoConformidades.filter((nc) => nc.status !== "CONCLUIDA" && nc.status !== "CANCELADA").length;
-  const emTratamento = naoConformidades.filter((nc) => nc.status === "EM_TRATAMENTO" || nc.status === "PLANO_ACAO").length;
-  const vencidas = naoConformidades.filter(isVencida).length;
-  const criticas = naoConformidades.filter((nc) => nc.criticidade === "CRITICA" && nc.status !== "CONCLUIDA" && nc.status !== "CANCELADA").length;
-  const aguardandoVerificacao = naoConformidades.filter((nc) => nc.status === "AGUARDANDO_VERIFICACAO").length;
-  const concluidas = naoConformidades.filter((nc) => nc.status === "CONCLUIDA").length;
+  // Indicadores sobre a base inteira. Derivar de `naoConformidades.filter(...)`
+  // media apenas a página carregada — e "NCs vencidas" é justamente o número que
+  // não pode ser subestimado.
+  const STATUS_ENCERRADOS = ["CONCLUIDA", "CANCELADA"];
+  const hojeIso = new Date().toISOString().slice(0, 10);
+
+  const { count: countNc } = useSgsstCounts("sgsst_nao_conformidades", [
+    { key: "abertas", build: (q) => q.not("status", "in", `(${STATUS_ENCERRADOS.join(",")})`) },
+    { key: "emTratamento", build: (q) => q.in("status", ["EM_TRATAMENTO", "PLANO_ACAO"]) },
+    {
+      key: "vencidas",
+      build: (q) =>
+        q
+          .lt("prazo", hojeIso)
+          .not("status", "in", `(${STATUS_ENCERRADOS.join(",")})`),
+    },
+    {
+      key: "criticas",
+      build: (q) =>
+        q
+          .eq("criticidade", "CRITICA")
+          .not("status", "in", `(${STATUS_ENCERRADOS.join(",")})`),
+    },
+    { key: "aguardando", build: (q) => q.eq("status", "AGUARDANDO_VERIFICACAO") },
+    { key: "concluidas", build: (q) => q.eq("status", "CONCLUIDA") },
+  ]);
+
+  const totalAbertas = countNc("abertas");
+  const emTratamento = countNc("emTratamento");
+  const vencidas = countNc("vencidas");
+  const criticas = countNc("criticas");
+  const aguardandoVerificacao = countNc("aguardando");
+  const concluidas = countNc("concluidas");
+
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  // Rótulo legível para os chips: os valores são enums em MAIÚSCULA_COM_UNDERSCORE,
+  // que não devem aparecer crus na interface.
+  const rotuloFiltro = (valor: string) =>
+    valor
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/^./, (c) => c.toUpperCase());
+
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedStatus !== "todos" || selectedCriticidade !== "todos" || selectedOrigem !== "todos" || filterVencidasOnly;
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedStatus("todos");
+    setSelectedCriticidade("todos");
+    setSelectedOrigem("todos");
+    setFilterVencidasOnly(false);
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: naoConformidades.length === 0,
+    modulo: "Não Conformidades",
+    onRetry: refetch,
+    emptyTitulo: "Nenhuma não conformidade aberta",
+    emptyDescricao:
+      "As NCs concentram desvios encontrados em inspeções e auditorias, com ação corretiva e verificação de eficácia.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
 
   return (
     <div className="space-y-6">
@@ -248,19 +312,29 @@ export default function SgsstNaoConformidadesListPage() {
         </Card>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, código ou obra..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título da NC..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedStatus !== "todos"
+            ? [{ label: "Status", value: rotuloFiltro(selectedStatus), onClear: () => setSelectedStatus("todos") }]
+            : []),
+          ...(selectedCriticidade !== "todos"
+            ? [{ label: "Criticidade", value: rotuloFiltro(selectedCriticidade), onClear: () => setSelectedCriticidade("todos") }]
+            : []),
+          ...(selectedOrigem !== "todos"
+            ? [{ label: "Origem", value: rotuloFiltro(selectedOrigem), onClear: () => setSelectedOrigem("todos") }]
+            : []),
+          ...(filterVencidasOnly
+            ? [{ label: "Prazo", value: "Apenas vencidas", onClear: () => setFilterVencidasOnly(false) }]
+            : []),
+        ]}
+      >
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
             <SelectTrigger className="w-[130px] text-xs">
               <SelectValue placeholder="Status" />
@@ -313,8 +387,7 @@ export default function SgsstNaoConformidadesListPage() {
           >
             <Clock className="h-3.5 w-3.5" /> Apenas Vencidas
           </Button>
-        </div>
-      </div>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -333,16 +406,10 @@ export default function SgsstNaoConformidadesListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Carregando Não Conformidades...
-                  </TableCell>
-                </TableRow>
-              ) : naoConformidades.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Nenhuma Não Conformidade encontrada nos filtros aplicados.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={8} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

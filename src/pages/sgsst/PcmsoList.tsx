@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { useSgsstPcmso, SgsstPcmso, StatusPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import {
   useSgsstAsos,
@@ -19,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
 import {
   Plus,
   Search,
@@ -36,6 +40,7 @@ import {
   Clock,
   CheckSquare,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
 import { AsoFormDialog } from "@/components/sgsst/AsoFormDialog";
 import { AsoDetailDialog } from "@/components/sgsst/AsoDetailDialog";
@@ -49,23 +54,23 @@ export default function SgsstPcmsoListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-pcmso");
 
-  // Hooks
-  const { pcmsoList, isLoading: loadingPcmso, createPcmso, updatePcmso, removePcmso } = useSgsstPcmso();
-  const { asos, isLoading: loadingAsos, createAso, updateAso, cancelAso, removeAso } = useSgsstAsos();
-  const { exames, isLoading: loadingExames, createExame, updateExame, removeExame } = useSgsstExames();
-  const { colaboradores } = useSgsstColaboradoresResumo();
-
   // Tab State
   const [activeTab, setActiveTab] = useState("pcmso");
 
   // PCMSO Search & Filters
+  const [pagePcmso, setPagePcmso] = useState(0);
+  const [pageSizePcmso, setPageSizePcmso] = useState(25);
   const [searchTermPcmso, setSearchTermPcmso] = useState("");
+  const debouncedSearchPcmso = useDebounce(searchTermPcmso, 400);
   const [selectedStatusPcmso, setSelectedStatusPcmso] = useState<string>("todos");
   const [isPcmsoFormOpen, setIsPcmsoFormOpen] = useState(false);
   const [editingPcmso, setEditingPcmso] = useState<SgsstPcmso | null>(null);
 
   // ASO Search & Filters
+  const [pageAso, setPageAso] = useState(0);
+  const [pageSizeAso, setPageSizeAso] = useState(25);
   const [searchTermAso, setSearchTermAso] = useState("");
+  const debouncedSearchAso = useDebounce(searchTermAso, 400);
   const [filterColabAso, setFilterColabAso] = useState("todos");
   const [filterTipoAso, setFilterTipoAso] = useState("todos");
   const [filterAptidaoAso, setFilterAptidaoAso] = useState("todos");
@@ -78,10 +83,94 @@ export default function SgsstPcmsoListPage() {
   const [initialExameForAso, setInitialExameForAso] = useState<string | null>(null);
 
   // Exame Search & Filters
+  const [pageExame, setPageExame] = useState(0);
+  const [pageSizeExame, setPageSizeExame] = useState(25);
   const [searchTermExame, setSearchTermExame] = useState("");
+  const debouncedSearchExame = useDebounce(searchTermExame, 400);
   const [filterStatusExame, setFilterStatusExame] = useState("todos");
   const [isExameFormOpen, setIsExameFormOpen] = useState(false);
   const [editingExame, setEditingExame] = useState<SgsstExame | null>(null);
+
+  // Hooks — declarados depois dos filtros porque agora recebem os filtros como
+  // parametro: busca, filtros e paginacao passaram a rodar no servidor, de modo
+  // que o recorte considera a base inteira e nao apenas a pagina carregada.
+  const {
+    pcmsoList,
+    total: totalPcmso,
+    isLoading: loadingPcmso,
+    error: errPcmso,
+    refetch: refetchPcmso,
+    createPcmso,
+    updatePcmso,
+    removePcmso,
+  } = useSgsstPcmso({
+    page: pagePcmso,
+    pageSize: pageSizePcmso,
+    search: debouncedSearchPcmso,
+    status: selectedStatusPcmso,
+  });
+
+  const {
+    asos,
+    total: totalAso,
+    isLoading: loadingAsos,
+    error: errAsos,
+    createAso,
+    updateAso,
+    cancelAso,
+    removeAso,
+  } = useSgsstAsos({
+    page: pageAso,
+    pageSize: pageSizeAso,
+    search: debouncedSearchAso,
+    tipo: filterTipoAso,
+    aptidao: filterAptidaoAso,
+    colaboradorId: filterColabAso,
+    pcmsoId: filterPcmsoAso,
+    vencimento: filterVencimentoAso,
+  });
+
+  const {
+    exames,
+    total: totalExame,
+    isLoading: loadingExames,
+    error: errExames,
+    createExame,
+    updateExame,
+    removeExame,
+  } = useSgsstExames({
+    page: pageExame,
+    pageSize: pageSizeExame,
+    search: debouncedSearchExame,
+    status: filterStatusExame,
+  });
+
+  const { colaboradores } = useSgsstColaboradoresResumo();
+
+  const totalPagesPcmso = Math.ceil(totalPcmso / pageSizePcmso) || 1;
+  const totalPagesAso = Math.ceil(totalAso / pageSizeAso) || 1;
+  const totalPagesExame = Math.ceil(totalExame / pageSizeExame) || 1;
+
+  // Voltar à primeira página quando os filtros mudam, senão a consulta pede um
+  // range que o resultado filtrado não tem e a tabela aparece vazia.
+  useEffect(() => {
+    setPagePcmso(0);
+  }, [debouncedSearchPcmso, selectedStatusPcmso]);
+
+  useEffect(() => {
+    setPageAso(0);
+  }, [
+    debouncedSearchAso,
+    filterTipoAso,
+    filterAptidaoAso,
+    filterColabAso,
+    filterPcmsoAso,
+    filterVencimentoAso,
+  ]);
+
+  useEffect(() => {
+    setPageExame(0);
+  }, [debouncedSearchExame, filterStatusExame]);
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -92,57 +181,38 @@ export default function SgsstPcmsoListPage() {
     }
   };
 
-  // PCMSO Filtered
-  const filteredPcmsoList = pcmsoList.filter((p) => {
-    const term = searchTermPcmso.toLowerCase();
-    const matchesSearch =
-      p.titulo.toLowerCase().includes(term) ||
-      (p.codigo && p.codigo.toLowerCase().includes(term)) ||
-      (p.medico_responsavel && p.medico_responsavel.toLowerCase().includes(term)) ||
-      (p.projeto?.nome && p.projeto.nome.toLowerCase().includes(term));
+  // Indicadores de Saúde Ocupacional.
+  // Antes eram calculados com `exames.filter(...)` / `asos.filter(...)` sobre a
+  // página carregada, então "ASOs vencidos" só contava os vencidos visíveis —
+  // justamente o número que não pode ser subestimado. Agora são contagens do
+  // servidor sobre a base inteira.
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const limiteAvisoIso = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  })();
 
-    const matchesStatus = selectedStatusPcmso === "todos" || p.status === selectedStatusPcmso;
-    return matchesSearch && matchesStatus;
-  });
+  const { count: countExames } = useSgsstCounts("sgsst_exames", [
+    { key: "pendentes", build: (q) => q.in("status", ["PENDENTE", "AGENDADO"]) },
+    { key: "realizados", build: (q) => q.eq("status", "REALIZADO") },
+  ]);
 
-  // ASO Filtered
-  const filteredAsos = asos.filter((a) => {
-    const term = searchTermAso.toLowerCase();
-    const colabNome = a.colaborador?.profile?.nome || a.colaborador?.recurso?.nome || "";
-    const matchesSearch =
-      colabNome.toLowerCase().includes(term) ||
-      (a.numero_documento && a.numero_documento.toLowerCase().includes(term)) ||
-      (a.colaborador?.cpf && a.colaborador.cpf.includes(term));
+  const { count: countAsos } = useSgsstCounts("sgsst_asos", [
+    { key: "validos", build: (q) => q.eq("status", "ATIVO").gt("validade", limiteAvisoIso) },
+    {
+      key: "proximos",
+      build: (q) =>
+        q.eq("status", "ATIVO").gte("validade", hojeIso).lte("validade", limiteAvisoIso),
+    },
+    { key: "vencidos", build: (q) => q.eq("status", "ATIVO").lt("validade", hojeIso) },
+  ]);
 
-    const matchesColab = filterColabAso === "todos" || a.colaborador_id === filterColabAso;
-    const matchesTipo = filterTipoAso === "todos" || a.tipo === filterTipoAso;
-    const matchesAptidao = filterAptidaoAso === "todos" || a.aptidao === filterAptidaoAso;
-    const matchesVencimento = filterVencimentoAso === "todos" || a.statusVencimento === filterVencimentoAso;
-    const matchesPcmso = filterPcmsoAso === "todos" || a.pcmso_id === filterPcmsoAso;
-
-    return matchesSearch && matchesColab && matchesTipo && matchesAptidao && matchesVencimento && matchesPcmso;
-  });
-
-  // Exame Filtered
-  const filteredExames = exames.filter((e) => {
-    const term = searchTermExame.toLowerCase();
-    const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || "";
-    const matchesSearch =
-      e.nome_exame.toLowerCase().includes(term) ||
-      colabNome.toLowerCase().includes(term) ||
-      (e.medico_responsavel && e.medico_responsavel.toLowerCase().includes(term));
-
-    const matchesStatus = filterStatusExame === "todos" || e.status === filterStatusExame;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // Dashboard Stats Calculations for Saúde Ocupacional
-  const examesPendentesCount = exames.filter((e) => e.status === "PENDENTE" || e.status === "AGENDADO").length;
-  const examesRealizadosCount = exames.filter((e) => e.status === "REALIZADO").length;
-  const asosValidosCount = asos.filter((a) => a.status === "ATIVO" && a.statusVencimento === "VALIDO").length;
-  const asosProximosCount = asos.filter((a) => a.status === "ATIVO" && a.statusVencimento === "PROXIMO_VENCIMENTO").length;
-  const asosVencidosCount = asos.filter((a) => a.status === "ATIVO" && a.statusVencimento === "VENCIDO").length;
+  const examesPendentesCount = countExames("pendentes");
+  const examesRealizadosCount = countExames("realizados");
+  const asosValidosCount = countAsos("validos");
+  const asosProximosCount = countAsos("proximos");
+  const asosVencidosCount = countAsos("vencidos");
 
   // Handlers PCMSO
   const handleSavePcmso = async (data: any) => {
@@ -202,6 +272,10 @@ export default function SgsstPcmsoListPage() {
         return null;
     }
   };
+
+  // Basta um dos hooks falhar para varias abas ficarem vazias; o banner diz
+  // qual e a causa em vez de deixar as tabelas parecerem sem cadastro.
+  const erroModulo = errPcmso ?? errAsos ?? errExames;
 
   return (
     <div className="space-y-6">
@@ -282,6 +356,14 @@ export default function SgsstPcmsoListPage() {
       </div>
 
       {/* Main Tabs Navigation */}
+      {erroModulo && (
+        <SgsstErrorState
+          error={erroModulo}
+          modulo="PCMSO e ASO"
+          onRetry={refetchPcmso}
+        />
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full sm:w-auto grid-cols-3">
           <TabsTrigger value="pcmso" className="gap-2">
@@ -341,10 +423,10 @@ export default function SgsstPcmsoListPage() {
                 <TableBody>
                   {loadingPcmso ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando programas de PCMSO...</TableCell></TableRow>
-                  ) : filteredPcmsoList.length === 0 ? (
+                  ) : pcmsoList.length === 0 ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum PCMSO encontrado.</TableCell></TableRow>
                   ) : (
-                    filteredPcmsoList.map((p) => (
+                    pcmsoList.map((p) => (
                       <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/medicoes/sgsst/pcmso/${p.id}`)}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{p.codigo || "—"}</TableCell>
                         <TableCell className="font-medium max-w-xs truncate">{p.titulo}</TableCell>
@@ -366,6 +448,17 @@ export default function SgsstPcmsoListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pagePcmso + 1}
+                totalPages={totalPagesPcmso}
+                onPageChange={(p) => setPagePcmso(p - 1)}
+                itemsPerPage={pageSizePcmso}
+                onItemsPerPageChange={(v) => {
+                  setPageSizePcmso(v);
+                  setPagePcmso(0);
+                }}
+                totalItems={totalPcmso}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -442,10 +535,10 @@ export default function SgsstPcmsoListPage() {
                 <TableBody>
                   {loadingAsos ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando atestados de ASO...</TableCell></TableRow>
-                  ) : filteredAsos.length === 0 ? (
+                  ) : asos.length === 0 ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum ASO encontrado.</TableCell></TableRow>
                   ) : (
-                    filteredAsos.map((a) => {
+                    asos.map((a) => {
                       const colabNome = a.colaborador?.profile?.nome || a.colaborador?.recurso?.nome || "Sem Nome";
                       return (
                         <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => { setViewingAso(a); setIsAsoDetailOpen(true); }}>
@@ -510,6 +603,17 @@ export default function SgsstPcmsoListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageAso + 1}
+                totalPages={totalPagesAso}
+                onPageChange={(p) => setPageAso(p - 1)}
+                itemsPerPage={pageSizeAso}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeAso(v);
+                  setPageAso(0);
+                }}
+                totalItems={totalAso}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -558,10 +662,10 @@ export default function SgsstPcmsoListPage() {
                 <TableBody>
                   {loadingExames ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando exames ocupacionais...</TableCell></TableRow>
-                  ) : filteredExames.length === 0 ? (
+                  ) : exames.length === 0 ? (
                     <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum exame cadastrado.</TableCell></TableRow>
                   ) : (
-                    filteredExames.map((e) => {
+                    exames.map((e) => {
                       const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || "Sem Nome";
                       return (
                         <TableRow key={e.id}>
@@ -597,15 +701,11 @@ export default function SgsstPcmsoListPage() {
                                   >
                                     <Edit2 className="h-4 w-4" />
                                   </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() => removeExame.mutate(e.id)}
-                                    title="Excluir"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <SgsstConfirmDelete
+                                    alvo="este exame ocupacional"
+                                    consequencia={"O exame e seu resultado são apagados. Se houver ASO emitido a partir dele, o vínculo é perdido."}
+                                    onConfirm={() => removeExame.mutate(e.id)}
+                                  />
                                 </>
                               )}
                             </div>
@@ -616,6 +716,17 @@ export default function SgsstPcmsoListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageExame + 1}
+                totalPages={totalPagesExame}
+                onPageChange={(p) => setPageExame(p - 1)}
+                itemsPerPage={pageSizeExame}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeExame(v);
+                  setPageExame(0);
+                }}
+                totalItems={totalExame}
+              />
             </CardContent>
           </Card>
         </TabsContent>

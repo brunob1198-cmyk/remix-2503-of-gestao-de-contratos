@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
+import { useSgsstCounts } from "./useSgsstCounts";
 
 export type StatusPgr = "RASCUNHO" | "ATIVO" | "EM_REVISAO" | "ENCERRADO";
 
@@ -138,7 +140,12 @@ export function useSgsstPgr(params?: { page?: number; pageSize?: number; search?
         .order("created_at", { ascending: false });
 
       if (params?.search) {
-        query = query.ilike("titulo", `%${params.search}%`);
+        // A tela oferece busca por codigo e titulo; antes o filtro cobria so o
+        // titulo, entao procurar pelo codigo do PGR nunca retornava nada.
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(`codigo.ilike.%${term}%,titulo.ilike.%${term}%`);
+        }
       }
       if (params?.status && params.status !== "todos") {
         query = query.eq("status", params.status);
@@ -262,6 +269,32 @@ export function useSgsstPgr(params?: { page?: number; pageSize?: number; search?
 }
 
 // Hook for Inventário de Riscos
+/**
+ * Contadores da tela de PGR sobre a base inteira.
+ * Os cartoes calculavam `pgrs.filter(...).length`, o que media apenas a pagina
+ * corrente: com 300 PGRs, "Total de PGRs" exibia 25.
+ */
+export function useSgsstPgrResumo() {
+  const { count, isLoading, error, refetch } = useSgsstCounts("sgsst_pgr", [
+    { key: "total" },
+    { key: "ativos", build: (q) => q.eq("status", "ATIVO") },
+    { key: "emRevisao", build: (q) => q.in("status", ["EM_REVISAO", "RASCUNHO"]) },
+    { key: "encerrados", build: (q) => q.eq("status", "ENCERRADO") },
+  ]);
+
+  return {
+    resumo: {
+      total: count("total"),
+      ativos: count("ativos"),
+      emRevisao: count("emRevisao"),
+      encerrados: count("encerrados"),
+    },
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
 export function useSgsstPgrInventario(pgrId?: string) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();

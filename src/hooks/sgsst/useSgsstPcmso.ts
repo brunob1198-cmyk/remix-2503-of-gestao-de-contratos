@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 
 export type StatusPcmso = "RASCUNHO" | "ATIVO" | "EM_REVISAO" | "ENCERRADO" | "CANCELADO";
 
@@ -88,27 +89,81 @@ export function useSgsstPcmsoDetail(pcmsoId?: string) {
   });
 }
 
-export function useSgsstPcmso() {
+/** Teto para o uso como lista de apoio (selects de ASO e Exames). */
+export const PCMSO_CATALOGO_LIMITE = 1000;
+
+export interface SgsstPcmsoParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+/**
+ * Sem `params`, devolve a lista inteira (uso como lista de apoio).
+ * Com `params`, pagina e filtra no servidor (uso na tela de PCMSO).
+ */
+export function useSgsstPcmso(params?: SgsstPcmsoParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: pcmsoList = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_pcmso", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_pcmso",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.status ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_pcmso" as any)
-        .select(`
+        .select(
+          `
           *,
           projeto:projetos(id, codigo, nome)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `,
+          { count: "exact" }
+        )
+        .order("created_at", { ascending: false });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(
+            `codigo.ilike.%${term}%,titulo.ilike.%${term}%,medico_responsavel.ilike.%${term}%`
+          );
+        }
+      }
+
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(PCMSO_CATALOGO_LIMITE);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstPcmso[]) || [];
+
+      const rows = (data as SgsstPcmso[]) || [];
+      return {
+        rows,
+        total: count ?? rows.length,
+        truncado: !paginado && rows.length >= PCMSO_CATALOGO_LIMITE,
+      };
     },
   });
+
+  const pcmsoList = data?.rows ?? [];
 
   const createPcmso = useMutation({
     mutationFn: async (input: SgsstPcmsoInput) => {
@@ -240,6 +295,8 @@ export function useSgsstPcmso() {
 
   return {
     pcmsoList,
+    total: data?.total ?? 0,
+    truncado: data?.truncado ?? false,
     isLoading,
     error,
     refetch,

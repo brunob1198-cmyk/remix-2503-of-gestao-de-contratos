@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { Plus, Search, Edit2, Trash2, Siren, Eye, CheckCircle2, XCircle, PlayCircle, Lock, AlertTriangle, FileText } from "lucide-react";
 import { IncidenteFormDialog } from "@/components/sgsst/IncidenteFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -30,7 +32,7 @@ export default function SgsstIncidentesListPage() {
   const [selectedGravidade, setSelectedGravidade] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
-  const { incidentes, total, isLoading, createIncidente, updateIncidente, removeIncidente } = useSgsstIncidentes({
+  const { incidentes, total, isLoading, error, refetch, createIncidente, updateIncidente, removeIncidente } = useSgsstIncidentes({
     page,
     pageSize,
     search: debouncedSearch,
@@ -133,6 +135,40 @@ export default function SgsstIncidentesListPage() {
     }
   };
 
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  // Rótulo legível para os chips de filtro ativo: os valores são enums em
+  // MAIÚSCULA_COM_UNDERSCORE, que não devem aparecer crus na interface.
+  const rotuloFiltro = (valor: string) =>
+    valor
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/^./, (c) => c.toUpperCase());
+
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedTipo !== "todos" || selectedGravidade !== "todos" || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedTipo("todos");
+    setSelectedGravidade("todos");
+    setSelectedStatus("todos");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: incidentes.length === 0,
+    modulo: "Incidentes",
+    onRetry: refetch,
+    emptyTitulo: "Nenhum incidente registrado",
+    emptyDescricao:
+      "Registre incidentes e acidentes para investigar causas e acompanhar o plano de ação. Nenhum registro é um bom sinal.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -197,19 +233,26 @@ export default function SgsstIncidentesListPage() {
         </Card>
       </div>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, descrição, código ou local..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por código ou título da ocorrência..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedTipo !== "todos"
+            ? [{ label: "Tipo", value: selectedTipo, onClear: () => setSelectedTipo("todos") }]
+            : []),
+          ...(selectedGravidade !== "todos"
+            ? [{ label: "Gravidade", value: selectedGravidade, onClear: () => setSelectedGravidade("todos") }]
+            : []),
+          ...(selectedStatus !== "todos"
+            ? [{ label: "Status", value: rotuloFiltro(selectedStatus), onClear: () => setSelectedStatus("todos") }]
+            : []),
+        ]}
+      >
           <Select value={selectedTipo} onValueChange={setSelectedTipo}>
             <SelectTrigger className="w-[150px] text-xs">
               <SelectValue placeholder="Tipo" />
@@ -253,8 +296,7 @@ export default function SgsstIncidentesListPage() {
               <SelectItem value="CANCELADO">Cancelado</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -273,16 +315,10 @@ export default function SgsstIncidentesListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Carregando registros de ocorrências...
-                  </TableCell>
-                </TableRow>
-              ) : incidentes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Nenhum incidente/acidente registrado ou encontrado.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={8} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

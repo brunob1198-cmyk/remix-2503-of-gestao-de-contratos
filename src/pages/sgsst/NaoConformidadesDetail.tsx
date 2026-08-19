@@ -37,6 +37,8 @@ import {
   History,
   Clock,
 } from "lucide-react";
+import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { NcFormDialog } from "@/components/sgsst/NcFormDialog";
 import { NcAcaoFormDialog } from "@/components/sgsst/NcAcaoFormDialog";
 import { NcStatusDialog } from "@/components/sgsst/NcStatusDialog";
@@ -101,9 +103,9 @@ export default function SgsstNaoConformidadesDetailPage() {
 
   const openStatusModal = (status: StatusNC) => {
     if (status === "AGUARDANDO_VERIFICACAO") {
-      const acoesPendentes = acoes.filter((a) => a.status === "ABERTA" || a.status === "EM_ANDAMENTO");
-      if (acoesPendentes.length > 0) {
-        toast.error(`Não é possível solicitar verificação. Existem ${acoesPendentes.length} ação(ões) corretiva(s)/preventiva(s) pendentes ou em andamento.`);
+      const pendentes = acoesPendentes(acoes);
+      if (pendentes.length > 0) {
+        toast.error(mensagemBloqueioEncerramento(pendentes.length, "solicitar verificação"));
         return;
       }
     }
@@ -324,15 +326,11 @@ export default function SgsstNaoConformidadesDetailPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeAcao.mutate(a.id)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                alvo="esta ação corretiva"
+                                consequencia={"A ação sai do tratamento da não conformidade. Sem ações concluídas não é possível verificar a eficácia nem encerrar a NC."}
+                                onConfirm={() => removeAcao.mutate(a.id)}
+                              />
                             </div>
                           )}
                         </TableCell>

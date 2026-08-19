@@ -16,6 +16,14 @@ AS $$
 DECLARE
   result jsonb;
 BEGIN
+  -- Trava de tenant: a funcao e SECURITY DEFINER e portanto ignora RLS, entao o
+  -- p_empresa_id recebido do cliente precisa ser conferido contra o usuario logado.
+  IF p_empresa_id IS NULL
+     OR p_empresa_id IS DISTINCT FROM public.get_user_empresa_id(auth.uid()) THEN
+    RAISE EXCEPTION 'Acesso negado: empresa_id nao corresponde ao usuario autenticado.'
+      USING ERRCODE = '42501';
+  END IF;
+
   SELECT jsonb_build_object(
     'pgrAtivos', (
       SELECT count(*) FROM public.sgsst_pgr
@@ -243,6 +251,14 @@ AS $$
 DECLARE
   result jsonb;
 BEGIN
+  -- Trava de tenant: a funcao e SECURITY DEFINER e portanto ignora RLS, entao o
+  -- p_empresa_id recebido do cliente precisa ser conferido contra o usuario logado.
+  IF p_empresa_id IS NULL
+     OR p_empresa_id IS DISTINCT FROM public.get_user_empresa_id(auth.uid()) THEN
+    RAISE EXCEPTION 'Acesso negado: empresa_id nao corresponde ao usuario autenticado.'
+      USING ERRCODE = '42501';
+  END IF;
+
   WITH combined_alertas AS (
     -- 1. ASOs Vencidos
     SELECT
