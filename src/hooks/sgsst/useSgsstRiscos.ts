@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
+import { RISCOS_PADRAO } from "@/utils/sgsstRiscosDefaults";
 
 export type CategoriaRisco = "Físico" | "Químico" | "Biológico" | "Ergonômico" | "Acidente" | "Outros";
 
@@ -24,25 +26,88 @@ export interface SgsstRisco {
 
 export type SgsstRiscoInput = Omit<SgsstRisco, "id" | "empresa_id" | "created_at" | "updated_at">;
 
-export function useSgsstRiscos() {
+/**
+ * Teto para o uso como lista de apoio (selects de PGR, APR, PT e Inspecoes).
+ * Sem limite explicito o PostgREST corta em `max-rows` sem avisar e o catalogo
+ * chega incompleto nos selects.
+ */
+export const RISCOS_CATALOGO_LIMITE = 1000;
+
+export interface SgsstRiscosParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  categoria?: string;
+  status?: string;
+}
+
+/**
+ * Sem `params`, devolve o catalogo inteiro (uso como lista de apoio).
+ * Com `params`, pagina e filtra no servidor (uso na tela de Riscos).
+ */
+export function useSgsstRiscos(params?: SgsstRiscosParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: riscos = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_riscos", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_riscos",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.categoria ?? "",
+      params?.status ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_riscos_catalogo" as any)
-        .select("*")
+        .select("*", { count: "exact" })
         .order("categoria", { ascending: true })
-        .order("nome", { ascending: true }) as any);
+        .order("nome", { ascending: true });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          // Mesmos campos que a tela buscava no cliente, para nao perder alcance
+          // ao mover o filtro para o servidor.
+          query = query.or(
+            `nome.ilike.%${term}%,codigo.ilike.%${term}%,agente.ilike.%${term}%,fonte_geradora.ilike.%${term}%`
+          );
+        }
+      }
+
+      if (params?.categoria && params.categoria !== "todos") {
+        query = query.eq("categoria", params.categoria);
+      }
+
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(RISCOS_CATALOGO_LIMITE);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstRisco[]) || [];
+
+      const rows = (data as SgsstRisco[]) || [];
+      return {
+        rows,
+        total: count ?? rows.length,
+        truncado: !paginado && rows.length >= RISCOS_CATALOGO_LIMITE,
+      };
     },
   });
+
+  const riscos = data?.rows ?? [];
 
   const createRisco = useMutation({
     mutationFn: async (input: SgsstRiscoInput) => {
@@ -96,6 +161,67 @@ export function useSgsstRiscos() {
     },
   });
 
+  /**
+   * Popula o catálogo com os riscos recorrentes de obra.
+   *
+   * Deliberadamente não é um seed de migration: `empresa_id` é por tenant e
+   * inserir cadastro de negócio para todas as empresas sem pedir seria invasivo.
+   * Aqui é uma ação explícita, e os códigos já existentes são preservados — a
+   * operação pode ser repetida sem duplicar nem sobrescrever edições.
+   */
+  const popularCatalogoPadrao = useMutation({
+    mutationFn: async () => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { data: existentes, error: readError } = await (supabase
+        .from("sgsst_riscos_catalogo" as any)
+        .select("codigo")
+        .not("codigo", "is", null) as any);
+
+      if (readError) throw readError;
+
+      const jaCadastrados = new Set(
+        ((existentes ?? []) as { codigo: string | null }[])
+          .map((r) => r.codigo)
+          .filter((c): c is string => !!c)
+      );
+
+      const novos = RISCOS_PADRAO.filter((r) => !jaCadastrados.has(r.codigo));
+
+      if (novos.length === 0) {
+        return { inseridos: 0, ignorados: RISCOS_PADRAO.length };
+      }
+
+      const { error } = await (supabase.from("sgsst_riscos_catalogo" as any).insert(
+        novos.map((r) => ({
+          ...r,
+          empresa_id: empresaId,
+          status: "ativo",
+          created_by: profile?.id,
+          updated_by: profile?.id,
+        }))
+      ) as any);
+
+      if (error) throw error;
+
+      return { inseridos: novos.length, ignorados: RISCOS_PADRAO.length - novos.length };
+    },
+    onSuccess: ({ inseridos, ignorados }) => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_riscos"] });
+      if (inseridos === 0) {
+        toast.info("O catálogo padrão já estava cadastrado.");
+      } else {
+        toast.success(
+          `${inseridos} ${inseridos === 1 ? "risco" : "riscos"} adicionados ao catálogo.` +
+            (ignorados > 0 ? ` ${ignorados} já existiam e foram mantidos.` : "")
+        );
+      }
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao popular catálogo: ${err.message || err}`);
+    },
+  });
+
   const removeRisco = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase
@@ -116,11 +242,15 @@ export function useSgsstRiscos() {
 
   return {
     riscos,
+    total: data?.total ?? 0,
+    /** True quando o catálogo bateu o teto e a lista veio incompleta. */
+    truncado: data?.truncado ?? false,
     isLoading,
     error,
     refetch,
     createRisco,
     updateRisco,
     removeRisco,
+    popularCatalogoPadrao,
   };
 }

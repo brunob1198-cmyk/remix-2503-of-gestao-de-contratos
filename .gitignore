@@ -36,3 +36,31 @@ pnpm-lock.yaml
 *.njsproj
 *.sln
 *.sw?
+*.code-workspace
+
+# Sistema operacional (Windows)
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Cache de ferramentas
+.eslintcache
+*.tsbuildinfo
+
+# Cloudflare Wrangler — estado local do worker
+.wrangler/
+
+# Supabase CLI — estado local
+supabase/.temp/
+supabase/.branches/
+
+# Material de assinatura — NUNCA versionar, em nenhum diretório.
+# Duplica android/.gitignore de propósito: as regras da raiz valem
+# recursivamente, então um keystore criado fora de android/ também é pego.
+# Um keystore vazado permite assinar um APK falso que o Android aceita
+# como atualização legítima do app.
+*.jks
+*.keystore
+*.p12
+*.p8
+google-services.json

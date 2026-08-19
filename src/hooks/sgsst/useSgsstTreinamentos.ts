@@ -248,7 +248,7 @@ export function useSgsstTreinamentosTurmas() {
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: turmas = [], isLoading, refetch } = useQuery({
+  const { data: turmas = [], isLoading, error, refetch } = useQuery({
     queryKey: ["sgsst_treinamentos_turmas", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -345,6 +345,7 @@ export function useSgsstTreinamentosTurmas() {
   return {
     turmas,
     isLoading,
+    error,
     refetch,
     createTurma,
     updateTurma,
@@ -533,7 +534,7 @@ export function useSgsstTodosParticipantes(params?: {
   const pageSize = params?.pageSize ?? 25;
   const isEnabled = (params?.enabled ?? true) && !!empresaId;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["sgsst_todos_participantes", empresaId, page, pageSize, params?.search, params?.statusVencimento, params?.diasJanela],
     enabled: isEnabled,
     queryFn: async () => {
@@ -574,6 +575,7 @@ export function useSgsstTodosParticipantes(params?: {
     todosParticipantes: data?.rows ?? [],
     total: data?.total ?? 0,
     isLoading,
+    error,
     refetch,
   };
 }

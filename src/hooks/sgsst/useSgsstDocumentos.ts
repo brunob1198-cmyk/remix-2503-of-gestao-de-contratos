@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { uploadImage } from "@/services/uploadImage";
 import { ALLOWED_DOC_EXTENSIONS, MAX_DOC_FILE_SIZE_BYTES } from "@/utils/sgsstDocumentosUtils";
+import { useSgsstCounts } from "./useSgsstCounts";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 
 export { ALLOWED_DOC_EXTENSIONS, MAX_DOC_FILE_SIZE_BYTES };
 
@@ -85,11 +87,21 @@ export interface CreateNovaVersaoParams {
   observacao?: string;
 }
 
+// Agrupamentos de status usados pelas abas da tela de Documentos.
+export const STATUS_ARQUIVADOS: StatusDocumento[] = ["ARQUIVADO", "CANCELADO"];
+
 // 1. Hook Documentos SGSST
 export function useSgsstDocumentos(
   entidadeTipo?: CategoriaDocumento,
   entidadeId?: string,
-  params?: { page?: number; pageSize?: number; search?: string; tipo?: string }
+  params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    tipo?: string;
+    /** "ATIVO" | "ARQUIVADO" | "CANCELADO" | "ARQUIVADOS" (grupo) | "todos" */
+    status?: string;
+  }
 ) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -98,7 +110,7 @@ export function useSgsstDocumentos(
   const pageSize = params?.pageSize ?? 25;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_documentos", empresaId, entidadeTipo, entidadeId, page, pageSize, params?.search, params?.tipo],
+    queryKey: ["sgsst_documentos", empresaId, entidadeTipo, entidadeId, page, pageSize, params?.search, params?.tipo, params?.status],
     enabled: !!empresaId,
     queryFn: async () => {
       let query = supabase
@@ -114,11 +126,26 @@ export function useSgsstDocumentos(
       }
 
       if (params?.search) {
-        query = query.or(`nome.ilike.%${params.search}%,codigo.ilike.%${params.search}%`);
+        // sgsst_documentos nao tem coluna `codigo`; os campos buscaveis sao os
+        // mesmos que a tela promete no placeholder: nome, descricao e arquivo.
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(
+            `nome.ilike.%${term}%,descricao.ilike.%${term}%,r2_key.ilike.%${term}%`
+          );
+        }
       }
 
       if (params?.tipo && params.tipo !== "todos") {
         query = query.eq("categoria", params.tipo);
+      }
+
+      // Filtrar status no servidor: filtrar depois da paginacao fazia a pagina
+      // exibir menos linhas do que o paginador anunciava.
+      if (params?.status === "ARQUIVADOS") {
+        query = query.in("status", STATUS_ARQUIVADOS);
+      } else if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
       }
 
       query = query.range(page * pageSize, page * pageSize + pageSize - 1);
@@ -218,18 +245,33 @@ export function useSgsstDocumentos(
       const r2Url = await uploadImage(file);
       const r2Key = r2Url.split("/").pop() || file.name;
 
-      // Inserir nova versão em sgsst_documentos_versoes
-      await supabase.from("sgsst_documentos_versoes" as any).insert({
-        empresa_id: empresaId,
-        documento_id: documentoId,
-        numero_versao: proxVersao,
-        r2_key: r2Key,
-        r2_url: r2Url,
-        tamanho: file.size,
-        tipo_mime: file.type || "application/octet-stream",
-        usuario_id: profile?.id,
-        observacao: observacao || `Nova versão v${proxVersao}`,
-      });
+      // Inserir nova versão em sgsst_documentos_versoes.
+      // O erro precisa ser checado: se a linha de versao nao entrar, o documento
+      // avancaria versao_atual sem registro correspondente no historico.
+      const { error: versaoError } = await supabase
+        .from("sgsst_documentos_versoes" as any)
+        .insert({
+          empresa_id: empresaId,
+          documento_id: documentoId,
+          numero_versao: proxVersao,
+          r2_key: r2Key,
+          r2_url: r2Url,
+          tamanho: file.size,
+          tipo_mime: file.type || "application/octet-stream",
+          usuario_id: profile?.id,
+          observacao: observacao || `Nova versão v${proxVersao}`,
+        });
+
+      if (versaoError) {
+        // Violacao da constraint UNIQUE (documento_id, numero_versao): outro
+        // usuario subiu a mesma versao entre a leitura e a escrita.
+        if ((versaoError as any).code === "23505") {
+          throw new Error(
+            `A versão v${proxVersao} acabou de ser criada por outro usuário. Recarregue e tente novamente.`
+          );
+        }
+        throw versaoError;
+      }
 
       // Atualizar metadados principais do documento
       const { data: updatedDoc, error } = await (supabase
@@ -340,6 +382,34 @@ export function useSgsstDocumentos(
     uploadNovaVersao,
     arquivarDocumento,
     cancelarDocumento,
+  };
+}
+
+// 1b. Hook Resumo (contadores)
+// Os cartoes de indicador precisam do total da base, nao da pagina corrente.
+export function useSgsstDocumentosResumo() {
+  const { count, isLoading, error, refetch } = useSgsstCounts("sgsst_documentos", [
+    { key: "ativos", build: (q) => q.eq("status", "ATIVO") },
+    { key: "pgrPcmso", build: (q) => q.eq("status", "ATIVO").in("categoria", ["PGR", "PCMSO"]) },
+    { key: "aprPt", build: (q) => q.eq("status", "ATIVO").in("categoria", ["APR", "PT"]) },
+    {
+      key: "certificados",
+      build: (q) => q.eq("status", "ATIVO").in("categoria", ["ASO", "TREINAMENTO", "EPI"]),
+    },
+    { key: "arquivados", build: (q) => q.in("status", STATUS_ARQUIVADOS) },
+  ]);
+
+  return {
+    resumo: {
+      ativos: count("ativos"),
+      pgrPcmso: count("pgrPcmso"),
+      aprPt: count("aprPt"),
+      certificados: count("certificados"),
+      arquivados: count("arquivados"),
+    },
+    isLoading,
+    error,
+    refetch,
   };
 }
 

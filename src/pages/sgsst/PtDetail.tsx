@@ -39,6 +39,7 @@ import {
   History,
   AlertTriangle,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PtFormDialog } from "@/components/sgsst/PtFormDialog";
 import { PtStatusDialog } from "@/components/sgsst/PtStatusDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -377,15 +378,11 @@ export default function SgsstPtDetailPage() {
                         <TableCell className="text-xs text-muted-foreground">{c.observacao || "—"}</TableCell>
                         <TableCell className="text-right">
                           {allowEdit && !isReadOnly && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeChecklistItem.mutate(c.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <SgsstConfirmDelete
+                                alvo="este item do checklist"
+                                consequencia={"O item de verificação sai da Permissão de Trabalho, junto com a resposta já registrada pelo emitente."}
+                                onConfirm={() => removeChecklistItem.mutate(c.id)}
+                              />
                           )}
                         </TableCell>
                       </TableRow>
@@ -508,15 +505,11 @@ export default function SgsstPtDetailPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {allowEdit && !isReadOnly && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeParticipante.mutate(p.id)}
-                                title="Desvincular"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                alvo="este participante"
+                                consequencia={"O trabalhador deixa de constar como autorizado nesta PT e sua ciência registrada é perdida."}
+                                onConfirm={() => removeParticipante.mutate(p.id)}
+                              />
                             )}
                           </TableCell>
                         </TableRow>

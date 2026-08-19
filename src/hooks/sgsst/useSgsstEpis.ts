@@ -252,7 +252,7 @@ export function useSgsstEpiEntregas() {
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: entregas = [], isLoading, refetch } = useQuery({
+  const { data: entregas = [], isLoading, error, refetch } = useQuery({
     queryKey: ["sgsst_epi_entregas", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -363,6 +363,7 @@ export function useSgsstEpiEntregas() {
   return {
     entregas,
     isLoading,
+    error,
     refetch,
     createEntrega,
     removeEntrega,
@@ -375,7 +376,7 @@ export function useSgsstEpiDevolucoes() {
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: devolucoes = [], isLoading, refetch } = useQuery({
+  const { data: devolucoes = [], isLoading, error, refetch } = useQuery({
     queryKey: ["sgsst_epi_devolucoes", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -486,6 +487,7 @@ export function useSgsstEpiDevolucoes() {
   return {
     devolucoes,
     isLoading,
+    error,
     refetch,
     createDevolucao,
   };

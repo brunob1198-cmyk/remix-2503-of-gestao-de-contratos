@@ -11,6 +11,7 @@ import {
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
 import {
   Plus,
   Search,
@@ -34,6 +36,7 @@ import {
   CheckCircle2,
   UserCheck,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { EpiFormDialog } from "@/components/sgsst/EpiFormDialog";
 import { EntregaEpiFormDialog } from "@/components/sgsst/EntregaEpiFormDialog";
 import { DevolucaoEpiFormDialog } from "@/components/sgsst/DevolucaoEpiFormDialog";
@@ -49,7 +52,7 @@ export default function SgsstEpisListPage() {
   const [searchTermCat, setSearchTermCat] = useState("");
   const debouncedSearchCat = useDebounce(searchTermCat, 400);
 
-  const { epis, total: totalCat, isLoading: loadingEpis, createEpi, updateEpi, removeEpi } = useSgsstEpis({
+  const { epis, total: totalCat, isLoading: loadingEpis, error: errEpis, refetch: refetchEpis, createEpi, updateEpi, removeEpi } = useSgsstEpis({
     page: pageCat,
     pageSize: pageSizeCat,
     search: debouncedSearchCat,
@@ -57,8 +60,8 @@ export default function SgsstEpisListPage() {
 
   const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
 
-  const { entregas, isLoading: loadingEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
-  const { devolucoes, isLoading: loadingDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
+  const { entregas, isLoading: loadingEntregas, error: errEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
+  const { devolucoes, isLoading: loadingDevolucoes, error: errDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
   const { colaboradores } = useSgsstColaboradoresResumo();
 
   // Active Tab
@@ -114,11 +117,34 @@ export default function SgsstEpisListPage() {
     );
   });
 
-  // Stats
-  const episAtivosCount = epis.filter((e) => e.status === "ATIVO").length;
-  const caProximosCount = epis.filter((e) => e.statusValidadeCa === "PROXIMO_VENCIMENTO").length;
-  const caVencidosCount = epis.filter((e) => e.statusValidadeCa === "VENCIDO").length;
-  const estoqueAbaixoMinimoCount = epis.filter((e) => e.abaixoMinimo).length;
+  // Indicadores do catálogo de EPI.
+  // Eram calculados com `epis.filter(...)` sobre a página carregada, então
+  // "CA vencidos" e "estoque abaixo do mínimo" contavam só as linhas visíveis —
+  // exatamente os números que não podem ser subestimados. Agora vêm de
+  // contagens do servidor sobre a base inteira.
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const limiteCaIso = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const { count: countEpis } = useSgsstCounts("sgsst_epis", [
+    { key: "ativos", build: (q) => q.eq("status", "ATIVO") },
+    {
+      key: "caProximos",
+      build: (q) => q.gte("validade_ca", hojeIso).lte("validade_ca", limiteCaIso),
+    },
+    { key: "caVencidos", build: (q) => q.lt("validade_ca", hojeIso) },
+    // `abaixo_minimo` é coluna gerada (estoque_atual <= estoque_minimo): o
+    // PostgREST não compara duas colunas, por isso a comparação virou coluna.
+    { key: "abaixoMinimo", build: (q) => q.is("abaixo_minimo", true) },
+  ]);
+
+  const episAtivosCount = countEpis("ativos");
+  const caProximosCount = countEpis("caProximos");
+  const caVencidosCount = countEpis("caVencidos");
+  const estoqueAbaixoMinimoCount = countEpis("abaixoMinimo");
   const totalEntregasAtivas = entregas.length;
 
   const getCaStatusBadge = (statusCa?: string) => {
@@ -154,6 +180,10 @@ export default function SgsstEpisListPage() {
     setInitialEntregaForDev(entregaId || null);
     setIsDevolucaoFormOpen(true);
   };
+
+  // Basta um dos hooks falhar para várias abas ficarem vazias; o banner diz
+  // qual é a causa em vez de deixar as tabelas parecerem sem cadastro.
+  const erroModulo = errEpis ?? errEntregas ?? errDevolucoes;
 
   return (
     <div className="space-y-6">
@@ -237,6 +267,10 @@ export default function SgsstEpisListPage() {
           </CardContent>
         </Card>
       </div>
+
+      {erroModulo && (
+        <SgsstErrorState error={erroModulo} modulo="EPI" onRetry={refetchEpis} />
+      )}
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -445,15 +479,11 @@ export default function SgsstEpisListPage() {
                                     <RotateCcw className="h-3.5 w-3.5" /> Devolver
                                   </Button>
 
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() => removeEntrega.mutate(ent.id)}
-                                    title="Excluir"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <SgsstConfirmDelete
+                                    alvo="este registro de entrega"
+                                    consequencia={"A entrega do EPI ao colaborador é apagada, junto com a confirmação de recebimento — a evidência de fornecimento exigida pela NR-06 deixa de existir. O saldo em estoque é devolvido."}
+                                    onConfirm={() => removeEntrega.mutate(ent.id)}
+                                  />
                                 </>
                               )}
                             </div>

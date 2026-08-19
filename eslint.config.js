@@ -5,7 +5,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // `android/` e `coverage/` contêm apenas artefatos de build (bundle web
+  // copiado pelo Capacitor, native-bridge, relatório do vitest). O ESLint 9 em
+  // flat config NÃO lê o .gitignore, então sem isto eles são analisados na
+  // máquina local e não no checkout limpo do CI — que é a origem real da
+  // divergência de contagem antes atribuída a "variação de plataforma".
+  { ignores: ["dist", "android", "coverage"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

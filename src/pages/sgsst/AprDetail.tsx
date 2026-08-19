@@ -40,6 +40,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { AprFormDialog } from "@/components/sgsst/AprFormDialog";
 import { AprEtapaFormDialog } from "@/components/sgsst/AprEtapaFormDialog";
 import { AprRiscoFormDialog } from "@/components/sgsst/AprRiscoFormDialog";
@@ -487,9 +488,11 @@ export default function SgsstAprDetailPage() {
                                         <Button variant="ghost" size="icon" onClick={() => handleEditRisco(r)} title="Editar Risco">
                                           <Edit2 className="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => removeRisco.mutate(r.id)} title="Excluir">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <SgsstConfirmDelete
+                                    alvo="este risco da etapa"
+                                    consequencia={"O risco sai desta etapa da APR, junto com sua avaliação de severidade e probabilidade. As medidas de controle vinculadas também são removidas."}
+                                    onConfirm={() => removeRisco.mutate(r.id)}
+                                  />
                                       </>
                                     )}
                                   </div>
@@ -540,7 +543,11 @@ export default function SgsstAprDetailPage() {
                                       {allowEdit && !isReadOnly && (
                                         <div className="flex items-center justify-end gap-1">
                                           <Button variant="ghost" size="icon" onClick={() => handleEditMedida(m)} title="Editar"><Edit2 className="h-4 w-4" /></Button>
-                                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeMedida.mutate(m.id)} title="Excluir"><Trash2 className="h-4 w-4" /></Button>
+                                          <SgsstConfirmDelete
+                                    alvo="esta medida de controle"
+                                    consequencia={"A medida deixa de constar como controle deste risco, e o risco residual da APR passa a ser avaliado sem ela."}
+                                    onConfirm={() => removeMedida.mutate(m.id)}
+                                  />
                                         </div>
                                       )}
                                     </TableCell>
@@ -611,15 +618,11 @@ export default function SgsstAprDetailPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {allowEdit && !isReadOnly && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => removeParticipante.mutate(p.id)}
-                                title="Remover"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <SgsstConfirmDelete
+                                    alvo="este participante"
+                                    consequencia={"O trabalhador deixa de constar como ciente desta APR; o registro de participação é perdido."}
+                                    onConfirm={() => removeParticipante.mutate(p.id)}
+                                  />
                             )}
                           </TableCell>
                         </TableRow>

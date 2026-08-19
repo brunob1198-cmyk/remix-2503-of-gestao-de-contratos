@@ -5,14 +5,18 @@
     "Ao reduzir o passivo, rode `npm run lint:ratchet -- --update` e commite este arquivo.",
     "Meta: chegar a 0 e então trocar o gate por `npm run lint`.",
     "",
-    "Sobre `tolerance`: o mesmo commit produz contagens ligeiramente diferentes",
-    "entre plataformas — medido em 18/08/2026 no commit f93fc591:",
-    "  Ubuntu + Node 22 (CI):      1634 erros, 38 warnings",
-    "  Windows + Node 24 (local):  1635 erros, 40 warnings",
-    "Sem a tolerância, quem desenvolve no Windows veria falha enquanto o CI passa.",
-    "A folga é pequena de propósito: uma regressão real (dezenas de erros) ainda falha."
+    "CORREÇÃO: a divergência entre local e CI, antes atribuída a diferença de",
+    "plataforma (Windows/Node 24 x Ubuntu/Node 22), tinha outra causa. O ESLint 9",
+    "em flat config não lê o .gitignore, e o `ignores` do eslint.config.js listava",
+    "apenas 'dist' — então na máquina local ele analisava 73 arquivos de build do",
+    "Capacitor em android/, ausentes do checkout limpo do CI. Um deles",
+    "(native-bridge.js) tem exatamente 1 erro e 2 warnings, que era toda a",
+    "diferença. Com 'android' e 'coverage' no ignores, as contagens coincidem.",
+    "",
+    "Valores medidos pelo CI em checkout limpo (PR #4): 1630 erros, 37 warnings.",
+    "`tolerance` mantida em 1 por precaução; pode ir a 0 após algumas execuções."
   ],
-  "errors": 1634,
-  "warnings": 40,
-  "tolerance": 2
+  "errors": 1630,
+  "warnings": 37,
+  "tolerance": 1
 }

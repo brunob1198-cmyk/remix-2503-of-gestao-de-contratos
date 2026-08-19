@@ -35,6 +35,7 @@ import {
   FileText,
   History,
 } from "lucide-react";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
 import { PcmsoStatusDialog } from "@/components/sgsst/PcmsoStatusDialog";
 import { format, parseISO } from "date-fns";
@@ -278,15 +279,11 @@ export default function SgsstPcmsoDetailPage() {
                         <TableCell className="text-xs text-muted-foreground">{ex.observacoes || "—"}</TableCell>
                         <TableCell className="text-right">
                           {allowEdit && !isReadOnly && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeExame.mutate(ex.id)}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <SgsstConfirmDelete
+                                alvo="este exame do PCMSO"
+                                consequencia={"O exame deixa de ser exigido por este programa, e a periodicidade prevista para as funções vinculadas deixa de ser cobrada."}
+                                onConfirm={() => removeExame.mutate(ex.id)}
+                              />
                           )}
                         </TableCell>
                       </TableRow>

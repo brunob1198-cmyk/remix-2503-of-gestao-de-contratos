@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSgsstRiscos, SgsstRisco, CategoriaRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TablePagination } from "@/components/medicoes/TablePagination";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
+import { SgsstStatCards } from "@/components/sgsst/SgsstStatCards";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Edit2, Trash2, AlertTriangle, Eye, CheckCircle2, XCircle, Filter } from "lucide-react";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
+import { Plus, Edit2, Trash2, AlertTriangle, Eye, CheckCircle2, XCircle, Activity, Biohazard, Sparkles } from "lucide-react";
+import { RISCOS_PADRAO } from "@/utils/sgsstRiscosDefaults";
 import { RiscosFormDialog } from "@/components/sgsst/RiscosFormDialog";
 import { RiscosDetailDialog } from "@/components/sgsst/RiscosDetailDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -18,30 +24,50 @@ export default function SgsstRiscosPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-riscos");
 
-  const { riscos, isLoading, createRisco, updateRisco, removeRisco } = useSgsstRiscos();
-
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedCategoria, setSelectedCategoria] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
+
+  // Busca e filtros no servidor: filtrar no cliente cobria apenas a pagina
+  // carregada, escondendo riscos das demais paginas do catalogo.
+  const {
+    riscos,
+    total,
+    isLoading,
+    error,
+    refetch,
+    createRisco,
+    updateRisco,
+    removeRisco,
+    popularCatalogoPadrao,
+  } = useSgsstRiscos({
+      page,
+      pageSize,
+      search: debouncedSearch,
+      categoria: selectedCategoria,
+      status: selectedStatus,
+    });
+
+  const { count, isLoading: loadingResumo } = useSgsstCounts("sgsst_riscos_catalogo", [
+    { key: "total" },
+    { key: "ativos", build: (q) => q.eq("status", "ativo") },
+    { key: "fisicoQuimico", build: (q) => q.in("categoria", ["Físico", "Químico"]) },
+    { key: "ergoAcidente", build: (q) => q.in("categoria", ["Ergonômico", "Acidente"]) },
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, selectedCategoria, selectedStatus]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingRisco, setEditingRisco] = useState<SgsstRisco | null>(null);
   const [viewingRisco, setViewingRisco] = useState<SgsstRisco | null>(null);
-
-  const filteredRiscos = riscos.filter((r) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      r.nome.toLowerCase().includes(term) ||
-      (r.codigo && r.codigo.toLowerCase().includes(term)) ||
-      (r.agente && r.agente.toLowerCase().includes(term)) ||
-      (r.fonte_geradora && r.fonte_geradora.toLowerCase().includes(term));
-
-    const matchesCategoria = selectedCategoria === "todos" || r.categoria === selectedCategoria;
-    const matchesStatus = selectedStatus === "todos" || r.status === selectedStatus;
-
-    return matchesSearch && matchesCategoria && matchesStatus;
-  });
 
   const handleCreateNew = () => {
     setEditingRisco(null);
@@ -83,6 +109,49 @@ export default function SgsstRiscosPage() {
     }
   };
 
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedCategoria !== "todos" || selectedStatus !== "todos";
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+    setSelectedCategoria("todos");
+    setSelectedStatus("todos");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: riscos.length === 0,
+    modulo: "Catálogo de Riscos",
+    onRetry: refetch,
+    emptyTitulo: "Catálogo de riscos vazio",
+    emptyDescricao:
+      "PGR, APR e PT são montados a partir deste catálogo, então ele precisa existir antes do primeiro documento. " +
+      "Você pode começar do catálogo padrão da construção civil e editar depois, ou cadastrar risco por risco.",
+    emptyAction: allowEdit ? (
+      <div className="flex flex-col items-center gap-2 sm:flex-row">
+        <Button
+          onClick={() => popularCatalogoPadrao.mutate()}
+          disabled={popularCatalogoPadrao.isPending}
+          className="gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          {popularCatalogoPadrao.isPending
+            ? "Preparando catálogo…"
+            : `Usar catálogo padrão (${RISCOS_PADRAO.length} riscos)`}
+        </Button>
+        <Button variant="outline" onClick={handleCreateNew} className="gap-2">
+          <Plus className="h-4 w-4" /> Cadastrar manualmente
+        </Button>
+      </div>
+    ) : undefined,
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
+
   return (
     <div className="space-y-6">
       <SgsstSegurancaHeaderNav />
@@ -105,92 +174,96 @@ export default function SgsstRiscosPage() {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Riscos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{riscos.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Riscos Ativos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              {riscos.filter((r) => r.status === "ativo").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Físicos / Químicos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {riscos.filter((r) => r.categoria === "Físico" || r.categoria === "Químico").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Ergonômicos / Acidentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {riscos.filter((r) => r.categoria === "Ergonômico" || r.categoria === "Acidente").length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Indicadores — contagens sobre a base inteira, não sobre a página */}
+      <SgsstStatCards
+        isLoading={loadingResumo}
+        stats={[
+          {
+            label: "Total de Riscos",
+            value: count("total"),
+            tone: "info",
+            icon: AlertTriangle,
+            ajuda: "Todos os riscos do catálogo, ativos e inativos.",
+          },
+          {
+            label: "Riscos Ativos",
+            value: count("ativos"),
+            tone: "positivo",
+            icon: CheckCircle2,
+            ajuda: "Riscos disponíveis para uso em PGR, APR, PT e Inspeções.",
+          },
+          {
+            label: "Físicos / Químicos",
+            value: count("fisicoQuimico"),
+            tone: "atencao",
+            icon: Biohazard,
+            ajuda: "Agentes que costumam exigir monitoramento quantitativo e entram no PCMSO.",
+          },
+          {
+            label: "Ergonômicos / Acidentes",
+            value: count("ergoAcidente"),
+            tone: "neutro",
+            icon: Activity,
+            ajuda: "Riscos avaliados de forma qualitativa, típicos de análise ergonômica e APR.",
+          },
+        ]}
+      />
 
-      {/* Filters & Search */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-        <div className="relative flex-1 w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, código, agente ou fonte..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por nome, código, agente ou fonte geradora..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+        activeFilters={[
+          ...(selectedCategoria !== "todos"
+            ? [
+                {
+                  label: "Categoria",
+                  value: selectedCategoria,
+                  onClear: () => setSelectedCategoria("todos"),
+                },
+              ]
+            : []),
+          ...(selectedStatus !== "todos"
+            ? [
+                {
+                  label: "Status",
+                  value: selectedStatus === "ativo" ? "Ativo" : "Inativo",
+                  onClear: () => setSelectedStatus("todos"),
+                },
+              ]
+            : []),
+        ]}
+      >
+        <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+          <SelectTrigger className="w-[160px]" aria-label="Filtrar por categoria de risco">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas Categorias</SelectItem>
+            <SelectItem value="Físico">Físico</SelectItem>
+            <SelectItem value="Químico">Químico</SelectItem>
+            <SelectItem value="Biológico">Biológico</SelectItem>
+            <SelectItem value="Ergonômico">Ergonômico</SelectItem>
+            <SelectItem value="Acidente">Acidente</SelectItem>
+            <SelectItem value="Outros">Outros</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Filter className="h-3.5 w-3.5" />
-            <span>Filtros:</span>
-          </div>
-          <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-            <SelectTrigger className="w-[140px] text-xs">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas Categorias</SelectItem>
-              <SelectItem value="Físico">Físico</SelectItem>
-              <SelectItem value="Químico">Químico</SelectItem>
-              <SelectItem value="Biológico">Biológico</SelectItem>
-              <SelectItem value="Ergonômico">Ergonômico</SelectItem>
-              <SelectItem value="Acidente">Acidente</SelectItem>
-              <SelectItem value="Outros">Outros</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-[120px] text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Status</SelectItem>
-              <SelectItem value="ativo">Ativo</SelectItem>
-              <SelectItem value="inativo">Inativo</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <SelectTrigger className="w-[130px]" aria-label="Filtrar por status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos Status</SelectItem>
+            <SelectItem value="ativo">Ativo</SelectItem>
+            <SelectItem value="inativo">Inativo</SelectItem>
+          </SelectContent>
+        </Select>
+      </SgsstFilterBar>
 
       {/* Data Table */}
       <Card>
@@ -208,20 +281,14 @@ export default function SgsstRiscosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Carregando catálogo de riscos...
-                  </TableCell>
-                </TableRow>
-              ) : filteredRiscos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    Nenhum risco cadastrado ou encontrado nos filtros.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRiscos.map((r) => (
+                riscos.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {r.codigo || "—"}
@@ -293,6 +360,17 @@ export default function SgsstRiscosPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            itemsPerPage={pageSize}
+            onItemsPerPageChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
+            totalItems={total}
+          />
         </CardContent>
       </Card>
 

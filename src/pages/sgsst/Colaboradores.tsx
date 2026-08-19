@@ -3,11 +3,14 @@ import { useSgsstColaboradores, SgsstColaboradorDados } from "@/hooks/sgsst/useS
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
+import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
+import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { Plus, Search, Edit2, Trash2, UserCheck, CheckCircle2, AlertTriangle, XCircle, GraduationCap, Eye, FileCheck } from "lucide-react";
 import { ColaboradorFormDialog } from "@/components/sgsst/ColaboradorFormDialog";
 import { ColaboradorDetailDialog } from "@/components/sgsst/ColaboradorDetailDialog";
@@ -26,7 +29,19 @@ export default function SgsstColaboradoresPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 400);
 
-  const { colaboradores, total, isLoading, createColaborador, updateColaborador, removeColaborador } = useSgsstColaboradores({
+  // Indicadores sobre a base inteira: derivar da página corrente fazia os
+  // cartões medirem apenas as linhas visíveis.
+  const { count: countColab } = useSgsstCounts("sgsst_colaborador_dados", [
+    { key: "total" },
+    { key: "ativos", build: (q) => q.eq("status", "ativo") },
+    { key: "comFuncao", build: (q) => q.not("funcao_id", "is", null) },
+  ]);
+
+  const { count: countTreinos } = useSgsstCounts("sgsst_colaborador_treinamentos", [
+    { key: "vinculos" },
+  ]);
+
+  const { colaboradores, total, isLoading, error, refetch, createColaborador, updateColaborador, removeColaborador } = useSgsstColaboradores({
     page,
     pageSize,
     search: debouncedSearch,
@@ -73,9 +88,29 @@ export default function SgsstColaboradoresPage() {
   };
 
   // Metrics
-  const trabalhadoresAtivos = colaboradores.filter((c) => c.status === "ativo").length;
-  const comFuncao = colaboradores.filter((c) => !!c.funcao_id).length;
-  const comTreinamento = colaboradores.filter((c) => (c.treinamentos?.length || 0) > 0).length;
+
+  // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
+  // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
+  const temFiltroAtivo = searchTerm.trim().length > 0;
+
+  const limparFiltros = () => {
+    setSearchTerm("");
+  };
+
+  // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
+  // Retorna null quando ha dados e a tabela deve renderizar as linhas.
+  const tableState = resolveTableState({
+    isLoading,
+    error,
+    isEmpty: colaboradores.length === 0,
+    modulo: "Colaboradores",
+    onRetry: refetch,
+    emptyTitulo: "Nenhum colaborador cadastrado",
+    emptyDescricao:
+      "Os colaboradores são a base do SGSST: ASO, treinamentos e entrega de EPI são todos vinculados a eles.",
+    filtrado: temFiltroAtivo,
+    onLimparFiltros: limparFiltros,
+  });
 
   return (
     <div className="space-y-6">
@@ -106,7 +141,7 @@ export default function SgsstColaboradoresPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Cadastrado</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{colaboradores.length}</div>
+            <div className="text-2xl font-bold">{countColab("total")}</div>
           </CardContent>
         </Card>
         <Card>
@@ -114,7 +149,7 @@ export default function SgsstColaboradoresPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Trabalhadores Ativos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{trabalhadoresAtivos}</div>
+            <div className="text-2xl font-bold text-emerald-600">{countColab("ativos")}</div>
           </CardContent>
         </Card>
         <Card>
@@ -122,35 +157,30 @@ export default function SgsstColaboradoresPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Com Função SGSST</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{comFuncao}</div>
+            <div className="text-2xl font-bold text-blue-600">{countColab("comFuncao")}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Com NRs / Treinamentos</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Treinamentos Registrados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{comTreinamento}</div>
+            <div className="text-2xl font-bold text-purple-600">{countTreinos("vinculos")}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Table */}
-      <Card>
-        <CardHeader className="py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, CPF, matrícula ou função..."
-                className="pl-8 text-xs"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
+      {/* Busca e filtros */}
+      <SgsstFilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por nome ou CPF do colaborador..."
+        resultCount={total}
+        isLoading={isLoading}
+        onClearAll={limparFiltros}
+      />
 
+      <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -166,16 +196,10 @@ export default function SgsstColaboradoresPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">
-                    Carregando quadro de colaboradores...
-                  </TableCell>
-                </TableRow>
-              ) : colaboradores.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">
-                    Nenhum colaborador cadastrado ou encontrado.
+              {tableState ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={8} className="p-0">
+                    {tableState}
                   </TableCell>
                 </TableRow>
               ) : (

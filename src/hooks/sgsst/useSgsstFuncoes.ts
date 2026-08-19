@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 
 export interface SgsstFuncao {
   id: string;
@@ -18,24 +19,77 @@ export interface SgsstFuncao {
 
 export type SgsstFuncaoInput = Omit<SgsstFuncao, "id" | "empresa_id" | "created_at" | "updated_at">;
 
-export function useSgsstFuncoes() {
+/**
+ * Teto para o uso como lista de apoio (selects de dialogos). Sem um limite
+ * explicito o PostgREST corta na configuracao `max-rows` do servidor e a lista
+ * chega truncada sem nenhum sinal — o consumidor acha que o catalogo acabou.
+ */
+export const FUNCOES_CATALOGO_LIMITE = 1000;
+
+export interface SgsstFuncoesParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+/**
+ * Sem `params`, devolve o catalogo inteiro (uso como lista de apoio).
+ * Com `params`, pagina e filtra no servidor (uso na tela de Funcoes).
+ */
+export function useSgsstFuncoes(params?: SgsstFuncoesParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: funcoes = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_funcoes", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_funcoes",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.status ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_funcoes" as any)
-        .select("*")
-        .order("nome", { ascending: true }) as any);
+        .select("*", { count: "exact" })
+        .order("nome", { ascending: true });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(`nome.ilike.%${term}%,cbo.ilike.%${term}%`);
+        }
+      }
+
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(FUNCOES_CATALOGO_LIMITE);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstFuncao[]) || [];
+
+      const rows = (data as SgsstFuncao[]) || [];
+      return {
+        rows,
+        total: count ?? rows.length,
+        truncado: !paginado && rows.length >= FUNCOES_CATALOGO_LIMITE,
+      };
     },
   });
+
+  const funcoes = data?.rows ?? [];
 
   const createFuncao = useMutation({
     mutationFn: async (input: SgsstFuncaoInput) => {
@@ -107,6 +161,9 @@ export function useSgsstFuncoes() {
 
   return {
     funcoes,
+    total: data?.total ?? 0,
+    /** True quando o catálogo bateu o teto e a lista veio incompleta. */
+    truncado: data?.truncado ?? false,
     isLoading,
     error,
     refetch,

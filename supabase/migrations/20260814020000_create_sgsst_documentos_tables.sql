@@ -72,6 +72,12 @@ CREATE TABLE IF NOT EXISTS public.sgsst_documentos_versoes (
 CREATE INDEX IF NOT EXISTS idx_sgsst_doc_vers_empresa ON public.sgsst_documentos_versoes(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_sgsst_doc_vers_doc ON public.sgsst_documentos_versoes(documento_id);
 
+-- O numero de versao e calculado no cliente (le versao_atual, soma 1), entao dois
+-- envios simultaneos gerariam duas "v3". A constraint transforma essa corrida em
+-- um erro tratavel (23505) em vez de duplicata silenciosa.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sgsst_doc_vers_doc_numero
+  ON public.sgsst_documentos_versoes(documento_id, numero_versao);
+
 ALTER TABLE public.sgsst_documentos_versoes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users view own empresa sgsst_documentos_versoes" ON public.sgsst_documentos_versoes;

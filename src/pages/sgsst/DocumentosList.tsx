@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useSgsstDocumentos,
   useSgsstDocumentosHistorico,
+  useSgsstDocumentosResumo,
   SgsstDocumento,
   CategoriaDocumento,
 } from "@/hooks/sgsst/useSgsstDocumentos";
@@ -15,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
+import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import {
   UploadCloud,
   Search,
@@ -27,6 +30,7 @@ import {
   RefreshCw,
   Layers,
   Filter,
+  Ban,
 } from "lucide-react";
 import { UploadDocumentoDialog } from "@/components/sgsst/UploadDocumentoDialog";
 import { DocumentoVersoesDialog } from "@/components/sgsst/DocumentoVersoesDialog";
@@ -42,7 +46,12 @@ export default function SgsstDocumentosListPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [filterCategory, setFilterCategory] = useState("todos");
 
-  const { documentos, total, isLoading, uploadDocumento, uploadNovaVersao, arquivarDocumento } = useSgsstDocumentos(
+  // Aba ativa e status: declarados antes do hook porque agora são enviados como
+  // filtro ao servidor.
+  const [activeTab, setActiveTab] = useState("todos");
+  const [filterStatus, setFilterStatus] = useState("ATIVO");
+
+  const { documentos, total, isLoading, error: errDocumentos, refetch, uploadDocumento, uploadNovaVersao, arquivarDocumento, cancelarDocumento } = useSgsstDocumentos(
     undefined,
     undefined,
     {
@@ -50,16 +59,22 @@ export default function SgsstDocumentosListPage() {
       pageSize,
       search: debouncedSearch,
       tipo: filterCategory,
+      // O status passou a ser filtrado no servidor: filtrar depois da paginacao
+      // fazia a pagina mostrar menos linhas do que o paginador anunciava.
+      status: activeTab === "arquivados" ? "ARQUIVADOS" : filterStatus,
     }
   );
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
-  const { historico: historicoGeral, isLoading: loadingHist } = useSgsstDocumentosHistorico();
+  // Voltar à primeira página quando busca, categoria, status ou aba mudam: sem
+  // isto a consulta pede um range que o resultado filtrado não tem e a tabela
+  // aparece vazia mesmo havendo documentos.
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, filterCategory, filterStatus, activeTab]);
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState("todos");
-  const [filterStatus, setFilterStatus] = useState("ATIVO");
+  const { historico: historicoGeral, isLoading: loadingHist } = useSgsstDocumentosHistorico();
 
   // Modals
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -83,26 +98,14 @@ export default function SgsstDocumentosListPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  // Filtered documents for 'todos' tab
-  const filteredDocs = documentos.filter((doc) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      doc.nome.toLowerCase().includes(term) ||
-      (doc.descricao && doc.descricao.toLowerCase().includes(term)) ||
-      (doc.r2_key && doc.r2_key.toLowerCase().includes(term));
-
-    const matchesCategory = filterCategory === "todos" || doc.categoria === filterCategory;
-    const matchesStatus = activeTab === "arquivados" ? (doc.status === "ARQUIVADO" || doc.status === "CANCELADO") : doc.status === filterStatus;
-
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
-
-  // Stats
-  const docsAtivosCount = documentos.filter((d) => d.status === "ATIVO").length;
-  const docsPgrPcmsoCount = documentos.filter((d) => d.status === "ATIVO" && (d.categoria === "PGR" || d.categoria === "PCMSO")).length;
-  const docsAprPtCount = documentos.filter((d) => d.status === "ATIVO" && (d.categoria === "APR" || d.categoria === "PT")).length;
-  const docsCertificadosCount = documentos.filter((d) => d.status === "ATIVO" && (d.categoria === "ASO" || d.categoria === "TREINAMENTO" || d.categoria === "EPI")).length;
-  const docsArquivadosCount = documentos.filter((d) => d.status === "ARQUIVADO" || d.status === "CANCELADO").length;
+  // Indicadores: contagens do servidor sobre a base inteira. Derivar de
+  // `documentos.filter(...)` media apenas a pagina corrente.
+  const { resumo } = useSgsstDocumentosResumo();
+  const docsAtivosCount = resumo.ativos;
+  const docsPgrPcmsoCount = resumo.pgrPcmso;
+  const docsAprPtCount = resumo.aprPt;
+  const docsCertificadosCount = resumo.certificados;
+  const docsArquivadosCount = resumo.arquivados;
 
   const handleUploadSubmit = async (data: any) => {
     if (docForNovaVersao) {
@@ -115,6 +118,10 @@ export default function SgsstDocumentosListPage() {
       await uploadDocumento.mutateAsync(data);
     }
   };
+
+  // Basta um dos hooks falhar para varias abas ficarem vazias; o banner diz
+  // qual e a causa em vez de deixar as tabelas parecerem sem cadastro.
+  const erroModulo = errDocumentos;
 
   return (
     <div className="space-y-6">
@@ -192,6 +199,14 @@ export default function SgsstDocumentosListPage() {
       </div>
 
       {/* Main Tabs Navigation */}
+      {erroModulo && (
+        <SgsstErrorState
+          error={erroModulo}
+          modulo="Documentos"
+          onRetry={refetch}
+        />
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full sm:w-auto grid-cols-4">
           <TabsTrigger value="todos" className="gap-2">
@@ -260,10 +275,10 @@ export default function SgsstDocumentosListPage() {
                   <TableBody>
                     {isLoading ? (
                       <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando documentos no R2...</TableCell></TableRow>
-                    ) : filteredDocs.length === 0 ? (
+                    ) : documentos.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum documento encontrado.</TableCell></TableRow>
                     ) : (
-                      filteredDocs.map((doc) => (
+                      documentos.map((doc) => (
                         <TableRow key={doc.id}>
                           <TableCell className="font-medium max-w-xs">
                             <div className="text-xs sm:text-sm font-semibold">{doc.nome}</div>
@@ -310,14 +325,37 @@ export default function SgsstDocumentosListPage() {
                                     <RefreshCw className="h-4 w-4 text-indigo-600" />
                                   </Button>
 
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => arquivarDocumento.mutate(doc.id)}
-                                    title="Arquivar"
-                                  >
-                                    <Archive className="h-4 w-4 text-amber-600" />
-                                  </Button>
+                                  {/* Arquivar e cancelar não excluem a linha: documento
+                                      de SST precisa continuar auditável. Ambos passam
+                                      por confirmação porque somem da lista padrão. */}
+                                  <SgsstConfirmDelete
+                                    alvo={`o documento "${doc.nome}"`}
+                                    title={`Arquivar "${doc.nome}"?`}
+                                    consequencia="O documento sai da lista de ativos e passa para a aba Arquivados. O arquivo e o histórico de versões continuam disponíveis, e é possível reativá-lo depois."
+                                    onConfirm={() => arquivarDocumento.mutate(doc.id)}
+                                    trigger={
+                                      <Button variant="ghost" size="icon" title="Arquivar">
+                                        <Archive className="h-4 w-4 text-amber-600" />
+                                      </Button>
+                                    }
+                                  />
+
+                                  <SgsstConfirmDelete
+                                    alvo={`o documento "${doc.nome}"`}
+                                    title={`Cancelar "${doc.nome}"?`}
+                                    consequencia="O documento é marcado como cancelado e deixa de valer como evidência — use quando ele foi emitido por engano ou substituído. O arquivo permanece no histórico para auditoria."
+                                    onConfirm={() => cancelarDocumento.mutate(doc.id)}
+                                    trigger={
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        title="Cancelar documento"
+                                        className="text-destructive hover:text-destructive"
+                                      >
+                                        <Ban className="h-4 w-4" />
+                                      </Button>
+                                    }
+                                  />
                                 </>
                               )}
                             </div>
