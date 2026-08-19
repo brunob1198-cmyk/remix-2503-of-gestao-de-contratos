@@ -173,15 +173,15 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
     mutationFn: async () => {
       if (!empresaId) throw new Error("Empresa não selecionada.");
 
-      const { data: existentes, error: readError } = await (supabase
-        .from("sgsst_riscos_catalogo" as any)
+      const { data: existentes, error: readError } = await supabase
+        .from("sgsst_riscos_catalogo")
         .select("codigo")
-        .not("codigo", "is", null) as any);
+        .not("codigo", "is", null);
 
       if (readError) throw readError;
 
       const jaCadastrados = new Set(
-        ((existentes ?? []) as { codigo: string | null }[])
+        (existentes ?? [])
           .map((r) => r.codigo)
           .filter((c): c is string => !!c)
       );
@@ -192,7 +192,7 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
         return { inseridos: 0, ignorados: RISCOS_PADRAO.length };
       }
 
-      const { error } = await (supabase.from("sgsst_riscos_catalogo" as any).insert(
+      const { error } = await supabase.from("sgsst_riscos_catalogo").insert(
         novos.map((r) => ({
           ...r,
           empresa_id: empresaId,
@@ -200,7 +200,7 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
           created_by: profile?.id,
           updated_by: profile?.id,
         }))
-      ) as any);
+      );
 
       if (error) throw error;
 
@@ -217,8 +217,9 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
         );
       }
     },
-    onError: (err: any) => {
-      toast.error(`Erro ao popular catálogo: ${err.message || err}`);
+    onError: (err: unknown) => {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao popular catálogo: ${detalhe}`);
     },
   });
 

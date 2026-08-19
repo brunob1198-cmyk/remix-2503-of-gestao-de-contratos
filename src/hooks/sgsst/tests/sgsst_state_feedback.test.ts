@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifySgsstError } from "@/components/sgsst/SgsstStateFeedback";
+import { classifySgsstError } from "@/utils/sgsstErrors";
 import { escapeSearchTerm } from "@/utils/sgsstSearch";
 
 describe("classifySgsstError", () => {

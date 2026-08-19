@@ -1,4 +1,10 @@
-CREATE TABLE public.sgsst_epis (
+-- NOTA: as 4 tabelas de EPI tambem sao criadas por
+-- 20260814010000_create_sgsst_epi_tables.sql, que tem timestamp anterior. Sem
+-- IF NOT EXISTS aqui, um replay do historico a partir do zero falharia nesta
+-- migration porque as tabelas ja teriam sido criadas pela outra.
+-- O banco atual nao muda: a tabela ja existe e o statement e no-op.
+
+CREATE TABLE IF NOT EXISTS public.sgsst_epis (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   empresa_id UUID NOT NULL,
   codigo TEXT,
@@ -27,7 +33,7 @@ CREATE POLICY "epis_tenant_all" ON public.sgsst_epis FOR ALL TO authenticated
 CREATE INDEX idx_sgsst_epis_empresa ON public.sgsst_epis(empresa_id);
 CREATE TRIGGER update_sgsst_epis_updated_at BEFORE UPDATE ON public.sgsst_epis FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TABLE public.sgsst_epi_entregas (
+CREATE TABLE IF NOT EXISTS public.sgsst_epi_entregas (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   empresa_id UUID NOT NULL,
   colaborador_id UUID NOT NULL REFERENCES public.sgsst_colaborador_dados(id) ON DELETE CASCADE,
@@ -53,7 +59,7 @@ CREATE INDEX idx_sgsst_epi_entregas_epi ON public.sgsst_epi_entregas(epi_id);
 CREATE INDEX idx_sgsst_epi_entregas_colab ON public.sgsst_epi_entregas(colaborador_id);
 CREATE TRIGGER update_sgsst_epi_entregas_updated_at BEFORE UPDATE ON public.sgsst_epi_entregas FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TABLE public.sgsst_epi_devolucoes (
+CREATE TABLE IF NOT EXISTS public.sgsst_epi_devolucoes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   empresa_id UUID NOT NULL,
   entrega_id UUID NOT NULL REFERENCES public.sgsst_epi_entregas(id) ON DELETE CASCADE,
@@ -74,7 +80,7 @@ CREATE POLICY "epi_devolucoes_tenant_all" ON public.sgsst_epi_devolucoes FOR ALL
 CREATE INDEX idx_sgsst_epi_devolucoes_empresa ON public.sgsst_epi_devolucoes(empresa_id);
 CREATE INDEX idx_sgsst_epi_devolucoes_entrega ON public.sgsst_epi_devolucoes(entrega_id);
 
-CREATE TABLE public.sgsst_epi_historico (
+CREATE TABLE IF NOT EXISTS public.sgsst_epi_historico (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   empresa_id UUID NOT NULL,
   epi_id UUID REFERENCES public.sgsst_epis(id) ON DELETE CASCADE,

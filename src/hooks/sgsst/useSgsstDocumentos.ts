@@ -265,7 +265,7 @@ export function useSgsstDocumentos(
       if (versaoError) {
         // Violacao da constraint UNIQUE (documento_id, numero_versao): outro
         // usuario subiu a mesma versao entre a leitura e a escrita.
-        if ((versaoError as any).code === "23505") {
+        if (versaoError.code === "23505") {
           throw new Error(
             `A versão v${proxVersao} acabou de ser criada por outro usuário. Recarregue e tente novamente.`
           );
