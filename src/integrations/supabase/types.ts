@@ -5241,52 +5241,727 @@ export type Database = {
           },
         ]
       }
+      sgsst_apr: {
+        Row: {
+          area_id: string | null
+          atividade: string
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          data: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          projeto_id: string
+          responsavel_id: string | null
+          site_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+          validade: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          atividade: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          projeto_id: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+          validade?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          atividade?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          projeto_id?: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_apr_etapas: {
+        Row: {
+          apr_id: string
+          created_at: string
+          descricao: string
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          ordem: number
+          responsavel_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          apr_id: string
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          responsavel_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apr_id?: string
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          responsavel_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_etapas_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_etapas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_etapas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_apr_historico: {
+        Row: {
+          apr_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          novo_status: string
+          observacao: string | null
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          apr_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          novo_status: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          apr_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          novo_status?: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_historico_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_apr_medidas: {
+        Row: {
+          apr_risco_id: string
+          created_at: string
+          descricao: string
+          empresa_id: string
+          id: string
+          prazo: string | null
+          responsavel_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          apr_risco_id: string
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          apr_risco_id?: string
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_medidas_apr_risco_id_fkey"
+            columns: ["apr_risco_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr_riscos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_medidas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_medidas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_apr_participantes: {
+        Row: {
+          apr_id: string
+          colaborador_dados_id: string | null
+          confirmacao: boolean | null
+          created_at: string
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          participacao: string | null
+        }
+        Insert: {
+          apr_id: string
+          colaborador_dados_id?: string | null
+          confirmacao?: boolean | null
+          created_at?: string
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          participacao?: string | null
+        }
+        Update: {
+          apr_id?: string
+          colaborador_dados_id?: string | null
+          confirmacao?: boolean | null
+          created_at?: string
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          participacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_participantes_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_participantes_colaborador_dados_id_fkey"
+            columns: ["colaborador_dados_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_participantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_participantes_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_apr_riscos: {
+        Row: {
+          classificacao: string | null
+          consequencia: string | null
+          created_at: string
+          empresa_id: string
+          etapa_id: string
+          id: string
+          nivel_risco: number | null
+          perigo: string
+          probabilidade: number
+          risco: string
+          risco_catalogo_id: string | null
+          severidade: number
+          updated_at: string
+        }
+        Insert: {
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          empresa_id: string
+          etapa_id: string
+          id?: string
+          nivel_risco?: number | null
+          perigo: string
+          probabilidade: number
+          risco: string
+          risco_catalogo_id?: string | null
+          severidade: number
+          updated_at?: string
+        }
+        Update: {
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          empresa_id?: string
+          etapa_id?: string
+          id?: string
+          nivel_risco?: number | null
+          perigo?: string
+          probabilidade?: number
+          risco?: string
+          risco_catalogo_id?: string | null
+          severidade?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_apr_riscos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_riscos_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr_etapas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_riscos_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_asos: {
+        Row: {
+          aptidao: string
+          colaborador_id: string
+          created_at: string
+          crm_medico: string | null
+          data_emissao: string
+          data_inicio_restricao: string | null
+          data_termino_restricao: string | null
+          descricao_restricao: string | null
+          empresa_id: string
+          exame_id: string | null
+          id: string
+          medico_responsavel: string | null
+          numero_documento: string | null
+          observacoes: string | null
+          pcmso_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          validade: string
+        }
+        Insert: {
+          aptidao?: string
+          colaborador_id: string
+          created_at?: string
+          crm_medico?: string | null
+          data_emissao?: string
+          data_inicio_restricao?: string | null
+          data_termino_restricao?: string | null
+          descricao_restricao?: string | null
+          empresa_id: string
+          exame_id?: string | null
+          id?: string
+          medico_responsavel?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          pcmso_id?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          validade: string
+        }
+        Update: {
+          aptidao?: string
+          colaborador_id?: string
+          created_at?: string
+          crm_medico?: string | null
+          data_emissao?: string
+          data_inicio_restricao?: string | null
+          data_termino_restricao?: string | null
+          descricao_restricao?: string | null
+          empresa_id?: string
+          exame_id?: string | null
+          id?: string
+          medico_responsavel?: string | null
+          numero_documento?: string | null
+          observacoes?: string | null
+          pcmso_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          validade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_asos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_asos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_asos_exame_id_fkey"
+            columns: ["exame_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_exames"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_asos_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_asos_historico: {
+        Row: {
+          aso_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          novo_status: string
+          observacao: string | null
+          operacao: string
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          aso_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          novo_status: string
+          observacao?: string | null
+          operacao: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          aso_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          novo_status?: string
+          observacao?: string | null
+          operacao?: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_asos_historico_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_asos_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_asos_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_colaborador_dados: {
         Row: {
           area_id: string | null
+          centro_custo: string | null
+          cnh_categoria: string | null
+          cnh_numero: string | null
+          cnh_validade: string | null
+          cpf: string | null
           created_at: string | null
           created_by: string | null
           data_admissao: string | null
           data_demissao: string | null
+          data_nascimento: string | null
+          email: string | null
           empresa_id: string
+          endereco: string | null
+          foto_r2_key: string | null
+          foto_url: string | null
           funcao_id: string | null
+          genero: string | null
           id: string
           matricula: string | null
+          nome: string | null
           profile_id: string | null
+          projeto_id: string | null
           recurso_id: string | null
+          rg: string | null
           status: string
+          tamanho_calca: string | null
+          tamanho_calcado: string | null
+          tamanho_camisa: string | null
+          telefone: string | null
           tipo_vinculo: string
           updated_at: string | null
         }
         Insert: {
           area_id?: string | null
+          centro_custo?: string | null
+          cnh_categoria?: string | null
+          cnh_numero?: string | null
+          cnh_validade?: string | null
+          cpf?: string | null
           created_at?: string | null
           created_by?: string | null
           data_admissao?: string | null
           data_demissao?: string | null
+          data_nascimento?: string | null
+          email?: string | null
           empresa_id: string
+          endereco?: string | null
+          foto_r2_key?: string | null
+          foto_url?: string | null
           funcao_id?: string | null
+          genero?: string | null
           id?: string
           matricula?: string | null
+          nome?: string | null
           profile_id?: string | null
+          projeto_id?: string | null
           recurso_id?: string | null
+          rg?: string | null
           status?: string
+          tamanho_calca?: string | null
+          tamanho_calcado?: string | null
+          tamanho_camisa?: string | null
+          telefone?: string | null
           tipo_vinculo: string
           updated_at?: string | null
         }
         Update: {
           area_id?: string | null
+          centro_custo?: string | null
+          cnh_categoria?: string | null
+          cnh_numero?: string | null
+          cnh_validade?: string | null
+          cpf?: string | null
           created_at?: string | null
           created_by?: string | null
           data_admissao?: string | null
           data_demissao?: string | null
+          data_nascimento?: string | null
+          email?: string | null
           empresa_id?: string
+          endereco?: string | null
+          foto_r2_key?: string | null
+          foto_url?: string | null
           funcao_id?: string | null
+          genero?: string | null
           id?: string
           matricula?: string | null
+          nome?: string | null
           profile_id?: string | null
+          projeto_id?: string | null
           recurso_id?: string | null
+          rg?: string | null
           status?: string
+          tamanho_calca?: string | null
+          tamanho_calcado?: string | null
+          tamanho_camisa?: string | null
+          telefone?: string | null
           tipo_vinculo?: string
           updated_at?: string | null
         }
@@ -5320,10 +5995,327 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_dados_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
             foreignKeyName: "sgsst_colaborador_dados_recurso_id_fkey"
             columns: ["recurso_id"]
             isOneToOne: false
             referencedRelation: "recursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_colaborador_treinamentos: {
+        Row: {
+          carga_horaria: number | null
+          certificado_r2_key: string | null
+          certificado_url: string | null
+          colaborador_id: string
+          created_at: string
+          data_conclusao: string | null
+          data_validade: string | null
+          empresa_id: string
+          id: string
+          nome_treinamento: string
+          observacoes: string | null
+          treinamento_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          carga_horaria?: number | null
+          certificado_r2_key?: string | null
+          certificado_url?: string | null
+          colaborador_id: string
+          created_at?: string
+          data_conclusao?: string | null
+          data_validade?: string | null
+          empresa_id: string
+          id?: string
+          nome_treinamento: string
+          observacoes?: string | null
+          treinamento_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          carga_horaria?: number | null
+          certificado_r2_key?: string | null
+          certificado_url?: string | null
+          colaborador_id?: string
+          created_at?: string
+          data_conclusao?: string | null
+          data_validade?: string | null
+          empresa_id?: string
+          id?: string
+          nome_treinamento?: string
+          observacoes?: string | null
+          treinamento_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_colaborador_treinamentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_treinamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_colaborador_treinamentos_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_documentos: {
+        Row: {
+          categoria: string
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          entidade_id: string | null
+          entidade_tipo: string | null
+          id: string
+          nome: string
+          r2_key: string
+          r2_url: string
+          status: string
+          tamanho: number
+          tipo_mime: string
+          updated_at: string
+          updated_by: string | null
+          versao_atual: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          entidade_id?: string | null
+          entidade_tipo?: string | null
+          id?: string
+          nome: string
+          r2_key: string
+          r2_url: string
+          status?: string
+          tamanho: number
+          tipo_mime: string
+          updated_at?: string
+          updated_by?: string | null
+          versao_atual?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          entidade_id?: string | null
+          entidade_tipo?: string | null
+          id?: string
+          nome?: string
+          r2_key?: string
+          r2_url?: string
+          status?: string
+          tamanho?: number
+          tipo_mime?: string
+          updated_at?: string
+          updated_by?: string | null
+          versao_atual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_documentos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_documentos_historico: {
+        Row: {
+          created_at: string
+          documento_id: string | null
+          empresa_id: string
+          id: string
+          observacao: string | null
+          operacao: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          documento_id?: string | null
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          operacao: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          documento_id?: string | null
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          operacao?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_documentos_historico_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_documentos_versoes: {
+        Row: {
+          created_at: string
+          documento_id: string
+          empresa_id: string
+          id: string
+          numero_versao: number
+          observacao: string | null
+          r2_key: string
+          r2_url: string
+          tamanho: number
+          tipo_mime: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          documento_id: string
+          empresa_id: string
+          id?: string
+          numero_versao: number
+          observacao?: string | null
+          r2_key: string
+          r2_url: string
+          tamanho: number
+          tipo_mime: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          documento_id?: string
+          empresa_id?: string
+          id?: string
+          numero_versao?: number
+          observacao?: string | null
+          r2_key?: string
+          r2_url?: string
+          tamanho?: number
+          tipo_mime?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_documentos_versoes_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_versoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_documentos_versoes_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5512,6 +6504,7 @@ export type Database = {
       }
       sgsst_epis: {
         Row: {
+          abaixo_minimo: boolean | null
           ca: string
           categoria: string
           codigo: string | null
@@ -5532,6 +6525,7 @@ export type Database = {
           validade_ca: string | null
         }
         Insert: {
+          abaixo_minimo?: boolean | null
           ca: string
           categoria?: string
           codigo?: string | null
@@ -5552,6 +6546,7 @@ export type Database = {
           validade_ca?: string | null
         }
         Update: {
+          abaixo_minimo?: boolean | null
           ca?: string
           categoria?: string
           codigo?: string | null
@@ -5572,6 +6567,89 @@ export type Database = {
           validade_ca?: string | null
         }
         Relationships: []
+      }
+      sgsst_exames: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          data_realizacao: string | null
+          data_solicitacao: string
+          empresa_id: string
+          id: string
+          medico_responsavel: string | null
+          nome_exame: string
+          observacoes: string | null
+          pcmso_exame_id: string | null
+          pcmso_id: string | null
+          resultado: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          data_realizacao?: string | null
+          data_solicitacao?: string
+          empresa_id: string
+          id?: string
+          medico_responsavel?: string | null
+          nome_exame: string
+          observacoes?: string | null
+          pcmso_exame_id?: string | null
+          pcmso_id?: string | null
+          resultado?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          data_realizacao?: string | null
+          data_solicitacao?: string
+          empresa_id?: string
+          id?: string
+          medico_responsavel?: string | null
+          nome_exame?: string
+          observacoes?: string | null
+          pcmso_exame_id?: string | null
+          pcmso_id?: string | null
+          resultado?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_exames_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_exames_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_exames_pcmso_exame_id_fkey"
+            columns: ["pcmso_exame_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pcmso_exames"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_exames_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sgsst_funcoes: {
         Row: {
@@ -5616,6 +6694,2705 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_incidentes: {
+        Row: {
+          apr_id: string | null
+          area_id: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          data_ocorrencia: string
+          descricao: string
+          empresa_id: string
+          gravidade: string
+          hora_ocorrencia: string | null
+          id: string
+          inspecao_id: string | null
+          local_ocorrencia: string | null
+          observacoes: string | null
+          pgr_id: string | null
+          projeto_id: string
+          pt_id: string | null
+          responsavel_registro_id: string | null
+          site_id: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_ocorrencia?: string
+          descricao: string
+          empresa_id: string
+          gravidade?: string
+          hora_ocorrencia?: string | null
+          id?: string
+          inspecao_id?: string | null
+          local_ocorrencia?: string | null
+          observacoes?: string | null
+          pgr_id?: string | null
+          projeto_id: string
+          pt_id?: string | null
+          responsavel_registro_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_ocorrencia?: string
+          descricao?: string
+          empresa_id?: string
+          gravidade?: string
+          hora_ocorrencia?: string | null
+          id?: string
+          inspecao_id?: string | null
+          local_ocorrencia?: string | null
+          observacoes?: string | null
+          pgr_id?: string | null
+          projeto_id?: string
+          pt_id?: string | null
+          responsavel_registro_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_incidentes_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_inspecao_id_fkey"
+            columns: ["inspecao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_inspecoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_responsavel_registro_id_fkey"
+            columns: ["responsavel_registro_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_incidentes_acoes: {
+        Row: {
+          created_at: string
+          data_conclusao: string | null
+          descricao: string
+          empresa_id: string
+          id: string
+          incidente_id: string
+          observacao: string | null
+          prazo: string | null
+          prioridade: string
+          responsavel_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao: string
+          empresa_id: string
+          id?: string
+          incidente_id: string
+          observacao?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          incidente_id?: string
+          observacao?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_incidentes_acoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_acoes_incidente_id_fkey"
+            columns: ["incidente_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_incidentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_acoes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_incidentes_envolvidos: {
+        Row: {
+          colaborador_dados_id: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          incidente_id: string
+          observacoes: string | null
+          tipo_envolvimento: string
+        }
+        Insert: {
+          colaborador_dados_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          incidente_id: string
+          observacoes?: string | null
+          tipo_envolvimento: string
+        }
+        Update: {
+          colaborador_dados_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          incidente_id?: string
+          observacoes?: string | null
+          tipo_envolvimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_incidentes_envolvidos_colaborador_dados_id_fkey"
+            columns: ["colaborador_dados_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_envolvidos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_envolvidos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_envolvidos_incidente_id_fkey"
+            columns: ["incidente_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_incidentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_incidentes_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          incidente_id: string
+          novo_status: string
+          observacao: string | null
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          incidente_id: string
+          novo_status: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          incidente_id?: string
+          novo_status?: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_incidentes_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_historico_incidente_id_fkey"
+            columns: ["incidente_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_incidentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_incidentes_investigacao: {
+        Row: {
+          causas_basicas: string | null
+          causas_imediatas: string | null
+          causas_raiz: string | null
+          conclusao: string | null
+          created_at: string
+          data_investigacao: string | null
+          descricao_investigacao: string
+          empresa_id: string
+          fatores_contribuintes: string | null
+          fatos_observados: string | null
+          id: string
+          incidente_id: string
+          responsavel_id: string | null
+          risco_catalogo_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          causas_basicas?: string | null
+          causas_imediatas?: string | null
+          causas_raiz?: string | null
+          conclusao?: string | null
+          created_at?: string
+          data_investigacao?: string | null
+          descricao_investigacao: string
+          empresa_id: string
+          fatores_contribuintes?: string | null
+          fatos_observados?: string | null
+          id?: string
+          incidente_id: string
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          causas_basicas?: string | null
+          causas_imediatas?: string | null
+          causas_raiz?: string | null
+          conclusao?: string | null
+          created_at?: string
+          data_investigacao?: string | null
+          descricao_investigacao?: string
+          empresa_id?: string
+          fatores_contribuintes?: string | null
+          fatos_observados?: string | null
+          id?: string
+          incidente_id?: string
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_incidentes_investigacao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_investigacao_incidente_id_fkey"
+            columns: ["incidente_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_incidentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_investigacao_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_incidentes_investigacao_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_inspecoes: {
+        Row: {
+          apr_id: string | null
+          area_id: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          data_execucao: string | null
+          data_planejada: string
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          pgr_id: string | null
+          projeto_id: string
+          pt_id: string | null
+          responsavel_id: string | null
+          site_id: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_execucao?: string | null
+          data_planejada?: string
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          pgr_id?: string | null
+          projeto_id: string
+          pt_id?: string | null
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          apr_id?: string | null
+          area_id?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_execucao?: string | null
+          data_planejada?: string
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          pgr_id?: string | null
+          projeto_id?: string
+          pt_id?: string | null
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_inspecoes_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_inspecoes_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          inspecao_id: string
+          novo_status: string
+          observacao: string | null
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          inspecao_id: string
+          novo_status: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          inspecao_id?: string
+          novo_status?: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_inspecoes_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_historico_inspecao_id_fkey"
+            columns: ["inspecao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_inspecoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_inspecoes_itens: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          descricao: string
+          empresa_id: string
+          id: string
+          inspecao_id: string
+          obrigatorio: boolean | null
+          observacao: string | null
+          ordem: number
+          resposta: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          inspecao_id: string
+          obrigatorio?: boolean | null
+          observacao?: string | null
+          ordem?: number
+          resposta?: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          inspecao_id?: string
+          obrigatorio?: boolean | null
+          observacao?: string | null
+          ordem?: number
+          resposta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_inspecoes_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_itens_inspecao_id_fkey"
+            columns: ["inspecao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_inspecoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_inspecoes_nao_conformidades: {
+        Row: {
+          created_at: string
+          criticidade: string
+          descricao: string
+          empresa_id: string
+          evidencia: string | null
+          id: string
+          inspecao_id: string
+          item_id: string | null
+          observacao: string | null
+          prazo: string | null
+          responsavel_id: string | null
+          risco_catalogo_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criticidade?: string
+          descricao: string
+          empresa_id: string
+          evidencia?: string | null
+          id?: string
+          inspecao_id: string
+          item_id?: string | null
+          observacao?: string | null
+          prazo?: string | null
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criticidade?: string
+          descricao?: string
+          empresa_id?: string
+          evidencia?: string | null
+          id?: string
+          inspecao_id?: string
+          item_id?: string | null
+          observacao?: string | null
+          prazo?: string | null
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_inspecao_id_fkey"
+            columns: ["inspecao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_inspecoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_inspecoes_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_nao_conformidades: {
+        Row: {
+          area_id: string | null
+          causa: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          criticidade: string
+          data_identificacao: string
+          data_verificacao: string | null
+          descricao: string
+          empresa_id: string
+          id: string
+          observacao_verificacao: string | null
+          observacoes: string | null
+          origem_id: string | null
+          origem_tipo: string
+          prazo: string | null
+          projeto_id: string
+          responsavel_id: string | null
+          resultado_verificacao: string | null
+          site_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+          verificador_id: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          causa?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          criticidade?: string
+          data_identificacao?: string
+          data_verificacao?: string | null
+          descricao: string
+          empresa_id: string
+          id?: string
+          observacao_verificacao?: string | null
+          observacoes?: string | null
+          origem_id?: string | null
+          origem_tipo?: string
+          prazo?: string | null
+          projeto_id: string
+          responsavel_id?: string | null
+          resultado_verificacao?: string | null
+          site_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+          verificador_id?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          causa?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          criticidade?: string
+          data_identificacao?: string
+          data_verificacao?: string | null
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          observacao_verificacao?: string | null
+          observacoes?: string | null
+          origem_id?: string | null
+          origem_tipo?: string
+          prazo?: string | null
+          projeto_id?: string
+          responsavel_id?: string | null
+          resultado_verificacao?: string | null
+          site_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+          verificador_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_nao_conformidades_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_verificador_id_fkey"
+            columns: ["verificador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_nao_conformidades_acoes: {
+        Row: {
+          created_at: string
+          data_conclusao: string | null
+          descricao: string
+          empresa_id: string
+          evidencia: string | null
+          id: string
+          nao_conformidade_id: string
+          observacao: string | null
+          prazo: string | null
+          prioridade: string
+          responsavel_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao: string
+          empresa_id: string
+          evidencia?: string | null
+          id?: string
+          nao_conformidade_id: string
+          observacao?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao?: string
+          empresa_id?: string
+          evidencia?: string | null
+          id?: string
+          nao_conformidade_id?: string
+          observacao?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_nao_conformidades_acoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_acoes_nao_conformidade_id_fkey"
+            columns: ["nao_conformidade_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_nao_conformidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_acoes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_nao_conformidades_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          nao_conformidade_id: string
+          novo_status: string
+          observacao: string | null
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nao_conformidade_id: string
+          novo_status: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nao_conformidade_id?: string
+          novo_status?: string
+          observacao?: string | null
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_nao_conformidades_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_historico_nao_conformidade_id_fkey"
+            columns: ["nao_conformidade_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_nao_conformidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_nao_conformidades_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pcmso: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          crm_medico: string | null
+          data_inicio: string
+          data_revisao: string | null
+          empresa_id: string
+          id: string
+          medico_responsavel: string | null
+          objetivo: string | null
+          observacoes: string | null
+          projeto_id: string | null
+          responsavel: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_medico?: string | null
+          data_inicio?: string
+          data_revisao?: string | null
+          empresa_id: string
+          id?: string
+          medico_responsavel?: string | null
+          objetivo?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_medico?: string | null
+          data_inicio?: string
+          data_revisao?: string | null
+          empresa_id?: string
+          id?: string
+          medico_responsavel?: string | null
+          objetivo?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          responsavel?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pcmso_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pcmso_exames: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          funcao_id: string | null
+          grupo_risco: string | null
+          id: string
+          nome_exame: string
+          observacoes: string | null
+          pcmso_id: string
+          periodicidade_meses: number | null
+          tipo_exame: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          funcao_id?: string | null
+          grupo_risco?: string | null
+          id?: string
+          nome_exame: string
+          observacoes?: string | null
+          pcmso_id: string
+          periodicidade_meses?: number | null
+          tipo_exame: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          funcao_id?: string | null
+          grupo_risco?: string | null
+          id?: string
+          nome_exame?: string
+          observacoes?: string | null
+          pcmso_id?: string
+          periodicidade_meses?: number | null
+          tipo_exame?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pcmso_exames_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_exames_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_exames_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pcmso_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          novo_status: string
+          observacao: string | null
+          pcmso_id: string
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          novo_status: string
+          observacao?: string | null
+          pcmso_id: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          novo_status?: string
+          observacao?: string | null
+          pcmso_id?: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pcmso_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_historico_pcmso_id_fkey"
+            columns: ["pcmso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pgr: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          data_inicio: string
+          data_revisao: string | null
+          empresa_id: string
+          id: string
+          objetivo: string | null
+          observacoes: string | null
+          projeto_id: string
+          responsavel_id: string | null
+          site_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inicio?: string
+          data_revisao?: string | null
+          empresa_id: string
+          id?: string
+          objetivo?: string | null
+          observacoes?: string | null
+          projeto_id: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_inicio?: string
+          data_revisao?: string | null
+          empresa_id?: string
+          id?: string
+          objetivo?: string | null
+          observacoes?: string | null
+          projeto_id?: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pgr_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pgr_inventario: {
+        Row: {
+          area_id: string | null
+          atividade: string
+          classificacao: string | null
+          consequencia: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          fonte_geradora: string | null
+          id: string
+          medidas_existentes: string | null
+          medidas_necessarias: string | null
+          nivel_risco: number | null
+          perigo: string
+          pgr_id: string
+          prazo: string | null
+          probabilidade: number
+          responsavel_id: string | null
+          risco_catalogo_id: string | null
+          severidade: number
+          status: string
+          trabalhadores_expostos: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          atividade: string
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          fonte_geradora?: string | null
+          id?: string
+          medidas_existentes?: string | null
+          medidas_necessarias?: string | null
+          nivel_risco?: number | null
+          perigo: string
+          pgr_id: string
+          prazo?: string | null
+          probabilidade: number
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          severidade: number
+          status?: string
+          trabalhadores_expostos?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          atividade?: string
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          fonte_geradora?: string | null
+          id?: string
+          medidas_existentes?: string | null
+          medidas_necessarias?: string | null
+          nivel_risco?: number | null
+          perigo?: string
+          pgr_id?: string
+          prazo?: string | null
+          probabilidade?: number
+          responsavel_id?: string | null
+          risco_catalogo_id?: string | null
+          severidade?: number
+          status?: string
+          trabalhadores_expostos?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pgr_inventario_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pgr_medidas_controle: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_implementacao: string | null
+          descricao: string
+          empresa_id: string
+          id: string
+          inventario_id: string
+          observacao: string | null
+          prazo: string | null
+          responsavel_id: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_implementacao?: string | null
+          descricao: string
+          empresa_id: string
+          id?: string
+          inventario_id: string
+          observacao?: string | null
+          prazo?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_implementacao?: string | null
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          inventario_id?: string
+          observacao?: string | null
+          prazo?: string | null
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr_inventario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt: {
+        Row: {
+          apr_id: string | null
+          area_id: string | null
+          atividade: string
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          data_fim: string | null
+          data_inicio: string
+          empresa_id: string
+          id: string
+          local_execucao: string | null
+          observacoes: string | null
+          projeto_id: string
+          responsavel_id: string | null
+          site_id: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          apr_id?: string | null
+          area_id?: string | null
+          atividade: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          empresa_id: string
+          id?: string
+          local_execucao?: string | null
+          observacoes?: string | null
+          projeto_id: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          apr_id?: string | null
+          area_id?: string | null
+          atividade?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string | null
+          data_inicio?: string
+          empresa_id?: string
+          id?: string
+          local_execucao?: string | null
+          observacoes?: string | null
+          projeto_id?: string
+          responsavel_id?: string | null
+          site_id?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_apr_id_fkey"
+            columns: ["apr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_apr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt_checklist: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          item: string
+          obrigatorio: boolean | null
+          observacao: string | null
+          pt_id: string
+          resposta: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          item: string
+          obrigatorio?: boolean | null
+          observacao?: string | null
+          pt_id: string
+          resposta?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          item?: string
+          obrigatorio?: boolean | null
+          observacao?: string | null
+          pt_id?: string
+          resposta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_checklist_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_checklist_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          novo_status: string
+          observacao: string | null
+          pt_id: string
+          status_anterior: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          novo_status: string
+          observacao?: string | null
+          pt_id: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          novo_status?: string
+          observacao?: string | null
+          pt_id?: string
+          status_anterior?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_historico_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt_medidas: {
+        Row: {
+          created_at: string
+          descricao: string
+          empresa_id: string
+          id: string
+          pt_risco_id: string
+          responsavel_id: string | null
+          status: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          pt_risco_id: string
+          responsavel_id?: string | null
+          status?: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          pt_risco_id?: string
+          responsavel_id?: string | null
+          status?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_medidas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_medidas_pt_risco_id_fkey"
+            columns: ["pt_risco_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt_riscos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_medidas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt_participantes: {
+        Row: {
+          colaborador_dados_id: string | null
+          confirmacao: boolean | null
+          created_at: string
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          pt_id: string
+          responsabilidade: string | null
+        }
+        Insert: {
+          colaborador_dados_id?: string | null
+          confirmacao?: boolean | null
+          created_at?: string
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          pt_id: string
+          responsabilidade?: string | null
+        }
+        Update: {
+          colaborador_dados_id?: string | null
+          confirmacao?: boolean | null
+          created_at?: string
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          pt_id?: string
+          responsabilidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_participantes_colaborador_dados_id_fkey"
+            columns: ["colaborador_dados_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_participantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_participantes_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_participantes_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_pt_riscos: {
+        Row: {
+          classificacao: string | null
+          consequencia: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          nivel_risco: number | null
+          perigo: string
+          probabilidade: number
+          pt_id: string
+          risco: string
+          risco_catalogo_id: string | null
+          severidade: number
+        }
+        Insert: {
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nivel_risco?: number | null
+          perigo: string
+          probabilidade: number
+          pt_id: string
+          risco: string
+          risco_catalogo_id?: string | null
+          severidade: number
+        }
+        Update: {
+          classificacao?: string | null
+          consequencia?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nivel_risco?: number | null
+          perigo?: string
+          probabilidade?: number
+          pt_id?: string
+          risco?: string
+          risco_catalogo_id?: string | null
+          severidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_riscos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_riscos_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_riscos_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_riscos_catalogo: {
+        Row: {
+          agente: string | null
+          categoria: string
+          codigo: string | null
+          consequencia: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          fonte_geradora: string | null
+          id: string
+          nome: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agente?: string | null
+          categoria: string
+          codigo?: string | null
+          consequencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          fonte_geradora?: string | null
+          id?: string
+          nome: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agente?: string | null
+          categoria?: string
+          codigo?: string | null
+          consequencia?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          fonte_geradora?: string | null
+          id?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_riscos_catalogo_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_riscos_catalogo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_riscos_catalogo_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_treinamentos: {
+        Row: {
+          area_id: string | null
+          carga_horaria: number
+          categoria: string
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          funcao_id: string | null
+          id: string
+          nome: string
+          obrigatorio: boolean
+          observacoes: string | null
+          projeto_id: string | null
+          site_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          validade_meses: number | null
+        }
+        Insert: {
+          area_id?: string | null
+          carga_horaria?: number
+          categoria: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          funcao_id?: string | null
+          id?: string
+          nome: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          projeto_id?: string | null
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          validade_meses?: number | null
+        }
+        Update: {
+          area_id?: string | null
+          carga_horaria?: number
+          categoria?: string
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          funcao_id?: string | null
+          id?: string
+          nome?: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          projeto_id?: string | null
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          validade_meses?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_treinamentos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "vw_resumo_financeiro_site_item"
+            referencedColumns: ["site_id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_treinamentos_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          observacao: string | null
+          operacao: string
+          treinamento_id: string | null
+          turma_id: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          operacao: string
+          treinamento_id?: string | null
+          turma_id?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          operacao?: string
+          treinamento_id?: string | null
+          turma_id?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_treinamentos_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_historico_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_historico_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_treinamentos_participantes: {
+        Row: {
+          aprovacao: boolean | null
+          certificado: string | null
+          colaborador_id: string
+          created_at: string
+          data_conclusao: string | null
+          empresa_id: string
+          id: string
+          observacoes: string | null
+          percentual_presenca: number | null
+          presenca: boolean
+          resultado: string
+          turma_id: string
+          updated_at: string
+          validade: string | null
+        }
+        Insert: {
+          aprovacao?: boolean | null
+          certificado?: string | null
+          colaborador_id: string
+          created_at?: string
+          data_conclusao?: string | null
+          empresa_id: string
+          id?: string
+          observacoes?: string | null
+          percentual_presenca?: number | null
+          presenca?: boolean
+          resultado?: string
+          turma_id: string
+          updated_at?: string
+          validade?: string | null
+        }
+        Update: {
+          aprovacao?: boolean | null
+          certificado?: string | null
+          colaborador_id?: string
+          created_at?: string
+          data_conclusao?: string | null
+          empresa_id?: string
+          id?: string
+          observacoes?: string | null
+          percentual_presenca?: number | null
+          presenca?: boolean
+          resultado?: string
+          turma_id?: string
+          updated_at?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_treinamentos_participantes_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_participantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_participantes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos_turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_treinamentos_turmas: {
+        Row: {
+          capacidade: number | null
+          carga_horaria: number | null
+          codigo_turma: string | null
+          created_at: string
+          data_final: string | null
+          data_inicial: string
+          empresa_id: string
+          id: string
+          instrutor: string | null
+          local: string | null
+          modalidade: string
+          observacoes: string | null
+          status: string
+          treinamento_id: string
+          updated_at: string
+        }
+        Insert: {
+          capacidade?: number | null
+          carga_horaria?: number | null
+          codigo_turma?: string | null
+          created_at?: string
+          data_final?: string | null
+          data_inicial?: string
+          empresa_id: string
+          id?: string
+          instrutor?: string | null
+          local?: string | null
+          modalidade?: string
+          observacoes?: string | null
+          status?: string
+          treinamento_id: string
+          updated_at?: string
+        }
+        Update: {
+          capacidade?: number | null
+          carga_horaria?: number | null
+          codigo_turma?: string | null
+          created_at?: string
+          data_final?: string | null
+          data_inicial?: string
+          empresa_id?: string
+          id?: string
+          instrutor?: string | null
+          local?: string | null
+          modalidade?: string
+          observacoes?: string | null
+          status?: string
+          treinamento_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_treinamentos_turmas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_treinamentos_turmas_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos"
             referencedColumns: ["id"]
           },
         ]
@@ -6697,6 +10474,24 @@ export type Database = {
       setup_empresa: {
         Args: { _cnpj?: string; _nome: string }
         Returns: string
+      }
+      sgsst_dashboard_alertas: {
+        Args: {
+          p_data_final?: string
+          p_data_inicial?: string
+          p_empresa_id: string
+          p_projeto_id?: string
+        }
+        Returns: Json
+      }
+      sgsst_dashboard_metrics: {
+        Args: {
+          p_data_final?: string
+          p_data_inicial?: string
+          p_empresa_id: string
+          p_projeto_id?: string
+        }
+        Returns: Json
       }
       sum_producao_periodo: {
         Args: {
