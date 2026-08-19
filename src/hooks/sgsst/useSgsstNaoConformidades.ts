@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 
 export type OrigemNC = "INSPECAO" | "INCIDENTE" | "PGR" | "APR" | "PT" | "MANUAL";
 export type CriticidadeNC = "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
@@ -114,7 +115,22 @@ export function useSgsstNaoConformidadesDetail(ncId?: string) {
   });
 }
 
-export function useSgsstNaoConformidades(params?: { page?: number; pageSize?: number; search?: string; status?: string; severidade?: string }) {
+export interface SgsstNaoConformidadesParams {
+  page?: number;
+  pageSize?: number;
+  /** Busca em código, título e descrição. */
+  search?: string;
+  status?: string;
+  criticidade?: string;
+  origem?: string;
+  /** Só as com prazo estourado e ainda em tratamento. */
+  vencidasOnly?: boolean;
+}
+
+/** Status em que a NC deixa de contar como pendente. */
+export const STATUS_NC_ENCERRADOS = ["CONCLUIDA", "CANCELADA"] as const;
+
+export function useSgsstNaoConformidades(params?: SgsstNaoConformidadesParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
@@ -122,7 +138,17 @@ export function useSgsstNaoConformidades(params?: { page?: number; pageSize?: nu
   const pageSize = params?.pageSize ?? 25;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_nao_conformidades", empresaId, page, pageSize, params?.search, params?.status, params?.severidade],
+    queryKey: [
+      "sgsst_nao_conformidades",
+      empresaId,
+      page,
+      pageSize,
+      params?.search,
+      params?.status,
+      params?.criticidade,
+      params?.origem,
+      params?.vencidasOnly ?? false,
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
       let query = supabase
@@ -138,13 +164,33 @@ export function useSgsstNaoConformidades(params?: { page?: number; pageSize?: nu
         .order("created_at", { ascending: false });
 
       if (params?.search) {
-        query = query.ilike("titulo", `%${params.search}%`);
+        // Antes cobria so `titulo`; a tela promete codigo e descricao tambem.
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(
+            `codigo.ilike.%${term}%,titulo.ilike.%${term}%,descricao.ilike.%${term}%`
+          );
+        }
       }
       if (params?.status && params.status !== "todos") {
         query = query.eq("status", params.status);
       }
-      if (params?.severidade && params.severidade !== "todos") {
-        query = query.eq("severidade", params.severidade);
+      // A coluna e `criticidade`. O parametro antigo se chamava `severidade` e
+      // filtrava por uma coluna inexistente nesta tabela — nunca disparou porque
+      // a tela nao passava o valor, mas quebraria com 400 se passasse.
+      if (params?.criticidade && params.criticidade !== "todos") {
+        query = query.eq("criticidade", params.criticidade);
+      }
+      if (params?.origem && params.origem !== "todos") {
+        query = query.eq("origem_tipo", params.origem);
+      }
+      // "Apenas vencidas" era calculado no cliente sobre a pagina carregada, o
+      // que subestimava o numero de NCs com prazo estourado.
+      if (params?.vencidasOnly) {
+        const hojeIso = new Date().toISOString().slice(0, 10);
+        query = query
+          .lt("prazo", hojeIso)
+          .not("status", "in", `(${STATUS_NC_ENCERRADOS.join(",")})`);
       }
 
       query = query.range(page * pageSize, page * pageSize + pageSize - 1);

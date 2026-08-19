@@ -179,8 +179,21 @@ describe("schema SGSST: colunas usadas em filtros existem", () => {
           // Ignora interpolações de template (${...}).
           if (nome.includes("$")) continue;
           if (!colunasDisponiveis.has(nome)) {
-            problemas.push(`${path.basename(arquivo)} -> coluna "${nome}" não existe`);
+            problemas.push(`${path.basename(arquivo)} -> coluna "${nome}" não existe (filtro or)`);
           }
+        }
+      }
+
+      // Filtros posicionais: .eq("coluna", ...), .in, .gt, .lt, .not, .ilike...
+      // Esta parte faltava, e foi por isso que passou um .eq("severidade", ...)
+      // em sgsst_nao_conformidades, tabela cuja coluna se chama `criticidade`.
+      const OPERADORES = "eq|neq|gt|gte|lt|lte|like|ilike|is|in|not|contains|overlaps";
+      const re = new RegExp(`\\.(?:${OPERADORES})\\(\\s*["']([a-z0-9_]+)["']`, "g");
+
+      for (const m of src.matchAll(re)) {
+        const nome = m[1].toLowerCase();
+        if (!colunasDisponiveis.has(nome)) {
+          problemas.push(`${path.basename(arquivo)} -> coluna "${nome}" não existe (filtro posicional)`);
         }
       }
     }

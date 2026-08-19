@@ -1,0 +1,44 @@
+-- Migration: liga security_invoker nas views de BI consumidas pelo frontend
+--
+-- PROBLEMA: por padrao uma view roda com o privilegio de quem a criou, nao de
+-- quem a consulta. Resultado: o RLS das tabelas de base e ignorado e um usuario
+-- autenticado da empresa A consegue ler dados da empresa B atraves da view.
+-- Revogar o acesso anonimo (20260819191000) fechou quem nao tem login; nao
+-- fechou isto.
+--
+-- Com security_invoker = on, a view passa a rodar com o privilegio do chamador e
+-- o RLS das tabelas de base volta a valer.
+--
+-- POR QUE E SEGURO NESTAS DUAS:
+--
+-- view_bi_producao — todas as tabelas reais do encadeamento tem RLS habilitado e
+--   politica de SELECT para authenticated:
+--     diario_producao, diarios_obra, sites, projetos, areas, itens_lpu,
+--     escopo_itens
+--   O `consolidated_production` que aparece no FROM final e uma CTE (WITH) da
+--   propria view, nao uma tabela — verificado: nao existe como tabela no banco.
+--   Como os joins passam por sites e projetos, que sao filtrados por empresa, o
+--   recorte se propaga para o resultado inteiro.
+--
+-- view_bi_analise_obras — e um involucro sobre get_bi_analise_obras(), que ja e
+--   SECURITY INVOKER (declarada apenas LANGUAGE plpgsql STABLE). Hoje ela roda
+--   como dono porque a VIEW e definer; ligando o invoker, a cadeia inteira passa
+--   a respeitar o RLS do chamador.
+--
+-- O QUE ESPERAR DEPOIS DE APLICAR:
+--   - Power BI: nao muda nada. A edge function powerbi-data usa
+--     SUPABASE_SERVICE_ROLE_KEY, e service_role ignora RLS.
+--   - Frontend: cada usuario passa a ver so os dados da propria empresa. Se hoje
+--     alguem ve mais do que isso, vera menos — e essa e a correcao.
+--   - Se um relatorio ficar vazio para algum perfil, a causa sera politica de RLS
+--     faltando ou restritiva demais na tabela de base, nao esta migration.
+--
+-- TELAS A CONFERIR: ProducaoMensal, QuadroGeral, useForecast (view_bi_producao) e
+-- o Dashboard de medicoes (view_bi_analise_obras).
+
+ALTER VIEW public.view_bi_producao      SET (security_invoker = on);
+ALTER VIEW public.view_bi_analise_obras SET (security_invoker = on);
+
+-- Reversao, se algum relatorio quebrar:
+--   ALTER VIEW public.view_bi_producao      SET (security_invoker = off);
+--   ALTER VIEW public.view_bi_analise_obras SET (security_invoker = off);

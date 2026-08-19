@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { addMonths, addDays, format, parseISO } from "date-fns";
 import { calculateVencimentoTreinamento, StatusVencimentoTreinamento } from "@/utils/sgsstTreinamentosUtils";
 
@@ -243,27 +244,79 @@ export function useSgsstTreinamentos(params?: { page?: number; pageSize?: number
 }
 
 // 2. Hook Turmas de Treinamentos
-export function useSgsstTreinamentosTurmas() {
+export interface SgsstTurmasParams {
+  page?: number;
+  pageSize?: number;
+  /** Busca no código da turma e no instrutor. */
+  search?: string;
+  status?: string;
+}
+
+/** Teto para o uso como lista de apoio. */
+export const TURMAS_LISTA_LIMITE = 1000;
+
+/**
+ * Sem `params`, devolve a lista inteira (uso como lista de apoio).
+ * Com `params`, pagina e filtra no servidor (uso na aba de Turmas).
+ *
+ * A consulta nao tinha limite algum e o PostgREST cortava em silencio no teto de
+ * linhas; turmas acumulam a cada capacitacao realizada.
+ */
+export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: turmas = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_treinamentos_turmas", empresaId],
+  const paginado = !!params;
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 25;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_treinamentos_turmas",
+      empresaId,
+      paginado ? page : "all",
+      paginado ? pageSize : "all",
+      params?.search ?? "",
+      params?.status ?? "",
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      let query = supabase
         .from("sgsst_treinamentos_turmas" as any)
-        .select(`
+        .select(
+          `
           *,
           treinamento:sgsst_treinamentos(*)
-        `)
-        .order("data_inicial", { ascending: false }) as any);
+        `,
+          { count: "exact" }
+        )
+        .order("data_inicial", { ascending: false });
 
+      if (params?.search) {
+        const term = escapeSearchTerm(params.search);
+        if (term) {
+          query = query.or(`codigo_turma.ilike.%${term}%,instrutor.ilike.%${term}%`);
+        }
+      }
+
+      if (params?.status && params.status !== "todos") {
+        query = query.eq("status", params.status);
+      }
+
+      query = paginado
+        ? query.range(page * pageSize, page * pageSize + pageSize - 1)
+        : query.limit(TURMAS_LISTA_LIMITE);
+
+      const { data, error, count } = await (query as any);
       if (error) throw error;
-      return (data as SgsstTreinamentoTurma[]) || [];
+
+      const rows = (data as SgsstTreinamentoTurma[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
+
+  const turmas = data?.rows ?? [];
 
   const createTurma = useMutation({
     mutationFn: async (input: SgsstTreinamentoTurmaInput) => {
@@ -344,6 +397,7 @@ export function useSgsstTreinamentosTurmas() {
 
   return {
     turmas,
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,

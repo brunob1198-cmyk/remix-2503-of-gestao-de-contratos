@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSgsstNaoConformidades, SgsstNaoConformidade, StatusNC, CriticidadeNC, OrigemNC } from "@/hooks/sgsst/useSgsstNaoConformidades";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -39,9 +39,19 @@ export default function SgsstNaoConformidadesListPage() {
     pageSize,
     search: debouncedSearch,
     status: selectedStatus,
+    criticidade: selectedCriticidade,
+    origem: selectedOrigem,
+    vencidasOnly: filterVencidasOnly,
   });
 
   const totalPages = Math.ceil(total / pageSize) || 1;
+
+  // Todos os filtros agora vão ao servidor, então mudar qualquer um deles precisa
+  // voltar para a primeira página — senão a consulta pede um intervalo que o
+  // resultado filtrado não tem e a tabela aparece vazia.
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, selectedStatus, selectedCriticidade, selectedOrigem, filterVencidasOnly]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNc, setEditingNc] = useState<SgsstNaoConformidade | null>(null);
@@ -56,22 +66,6 @@ export default function SgsstNaoConformidadesListPage() {
       return false;
     }
   };
-
-  const filteredNcs = naoConformidades.filter((nc) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      nc.titulo.toLowerCase().includes(term) ||
-      nc.descricao.toLowerCase().includes(term) ||
-      (nc.codigo && nc.codigo.toLowerCase().includes(term)) ||
-      (nc.projeto?.nome && nc.projeto.nome.toLowerCase().includes(term));
-
-    const matchesStatus = selectedStatus === "todos" || nc.status === selectedStatus;
-    const matchesCriticidade = selectedCriticidade === "todos" || nc.criticidade === selectedCriticidade;
-    const matchesOrigem = selectedOrigem === "todos" || nc.origem_tipo === selectedOrigem;
-    const matchesVencidas = !filterVencidasOnly || isVencida(nc);
-
-    return matchesSearch && matchesStatus && matchesCriticidade && matchesOrigem && matchesVencidas;
-  });
 
   const handleCreateNew = () => {
     setEditingNc(null);

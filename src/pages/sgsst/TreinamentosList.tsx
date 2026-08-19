@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useSgsstTreinamentos,
   useSgsstTreinamentosTurmas,
@@ -60,6 +60,13 @@ export default function SgsstTreinamentosListPage() {
   const debouncedSearchCat = useDebounce(searchTermCat, 400);
   const [filterCat, setFilterCat] = useState("todos");
 
+  // Turmas pagination & filters
+  const [pageTurma, setPageTurma] = useState(0);
+  const [pageSizeTurma, setPageSizeTurma] = useState(25);
+  const [searchTermTurma, setSearchTermTurma] = useState("");
+  const debouncedSearchTurma = useDebounce(searchTermTurma, 400);
+  const [filterStatusTurma, setFilterStatusTurma] = useState("todos");
+
   // Vencimentos pagination & filters
   const [pageVenc, setPageVenc] = useState(0);
   const [pageSizeVenc, setPageSizeVenc] = useState(25);
@@ -74,7 +81,13 @@ export default function SgsstTreinamentosListPage() {
     categoria: filterCat,
   });
 
-  const { turmas, isLoading: loadingTurmas, error: errTurmas, createTurma, updateTurma, removeTurma } = useSgsstTreinamentosTurmas();
+  const { turmas, total: totalTurmas, isLoading: loadingTurmas, error: errTurmas, createTurma, updateTurma, removeTurma } =
+    useSgsstTreinamentosTurmas({
+      page: pageTurma,
+      pageSize: pageSizeTurma,
+      search: debouncedSearchTurma,
+      status: filterStatusTurma,
+    });
 
   const { todosParticipantes, total: totalVenc, isLoading: loadingTodosPart, error: errParticipantes } = useSgsstTodosParticipantes({
     page: pageVenc,
@@ -86,13 +99,19 @@ export default function SgsstTreinamentosListPage() {
 
   const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
   const totalPagesVenc = Math.ceil(totalVenc / pageSizeVenc) || 1;
+  const totalPagesTurmas = Math.ceil(totalTurmas / pageSizeTurma) || 1;
+
+  // Volta a primeira pagina quando os filtros da aba mudam, senao a consulta pede
+  // um intervalo que o resultado filtrado nao tem e a tabela aparece vazia.
+  useEffect(() => {
+    setPageTurma(0);
+  }, [debouncedSearchTurma, filterStatusTurma]);
 
   const [isTrFormOpen, setIsTrFormOpen] = useState(false);
   const [editingTr, setEditingTr] = useState<SgsstTreinamento | null>(null);
 
-  // Turmas Filters
-  const [searchTermTurma, setSearchTermTurma] = useState("");
-  const [filterStatusTurma, setFilterStatusTurma] = useState("todos");
+  // Turmas — o estado de paginação e filtro fica declarado acima, junto dos
+  // demais, porque agora é passado como parâmetro para o hook.
   const [isTurmaFormOpen, setIsTurmaFormOpen] = useState(false);
   const [editingTurma, setEditingTurma] = useState<SgsstTreinamentoTurma | null>(null);
 
@@ -124,19 +143,6 @@ export default function SgsstTreinamentosListPage() {
 
     const matchesCat = filterCat === "todos" || t.categoria === filterCat;
     return matchesSearch && matchesCat;
-  });
-
-  // Filter Turmas
-  const filteredTurmas = turmas.filter((t) => {
-    const term = searchTermTurma.toLowerCase();
-    const trNome = t.treinamento?.nome || "";
-    const matchesSearch =
-      trNome.toLowerCase().includes(term) ||
-      (t.codigo_turma && t.codigo_turma.toLowerCase().includes(term)) ||
-      (t.instrutor && t.instrutor.toLowerCase().includes(term));
-
-    const matchesStatus = filterStatusTurma === "todos" || t.status === filterStatusTurma;
-    return matchesSearch && matchesStatus;
   });
 
   // Filter Vencimentos
@@ -483,10 +489,10 @@ export default function SgsstTreinamentosListPage() {
                 <TableBody>
                   {loadingTurmas ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando turmas de treinamentos...</TableCell></TableRow>
-                  ) : filteredTurmas.length === 0 ? (
+                  ) : turmas.length === 0 ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma turma cadastrada.</TableCell></TableRow>
                   ) : (
-                    filteredTurmas.map((turma) => (
+                    turmas.map((turma) => (
                       <TableRow key={turma.id}>
                         <TableCell className="font-mono text-xs font-bold">{turma.codigo_turma || "TURMA"}</TableCell>
                         <TableCell className="font-medium max-w-xs truncate">{turma.treinamento?.nome || "—"}</TableCell>
@@ -536,6 +542,17 @@ export default function SgsstTreinamentosListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageTurma + 1}
+                totalPages={totalPagesTurmas}
+                onPageChange={(p) => setPageTurma(p - 1)}
+                itemsPerPage={pageSizeTurma}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeTurma(v);
+                  setPageTurma(0);
+                }}
+                totalItems={totalTurmas}
+              />
             </CardContent>
           </Card>
         </TabsContent>
