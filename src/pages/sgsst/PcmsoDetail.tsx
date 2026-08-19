@@ -4,12 +4,19 @@ import {
   useSgsstPcmso,
   useSgsstPcmsoDetail,
   useSgsstPcmsoExames,
+  FAIXA_ETARIA_LABEL,
   useSgsstPcmsoHistorico,
   StatusPcmso,
   TipoExamePcmso,
+  FaixaEtariaPcmso,
   SgsstPcmsoExame,
 } from "@/hooks/sgsst/useSgsstPcmso";
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
+import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { gerarPdfPcmso, pendenciasPcmso } from "@/lib/pcmsoDocumento";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +58,9 @@ export default function SgsstPcmsoDetailPage() {
   const { data: currentPcmso, isLoading: loadingDetail } = useSgsstPcmsoDetail(pcmsoId);
 
   const { funcoes } = useSgsstFuncoes();
+  const { riscos: riscosCatalogo } = useSgsstRiscos();
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
   const { exames, isLoading: loadingExames, addExame, removeExame } = useSgsstPcmsoExames(pcmsoId);
   const { historico } = useSgsstPcmsoHistorico(pcmsoId);
 
@@ -67,6 +77,11 @@ export default function SgsstPcmsoDetailPage() {
   const [funcaoId, setFuncaoId] = useState("none");
   const [grupoRisco, setGrupoRisco] = useState("");
   const [obsExame, setObsExame] = useState("");
+  const [justificativa, setJustificativa] = useState("");
+  const [baseLegal, setBaseLegal] = useState("");
+  const [faixaEtaria, setFaixaEtaria] = useState<FaixaEtariaPcmso>("TODAS");
+  const [riscoId, setRiscoId] = useState("none");
+  const [emitindo, setEmitindo] = useState(false);
 
   if (loadingDetail) {
     return (
@@ -114,6 +129,40 @@ export default function SgsstPcmsoDetailPage() {
     });
   };
 
+  /**
+   * Emite o documento-base em PDF.
+   *
+   * Avisa antes sobre os itens obrigatórios da NR-07 que estão vazios, em vez de
+   * deixar o usuário descobrir a pendência com o PDF já na mão. O aviso não
+   * bloqueia: às vezes é preciso emitir um rascunho para revisão.
+   */
+  const handleEmitirPdf = async () => {
+    const pendencias = pendenciasPcmso(currentPcmso, exames);
+
+    if (pendencias.length > 0) {
+      toast.warning(`Emitindo com ${pendencias.length} pendência(s)`, {
+        description: pendencias.join(" · "),
+        duration: 8000,
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfPcmso({
+        pcmso: currentPcmso,
+        exames,
+        empresa,
+        geradoPor: profile?.nome ?? null,
+      });
+      toast.success("Documento gerado.");
+    } catch (err) {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Não foi possível gerar o PDF: ${detalhe}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
+
   const handleAddExameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeExame.trim()) return;
@@ -126,12 +175,20 @@ export default function SgsstPcmsoDetailPage() {
       funcao_id: funcaoId === "none" ? null : funcaoId,
       grupo_risco: grupoRisco.trim() || null,
       observacoes: obsExame.trim() || null,
+      justificativa_tecnica: justificativa.trim() || null,
+      base_legal: baseLegal.trim() || null,
+      faixa_etaria: faixaEtaria,
+      risco_catalogo_id: riscoId === "none" ? null : riscoId,
     });
 
     setIsAddExameOpen(false);
     setNomeExame("");
     setGrupoRisco("");
     setObsExame("");
+    setJustificativa("");
+    setBaseLegal("");
+    setFaixaEtaria("TODAS");
+    setRiscoId("none");
   };
 
   return (
@@ -164,6 +221,21 @@ export default function SgsstPcmsoDetailPage() {
             </div>
 
             {/* Workflow Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {/* Emitir fica fora do allowEdit: quem só consulta também precisa
+                  poder tirar o documento para auditoria. */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEmitirPdf}
+                disabled={emitindo}
+                title="Gerar o documento-base do PCMSO em PDF"
+              >
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                {emitindo ? "Gerando…" : "Emitir PCMSO (PDF)"}
+              </Button>
+            </div>
+
             {allowEdit && (
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {!isReadOnly && (
@@ -258,8 +330,10 @@ export default function SgsstPcmsoDetailPage() {
                     <TableHead>Tipo de Exame</TableHead>
                     <TableHead>Periodicidade</TableHead>
                     <TableHead>Função Aplicável</TableHead>
-                    <TableHead>Grupo de Risco</TableHead>
-                    <TableHead>Observações</TableHead>
+                    <TableHead>Faixa Etária</TableHead>
+                    <TableHead>Risco Associado</TableHead>
+                    <TableHead>Base Legal</TableHead>
+                    <TableHead>Justificativa</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -275,8 +349,29 @@ export default function SgsstPcmsoDetailPage() {
                         <TableCell><Badge variant="outline" className="text-xs">{ex.tipo_exame}</Badge></TableCell>
                         <TableCell className="text-xs font-mono">{ex.periodicidade_meses} mês(es)</TableCell>
                         <TableCell className="text-xs">{ex.funcao?.nome || "Todas as Funções"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{ex.grupo_risco || "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{ex.observacoes || "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {ex.faixa_etaria && ex.faixa_etaria !== "TODAS" ? (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-800 border-blue-200">
+                              {FAIXA_ETARIA_LABEL[ex.faixa_etaria]}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Todas</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {ex.risco ? (
+                            <span title={ex.risco.categoria}>
+                              {ex.risco.codigo ? <span className="font-mono text-muted-foreground">{ex.risco.codigo} </span> : null}
+                              {ex.risco.nome}
+                            </span>
+                          ) : ex.grupo_risco ? (
+                            <span className="text-muted-foreground italic" title="Texto livre do cadastro antigo">{ex.grupo_risco}</span>
+                          ) : (
+                            <span className="text-amber-600" title="Sem risco vinculado: o exame fica sem justificativa técnica no documento">— não vinculado</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{ex.base_legal || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[16rem] truncate" title={ex.justificativa_tecnica || undefined}>{ex.justificativa_tecnica || "—"}</TableCell>
                         <TableCell className="text-right">
                           {allowEdit && !isReadOnly && (
                             <SgsstConfirmDelete
@@ -444,14 +539,68 @@ export default function SgsstPcmsoDetailPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="grupo">Grupo de Risco</Label>
-                <Input
-                  id="grupo"
-                  placeholder="Ex: Ruído elevado, Trabalho em altura..."
-                  value={grupoRisco}
-                  onChange={(e) => setGrupoRisco(e.target.value)}
-                />
+                <Label htmlFor="faixa">Faixa etária</Label>
+                <Select
+                  value={faixaEtaria}
+                  onValueChange={(v: FaixaEtariaPcmso) => setFaixaEtaria(v)}
+                >
+                  <SelectTrigger id="faixa">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(FAIXA_ETARIA_LABEL) as FaixaEtariaPcmso[]).map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {FAIXA_ETARIA_LABEL[k]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            {/* Vínculo ao catálogo de riscos: substitui o "grupo de risco" em texto
+                livre, e é o que permite justificar tecnicamente o exame. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="riscoEx">Risco que justifica este exame</Label>
+              <Select value={riscoId} onValueChange={setRiscoId}>
+                <SelectTrigger id="riscoEx">
+                  <SelectValue placeholder="Selecione do catálogo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-- Sem risco específico --</SelectItem>
+                  {riscosCatalogo.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.codigo ? `[${r.codigo}] ` : ""}
+                      {r.nome} · {r.categoria}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Mesmo catálogo usado no PGR, APR e PT. Se estiver vazio, popule em
+                Cadastros → Riscos.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="justif">Justificativa técnica</Label>
+              <Textarea
+                id="justif"
+                rows={2}
+                placeholder="Ex.: Exposição a ruído acima do limite de tolerância exige audiometria anual para detecção precoce de PAIR."
+                value={justificativa}
+                onChange={(e) => setJustificativa(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="baseLeg">Base legal</Label>
+              <Input
+                id="baseLeg"
+                placeholder="Ex.: NR-07 Anexo I · NR-15 Anexo 1 · ACGIH"
+                value={baseLegal}
+                onChange={(e) => setBaseLegal(e.target.value)}
+              />
             </div>
 
             <div className="space-y-1.5">

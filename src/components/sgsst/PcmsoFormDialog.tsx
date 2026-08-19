@@ -40,6 +40,9 @@ export function PcmsoFormDialog({
   const [status, setStatus] = useState<StatusPcmso>("RASCUNHO");
   const [objetivo, setObjetivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [agravosSaude, setAgravosSaude] = useState("");
+  const [criteriosConduta, setCriteriosConduta] = useState("");
+  const [anoReferencia, setAnoReferencia] = useState<string>(String(new Date().getFullYear()));
 
   // Load projetos
   const { data: projetos = [] } = useQuery({
@@ -68,6 +71,9 @@ export function PcmsoFormDialog({
       setStatus(pcmso.status || "RASCUNHO");
       setObjetivo(pcmso.objetivo || "");
       setObservacoes(pcmso.observacoes || "");
+      setAgravosSaude(pcmso.agravos_saude || "");
+      setCriteriosConduta(pcmso.criterios_conduta || "");
+      setAnoReferencia(String(pcmso.ano_referencia ?? new Date().getFullYear()));
     } else {
       setCodigo("");
       setTitulo("");
@@ -101,6 +107,9 @@ export function PcmsoFormDialog({
       status,
       objetivo: objetivo.trim() || null,
       observacoes: observacoes.trim() || null,
+      agravos_saude: agravosSaude.trim() || null,
+      criterios_conduta: criteriosConduta.trim() || null,
+      ano_referencia: Number(anoReferencia) || new Date().getFullYear(),
     });
 
     onOpenChange(false);
@@ -236,16 +245,72 @@ export function PcmsoFormDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="observacoes">Observações Gerais</Label>
-            <Textarea
-              id="observacoes"
-              placeholder="Clínicas conveniadas, contatos de emergência..."
-              rows={2}
-              value={observacoes}
-              onChange={(e) => setObservacoes(e.target.value)}
-              disabled={isReadOnly}
-            />
+          {/* Campos exigidos pelo item 7.5 da NR-07. Sem eles o programa não pode
+              ser emitido como documento: são o conteúdo que a norma manda descrever. */}
+          <div className="rounded-md border border-amber-200 bg-amber-50/50 p-3 space-y-3 dark:border-amber-900 dark:bg-amber-950/20">
+            <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+              Conteúdo obrigatório do programa · NR-07 item 7.5
+            </p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="agravos">Agravos à saúde relacionados aos riscos *</Label>
+              <Textarea
+                id="agravos"
+                placeholder="Ex.: Exposição a ruído acima de 85 dB(A) pode causar perda auditiva induzida por ruído (PAIR). Sílica cristalina está associada a silicose e câncer de pulmão..."
+                rows={3}
+                value={agravosSaude}
+                onChange={(e) => setAgravosSaude(e.target.value)}
+                disabled={isReadOnly}
+              />
+              <p className="text-xs text-muted-foreground">
+                Descreva o que cada risco da obra pode causar à saúde. É o que liga o
+                inventário de riscos aos exames escolhidos.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="criterios">Critérios de interpretação e conduta *</Label>
+              <Textarea
+                id="criterios"
+                placeholder="Ex.: Audiometria com perda em 3, 4 e 6 kHz → afastar da exposição, reavaliar em 30 dias e comunicar ao SESMT. Espirometria alterada → encaminhar ao pneumologista..."
+                rows={3}
+                value={criteriosConduta}
+                onChange={(e) => setCriteriosConduta(e.target.value)}
+                disabled={isReadOnly}
+              />
+              <p className="text-xs text-muted-foreground">
+                O que fazer quando um exame vem alterado. Precisa ser conhecido por
+                todos os médicos que realizam os exames.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="anoRef">Ano de referência</Label>
+              <Input
+                id="anoRef"
+                type="number"
+                min={2000}
+                max={2100}
+                value={anoReferencia}
+                onChange={(e) => setAnoReferencia(e.target.value)}
+                disabled={isReadOnly}
+              />
+              <p className="text-xs text-muted-foreground">Base do relatório anual.</p>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="observacoes">Observações Gerais</Label>
+              <Textarea
+                id="observacoes"
+                placeholder="Contatos de emergência, particularidades da obra..."
+                rows={2}
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                disabled={isReadOnly}
+              />
+            </div>
           </div>
 
           <DialogFooter className="pt-2">

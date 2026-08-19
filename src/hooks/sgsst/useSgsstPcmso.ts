@@ -14,6 +14,16 @@ export type TipoExamePcmso =
   | "Demissional"
   | "Outros";
 
+/** Faixas de idade da NR-07 7.5.4.2, que mudam a periodicidade do exame clínico. */
+export type FaixaEtariaPcmso = "TODAS" | "MENOR_18" | "ENTRE_18_45" | "MAIOR_45";
+
+export const FAIXA_ETARIA_LABEL: Record<FaixaEtariaPcmso, string> = {
+  TODAS: "Todas as idades",
+  MENOR_18: "Menores de 18 anos",
+  ENTRE_18_45: "Entre 18 e 45 anos",
+  MAIOR_45: "Acima de 45 anos",
+};
+
 export interface SgsstPcmso {
   id: string;
   empresa_id: string;
@@ -28,6 +38,12 @@ export interface SgsstPcmso {
   status: StatusPcmso;
   objetivo?: string | null;
   observacoes?: string | null;
+  /** NR-07 7.5: agravos à saúde relacionados aos riscos identificados. */
+  agravos_saude?: string | null;
+  /** NR-07 7.5: critérios de interpretação dos achados e condutas. */
+  criterios_conduta?: string | null;
+  /** Exercício a que o programa se refere; base do relatório analítico anual. */
+  ano_referencia?: number | null;
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string;
@@ -49,10 +65,20 @@ export interface SgsstPcmsoExame {
   tipo_exame: TipoExamePcmso;
   periodicidade_meses: number;
   funcao_id?: string | null;
+  /** @deprecated Texto livre mantido por compatibilidade. Use `risco_catalogo_id`. */
   grupo_risco?: string | null;
   observacoes?: string | null;
+  /** Correlação risco → exame, exigida na defesa técnica do programa. */
+  justificativa_tecnica?: string | null;
+  /** Ex.: "NR-07 Anexo I", "NR-15 Anexo 11". */
+  base_legal?: string | null;
+  /** Faixa a que esta periodicidade se aplica (NR-07 7.5.4.2). */
+  faixa_etaria?: FaixaEtariaPcmso | null;
+  /** Vínculo ao mesmo catálogo de riscos usado por PGR, APR e PT. */
+  risco_catalogo_id?: string | null;
   created_at?: string;
   funcao?: { id: string; nome: string } | null;
+  risco?: { id: string; codigo: string | null; nome: string; categoria: string } | null;
 }
 
 export interface SgsstPcmsoHistorico {
@@ -313,7 +339,7 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: exames = [], isLoading, refetch } = useQuery({
+  const { data: exames = [], isLoading, error, refetch } = useQuery({
     queryKey: ["sgsst_pcmso_exames", pcmsoId],
     enabled: !!pcmsoId && !!empresaId,
     queryFn: async () => {
@@ -321,7 +347,8 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
         .from("sgsst_pcmso_exames" as any)
         .select(`
           *,
-          funcao:sgsst_funcoes(id, nome)
+          funcao:sgsst_funcoes(id, nome),
+          risco:sgsst_riscos_catalogo(id, codigo, nome, categoria)
         `)
         .eq("pcmso_id", pcmsoId!)
         .order("created_at", { ascending: true }) as any);
@@ -380,6 +407,7 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
   return {
     exames,
     isLoading,
+    error,
     refetch,
     addExame,
     removeExame,
