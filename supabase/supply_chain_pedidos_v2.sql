@@ -1,7 +1,36 @@
 -- ============================================================
 -- SUPPLY CHAIN — Pedidos e Avaliações de Fornecedor
 -- Supabase SQL + RLS
--- Ordem de execução: rodar tudo de uma vez no SQL Editor
+-- ============================================================
+--
+-- ⚠️  NÃO EXECUTAR ESTE ARQUIVO. ⚠️
+--
+-- Ele é o registro histórico de um DDL aplicado à mão em produção em
+-- 11/06/2026, e é hoje a única definição versionada das tabelas `pedidos`,
+-- `pedido_recebimentos`, `pedido_recebimento_itens`, `avaliacoes_fornecedor`
+-- e do enum `pedido_status`. Está mantido para servir de fonte a uma futura
+-- migration de backfill.
+--
+-- Duas partes deste arquivo DIVERGEM do que está em produção e NÃO devem ser
+-- reproduzidas nessa migration:
+--
+-- 1. As políticas `pedido_itens_*` (linhas ~309-319) e `recebimentos_select`
+--    (linha ~322) usam USING (true) / WITH CHECK (true). Políticas permissivas
+--    se combinam com OR, então aplicá-las ANULARIA o isolamento por empresa
+--    das políticas que hoje protegem essas tabelas.
+--
+--    Verificado em produção via pg_get_policies em 19/08/2026: essas políticas
+--    NÃO existem. `pedido_itens` tem apenas View/Insert/Update/Delete, todas
+--    escopadas por pedidos_compra.empresa_id = get_user_empresa_id(auth.uid()),
+--    e `pedido_recebimentos` usa as variantes *_scoped. Ou seja, este trecho
+--    nunca foi aplicado — reintroduzi-lo seria criar uma falha de segurança
+--    que hoje não existe.
+--
+-- 2. O bloco `CREATE TABLE IF NOT EXISTS pedido_itens` (linhas ~69-89) descreve
+--    uma tabela diferente da que está em produção. A `pedido_itens` real foi
+--    criada em 20260407002150 e referencia `pedidos_compra`, não `pedidos`.
+--    Aqui o IF NOT EXISTS tornou o bloco inócuo; num banco vazio ele criaria a
+--    tabela errada.
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -306,6 +335,10 @@ CREATE POLICY "pedidos_delete" ON pedidos
   USING (status = 'rascunho' AND criado_por = auth.uid() AND empresa_id IN (SELECT empresa_id FROM profiles WHERE id = auth.uid()));
 
 -- PEDIDO ITENS
+-- ⚠️ NÃO REPRODUZIR NA MIGRATION DE BACKFILL: ver aviso no topo do arquivo.
+-- Estas 4 políticas nunca foram aplicadas em produção. Se fossem, anulariam
+-- por OR o escopo por empresa das políticas View/Insert/Update/Delete
+-- pedido_itens, que sao as que realmente protegem a tabela hoje.
 CREATE POLICY "pedido_itens_select" ON pedido_itens
   FOR SELECT TO authenticated USING (true);
 
@@ -319,6 +352,8 @@ CREATE POLICY "pedido_itens_delete" ON pedido_itens
   FOR DELETE TO authenticated USING (true);
 
 -- RECEBIMENTOS
+-- ⚠️ NÃO REPRODUZIR: em producao esta politica foi substituida por
+-- recebimentos_select_scoped, que filtra por projetos.empresa_id.
 CREATE POLICY "recebimentos_select" ON pedido_recebimentos
   FOR SELECT TO authenticated USING (true);
 
