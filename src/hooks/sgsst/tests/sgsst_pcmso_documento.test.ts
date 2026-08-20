@@ -124,7 +124,7 @@ describe("montarHtmlPcmso", () => {
       exames: [exame()],
       empresa,
     });
-    expect(html).toContain("pcmso-pendente");
+    expect(html).toContain("doc-aviso");
     expect(html).toContain("NR-07 item 7.5");
   });
 

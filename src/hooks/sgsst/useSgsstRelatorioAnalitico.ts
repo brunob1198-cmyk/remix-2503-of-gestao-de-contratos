@@ -38,14 +38,14 @@ export interface ResumoAnual {
   resultadosInconclusivos: number;
   /** Exames realizados sem classificação — o relatório não pode fingir que são normais. */
   resultadosNaoClassificados: number;
-  /** (d) Alterados por setor, base da incidência. */
-  alteradosPorSetor: ContagemPorChave[];
+  /** (d) Alterados por obra, base da incidência. */
+  alteradosPorObra: ContagemPorChave[];
   /** ASOs emitidos no ano, por conclusão de aptidão. */
   asosPorAptidao: ContagemPorChave[];
   /** (e) CATs emitidas. */
   cats: number;
   catsPorTipo: ContagemPorChave[];
-  catsPorSetor: ContagemPorChave[];
+  catsPorObra: ContagemPorChave[];
   diasAfastamento: number;
   obitos: number;
   /** Trabalhadores ativos, denominador da prevalência. */
@@ -95,7 +95,21 @@ interface ExameLinha {
   natureza: string | null;
   nome_exame: string | null;
   resultado_classificacao: string | null;
-  colaborador: { area?: { nome: string } | null } | null;
+  colaborador: { projeto?: { nome: string } | null } | null;
+  /** Fallback quando o trabalhador não tem obra: o escopo do programa. */
+  pcmso: { projeto?: { nome: string } | null } | null;
+}
+
+/**
+ * Obra a que o exame se refere.
+ *
+ * Prioriza a obra do trabalhador, que é onde ele efetivamente trabalha, e cai
+ * para a obra do programa quando o cadastro do trabalhador não a tem. Um PCMSO
+ * pode ser geral da empresa, então esse fallback nem sempre resolve — daí o
+ * rótulo explícito quando não há nenhuma das duas.
+ */
+function obraDoExame(e: ExameLinha): string | undefined {
+  return e.colaborador?.projeto?.nome || e.pcmso?.projeto?.nome || undefined;
 }
 
 interface AsoLinha {
@@ -106,7 +120,8 @@ interface CatLinha {
   tipo_cat: string | null;
   dias_afastamento: number | null;
   houve_obito: boolean | null;
-  area: { nome: string } | null;
+  projeto: { nome: string } | null;
+  colaborador: { projeto?: { nome: string } | null } | null;
 }
 
 async function carregarAno(ano: number): Promise<ResumoAnual> {
@@ -117,7 +132,9 @@ async function carregarAno(ano: number): Promise<ResumoAnual> {
     // Só o que foi efetivamente realizado no exercício.
     supabase
       .from("sgsst_exames" as never)
-      .select("natureza, nome_exame, resultado_classificacao, colaborador:sgsst_colaborador_dados(area:areas(nome))")
+      .select(
+        "natureza, nome_exame, resultado_classificacao, colaborador:sgsst_colaborador_dados(projeto:projetos(nome)), pcmso:sgsst_pcmso(projeto:projetos(nome))"
+      )
       .eq("status", "REALIZADO")
       .gte("data_realizacao", inicio)
       .lte("data_realizacao", fim) as never as Promise<{ data: ExameLinha[] | null; error: unknown }>,
@@ -130,7 +147,9 @@ async function carregarAno(ano: number): Promise<ResumoAnual> {
 
     supabase
       .from("sgsst_cats" as never)
-      .select("tipo_cat, dias_afastamento, houve_obito, area:areas(nome)")
+      .select(
+        "tipo_cat, dias_afastamento, houve_obito, projeto:projetos(nome), colaborador:sgsst_colaborador_dados(projeto:projetos(nome))"
+      )
       .gte("data_acidente", inicio)
       .lte("data_acidente", fim) as never as Promise<{ data: CatLinha[] | null; error: unknown }>,
 
@@ -164,10 +183,7 @@ async function carregarAno(ano: number): Promise<ResumoAnual> {
     resultadosInconclusivos: exames.filter((e) => e.resultado_classificacao === "INCONCLUSIVO")
       .length,
     resultadosNaoClassificados: exames.filter((e) => !e.resultado_classificacao).length,
-    alteradosPorSetor: agrupar(
-      alterados.map((e) => e.colaborador?.area?.nome),
-      "Setor não informado"
-    ),
+    alteradosPorObra: agrupar(alterados.map(obraDoExame), "Obra não informada"),
     asosPorAptidao: agrupar(
       asos.map((a) => a.aptidao),
       "Sem conclusão"
@@ -177,9 +193,9 @@ async function carregarAno(ano: number): Promise<ResumoAnual> {
       cats.map((c) => c.tipo_cat),
       "Sem tipo"
     ),
-    catsPorSetor: agrupar(
-      cats.map((c) => c.area?.nome),
-      "Setor não informado"
+    catsPorObra: agrupar(
+      cats.map((c) => c.projeto?.nome || c.colaborador?.projeto?.nome),
+      "Obra não informada"
     ),
     diasAfastamento: cats.reduce((s, c) => s + (c.dias_afastamento ?? 0), 0),
     obitos: cats.filter((c) => c.houve_obito === true).length,

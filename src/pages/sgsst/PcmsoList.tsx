@@ -28,6 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
 import { SgsstCatsTab } from "@/components/sgsst/SgsstCatsTab";
 import { SgsstRelatorioAnaliticoTab } from "@/components/sgsst/SgsstRelatorioAnaliticoTab";
+import { SgsstConvocacaoTab } from "@/components/sgsst/SgsstConvocacaoTab";
+import { SgsstClinicasTab } from "@/components/sgsst/SgsstClinicasTab";
 import {
   Plus,
   Search,
@@ -46,6 +48,8 @@ import {
   CheckSquare,
   Siren,
   ClipboardList,
+  CalendarClock,
+  Building2,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
@@ -403,7 +407,7 @@ export default function SgsstPcmsoListPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
           <TabsTrigger value="pcmso" className="gap-2">
             <HeartPulse className="h-4 w-4" /> PCMSO (Programas)
           </TabsTrigger>
@@ -415,6 +419,12 @@ export default function SgsstPcmsoListPage() {
           </TabsTrigger>
           <TabsTrigger value="cats" className="gap-2">
             <Siren className="h-4 w-4" /> CATs
+          </TabsTrigger>
+          <TabsTrigger value="convocacao" className="gap-2">
+            <CalendarClock className="h-4 w-4" /> Convocação
+          </TabsTrigger>
+          <TabsTrigger value="clinicas" className="gap-2">
+            <Building2 className="h-4 w-4" /> Clínicas
           </TabsTrigger>
           <TabsTrigger value="relatorio" className="gap-2">
             <ClipboardList className="h-4 w-4" /> Relatório Analítico
@@ -799,6 +809,14 @@ export default function SgsstPcmsoListPage() {
 
         <TabsContent value="cats" className="space-y-4 pt-4">
           <SgsstCatsTab />
+        </TabsContent>
+
+        <TabsContent value="convocacao" className="space-y-4 pt-4">
+          <SgsstConvocacaoTab />
+        </TabsContent>
+
+        <TabsContent value="clinicas" className="space-y-4 pt-4">
+          <SgsstClinicasTab />
         </TabsContent>
 
         <TabsContent value="relatorio" className="space-y-4 pt-4">

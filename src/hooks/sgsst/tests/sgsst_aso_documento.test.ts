@@ -173,7 +173,7 @@ describe("montarHtmlAso", () => {
 
   it("destaca o campo obrigatório vazio em vez de deixar em branco", () => {
     const html = montarHtmlAso(asoCompleto({ descricao_riscos: null }));
-    expect(html).toContain("aso-pendente");
+    expect(html).toContain("doc-aviso");
     expect(html).toMatch(/Campo obrigat[óo]rio/i);
   });
 

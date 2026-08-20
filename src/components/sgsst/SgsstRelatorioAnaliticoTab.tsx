@@ -297,12 +297,12 @@ export function SgsstRelatorioAnaliticoTab() {
 
         <Card>
           <CardHeader className="py-3">
-            <CardTitle className="text-sm">d) Incidência por setor — alterados</CardTitle>
+            <CardTitle className="text-sm">d) Incidência por obra — alterados</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <TabelaContagem
-              itens={a.alteradosPorSetor}
-              rotulo="Setor"
+              itens={a.alteradosPorObra}
+              rotulo="Obra"
               vazio="Nenhum resultado alterado no período."
             />
           </CardContent>

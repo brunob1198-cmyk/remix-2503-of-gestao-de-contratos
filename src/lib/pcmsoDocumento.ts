@@ -1,4 +1,5 @@
 import { pdfGlobalStyles, getPdfOptions } from "@/lib/pdfTemplates";
+import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
 import {
   FAIXA_ETARIA_LABEL,
   type SgsstPcmso,
@@ -42,7 +43,7 @@ function dataBr(iso?: string | null): string {
 function bloco(texto: string | null | undefined, aviso: string): string {
   const t = (texto ?? "").trim();
   if (!t) {
-    return `<p class="pcmso-pendente">⚠ ${esc(aviso)}</p>`;
+    return `<p class="doc-aviso">⚠ ${esc(aviso)}</p>`;
   }
   return t
     .split(/\n{2,}|\r?\n/)
@@ -63,7 +64,7 @@ const ORDEM_TIPO = [
 /** Agrupa o quadro por função, que é o agrupamento adotado no lugar do GHE. */
 function quadroExames(exames: SgsstPcmsoExame[]): string {
   if (exames.length === 0) {
-    return `<p class="pcmso-pendente">⚠ Nenhum exame previsto. O planejamento de exames é obrigatório (NR-07 7.5).</p>`;
+    return `<p class="doc-aviso">⚠ Nenhum exame previsto. O planejamento de exames é obrigatório (NR-07 7.5).</p>`;
   }
 
   const porFuncao = new Map<string, SgsstPcmsoExame[]>();
@@ -88,7 +89,7 @@ function quadroExames(exames: SgsstPcmsoExame[]): string {
             ? `${ex.risco.codigo ? `[${esc(ex.risco.codigo)}] ` : ""}${esc(ex.risco.nome)}`
             : ex.grupo_risco
               ? `<em>${esc(ex.grupo_risco)}</em>`
-              : `<span class="pcmso-falta">não vinculado</span>`;
+              : `<span class="doc-falta">não vinculado</span>`;
 
           const faixa =
             ex.faixa_etaria && ex.faixa_etaria !== "TODAS"
@@ -98,22 +99,22 @@ function quadroExames(exames: SgsstPcmsoExame[]): string {
           return `<tr>
             <td><strong>${esc(ex.nome_exame)}</strong></td>
             <td>${esc(ex.tipo_exame)}</td>
-            <td class="pcmso-center">${esc(ex.periodicidade_meses)} m</td>
-            <td class="pcmso-center">${faixa}</td>
+            <td class="doc-centro-txt">${esc(ex.periodicidade_meses)} m</td>
+            <td class="doc-centro-txt">${faixa}</td>
             <td>${risco}</td>
-            <td>${ex.base_legal ? esc(ex.base_legal) : `<span class="pcmso-falta">—</span>`}</td>
+            <td>${ex.base_legal ? esc(ex.base_legal) : `<span class="doc-falta">—</span>`}</td>
             <td>${
               ex.justificativa_tecnica
                 ? esc(ex.justificativa_tecnica)
-                : `<span class="pcmso-falta">sem justificativa técnica</span>`
+                : `<span class="doc-falta">sem justificativa técnica</span>`
             }</td>
           </tr>`;
         })
         .join("");
 
       return `
-        <h3 class="pcmso-grupo">Função: ${esc(funcao)}</h3>
-        <table class="pcmso-tabela">
+        <h3 class="doc-grupo">Função: ${esc(funcao)}</h3>
+        <table class="doc-tabela">
           <thead>
             <tr>
               <th style="width:19%">Exame / Procedimento</th>
@@ -131,40 +132,7 @@ function quadroExames(exames: SgsstPcmsoExame[]): string {
     .join("");
 }
 
-const ESTILOS_PCMSO = `
-  <style>
-    .pcmso-doc { padding: 18px 26px; }
-    .pcmso-cabecalho { border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
-    .pcmso-cabecalho h1 { font-size: 17px; color: #1e3a5f; margin: 0 0 4px; text-transform: uppercase; letter-spacing: -.01em; }
-    .pcmso-cabecalho .pcmso-sub { font-size: 11px; color: #475569; margin: 0; }
-    .pcmso-ident { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #1e3a5f;
-      border-radius: 4px; padding: 10px 14px; margin-bottom: 18px; }
-    .pcmso-ident table { width: 100%; border-collapse: collapse; }
-    .pcmso-ident td { font-size: 10.5px; color: #334155; padding: 2px 0; vertical-align: top; }
-    .pcmso-ident td.rot { color: #64748b; width: 24%; }
-    h2.pcmso-sec { font-size: 12px; color: #1e3a5f; text-transform: uppercase; letter-spacing: .04em;
-      border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin: 18px 0 8px; }
-    h3.pcmso-grupo { font-size: 11px; color: #334155; margin: 12px 0 5px; }
-    .pcmso-doc p { font-size: 10.5px; color: #334155; margin: 0 0 6px; text-align: justify; }
-    .pcmso-pendente { background: #fef3c7; border-left: 3px solid #d97706; padding: 6px 9px;
-      color: #92400e !important; font-size: 10px !important; border-radius: 2px; }
-    .pcmso-falta { color: #b45309; font-style: italic; }
-    table.pcmso-tabela { width: 100%; border-collapse: collapse; margin-bottom: 10px;
-      page-break-inside: auto; }
-    table.pcmso-tabela th { background: #1e3a5f; color: #fff; font-size: 8.5px; text-transform: uppercase;
-      letter-spacing: .03em; padding: 5px 6px; text-align: left; }
-    table.pcmso-tabela td { font-size: 9px; color: #334155; padding: 5px 6px;
-      border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-    table.pcmso-tabela tr { page-break-inside: avoid; }
-    .pcmso-center { text-align: center; }
-    .pcmso-assinaturas { margin-top: 28px; display: flex; gap: 40px; page-break-inside: avoid; }
-    .pcmso-assin { flex: 1; border-top: 1px solid #334155; padding-top: 5px; }
-    .pcmso-assin .nome { font-size: 10.5px; font-weight: 600; color: #1e3a5f; }
-    .pcmso-assin .papel { font-size: 9px; color: #64748b; }
-    .pcmso-rodape { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      font-size: 8.5px; color: #94a3b8; }
-  </style>
-`;
+
 
 export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
   const { pcmso, exames, empresa, geradoPor } = dados;
@@ -173,17 +141,17 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
 
   return `
     ${pdfGlobalStyles}
-    ${ESTILOS_PCMSO}
-    <div class="pcmso-doc">
+    ${estilosDocumentoSgsst}
+    <div class="doc">
 
-      <div class="pcmso-cabecalho">
+      <div class="doc-cab">
         <h1>Programa de Controle Médico de Saúde Ocupacional</h1>
-        <p class="pcmso-sub">Documento-base · NR-07 · Exercício ${esc(
+        <p class="doc-sub">Documento-base · NR-07 · Exercício ${esc(
           pcmso.ano_referencia ?? dataBr(pcmso.data_inicio).slice(-4)
         )}</p>
       </div>
 
-      <div class="pcmso-ident">
+      <div class="doc-ident">
         <table>
           <tr>
             <td class="rot">Organização</td><td><strong>${esc(empresaNome)}</strong></td>
@@ -217,19 +185,19 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
         </table>
       </div>
 
-      <h2 class="pcmso-sec">1. Objetivo do programa</h2>
+      <h2 class="doc-sec">1. Objetivo do programa</h2>
       ${bloco(pcmso.objetivo, "Objetivo não preenchido.")}
 
-      <h2 class="pcmso-sec">2. Agravos à saúde relacionados aos riscos ocupacionais</h2>
+      <h2 class="doc-sec">2. Agravos à saúde relacionados aos riscos ocupacionais</h2>
       ${bloco(
         pcmso.agravos_saude,
         "Obrigatório pela NR-07 item 7.5. Preencha em Editar Dados antes de emitir o programa."
       )}
 
-      <h2 class="pcmso-sec">3. Planejamento de exames médicos e complementares</h2>
+      <h2 class="doc-sec">3. Planejamento de exames médicos e complementares</h2>
       ${quadroExames(exames)}
 
-      <h2 class="pcmso-sec">4. Critérios de interpretação dos achados e conduta</h2>
+      <h2 class="doc-sec">4. Critérios de interpretação dos achados e conduta</h2>
       ${bloco(
         pcmso.criterios_conduta,
         "Obrigatório pela NR-07 item 7.5. Precisa ser conhecido por todos os médicos que realizam os exames."
@@ -237,24 +205,24 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
 
       ${
         pcmso.observacoes
-          ? `<h2 class="pcmso-sec">5. Observações complementares</h2>${bloco(pcmso.observacoes, "")}`
+          ? `<h2 class="doc-sec">5. Observações complementares</h2>${bloco(pcmso.observacoes, "")}`
           : ""
       }
 
-      <div class="pcmso-assinaturas">
-        <div class="pcmso-assin">
+      <div class="doc-assin">
+        <div>
           <div class="nome">${esc(pcmso.medico_responsavel) || "________________________"}</div>
           <div class="papel">Médico coordenador do PCMSO${
             pcmso.crm_medico ? ` · ${esc(pcmso.crm_medico)}` : ""
           }</div>
         </div>
-        <div class="pcmso-assin">
+        <div>
           <div class="nome">${esc(pcmso.responsavel) || "________________________"}</div>
           <div class="papel">Responsável pela SST na organização</div>
         </div>
       </div>
 
-      <div class="pcmso-rodape">
+      <div class="doc-rodape">
         Emitido em ${esc(emitidoEm)}${geradoPor ? ` por ${esc(geradoPor)}` : ""} ·
         ${exames.length} exame(s) previsto(s) ·
         Documento gerado pelo sistema de Gestão de Contratos.

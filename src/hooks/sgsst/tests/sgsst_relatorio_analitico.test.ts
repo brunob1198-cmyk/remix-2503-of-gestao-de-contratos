@@ -25,11 +25,11 @@ function resumo(over: Partial<ResumoAnual> = {}): ResumoAnual {
     resultadosAlterados: 8,
     resultadosInconclusivos: 2,
     resultadosNaoClassificados: 0,
-    alteradosPorSetor: [{ chave: "Obra Norte", total: 8 }],
+    alteradosPorObra: [{ chave: "Obra Norte", total: 8 }],
     asosPorAptidao: [{ chave: "APTO", total: 25 }],
     cats: 2,
     catsPorTipo: [{ chave: "INICIAL", total: 2 }],
-    catsPorSetor: [{ chave: "Obra Norte", total: 2 }],
+    catsPorObra: [{ chave: "Obra Norte", total: 2 }],
     diasAfastamento: 15,
     obitos: 0,
     trabalhadoresAtivos: 100,
@@ -118,7 +118,7 @@ describe("montarHtmlRelatorioAnalitico", () => {
       "a) Exames clínicos",
       "b) Exames complementares",
       "c) Estatística dos resultados",
-      "d) Incidência por setor",
+      "d) Incidência por obra",
       "e) Comunicações de Acidente",
       "f) Comparação com o exercício anterior",
     ];
@@ -136,7 +136,7 @@ describe("montarHtmlRelatorioAnalitico", () => {
       ...base,
       relatorio: { atual: resumo({ resultadosNaoClassificados: 7 }), anterior: resumo({ ano: 2025 }) },
     });
-    expect(html).toContain("ra-alerta");
+    expect(html).toContain("doc-aviso");
     expect(html).toMatch(/7 exame\(s\) realizado\(s\) sem classificação/);
   });
 
@@ -149,11 +149,11 @@ describe("montarHtmlRelatorioAnalitico", () => {
       resultadosAlterados: 0,
       resultadosInconclusivos: 0,
       resultadosNaoClassificados: 0,
-      alteradosPorSetor: [],
+      alteradosPorObra: [],
       asosPorAptidao: [],
       cats: 0,
       catsPorTipo: [],
-      catsPorSetor: [],
+      catsPorObra: [],
       diasAfastamento: 0,
       obitos: 0,
     });
@@ -170,7 +170,7 @@ describe("montarHtmlRelatorioAnalitico", () => {
       relatorio: { atual: resumo({ obitos: 1 }), anterior: resumo({ ano: 2025 }) },
     });
     expect(html).toMatch(/1 óbito\(s\) comunicado\(s\)/);
-    expect(html).toContain("ra-pior");
+    expect(html).toContain("doc-pior");
   });
 
   it("mostra a comparação com o ano anterior lado a lado", () => {
@@ -183,7 +183,7 @@ describe("montarHtmlRelatorioAnalitico", () => {
     });
     expect(html).toContain("2025");
     // 8 → 12 é alta de 50%, e alta em indicador de saúde é piora.
-    expect(html).toContain("ra-pior");
+    expect(html).toContain("doc-pior");
     expect(html).toMatch(/50,0%/);
   });
 
@@ -195,7 +195,7 @@ describe("montarHtmlRelatorioAnalitico", () => {
     const html = montarHtmlRelatorioAnaliticoSeguro({
       ...base,
       relatorio: {
-        atual: resumo({ alteradosPorSetor: [{ chave: "<script>x</script>", total: 1 }] }),
+        atual: resumo({ alteradosPorObra: [{ chave: "<script>x</script>", total: 1 }] }),
         anterior: resumo({ ano: 2025 }),
       },
     });
