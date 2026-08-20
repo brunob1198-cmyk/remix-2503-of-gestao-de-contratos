@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSgsstPgr, useSgsstPgrResumo, SgsstPgr, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
+import { useSgsstPgr, useSgsstPgrResumo, SgsstPgr, SgsstPgrInput, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -11,7 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit2, Trash2, FileCheck, Eye, CheckCircle2, AlertCircle, Lock, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, FileCheck, Eye, CheckCircle2, AlertCircle, Lock, RefreshCw, CalendarClock } from "lucide-react";
+import { PgrRevisaoAviso } from "@/components/sgsst/PgrRevisaoAviso";
+import { calcularRevisao } from "@/utils/sgsstPgrRevisao";
 import { PgrFormDialog } from "@/components/sgsst/PgrFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
@@ -80,13 +82,27 @@ export default function SgsstPgrListPage() {
     navigate(`/medicoes/sgsst/pgr/${id}`);
   };
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: SgsstPgrInput) => {
     if (editingPgr) {
       await updatePgr.mutateAsync({ id: editingPgr.id, ...data });
     } else {
       await createPgr.mutateAsync(data);
     }
   };
+
+  // Sobre a pagina exibida, nao sobre a base: o calculo precisa das datas de
+  // cada PGR, que so vem nas linhas carregadas. O texto de ajuda do cartao diz
+  // isso explicitamente para o numero nao ser lido como total.
+  const revisoesVencidas = pgrs.filter(
+    (p) =>
+      calcularRevisao({
+        dataInicio: p.data_inicio,
+        dataRevisao: p.data_revisao,
+        periodicidadeMeses: p.periodicidade_revisao_meses,
+        status: p.status,
+        hoje: new Date(),
+      }).situacao === "VENCIDO"
+  ).length;
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -197,11 +213,13 @@ export default function SgsstPgrListPage() {
             ajuda: "PGRs em elaboração ou revisão; ainda não valem como documento oficial.",
           },
           {
-            label: "Encerrados",
-            value: resumo.encerrados,
-            tone: "neutro",
-            icon: Lock,
-            ajuda: "PGRs encerrados, mantidos apenas para histórico e auditoria.",
+            label: "Revisão vencida",
+            value: revisoesVencidas,
+            tone: revisoesVencidas > 0 ? "critico" : "positivo",
+            icon: CalendarClock,
+            hint: "nesta página",
+            ajuda:
+              "PGRs desta página cuja revisão periódica está atrasada. A NR-01 1.5.4.4.5 exige revisão a cada 2 anos (3 com sistema de gestão de SST certificado). PGR vencido é irregular do mesmo jeito que PGR inexistente. A contagem é da página exibida, não da base inteira.",
           },
         ]}
       />
@@ -251,6 +269,7 @@ export default function SgsstPgrListPage() {
                 <TableHead>Obra / Projeto</TableHead>
                 <TableHead>Canteiro / Site</TableHead>
                 <TableHead>Vigência</TableHead>
+                <TableHead>Revisão</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -258,7 +277,7 @@ export default function SgsstPgrListPage() {
             <TableBody>
               {tableState ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     {tableState}
                   </TableCell>
                 </TableRow>
@@ -283,6 +302,15 @@ export default function SgsstPgrListPage() {
                     </TableCell>
                     <TableCell className="text-xs">
                       {formatDateStr(p.data_inicio)}
+                    </TableCell>
+                    <TableCell>
+                      <PgrRevisaoAviso
+                        variante="linha"
+                        dataInicio={p.data_inicio}
+                        dataRevisao={p.data_revisao}
+                        periodicidadeMeses={p.periodicidade_revisao_meses}
+                        status={p.status}
+                      />
                     </TableCell>
                     <TableCell>{getStatusBadge(p.status)}</TableCell>
                     <TableCell className="text-right">
