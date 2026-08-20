@@ -35,6 +35,13 @@ export interface SgsstCountSpec {
   build?: (query: SgsstCountQuery) => SgsstCountQuery;
 }
 
+/** Contagem de um indicador, ou o erro que impediu de calculá-la. */
+interface ResultadoContagem {
+  key: string;
+  count: number | null;
+  erro: { message?: string; code?: string } | null;
+}
+
 /**
  * Contadores para os cartões de indicador das telas SGSST.
  *
@@ -64,30 +71,54 @@ export function useSgsstCounts(
     queryKey: [table, "counts", specKeys, empresaId],
     enabled: !!empresaId && options?.enabled !== false,
     staleTime: options?.staleTime ?? 1000 * 60,
-    queryFn: async (): Promise<Record<string, number>> => {
-      const results = await Promise.all(
-        specs.map(async (spec) => {
+    queryFn: async (): Promise<ResultadoContagem[]> =>
+      // Cada indicador é isolado: antes um `throw` aqui derrubava a consulta
+      // inteira, e as telas — que só recebem `isLoading` — passavam a exibir
+      // zero em TODOS os cartões. Zero é uma resposta plausível, então o
+      // usuário não tinha como distinguir "não há nenhum" de "não deu para
+      // contar". É a mesma confusão que a lista vazia causava antes do
+      // resolveTableState. Acontece de verdade na janela entre subir o código e
+      // rodar a migration: a coluna que o filtro usa ainda não existe.
+      Promise.all(
+        specs.map(async (spec): Promise<ResultadoContagem> => {
           const base = supabase
             .from(table as never)
             .select("id", { count: "exact", head: true }) as unknown as SgsstCountQuery;
 
           const query = spec.build ? spec.build(base) : base;
-          const { count, error: countError } = (await (query as unknown as PromiseLike<CountResult>));
+          const { count, error: countError } = await (query as unknown as PromiseLike<CountResult>);
 
-          if (countError) throw countError;
-          return [spec.key, count ?? 0] as const;
+          if (countError) return { key: spec.key, count: null, erro: countError };
+          return { key: spec.key, count: count ?? 0, erro: null };
         })
-      );
-
-      return Object.fromEntries(results);
-    },
+      ),
   });
 
-  const counts: Record<string, number> = data ?? {};
+  const resultados = data ?? [];
+  const porChave = new Map(resultados.map((r) => [r.key, r]));
+
+  const counts: Record<string, number> = Object.fromEntries(
+    resultados.filter((r) => r.count !== null).map((r) => [r.key, r.count as number])
+  );
+
+  /** Chaves que falharam. Vazio quando tudo foi contado. */
+  const indisponiveis = resultados.filter((r) => r.erro !== null).map((r) => r.key);
 
   return {
-    /** Devolve 0 para chaves ainda não carregadas, evitando `undefined` na UI. */
+    /**
+     * Devolve 0 para chave ausente ou não carregada. Use junto de
+     * `indisponivel(key)` quando o cartão precisar distinguir zero de falha.
+     */
     count: (key: string) => counts[key] ?? 0,
+    /** True quando a contagem falhou — o cartão deve mostrar "—", não zero. */
+    indisponivel: (key: string) => porChave.get(key)?.erro != null,
+    /**
+     * Valor pronto para o cartão: o número, ou "—" quando não deu para contar.
+     * Enquanto carrega devolve 0, porque o cartão já mostra skeleton.
+     */
+    valorExibivel: (key: string): number | string =>
+      porChave.get(key)?.erro != null ? "—" : (counts[key] ?? 0),
+    indisponiveis,
     counts,
     isLoading,
     error,
