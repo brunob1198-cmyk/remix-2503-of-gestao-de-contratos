@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { useSgsstFuncoes, SgsstFuncao } from "@/hooks/sgsst/useSgsstFuncoes";
+import { useSgsstFuncoes, SgsstFuncao, SgsstFuncaoInput } from "@/hooks/sgsst/useSgsstFuncoes";
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
+import { useSgsstFuncaoVinculosResumo } from "@/hooks/sgsst/useSgsstFuncaoVinculos";
+import { FuncaoVinculosDialog } from "@/components/sgsst/FuncaoVinculosDialog";
+import { FuncaoPendenciasPanel } from "@/components/sgsst/FuncaoPendenciasPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -12,7 +16,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
-import { Plus, Edit2, Trash2, Briefcase, CheckCircle2, XCircle, IdCard } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Briefcase,
+  CheckCircle2,
+  XCircle,
+  IdCard,
+  Link2,
+  AlertTriangle,
+  GraduationCap,
+  HardHat,
+  ClipboardCheck,
+} from "lucide-react";
 import { FuncaoFormDialog } from "@/components/sgsst/FuncaoFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -33,14 +50,23 @@ export default function SgsstFuncoesPage() {
   const { funcoes, total, isLoading, error, refetch, createFuncao, updateFuncao, removeFuncao } =
     useSgsstFuncoes({ page, pageSize, search: debouncedSearch, status: selectedStatus });
 
-  const { count, isLoading: loadingResumo } = useSgsstCounts("sgsst_funcoes", [
-    { key: "total" },
-    { key: "ativas", build: (q) => q.eq("status", "ativo") },
-    { key: "comCbo", build: (q) => q.not("cbo", "is", null) },
-  ]);
+  const { count, valorExibivel, indisponivel, isLoading: loadingResumo } = useSgsstCounts(
+    "sgsst_funcoes",
+    [
+      { key: "total" },
+      { key: "ativas", build: (q) => q.eq("status", "ativo") },
+      { key: "comCbo", build: (q) => q.not("cbo", "is", null) },
+    ]
+  );
+
+  // Contagem de vinculos por funcao, em consulta separada: se as tabelas de
+  // ligacao ainda nao existirem no banco, a lista de funcoes continua abrindo.
+  const vinculos = useSgsstFuncaoVinculosResumo(funcoes.map((f) => f.id));
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFuncao, setEditingFuncao] = useState<SgsstFuncao | null>(null);
+  const [isVinculosOpen, setIsVinculosOpen] = useState(false);
+  const [funcaoVinculos, setFuncaoVinculos] = useState<SgsstFuncao | null>(null);
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
@@ -58,7 +84,12 @@ export default function SgsstFuncoesPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = async (data: any) => {
+  const handleVinculos = (funcao: SgsstFuncao) => {
+    setFuncaoVinculos(funcao);
+    setIsVinculosOpen(true);
+  };
+
+  const handleSave = async (data: SgsstFuncaoInput) => {
     if (editingFuncao) {
       await updateFuncao.mutateAsync({ id: editingFuncao.id, ...data });
     } else {
@@ -77,6 +108,12 @@ export default function SgsstFuncoesPage() {
 
   const STATUS_LABEL: Record<string, string> = { ativo: "Ativo", inativo: "Inativo" };
 
+  // Sobre a pagina exibida, nao sobre a base: o resumo de vinculos e consultado
+  // para os ids da pagina. O texto de ajuda do cartao diz isso explicitamente.
+  const semRiscoMapeado = vinculos.indisponivel
+    ? 0
+    : funcoes.filter((f) => vinculos.resumo(f.id).riscos === 0).length;
+
   // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
   // Retorna null quando ha dados e a tabela deve renderizar as linhas.
   const tableState = resolveTableState({
@@ -87,7 +124,9 @@ export default function SgsstFuncoesPage() {
     onRetry: refetch,
     emptyTitulo: "Nenhuma função cadastrada",
     emptyDescricao:
-      "As funções descrevem cargos e suas exposições a risco, e alimentam o PCMSO e a matriz de treinamentos.",
+      "A função é o centro do SGSST: é nela que se define a quais riscos quem a exerce está " +
+      "exposto e quais treinamentos e EPIs ela exige. Preenchido uma vez, serve ao PGR, ao " +
+      "PCMSO, à matriz de treinamentos e ao eSocial S-2240.",
     filtrado: temFiltroAtivo,
     onLimparFiltros: limparFiltros,
   });
@@ -114,31 +153,61 @@ export default function SgsstFuncoesPage() {
         )}
       </div>
 
+      <Tabs defaultValue="cadastro" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="cadastro" className="gap-1.5">
+            <Briefcase className="h-4 w-4" />
+            Funções
+          </TabsTrigger>
+          <TabsTrigger value="pendencias" className="gap-1.5">
+            <ClipboardCheck className="h-4 w-4" />
+            Pendências por função
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cadastro" className="space-y-4 mt-0">
       {/* Indicadores — contagens sobre a base inteira, não sobre a página */}
       <SgsstStatCards
         isLoading={loadingResumo}
         stats={[
           {
             label: "Total de Funções",
-            value: count("total"),
-            tone: "info",
+            value: valorExibivel("total"),
+            tone: indisponivel("total") ? "neutro" : "info",
             icon: Briefcase,
             ajuda: "Todas as funções cadastradas, ativas e inativas.",
           },
           {
             label: "Funções Ativas",
-            value: count("ativas"),
-            tone: "positivo",
+            value: valorExibivel("ativas"),
+            tone: indisponivel("ativas") ? "neutro" : "positivo",
             icon: CheckCircle2,
             ajuda: "Funções disponíveis para vincular a colaboradores.",
           },
           {
             label: "Com CBO Informado",
-            value: count("comCbo"),
-            tone: "neutro",
+            value: valorExibivel("comCbo"),
+            tone: indisponivel("comCbo")
+              ? "neutro"
+              : count("comCbo") < count("total")
+                ? "atencao"
+                : "positivo",
             icon: IdCard,
-            hint: "exigido no eSocial",
-            ajuda: "O CBO é obrigatório no envio ao eSocial; funções sem CBO travam a transmissão.",
+            hint:
+              count("comCbo") < count("total")
+                ? `${count("total") - count("comCbo")} sem CBO`
+                : "exigido no eSocial",
+            ajuda:
+              "O CBO é obrigatório no envio ao eSocial; funções sem CBO travam a transmissão do S-2240.",
+          },
+          {
+            label: "Sem risco mapeado",
+            value: semRiscoMapeado,
+            tone: semRiscoMapeado > 0 ? "atencao" : "positivo",
+            icon: AlertTriangle,
+            hint: "nesta página",
+            ajuda:
+              "Funções desta página que ainda não têm nenhum risco vinculado. Sem risco mapeado, o PGR e o PCMSO não têm de onde puxar a exposição de quem exerce a função. A contagem é da página exibida, não da base inteira.",
           },
         ]}
       />
@@ -184,14 +253,15 @@ export default function SgsstFuncoesPage() {
                 <TableHead>Nome da Função</TableHead>
                 <TableHead>CBO</TableHead>
                 <TableHead>Descrição / Atribuições</TableHead>
+                <TableHead>Riscos · Treinamentos · EPIs</TableHead>
                 <TableHead>Status</TableHead>
-                {allowEdit && <TableHead className="text-right">Ações</TableHead>}
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tableState ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="p-0">
+                  <TableCell colSpan={6} className="p-0">
                     {tableState}
                   </TableCell>
                 </TableRow>
@@ -204,6 +274,48 @@ export default function SgsstFuncoesPage() {
                       {f.descricao || "—"}
                     </TableCell>
                     <TableCell>
+                      {vinculos.indisponivel ? (
+                        <span
+                          className="text-xs text-muted-foreground"
+                          title="Não foi possível ler as tabelas de vínculo. A migration 20260820150000 pode não ter sido aplicada."
+                        >
+                          —
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs tabular-nums">
+                          <span
+                            className={
+                              vinculos.resumo(f.id).riscos === 0
+                                ? "inline-flex items-center gap-1 text-amber-700 dark:text-amber-500"
+                                : "inline-flex items-center gap-1 text-muted-foreground"
+                            }
+                            title={
+                              vinculos.resumo(f.id).riscos === 0
+                                ? "Nenhum risco mapeado: o PGR e o PCMSO não têm de onde puxar a exposição desta função"
+                                : "Riscos vinculados"
+                            }
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            {vinculos.resumo(f.id).riscos}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 text-muted-foreground"
+                            title="Treinamentos exigidos"
+                          >
+                            <GraduationCap className="h-3 w-3" />
+                            {vinculos.resumo(f.id).treinamentos}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 text-muted-foreground"
+                            title="EPIs exigidos"
+                          >
+                            <HardHat className="h-3 w-3" />
+                            {vinculos.resumo(f.id).epis}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {f.status === "ativo" ? (
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1 w-fit">
                           <CheckCircle2 className="h-3 w-3" /> Ativo
@@ -214,9 +326,21 @@ export default function SgsstFuncoesPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    {allowEdit && (
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Visivel tambem em modo leitura: consultar o que a funcao
+                            exige nao e edicao. */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleVinculos(f)}
+                          title="Riscos, treinamentos e EPIs desta função"
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+
+                        {allowEdit && (
+                          <>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(f)} title="Editar">
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -230,7 +354,12 @@ export default function SgsstFuncoesPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Excluir função "{f.nome}"?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta ação removerá a função. Caso haja colaboradores vinculados, a exclusão será bloqueada.
+                                  Se houver colaborador vinculado, a exclusão é bloqueada pelo
+                                  banco. Não havendo, a função sai e junto com ela os vínculos
+                                  de risco, treinamento e EPI que você mapeou aqui — os
+                                  cadastros de risco, treinamento e EPI em si permanecem. Para
+                                  parar de oferecê-la em novos cadastros sem perder o
+                                  mapeamento, marque-a como inativa.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -241,9 +370,10 @@ export default function SgsstFuncoesPage() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        </div>
-                      </TableCell>
-                    )}
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -262,6 +392,12 @@ export default function SgsstFuncoesPage() {
           />
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="pendencias" className="mt-0">
+          <FuncaoPendenciasPanel />
+        </TabsContent>
+      </Tabs>
 
       {/* Modal Dialog */}
       <FuncaoFormDialog
@@ -270,6 +406,13 @@ export default function SgsstFuncoesPage() {
         funcao={editingFuncao}
         onSave={handleSave}
         isLoading={createFuncao.isPending || updateFuncao.isPending}
+      />
+
+      <FuncaoVinculosDialog
+        open={isVinculosOpen}
+        onOpenChange={setIsVinculosOpen}
+        funcao={funcaoVinculos}
+        allowEdit={allowEdit}
       />
     </div>
   );
