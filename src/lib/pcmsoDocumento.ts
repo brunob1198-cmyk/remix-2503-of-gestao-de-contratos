@@ -293,7 +293,7 @@ export async function gerarPdfPcmso(dados: PcmsoDocumentoDados): Promise<void> {
   container.innerHTML = montarHtmlPcmso(dados);
 
   const nome = `PCMSO_${(dados.pcmso.codigo || dados.pcmso.titulo)
-    .replace(/[^\w\-]+/g, "_")
+    .replace(/[^\w-]+/g, "_")
     .slice(0, 40)}.pdf`;
 
   await html2pdf().set(getPdfOptions(nome)).from(container).save();

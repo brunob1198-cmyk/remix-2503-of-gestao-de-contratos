@@ -65,8 +65,20 @@ export interface SgsstAso {
   tipo: TipoExameOcupacional;
   aptidao: AptidaoAso;
   validade: string;
+  /** Médico EXAMINADOR: quem realizou o exame e assina o ASO. */
   medico_responsavel?: string | null;
   crm_medico?: string | null;
+  /** Médico COORDENADOR do PCMSO. A norma pede os dois; podem ser pessoas diferentes. */
+  medico_coordenador?: string | null;
+  crm_coordenador?: string | null;
+  /** NR-07: descrição dos perigos e fatores de risco. Obrigatória no documento. */
+  descricao_riscos?: string | null;
+  /**
+   * Identificação da organização congelada na emissão. Ler de `empresas` na hora
+   * de imprimir falsearia ASOs antigos se a empresa mudasse de nome.
+   */
+  empresa_nome?: string | null;
+  empresa_cnpj?: string | null;
   descricao_restricao?: string | null;
   data_inicio_restricao?: string | null;
   data_termino_restricao?: string | null;
@@ -83,9 +95,27 @@ export interface SgsstAso {
     funcao?: { id: string; nome: string } | null;
   } | null;
   pcmso?: { id: string; codigo: string; titulo: string } | null;
+  /** @deprecated Vínculo de exame único. Use `exames` (tabela de ligação). */
   exame?: { id: string; nome_exame: string; data_realizacao: string } | null;
+  /** Todos os exames que compõem este ASO, via sgsst_aso_exames. */
+  exames?: SgsstAsoExameVinculo[];
   // Calculated dynamically
   statusVencimento?: StatusVencimentoAso;
+}
+
+/** Linha da tabela de ligação, com o exame embutido. */
+export interface SgsstAsoExameVinculo {
+  id: string;
+  aso_id: string;
+  exame_id: string;
+  exame?: {
+    id: string;
+    nome_exame: string;
+    tipo: TipoExameOcupacional;
+    data_realizacao: string | null;
+    resultado: string | null;
+    status: StatusExameOcupacional;
+  } | null;
 }
 
 export type SgsstAsoInput = Omit<
@@ -331,7 +361,11 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
             funcao:sgsst_funcoes(id, nome)
           ),
           pcmso:sgsst_pcmso(id, codigo, titulo),
-          exame:sgsst_exames(id, nome_exame, data_realizacao)
+          exame:sgsst_exames(id, nome_exame, data_realizacao),
+          exames:sgsst_aso_exames(
+            id, aso_id, exame_id,
+            exame:sgsst_exames(id, nome_exame, tipo, data_realizacao, resultado, status)
+          )
         `,
           { count: "exact" }
         )
@@ -386,8 +420,11 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
   const asos = data?.rows ?? [];
 
   const createAso = useMutation({
-    mutationFn: async (input: SgsstAsoInput) => {
+    mutationFn: async (params: SgsstAsoInput & { exameIds?: string[] }) => {
       if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      // exameIds vai para a tabela de ligação, não para a linha do ASO.
+      const { exameIds = [], ...input } = params;
 
       // Regra de Integridade e Substituição: se existir ASO ATIVO para o mesmo colaborador, substitui
       const { data: activeAsos } = await (supabase
@@ -416,16 +453,43 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
         }
       }
 
+      // Congela a identificação da organização na emissão. Ler de `empresas` na
+      // hora de imprimir falsearia ASOs antigos se a empresa mudasse de nome.
+      const { data: empresaAtual } = await supabase
+        .from("empresas")
+        .select("nome, cnpj")
+        .eq("id", empresaId)
+        .maybeSingle();
+
       const { data: createdAso, error } = await (supabase
         .from("sgsst_asos" as any)
         .insert({
           ...input,
           empresa_id: empresaId,
+          empresa_nome: input.empresa_nome ?? empresaAtual?.nome ?? null,
+          empresa_cnpj: input.empresa_cnpj ?? empresaAtual?.cnpj ?? null,
         })
         .select()
         .single() as any);
 
       if (error) throw error;
+
+      // Vincula os exames que compõem este ASO. O erro é checado: sem os exames
+      // o documento sai sem a indicação e data dos exames realizados, que é campo
+      // obrigatório.
+      if (exameIds.length > 0) {
+        const { error: vinculoError } = await supabase
+          .from("sgsst_aso_exames" as never)
+          .insert(
+            exameIds.map((exameId) => ({
+              empresa_id: empresaId,
+              aso_id: createdAso.id,
+              exame_id: exameId,
+            })) as never
+          );
+
+        if (vinculoError) throw vinculoError;
+      }
 
       // Log inicial no histórico
       await supabase.from("sgsst_asos_historico" as any).insert({
@@ -438,12 +502,18 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
         observacao: `Emissão do ASO [Aptidão: ${createdAso.aptidao}]`,
       });
 
-      // Se o ASO veio de um exame, atualiza o status do exame para REALIZADO
-      if (input.exame_id) {
+      // Todo exame que entrou no ASO passa a REALIZADO: emitir o atestado
+      // significa que o exame aconteceu. Inclui o vínculo antigo de exame único,
+      // para o comportamento não mudar em quem só usa um.
+      const exameIdsParaRealizar = [
+        ...new Set([...(input.exame_id ? [input.exame_id] : []), ...exameIds]),
+      ];
+
+      if (exameIdsParaRealizar.length > 0) {
         await supabase
           .from("sgsst_exames" as any)
           .update({ status: "REALIZADO", data_realizacao: input.data_emissao })
-          .eq("id", input.exame_id);
+          .in("id", exameIdsParaRealizar);
       }
 
       return createdAso as SgsstAso;
@@ -459,7 +529,11 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
   });
 
   const updateAso = useMutation({
-    mutationFn: async ({ id, ...input }: Partial<SgsstAsoInput> & { id: string }) => {
+    mutationFn: async ({
+      id,
+      exameIds,
+      ...input
+    }: Partial<SgsstAsoInput> & { id: string; exameIds?: string[] }) => {
       const { data, error } = await (supabase
         .from("sgsst_asos" as any)
         .update({
@@ -471,10 +545,53 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
         .single() as any);
 
       if (error) throw error;
+
+      // Reconcilia os vínculos de exame. `undefined` significa "não mexer";
+      // um array vazio significa "remover todos" — são coisas diferentes.
+      if (exameIds !== undefined) {
+        const { data: atuais, error: leituraError } = await supabase
+          .from("sgsst_aso_exames" as never)
+          .select("id, exame_id")
+          .eq("aso_id", id);
+
+        if (leituraError) throw leituraError;
+
+        // `sgsst_aso_exames` é nova e ainda não está em types.ts; o cast cai
+        // quando os tipos forem regerados após esta migration.
+        const existentes = (atuais ?? []) as unknown as { id: string; exame_id: string }[];
+        const idsAtuais = new Set(existentes.map((v) => v.exame_id));
+        const idsDesejados = new Set(exameIds);
+
+        const paraRemover = existentes.filter((v) => !idsDesejados.has(v.exame_id));
+        const paraAdicionar = exameIds.filter((x) => !idsAtuais.has(x));
+
+        if (paraRemover.length > 0) {
+          const { error: delError } = await supabase
+            .from("sgsst_aso_exames" as never)
+            .delete()
+            .in("id", paraRemover.map((v) => v.id));
+          if (delError) throw delError;
+        }
+
+        if (paraAdicionar.length > 0) {
+          const { error: insError } = await supabase
+            .from("sgsst_aso_exames" as never)
+            .insert(
+              paraAdicionar.map((exameId) => ({
+                empresa_id: (data as SgsstAso).empresa_id,
+                aso_id: id,
+                exame_id: exameId,
+              })) as never
+            );
+          if (insError) throw insError;
+        }
+      }
+
       return data as SgsstAso;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_asos"] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
       toast.success("ASO atualizado!");
     },
     onError: (err: any) => {

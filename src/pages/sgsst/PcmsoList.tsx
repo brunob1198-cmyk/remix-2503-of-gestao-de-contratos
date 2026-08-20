@@ -14,6 +14,9 @@ import {
   calculateVencimentoAso,
 } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
+import { gerarPdfAso, pendenciasAso } from "@/lib/asoDocumento";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,6 +149,37 @@ export default function SgsstPcmsoListPage() {
   });
 
   const { colaboradores } = useSgsstColaboradoresResumo();
+  const { profile } = useAuth();
+
+  /** ASO sendo emitido, para desabilitar só o botão daquela linha. */
+  const [asoEmitindoId, setAsoEmitindoId] = useState<string | null>(null);
+
+  /**
+   * Emite o ASO em PDF. Avisa sobre campos obrigatórios vazios sem bloquear —
+   * mas aqui o aviso é mais firme que no PCMSO, porque o ASO é o documento que
+   * vai para a mão do trabalhador e um campo em branco é autuação direta.
+   */
+  const handleEmitirAso = async (aso: SgsstAso) => {
+    const pendencias = pendenciasAso(aso);
+
+    if (pendencias.length > 0) {
+      toast.warning(`ASO com ${pendencias.length} campo(s) obrigatório(s) em branco`, {
+        description: pendencias.join(" · "),
+        duration: 10000,
+      });
+    }
+
+    setAsoEmitindoId(aso.id);
+    try {
+      await gerarPdfAso(aso, profile?.nome ?? null);
+      toast.success("ASO gerado.");
+    } catch (err) {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Não foi possível gerar o ASO: ${detalhe}`);
+    } finally {
+      setAsoEmitindoId(null);
+    }
+  };
 
   const totalPagesPcmso = Math.ceil(totalPcmso / pageSizePcmso) || 1;
   const totalPagesAso = Math.ceil(totalAso / pageSizeAso) || 1;
@@ -565,6 +599,28 @@ export default function SgsstPcmsoListPage() {
                                 title="Detalhes do ASO"
                               >
                                 <Eye className="h-4 w-4 text-primary" />
+                              </Button>
+
+                              {/* Emitir fica disponível para quem só consulta: o
+                                  trabalhador tem direito à via do atestado, e
+                                  auditoria não deveria exigir permissão de edição. */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={asoEmitindoId === a.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEmitirAso(a);
+                                }}
+                                title="Emitir ASO em PDF"
+                              >
+                                <FileText
+                                  className={`h-4 w-4 ${
+                                    asoEmitindoId === a.id
+                                      ? "text-muted-foreground"
+                                      : "text-indigo-600"
+                                  }`}
+                                />
                               </Button>
 
                               {allowEdit && a.status === "ATIVO" && (

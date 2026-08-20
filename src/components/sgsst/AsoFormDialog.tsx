@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstAso, SgsstAsoInput, TipoExameOcupacional, AptidaoAso, StatusAso } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
@@ -17,7 +18,8 @@ interface AsoFormDialogProps {
   onOpenChange: (open: boolean) => void;
   aso?: SgsstAso | null;
   initialExameId?: string | null;
-  onSave: (data: SgsstAsoInput) => Promise<void>;
+  /** `exameIds` vai para a tabela de ligação, não para a linha do ASO. */
+  onSave: (data: SgsstAsoInput & { exameIds: string[] }) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -48,6 +50,11 @@ export function AsoFormDialog({
   const [dataTerminoRestricao, setDataTerminoRestricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [status, setStatus] = useState<StatusAso>("ATIVO");
+  const [descricaoRiscos, setDescricaoRiscos] = useState("");
+  const [medicoCoordenador, setMedicoCoordenador] = useState("");
+  const [crmCoordenador, setCrmCoordenador] = useState("");
+  // Exames que compõem este ASO. A norma pede a indicação e a data de todos.
+  const [exameIds, setExameIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (aso) {
@@ -61,6 +68,10 @@ export function AsoFormDialog({
       setValidade(aso.validade ? aso.validade.split("T")[0] : "");
       setMedicoResponsavel(aso.medico_responsavel || "");
       setCrmMedico(aso.crm_medico || "");
+      setDescricaoRiscos(aso.descricao_riscos || "");
+      setMedicoCoordenador(aso.medico_coordenador || "");
+      setCrmCoordenador(aso.crm_coordenador || "");
+      setExameIds((aso.exames ?? []).map((v) => v.exame_id));
       setDescricaoRestricao(aso.descricao_restricao || "");
       setDataInicioRestricao(aso.data_inicio_restricao ? aso.data_inicio_restricao.split("T")[0] : "");
       setDataTerminoRestricao(aso.data_termino_restricao ? aso.data_termino_restricao.split("T")[0] : "");
@@ -85,6 +96,10 @@ export function AsoFormDialog({
       setDataTerminoRestricao("");
       setObservacoes("");
       setStatus("ATIVO");
+      setDescricaoRiscos("");
+      setMedicoCoordenador("");
+      setCrmCoordenador("");
+      setExameIds([]);
 
       if (initialExameId) {
         const foundExame = exames.find((e) => e.id === initialExameId);
@@ -92,6 +107,8 @@ export function AsoFormDialog({
           setColaboradorId(foundExame.colaborador_id);
           setPcmsoId(foundExame.pcmso_id || "none");
           setTipo(foundExame.tipo);
+          // Quem chegou aqui a partir de um exame já quer esse exame no ASO.
+          setExameIds([initialExameId]);
         }
       }
     }
@@ -130,6 +147,10 @@ export function AsoFormDialog({
       data_termino_restricao: aptidao === "APTO_COM_RESTRICAO" ? dataTerminoRestricao || null : null,
       observacoes: observacoes.trim() || null,
       status,
+      descricao_riscos: descricaoRiscos.trim() || null,
+      medico_coordenador: medicoCoordenador.trim() || null,
+      crm_coordenador: crmCoordenador.trim() || null,
+      exameIds,
     });
 
     onOpenChange(false);
@@ -340,6 +361,106 @@ export function AsoFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Bloco dos campos obrigatórios que faltavam no ASO. A norma exige a
+                descrição dos riscos e a identificação dos dois médicos: quem
+                coordena o PCMSO e quem examinou o trabalhador. */}
+            <div className="sm:col-span-2 rounded-md border border-amber-200 bg-amber-50/50 p-3 space-y-3 dark:border-amber-900 dark:bg-amber-950/20">
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                Campos obrigatórios do ASO · NR-07
+              </p>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="descRiscos">
+                  Perigos e fatores de risco a que o trabalhador está exposto *
+                </Label>
+                <Textarea
+                  id="descRiscos"
+                  rows={2}
+                  placeholder="Ex.: Ruído ocupacional acima de 85 dB(A); poeira de sílica cristalina; trabalho em altura acima de 2 m."
+                  value={descricaoRiscos}
+                  onChange={(e) => setDescricaoRiscos(e.target.value)}
+                  disabled={isReadOnly}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Sai impresso no ASO. Um campo obrigatório em branco é autuação.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="medCoord">Médico coordenador do PCMSO</Label>
+                  <Input
+                    id="medCoord"
+                    placeholder="Nome do coordenador"
+                    value={medicoCoordenador}
+                    onChange={(e) => setMedicoCoordenador(e.target.value)}
+                    disabled={isReadOnly}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="crmCoord">CRM do coordenador</Label>
+                  <Input
+                    id="crmCoord"
+                    placeholder="CRM-UF 000000"
+                    value={crmCoordenador}
+                    onChange={(e) => setCrmCoordenador(e.target.value)}
+                    disabled={isReadOnly}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O coordenador do programa e o examinador podem ser pessoas diferentes —
+                o examinador é o campo "Médico Examinador / Emitente" acima.
+              </p>
+
+              <div className="space-y-1.5">
+                <Label>Exames que compõem este ASO</Label>
+                {exames.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhum exame cadastrado ainda. Registre os exames na aba Exames antes
+                    de emitir o ASO.
+                  </p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto rounded border bg-background divide-y">
+                    {exames.map((e) => {
+                      const marcado = exameIds.includes(e.id);
+                      return (
+                        <label
+                          key={e.id}
+                          className="flex items-start gap-2 p-2 text-xs cursor-pointer hover:bg-muted/50"
+                        >
+                          <Checkbox
+                            checked={marcado}
+                            disabled={isReadOnly}
+                            onCheckedChange={(v) =>
+                              setExameIds((atual) =>
+                                v === true
+                                  ? [...atual, e.id]
+                                  : atual.filter((x) => x !== e.id)
+                              )
+                            }
+                            aria-label={`Incluir ${e.nome_exame} neste ASO`}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-medium">{e.nome_exame}</span>
+                            <span className="text-muted-foreground">
+                              {" "}· {e.tipo}
+                              {e.data_realizacao ? ` · ${e.data_realizacao}` : " · sem data"}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {exameIds.length === 0
+                    ? "Nenhum exame selecionado — o ASO sairá sem a indicação dos exames realizados."
+                    : `${exameIds.length} exame(s) selecionado(s). Todos passarão a "Realizado" na emissão.`}
+                </p>
+              </div>
             </div>
           </div>
 
