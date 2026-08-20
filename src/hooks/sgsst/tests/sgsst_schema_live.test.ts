@@ -15,8 +15,13 @@ import path from "node:path";
  *
  *   SGSST_CHECK_LIVE_SCHEMA=1 npx vitest run src/hooks/sgsst/tests/sgsst_schema_live.test.ts
  *
- * Use depois de `npx supabase db push` para confirmar que subiu tudo, e em
+ * Use depois de aplicar uma migration para confirmar que subiu tudo, e em
  * pipelines de deploy como verificação pós-migração.
+ *
+ * ATENÇÃO: neste projeto as migrations são aplicadas manualmente, colando o SQL
+ * no editor do Supabase. `supabase db push` NÃO deve ser usado aqui: o histórico
+ * está dessincronizado (mais arquivos que versões registradas) e migrations
+ * antigas contêm DELETE e DROP TABLE que rodariam contra a base real.
  */
 
 const HABILITADO = process.env.SGSST_CHECK_LIVE_SCHEMA === "1";
@@ -95,7 +100,8 @@ describe.skipIf(!HABILITADO)("schema SGSST aplicado no ambiente", () => {
       expect(
         ausentes,
         `${ausentes.length} de ${declaradas.length} tabelas SGSST não existem no banco.\n` +
-          `Rode 'npx supabase db push' para aplicar as migrations pendentes.\n\n` +
+          `Aplique as migrations pendentes colando o SQL no editor do Supabase — ` +
+          `não use 'supabase db push' neste projeto (ver o comentário no topo do arquivo).\n\n` +
           ausentes.join("\n")
       ).toEqual([]);
     },
