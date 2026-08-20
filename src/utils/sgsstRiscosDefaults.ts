@@ -158,7 +158,8 @@ export const RISCOS_PADRAO: RiscoPadrao[] = [
     consequencia: "Asfixia e morte por intoxicação aguda",
     unidade_medida: "% O₂",
     tecnica_avaliacao: "QUANTITATIVA",
-    base_legal: "NR-33 — atmosfera entre 20,9% e 23% de O₂; medição obrigatória antes da entrada",
+    base_legal:
+      "NR-33 33.5.15.2 — entrada com O₂ entre 19,5% e 23%; abaixo de 20,9% já é deficiência de oxigênio",
   },
 
   // Biológicos — NR-15 anexo 14

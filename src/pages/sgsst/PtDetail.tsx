@@ -8,6 +8,9 @@ import {
   useSgsstPtRiscos,
   useSgsstPtParticipantes,
   useSgsstPtHistorico,
+  useSgsstPtAtmosfera,
+  PAPEIS_ESPACO_CONFINADO,
+  PAPEIS_PT_GERAIS,
   StatusPt,
   SgsstPtChecklistItem,
 } from "@/hooks/sgsst/useSgsstPt";
@@ -17,9 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PtAtmosferaPanel } from "@/components/sgsst/PtAtmosferaPanel";
+import { avaliarLiberacaoEntrada } from "@/utils/sgsstAtmosfera";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  Wind,
   ArrowLeft,
   Plus,
   Edit2,
@@ -62,6 +68,7 @@ export default function SgsstPtDetailPage() {
   const { checklist, isLoading: loadingChecklist, updateRespostaItem, addChecklistItem, removeChecklistItem } = useSgsstPtChecklist(ptId);
   const { riscos, isLoading: loadingRiscos } = useSgsstPtRiscos(ptId);
   const { participantes, addParticipante, removeParticipante } = useSgsstPtParticipantes(ptId);
+  const { medicoes: medicoesAtmosfera } = useSgsstPtAtmosfera(ptId);
   const { historico } = useSgsstPtHistorico(ptId);
 
   // Dialog States
@@ -102,6 +109,20 @@ export default function SgsstPtDetailPage() {
 
   const isReadOnly = currentPt.status === "ENCERRADA" || currentPt.status === "CANCELADA";
 
+  // A aba de atmosfera so aparece em espaco confinado: cobrar medicao de gases
+  // numa PT de icamento seria ruido, e o usuario aprenderia a ignorar o aviso.
+  const eEspacoConfinado = currentPt.tipo === "Espaço Confinado";
+
+  const liberacaoEntrada = avaliarLiberacaoEntrada({
+    medicoes: medicoesAtmosfera,
+    responsabilidades: participantes.map((p) => p.responsabilidade),
+    hoje: new Date(),
+  });
+
+  const temVigia = participantes.some(
+    (p) => (p.responsabilidade ?? "").trim().toLowerCase() === "vigia"
+  );
+
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
     try {
@@ -112,6 +133,22 @@ export default function SgsstPtDetailPage() {
   };
 
   const openStatusModal = (status: StatusPt) => {
+    // Espaco confinado sem avaliacao atmosferica aprovada e vigia designado: a
+    // NR-33 nao diz "nao recomendado", diz que a entrada e PROIBIDA. Por isso
+    // aqui bloqueia em vez de avisar — e a mensagem diz exatamente o que falta,
+    // para o bloqueio ser acionavel e nao so um "nao".
+    if (eEspacoConfinado && (status === "APROVADA" || status === "EM_EXECUCAO")) {
+      if (!liberacaoEntrada.liberado) {
+        toast.error(
+          `Entrada em espaço confinado não liberada pela NR-33: ${liberacaoEntrada.impedimentos.join(
+            " · "
+          )}`,
+          { duration: 12000 }
+        );
+        return;
+      }
+    }
+
     // Check if trying to approve but checklist mandatory items are non-conforme or pending
     if (status === "APROVADA") {
       const pendentesOuNaoConformes = checklist.filter(
@@ -285,7 +322,18 @@ export default function SgsstPtDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="checklist" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-4">
+        <TabsList className={`grid w-full sm:w-auto ${eEspacoConfinado ? "grid-cols-5" : "grid-cols-4"}`}>
+          {eEspacoConfinado && (
+            <TabsTrigger value="atmosfera" className="gap-2">
+              <Wind className="h-4 w-4" /> Atmosfera
+              {!liberacaoEntrada.liberado && (
+                <span
+                  className="ml-0.5 h-2 w-2 rounded-full bg-red-500"
+                  aria-label="entrada não liberada"
+                />
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="checklist" className="gap-2">
             <ClipboardCheck className="h-4 w-4" /> Checklist ({checklist.length})
           </TabsTrigger>
@@ -299,6 +347,16 @@ export default function SgsstPtDetailPage() {
             <History className="h-4 w-4" /> Histórico ({historico.length})
           </TabsTrigger>
         </TabsList>
+
+        {eEspacoConfinado && (
+          <TabsContent value="atmosfera" className="space-y-4 pt-4">
+            <PtAtmosferaPanel
+              ptId={currentPt.id}
+              participantes={participantes}
+              allowEdit={allowEdit && !isReadOnly}
+            />
+          </TabsContent>
+        )}
 
         {/* TAB 1: CHECKLIST DE SEGURANÇA */}
         <TabsContent value="checklist" className="space-y-4 pt-4">
@@ -657,12 +715,34 @@ export default function SgsstPtDetailPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="resp">Responsabilidade / Papel</Label>
+              {/* Datalist e nao Select: os papeis da norma viram atalho sem
+                  impedir papel proprio da obra ("Observador de Incendio"). */}
               <Input
                 id="resp"
-                placeholder="Ex: Executante, Observador de Incêndio, Vigia EC"
+                list="papeis-pt"
+                placeholder="Ex: Executante, Vigia, Supervisor de Entrada"
                 value={responsabilidadeTexto}
                 onChange={(e) => setResponsabilidadeTexto(e.target.value)}
               />
+              <datalist id="papeis-pt">
+                {(eEspacoConfinado
+                  ? [...PAPEIS_ESPACO_CONFINADO, ...PAPEIS_PT_GERAIS]
+                  : PAPEIS_PT_GERAIS
+                ).map((papel) => (
+                  <option key={papel} value={papel} />
+                ))}
+              </datalist>
+              {eEspacoConfinado && (
+                <p className="text-xs text-muted-foreground">
+                  A NR-33 exige um <strong>Vigia</strong> designado, do lado de fora, durante
+                  toda a permanência. Sem ele a PT não pode ser aprovada.
+                  {!temVigia && (
+                    <span className="block text-amber-700 dark:text-amber-500">
+                      Esta PT ainda não tem vigia designado.
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
 
             <DialogFooter>

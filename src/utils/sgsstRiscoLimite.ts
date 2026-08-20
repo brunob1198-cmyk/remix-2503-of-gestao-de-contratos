@@ -84,9 +84,9 @@ export function limitePendente(risco: {
  *
  * Não há função de comparação aqui de propósito. Para a maioria dos agentes o
  * risco está em ficar ACIMA do limite, mas para oxigênio em espaço confinado
- * (QUI-05) o perigo é o contrário — a NR-33 exige atmosfera entre 20,9% e 23%,
- * então tanto a falta quanto o excesso reprovam. Uma função genérica
- * `medicao > limite` daria "conforme" justamente no caso que mata.
+ * (QUI-05) o perigo é o contrário — a NR-33 33.5.15.2 admite entrada com O₂
+ * entre 19,5% e 23%, então tanto a falta quanto o excesso reprovam. Uma função
+ * genérica `medicao > limite` daria "conforme" justamente no caso que mata.
  *
  * A comparação entra na fase 3, junto com os dados de monitoramento do
  * inventário do PGR, onde a direção do limite pode ser declarada por agente.

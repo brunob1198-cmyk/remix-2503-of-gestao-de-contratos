@@ -9,7 +9,8 @@ import { SgsstPt, SgsstPtInput, TipoPt, StatusPt } from "@/hooks/sgsst/useSgsstP
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ShieldCheck } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ShieldCheck, Wind } from "lucide-react";
 
 interface PtFormDialogProps {
   open: boolean;
@@ -43,6 +44,12 @@ export function PtFormDialog({
   const [dataFim, setDataFim] = useState("");
   const [status, setStatus] = useState<StatusPt>("RASCUNHO");
   const [observacoes, setObservacoes] = useState("");
+
+  // --- Pre-requisitos de entrada em espaco confinado (NR-33) ---
+  const [validadeFim, setValidadeFim] = useState("");
+  const [ventilacaoAdotada, setVentilacaoAdotada] = useState("");
+  const [bloqueioEnergias, setBloqueioEnergias] = useState(false);
+  const [planoResgate, setPlanoResgate] = useState("");
 
   // Load projetos
   const { data: projetos = [] } = useQuery({
@@ -132,6 +139,10 @@ export function PtFormDialog({
       setDataFim(pt.data_fim ? pt.data_fim.split("T")[0] : "");
       setStatus(pt.status || "RASCUNHO");
       setObservacoes(pt.observacoes || "");
+      setValidadeFim(pt.validade_fim ? pt.validade_fim.slice(0, 16) : "");
+      setVentilacaoAdotada(pt.ventilacao_adotada || "");
+      setBloqueioEnergias(!!pt.bloqueio_energias);
+      setPlanoResgate(pt.plano_resgate || "");
     } else {
       setCodigo("");
       setTitulo("");
@@ -147,6 +158,10 @@ export function PtFormDialog({
       setDataFim("");
       setStatus("RASCUNHO");
       setObservacoes("");
+      setValidadeFim("");
+      setVentilacaoAdotada("");
+      setBloqueioEnergias(false);
+      setPlanoResgate("");
     }
   }, [pt, open]);
 
@@ -184,6 +199,10 @@ export function PtFormDialog({
       data_fim: dataFim ? new Date(dataFim).toISOString() : null,
       status,
       observacoes: observacoes.trim() || null,
+      validade_fim: validadeFim ? new Date(validadeFim).toISOString() : null,
+      ventilacao_adotada: ventilacaoAdotada.trim() || null,
+      bloqueio_energias: bloqueioEnergias,
+      plano_resgate: planoResgate.trim() || null,
     });
 
     onOpenChange(false);
@@ -366,6 +385,73 @@ export function PtFormDialog({
               />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="validadeFim">Válida até</Label>
+            <Input
+              id="validadeFim"
+              type="datetime-local"
+              value={validadeFim}
+              onChange={(e) => setValidadeFim(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              A permissão vale para o turno ou período autorizado. Sem esse limite, ela ficaria
+              valendo indefinidamente — o oposto do que uma permissão de trabalho é.
+            </p>
+          </div>
+
+          {tipo === "Espaço Confinado" && (
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-start gap-2">
+                <Wind className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-semibold leading-none">
+                    Pré-requisitos de espaço confinado (NR-33)
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Condições que existem antes da entrada, não itens de checklist livre. A
+                    medição atmosférica fica na aba <strong>Atmosfera</strong> da PT.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="ventilacao">Ventilação adotada</Label>
+                <Input
+                  id="ventilacao"
+                  placeholder="Ex: Insuflamento forçado com exaustor de 8 pol., 15 min antes da entrada"
+                  value={ventilacaoAdotada}
+                  onChange={(e) => setVentilacaoAdotada(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="bloqueio"
+                  checked={bloqueioEnergias}
+                  onCheckedChange={setBloqueioEnergias}
+                />
+                <Label htmlFor="bloqueio" className="text-sm">
+                  Bloqueio e etiquetagem de energias concluído
+                </Label>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="resgate">Plano de resgate</Label>
+                <Textarea
+                  id="resgate"
+                  rows={2}
+                  placeholder="Quem resgata, com qual equipamento, por qual rota, e quem aciona o socorro externo"
+                  value={planoResgate}
+                  onChange={(e) => setPlanoResgate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A norma exige plano de resgate <strong>antes</strong> da entrada, não depois do
+                  acidente.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="observacoes">Observações / Recomendações Especiais de Segurança</Label>
