@@ -161,6 +161,16 @@ describe("schema SGSST: colunas usadas em filtros existem", () => {
         (m) => m[1]
       );
 
+      // Alguns hooks montam a consulta com o nome da tabela em variável — é o
+      // caso de useSgsstIndicadores, que chama um `buscar(tabela, select)`
+      // genérico. Nesses arquivos o `.from(...)` literal não existe, e sem isto
+      // o teste acusava coluna válida como inexistente, por não ter achado
+      // tabela nenhuma. Aqui qualquer nome de tabela conhecido que apareça como
+      // string literal no arquivo também conta.
+      for (const m of src.matchAll(/["']([a-z0-9_]+)["']/g)) {
+        if (schema.has(m[1])) tabelasDoArquivo.push(m[1]);
+      }
+
       // União das colunas de todas as tabelas tocadas pelo arquivo. É uma
       // heurística deliberada: atribuir cada filtro à sua tabela exigiria
       // rastrear o encadeamento da query, e a união já pega o caso real

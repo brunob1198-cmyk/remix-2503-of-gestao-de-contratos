@@ -47,6 +47,21 @@ export interface SgsstIncidente {
   responsavel_registro_id?: string | null;
   gravidade: GravidadeIncidente;
   status: StatusIncidente;
+
+  // --- Base das taxas de frequencia e gravidade (NBR 14280) ---
+  /** Dias de afastamento perdidos. Numerador da taxa de gravidade. */
+  dias_perdidos?: number | null;
+  /**
+   * Dias DEBITADOS pela NBR 14280 para perda permanente (obito, invalidez,
+   * perda de membro). Somam aos perdidos: sem eles, um obito pesaria menos que
+   * um afastamento de 30 dias.
+   */
+  dias_debitados?: number | null;
+  data_afastamento?: string | null;
+  data_retorno?: string | null;
+  /** CAT emitida. Acidente com afastamento sem CAT e irregularidade legal. */
+  cat_emitida?: boolean | null;
+
   observacoes?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
