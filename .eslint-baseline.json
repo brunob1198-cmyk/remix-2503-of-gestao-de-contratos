@@ -14,9 +14,16 @@
     "diferença. Com 'android' e 'coverage' no ignores, as contagens coincidem.",
     "",
     "Valores medidos pelo CI em checkout limpo (PR #4): 1630 erros, 37 warnings.",
-    "`tolerance` mantida em 1 por precaução; pode ir a 0 após algumas execuções."
+    "`tolerance` mantida em 1 por precaução; pode ir a 0 após algumas execuções.",
+    "",
+    "ATUALIZAÇÃO (fase 1 do plano de Segurança): erros 1630 -> 1629, pela troca de",
+    "um `data: any` por SgsstRiscoInput em pages/sgsst/Riscos.tsx.",
+    "Os warnings passaram de 37 para 39 por DERIVA ANTERIOR, não por esta mudança:",
+    "medido com `git stash` no HEAD 75d6520e, o estado limpo já acusava 39. Os",
+    "arquivos desta fase não emitem warning algum. O gate é só sobre erros, então",
+    "a deriva não estava sendo travada — fica registrada aqui."
   ],
-  "errors": 1630,
-  "warnings": 37,
+  "errors": 1629,
+  "warnings": 39,
   "tolerance": 1
 }

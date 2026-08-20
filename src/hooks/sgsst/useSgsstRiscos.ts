@@ -4,8 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { RISCOS_PADRAO } from "@/utils/sgsstRiscosDefaults";
+import type { TecnicaAvaliacao } from "@/utils/sgsstRiscoLimite";
 
 export type CategoriaRisco = "Físico" | "Químico" | "Biológico" | "Ergonômico" | "Acidente" | "Outros";
+
+// Reexportado porque o tipo nasce em sgsstRiscoLimite (junto das funcoes que o
+// usam), mas quem consome o catalogo importa tudo pelo hook.
+export type { TecnicaAvaliacao };
 
 export interface SgsstRisco {
   id: string;
@@ -17,6 +22,16 @@ export interface SgsstRisco {
   agente?: string | null;
   fonte_geradora?: string | null;
   consequencia?: string | null;
+  /**
+   * Limite de tolerancia numerico, para comparar com a medicao. Nulo quando o
+   * limite depende da substancia ou do tempo de exposicao — nesses casos a
+   * base_legal aponta o anexo aplicavel.
+   */
+  limite_tolerancia?: number | null;
+  /** dB(A), mg/m3, ppm, m/s2, IBUTG. Numero sem unidade nao significa nada. */
+  unidade_medida?: string | null;
+  tecnica_avaliacao?: TecnicaAvaliacao | null;
+  base_legal?: string | null;
   status: "ativo" | "inativo";
   created_by?: string | null;
   updated_by?: string | null;
@@ -39,6 +54,8 @@ export interface SgsstRiscosParams {
   search?: string;
   categoria?: string;
   status?: string;
+  /** QUALITATIVA | QUANTITATIVA | "pendente" (quantitativo sem limite). */
+  tecnica?: string;
 }
 
 /**
@@ -63,6 +80,7 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
       params?.search ?? "",
       params?.categoria ?? "",
       params?.status ?? "",
+      params?.tecnica ?? "",
     ],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -89,6 +107,20 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
 
       if (params?.status && params.status !== "todos") {
         query = query.eq("status", params.status);
+      }
+
+      if (params?.tecnica && params.tecnica !== "todos") {
+        if (params.tecnica === "pendente") {
+          // A pendencia acionavel do catalogo: exige medicao instrumental mas
+          // nao tem limite contra o qual comparar o resultado.
+          query = query
+            .eq("tecnica_avaliacao", "QUANTITATIVA")
+            .is("limite_tolerancia", null);
+        } else if (params.tecnica === "sem_tecnica") {
+          query = query.is("tecnica_avaliacao", null);
+        } else {
+          query = query.eq("tecnica_avaliacao", params.tecnica);
+        }
       }
 
       query = paginado

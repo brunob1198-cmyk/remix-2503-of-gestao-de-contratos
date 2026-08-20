@@ -6,6 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstRisco, SgsstRiscoInput, CategoriaRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import {
+  parseLimite,
+  TECNICA_AJUDA,
+  type TecnicaAvaliacao,
+} from "@/utils/sgsstRiscoLimite";
+import { Ruler, Info } from "lucide-react";
+
+/** Unidades recorrentes, oferecidas como atalho sem impedir texto livre. */
+const UNIDADES_SUGERIDAS = ["dB(A)", "mg/m³", "ppm", "m/s²", "IBUTG °C", "% O₂", "f/cm³"];
 
 interface RiscosFormDialogProps {
   open: boolean;
@@ -30,6 +39,10 @@ export function RiscosFormDialog({
   const [consequencia, setConsequencia] = useState("");
   const [descricao, setDescricao] = useState("");
   const [status, setStatus] = useState<"ativo" | "inativo">("ativo");
+  const [tecnica, setTecnica] = useState<TecnicaAvaliacao | "">("");
+  const [limite, setLimite] = useState("");
+  const [unidade, setUnidade] = useState("");
+  const [baseLegal, setBaseLegal] = useState("");
 
   useEffect(() => {
     if (risco) {
@@ -41,6 +54,14 @@ export function RiscosFormDialog({
       setConsequencia(risco.consequencia || "");
       setDescricao(risco.descricao || "");
       setStatus(risco.status || "ativo");
+      setTecnica(risco.tecnica_avaliacao || "");
+      setLimite(
+        risco.limite_tolerancia === null || risco.limite_tolerancia === undefined
+          ? ""
+          : String(risco.limite_tolerancia).replace(".", ",")
+      );
+      setUnidade(risco.unidade_medida || "");
+      setBaseLegal(risco.base_legal || "");
     } else {
       setCodigo("");
       setNome("");
@@ -50,12 +71,23 @@ export function RiscosFormDialog({
       setConsequencia("");
       setDescricao("");
       setStatus("ativo");
+      setTecnica("");
+      setLimite("");
+      setUnidade("");
+      setBaseLegal("");
     }
   }, [risco, open]);
 
+  const limiteParseado = parseLimite(limite);
+  const limiteInvalido = limiteParseado === undefined;
+
+  // Limite sem unidade não diz nada — 85 do quê? Avisamos em vez de gravar um
+  // número órfão que depois vai imprimir num PGR.
+  const faltaUnidade = limiteParseado !== null && limiteParseado !== undefined && !unidade.trim();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim()) return;
+    if (!nome.trim() || limiteInvalido) return;
 
     await onSave({
       codigo: codigo.trim() || null,
@@ -66,6 +98,10 @@ export function RiscosFormDialog({
       consequencia: consequencia.trim() || null,
       descricao: descricao.trim() || null,
       status,
+      tecnica_avaliacao: tecnica || null,
+      limite_tolerancia: limiteParseado ?? null,
+      unidade_medida: unidade.trim() || null,
+      base_legal: baseLegal.trim() || null,
     });
 
     onOpenChange(false);
@@ -73,7 +109,9 @@ export function RiscosFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      {/* Rola o conteudo: com o bloco de avaliacao o formulario passa da altura
+          da viewport em telas de notebook. */}
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{risco ? "Editar Risco (Catálogo)" : "Novo Risco (Catálogo)"}</DialogTitle>
         </DialogHeader>
@@ -162,6 +200,114 @@ export function RiscosFormDialog({
             />
           </div>
 
+          {/* Avaliação e limite — o que transforma o risco em decisão técnica */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <Ruler className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-semibold leading-none">Avaliação e limite de tolerância</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Define se o risco exige medição e contra qual valor o resultado será
+                  comparado. É o que o PGR usa para concluir se a exposição é aceitável.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tecnica">Técnica de avaliação</Label>
+                <Select
+                  value={tecnica || "nao_definida"}
+                  onValueChange={(val) =>
+                    setTecnica(val === "nao_definida" ? "" : (val as TecnicaAvaliacao))
+                  }
+                >
+                  <SelectTrigger id="tecnica">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_definida">Não definida</SelectItem>
+                    <SelectItem value="QUALITATIVA">Qualitativa</SelectItem>
+                    <SelectItem value="QUANTITATIVA">Quantitativa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="limite">Limite de tolerância</Label>
+                <Input
+                  id="limite"
+                  inputMode="decimal"
+                  placeholder="Ex: 85"
+                  value={limite}
+                  onChange={(e) => setLimite(e.target.value)}
+                  aria-invalid={limiteInvalido}
+                  className={limiteInvalido ? "border-destructive" : undefined}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="unidade">Unidade de medida</Label>
+                <Input
+                  id="unidade"
+                  list="unidades-sugeridas"
+                  placeholder="Ex: dB(A)"
+                  value={unidade}
+                  onChange={(e) => setUnidade(e.target.value)}
+                  aria-invalid={faltaUnidade}
+                  className={faltaUnidade ? "border-amber-500" : undefined}
+                />
+                <datalist id="unidades-sugeridas">
+                  {UNIDADES_SUGERIDAS.map((u) => (
+                    <option key={u} value={u} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
+            {limiteInvalido && (
+              <p className="text-xs text-destructive">
+                Informe um número (use vírgula para decimal, ex.: 0,05) ou deixe em branco.
+              </p>
+            )}
+
+            {faltaUnidade && !limiteInvalido && (
+              <p className="text-xs text-amber-700 dark:text-amber-500">
+                Informe a unidade: um limite de {limite} sem unidade não permite comparar
+                com a medição.
+              </p>
+            )}
+
+            {tecnica && (
+              <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{TECNICA_AJUDA[tecnica]}</span>
+              </p>
+            )}
+
+            {tecnica === "QUANTITATIVA" && !limite.trim() && (
+              <p className="text-xs text-amber-700 dark:text-amber-500">
+                Risco quantitativo sem limite cadastrado: a medição vai existir, mas não
+                haverá parâmetro para dizer se está conforme. Se o limite depende da
+                substância ou do tempo de exposição, registre a base legal abaixo.
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="baseLegal">Base legal do limite</Label>
+              <Input
+                id="baseLegal"
+                placeholder="Ex: NR-15 Anexo 1 — 85 dB(A) para 8h de exposição"
+                value={baseLegal}
+                onChange={(e) => setBaseLegal(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A norma que fundamenta o valor adotado. Use este campo também quando o
+                limite não é um número fixo (tabela por substância, regime de trabalho).
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="descricao">Descrição Detalhada / Observações</Label>
             <Textarea
@@ -177,7 +323,7 @@ export function RiscosFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !nome.trim()}>
+            <Button type="submit" disabled={isLoading || !nome.trim() || limiteInvalido}>
               {isLoading ? "Salvando..." : risco ? "Atualizar Risco" : "Cadastrar Risco"}
             </Button>
           </DialogFooter>

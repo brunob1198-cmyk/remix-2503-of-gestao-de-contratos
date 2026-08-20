@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useSgsstRiscos, SgsstRisco, CategoriaRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { useSgsstRiscos, SgsstRisco, SgsstRiscoInput, CategoriaRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { formatarLimite, limitePendente, TECNICA_LABEL } from "@/utils/sgsstRiscoLimite";
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -12,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
-import { Plus, Edit2, Trash2, AlertTriangle, Eye, CheckCircle2, XCircle, Activity, Biohazard, Sparkles } from "lucide-react";
+import { Plus, Edit2, Trash2, AlertTriangle, Eye, CheckCircle2, XCircle, Ruler, Biohazard, Sparkles } from "lucide-react";
 import { RISCOS_PADRAO } from "@/utils/sgsstRiscosDefaults";
 import { RiscosFormDialog } from "@/components/sgsst/RiscosFormDialog";
 import { RiscosDetailDialog } from "@/components/sgsst/RiscosDetailDialog";
@@ -30,6 +31,7 @@ export default function SgsstRiscosPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [selectedCategoria, setSelectedCategoria] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
+  const [selectedTecnica, setSelectedTecnica] = useState<string>("todos");
 
   // Busca e filtros no servidor: filtrar no cliente cobria apenas a pagina
   // carregada, escondendo riscos das demais paginas do catalogo.
@@ -49,20 +51,32 @@ export default function SgsstRiscosPage() {
       search: debouncedSearch,
       categoria: selectedCategoria,
       status: selectedStatus,
+      tecnica: selectedTecnica,
     });
 
-  const { count, isLoading: loadingResumo } = useSgsstCounts("sgsst_riscos_catalogo", [
+  const {
+    count,
+    valorExibivel,
+    indisponivel,
+    indisponiveis,
+    isLoading: loadingResumo,
+  } = useSgsstCounts("sgsst_riscos_catalogo", [
     { key: "total" },
     { key: "ativos", build: (q) => q.eq("status", "ativo") },
     { key: "fisicoQuimico", build: (q) => q.in("categoria", ["Físico", "Químico"]) },
-    { key: "ergoAcidente", build: (q) => q.in("categoria", ["Ergonômico", "Acidente"]) },
+    // Pendencia acionavel, nao contagem descritiva: risco que exige medicao
+    // instrumental mas nao tem limite contra o qual comparar o resultado.
+    {
+      key: "limitePendente",
+      build: (q) => q.eq("tecnica_avaliacao", "QUANTITATIVA").is("limite_tolerancia", null),
+    },
   ]);
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, selectedCategoria, selectedStatus]);
+  }, [debouncedSearch, selectedCategoria, selectedStatus, selectedTecnica]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -84,7 +98,7 @@ export default function SgsstRiscosPage() {
     setIsDetailOpen(true);
   };
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: SgsstRiscoInput) => {
     if (editingRisco) {
       await updateRisco.mutateAsync({ id: editingRisco.id, ...data });
     } else {
@@ -111,12 +125,24 @@ export default function SgsstRiscosPage() {
 
   // Uma lista vazia com filtro ativo e um resultado de filtro, nao ausencia
   // de cadastro; a mensagem e a acao oferecida precisam ser diferentes.
-  const temFiltroAtivo = searchTerm.trim().length > 0 || selectedCategoria !== "todos" || selectedStatus !== "todos";
+  const temFiltroAtivo =
+    searchTerm.trim().length > 0 ||
+    selectedCategoria !== "todos" ||
+    selectedStatus !== "todos" ||
+    selectedTecnica !== "todos";
 
   const limparFiltros = () => {
     setSearchTerm("");
     setSelectedCategoria("todos");
     setSelectedStatus("todos");
+    setSelectedTecnica("todos");
+  };
+
+  const TECNICA_FILTRO_LABEL: Record<string, string> = {
+    QUALITATIVA: "Qualitativa",
+    QUANTITATIVA: "Quantitativa",
+    pendente: "Sem limite definido",
+    sem_tecnica: "Técnica não definida",
   };
 
   // Distingue carregando / falha / vazio-por-filtro / vazio-de-verdade.
@@ -180,34 +206,53 @@ export default function SgsstRiscosPage() {
         stats={[
           {
             label: "Total de Riscos",
-            value: count("total"),
-            tone: "info",
+            value: valorExibivel("total"),
+            tone: indisponivel("total") ? "neutro" : "info",
             icon: AlertTriangle,
             ajuda: "Todos os riscos do catálogo, ativos e inativos.",
           },
           {
             label: "Riscos Ativos",
-            value: count("ativos"),
-            tone: "positivo",
+            value: valorExibivel("ativos"),
+            tone: indisponivel("ativos") ? "neutro" : "positivo",
             icon: CheckCircle2,
             ajuda: "Riscos disponíveis para uso em PGR, APR, PT e Inspeções.",
           },
           {
             label: "Físicos / Químicos",
-            value: count("fisicoQuimico"),
-            tone: "atencao",
+            value: valorExibivel("fisicoQuimico"),
+            tone: indisponivel("fisicoQuimico") ? "neutro" : "atencao",
             icon: Biohazard,
             ajuda: "Agentes que costumam exigir monitoramento quantitativo e entram no PCMSO.",
           },
           {
-            label: "Ergonômicos / Acidentes",
-            value: count("ergoAcidente"),
-            tone: "neutro",
-            icon: Activity,
-            ajuda: "Riscos avaliados de forma qualitativa, típicos de análise ergonômica e APR.",
+            label: "Sem limite definido",
+            value: valorExibivel("limitePendente"),
+            // Verde só quando a contagem foi feita e deu zero. Falha na contagem
+            // vira cinza: pintar de verde um número que não existe passaria a
+            // impressão oposta da verdadeira.
+            tone: indisponivel("limitePendente")
+              ? "neutro"
+              : count("limitePendente") > 0
+                ? "atencao"
+                : "positivo",
+            icon: Ruler,
+            hint: indisponivel("limitePendente") ? "não foi possível contar" : "exigem medição",
+            ajuda:
+              "Riscos marcados como quantitativos que não têm limite de tolerância cadastrado. Sem limite, a medição existe mas não permite concluir se a exposição está conforme.",
           },
         ]}
       />
+
+      {indisponiveis.length > 0 && !loadingResumo && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <strong>{indisponiveis.length} indicador(es) não pôde ser calculado</strong> e aparece
+          como "—" acima. A causa mais comum é a migration{" "}
+          <code className="font-mono">20260820140000_catalogo_riscos_limite_tolerancia.sql</code>{" "}
+          ainda não ter sido aplicada ao banco: os campos de limite de tolerância e técnica de
+          avaliação não existem lá. A lista de riscos abaixo continua funcionando.
+        </p>
+      )}
 
       {/* Busca e filtros */}
       <SgsstFilterBar
@@ -236,6 +281,15 @@ export default function SgsstRiscosPage() {
                 },
               ]
             : []),
+          ...(selectedTecnica !== "todos"
+            ? [
+                {
+                  label: "Avaliação",
+                  value: TECNICA_FILTRO_LABEL[selectedTecnica] ?? selectedTecnica,
+                  onClear: () => setSelectedTecnica("todos"),
+                },
+              ]
+            : []),
         ]}
       >
         <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
@@ -250,6 +304,19 @@ export default function SgsstRiscosPage() {
             <SelectItem value="Ergonômico">Ergonômico</SelectItem>
             <SelectItem value="Acidente">Acidente</SelectItem>
             <SelectItem value="Outros">Outros</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedTecnica} onValueChange={setSelectedTecnica}>
+          <SelectTrigger className="w-[190px]" aria-label="Filtrar por técnica de avaliação">
+            <SelectValue placeholder="Avaliação" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Toda avaliação</SelectItem>
+            <SelectItem value="QUANTITATIVA">Quantitativa</SelectItem>
+            <SelectItem value="QUALITATIVA">Qualitativa</SelectItem>
+            <SelectItem value="pendente">Sem limite definido</SelectItem>
+            <SelectItem value="sem_tecnica">Técnica não definida</SelectItem>
           </SelectContent>
         </Select>
 
@@ -276,6 +343,7 @@ export default function SgsstRiscosPage() {
                 <TableHead>Categoria</TableHead>
                 <TableHead>Agente Nocivo</TableHead>
                 <TableHead>Fonte Geradora</TableHead>
+                <TableHead>Limite / Avaliação</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -283,7 +351,7 @@ export default function SgsstRiscosPage() {
             <TableBody>
               {tableState ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     {tableState}
                   </TableCell>
                 </TableRow>
@@ -306,6 +374,27 @@ export default function SgsstRiscosPage() {
                     </TableCell>
                     <TableCell className="max-w-xs truncate text-muted-foreground">
                       {r.fonte_geradora || "—"}
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {formatarLimite(r.limite_tolerancia, r.unidade_medida) ? (
+                        <span className="font-medium tabular-nums">
+                          {formatarLimite(r.limite_tolerancia, r.unidade_medida)}
+                        </span>
+                      ) : limitePendente(r) ? (
+                        <span
+                          className="text-amber-700 dark:text-amber-500"
+                          title="Risco quantitativo sem limite de tolerância cadastrado"
+                        >
+                          limite pendente
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                      {r.tecnica_avaliacao && (
+                        <span className="block text-muted-foreground">
+                          {TECNICA_LABEL[r.tecnica_avaliacao]}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {r.status === "ativo" ? (
@@ -340,7 +429,13 @@ export default function SgsstRiscosPage() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Excluir risco "{r.nome}"?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Esta ação removerá o risco do catálogo da empresa.
+                                    O risco sai do catálogo e o vínculo com ele é desfeito em
+                                    todo PGR, APR, PT, inspeção e incidente que o referenciava
+                                    — as linhas continuam lá, mas deixam de apontar para o
+                                    catálogo, e o limite de tolerância e a base legal param de
+                                    acompanhar esses documentos. Para parar de oferecê-lo em
+                                    novos documentos sem afetar os antigos, marque-o como
+                                    inativo em vez de excluir.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
