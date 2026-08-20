@@ -26,6 +26,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
+import { SgsstCatsTab } from "@/components/sgsst/SgsstCatsTab";
+import { SgsstRelatorioAnaliticoTab } from "@/components/sgsst/SgsstRelatorioAnaliticoTab";
 import {
   Plus,
   Search,
@@ -42,6 +44,8 @@ import {
   AlertTriangle,
   Clock,
   CheckSquare,
+  Siren,
+  ClipboardList,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
@@ -399,15 +403,21 @@ export default function SgsstPcmsoListPage() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-3">
+        <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-5">
           <TabsTrigger value="pcmso" className="gap-2">
             <HeartPulse className="h-4 w-4" /> PCMSO (Programas)
           </TabsTrigger>
           <TabsTrigger value="aso" className="gap-2">
-            <Stethoscope className="h-4 w-4" /> ASO — Atestados ({asos.length})
+            <Stethoscope className="h-4 w-4" /> ASO — Atestados ({totalAso})
           </TabsTrigger>
           <TabsTrigger value="exames" className="gap-2">
-            <FileText className="h-4 w-4" /> Exames Ocupacionais ({exames.length})
+            <FileText className="h-4 w-4" /> Exames Ocupacionais ({totalExame})
+          </TabsTrigger>
+          <TabsTrigger value="cats" className="gap-2">
+            <Siren className="h-4 w-4" /> CATs
+          </TabsTrigger>
+          <TabsTrigger value="relatorio" className="gap-2">
+            <ClipboardList className="h-4 w-4" /> Relatório Analítico
           </TabsTrigger>
         </TabsList>
 
@@ -785,6 +795,14 @@ export default function SgsstPcmsoListPage() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cats" className="space-y-4 pt-4">
+          <SgsstCatsTab />
+        </TabsContent>
+
+        <TabsContent value="relatorio" className="space-y-4 pt-4">
+          <SgsstRelatorioAnaliticoTab />
         </TabsContent>
       </Tabs>
 

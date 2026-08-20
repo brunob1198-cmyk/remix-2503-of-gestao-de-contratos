@@ -16,6 +16,25 @@ export type TipoExameOcupacional =
 
 export type StatusExameOcupacional = "PENDENTE" | "AGENDADO" | "REALIZADO" | "CANCELADO";
 
+/**
+ * O relatório analítico (NR-07 7.6.2) conta exames clínicos e complementares
+ * separadamente. O `tipo` que já existia é a ocasião (admissional, periódico...),
+ * não a natureza.
+ */
+export type NaturezaExame = "CLINICO" | "COMPLEMENTAR";
+
+/**
+ * Classificação contável do achado. O `resultado` em texto livre continua para o
+ * detalhe clínico — a classificação é para estatística, não substitui o laudo.
+ */
+export type ClassificacaoResultado = "NORMAL" | "ALTERADO" | "INCONCLUSIVO";
+
+export const CLASSIFICACAO_LABEL: Record<ClassificacaoResultado, string> = {
+  NORMAL: "Normal",
+  ALTERADO: "Alterado",
+  INCONCLUSIVO: "Inconclusivo",
+};
+
 export type AptidaoAso = "APTO" | "APTO_COM_RESTRICAO" | "INAPTO";
 
 export type StatusAso = "ATIVO" | "SUBSTITUIDO" | "CANCELADO";
@@ -32,7 +51,12 @@ export interface SgsstExame {
   tipo: TipoExameOcupacional;
   data_solicitacao: string;
   data_realizacao?: string | null;
+  /** Detalhe clínico em texto livre. Não entra na contagem do relatório. */
   resultado?: string | null;
+  /** Classificação contável do achado. NULL = ainda não classificado. */
+  resultado_classificacao?: ClassificacaoResultado | null;
+  /** CLINICO = a consulta. COMPLEMENTAR = exame de apoio. */
+  natureza?: NaturezaExame | null;
   medico_responsavel?: string | null;
   observacoes?: string | null;
   status: StatusExameOcupacional;

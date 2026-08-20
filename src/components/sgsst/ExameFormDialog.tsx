@@ -5,7 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SgsstExame, SgsstExameInput, TipoExameOcupacional, StatusExameOcupacional } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import {
+  SgsstExame,
+  SgsstExameInput,
+  TipoExameOcupacional,
+  StatusExameOcupacional,
+  NaturezaExame,
+  ClassificacaoResultado,
+} from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import { FileText } from "lucide-react";
@@ -38,6 +45,8 @@ export function ExameFormDialog({
   const [medicoResponsavel, setMedicoResponsavel] = useState("");
   const [status, setStatus] = useState<StatusExameOcupacional>("PENDENTE");
   const [observacoes, setObservacoes] = useState("");
+  const [natureza, setNatureza] = useState<NaturezaExame>("COMPLEMENTAR");
+  const [resultadoClassificacao, setResultadoClassificacao] = useState<ClassificacaoResultado | "none">("none");
 
   useEffect(() => {
     if (exame) {
@@ -48,6 +57,8 @@ export function ExameFormDialog({
       setDataSolicitacao(exame.data_solicitacao ? exame.data_solicitacao.split("T")[0] : "");
       setDataRealizacao(exame.data_realizacao ? exame.data_realizacao.split("T")[0] : "");
       setResultado(exame.resultado || "");
+      setNatureza(exame.natureza || "COMPLEMENTAR");
+      setResultadoClassificacao(exame.resultado_classificacao || "none");
       setMedicoResponsavel(exame.medico_responsavel || "");
       setStatus(exame.status || "PENDENTE");
       setObservacoes(exame.observacoes || "");
@@ -62,6 +73,8 @@ export function ExameFormDialog({
       setMedicoResponsavel("");
       setStatus("PENDENTE");
       setObservacoes("");
+      setNatureza("COMPLEMENTAR");
+      setResultadoClassificacao("none");
     }
   }, [exame, open]);
 
@@ -77,6 +90,9 @@ export function ExameFormDialog({
       data_solicitacao: dataSolicitacao || new Date().toISOString().split("T")[0],
       data_realizacao: dataRealizacao || null,
       resultado: resultado.trim() || null,
+      natureza,
+      resultado_classificacao:
+        resultadoClassificacao === "none" ? null : resultadoClassificacao,
       medico_responsavel: medicoResponsavel.trim() || null,
       status,
       observacoes: observacoes.trim() || null,
@@ -210,15 +226,72 @@ export function ExameFormDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="resultado">Parecer / Resultado Simplificado</Label>
+              <Label htmlFor="natureza">Natureza do exame *</Label>
+              <Select value={natureza} onValueChange={(v: NaturezaExame) => setNatureza(v)}>
+                <SelectTrigger id="natureza">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLINICO">Clínico (consulta médica)</SelectItem>
+                  <SelectItem value="COMPLEMENTAR">
+                    Complementar (laboratório, imagem, audiometria)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                O relatório analítico conta clínicos e complementares separadamente.
+              </p>
+            </div>
+          </div>
+
+          {/* A classificação é o que permite contar "resultados anormais" no
+              relatório analítico. O texto livre continua, para o detalhe clínico:
+              a classificação é para estatística, não substitui o laudo. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="classificacao">Classificação do resultado</Label>
+              <Select
+                value={resultadoClassificacao}
+                onValueChange={(v) =>
+                  setResultadoClassificacao(v as ClassificacaoResultado | "none")
+                }
+              >
+                <SelectTrigger id="classificacao">
+                  <SelectValue placeholder="Ainda não classificado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Ainda não classificado</SelectItem>
+                  <SelectItem value="NORMAL">Normal</SelectItem>
+                  <SelectItem value="ALTERADO">Alterado</SelectItem>
+                  <SelectItem value="INCONCLUSIVO">Inconclusivo</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Obrigatório na estatística de achados do relatório anual (NR-07 7.6.2).
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="resultado">Detalhe do resultado</Label>
               <Input
                 id="resultado"
-                placeholder="Ex: Normal, Sem alterações"
+                placeholder="Ex.: Perda em 4 kHz à esquerda"
                 value={resultado}
                 onChange={(e) => setResultado(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Texto livre para o achado clínico. Não entra na contagem.
+              </p>
             </div>
           </div>
+
+          {status === "REALIZADO" && resultadoClassificacao === "none" && (
+            <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              Exame marcado como realizado mas sem classificação. Ele aparecerá como
+              "não classificado" no relatório analítico — o relatório não presume que
+              um exame sem classificação é normal.
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="obs">Observações Gerais</Label>
