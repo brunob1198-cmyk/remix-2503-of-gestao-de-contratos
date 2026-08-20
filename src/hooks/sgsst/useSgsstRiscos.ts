@@ -224,6 +224,10 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
         return { inseridos: 0, ignorados: RISCOS_PADRAO.length };
       }
 
+      // O cast e necessario porque src/integrations/supabase/types.ts e gerado a
+      // partir do banco e ainda nao conhece as colunas de limite de tolerancia
+      // adicionadas pela migration 20260820140000. Sem ele o typecheck do CI
+      // rejeita o payload, mesmo com as colunas existindo no banco.
       const { error } = await supabase.from("sgsst_riscos_catalogo").insert(
         novos.map((r) => ({
           ...r,
@@ -231,7 +235,7 @@ export function useSgsstRiscos(params?: SgsstRiscosParams) {
           status: "ativo",
           created_by: profile?.id,
           updated_by: profile?.id,
-        }))
+        })) as never
       );
 
       if (error) throw error;

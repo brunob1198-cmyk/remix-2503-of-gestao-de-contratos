@@ -41,6 +41,18 @@ export interface SgsstPt {
   data_fim?: string | null;
   observacoes?: string | null;
   status: StatusPt;
+
+  // --- Pre-requisitos de entrada em espaco confinado (NR-33) ---
+  ventilacao_adotada?: string | null;
+  bloqueio_energias?: boolean | null;
+  /** A norma exige plano de resgate ANTES da entrada, nao depois do acidente. */
+  plano_resgate?: string | null;
+  /**
+   * Fim da validade da permissao. A PT vale para o turno autorizado; sem esse
+   * limite ela ficaria valendo indefinidamente, o oposto do que ela e.
+   */
+  validade_fim?: string | null;
+
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string;
@@ -126,6 +138,7 @@ export interface SgsstPtHistorico {
   usuario?: { id: string; nome: string | null } | null;
 }
 
+import type { MomentoMedicao } from "@/utils/sgsstAtmosfera";
 import { getDefaultChecklistItems } from "@/utils/sgsstChecklistDefaults";
 export { getDefaultChecklistItems };
 
@@ -729,5 +742,142 @@ export function useSgsstPtHistorico(ptId?: string) {
   return {
     historico,
     isLoading,
+  };
+}
+
+/**
+ * Papeis que a NR-33 nomeia para trabalho em espaco confinado.
+ *
+ * Nao virou CHECK no banco de proposito: ha PTs cadastradas com texto livre, e
+ * um CHECK retroativo obrigaria a reescrever dado do usuario. Aqui eles viram
+ * opcao na tela, e a exigencia de Vigia e validada na aplicacao — onde da para
+ * explicar o motivo em vez de so recusar.
+ */
+export const PAPEIS_ESPACO_CONFINADO = [
+  "Trabalhador Autorizado",
+  "Vigia",
+  "Supervisor de Entrada",
+] as const;
+
+export const PAPEIS_PT_GERAIS = [
+  "Executante",
+  "Responsável",
+  "Supervisor",
+  "Observador",
+] as const;
+
+export interface SgsstPtMedicaoAtmosfera {
+  id: string;
+  empresa_id: string;
+  pt_id: string;
+  medido_em: string;
+  momento: MomentoMedicao;
+  oxigenio_percentual?: number | null;
+  causa_variacao_conhecida: boolean;
+  inflamaveis_percentual_lie?: number | null;
+  contaminante_nome?: string | null;
+  contaminante_valor?: number | null;
+  contaminante_unidade?: string | null;
+  contaminante_limite?: number | null;
+  equipamento?: string | null;
+  numero_serie?: string | null;
+  calibracao_validade?: string | null;
+  medido_por_id?: string | null;
+  medido_por_nome?: string | null;
+  observacoes?: string | null;
+  created_at?: string;
+  medido_por?: { id: string; nome: string | null } | null;
+}
+
+export type SgsstPtMedicaoAtmosferaInput = Omit<
+  SgsstPtMedicaoAtmosfera,
+  "id" | "empresa_id" | "created_at" | "medido_por"
+>;
+
+/**
+ * Medicoes atmosfericas da PT — condicao de entrada em espaco confinado.
+ *
+ * A PT podia ser aprovada e executada sem ninguem ter medido oxigenio,
+ * inflamaveis ou contaminantes. Isto nao e lacuna de cadastro: e o item que a
+ * NR-33 coloca antes da entrada.
+ */
+export function useSgsstPtAtmosfera(ptId?: string) {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_pt_medicoes_atmosfera", ptId],
+    enabled: !!ptId && !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pt_medicoes_atmosfera" as never)
+        .select("*, medido_por:profiles!sgsst_pt_medicoes_atmosfera_medido_por_id_fkey(id, nome)")
+        .eq("pt_id", ptId as string)
+        .order("medido_em", { ascending: false }) as never as Promise<{
+        data: SgsstPtMedicaoAtmosfera[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const invalidar = () => {
+    queryClient.invalidateQueries({ queryKey: ["sgsst_pt_medicoes_atmosfera", ptId] });
+  };
+
+  const criarMedicao = useMutation({
+    mutationFn: async (input: SgsstPtMedicaoAtmosferaInput) => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+      if (!ptId) throw new Error("Permissão de trabalho não selecionada.");
+
+      const { error } = await (supabase.from("sgsst_pt_medicoes_atmosfera" as never).insert({
+        ...input,
+        pt_id: ptId,
+        empresa_id: empresaId,
+        medido_por_id: input.medido_por_id ?? profile?.id ?? null,
+        created_by: profile?.id,
+      } as never) as never as Promise<{ error: { message?: string } | null }>);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidar();
+      toast.success("Medição atmosférica registrada.");
+    },
+    onError: (err: unknown) => {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao registrar a medição: ${detalhe}`);
+    },
+  });
+
+  const removerMedicao = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("sgsst_pt_medicoes_atmosfera" as never)
+        .delete()
+        .eq("id", id) as never as Promise<{ error: { message?: string } | null }>);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidar();
+      toast.success("Medição removida.");
+    },
+    onError: (err: unknown) => {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao remover a medição: ${detalhe}`);
+    },
+  });
+
+  return {
+    medicoes: data ?? [],
+    isLoading,
+    error,
+    refetch,
+    criarMedicao,
+    removerMedicao,
   };
 }

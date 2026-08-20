@@ -46,8 +46,9 @@ ALTER TABLE public.sgsst_pgr_inventario
     CHECK (tecnica_avaliacao IS NULL OR tecnica_avaliacao IN ('QUALITATIVA', 'QUANTITATIVA')),
   ADD COLUMN IF NOT EXISTS data_medicao date,
   -- O resultado e declarado, nao calculado: para oxigenio em espaco confinado a
-  -- NR-33 exige atmosfera ENTRE 20,9% e 23%, entao tanto falta quanto excesso
-  -- reprovam. Um `medida > limite` generico daria "conforme" no caso que mata.
+  -- A NR-33 33.5.15.2 admite entrada com O2 ENTRE 19,5% e 23%, entao tanto
+  -- falta quanto excesso reprovam. Um `medida > limite` generico daria
+  -- "conforme" no caso que mata.
   ADD COLUMN IF NOT EXISTS resultado_avaliacao text
     CHECK (resultado_avaliacao IS NULL OR resultado_avaliacao IN
       ('ABAIXO_LIMITE', 'ACIMA_LIMITE', 'NAO_APLICAVEL')),

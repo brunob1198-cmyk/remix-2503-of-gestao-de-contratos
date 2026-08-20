@@ -713,8 +713,9 @@ export function PgrInventarioFormDialog({
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
                 A conclusão é declarada por você, e não calculada pelo sistema, porque há agente
-                em que o limite é <strong>piso</strong> e não teto — em espaço confinado a NR-33
-                exige oxigênio entre 20,9% e 23%, então falta e excesso reprovam.
+                em que o limite é <strong>piso</strong> e não teto — em espaço confinado a
+                NR-33 admite entrada com oxigênio entre 19,5% e 23%, então falta e excesso
+                reprovam.
               </span>
             </p>
 
