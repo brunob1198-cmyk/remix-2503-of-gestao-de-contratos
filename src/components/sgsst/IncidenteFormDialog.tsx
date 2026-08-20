@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstIncidente, SgsstIncidenteInput, TipoIncidente, GravidadeIncidente, StatusIncidente } from "@/hooks/sgsst/useSgsstIncidentes";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +44,13 @@ export function IncidenteFormDialog({
   const [gravidade, setGravidade] = useState<GravidadeIncidente>("MEDIA");
   const [status, setStatus] = useState<StatusIncidente>("REGISTRADO");
   const [observacoes, setObservacoes] = useState("");
+
+  // --- Base das taxas da NBR 14280 ---
+  const [diasPerdidos, setDiasPerdidos] = useState("");
+  const [diasDebitados, setDiasDebitados] = useState("");
+  const [dataAfastamento, setDataAfastamento] = useState("");
+  const [dataRetorno, setDataRetorno] = useState("");
+  const [catEmitida, setCatEmitida] = useState(false);
   const [pgrId, setPgrId] = useState("none");
   const [aprId, setAprId] = useState("none");
   const [ptId, setPtId] = useState("none");
@@ -166,6 +174,19 @@ export function IncidenteFormDialog({
       setGravidade(incidente.gravidade || "MEDIA");
       setStatus(incidente.status || "REGISTRADO");
       setObservacoes(incidente.observacoes || "");
+      setDiasPerdidos(
+        incidente.dias_perdidos === null || incidente.dias_perdidos === undefined
+          ? ""
+          : String(incidente.dias_perdidos)
+      );
+      setDiasDebitados(
+        incidente.dias_debitados === null || incidente.dias_debitados === undefined
+          ? ""
+          : String(incidente.dias_debitados)
+      );
+      setDataAfastamento(incidente.data_afastamento?.split("T")[0] || "");
+      setDataRetorno(incidente.data_retorno?.split("T")[0] || "");
+      setCatEmitida(!!incidente.cat_emitida);
       setPgrId(incidente.pgr_id || "none");
       setAprId(incidente.apr_id || "none");
       setPtId(incidente.pt_id || "none");
@@ -185,6 +206,11 @@ export function IncidenteFormDialog({
       setGravidade("MEDIA");
       setStatus("REGISTRADO");
       setObservacoes("");
+      setDiasPerdidos("");
+      setDiasDebitados("");
+      setDataAfastamento("");
+      setDataRetorno("");
+      setCatEmitida(false);
       setPgrId("none");
       setAprId("none");
       setPtId("none");
@@ -213,6 +239,11 @@ export function IncidenteFormDialog({
       gravidade,
       status,
       observacoes: observacoes.trim() || null,
+      dias_perdidos: diasPerdidos.trim() ? Number(diasPerdidos) : null,
+      dias_debitados: diasDebitados.trim() ? Number(diasDebitados) : null,
+      data_afastamento: dataAfastamento || null,
+      data_retorno: dataRetorno || null,
+      cat_emitida: catEmitida,
       pgr_id: pgrId === "none" ? null : pgrId,
       apr_id: aprId === "none" ? null : aprId,
       pt_id: ptId === "none" ? null : ptId,
@@ -468,6 +499,89 @@ export function IncidenteFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Base das taxas de frequência e gravidade (NBR 14280) */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold leading-none">
+                Afastamento e dias perdidos
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                É daqui que saem a taxa de frequência e a taxa de gravidade. Sem os dias
+                perdidos a gravidade não existe.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="diasPerdidos">Dias perdidos</Label>
+                <Input
+                  id="diasPerdidos"
+                  type="number"
+                  min={0}
+                  value={diasPerdidos}
+                  onChange={(e) => setDiasPerdidos(e.target.value)}
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="diasDebitados">Dias debitados</Label>
+                <Input
+                  id="diasDebitados"
+                  type="number"
+                  min={0}
+                  value={diasDebitados}
+                  onChange={(e) => setDiasDebitados(e.target.value)}
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dataAfastamento">Início do afastamento</Label>
+                <Input
+                  id="dataAfastamento"
+                  type="date"
+                  value={dataAfastamento}
+                  onChange={(e) => setDataAfastamento(e.target.value)}
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dataRetorno">Retorno ao trabalho</Label>
+                <Input
+                  id="dataRetorno"
+                  type="date"
+                  value={dataRetorno}
+                  onChange={(e) => setDataRetorno(e.target.value)}
+                  disabled={isReadOnly}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              <strong>Dias debitados</strong> são os que a NBR 14280 atribui a perda permanente
+              — 6.000 para óbito ou invalidez total, e valores fixos por membro perdido. Sem
+              eles, um óbito pesaria menos na gravidade que um afastamento de 30 dias.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                id="catEmitida"
+                checked={catEmitida}
+                onCheckedChange={setCatEmitida}
+                disabled={isReadOnly}
+              />
+              <Label htmlFor="catEmitida" className="text-sm">
+                CAT emitida
+              </Label>
+            </div>
+
+            {!catEmitida && (Number(diasPerdidos) > 0 || tipo === "Acidente com Afastamento") && (
+              <p className="text-xs text-red-700 dark:text-red-400">
+                Acidente com afastamento sem CAT emitida. A emissão é obrigação legal — isto
+                aparece como irregularidade no painel de indicadores.
+              </p>
+            )}
           </div>
 
           <DialogFooter className="pt-2">

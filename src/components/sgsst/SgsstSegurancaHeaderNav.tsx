@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Briefcase,
   UserCheck,
+  BarChart3,
 } from "lucide-react";
 
 export function SgsstSegurancaHeaderNav() {
@@ -25,6 +26,7 @@ export function SgsstSegurancaHeaderNav() {
     { id: "nao-conformidades", label: "Não Conformidades", path: "/medicoes/sgsst/nao-conformidades", icon: AlertOctagon, color: "text-purple-600" },
     { id: "riscos", label: "Catálogo de Riscos", path: "/medicoes/sgsst/riscos", icon: AlertTriangle, color: "text-yellow-600" },
     { id: "funcoes", label: "Funções / Cargos", path: "/medicoes/sgsst/funcoes", icon: Briefcase, color: "text-sky-600" },
+    { id: "indicadores", label: "Indicadores", path: "/medicoes/sgsst/indicadores", icon: BarChart3, color: "text-teal-600" },
   ];
 
   return (

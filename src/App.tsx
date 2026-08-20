@@ -49,6 +49,7 @@ const ConfigImpostosPage = React.lazy(() => import("./pages/configuracoes/Config
 const SgsstFuncoesPage = React.lazy(() => import("./pages/sgsst/Funcoes"));
 const SgsstColaboradoresPage = React.lazy(() => import("./pages/sgsst/Colaboradores"));
 const SgsstRiscosPage = React.lazy(() => import("./pages/sgsst/Riscos"));
+const SgsstIndicadoresPage = React.lazy(() => import("./pages/sgsst/Indicadores"));
 const SgsstPgrListPage = React.lazy(() => import("./pages/sgsst/PgrList"));
 const SgsstPgrDetailPage = React.lazy(() => import("./pages/sgsst/PgrDetail"));
 const SgsstAprListPage = React.lazy(() => import("./pages/sgsst/AprList"));
@@ -148,6 +149,7 @@ const App = () => {
                 <Route path="sgsst/funcoes" element={<SgsstFuncoesPage />} />
                 <Route path="sgsst/colaboradores" element={<SgsstColaboradoresPage />} />
                 <Route path="sgsst/riscos" element={<SgsstRiscosPage />} />
+                <Route path="sgsst/indicadores" element={<SgsstIndicadoresPage />} />
                 <Route path="sgsst/pgr" element={<SgsstPgrListPage />} />
                 <Route path="sgsst/pgr/:pgrId" element={<SgsstPgrDetailPage />} />
                 <Route path="sgsst/apr" element={<SgsstAprListPage />} />
