@@ -1,7 +1,23 @@
 import { useState } from "react";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSgsstPgr, useSgsstPgrDetail, useSgsstPgrInventario, useSgsstPgrMedidasControle, SgsstPgrInventario, SgsstPgrMedidaControle, StatusPgr } from "@/hooks/sgsst/useSgsstPgr";
+import {
+  useSgsstPgr,
+  useSgsstPgrDetail,
+  useSgsstPgrInventario,
+  useSgsstPgrMedidasControle,
+  useSgsstPgrHistorico,
+  useSgsstPgrInventarioFuncoes,
+  OPERACAO_HISTORICO_LABEL,
+  SgsstPgrInventario,
+  SgsstPgrInventarioInput,
+  SgsstPgrMedidaControle,
+  SgsstPgrMedidaControleInput,
+  StatusPgr,
+} from "@/hooks/sgsst/useSgsstPgr";
+import { PgrEmitirDialog } from "@/components/sgsst/PgrEmitirDialog";
+import { PgrRevisaoAviso } from "@/components/sgsst/PgrRevisaoAviso";
+import { alineasPendentes } from "@/utils/sgsstPgrInventario";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -9,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Plus, Edit2, Trash2, ShieldAlert, Wrench, AlertTriangle, CheckCircle2, Lock, FileCheck, Calendar, User, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Edit2, Trash2, ShieldAlert, Wrench, AlertTriangle, CheckCircle2, Lock, FileCheck, Calendar, User, RefreshCw, History, FileDown, Users } from "lucide-react";
 import { PgrInventarioFormDialog } from "@/components/sgsst/PgrInventarioFormDialog";
 import { PgrMedidasFormDialog } from "@/components/sgsst/PgrMedidasFormDialog";
 import { PgrFormDialog } from "@/components/sgsst/PgrFormDialog";
@@ -39,6 +55,11 @@ export default function SgsstPgrDetailPage() {
 
   const [isMedidaFormOpen, setIsMedidaFormOpen] = useState(false);
   const [editingMedida, setEditingMedida] = useState<SgsstPgrMedidaControle | null>(null);
+  const [isEmitirOpen, setIsEmitirOpen] = useState(false);
+
+  const { historico, isLoading: loadingHistorico, error: erroHistorico } =
+    useSgsstPgrHistorico(pgrId);
+  const { funcoesDoItem, error: erroVinculos } = useSgsstPgrInventarioFuncoes(pgrId);
 
   if (loadingDetail) {
     return (
@@ -120,7 +141,9 @@ export default function SgsstPgrDetailPage() {
     setIsInventarioFormOpen(true);
   };
 
-  const handleSaveInventario = async (data: any) => {
+  const handleSaveInventario = async (
+    data: SgsstPgrInventarioInput & { funcaoIds?: string[] }
+  ) => {
     if (editingInventarioItem) {
       await updateInventarioItem.mutateAsync({ id: editingInventarioItem.id, ...data });
     } else {
@@ -143,7 +166,7 @@ export default function SgsstPgrDetailPage() {
     setIsMedidaFormOpen(true);
   };
 
-  const handleSaveMedida = async (data: any) => {
+  const handleSaveMedida = async (data: SgsstPgrMedidaControleInput) => {
     if (editingMedida) {
       await updateMedida.mutateAsync({ id: editingMedida.id, ...data });
     } else {
@@ -180,6 +203,15 @@ export default function SgsstPgrDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Obra: <strong>{currentPgr.projeto ? `[${currentPgr.projeto.codigo}] ${currentPgr.projeto.nome}` : "—"}</strong> | Canteiro/Site: <strong>{currentPgr.site ? currentPgr.site.nome : "Geral do Projeto"}</strong>
               </p>
+            </div>
+
+            {/* Emitir fica fora do bloco de edicao: consultar e imprimir o
+                programa nao e edicao, e PGR encerrado tambem precisa ser
+                impresso para a guarda de 20 anos. */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button variant="secondary" size="sm" onClick={() => setIsEmitirOpen(true)}>
+                <FileDown className="h-3.5 w-3.5 mr-1" /> Emitir PDF
+              </Button>
             </div>
 
             {/* Status Change Controls */}
@@ -242,8 +274,17 @@ export default function SgsstPgrDetailPage() {
               <span className="font-semibold">{formatDateStr(currentPgr.data_inicio)}</span>
             </div>
             <div>
-              <span className="text-muted-foreground block">Próxima Revisão:</span>
-              <span className="font-semibold">{formatDateStr(currentPgr.data_revisao)}</span>
+              <span className="text-muted-foreground block">Última revisão:</span>
+              <span className="font-semibold">
+                {currentPgr.data_revisao ? formatDateStr(currentPgr.data_revisao) : "nenhuma"}
+              </span>
+              <PgrRevisaoAviso
+                variante="linha"
+                dataInicio={currentPgr.data_inicio}
+                dataRevisao={currentPgr.data_revisao}
+                periodicidadeMeses={currentPgr.periodicidade_revisao_meses}
+                status={currentPgr.status}
+              />
             </div>
             <div>
               <span className="text-muted-foreground block">Responsável Técnico:</span>
@@ -257,14 +298,24 @@ export default function SgsstPgrDetailPage() {
         </CardContent>
       </Card>
 
+      <PgrRevisaoAviso
+        dataInicio={currentPgr.data_inicio}
+        dataRevisao={currentPgr.data_revisao}
+        periodicidadeMeses={currentPgr.periodicidade_revisao_meses}
+        status={currentPgr.status}
+      />
+
       {/* Main Content Tabs */}
       <Tabs defaultValue="inventario" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-2">
+        <TabsList className="grid w-full sm:w-auto grid-cols-3">
           <TabsTrigger value="inventario" className="gap-2">
             <ShieldAlert className="h-4 w-4" /> Inventário de Riscos ({inventario.length})
           </TabsTrigger>
           <TabsTrigger value="medidas" className="gap-2" disabled={!selectedInventarioId && inventario.length === 0}>
             <Wrench className="h-4 w-4" /> Medidas de Controle
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="gap-2">
+            <History className="h-4 w-4" /> Histórico ({historico.length})
           </TabsTrigger>
         </TabsList>
 
@@ -292,7 +343,8 @@ export default function SgsstPgrDetailPage() {
                     <TableHead>Atividade / Setor</TableHead>
                     <TableHead>Perigo / Risco do Catálogo</TableHead>
                     <TableHead>Fonte / Consequência</TableHead>
-                    <TableHead>Expostos</TableHead>
+                    <TableHead>Grupos expostos</TableHead>
+                    <TableHead>Exposição</TableHead>
                     <TableHead>P × S</TableHead>
                     <TableHead>Matriz de Risco</TableHead>
                     <TableHead>Status</TableHead>
@@ -302,13 +354,13 @@ export default function SgsstPgrDetailPage() {
                 <TableBody>
                   {loadingInventario ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         Carregando inventário de riscos...
                       </TableCell>
                     </TableRow>
                   ) : inventario.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         Nenhum risco incluído neste PGR até o momento.
                       </TableCell>
                     </TableRow>
@@ -326,7 +378,30 @@ export default function SgsstPgrDetailPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-medium text-xs">{item.perigo}</span>
+                            <span className="font-medium text-xs flex items-center gap-1.5">
+                              {item.perigo}
+                              {(() => {
+                                // Mesma checagem do PDF: o item mostra quantas
+                                // alineas da NR-01 1.5.7.3.2 ainda faltam, para
+                                // o furo aparecer aqui e nao so na emissao.
+                                const faltas = alineasPendentes({
+                                  ...item,
+                                  totalFuncoes: funcoesDoItem(item.id).length,
+                                });
+                                if (faltas.length === 0) return null;
+                                return (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] px-1 py-0"
+                                    title={faltas
+                                      .map((f) => `${f.alinea}) ${f.titulo}`)
+                                      .join("\n")}
+                                  >
+                                    {faltas.length} alínea(s)
+                                  </Badge>
+                                );
+                              })()}
+                            </span>
                             {item.risco_catalogo && (
                               <span className="text-xs text-primary font-mono">
                                 [{item.risco_catalogo.categoria}] {item.risco_catalogo.nome}
@@ -338,7 +413,70 @@ export default function SgsstPgrDetailPage() {
                           <div><strong>Fonte:</strong> {item.fonte_geradora || "—"}</div>
                           <div><strong>Danos:</strong> {item.consequencia || "—"}</div>
                         </TableCell>
-                        <TableCell className="text-center font-mono">{item.trabalhadores_expostos}</TableCell>
+                        <TableCell className="text-xs">
+                          {(() => {
+                            const funcoes = funcoesDoItem(item.id);
+                            const nomes = funcoes
+                              .map((f) => f.funcao?.nome)
+                              .filter(Boolean)
+                              .join(", ");
+                            const extra = item.grupos_expostos?.trim();
+
+                            if (erroVinculos) {
+                              return (
+                                <span
+                                  className="text-muted-foreground"
+                                  title="Não foi possível ler os grupos expostos. A migration 20260820160000 pode não estar aplicada."
+                                >
+                                  —
+                                </span>
+                              );
+                            }
+
+                            if (!nomes && !extra) {
+                              return (
+                                <span
+                                  className="text-amber-700 dark:text-amber-500"
+                                  title="A NR-01 1.5.7.3.2 pede quais grupos estão expostos; a quantidade sozinha não identifica ninguém"
+                                >
+                                  não identificados
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span className="inline-flex items-start gap-1">
+                                <Users className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                                <span>
+                                  {[nomes, extra].filter(Boolean).join(" · ")}
+                                  <span className="block text-muted-foreground">
+                                    {item.trabalhadores_expostos} trabalhador(es)
+                                  </span>
+                                </span>
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {item.tipo_exposicao ? (
+                            <>
+                              {item.tipo_exposicao === "HABITUAL"
+                                ? "Habitual"
+                                : item.tipo_exposicao === "OCASIONAL"
+                                  ? "Ocasional"
+                                  : "Eventual"}
+                              {item.tempo_exposicao && (
+                                <span className="block text-muted-foreground">
+                                  {item.tempo_exposicao}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-amber-700 dark:text-amber-500">
+                              não caracterizada
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center font-mono text-xs">
                           {item.probabilidade} × {item.severidade} = <strong>{(item.nivel_risco || item.probabilidade * item.severidade)}</strong>
                         </TableCell>
@@ -431,25 +569,27 @@ export default function SgsstPgrDetailPage() {
                     <TableHead>Responsável</TableHead>
                     <TableHead>Prazo Limite</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Acompanhamento</TableHead>
+                    <TableHead>Aferição</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {!selectedInventarioId ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Clique em "Medidas" no risco desejado na aba de Inventário para ver seu plano de ação.
                       </TableCell>
                     </TableRow>
                   ) : loadingMedidas ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Carregando medidas de controle...
                       </TableCell>
                     </TableRow>
                   ) : medidas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Nenhuma medida de controle cadastrada para este risco.
                       </TableCell>
                     </TableRow>
@@ -464,6 +604,52 @@ export default function SgsstPgrDetailPage() {
                         </TableCell>
                         <TableCell className="text-xs">{m.responsavel?.nome || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{formatDateStr(m.prazo)}</TableCell>
+                        <TableCell className="text-xs max-w-[180px]">
+                          {m.forma_acompanhamento || (
+                            <span
+                              className="text-amber-700 dark:text-amber-500"
+                              title="A NR-01 1.5.5.2 pede a forma de acompanhamento junto com a medida"
+                            >
+                              não definida
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {m.resultado_verificacao ? (
+                            <>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  m.resultado_verificacao === "EFICAZ"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-xs"
+                                    : m.resultado_verificacao === "PARCIALMENTE_EFICAZ"
+                                      ? "bg-amber-50 text-amber-800 border-amber-300 text-xs"
+                                      : "bg-red-50 text-red-700 border-red-300 text-xs"
+                                }
+                              >
+                                {m.resultado_verificacao === "EFICAZ"
+                                  ? "Eficaz"
+                                  : m.resultado_verificacao === "PARCIALMENTE_EFICAZ"
+                                    ? "Parcial"
+                                    : "Ineficaz"}
+                              </Badge>
+                              {m.data_verificacao && (
+                                <span className="block text-muted-foreground">
+                                  {formatDateStr(m.data_verificacao)}
+                                </span>
+                              )}
+                            </>
+                          ) : m.status === "implementado" ? (
+                            <span
+                              className="text-amber-700 dark:text-amber-500"
+                              title="Implantar não é o mesmo que funcionar: a NR-01 1.5.5.2 pede a aferição do resultado"
+                            >
+                              não aferida
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs capitalize">
                             {m.status}
@@ -507,9 +693,81 @@ export default function SgsstPgrDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* TAB 3: HISTÓRICO — NR-01 1.5.7.3.3 exige guarda de 20 anos com histórico */}
+        <TabsContent value="historico" className="space-y-4 pt-4">
+          <div>
+            <h3 className="text-lg font-semibold">Histórico de alterações</h3>
+            <p className="text-xs text-muted-foreground">
+              A NR-01 1.5.7.3.3 exige a guarda do PGR e do seu histórico de atualizações por 20
+              anos. O registro é feito pelo banco, então alteração vinda de qualquer caminho
+              aparece aqui — e nenhum registro pode ser editado ou apagado.
+            </p>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Quando</TableHead>
+                    <TableHead>O que</TableHead>
+                    <TableHead>Versão</TableHead>
+                    <TableHead>Quem</TableHead>
+                    <TableHead>Detalhe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingHistorico ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                        Carregando histórico...
+                      </TableCell>
+                    </TableRow>
+                  ) : erroHistorico ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm">
+                        <p className="font-medium">Não foi possível ler o histórico</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          A migration <code className="font-mono">20260820160000</code> pode não
+                          ter sido aplicada ao banco. O restante da tela continua funcionando.
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : historico.length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                        Nenhum registro ainda.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    historico.map((h) => (
+                      <TableRow key={h.id}>
+                        <TableCell className="text-xs whitespace-nowrap tabular-nums">
+                          {new Date(h.created_at).toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <Badge variant="outline" className="text-xs">
+                            {OPERACAO_HISTORICO_LABEL[h.operacao] ?? h.operacao}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs tabular-nums">{h.versao ?? "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {h.usuario?.nome || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">{h.observacao || "—"}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Dialogs */}
+      <PgrEmitirDialog open={isEmitirOpen} onOpenChange={setIsEmitirOpen} pgr={currentPgr} />
+
       <PgrFormDialog
         open={isEditPgrOpen}
         onOpenChange={setIsEditPgrOpen}
@@ -525,6 +783,11 @@ export default function SgsstPgrDetailPage() {
         pgrId={currentPgr.id}
         inventarioItem={editingInventarioItem}
         riscosCatalogo={riscosCatalogo}
+        funcoesVinculadas={
+          editingInventarioItem
+            ? funcoesDoItem(editingInventarioItem.id).map((f) => f.funcao_id)
+            : []
+        }
         onSave={handleSaveInventario}
         isLoading={createInventarioItem.isPending || updateInventarioItem.isPending}
       />

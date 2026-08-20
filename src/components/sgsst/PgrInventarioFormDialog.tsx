@@ -6,12 +6,25 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { SgsstPgrInventario, SgsstPgrInventarioInput, calcularClassificacaoRisco } from "@/hooks/sgsst/useSgsstPgr";
+import {
+  SgsstPgrInventario,
+  SgsstPgrInventarioInput,
+  calcularClassificacaoRisco,
+  useSgsstFuncoesDoRisco,
+} from "@/hooks/sgsst/useSgsstPgr";
 import { SgsstRisco } from "@/hooks/sgsst/useSgsstRiscos";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Users, Ruler, Wand2, Info } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  alineasPendentes,
+  type ResultadoAvaliacao,
+  type TecnicaAvaliacao,
+  type TipoExposicao,
+} from "@/utils/sgsstPgrInventario";
+import { parseLimite } from "@/utils/sgsstRiscoLimite";
 
 interface PgrInventarioFormDialogProps {
   open: boolean;
@@ -19,7 +32,9 @@ interface PgrInventarioFormDialogProps {
   pgrId: string;
   inventarioItem?: SgsstPgrInventario | null;
   riscosCatalogo: SgsstRisco[];
-  onSave: (data: SgsstPgrInventarioInput) => Promise<void>;
+  /** Funções já vinculadas ao item, quando editando. */
+  funcoesVinculadas?: string[];
+  onSave: (data: SgsstPgrInventarioInput & { funcaoIds?: string[] }) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -29,6 +44,7 @@ export function PgrInventarioFormDialog({
   pgrId,
   inventarioItem,
   riscosCatalogo,
+  funcoesVinculadas,
   onSave,
   isLoading = false,
 }: PgrInventarioFormDialogProps) {
@@ -49,6 +65,26 @@ export function PgrInventarioFormDialog({
   const [responsavelId, setResponsavelId] = useState<string>("none");
   const [prazo, setPrazo] = useState("");
   const [status, setStatus] = useState<"pendente" | "em_andamento" | "concluido" | "cancelado">("pendente");
+
+  // --- Alineas que faltavam ao inventario (NR-01 1.5.7.3.2) ---
+  const [tipoExposicao, setTipoExposicao] = useState<TipoExposicao | "">("");
+  const [tempoExposicao, setTempoExposicao] = useState("");
+  const [descricaoLocal, setDescricaoLocal] = useState("");
+  const [gruposExpostos, setGruposExpostos] = useState("");
+  const [funcaoIds, setFuncaoIds] = useState<string[]>([]);
+  const [tecnicaAvaliacao, setTecnicaAvaliacao] = useState<TecnicaAvaliacao | "">("");
+  const [intensidadeMedida, setIntensidadeMedida] = useState("");
+  const [unidadeMedida, setUnidadeMedida] = useState("");
+  const [limiteAplicado, setLimiteAplicado] = useState("");
+  const [dataMedicao, setDataMedicao] = useState("");
+  const [resultadoAvaliacao, setResultadoAvaliacao] = useState<ResultadoAvaliacao | "">("");
+  const [metodologiaMedicao, setMetodologiaMedicao] = useState("");
+
+  // Fase 2 pagando: escolhido o risco, o sistema ja sabe quais funcoes se expoem
+  // a ele — e com que caracterizacao de exposicao.
+  const { sugestoes } = useSgsstFuncoesDoRisco(
+    open && riscoCatalogoId !== "none" ? riscoCatalogoId : null
+  );
 
   // Load areas (setores)
   const { data: areas = [] } = useQuery({
@@ -94,6 +130,28 @@ export function PgrInventarioFormDialog({
       setResponsavelId(inventarioItem.responsavel_id || "none");
       setPrazo(inventarioItem.prazo ? inventarioItem.prazo.split("T")[0] : "");
       setStatus(inventarioItem.status || "pendente");
+      setTipoExposicao(inventarioItem.tipo_exposicao || "");
+      setTempoExposicao(inventarioItem.tempo_exposicao || "");
+      setDescricaoLocal(inventarioItem.descricao_local || "");
+      setGruposExpostos(inventarioItem.grupos_expostos || "");
+      setFuncaoIds(funcoesVinculadas ?? []);
+      setTecnicaAvaliacao(inventarioItem.tecnica_avaliacao || "");
+      setIntensidadeMedida(
+        inventarioItem.intensidade_medida === null ||
+          inventarioItem.intensidade_medida === undefined
+          ? ""
+          : String(inventarioItem.intensidade_medida).replace(".", ",")
+      );
+      setUnidadeMedida(inventarioItem.unidade_medida || "");
+      setLimiteAplicado(
+        inventarioItem.limite_tolerancia_aplicado === null ||
+          inventarioItem.limite_tolerancia_aplicado === undefined
+          ? ""
+          : String(inventarioItem.limite_tolerancia_aplicado).replace(".", ",")
+      );
+      setDataMedicao(inventarioItem.data_medicao ? inventarioItem.data_medicao.split("T")[0] : "");
+      setResultadoAvaliacao(inventarioItem.resultado_avaliacao || "");
+      setMetodologiaMedicao(inventarioItem.metodologia_medicao || "");
     } else {
       setRiscoCatalogoId("none");
       setAreaId("none");
@@ -109,21 +167,97 @@ export function PgrInventarioFormDialog({
       setResponsavelId("none");
       setPrazo("");
       setStatus("pendente");
+      setTipoExposicao("");
+      setTempoExposicao("");
+      setDescricaoLocal("");
+      setGruposExpostos("");
+      setFuncaoIds([]);
+      setTecnicaAvaliacao("");
+      setIntensidadeMedida("");
+      setUnidadeMedida("");
+      setLimiteAplicado("");
+      setDataMedicao("");
+      setResultadoAvaliacao("");
+      setMetodologiaMedicao("");
     }
-  }, [inventarioItem, open]);
+  }, [inventarioItem, open, funcoesVinculadas]);
 
-  // When selecting a risk from catalog, pre-fill values
+  /**
+   * Escolhido o risco do catálogo, herda o que já está cadastrado lá.
+   *
+   * Só preenche campo vazio — sobrescrever o que o usuário digitou seria pior que
+   * não ajudar. O limite é COPIADO, não referenciado: se o catálogo mudar depois,
+   * este inventário não pode mudar retroativamente.
+   */
   const handleSelectRiscoCatalogo = (id: string) => {
     setRiscoCatalogoId(id);
-    if (id !== "none") {
-      const found = riscosCatalogo.find((r) => r.id === id);
-      if (found) {
-        if (!perigo) setPerigo(found.nome);
-        if (!fonteGeradora && found.fonte_geradora) setFonteGeradora(found.fonte_geradora);
-        if (!consequencia && found.consequencia) setConsequencia(found.consequencia);
-      }
+    if (id === "none") return;
+
+    const found = riscosCatalogo.find((r) => r.id === id);
+    if (!found) return;
+
+    if (!perigo) setPerigo(found.nome);
+    if (!fonteGeradora && found.fonte_geradora) setFonteGeradora(found.fonte_geradora);
+    if (!consequencia && found.consequencia) setConsequencia(found.consequencia);
+
+    // Herança da fase 1: técnica, unidade e limite de tolerância.
+    if (!tecnicaAvaliacao && found.tecnica_avaliacao) {
+      setTecnicaAvaliacao(found.tecnica_avaliacao as TecnicaAvaliacao);
+    }
+    if (!unidadeMedida && found.unidade_medida) setUnidadeMedida(found.unidade_medida);
+    if (
+      !limiteAplicado &&
+      found.limite_tolerancia !== null &&
+      found.limite_tolerancia !== undefined
+    ) {
+      setLimiteAplicado(String(found.limite_tolerancia).replace(".", ","));
     }
   };
+
+  /** Aplica a caracterização de exposição que as funções já declararam. */
+  const aplicarSugestoes = () => {
+    setFuncaoIds([...new Set([...funcaoIds, ...sugestoes.map((s) => s.funcao_id)])]);
+
+    const comExposicao = sugestoes.find((s) => s.tipo_exposicao);
+    if (!tipoExposicao && comExposicao?.tipo_exposicao) {
+      setTipoExposicao(comExposicao.tipo_exposicao);
+    }
+    if (!tempoExposicao && comExposicao?.tempo_exposicao) {
+      setTempoExposicao(comExposicao.tempo_exposicao);
+    }
+  };
+
+  const alternarFuncao = (id: string) => {
+    setFuncaoIds((atual) =>
+      atual.includes(id) ? atual.filter((f) => f !== id) : [...atual, id]
+    );
+  };
+
+  const intensidadeParseada = parseLimite(intensidadeMedida);
+  const limiteParseado = parseLimite(limiteAplicado);
+  const numerosInvalidos = intensidadeParseada === undefined || limiteParseado === undefined;
+
+  // Mesma checagem que o PDF usa, para a tela avisar antes de salvar em vez de o
+  // usuário descobrir o furo depois de emitir o documento.
+  const pendencias = alineasPendentes({
+    atividade,
+    perigo,
+    fonte_geradora: fonteGeradora,
+    consequencia,
+    descricao_local: descricaoLocal,
+    area_id: areaId === "none" ? null : areaId,
+    tipo_exposicao: tipoExposicao || null,
+    tempo_exposicao: tempoExposicao,
+    grupos_expostos: gruposExpostos,
+    totalFuncoes: funcaoIds.length,
+    probabilidade,
+    severidade,
+    medidas_existentes: medidasExistentes,
+    tecnica_avaliacao: tecnicaAvaliacao || null,
+    intensidade_medida: intensidadeParseada ?? null,
+    data_medicao: dataMedicao || null,
+    resultado_avaliacao: resultadoAvaliacao || null,
+  });
 
   const { nivel, classificacao } = calcularClassificacaoRisco(probabilidade, severidade);
 
@@ -144,7 +278,7 @@ export function PgrInventarioFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!atividade.trim() || !perigo.trim()) return;
+    if (!atividade.trim() || !perigo.trim() || numerosInvalidos) return;
 
     await onSave({
       pgr_id: pgrId,
@@ -162,6 +296,19 @@ export function PgrInventarioFormDialog({
       responsavel_id: responsavelId === "none" ? null : responsavelId,
       prazo: prazo || null,
       status,
+      // Alíneas da NR-01 1.5.7.3.2
+      tipo_exposicao: tipoExposicao || null,
+      tempo_exposicao: tempoExposicao.trim() || null,
+      descricao_local: descricaoLocal.trim() || null,
+      grupos_expostos: gruposExpostos.trim() || null,
+      tecnica_avaliacao: tecnicaAvaliacao || null,
+      intensidade_medida: intensidadeParseada ?? null,
+      unidade_medida: unidadeMedida.trim() || null,
+      limite_tolerancia_aplicado: limiteParseado ?? null,
+      data_medicao: dataMedicao || null,
+      resultado_avaliacao: resultadoAvaliacao || null,
+      metodologia_medicao: metodologiaMedicao.trim() || null,
+      funcaoIds,
     });
 
     onOpenChange(false);
@@ -324,6 +471,282 @@ export function PgrInventarioFormDialog({
             </div>
           </div>
 
+          {/* ===== Caracterização da exposição e grupos expostos ===== */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <Users className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-semibold leading-none">
+                  Exposição e grupos expostos
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  A NR-01 1.5.7.3.2 pede como é a exposição e <strong>quais grupos</strong> estão
+                  expostos. A quantidade, sozinha, não identifica ninguém.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tipoExp">Tipo de exposição</Label>
+                <Select
+                  value={tipoExposicao || "nao_informado"}
+                  onValueChange={(v) =>
+                    setTipoExposicao(v === "nao_informado" ? "" : (v as TipoExposicao))
+                  }
+                >
+                  <SelectTrigger id="tipoExp">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_informado">Não informado</SelectItem>
+                    <SelectItem value="HABITUAL">Habitual</SelectItem>
+                    <SelectItem value="OCASIONAL">Ocasional</SelectItem>
+                    <SelectItem value="EVENTUAL">Eventual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="tempoExp">Tempo de exposição</Label>
+                <Input
+                  id="tempoExp"
+                  placeholder="Ex: 8h/dia"
+                  value={tempoExposicao}
+                  onChange={(e) => setTempoExposicao(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="qtdExpostos">Qtd. de expostos</Label>
+                <Input
+                  id="qtdExpostos"
+                  type="number"
+                  min={1}
+                  value={trabalhadoresExpostos}
+                  onChange={(e) => setTrabalhadoresExpostos(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            {sugestoes.length > 0 && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs">
+                    <strong>{sugestoes.length} função(ões)</strong> já declararam exposição a
+                    este risco no cadastro de funções.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="gap-1 shrink-0"
+                    onClick={aplicarSugestoes}
+                  >
+                    <Wand2 className="h-3.5 w-3.5" /> Usar
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sugestoes.map((s) => (
+                    <label
+                      key={s.funcao_id}
+                      className="flex items-center gap-1.5 text-xs cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={funcaoIds.includes(s.funcao_id)}
+                        onCheckedChange={() => alternarFuncao(s.funcao_id)}
+                      />
+                      {s.funcao?.nome ?? "função"}
+                      {s.tipo_exposicao && (
+                        <span className="text-muted-foreground">({s.tipo_exposicao})</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {riscoCatalogoId !== "none" && sugestoes.length === 0 && (
+              <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>
+                  Nenhuma função declarou exposição a este risco. Vincule o risco às funções na
+                  tela de Funções e ele passa a ser sugerido aqui automaticamente.
+                </span>
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="gruposExp">Outros grupos expostos</Label>
+              <Input
+                id="gruposExp"
+                placeholder="Ex: Terceiros da empreiteira de fundação, visitantes"
+                value={gruposExpostos}
+                onChange={(e) => setGruposExpostos(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Para grupos que não correspondem a uma função cadastrada.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="descLocal">Descrição do ambiente</Label>
+              <Textarea
+                id="descLocal"
+                rows={2}
+                placeholder="Ex: Subsolo sem ventilação natural, iluminação artificial, área confinada"
+                value={descricaoLocal}
+                onChange={(e) => setDescricaoLocal(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A área vinculada diz onde no cadastro; isto diz como é o lugar — é o que
+                caracteriza a exposição para quem fiscaliza.
+              </p>
+            </div>
+          </div>
+
+          {/* ===== Dados de monitoramento ===== */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <Ruler className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-semibold leading-none">Dados de monitoramento</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sem medição, a classificação do risco é opinião. Só é exigido quando a
+                  avaliação é quantitativa.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tecnica">Técnica</Label>
+                <Select
+                  value={tecnicaAvaliacao || "nao_informado"}
+                  onValueChange={(v) =>
+                    setTecnicaAvaliacao(v === "nao_informado" ? "" : (v as TecnicaAvaliacao))
+                  }
+                >
+                  <SelectTrigger id="tecnica">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_informado">Não informada</SelectItem>
+                    <SelectItem value="QUALITATIVA">Qualitativa</SelectItem>
+                    <SelectItem value="QUANTITATIVA">Quantitativa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="intensidade">Intensidade medida</Label>
+                <Input
+                  id="intensidade"
+                  inputMode="decimal"
+                  placeholder="Ex: 92"
+                  value={intensidadeMedida}
+                  onChange={(e) => setIntensidadeMedida(e.target.value)}
+                  aria-invalid={intensidadeParseada === undefined}
+                  className={intensidadeParseada === undefined ? "border-destructive" : undefined}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="unidade">Unidade</Label>
+                <Input
+                  id="unidade"
+                  placeholder="dB(A)"
+                  value={unidadeMedida}
+                  onChange={(e) => setUnidadeMedida(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="limiteApl">Limite de tolerância</Label>
+                <Input
+                  id="limiteApl"
+                  inputMode="decimal"
+                  placeholder="Ex: 85"
+                  value={limiteAplicado}
+                  onChange={(e) => setLimiteAplicado(e.target.value)}
+                  aria-invalid={limiteParseado === undefined}
+                  className={limiteParseado === undefined ? "border-destructive" : undefined}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="dataMed">Data da medição</Label>
+                <Input
+                  id="dataMed"
+                  type="date"
+                  value={dataMedicao}
+                  onChange={(e) => setDataMedicao(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="resultadoAv">Conclusão</Label>
+                <Select
+                  value={resultadoAvaliacao || "nao_informado"}
+                  onValueChange={(v) =>
+                    setResultadoAvaliacao(
+                      v === "nao_informado" ? "" : (v as ResultadoAvaliacao)
+                    )
+                  }
+                >
+                  <SelectTrigger id="resultadoAv">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nao_informado">Não informada</SelectItem>
+                    <SelectItem value="ABAIXO_LIMITE">Abaixo do limite</SelectItem>
+                    <SelectItem value="ACIMA_LIMITE">Acima do limite</SelectItem>
+                    <SelectItem value="NAO_APLICAVEL">Não aplicável</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                A conclusão é declarada por você, e não calculada pelo sistema, porque há agente
+                em que o limite é <strong>piso</strong> e não teto — em espaço confinado a NR-33
+                exige oxigênio entre 20,9% e 23%, então falta e excesso reprovam.
+              </span>
+            </p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="metodMed">Metodologia da medição</Label>
+              <Input
+                id="metodMed"
+                placeholder="Ex: NHO-01 (Fundacentro), dosimetria de jornada completa"
+                value={metodologiaMedicao}
+                onChange={(e) => setMetodologiaMedicao(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {pendencias.length > 0 && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+                {pendencias.length} alínea(s) da NR-01 1.5.7.3.2 ainda não atendidas
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {pendencias.map((p) => (
+                  <li key={`${p.alinea}-${p.titulo}`} className="text-xs text-amber-800 dark:text-amber-400">
+                    <strong>{p.alinea})</strong> {p.titulo} — {p.detalhe}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
+                Dá para salvar assim e completar depois. O aviso reaparece aqui e no PDF.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="existentes">Medidas de Controle Existentes</Label>
             <Textarea
@@ -397,7 +820,7 @@ export function PgrInventarioFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !atividade.trim() || !perigo.trim()}>
+            <Button type="submit" disabled={isLoading || !atividade.trim() || !perigo.trim() || numerosInvalidos}>
               {isLoading ? "Salvando..." : inventarioItem ? "Atualizar Risco" : "Salvar no Inventário"}
             </Button>
           </DialogFooter>

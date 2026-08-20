@@ -39,6 +39,12 @@ export function PgrFormDialog({
   const [objetivo, setObjetivo] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
+  // Campos que o documento emitido precisa (NR-01) e que nao existiam.
+  const [metodologia, setMetodologia] = useState("");
+  const [responsavelTecnico, setResponsavelTecnico] = useState("");
+  const [registroResponsavel, setRegistroResponsavel] = useState("");
+  const [periodicidadeRevisao, setPeriodicidadeRevisao] = useState("24");
+
   // Load projetos
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_pgr", empresaId],
@@ -93,6 +99,10 @@ export function PgrFormDialog({
       setStatus(pgr.status || "RASCUNHO");
       setObjetivo(pgr.objetivo || "");
       setObservacoes(pgr.observacoes || "");
+      setMetodologia(pgr.metodologia || "");
+      setResponsavelTecnico(pgr.responsavel_tecnico || "");
+      setRegistroResponsavel(pgr.registro_responsavel || "");
+      setPeriodicidadeRevisao(String(pgr.periodicidade_revisao_meses ?? 24));
     } else {
       setCodigo("");
       setTitulo("");
@@ -104,12 +114,20 @@ export function PgrFormDialog({
       setStatus("RASCUNHO");
       setObjetivo("");
       setObservacoes("");
+      setMetodologia("");
+      setResponsavelTecnico("");
+      setRegistroResponsavel("");
+      setPeriodicidadeRevisao("24");
     }
   }, [pgr, open]);
 
+  const periodicidadeNumero = Number(periodicidadeRevisao);
+  const periodicidadeInvalida =
+    !Number.isInteger(periodicidadeNumero) || periodicidadeNumero < 1;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titulo.trim() || !projetoId) return;
+    if (!titulo.trim() || !projetoId || periodicidadeInvalida) return;
 
     await onSave({
       codigo: codigo.trim() || null,
@@ -122,6 +140,10 @@ export function PgrFormDialog({
       status,
       objetivo: objetivo.trim() || null,
       observacoes: observacoes.trim() || null,
+      metodologia: metodologia.trim() || null,
+      responsavel_tecnico: responsavelTecnico.trim() || null,
+      registro_responsavel: registroResponsavel.trim() || null,
+      periodicidade_revisao_meses: periodicidadeNumero,
     });
 
     onOpenChange(false);
@@ -131,7 +153,7 @@ export function PgrFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{pgr ? "Editar Documento PGR" : "Novo PGR (Programa de Gerenciamento de Riscos)"}</DialogTitle>
         </DialogHeader>
@@ -270,6 +292,77 @@ export function PgrFormDialog({
             />
           </div>
 
+          {/* Campos que o PGR emitido precisa (NR-01) */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold leading-none">Responsabilidade e revisão</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Aparecem no PGR emitido. Sem responsável técnico e metodologia, o documento sai
+                com aviso de pendência.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="respTec">Responsável técnico</Label>
+                <Input
+                  id="respTec"
+                  placeholder="Nome de quem assina"
+                  value={responsavelTecnico}
+                  onChange={(e) => setResponsavelTecnico(e.target.value)}
+                  disabled={isEncerrado}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="regResp">Registro profissional</Label>
+                <Input
+                  id="regResp"
+                  placeholder="Ex: CREA 123456"
+                  value={registroResponsavel}
+                  onChange={(e) => setRegistroResponsavel(e.target.value)}
+                  disabled={isEncerrado}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="periodRev">Revisar a cada (meses)</Label>
+                <Input
+                  id="periodRev"
+                  type="number"
+                  min={1}
+                  value={periodicidadeRevisao}
+                  onChange={(e) => setPeriodicidadeRevisao(e.target.value)}
+                  disabled={isEncerrado}
+                  aria-invalid={periodicidadeInvalida}
+                  className={periodicidadeInvalida ? "border-destructive" : undefined}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              A NR-01 1.5.4.4.5 pede revisão a cada <strong>24 meses</strong>, ou <strong>36</strong>{" "}
+              quando há sistema de gestão de SST certificado. O prazo é contado da última
+              revisão registrada — ou do início da vigência, se nunca houve revisão.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="metodologia">Metodologia de identificação e avaliação</Label>
+              <Textarea
+                id="metodologia"
+                rows={2}
+                placeholder="Ex: Identificação por observação direta e entrevista; avaliação por matriz 5x5 de probabilidade e severidade; medições conforme NHO da Fundacentro"
+                value={metodologia}
+                onChange={(e) => setMetodologia(e.target.value)}
+                disabled={isEncerrado}
+              />
+              <p className="text-xs text-muted-foreground">
+                A norma exige que o programa declare como os riscos foram identificados e
+                avaliados. É a seção que o fiscal lê antes do inventário.
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="observacoes">Observações Gerais</Label>
             <Textarea
@@ -286,7 +379,12 @@ export function PgrFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || isEncerrado || !titulo.trim() || !projetoId}>
+            <Button
+              type="submit"
+              disabled={
+                isLoading || isEncerrado || !titulo.trim() || !projetoId || periodicidadeInvalida
+              }
+            >
               {isLoading ? "Salvando..." : pgr ? "Atualizar" : "Cadastrar PGR"}
             </Button>
           </DialogFooter>

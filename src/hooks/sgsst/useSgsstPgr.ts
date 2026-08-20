@@ -4,6 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { useSgsstCounts } from "./useSgsstCounts";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import type {
+  ResultadoAvaliacao,
+  TecnicaAvaliacao,
+  TipoExposicao,
+} from "@/utils/sgsstPgrInventario";
+
+// Reexportados porque nascem junto das funcoes de conformidade do inventario,
+// mas quem consome o PGR importa tudo pelo hook.
+export type { ResultadoAvaliacao, TecnicaAvaliacao, TipoExposicao };
 
 export type StatusPgr = "RASCUNHO" | "ATIVO" | "EM_REVISAO" | "ENCERRADO";
 
@@ -17,7 +27,23 @@ export interface SgsstPgr {
   objetivo?: string | null;
   responsavel_id?: string | null;
   data_inicio: string;
+  /** Data da ULTIMA revisao realizada, nao a proxima. Ver sgsstPgrRevisao. */
   data_revisao?: string | null;
+  /**
+   * NR-01 1.5.4.4.5: 2 anos na regra geral, 3 anos com sistema de gestao de SST
+   * certificado. E dado, e nao constante no codigo, por causa desse segundo caso.
+   */
+  periodicidade_revisao_meses?: number | null;
+  versao?: number | null;
+  /**
+   * Identificacao da organizacao congelada na emissao. Ler de `empresas` ao
+   * imprimir faria PGRs antigos passarem a mostrar o nome novo da empresa.
+   */
+  empresa_nome?: string | null;
+  empresa_cnpj?: string | null;
+  responsavel_tecnico?: string | null;
+  registro_responsavel?: string | null;
+  metodologia?: string | null;
   status: StatusPgr;
   observacoes?: string | null;
   created_by?: string | null;
@@ -42,6 +68,10 @@ export interface SgsstPgrInventario {
   perigo: string;
   fonte_geradora?: string | null;
   consequencia?: string | null;
+  /**
+   * QUANTIDADE de expostos. A NR-01 1.5.7.3.2 pede tambem QUAIS grupos — isso
+   * esta em `grupos_expostos` (texto livre) e na tabela de ligacao com funcoes.
+   */
   trabalhadores_expostos: number;
   probabilidade: number;
   severidade: number;
@@ -49,6 +79,30 @@ export interface SgsstPgrInventario {
   classificacao?: "BAIXO" | "MODERADO" | "ALTO" | "CRÍTICO";
   medidas_existentes?: string | null;
   medidas_necessarias?: string | null;
+
+  // --- Alineas que faltavam ao inventario (NR-01 1.5.7.3.2) ---
+  /** Caracterizacao da exposicao. Herdavel de sgsst_funcao_riscos. */
+  tipo_exposicao?: TipoExposicao | null;
+  tempo_exposicao?: string | null;
+  /** Como e o ambiente. `area_id` diz onde no cadastro; isto diz o que importa. */
+  descricao_local?: string | null;
+  /** Grupos que nao correspondem a funcao cadastrada (terceiros, visitantes). */
+  grupos_expostos?: string | null;
+  // Dados de monitoramento.
+  intensidade_medida?: number | null;
+  unidade_medida?: string | null;
+  /**
+   * Limite usado NESTA avaliacao, copiado do catalogo no lancamento. Nao e lido
+   * por join de proposito: se o catalogo mudar, o inventario ja emitido nao pode
+   * mudar retroativamente.
+   */
+  limite_tolerancia_aplicado?: number | null;
+  tecnica_avaliacao?: TecnicaAvaliacao | null;
+  data_medicao?: string | null;
+  /** Declarado, nao calculado: ha agente cujo limite e piso e nao teto (NR-33). */
+  resultado_avaliacao?: ResultadoAvaliacao | null;
+  metodologia_medicao?: string | null;
+
   responsavel_id?: string | null;
   prazo?: string | null;
   status: "pendente" | "em_andamento" | "concluido" | "cancelado";
@@ -57,14 +111,34 @@ export interface SgsstPgrInventario {
   created_at?: string;
   updated_at?: string;
   // Joined Data
-  risco_catalogo?: { id: string; nome: string; categoria: string; agente?: string | null } | null;
+  risco_catalogo?: {
+    id: string;
+    nome: string;
+    categoria: string;
+    agente?: string | null;
+    limite_tolerancia?: number | null;
+    unidade_medida?: string | null;
+    tecnica_avaliacao?: string | null;
+    base_legal?: string | null;
+  } | null;
   area?: { id: string; nome: string } | null;
   responsavel?: { id: string; nome: string | null } | null;
+  /** Funcoes expostas, quando carregadas junto. */
+  funcoes?: { id: string; funcao_id: string; funcao?: { id: string; nome: string } | null }[];
 }
 
 export type SgsstPgrInventarioInput = Omit<
   SgsstPgrInventario,
-  "id" | "empresa_id" | "nivel_risco" | "classificacao" | "created_at" | "updated_at" | "risco_catalogo" | "area" | "responsavel"
+  | "id"
+  | "empresa_id"
+  | "nivel_risco"
+  | "classificacao"
+  | "created_at"
+  | "updated_at"
+  | "risco_catalogo"
+  | "area"
+  | "responsavel"
+  | "funcoes"
 >;
 
 export interface SgsstPgrMedidaControle {
@@ -78,17 +152,40 @@ export interface SgsstPgrMedidaControle {
   status: "pendente" | "em_andamento" | "implementado" | "cancelado";
   data_implementacao?: string | null;
   observacao?: string | null;
+
+  // --- NR-01 1.5.5.2: o plano de acao pede as duas coisas junto ---
+  /** Como o cumprimento da medida sera acompanhado. */
+  forma_acompanhamento?: string | null;
+  /**
+   * Afericao dos resultados: a medida implantada de fato reduziu o risco?
+   * PARCIALMENTE_EFICAZ existe porque medida de controle costuma funcionar em
+   * parte, e forcar binario esconderia justamente o caso que precisa de reforco.
+   */
+  verificador_id?: string | null;
+  data_verificacao?: string | null;
+  resultado_verificacao?: ResultadoVerificacao | null;
+  observacao_verificacao?: string | null;
+
   created_by?: string | null;
   updated_by?: string | null;
   created_at?: string;
   updated_at?: string;
   // Joined Data
   responsavel?: { id: string; nome: string | null } | null;
+  verificador?: { id: string; nome: string | null } | null;
 }
+
+export type ResultadoVerificacao = "EFICAZ" | "PARCIALMENTE_EFICAZ" | "INEFICAZ";
+
+export const RESULTADO_VERIFICACAO_LABEL: Record<ResultadoVerificacao, string> = {
+  EFICAZ: "Eficaz",
+  PARCIALMENTE_EFICAZ: "Parcialmente eficaz",
+  INEFICAZ: "Ineficaz",
+};
 
 export type SgsstPgrMedidaControleInput = Omit<
   SgsstPgrMedidaControle,
-  "id" | "empresa_id" | "created_at" | "updated_at" | "responsavel"
+  "id" | "empresa_id" | "created_at" | "updated_at" | "responsavel" | "verificador"
 >;
 
 import { calcularClassificacaoRisco } from "@/utils/sgsstRiscoMatrix";
@@ -121,6 +218,7 @@ export function useSgsstPgrDetail(pgrId?: string) {
 export function useSgsstPgr(params?: { page?: number; pageSize?: number; search?: string; status?: string }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const { empresa } = useEmpresaAtual();
   const empresaId = profile?.empresa_id;
   const page = params?.page ?? 0;
   const pageSize = params?.pageSize ?? 25;
@@ -169,6 +267,11 @@ export function useSgsstPgr(params?: { page?: number; pageSize?: number; search?
         .insert({
           ...input,
           empresa_id: empresaId,
+          // Congela a identificacao da organizacao na criacao. Ler de `empresas`
+          // ao imprimir faria PGRs antigos passarem a mostrar o nome novo se a
+          // empresa fosse renomeada, o que falseia o documento.
+          empresa_nome: input.empresa_nome ?? empresa?.nome ?? null,
+          empresa_cnpj: input.empresa_cnpj ?? empresa?.cnpj ?? null,
           created_by: profile?.id,
           updated_by: profile?.id,
         })
@@ -308,7 +411,7 @@ export function useSgsstPgrInventario(pgrId?: string) {
         .from("sgsst_pgr_inventario" as any)
         .select(`
           *,
-          risco_catalogo:sgsst_riscos_catalogo(id, nome, categoria, agente),
+          risco_catalogo:sgsst_riscos_catalogo(id, nome, categoria, agente, limite_tolerancia, unidade_medida, tecnica_avaliacao, base_legal),
           area:areas(id, nome),
           responsavel:profiles!sgsst_pgr_inventario_responsavel_id_fkey(id, nome)
         `)
@@ -320,14 +423,68 @@ export function useSgsstPgrInventario(pgrId?: string) {
     },
   });
 
+  /**
+   * Reconcilia os grupos expostos (funcoes) de um item do inventario.
+   *
+   * `undefined` significa "nao mexer"; um array vazio significa "remover todos".
+   * Sao coisas diferentes: salvar o item sem tocar nos grupos nao pode apagar os
+   * grupos que ja estavam la.
+   */
+  const sincronizarFuncoes = async (inventarioId: string, funcaoIds?: string[]) => {
+    if (funcaoIds === undefined) return;
+    if (!empresaId) throw new Error("Empresa não selecionada.");
+
+    const { data: atuais, error: erroLeitura } = await (supabase
+      .from("sgsst_pgr_inventario_funcoes" as never)
+      .select("id, funcao_id")
+      .eq("inventario_id", inventarioId) as never as Promise<{
+      data: { id: string; funcao_id: string }[] | null;
+      error: { message?: string } | null;
+    }>);
+
+    if (erroLeitura) throw erroLeitura;
+
+    const existentes = new Map((atuais ?? []).map((l) => [l.funcao_id, l.id]));
+    const desejados = new Set(funcaoIds);
+
+    const paraRemover = [...existentes.entries()]
+      .filter(([funcaoId]) => !desejados.has(funcaoId))
+      .map(([, id]) => id);
+
+    const paraInserir = funcaoIds.filter((funcaoId) => !existentes.has(funcaoId));
+
+    if (paraRemover.length > 0) {
+      const { error } = await (supabase
+        .from("sgsst_pgr_inventario_funcoes" as never)
+        .delete()
+        .in("id", paraRemover) as never as Promise<{ error: { message?: string } | null }>);
+      if (error) throw error;
+    }
+
+    if (paraInserir.length > 0) {
+      const { error } = await (supabase.from("sgsst_pgr_inventario_funcoes" as never).insert(
+        paraInserir.map((funcaoId) => ({
+          empresa_id: empresaId,
+          inventario_id: inventarioId,
+          funcao_id: funcaoId,
+        })) as never
+      ) as never as Promise<{ error: { message?: string } | null }>);
+      if (error) throw error;
+    }
+  };
+
   const createInventarioItem = useMutation({
-    mutationFn: async (input: SgsstPgrInventarioInput) => {
+    mutationFn: async (
+      input: SgsstPgrInventarioInput & { funcaoIds?: string[] }
+    ) => {
       if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { funcaoIds, ...campos } = input;
 
       const { data, error } = await (supabase
         .from("sgsst_pgr_inventario" as any)
         .insert({
-          ...input,
+          ...campos,
           empresa_id: empresaId,
           created_by: profile?.id,
           updated_by: profile?.id,
@@ -336,10 +493,14 @@ export function useSgsstPgrInventario(pgrId?: string) {
         .single() as any);
 
       if (error) throw error;
-      return data as SgsstPgrInventario;
+
+      const criado = data as SgsstPgrInventario;
+      await sincronizarFuncoes(criado.id, funcaoIds);
+      return criado;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario", pgrId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario_funcoes", pgrId] });
       toast.success("Risco incluído no inventário!");
     },
     onError: (err: any) => {
@@ -348,7 +509,11 @@ export function useSgsstPgrInventario(pgrId?: string) {
   });
 
   const updateInventarioItem = useMutation({
-    mutationFn: async ({ id, ...input }: Partial<SgsstPgrInventarioInput> & { id: string }) => {
+    mutationFn: async ({
+      id,
+      funcaoIds,
+      ...input
+    }: Partial<SgsstPgrInventarioInput> & { id: string; funcaoIds?: string[] }) => {
       const { data, error } = await (supabase
         .from("sgsst_pgr_inventario" as any)
         .update({
@@ -361,10 +526,13 @@ export function useSgsstPgrInventario(pgrId?: string) {
         .single() as any);
 
       if (error) throw error;
+
+      await sincronizarFuncoes(id, funcaoIds);
       return data as SgsstPgrInventario;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario", pgrId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario_funcoes", pgrId] });
       toast.success("Item do inventário atualizado!");
     },
     onError: (err: any) => {
@@ -414,7 +582,8 @@ export function useSgsstPgrMedidasControle(inventarioId?: string) {
         .from("sgsst_pgr_medidas_controle" as any)
         .select(`
           *,
-          responsavel:profiles!sgsst_pgr_medidas_controle_responsavel_id_fkey(id, nome)
+          responsavel:profiles!sgsst_pgr_medidas_controle_responsavel_id_fkey(id, nome),
+          verificador:profiles!sgsst_pgr_medidas_controle_verificador_id_fkey(id, nome)
         `)
         .eq("inventario_id", inventarioId!)
         .order("created_at", { ascending: false }) as any);
@@ -502,4 +671,196 @@ export function useSgsstPgrMedidasControle(inventarioId?: string) {
     updateMedida,
     removeMedida,
   };
+}
+
+/**
+ * Historico de alteracoes do PGR.
+ *
+ * O PGR era o unico dos dez modulos SGSST sem historico — justamente o documento
+ * que a NR-01 1.5.7.3.3 manda manter por 20 anos COM historico das atualizacoes.
+ *
+ * O registro e feito por trigger no banco, nao aqui: alteracao vinda de script,
+ * do painel do Supabase ou de outra tela tambem precisa aparecer. Este hook so
+ * le.
+ */
+export function useSgsstPgrHistorico(pgrId?: string) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_pgr_historico", pgrId],
+    enabled: !!pgrId && !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pgr_historico" as never)
+        .select("*, usuario:profiles!sgsst_pgr_historico_usuario_id_fkey(id, nome)")
+        .eq("pgr_id", pgrId as string)
+        .order("created_at", { ascending: false })
+        .limit(200) as never as Promise<{
+        data: SgsstPgrHistorico[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  return { historico: data ?? [], isLoading, error, refetch };
+}
+
+export interface SgsstPgrHistorico {
+  id: string;
+  empresa_id: string;
+  pgr_id: string;
+  usuario_id?: string | null;
+  operacao: string;
+  versao?: number | null;
+  status_anterior?: string | null;
+  status_novo?: string | null;
+  observacao?: string | null;
+  created_at: string;
+  usuario?: { id: string; nome: string | null } | null;
+}
+
+export const OPERACAO_HISTORICO_LABEL: Record<string, string> = {
+  CRIACAO: "Criação",
+  MUDANCA_STATUS: "Mudança de status",
+  NOVA_VERSAO: "Nova versão",
+  REVISAO: "Revisão registrada",
+};
+
+export interface InventarioFuncao {
+  id: string;
+  inventario_id: string;
+  funcao_id: string;
+  funcao?: { id: string; nome: string; cbo?: string | null } | null;
+}
+
+/**
+ * Grupos de trabalhadores expostos, por item de inventario.
+ *
+ * A NR-01 1.5.7.3.2 pede QUAIS grupos estao expostos; o campo antigo guardava
+ * so uma quantidade, e numero nao identifica ninguem.
+ *
+ * Consulta separada da do inventario de proposito: um embed derrubaria a lista
+ * inteira enquanto a migration desta fase nao estivesse aplicada.
+ */
+export function useSgsstPgrInventarioFuncoes(pgrId?: string) {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_pgr_inventario_funcoes", pgrId],
+    enabled: !!pgrId && !!empresaId,
+    queryFn: async () => {
+      // Filtra pelos itens do PGR via a FK do inventario, para nao trazer as
+      // ligacoes de outros programas da mesma empresa.
+      const { data, error } = await (supabase
+        .from("sgsst_pgr_inventario_funcoes" as never)
+        .select("id, inventario_id, funcao_id, funcao:sgsst_funcoes(id, nome, cbo), inventario:sgsst_pgr_inventario!inner(pgr_id)")
+        .eq("inventario.pgr_id", pgrId as string)
+        .limit(2000) as never as Promise<{
+        data: InventarioFuncao[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const porItem = new Map<string, InventarioFuncao[]>();
+  for (const linha of data ?? []) {
+    const atual = porItem.get(linha.inventario_id);
+    if (atual) atual.push(linha);
+    else porItem.set(linha.inventario_id, [linha]);
+  }
+
+  const vinculo = useMutation({
+    mutationFn: async (params:
+      | { acao: "adicionar"; inventarioId: string; funcaoId: string }
+      | { acao: "remover"; id: string }
+    ) => {
+      if (params.acao === "remover") {
+        const { error } = await (supabase
+          .from("sgsst_pgr_inventario_funcoes" as never)
+          .delete()
+          .eq("id", params.id) as never as Promise<{ error: { message?: string } | null }>);
+        if (error) throw error;
+        return;
+      }
+
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      const { error } = await (supabase.from("sgsst_pgr_inventario_funcoes" as never).insert({
+        empresa_id: empresaId,
+        inventario_id: params.inventarioId,
+        funcao_id: params.funcaoId,
+      } as never) as never as Promise<{ error: { message?: string; code?: string } | null }>);
+
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("Esta função já está vinculada a este item do inventário.");
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario_funcoes", pgrId] });
+    },
+    onError: (err: unknown) => {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao alterar grupos expostos: ${detalhe}`);
+    },
+  });
+
+  return {
+    /** Ligacoes do item informado. */
+    funcoesDoItem: (inventarioId: string) => porItem.get(inventarioId) ?? [],
+    total: data?.length ?? 0,
+    isLoading,
+    error,
+    refetch,
+    vinculo,
+  };
+}
+
+/**
+ * Funcoes que a fase 2 diz estarem expostas a um risco do catalogo.
+ *
+ * E o que faz o inventario deixar de pedir redigitacao: escolhido o risco, o
+ * sistema ja sabe quais funcoes se expoem a ele e sugere, junto com a
+ * caracterizacao da exposicao que a funcao declarou.
+ */
+export function useSgsstFuncoesDoRisco(riscoCatalogoId?: string | null) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sgsst_funcao_riscos", "por_risco", riscoCatalogoId, empresaId],
+    enabled: !!empresaId && !!riscoCatalogoId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_funcao_riscos" as never)
+        .select("funcao_id, tipo_exposicao, tempo_exposicao, funcao:sgsst_funcoes(id, nome, cbo)")
+        .eq("risco_catalogo_id", riscoCatalogoId as string) as never as Promise<{
+        data: SugestaoFuncaoExposta[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  return { sugestoes: data ?? [], isLoading, error };
+}
+
+export interface SugestaoFuncaoExposta {
+  funcao_id: string;
+  tipo_exposicao?: TipoExposicao | null;
+  tempo_exposicao?: string | null;
+  funcao?: { id: string; nome: string; cbo?: string | null } | null;
 }

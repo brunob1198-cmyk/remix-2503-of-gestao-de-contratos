@@ -16,15 +16,15 @@
     "Valores medidos pelo CI em checkout limpo (PR #4): 1630 erros, 37 warnings.",
     "`tolerance` mantida em 1 por precaução; pode ir a 0 após algumas execuções.",
     "",
-    "ATUALIZAÇÃO (fases 1 e 2 do plano de Segurança): erros 1630 -> 1628, pela troca",
-    "de dois `data: any` por tipos reais — SgsstRiscoInput em pages/sgsst/Riscos.tsx",
-    "e SgsstFuncaoInput em pages/sgsst/Funcoes.tsx.",
+    "ATUALIZAÇÃO (fases 1 a 3 do plano de Segurança): erros 1630 -> 1625, pela troca",
+    "de cinco `data: any` por tipos reais nas telas de Riscos, Funcoes, PgrList e",
+    "PgrDetail (inventario e medidas de controle).",
     "Os warnings passaram de 37 para 39 por DERIVA ANTERIOR, não por esta mudança:",
     "medido com `git stash` no HEAD 75d6520e, o estado limpo já acusava 39. Os",
     "arquivos desta fase não emitem warning algum. O gate é só sobre erros, então",
     "a deriva não estava sendo travada — fica registrada aqui."
   ],
-  "errors": 1628,
+  "errors": 1625,
   "warnings": 39,
   "tolerance": 1
 }
