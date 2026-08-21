@@ -29,7 +29,12 @@ import {
   Mail,
   MapPin,
   IdCard,
+  FileDown,
 } from "lucide-react";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSgsstColaboradorDossie } from "@/hooks/sgsst/useSgsstColaboradorDossie";
+import { gerarPdfDossie, pendenciasDossie } from "@/lib/dossieDocumento";
 import { format, parseISO, differenceInYears } from "date-fns";
 import { toast } from "sonner";
 
@@ -45,6 +50,53 @@ export function ColaboradorDetailDialog({
   colaborador,
 }: ColaboradorDetailDialogProps) {
   const { addTreinamento, removeTreinamento } = useSgsstColaboradores();
+  const { empresa } = useEmpresaAtual();
+  const { profile: usuario } = useAuth();
+
+  // As quatro fontes do dossiê só são consultadas com o diálogo aberto: a lista
+  // tem dezenas de linhas, e carregar quatro consultas por linha seria custo sem
+  // uso nenhum.
+  const dossie = useSgsstColaboradorDossie(colaborador?.id, { enabled: open });
+  const [emitindo, setEmitindo] = useState(false);
+
+  const emitirDossie = async () => {
+    if (!colaborador) return;
+
+    const dadosDoDossie = {
+      colaborador,
+      treinamentosDoDossie: colaborador.treinamentos ?? [],
+      matriculas: dossie.matriculas,
+      asos: dossie.asos,
+      entregasEpi: dossie.entregasEpi,
+      pendencias: dossie.pendencias,
+      empresa: empresa ?? null,
+      geradoPor: usuario?.nome ?? null,
+    };
+
+    // Fonte que falhou é dita, não silenciada: um dossiê que sai sem a seção de
+    // ASO porque a consulta caiu pareceria um trabalhador sem exame algum.
+    if (dossie.erros.length > 0) {
+      toast.warning("Parte do dossiê não pôde ser lida", {
+        description: `Sem dados de: ${dossie.erros.map((e) => e.fonte).join(", ")}.`,
+      });
+    }
+
+    const pendencias = pendenciasDossie(dadosDoDossie);
+    if (pendencias.length > 0) {
+      toast.warning(`${pendencias.length} pendência(s) no dossiê`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfDossie(dadosDoDossie);
+    } catch (e) {
+      toast.error(`Erro ao emitir o dossiê: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
 
   const [isAddingTreinamento, setIsAddingTreinamento] = useState(false);
   const [isUploadingCert, setIsUploadingCert] = useState(false);
@@ -465,7 +517,23 @@ export function ColaboradorDetailDialog({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="border-t pt-3">
+        <DialogFooter className="border-t pt-3 sm:justify-between">
+          {/* Emitir fica fora de qualquer permissão de edição: emitir é leitura. */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={emitirDossie}
+            disabled={emitindo || dossie.isLoading}
+            title="Emitir o dossiê deste trabalhador em PDF, para compartilhamento"
+          >
+            {emitindo ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            Emitir dossiê em PDF
+          </Button>
+
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar Dossiê
           </Button>

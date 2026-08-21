@@ -16,6 +16,13 @@ import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Upload, Briefcase, Shield, MapPin, Calendar, FileCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  buscarCep,
+  cepCompleto,
+  enderecoEmUmaLinha,
+  mascaraCep,
+  MENSAGEM_CEP,
+} from "@/utils/cep";
 
 interface ColaboradorFormDialogProps {
   open: boolean;
@@ -65,6 +72,38 @@ export function ColaboradorFormDialog({
   const [tamanhoCamisa, setTamanhoCamisa] = useState("");
   const [tamanhoCalca, setTamanhoCalca] = useState("");
   const [endereco, setEndereco] = useState("");
+  const [cep, setCep] = useState("");
+  const [enderecoComplemento, setEnderecoComplemento] = useState("");
+  const [buscandoCep, setBuscandoCep] = useState(false);
+
+  /**
+   * Consulta o CEP na base dos Correios ao completar os oito dígitos.
+   *
+   * Preenche `endereco` (logradouro, bairro, cidade e UF) e deixa número, quadra e
+   * lote para o campo de complemento. Sem essa separação, digitar o número
+   * significaria clicar no meio do texto que a consulta acabou de preencher — e
+   * uma nova consulta apagaria o número junto.
+   */
+  const handleCepChange = async (valor: string) => {
+    const mascarado = mascaraCep(valor);
+    setCep(mascarado);
+
+    if (!cepCompleto(mascarado)) return;
+
+    setBuscandoCep(true);
+    const resultado = await buscarCep(mascarado);
+    setBuscandoCep(false);
+
+    if (resultado.situacao === "OK") {
+      setEndereco(enderecoEmUmaLinha(resultado.endereco));
+      toast.success(MENSAGEM_CEP.OK);
+      return;
+    }
+
+    // Não apaga o que já estava escrito: o usuário pode ter digitado o endereço à
+    // mão antes, e uma consulta que falhou não é motivo para perder isso.
+    toast.warning(MENSAGEM_CEP[resultado.situacao]);
+  };
 
   // Load Areas
   const { data: areas = [] } = useQuery({
@@ -117,6 +156,8 @@ export function ColaboradorFormDialog({
       setTamanhoCamisa(colaboradorToEdit.tamanho_camisa || "");
       setTamanhoCalca(colaboradorToEdit.tamanho_calca || "");
       setEndereco(colaboradorToEdit.endereco || "");
+      setCep(colaboradorToEdit.cep || "");
+      setEnderecoComplemento(colaboradorToEdit.endereco_complemento || "");
     } else {
       setNome("");
       setCpf("");
@@ -142,6 +183,8 @@ export function ColaboradorFormDialog({
       setTamanhoCamisa("");
       setTamanhoCalca("");
       setEndereco("");
+      setCep("");
+      setEnderecoComplemento("");
     }
   }, [colaboradorToEdit, open]);
 
@@ -230,6 +273,8 @@ export function ColaboradorFormDialog({
         tamanho_camisa: tamanhoCamisa.trim() || null,
         tamanho_calca: tamanhoCalca.trim() || null,
         endereco: endereco.trim() || null,
+        cep: cep.trim() || null,
+        endereco_complemento: enderecoComplemento.trim() || null,
       });
       onOpenChange(false);
     } catch (err) {
@@ -513,14 +558,57 @@ export function ColaboradorFormDialog({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Endereço Residencial Completo</Label>
-                <Textarea
-                  rows={2}
-                  placeholder="Rua, Número, Bairro, Cidade - UF, CEP"
-                  value={endereco}
-                  onChange={(e) => setEndereco(e.target.value)}
-                />
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <div>
+                  <h4 className="text-sm font-semibold leading-none">Endereço residencial</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Digite o CEP e o endereço é preenchido pela base dos Correios. Complete
+                    apenas o número, quadra e lote.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs" htmlFor="cepColab">CEP</Label>
+                    <div className="relative">
+                      <Input
+                        id="cepColab"
+                        placeholder="00.000-000"
+                        inputMode="numeric"
+                        value={cep}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                      />
+                      {buscandoCep && (
+                        <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs" htmlFor="complColab">
+                      Número / Quadra / Lote / Complemento
+                    </Label>
+                    <Input
+                      id="complColab"
+                      placeholder="Ex: Qd 1741 Lt 16, Ap. 302"
+                      value={enderecoComplemento}
+                      onChange={(e) => setEnderecoComplemento(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs" htmlFor="endColab">
+                    Logradouro, bairro, cidade e UF
+                  </Label>
+                  <Textarea
+                    id="endColab"
+                    rows={2}
+                    placeholder="Preenchido pelo CEP — pode ser ajustado à mão"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                  />
+                </div>
               </div>
             </TabsContent>
           </Tabs>
