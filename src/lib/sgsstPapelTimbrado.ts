@@ -66,6 +66,29 @@ const A4_ALTURA_MM = 297;
 const LARGURA_RENDER_PX = 1024;
 
 /**
+ * Multiplicador de resolução do raster.
+ *
+ * O html2pdf rasteriza a página e depois a estica para o tamanho do A4. Com o
+ * `scale: 1` do padrão, 1024 px cobrem 186 mm — cerca de **140 dpi**. É por isso
+ * que o texto saía mole e as linhas de tabela pareciam "estouradas": uma imagem
+ * de baixa resolução ampliada.
+ *
+ * Em 2× são ~280 dpi, que é resolução de impressão. Não afeta o alinhamento da
+ * marca d'água: o `scale` multiplica os pixels do canvas, e o layout em CSS
+ * continua com 1024 px de largura — a conta do azulejo é em pixel de CSS.
+ */
+const ESCALA_RENDER = 2;
+
+/**
+ * Qualidade do JPEG.
+ *
+ * Menor que o 0,98 do padrão de propósito: com o dobro da resolução, o artefato
+ * de compressão fica menos visível, e manter 0,98 dobraria o arquivo sem ganho
+ * perceptível.
+ */
+const QUALIDADE_JPEG = 0.92;
+
+/**
  * Altura, em pixels de render, da área de conteúdo de UMA página.
  *
  * O html2pdf rasteriza o container inteiro num canvas só e depois fatia em
@@ -277,14 +300,20 @@ export function cssMarcaDagua(): string {
 /**
  * Opções do html2pdf para documento timbrado.
  *
- * A única diferença em relação ao padrão são as MARGENS, maiores: o logo e o
- * rodapé são estampados por cima do PDF já paginado, e sem a reserva de espaço o
- * conteúdo passaria por baixo deles.
+ * Três diferenças em relação ao padrão:
  *
- * O formato continua JPEG, o do padrão. Uma versão anterior trocou por PNG
- * transparente para deixar a marca d'água aparecer por baixo — funcionava, mas
- * levava o arquivo a ~1,2 MB por página. Com a marca embutida no fundo via CSS,
- * o JPEG volta a servir e o peso normaliza.
+ * 1. MARGENS maiores: o logo e o rodapé são estampados por cima do PDF já
+ *    paginado, e sem a reserva de espaço o conteúdo passaria por baixo deles.
+ *
+ * 2. RESOLUÇÃO em 2×. O padrão usa `scale: 1`, o que dá ~140 dpi depois de o
+ *    raster ser esticado para o A4 — texto mole e linha de tabela borrada.
+ *
+ * 3. JPEG a 0,92 em vez de 0,98, porque com o dobro da resolução o artefato
+ *    quase não aparece e a qualidade máxima só dobraria o arquivo.
+ *
+ * O formato continua JPEG. Uma versão anterior trocou por PNG transparente para
+ * a marca d'água aparecer por baixo — funcionava, mas levava o arquivo a ~1,2 MB
+ * por página. Com a marca embutida no fundo via CSS, o JPEG volta a servir.
  */
 export function opcoesPdfTimbrado(nomeArquivo: string) {
   const base = getPdfOptions(nomeArquivo) as Record<string, unknown>;
@@ -298,9 +327,16 @@ export function opcoesPdfTimbrado(nomeArquivo: string) {
       number,
       number,
     ],
-    // `windowWidth` precisa casar com LARGURA_RENDER_PX: é dela que sai a escala
-    // usada para alinhar o azulejo da marca d'água com a quebra de página.
-    html2canvas: { ...html2canvasBase, windowWidth: LARGURA_RENDER_PX },
+    image: { type: "jpeg" as const, quality: QUALIDADE_JPEG },
+    html2canvas: {
+      ...html2canvasBase,
+      // `windowWidth` precisa casar com LARGURA_RENDER_PX: é dela que sai a
+      // escala usada para alinhar o azulejo da marca d'água com a quebra de
+      // página. O `scale` é independente — multiplica os pixels do canvas, não o
+      // layout em CSS.
+      windowWidth: LARGURA_RENDER_PX,
+      scale: ESCALA_RENDER,
+    },
   };
 }
 

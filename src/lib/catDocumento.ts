@@ -217,8 +217,5 @@ export async function gerarPdfCat(dados: CatDocumentoDados): Promise<void> {
     html: montarHtmlCat(dados),
     nomeArquivo: nome,
     identificacao: `CAT ${dados.cat.numero_cat || nomeTrabalhador(dados.cat)}`,
-    // Comunicação de acidente é conferida campo a campo por seguradora e
-    // fiscalização; marca d'água atrás dos dados atrapalha.
-    marcaDagua: false,
   });
 }

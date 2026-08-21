@@ -265,8 +265,5 @@ export async function gerarPdfAso(aso: SgsstAso, geradoPor?: string | null): Pro
     html: montarHtmlAso(aso, geradoPor),
     nomeArquivo: nome,
     identificacao: `ASO ${identificador}`,
-    // O ASO vai para a mão do trabalhador e é conferido contra o atestado.
-    // Marca d'água atrás de campo assinado atrapalha a leitura.
-    marcaDagua: false,
   });
 }
