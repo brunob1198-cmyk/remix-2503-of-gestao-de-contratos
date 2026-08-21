@@ -15,6 +15,9 @@ import {
 } from "@/hooks/sgsst/useSgsstInspecoes";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import { gerarPdfInspecao, pendenciasInspecao } from "@/lib/inspecaoDocumento";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +40,8 @@ import {
   ShieldCheck,
   History,
   AlertTriangle,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
@@ -57,6 +62,9 @@ export default function SgsstInspecoesDetailPage() {
 
   const { updateInspecao, updateStatusInspecao } = useSgsstInspecoes();
   const { data: currentInspecao, isLoading: loadingDetail } = useSgsstInspecoesDetail(inspecaoId);
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
+  const [emitindo, setEmitindo] = useState(false);
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { itens, isLoading: loadingItens, updateRespostaItem, addItem, removeItem } = useSgsstInspecaoItens(inspecaoId);
@@ -101,6 +109,33 @@ export default function SgsstInspecoesDetailPage() {
   }
 
   const isReadOnly = currentInspecao.status === "CONCLUIDA" || currentInspecao.status === "CANCELADA";
+
+  const emitirPdf = async () => {
+    const dadosDoDocumento = {
+      inspecao: currentInspecao,
+      itens,
+      naoConformidades,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    // Pendencia nao impede: o relatorio sai marcando cada falta.
+    const pendencias = pendenciasInspecao(dadosDoDocumento);
+    if (pendencias.length > 0) {
+      toast.warning(`Inspeção com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfInspecao(dadosDoDocumento);
+    } catch (e) {
+      toast.error(`Erro ao emitir o relatório: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -214,6 +249,24 @@ export default function SgsstInspecoesDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Obra: <strong>{currentInspecao.projeto ? `[${currentInspecao.projeto.codigo}] ${currentInspecao.projeto.nome}` : "—"}</strong> | Canteiro: <strong>{currentInspecao.site ? currentInspecao.site.nome : "Geral da Obra"}</strong> | Setor: <strong>{currentInspecao.area ? currentInspecao.area.nome : "Geral"}</strong>
               </p>
+            </div>
+
+            {/* Emitir fica fora do allowEdit: emitir e leitura. */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={emitirPdf}
+                disabled={emitindo}
+                title="Emitir o relatório desta inspeção em PDF"
+              >
+                {emitindo ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5 mr-1" />
+                )}
+                Emitir relatório
+              </Button>
             </div>
 
             {/* Workflow Action Buttons */}

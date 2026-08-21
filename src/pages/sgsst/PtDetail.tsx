@@ -18,6 +18,7 @@ import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { gerarPdfPt, pendenciasPt } from "@/lib/ptDocumento";
+import { useSgsstPtMedidasDaPt } from "@/hooks/sgsst/useSgsstArvoreRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +78,11 @@ export default function SgsstPtDetailPage() {
   const { historico } = useSgsstPtHistorico(ptId);
   const { empresa } = useEmpresaAtual();
   const { profile } = useAuth();
+
+  // As medidas de controle vivem penduradas em cada risco, e a tela carrega so as
+  // do risco aberto. A folha precisa de todas: risco impresso sem a medida ao
+  // lado informa o perigo e nao diz o que fazer a respeito.
+  const { medidas: medidasDosRiscos } = useSgsstPtMedidasDaPt(riscos.map((r) => r.id));
 
   // Dialog States
   const [isEditPtOpen, setIsEditPtOpen] = useState(false);
@@ -140,6 +146,7 @@ export default function SgsstPtDetailPage() {
     const dadosDoDocumento = {
       pt: currentPt,
       riscos,
+      medidas: medidasDosRiscos,
       checklist,
       participantes,
       medicoes: medicoesAtmosfera,
