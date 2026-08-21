@@ -12,30 +12,31 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { registerChecklistsServiceWorker } from "@/utils/pwaRegister";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import AuthPage from "./pages/Auth";
-import ForgotPasswordPage from "./pages/ForgotPassword";
-import ResetPasswordPage from "./pages/ResetPassword";
-import EmpresaSetupPage from "./pages/EmpresaSetup";
-import PendingApprovalPage from "./pages/PendingApproval";
+// Lazy Loaded Pages
+const Index = React.lazy(() => import("./pages/Index"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+const AuthPage = React.lazy(() => import("./pages/Auth"));
+const ForgotPasswordPage = React.lazy(() => import("./pages/ForgotPassword"));
+const ResetPasswordPage = React.lazy(() => import("./pages/ResetPassword"));
+const EmpresaSetupPage = React.lazy(() => import("./pages/EmpresaSetup"));
+const PendingApprovalPage = React.lazy(() => import("./pages/PendingApproval"));
 
 // Medicoes Portal
-import MedicoesLayout from "./pages/medicoes/Layout";
-import DashboardPage from "./pages/medicoes/Dashboard";
-import CadastrosPage from "./pages/medicoes/Cadastros";
-import MedicaoPage from "./pages/medicoes/Medicao";
-import FaturamentoPage from "./pages/medicoes/Faturamento";
-import RelatoriosPage from "./pages/medicoes/Relatorios";
-import EscopoPage from "./pages/medicoes/Escopo";
-import AcompanhamentoMedicoesPage from "./pages/medicoes/AcompanhamentoMedicoes";
-import DiarioObraPage from "./pages/medicoes/DiarioObra";
-import GerenciarUsuariosPage from "./pages/medicoes/GerenciarUsuarios";
-import MeuPerfilPage from "./pages/medicoes/MeuPerfil";
-import SupplyChainPage from "./pages/medicoes/SupplyChain";
-import DiarioCampoPage from "./pages/medicoes/DiarioCampo";
-import AuditLogPage from "./pages/medicoes/AuditLog";
-import ForecastPublicPage from "./pages/ForecastPublic";
+const MedicoesLayout = React.lazy(() => import("./pages/medicoes/Layout"));
+const DashboardPage = React.lazy(() => import("./pages/medicoes/Dashboard"));
+const CadastrosPage = React.lazy(() => import("./pages/medicoes/Cadastros"));
+const MedicaoPage = React.lazy(() => import("./pages/medicoes/Medicao"));
+const FaturamentoPage = React.lazy(() => import("./pages/medicoes/Faturamento"));
+const RelatoriosPage = React.lazy(() => import("./pages/medicoes/Relatorios"));
+const EscopoPage = React.lazy(() => import("./pages/medicoes/Escopo"));
+const AcompanhamentoMedicoesPage = React.lazy(() => import("./pages/medicoes/AcompanhamentoMedicoes"));
+const DiarioObraPage = React.lazy(() => import("./pages/medicoes/DiarioObra"));
+const GerenciarUsuariosPage = React.lazy(() => import("./pages/medicoes/GerenciarUsuarios"));
+const MeuPerfilPage = React.lazy(() => import("./pages/medicoes/MeuPerfil"));
+const SupplyChainPage = React.lazy(() => import("./pages/medicoes/SupplyChain"));
+const DiarioCampoPage = React.lazy(() => import("./pages/medicoes/DiarioCampo"));
+const AuditLogPage = React.lazy(() => import("./pages/medicoes/AuditLog"));
+const ForecastPublicPage = React.lazy(() => import("./pages/ForecastPublic"));
 
 // Lazy Loaded Pages
 const RecursosPage = React.lazy(() => import("./pages/medicoes/Recursos"));

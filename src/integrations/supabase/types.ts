@@ -5709,19 +5709,70 @@ export type Database = {
           },
         ]
       }
+      sgsst_aso_exames: {
+        Row: {
+          aso_id: string
+          created_at: string
+          empresa_id: string
+          exame_id: string
+          id: string
+        }
+        Insert: {
+          aso_id: string
+          created_at?: string
+          empresa_id: string
+          exame_id: string
+          id?: string
+        }
+        Update: {
+          aso_id?: string
+          created_at?: string
+          empresa_id?: string
+          exame_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_aso_exames_aso_id_fkey"
+            columns: ["aso_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_asos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_aso_exames_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_aso_exames_exame_id_fkey"
+            columns: ["exame_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_exames"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_asos: {
         Row: {
           aptidao: string
           colaborador_id: string
           created_at: string
+          crm_coordenador: string | null
           crm_medico: string | null
           data_emissao: string
           data_inicio_restricao: string | null
           data_termino_restricao: string | null
           descricao_restricao: string | null
+          descricao_riscos: string | null
+          empresa_cnpj: string | null
           empresa_id: string
+          empresa_nome: string | null
           exame_id: string | null
           id: string
+          medico_coordenador: string | null
           medico_responsavel: string | null
           numero_documento: string | null
           observacoes: string | null
@@ -5735,14 +5786,19 @@ export type Database = {
           aptidao?: string
           colaborador_id: string
           created_at?: string
+          crm_coordenador?: string | null
           crm_medico?: string | null
           data_emissao?: string
           data_inicio_restricao?: string | null
           data_termino_restricao?: string | null
           descricao_restricao?: string | null
+          descricao_riscos?: string | null
+          empresa_cnpj?: string | null
           empresa_id: string
+          empresa_nome?: string | null
           exame_id?: string | null
           id?: string
+          medico_coordenador?: string | null
           medico_responsavel?: string | null
           numero_documento?: string | null
           observacoes?: string | null
@@ -5756,14 +5812,19 @@ export type Database = {
           aptidao?: string
           colaborador_id?: string
           created_at?: string
+          crm_coordenador?: string | null
           crm_medico?: string | null
           data_emissao?: string
           data_inicio_restricao?: string | null
           data_termino_restricao?: string | null
           descricao_restricao?: string | null
+          descricao_riscos?: string | null
+          empresa_cnpj?: string | null
           empresa_id?: string
+          empresa_nome?: string | null
           exame_id?: string | null
           id?: string
+          medico_coordenador?: string | null
           medico_responsavel?: string | null
           numero_documento?: string | null
           observacoes?: string | null
@@ -5856,6 +5917,249 @@ export type Database = {
           {
             foreignKeyName: "sgsst_asos_historico_usuario_id_fkey"
             columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_cats: {
+        Row: {
+          area_id: string | null
+          cid: string | null
+          colaborador_id: string | null
+          created_at: string
+          created_by: string | null
+          data_acidente: string
+          data_emissao: string
+          descricao: string | null
+          dias_afastamento: number | null
+          empresa_id: string
+          houve_obito: boolean
+          id: string
+          incidente_id: string | null
+          numero_cat: string | null
+          observacoes: string | null
+          projeto_id: string | null
+          tipo_cat: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          area_id?: string | null
+          cid?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_acidente: string
+          data_emissao?: string
+          descricao?: string | null
+          dias_afastamento?: number | null
+          empresa_id: string
+          houve_obito?: boolean
+          id?: string
+          incidente_id?: string | null
+          numero_cat?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          tipo_cat?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          area_id?: string | null
+          cid?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_acidente?: string
+          data_emissao?: string
+          descricao?: string | null
+          dias_afastamento?: number | null
+          empresa_id?: string
+          houve_obito?: boolean
+          id?: string
+          incidente_id?: string | null
+          numero_cat?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          tipo_cat?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_cats_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_colaborador_dados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_incidente_id_fkey"
+            columns: ["incidente_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_incidentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_cats_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_clinicas: {
+        Row: {
+          cidade: string | null
+          cnpj: string | null
+          created_at: string
+          created_by: string | null
+          crm_responsavel: string | null
+          email: string | null
+          empresa_id: string
+          endereco: string | null
+          exames_realizados: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          responsavel_tecnico: string | null
+          status: string
+          telefone: string | null
+          uf: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_responsavel?: string | null
+          email?: string | null
+          empresa_id: string
+          endereco?: string | null
+          exames_realizados?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          responsavel_tecnico?: string | null
+          status?: string
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          created_by?: string | null
+          crm_responsavel?: string | null
+          email?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          exames_realizados?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          responsavel_tecnico?: string | null
+          status?: string
+          telefone?: string | null
+          uf?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_clinicas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_clinicas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_clinicas_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -6570,57 +6874,85 @@ export type Database = {
       }
       sgsst_exames: {
         Row: {
+          clinica_id: string | null
           colaborador_id: string
           created_at: string
+          data_agendada: string | null
           data_realizacao: string | null
           data_solicitacao: string
           empresa_id: string
+          hora_agendada: string | null
           id: string
           medico_responsavel: string | null
+          motivo_remarcacao: string | null
+          natureza: string
           nome_exame: string
           observacoes: string | null
           pcmso_exame_id: string | null
           pcmso_id: string | null
+          remarcacoes: number
           resultado: string | null
+          resultado_classificacao: string | null
           status: string
           tipo: string
           updated_at: string
         }
         Insert: {
+          clinica_id?: string | null
           colaborador_id: string
           created_at?: string
+          data_agendada?: string | null
           data_realizacao?: string | null
           data_solicitacao?: string
           empresa_id: string
+          hora_agendada?: string | null
           id?: string
           medico_responsavel?: string | null
+          motivo_remarcacao?: string | null
+          natureza?: string
           nome_exame: string
           observacoes?: string | null
           pcmso_exame_id?: string | null
           pcmso_id?: string | null
+          remarcacoes?: number
           resultado?: string | null
+          resultado_classificacao?: string | null
           status?: string
           tipo: string
           updated_at?: string
         }
         Update: {
+          clinica_id?: string | null
           colaborador_id?: string
           created_at?: string
+          data_agendada?: string | null
           data_realizacao?: string | null
           data_solicitacao?: string
           empresa_id?: string
+          hora_agendada?: string | null
           id?: string
           medico_responsavel?: string | null
+          motivo_remarcacao?: string | null
+          natureza?: string
           nome_exame?: string
           observacoes?: string | null
           pcmso_exame_id?: string | null
           pcmso_id?: string | null
+          remarcacoes?: number
           resultado?: string | null
+          resultado_classificacao?: string | null
           status?: string
           tipo?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sgsst_exames_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_clinicas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sgsst_exames_colaborador_id_fkey"
             columns: ["colaborador_id"]
@@ -6647,6 +6979,210 @@ export type Database = {
             columns: ["pcmso_id"]
             isOneToOne: false
             referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_funcao_epis: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          epi_id: string
+          funcao_id: string
+          id: string
+          obrigatorio: boolean
+          observacoes: string | null
+          periodicidade_troca_meses: number | null
+          quantidade_padrao: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          epi_id: string
+          funcao_id: string
+          id?: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          periodicidade_troca_meses?: number | null
+          quantidade_padrao?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          epi_id?: string
+          funcao_id?: string
+          id?: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          periodicidade_troca_meses?: number | null
+          quantidade_padrao?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_funcao_epis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_epis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_epis_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_epis_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_funcao_riscos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          funcao_id: string
+          id: string
+          observacoes: string | null
+          risco_catalogo_id: string
+          tempo_exposicao: string | null
+          tipo_exposicao: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          funcao_id: string
+          id?: string
+          observacoes?: string | null
+          risco_catalogo_id: string
+          tempo_exposicao?: string | null
+          tipo_exposicao?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          funcao_id?: string
+          id?: string
+          observacoes?: string | null
+          risco_catalogo_id?: string
+          tempo_exposicao?: string | null
+          tipo_exposicao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_funcao_riscos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_riscos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_riscos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_riscos_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sgsst_funcao_treinamentos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          funcao_id: string
+          id: string
+          obrigatorio: boolean
+          observacoes: string | null
+          treinamento_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          funcao_id: string
+          id?: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          treinamento_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          funcao_id?: string
+          id?: string
+          obrigatorio?: boolean
+          observacoes?: string | null
+          treinamento_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_funcao_treinamentos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_treinamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_treinamentos_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_funcao_treinamentos_treinamento_id_fkey"
+            columns: ["treinamento_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_treinamentos"
             referencedColumns: ["id"]
           },
         ]
@@ -6698,15 +7234,129 @@ export type Database = {
           },
         ]
       }
+      sgsst_hht: {
+        Row: {
+          ano: number
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          horas: number
+          id: string
+          media_trabalhadores: number | null
+          mes: number
+          observacao: string | null
+          origem: string
+          projeto_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          horas: number
+          id?: string
+          media_trabalhadores?: number | null
+          mes: number
+          observacao?: string | null
+          origem?: string
+          projeto_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          horas?: number
+          id?: string
+          media_trabalhadores?: number | null
+          mes?: number
+          observacao?: string | null
+          origem?: string
+          projeto_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_hht_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "sgsst_hht_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       sgsst_incidentes: {
         Row: {
           apr_id: string | null
           area_id: string | null
+          cat_emitida: boolean
           codigo: string | null
           created_at: string
           created_by: string | null
+          data_afastamento: string | null
           data_ocorrencia: string
+          data_retorno: string | null
           descricao: string
+          dias_debitados: number | null
+          dias_perdidos: number | null
           empresa_id: string
           gravidade: string
           hora_ocorrencia: string | null
@@ -6728,11 +7378,16 @@ export type Database = {
         Insert: {
           apr_id?: string | null
           area_id?: string | null
+          cat_emitida?: boolean
           codigo?: string | null
           created_at?: string
           created_by?: string | null
+          data_afastamento?: string | null
           data_ocorrencia?: string
+          data_retorno?: string | null
           descricao: string
+          dias_debitados?: number | null
+          dias_perdidos?: number | null
           empresa_id: string
           gravidade?: string
           hora_ocorrencia?: string | null
@@ -6754,11 +7409,16 @@ export type Database = {
         Update: {
           apr_id?: string | null
           area_id?: string | null
+          cat_emitida?: boolean
           codigo?: string | null
           created_at?: string
           created_by?: string | null
+          data_afastamento?: string | null
           data_ocorrencia?: string
+          data_retorno?: string | null
           descricao?: string
+          dias_debitados?: number | null
+          dias_perdidos?: number | null
           empresa_id?: string
           gravidade?: string
           hora_ocorrencia?: string | null
@@ -7884,9 +8544,12 @@ export type Database = {
       }
       sgsst_pcmso: {
         Row: {
+          agravos_saude: string | null
+          ano_referencia: number | null
           codigo: string | null
           created_at: string
           created_by: string | null
+          criterios_conduta: string | null
           crm_medico: string | null
           data_inicio: string
           data_revisao: string | null
@@ -7903,9 +8566,12 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          agravos_saude?: string | null
+          ano_referencia?: number | null
           codigo?: string | null
           created_at?: string
           created_by?: string | null
+          criterios_conduta?: string | null
           crm_medico?: string | null
           data_inicio?: string
           data_revisao?: string | null
@@ -7922,9 +8588,12 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          agravos_saude?: string | null
+          ano_referencia?: number | null
           codigo?: string | null
           created_at?: string
           created_by?: string | null
+          criterios_conduta?: string | null
           crm_medico?: string | null
           data_inicio?: string
           data_revisao?: string | null
@@ -8015,39 +8684,51 @@ export type Database = {
       }
       sgsst_pcmso_exames: {
         Row: {
+          base_legal: string | null
           created_at: string
           empresa_id: string
+          faixa_etaria: string | null
           funcao_id: string | null
           grupo_risco: string | null
           id: string
+          justificativa_tecnica: string | null
           nome_exame: string
           observacoes: string | null
           pcmso_id: string
           periodicidade_meses: number | null
+          risco_catalogo_id: string | null
           tipo_exame: string
         }
         Insert: {
+          base_legal?: string | null
           created_at?: string
           empresa_id: string
+          faixa_etaria?: string | null
           funcao_id?: string | null
           grupo_risco?: string | null
           id?: string
+          justificativa_tecnica?: string | null
           nome_exame: string
           observacoes?: string | null
           pcmso_id: string
           periodicidade_meses?: number | null
+          risco_catalogo_id?: string | null
           tipo_exame: string
         }
         Update: {
+          base_legal?: string | null
           created_at?: string
           empresa_id?: string
+          faixa_etaria?: string | null
           funcao_id?: string | null
           grupo_risco?: string | null
           id?: string
+          justificativa_tecnica?: string | null
           nome_exame?: string
           observacoes?: string | null
           pcmso_id?: string
           periodicidade_meses?: number | null
+          risco_catalogo_id?: string | null
           tipo_exame?: string
         }
         Relationships: [
@@ -8070,6 +8751,13 @@ export type Database = {
             columns: ["pcmso_id"]
             isOneToOne: false
             referencedRelation: "sgsst_pcmso"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pcmso_exames_risco_catalogo_id_fkey"
+            columns: ["risco_catalogo_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_riscos_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -8136,17 +8824,24 @@ export type Database = {
           created_by: string | null
           data_inicio: string
           data_revisao: string | null
+          empresa_cnpj: string | null
           empresa_id: string
+          empresa_nome: string | null
           id: string
+          metodologia: string | null
           objetivo: string | null
           observacoes: string | null
+          periodicidade_revisao_meses: number
           projeto_id: string
+          registro_responsavel: string | null
           responsavel_id: string | null
+          responsavel_tecnico: string | null
           site_id: string | null
           status: string
           titulo: string
           updated_at: string
           updated_by: string | null
+          versao: number
         }
         Insert: {
           codigo?: string | null
@@ -8154,17 +8849,24 @@ export type Database = {
           created_by?: string | null
           data_inicio?: string
           data_revisao?: string | null
+          empresa_cnpj?: string | null
           empresa_id: string
+          empresa_nome?: string | null
           id?: string
+          metodologia?: string | null
           objetivo?: string | null
           observacoes?: string | null
+          periodicidade_revisao_meses?: number
           projeto_id: string
+          registro_responsavel?: string | null
           responsavel_id?: string | null
+          responsavel_tecnico?: string | null
           site_id?: string | null
           status?: string
           titulo: string
           updated_at?: string
           updated_by?: string | null
+          versao?: number
         }
         Update: {
           codigo?: string | null
@@ -8172,17 +8874,24 @@ export type Database = {
           created_by?: string | null
           data_inicio?: string
           data_revisao?: string | null
+          empresa_cnpj?: string | null
           empresa_id?: string
+          empresa_nome?: string | null
           id?: string
+          metodologia?: string | null
           objetivo?: string | null
           observacoes?: string | null
+          periodicidade_revisao_meses?: number
           projeto_id?: string
+          registro_responsavel?: string | null
           responsavel_id?: string | null
+          responsavel_tecnico?: string | null
           site_id?: string | null
           status?: string
           titulo?: string
           updated_at?: string
           updated_by?: string | null
+          versao?: number
         }
         Relationships: [
           {
@@ -8278,6 +8987,67 @@ export type Database = {
           },
         ]
       }
+      sgsst_pgr_historico: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          observacao: string | null
+          operacao: string
+          pgr_id: string
+          status_anterior: string | null
+          status_novo: string | null
+          usuario_id: string | null
+          versao: number | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          operacao: string
+          pgr_id: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+          versao?: number | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          operacao?: string
+          pgr_id?: string
+          status_anterior?: string | null
+          status_novo?: string | null
+          usuario_id?: string | null
+          versao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pgr_historico_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_historico_pgr_id_fkey"
+            columns: ["pgr_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_pgr_inventario: {
         Row: {
           area_id: string | null
@@ -8286,21 +9056,32 @@ export type Database = {
           consequencia: string | null
           created_at: string
           created_by: string | null
+          data_medicao: string | null
+          descricao_local: string | null
           empresa_id: string
           fonte_geradora: string | null
+          grupos_expostos: string | null
           id: string
+          intensidade_medida: number | null
+          limite_tolerancia_aplicado: number | null
           medidas_existentes: string | null
           medidas_necessarias: string | null
+          metodologia_medicao: string | null
           nivel_risco: number | null
           perigo: string
           pgr_id: string
           prazo: string | null
           probabilidade: number
           responsavel_id: string | null
+          resultado_avaliacao: string | null
           risco_catalogo_id: string | null
           severidade: number
           status: string
+          tecnica_avaliacao: string | null
+          tempo_exposicao: string | null
+          tipo_exposicao: string | null
           trabalhadores_expostos: number | null
+          unidade_medida: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -8311,21 +9092,32 @@ export type Database = {
           consequencia?: string | null
           created_at?: string
           created_by?: string | null
+          data_medicao?: string | null
+          descricao_local?: string | null
           empresa_id: string
           fonte_geradora?: string | null
+          grupos_expostos?: string | null
           id?: string
+          intensidade_medida?: number | null
+          limite_tolerancia_aplicado?: number | null
           medidas_existentes?: string | null
           medidas_necessarias?: string | null
+          metodologia_medicao?: string | null
           nivel_risco?: number | null
           perigo: string
           pgr_id: string
           prazo?: string | null
           probabilidade: number
           responsavel_id?: string | null
+          resultado_avaliacao?: string | null
           risco_catalogo_id?: string | null
           severidade: number
           status?: string
+          tecnica_avaliacao?: string | null
+          tempo_exposicao?: string | null
+          tipo_exposicao?: string | null
           trabalhadores_expostos?: number | null
+          unidade_medida?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -8336,21 +9128,32 @@ export type Database = {
           consequencia?: string | null
           created_at?: string
           created_by?: string | null
+          data_medicao?: string | null
+          descricao_local?: string | null
           empresa_id?: string
           fonte_geradora?: string | null
+          grupos_expostos?: string | null
           id?: string
+          intensidade_medida?: number | null
+          limite_tolerancia_aplicado?: number | null
           medidas_existentes?: string | null
           medidas_necessarias?: string | null
+          metodologia_medicao?: string | null
           nivel_risco?: number | null
           perigo?: string
           pgr_id?: string
           prazo?: string | null
           probabilidade?: number
           responsavel_id?: string | null
+          resultado_avaliacao?: string | null
           risco_catalogo_id?: string | null
           severidade?: number
           status?: string
+          tecnica_avaliacao?: string | null
+          tempo_exposicao?: string | null
+          tipo_exposicao?: string | null
           trabalhadores_expostos?: number | null
+          unidade_medida?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -8406,54 +9209,115 @@ export type Database = {
           },
         ]
       }
+      sgsst_pgr_inventario_funcoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          funcao_id: string
+          id: string
+          inventario_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          funcao_id: string
+          id?: string
+          inventario_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          funcao_id?: string
+          id?: string
+          inventario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pgr_inventario_funcoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_funcoes_funcao_id_fkey"
+            columns: ["funcao_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_funcoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pgr_inventario_funcoes_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pgr_inventario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_pgr_medidas_controle: {
         Row: {
           created_at: string
           created_by: string | null
           data_implementacao: string | null
+          data_verificacao: string | null
           descricao: string
           empresa_id: string
+          forma_acompanhamento: string | null
           id: string
           inventario_id: string
           observacao: string | null
+          observacao_verificacao: string | null
           prazo: string | null
           responsavel_id: string | null
+          resultado_verificacao: string | null
           status: string
           tipo: string
           updated_at: string
           updated_by: string | null
+          verificador_id: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           data_implementacao?: string | null
+          data_verificacao?: string | null
           descricao: string
           empresa_id: string
+          forma_acompanhamento?: string | null
           id?: string
           inventario_id: string
           observacao?: string | null
+          observacao_verificacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
+          resultado_verificacao?: string | null
           status?: string
           tipo: string
           updated_at?: string
           updated_by?: string | null
+          verificador_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           data_implementacao?: string | null
+          data_verificacao?: string | null
           descricao?: string
           empresa_id?: string
+          forma_acompanhamento?: string | null
           id?: string
           inventario_id?: string
           observacao?: string | null
+          observacao_verificacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
+          resultado_verificacao?: string | null
           status?: string
           tipo?: string
           updated_at?: string
           updated_by?: string | null
+          verificador_id?: string | null
         }
         Relationships: [
           {
@@ -8491,6 +9355,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sgsst_pgr_medidas_controle_verificador_id_fkey"
+            columns: ["verificador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sgsst_pt: {
@@ -8498,6 +9369,7 @@ export type Database = {
           apr_id: string | null
           area_id: string | null
           atividade: string
+          bloqueio_energias: boolean | null
           codigo: string | null
           created_at: string
           created_by: string | null
@@ -8507,6 +9379,7 @@ export type Database = {
           id: string
           local_execucao: string | null
           observacoes: string | null
+          plano_resgate: string | null
           projeto_id: string
           responsavel_id: string | null
           site_id: string | null
@@ -8515,11 +9388,14 @@ export type Database = {
           titulo: string
           updated_at: string
           updated_by: string | null
+          validade_fim: string | null
+          ventilacao_adotada: string | null
         }
         Insert: {
           apr_id?: string | null
           area_id?: string | null
           atividade: string
+          bloqueio_energias?: boolean | null
           codigo?: string | null
           created_at?: string
           created_by?: string | null
@@ -8529,6 +9405,7 @@ export type Database = {
           id?: string
           local_execucao?: string | null
           observacoes?: string | null
+          plano_resgate?: string | null
           projeto_id: string
           responsavel_id?: string | null
           site_id?: string | null
@@ -8537,11 +9414,14 @@ export type Database = {
           titulo: string
           updated_at?: string
           updated_by?: string | null
+          validade_fim?: string | null
+          ventilacao_adotada?: string | null
         }
         Update: {
           apr_id?: string | null
           area_id?: string | null
           atividade?: string
+          bloqueio_energias?: boolean | null
           codigo?: string | null
           created_at?: string
           created_by?: string | null
@@ -8551,6 +9431,7 @@ export type Database = {
           id?: string
           local_execucao?: string | null
           observacoes?: string | null
+          plano_resgate?: string | null
           projeto_id?: string
           responsavel_id?: string | null
           site_id?: string | null
@@ -8559,6 +9440,8 @@ export type Database = {
           titulo?: string
           updated_at?: string
           updated_by?: string | null
+          validade_fim?: string | null
+          ventilacao_adotada?: string | null
         }
         Relationships: [
           {
@@ -8771,6 +9654,107 @@ export type Database = {
           },
         ]
       }
+      sgsst_pt_medicoes_atmosfera: {
+        Row: {
+          calibracao_validade: string | null
+          causa_variacao_conhecida: boolean
+          contaminante_limite: number | null
+          contaminante_nome: string | null
+          contaminante_unidade: string | null
+          contaminante_valor: number | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          equipamento: string | null
+          id: string
+          inflamaveis_percentual_lie: number | null
+          medido_em: string
+          medido_por_id: string | null
+          medido_por_nome: string | null
+          momento: string
+          numero_serie: string | null
+          observacoes: string | null
+          oxigenio_percentual: number | null
+          pt_id: string
+          updated_at: string
+        }
+        Insert: {
+          calibracao_validade?: string | null
+          causa_variacao_conhecida?: boolean
+          contaminante_limite?: number | null
+          contaminante_nome?: string | null
+          contaminante_unidade?: string | null
+          contaminante_valor?: number | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          equipamento?: string | null
+          id?: string
+          inflamaveis_percentual_lie?: number | null
+          medido_em?: string
+          medido_por_id?: string | null
+          medido_por_nome?: string | null
+          momento?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          oxigenio_percentual?: number | null
+          pt_id: string
+          updated_at?: string
+        }
+        Update: {
+          calibracao_validade?: string | null
+          causa_variacao_conhecida?: boolean
+          contaminante_limite?: number | null
+          contaminante_nome?: string | null
+          contaminante_unidade?: string | null
+          contaminante_valor?: number | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          equipamento?: string | null
+          id?: string
+          inflamaveis_percentual_lie?: number | null
+          medido_em?: string
+          medido_por_id?: string | null
+          medido_por_nome?: string | null
+          momento?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          oxigenio_percentual?: number | null
+          pt_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_pt_medicoes_atmosfera_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_medicoes_atmosfera_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_medicoes_atmosfera_medido_por_id_fkey"
+            columns: ["medido_por_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_pt_medicoes_atmosfera_pt_id_fkey"
+            columns: ["pt_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_pt"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_pt_medidas: {
         Row: {
           created_at: string
@@ -8958,6 +9942,7 @@ export type Database = {
       sgsst_riscos_catalogo: {
         Row: {
           agente: string | null
+          base_legal: string | null
           categoria: string
           codigo: string | null
           consequencia: string | null
@@ -8967,13 +9952,17 @@ export type Database = {
           empresa_id: string
           fonte_geradora: string | null
           id: string
+          limite_tolerancia: number | null
           nome: string
           status: string
+          tecnica_avaliacao: string | null
+          unidade_medida: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           agente?: string | null
+          base_legal?: string | null
           categoria: string
           codigo?: string | null
           consequencia?: string | null
@@ -8983,13 +9972,17 @@ export type Database = {
           empresa_id: string
           fonte_geradora?: string | null
           id?: string
+          limite_tolerancia?: number | null
           nome: string
           status?: string
+          tecnica_avaliacao?: string | null
+          unidade_medida?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           agente?: string | null
+          base_legal?: string | null
           categoria?: string
           codigo?: string | null
           consequencia?: string | null
@@ -8999,8 +9992,11 @@ export type Database = {
           empresa_id?: string
           fonte_geradora?: string | null
           id?: string
+          limite_tolerancia?: number | null
           nome?: string
           status?: string
+          tecnica_avaliacao?: string | null
+          unidade_medida?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -9031,9 +10027,11 @@ export type Database = {
       sgsst_treinamentos: {
         Row: {
           area_id: string | null
+          base_legal: string | null
           carga_horaria: number
           categoria: string
           codigo: string | null
+          conteudo_programatico: string | null
           created_at: string
           created_by: string | null
           descricao: string | null
@@ -9052,9 +10050,11 @@ export type Database = {
         }
         Insert: {
           area_id?: string | null
+          base_legal?: string | null
           carga_horaria?: number
           categoria: string
           codigo?: string | null
+          conteudo_programatico?: string | null
           created_at?: string
           created_by?: string | null
           descricao?: string | null
@@ -9073,9 +10073,11 @@ export type Database = {
         }
         Update: {
           area_id?: string | null
+          base_legal?: string | null
           carga_horaria?: number
           categoria?: string
           codigo?: string | null
+          conteudo_programatico?: string | null
           created_at?: string
           created_by?: string | null
           descricao?: string | null
@@ -9336,13 +10338,19 @@ export type Database = {
           created_at: string
           data_final: string | null
           data_inicial: string
+          empresa_cnpj: string | null
           empresa_id: string
+          empresa_nome: string | null
           id: string
           instrutor: string | null
+          instrutor_qualificacao: string | null
           local: string | null
           modalidade: string
           observacoes: string | null
+          registro_responsavel: string | null
+          responsavel_tecnico: string | null
           status: string
+          tipo_treinamento: string
           treinamento_id: string
           updated_at: string
         }
@@ -9353,13 +10361,19 @@ export type Database = {
           created_at?: string
           data_final?: string | null
           data_inicial?: string
+          empresa_cnpj?: string | null
           empresa_id: string
+          empresa_nome?: string | null
           id?: string
           instrutor?: string | null
+          instrutor_qualificacao?: string | null
           local?: string | null
           modalidade?: string
           observacoes?: string | null
+          registro_responsavel?: string | null
+          responsavel_tecnico?: string | null
           status?: string
+          tipo_treinamento?: string
           treinamento_id: string
           updated_at?: string
         }
@@ -9370,13 +10384,19 @@ export type Database = {
           created_at?: string
           data_final?: string | null
           data_inicial?: string
+          empresa_cnpj?: string | null
           empresa_id?: string
+          empresa_nome?: string | null
           id?: string
           instrutor?: string | null
+          instrutor_qualificacao?: string | null
           local?: string | null
           modalidade?: string
           observacoes?: string | null
+          registro_responsavel?: string | null
+          responsavel_tecnico?: string | null
           status?: string
+          tipo_treinamento?: string
           treinamento_id?: string
           updated_at?: string
         }
