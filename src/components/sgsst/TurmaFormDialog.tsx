@@ -5,7 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SgsstTreinamentoTurma, SgsstTreinamentoTurmaInput, ModalidadeTurma, StatusTurma, useSgsstTreinamentos } from "@/hooks/sgsst/useSgsstTreinamentos";
+import {
+  SgsstTreinamentoTurma,
+  SgsstTreinamentoTurmaInput,
+  ModalidadeTurma,
+  StatusTurma,
+  TipoTreinamentoNorma,
+  TIPO_TREINAMENTO_LABEL,
+  TIPO_TREINAMENTO_AJUDA,
+  useSgsstTreinamentos,
+} from "@/hooks/sgsst/useSgsstTreinamentos";
 import { Users } from "lucide-react";
 
 interface TurmaFormDialogProps {
@@ -37,6 +46,12 @@ export function TurmaFormDialog({
   const [status, setStatus] = useState<StatusTurma>("PLANEJADA");
   const [observacoes, setObservacoes] = useState("");
 
+  // Itens que a NR-01 1.7 exige no certificado e que variam de turma para turma.
+  const [tipoTreinamento, setTipoTreinamento] = useState<TipoTreinamentoNorma>("INICIAL");
+  const [instrutorQualificacao, setInstrutorQualificacao] = useState("");
+  const [responsavelTecnico, setResponsavelTecnico] = useState("");
+  const [registroResponsavel, setRegistroResponsavel] = useState("");
+
   useEffect(() => {
     if (turma) {
       setTreinamentoId(turma.treinamento_id || "");
@@ -50,6 +65,10 @@ export function TurmaFormDialog({
       setCapacidade(turma.capacidade || 30);
       setStatus(turma.status || "PLANEJADA");
       setObservacoes(turma.observacoes || "");
+      setTipoTreinamento(turma.tipo_treinamento || "INICIAL");
+      setInstrutorQualificacao(turma.instrutor_qualificacao || "");
+      setResponsavelTecnico(turma.responsavel_tecnico || "");
+      setRegistroResponsavel(turma.registro_responsavel || "");
     } else {
       setTreinamentoId("");
       setCodigoTurma("");
@@ -62,6 +81,10 @@ export function TurmaFormDialog({
       setCapacidade(30);
       setStatus("PLANEJADA");
       setObservacoes("");
+      setTipoTreinamento("INICIAL");
+      setInstrutorQualificacao("");
+      setResponsavelTecnico("");
+      setRegistroResponsavel("");
     }
   }, [turma, open]);
 
@@ -90,6 +113,10 @@ export function TurmaFormDialog({
       capacidade: Number(capacidade) || 30,
       status,
       observacoes: observacoes.trim() || null,
+      tipo_treinamento: tipoTreinamento,
+      instrutor_qualificacao: instrutorQualificacao.trim() || null,
+      responsavel_tecnico: responsavelTecnico.trim() || null,
+      registro_responsavel: registroResponsavel.trim() || null,
     });
 
     onOpenChange(false);
@@ -216,6 +243,71 @@ export function TurmaFormDialog({
                 value={local}
                 onChange={(e) => setLocal(e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* Itens que a NR-01 1.7 exige no certificado */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold leading-none">Dados para o certificado</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                A NR-01 exige a qualificação do instrutor e a assinatura de um responsável
+                técnico. Sem eles o certificado sai marcando a falta.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="tipoTr">Tipo do treinamento *</Label>
+              <Select
+                value={tipoTreinamento}
+                onValueChange={(val: TipoTreinamentoNorma) => setTipoTreinamento(val)}
+              >
+                <SelectTrigger id="tipoTr">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TIPO_TREINAMENTO_LABEL) as TipoTreinamentoNorma[]).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TIPO_TREINAMENTO_LABEL[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {TIPO_TREINAMENTO_AJUDA[tipoTreinamento]}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="instrQual">Qualificação do instrutor</Label>
+              <Input
+                id="instrQual"
+                placeholder="Ex: Engenheiro de Segurança do Trabalho — CREA 45678"
+                value={instrutorQualificacao}
+                onChange={(e) => setInstrutorQualificacao(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="respTec">Responsável técnico</Label>
+                <Input
+                  id="respTec"
+                  placeholder="Quem assina o certificado"
+                  value={responsavelTecnico}
+                  onChange={(e) => setResponsavelTecnico(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="regResp">Registro profissional</Label>
+                <Input
+                  id="regResp"
+                  placeholder="Ex: CREA 12345 / MTE 987"
+                  value={registroResponsavel}
+                  onChange={(e) => setRegistroResponsavel(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 

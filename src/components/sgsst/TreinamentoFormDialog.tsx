@@ -44,6 +44,10 @@ export function TreinamentoFormDialog({
   const [status, setStatus] = useState<StatusTreinamento>("ATIVO");
   const [observacoes, setObservacoes] = useState("");
 
+  // Itens que a NR-01 1.7 exige no certificado.
+  const [conteudoProgramatico, setConteudoProgramatico] = useState("");
+  const [baseLegal, setBaseLegal] = useState("");
+
   // Load projetos
   const { data: projetos = [] } = useQuery({
     queryKey: ["projetos_tr_form", empresaId],
@@ -71,6 +75,8 @@ export function TreinamentoFormDialog({
       setProjetoId(treinamento.projeto_id || "none");
       setStatus(treinamento.status || "ATIVO");
       setObservacoes(treinamento.observacoes || "");
+      setConteudoProgramatico(treinamento.conteudo_programatico || "");
+      setBaseLegal(treinamento.base_legal || "");
     } else {
       setCodigo("");
       setNome("");
@@ -83,6 +89,8 @@ export function TreinamentoFormDialog({
       setProjetoId("none");
       setStatus("ATIVO");
       setObservacoes("");
+      setConteudoProgramatico("");
+      setBaseLegal("");
     }
   }, [treinamento, open]);
 
@@ -102,6 +110,8 @@ export function TreinamentoFormDialog({
       projeto_id: projetoId === "none" ? null : projetoId,
       status,
       observacoes: observacoes.trim() || null,
+      conteudo_programatico: conteudoProgramatico.trim() || null,
+      base_legal: baseLegal.trim() || null,
     });
 
     onOpenChange(false);
@@ -255,6 +265,53 @@ export function TreinamentoFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Itens que a NR-01 1.7 exige no certificado */}
+          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold leading-none">
+                Conteúdo para o certificado
+              </h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                A NR-01 exige o conteúdo programático no certificado. Sem ele, o documento
+                não comprova o que foi ensinado.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="conteudo">Conteúdo programático</Label>
+              <Textarea
+                id="conteudo"
+                rows={5}
+                placeholder={
+                  "Uma linha por tópico. Ex:\n" +
+                  "Normas e regulamentações aplicáveis\n" +
+                  "Análise de risco e condições impeditivas\n" +
+                  "Sistemas de proteção contra quedas"
+                }
+                value={conteudoProgramatico}
+                onChange={(e) => setConteudoProgramatico(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cada linha sai como um item no certificado. É diferente da descrição acima,
+                que é texto de apresentação do curso.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="baseLegalTr">Base legal</Label>
+              <Input
+                id="baseLegalTr"
+                placeholder="Ex: NR-35 item 35.3.2"
+                value={baseLegal}
+                onChange={(e) => setBaseLegal(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                A norma que exige este treinamento. Aparece no certificado e justifica a
+                obrigatoriedade.
+              </p>
             </div>
           </div>
 

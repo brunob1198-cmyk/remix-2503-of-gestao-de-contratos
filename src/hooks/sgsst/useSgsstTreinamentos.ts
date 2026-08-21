@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { addMonths, addDays, format, parseISO } from "date-fns";
 import { calculateVencimentoTreinamento, StatusVencimentoTreinamento } from "@/utils/sgsstTreinamentosUtils";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 
 export type CategoriaTreinamento =
   | "NR"
@@ -20,6 +21,23 @@ export type ModalidadeTurma = "PRESENCIAL" | "ONLINE" | "HIBRIDO";
 export type StatusTurma = "PLANEJADA" | "EM_ANDAMENTO" | "CONCLUIDA" | "CANCELADA";
 export type ResultadoParticipante = "APROVADO" | "REPROVADO" | "PENDENTE";
 
+/** Classificação de treinamento da NR-01 1.7. */
+export type TipoTreinamentoNorma = "INICIAL" | "PERIODICO" | "EVENTUAL";
+
+export const TIPO_TREINAMENTO_LABEL: Record<TipoTreinamentoNorma, string> = {
+  INICIAL: "Inicial",
+  PERIODICO: "Periódico (reciclagem)",
+  EVENTUAL: "Eventual",
+};
+
+export const TIPO_TREINAMENTO_AJUDA: Record<TipoTreinamentoNorma, string> = {
+  INICIAL: "Primeira capacitação do trabalhador para a atividade.",
+  PERIODICO:
+    "Reciclagem no prazo que a norma específica exige — a NR-35 pede a cada dois anos, a NR-33 anualmente.",
+  EVENTUAL:
+    "Fora do ciclo: mudança de função, de procedimento, retorno de afastamento longo ou após acidente.",
+};
+
 export interface SgsstTreinamento {
   id: string;
   empresa_id: string;
@@ -30,6 +48,13 @@ export interface SgsstTreinamento {
   carga_horaria: number;
   validade_meses?: number | null;
   obrigatorio: boolean;
+  /**
+   * Conteudo programatico do curso — item obrigatorio do certificado
+   * (NR-01 1.7). Diferente de `descricao`, que e texto de apresentacao.
+   */
+  conteudo_programatico?: string | null;
+  /** Norma que exige o treinamento, ex.: "NR-35 item 35.3.2". */
+  base_legal?: string | null;
   funcao_id?: string | null;
   projeto_id?: string | null;
   site_id?: string | null;
@@ -59,6 +84,25 @@ export interface SgsstTreinamentoTurma {
   data_final?: string | null;
   carga_horaria?: number | null;
   instrutor?: string | null;
+  /**
+   * Qualificacao do instrutor. A NR-01 1.7 exige nome E qualificacao no
+   * certificado; so o nome deixa o documento incompleto.
+   */
+  instrutor_qualificacao?: string | null;
+  /**
+   * Classificacao da propria NR-01. Nao confundir com `categoria` do
+   * treinamento, que e assunto (NR, Integracao, Comportamental).
+   */
+  tipo_treinamento?: TipoTreinamentoNorma | null;
+  /** Quem assina tecnicamente pelo treinamento (NR-01 1.7). */
+  responsavel_tecnico?: string | null;
+  registro_responsavel?: string | null;
+  /**
+   * Identificacao da organizacao congelada na turma. Ler de `empresas` ao
+   * imprimir faria certificados antigos mostrarem o nome novo da empresa.
+   */
+  empresa_nome?: string | null;
+  empresa_cnpj?: string | null;
   local?: string | null;
   modalidade: ModalidadeTurma;
   capacidade?: number | null;
@@ -266,6 +310,7 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
+  const { empresa } = useEmpresaAtual();
 
   const paginado = !!params;
   const page = params?.page ?? 0;
@@ -327,6 +372,11 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
         .insert({
           ...input,
           empresa_id: empresaId,
+          // Congela a identificacao da organizacao na abertura da turma. Ler de
+          // `empresas` ao imprimir faria certificados antigos passarem a mostrar
+          // o nome novo se a empresa fosse renomeada, o que falseia o documento.
+          empresa_nome: input.empresa_nome ?? empresa?.nome ?? null,
+          empresa_cnpj: input.empresa_cnpj ?? empresa?.cnpj ?? null,
         })
         .select()
         .single() as any);
@@ -573,7 +623,14 @@ export function useSgsstTreinamentosParticipantes(turmaId?: string) {
   };
 }
 
-// 4. Hook Global Todos Participantes (Vencimentos & Relatório)
+/**
+ * 4. Hook Global Todos Participantes (Matriculas, Vencimentos & Relatorio)
+ *
+ * A consulta nasceu para a aba de Vencimentos e por isso filtrava sempre
+ * `validade <= hoje + janela`. Quem chamava para listar matriculas recebia uma
+ * lista silenciosamente recortada: participante sem validade, ou com validade
+ * distante, nunca aparecia. Passa a ter modo.
+ */
 export function useSgsstTodosParticipantes(params?: {
   page?: number;
   pageSize?: number;
@@ -581,15 +638,30 @@ export function useSgsstTodosParticipantes(params?: {
   statusVencimento?: string;
   diasJanela?: number;
   enabled?: boolean;
+  /**
+   * "VENCIMENTOS" (padrao) recorta pela janela de validade; "TODOS" lista as
+   * matriculas sem recorte, inclusive as sem validade definida.
+   */
+  modo?: "VENCIMENTOS" | "TODOS";
 }) {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
   const page = params?.page ?? 0;
   const pageSize = params?.pageSize ?? 25;
   const isEnabled = (params?.enabled ?? true) && !!empresaId;
+  const modo = params?.modo ?? "VENCIMENTOS";
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_todos_participantes", empresaId, page, pageSize, params?.search, params?.statusVencimento, params?.diasJanela],
+    queryKey: [
+      "sgsst_todos_participantes",
+      empresaId,
+      modo,
+      page,
+      pageSize,
+      params?.search,
+      params?.statusVencimento,
+      params?.diasJanela,
+    ],
     enabled: isEnabled,
     queryFn: async () => {
       let query = supabase
@@ -606,9 +678,13 @@ export function useSgsstTodosParticipantes(params?: {
         `, { count: "exact" })
         .order("validade", { ascending: true });
 
-      // Filtro por janela de validade: validade nos próximos 90 dias ou já vencidas (validade <= HOJE + diasJanela)
-      const maxValidade = format(addDays(new Date(), params?.diasJanela ?? 90), "yyyy-MM-dd");
-      query = query.lte("validade", maxValidade);
+      // Filtro por janela de validade: validade nos próximos 90 dias ou já
+      // vencidas (validade <= HOJE + diasJanela). No modo TODOS não se aplica —
+      // recortar aqui esconderia matrícula recém-criada e sem validade.
+      if (modo === "VENCIMENTOS") {
+        const maxValidade = format(addDays(new Date(), params?.diasJanela ?? 90), "yyyy-MM-dd");
+        query = query.lte("validade", maxValidade);
+      }
 
       query = query.range(page * pageSize, page * pageSize + pageSize - 1);
 
