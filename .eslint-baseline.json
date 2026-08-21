@@ -24,7 +24,7 @@
     "arquivos desta fase não emitem warning algum. O gate é só sobre erros, então",
     "a deriva não estava sendo travada — fica registrada aqui."
   ],
-  "errors": 1625,
+  "errors": 1601,
   "warnings": 39,
   "tolerance": 1
 }

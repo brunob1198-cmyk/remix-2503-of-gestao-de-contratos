@@ -10,6 +10,14 @@ import {
   CategoriaTreinamento,
 } from "@/hooks/sgsst/useSgsstTreinamentos";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  gerarPdfCertificado,
+  gerarPdfCertificadosEmLote,
+  pendenciasCertificado,
+  type CertificadoDados,
+} from "@/lib/certificadoDocumento";
+import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
@@ -37,11 +45,15 @@ import {
   Calendar,
   FileCheck,
   UserCheck,
+  FileDown,
+  Loader2,
+  CalendarClock,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { TreinamentoFormDialog } from "@/components/sgsst/TreinamentoFormDialog";
 import { TurmaFormDialog } from "@/components/sgsst/TurmaFormDialog";
 import { ParticipanteFormDialog } from "@/components/sgsst/ParticipanteFormDialog";
+import { TreinamentoPanoramaPanel } from "@/components/sgsst/TreinamentoPanoramaPanel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
@@ -67,6 +79,13 @@ export default function SgsstTreinamentosListPage() {
   const debouncedSearchTurma = useDebounce(searchTermTurma, 400);
   const [filterStatusTurma, setFilterStatusTurma] = useState("todos");
 
+  // Matrículas (aba Participantes) — paginação própria. Antes esta aba lia a
+  // consulta da aba de Vencimentos, que recorta pela janela de validade: aluno
+  // recém-matriculado e sem validade nunca aparecia.
+  const [pagePart, setPagePart] = useState(0);
+  const [pageSizePart, setPageSizePart] = useState(25);
+  const [searchTermPart, setSearchTermPart] = useState("");
+
   // Vencimentos pagination & filters
   const [pageVenc, setPageVenc] = useState(0);
   const [pageSizeVenc, setPageSizeVenc] = useState(25);
@@ -89,6 +108,18 @@ export default function SgsstTreinamentosListPage() {
       status: filterStatusTurma,
     });
 
+  const {
+    todosParticipantes: matriculas,
+    total: totalMatriculas,
+    isLoading: loadingMatriculas,
+    error: errMatriculas,
+  } = useSgsstTodosParticipantes({
+    modo: "TODOS",
+    page: pagePart,
+    pageSize: pageSizePart,
+    enabled: activeTab === "participantes",
+  });
+
   const { todosParticipantes, total: totalVenc, isLoading: loadingTodosPart, error: errParticipantes } = useSgsstTodosParticipantes({
     page: pageVenc,
     pageSize: pageSizeVenc,
@@ -100,6 +131,7 @@ export default function SgsstTreinamentosListPage() {
   const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
   const totalPagesVenc = Math.ceil(totalVenc / pageSizeVenc) || 1;
   const totalPagesTurmas = Math.ceil(totalTurmas / pageSizeTurma) || 1;
+  const totalPagesPart = Math.ceil(totalMatriculas / pageSizePart) || 1;
 
   // Volta a primeira pagina quando os filtros da aba mudam, senao a consulta pede
   // um intervalo que o resultado filtrado nao tem e a tabela aparece vazia.
@@ -124,6 +156,89 @@ export default function SgsstTreinamentosListPage() {
 
 
 
+  // ------------------------------------------------------------------
+  // Emissão do certificado (NR-01 1.7)
+  // ------------------------------------------------------------------
+  // Fica aqui, na tela onde o registro é criado, e não numa tela separada de
+  // relatórios: quem lança a nota do aluno é quem precisa do certificado na mão.
+  const { profile } = useAuth();
+  const [emitindoId, setEmitindoId] = useState<string | null>(null);
+
+  const nomeDoParticipante = (p: SgsstTreinamentoParticipante) =>
+    p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "Sem Nome";
+
+  const dadosDoCertificado = (
+    p: SgsstTreinamentoParticipante,
+    turma: SgsstTreinamentoTurma
+  ): CertificadoDados => ({
+    participante: p,
+    turma,
+    nomeTrabalhador: nomeDoParticipante(p),
+    cpfTrabalhador: p.colaborador?.cpf ?? null,
+    funcaoTrabalhador: p.colaborador?.funcao?.nome ?? null,
+    geradoPor: profile?.nome ?? null,
+  });
+
+  const emitirCertificado = async (
+    p: SgsstTreinamentoParticipante,
+    turma?: SgsstTreinamentoTurma | null
+  ) => {
+    const turmaDoCertificado = turma ?? p.turma;
+    if (!turmaDoCertificado) {
+      toast.error("Não foi possível identificar a turma deste aluno.");
+      return;
+    }
+
+    const dados = dadosDoCertificado(p, turmaDoCertificado);
+
+    // Pendência não impede a emissão: o PDF sai marcando cada falta. Impedir
+    // esconderia o problema; avisar deixa a decisão com quem assina.
+    const pendencias = pendenciasCertificado(dados);
+    if (pendencias.length > 0) {
+      toast.warning(`Certificado com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindoId(p.id);
+    try {
+      await gerarPdfCertificado(dados);
+    } catch (e) {
+      toast.error(`Erro ao emitir o certificado: ${(e as Error).message}`);
+    } finally {
+      setEmitindoId(null);
+    }
+  };
+
+  const emitirCertificadosDaTurma = async (turma: SgsstTreinamentoTurma) => {
+    // Só aprovados: certificado pressupõe aprovação, e um lote com reprovados
+    // dentro sairia com folhas que ninguém pode entregar.
+    const aprovados = turmaParticipantes.filter(
+      (p) => p.aprovacao && p.resultado === "APROVADO"
+    );
+
+    if (aprovados.length === 0) {
+      toast.warning("Nenhum aluno aprovado nesta turma", {
+        description:
+          "O lote emite o certificado dos aprovados. Registre a aprovação dos alunos antes.",
+      });
+      return;
+    }
+
+    setEmitindoId(`lote-${turma.id}`);
+    try {
+      await gerarPdfCertificadosEmLote(
+        aprovados.map((p) => dadosDoCertificado(p, turma)),
+        turma.codigo_turma || turma.treinamento?.nome || "turma"
+      );
+      toast.success(`${aprovados.length} certificado(s) emitido(s).`);
+    } catch (e) {
+      toast.error(`Erro ao emitir os certificados: ${(e as Error).message}`);
+    } finally {
+      setEmitindoId(null);
+    }
+  };
+
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
     try {
@@ -143,6 +258,20 @@ export default function SgsstTreinamentosListPage() {
 
     const matchesCat = filterCat === "todos" || t.categoria === filterCat;
     return matchesSearch && matchesCat;
+  });
+
+  // Filtro das matrículas (aba Participantes). Recorta a página carregada, como
+  // os demais filtros desta tela.
+  const filteredMatriculas = matriculas.filter((p) => {
+    const term = searchTermPart.trim().toLowerCase();
+    if (!term) return true;
+    const colabNome = nomeDoParticipante(p).toLowerCase();
+    const trNome = (p.turma?.treinamento?.nome || "").toLowerCase();
+    return (
+      colabNome.includes(term) ||
+      trNome.includes(term) ||
+      (p.colaborador?.cpf || "").includes(term)
+    );
   });
 
   // Filter Vencimentos
@@ -302,7 +431,10 @@ export default function SgsstTreinamentosListPage() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-4">
+        <TabsList className="grid w-full sm:w-auto grid-cols-2 sm:grid-cols-5">
+          <TabsTrigger value="panorama" className="gap-2">
+            <CalendarClock className="h-4 w-4" /> O que treinar
+          </TabsTrigger>
           <TabsTrigger value="catalogo" className="gap-2">
             <BookOpen className="h-4 w-4" /> Catálogo ({treinamentos.length})
           </TabsTrigger>
@@ -310,12 +442,17 @@ export default function SgsstTreinamentosListPage() {
             <Users className="h-4 w-4" /> Turmas ({turmas.length})
           </TabsTrigger>
           <TabsTrigger value="participantes" className="gap-2">
-            <UserCheck className="h-4 w-4" /> Alunos & Presença ({todosParticipantes.length})
+            <UserCheck className="h-4 w-4" /> Alunos & Presença ({totalMatriculas})
           </TabsTrigger>
           <TabsTrigger value="vencimentos" className="gap-2">
             <Award className="h-4 w-4" /> Reciclagens & Vencimentos
           </TabsTrigger>
         </TabsList>
+
+        {/* TAB 0: PANORAMA — as duas metades da pergunta juntas */}
+        <TabsContent value="panorama" className="space-y-4 pt-4">
+          <TreinamentoPanoramaPanel enabled={activeTab === "panorama"} />
+        </TabsContent>
 
         {/* TAB 1: CATÁLOGO */}
         <TabsContent value="catalogo" className="space-y-4 pt-4">
@@ -559,6 +696,16 @@ export default function SgsstTreinamentosListPage() {
 
         {/* TAB 3: PARTICIPANTES / ALUNOS GERAL */}
         <TabsContent value="participantes" className="space-y-4 pt-4">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por aluno, CPF ou treinamento..."
+              value={searchTermPart}
+              onChange={(e) => setSearchTermPart(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
           <Card>
             <CardHeader className="py-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -566,6 +713,11 @@ export default function SgsstTreinamentosListPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
+              {errMatriculas && (
+                <div className="p-3">
+                  <SgsstErrorState error={errMatriculas} modulo="Treinamentos" inline />
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -575,16 +727,17 @@ export default function SgsstTreinamentosListPage() {
                     <TableHead>Resultado</TableHead>
                     <TableHead>Data Conclusão</TableHead>
                     <TableHead>Validade</TableHead>
+                    <TableHead className="text-right">Certificado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loadingTodosPart ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando alunos inscritos...</TableCell></TableRow>
-                  ) : todosParticipantes.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado.</TableCell></TableRow>
+                  {loadingMatriculas ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando alunos inscritos...</TableCell></TableRow>
+                  ) : filteredMatriculas.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum aluno matriculado.</TableCell></TableRow>
                   ) : (
-                    todosParticipantes.map((p) => {
-                      const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "Sem Nome";
+                    filteredMatriculas.map((p) => {
+                      const colabNome = nomeDoParticipante(p);
                       return (
                         <TableRow key={p.id}>
                           <TableCell>
@@ -603,12 +756,40 @@ export default function SgsstTreinamentosListPage() {
                           </TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(p.data_conclusao)}</TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(p.validade)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs gap-1"
+                              disabled={emitindoId === p.id}
+                              onClick={() => emitirCertificado(p)}
+                              title="Emitir o certificado deste aluno em PDF"
+                            >
+                              {emitindoId === p.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Award className="h-3.5 w-3.5" />
+                              )}
+                              Emitir
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pagePart + 1}
+                totalPages={totalPagesPart}
+                onPageChange={(pg) => setPagePart(pg - 1)}
+                itemsPerPage={pageSizePart}
+                onItemsPerPageChange={(v) => {
+                  setPageSizePart(v);
+                  setPagePart(0);
+                }}
+                totalItems={totalMatriculas}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -699,11 +880,29 @@ export default function SgsstTreinamentosListPage() {
                   <Users className="h-5 w-5 text-primary" />
                   Alunos da Turma: {selectedTurmaForPart.codigo_turma || selectedTurmaForPart.treinamento?.nome}
                 </DialogTitle>
-                {allowEdit && (
-                  <Button size="sm" onClick={() => { setEditingPart(null); setIsPartFormOpen(true); }}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Matricular Aluno
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    disabled={emitindoId === `lote-${selectedTurmaForPart.id}`}
+                    onClick={() => emitirCertificadosDaTurma(selectedTurmaForPart)}
+                    title="Emitir num único PDF o certificado de todos os aprovados"
+                  >
+                    {emitindoId === `lote-${selectedTurmaForPart.id}` ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FileDown className="h-3.5 w-3.5" />
+                    )}
+                    Certificados da turma
                   </Button>
-                )}
+
+                  {allowEdit && (
+                    <Button size="sm" onClick={() => { setEditingPart(null); setIsPartFormOpen(true); }}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Matricular Aluno
+                    </Button>
+                  )}
+                </div>
               </div>
             </DialogHeader>
 
@@ -731,8 +930,23 @@ export default function SgsstTreinamentosListPage() {
                             <Badge variant="outline" className="font-bold">{p.resultado}</Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            {allowEdit && (
-                              <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={emitindoId === p.id}
+                                onClick={() => emitirCertificado(p, selectedTurmaForPart)}
+                                title="Emitir o certificado deste aluno em PDF"
+                              >
+                                {emitindoId === p.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Award className="h-4 w-4" />
+                                )}
+                              </Button>
+
+                              {allowEdit && (
+                                <>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -749,8 +963,9 @@ export default function SgsstTreinamentosListPage() {
                                     consequencia={"A inscrição é apagada com presença, nota e validade do treinamento — o colaborador volta a contar como não treinado nesta capacitação."}
                                     onConfirm={() => removeParticipante.mutate(p.id)}
                                   />
-                              </div>
-                            )}
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
