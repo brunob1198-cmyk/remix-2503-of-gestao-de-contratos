@@ -315,3 +315,48 @@ describe("aplicarPapelTimbrado", () => {
     expect((await textoDesenhado(saida))).toContain("de 1");
   }, TEMPO_PDF);
 });
+
+describe("resolucao do raster", () => {
+  it("renderiza em 2x, nao em 1x", () => {
+    // O padrao do projeto usa scale 1: 1024 px esticados para 186 mm dao ~140
+    // dpi, e foi por isso que o texto saiu mole e a linha de tabela "estourada".
+    // Em 2x sao ~280 dpi, resolucao de impressao.
+    const opcoes = opcoesPdfTimbrado("x.pdf") as {
+      html2canvas: { scale: number; windowWidth: number };
+      margin: number[];
+      image: { type: string; quality: number };
+    };
+
+    expect(opcoes.html2canvas.scale).toBe(2);
+
+    const larguraUtilMm = 210 - opcoes.margin[1] - opcoes.margin[3];
+    const dpi =
+      (opcoes.html2canvas.windowWidth * opcoes.html2canvas.scale) / (larguraUtilMm / 25.4);
+
+    expect(dpi).toBeGreaterThan(250);
+  });
+
+  it("baixa a qualidade do JPEG, ja que a resolucao dobrou", () => {
+    const opcoes = opcoesPdfTimbrado("x.pdf") as { image: { type: string; quality: number } };
+    expect(opcoes.image.type).toBe("jpeg");
+    // Manter 0,98 com o dobro de pixels dobraria o arquivo sem ganho visivel.
+    expect(opcoes.image.quality).toBeLessThan(0.98);
+    expect(opcoes.image.quality).toBeGreaterThanOrEqual(0.85);
+  });
+
+  it("o scale nao mexe no alinhamento do azulejo", () => {
+    // O `scale` multiplica os pixels do canvas; o layout em CSS continua com
+    // `windowWidth` de largura, e a conta do azulejo e em pixel de CSS. Se alguem
+    // passar a considerar o scale na altura do azulejo, a marca desalinha.
+    const opcoes = opcoesPdfTimbrado("x.pdf") as {
+      html2canvas: { windowWidth: number; scale: number };
+      margin: number[];
+    };
+
+    const larguraUtilMm = 210 - opcoes.margin[1] - opcoes.margin[3];
+    const alturaUtilMm = 297 - opcoes.margin[0] - opcoes.margin[2];
+    const semScale = (alturaUtilMm * opcoes.html2canvas.windowWidth) / larguraUtilMm;
+
+    expect(alturaPaginaEmPixels()).toBeCloseTo(semScale, 4);
+  });
+});
