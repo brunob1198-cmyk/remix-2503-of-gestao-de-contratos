@@ -37,6 +37,16 @@ export interface SgsstColaboradorDados {
   cnh_categoria?: string | null;
   cnh_validade?: string | null;
   endereco?: string | null;
+  /**
+   * CEP mascarado (XX.XXX-XXX). Alimenta a consulta a base dos Correios que
+   * preenche `endereco`.
+   */
+  cep?: string | null;
+  /**
+   * Numero, quadra, lote, apartamento. Separado de `endereco` para que uma nova
+   * consulta de CEP nao apague o que o usuario digitou.
+   */
+  endereco_complemento?: string | null;
   centro_custo?: string | null;
   projeto_id?: string | null;
   profile_id?: string | null;
