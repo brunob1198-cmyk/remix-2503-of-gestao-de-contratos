@@ -6170,6 +6170,7 @@ export type Database = {
         Row: {
           area_id: string | null
           centro_custo: string | null
+          cep: string | null
           cnh_categoria: string | null
           cnh_numero: string | null
           cnh_validade: string | null
@@ -6182,6 +6183,7 @@ export type Database = {
           email: string | null
           empresa_id: string
           endereco: string | null
+          endereco_complemento: string | null
           foto_r2_key: string | null
           foto_url: string | null
           funcao_id: string | null
@@ -6204,6 +6206,7 @@ export type Database = {
         Insert: {
           area_id?: string | null
           centro_custo?: string | null
+          cep?: string | null
           cnh_categoria?: string | null
           cnh_numero?: string | null
           cnh_validade?: string | null
@@ -6216,6 +6219,7 @@ export type Database = {
           email?: string | null
           empresa_id: string
           endereco?: string | null
+          endereco_complemento?: string | null
           foto_r2_key?: string | null
           foto_url?: string | null
           funcao_id?: string | null
@@ -6238,6 +6242,7 @@ export type Database = {
         Update: {
           area_id?: string | null
           centro_custo?: string | null
+          cep?: string | null
           cnh_categoria?: string | null
           cnh_numero?: string | null
           cnh_validade?: string | null
@@ -6250,6 +6255,7 @@ export type Database = {
           email?: string | null
           empresa_id?: string
           endereco?: string | null
+          endereco_complemento?: string | null
           foto_r2_key?: string | null
           foto_url?: string | null
           funcao_id?: string | null
