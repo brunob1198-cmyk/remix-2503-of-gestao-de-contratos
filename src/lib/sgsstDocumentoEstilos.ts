@@ -96,6 +96,10 @@ export const estilosDocumentoSgsst = `
     table.doc-tabela tfoot td { border-top: 1px solid ${CORES_DOC.linhaForte}; border-bottom: 0;
       background: ${CORES_DOC.fundoSuave}; }
     .doc-num { text-align: right; font-variant-numeric: tabular-nums; }
+    /* Célula de assinatura dentro de tabela: a PT precisa de uma linha por pessoa
+       da equipe, e não de um par de blocos no pé da folha. */
+    table.doc-tabela td.doc-assin-linha { width: 30%; height: 22px;
+      border-bottom: 1px solid ${CORES_DOC.texto}; }
     .doc-centro-txt { text-align: center; }
 
     /* Indicadores em cartão, usados pelo relatório. */
