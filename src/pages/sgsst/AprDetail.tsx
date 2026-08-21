@@ -17,6 +17,11 @@ import {
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSgsstAprArvore } from "@/hooks/sgsst/useSgsstArvoreRiscos";
+import { gerarPdfApr, pendenciasApr } from "@/lib/aprDocumento";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +44,8 @@ import {
   Lock,
   RefreshCw,
   Send,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { AprFormDialog } from "@/components/sgsst/AprFormDialog";
@@ -61,11 +68,49 @@ export default function SgsstAprDetailPage() {
 
   const { updateApr, updateStatusApr } = useSgsstApr();
   const { data: currentApr, isLoading: loadingDetail } = useSgsstAprDetail(aprId);
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
+
+  // A tela navega por etapa selecionada; o documento precisa da arvore inteira.
+  // Emitir com o que esta na tela produziria uma APR com os riscos de uma unica
+  // etapa, em silencio.
+  const arvore = useSgsstAprArvore(aprId);
+  const [emitindo, setEmitindo] = useState(false);
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { etapas, isLoading: loadingEtapas, createEtapa, updateEtapa, removeEtapa } = useSgsstAprEtapas(aprId);
   const { participantes, addParticipante, removeParticipante } = useSgsstAprParticipantes(aprId);
+
+  const emitirPdf = async () => {
+    if (!currentApr) return;
+
+    const dadosDoDocumento = {
+      apr: currentApr,
+      etapas: arvore.etapas,
+      riscos: arvore.riscos,
+      medidas: arvore.medidas,
+      participantes,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    const pendencias = pendenciasApr(dadosDoDocumento);
+    if (pendencias.length > 0) {
+      toast.warning(`APR com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfApr(dadosDoDocumento);
+    } catch (e) {
+      toast.error(`Erro ao emitir a APR: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
   const { historico } = useSgsstAprHistorico(aprId);
 
   // Active Etapa for Riscos management
@@ -267,6 +312,24 @@ export default function SgsstAprDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Atividade: <strong>{currentApr.atividade}</strong> | Obra: <strong>{currentApr.projeto ? `[${currentApr.projeto.codigo}] ${currentApr.projeto.nome}` : "—"}</strong>
               </p>
+            </div>
+
+            {/* Emitir fica fora do allowEdit: emitir e leitura. */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={emitirPdf}
+                disabled={emitindo || arvore.isLoading}
+                title="Emitir a APR em PDF"
+              >
+                {emitindo ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5 mr-1" />
+                )}
+                Emitir APR
+              </Button>
             </div>
 
             {/* Workflow Approval Action Buttons */}

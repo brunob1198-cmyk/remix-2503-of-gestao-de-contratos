@@ -19,6 +19,7 @@ import type {
   SgsstPtChecklistItem,
   SgsstPtParticipante,
   SgsstPtRisco,
+  SgsstPtMedida,
   SgsstPtMedicaoAtmosfera,
 } from "@/hooks/sgsst/useSgsstPt";
 
@@ -57,9 +58,36 @@ const STATUS_NAO_AUTORIZA = new Set([
 /** A avaliação atmosférica só se aplica a esta modalidade. */
 const TIPO_ESPACO_CONFINADO = "Espaço Confinado";
 
+/**
+ * Ordem da hierarquia de controle — NR-01 1.5.4.4.3.
+ *
+ * Menor número, mais alto na hierarquia. A medida mais eficaz aparece primeiro:
+ * quem lê a folha antes de entrar precisa ver a proteção coletiva antes do EPI.
+ */
+const ORDEM_HIERARQUIA: Record<string, number> = {
+  "Eliminação": 0,
+  "Substituição": 1,
+  Engenharia: 2,
+  Administrativa: 3,
+  EPI: 4,
+};
+
+const STATUS_MEDIDA_LABEL: Record<string, string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  implementado: "Implementado",
+  cancelado: "Cancelado",
+};
+
 export interface PtDocumentoDados {
   pt: SgsstPt;
   riscos: readonly SgsstPtRisco[];
+  /**
+   * Medidas de controle de todos os riscos, achatadas. Cada uma traz
+   * `pt_risco_id`. Risco impresso sem a medida ao lado informa o perigo e nao diz
+   * o que fazer a respeito — e a folha existe justamente para quem vai executar.
+   */
+  medidas: readonly SgsstPtMedida[];
   checklist: readonly SgsstPtChecklistItem[];
   participantes: readonly SgsstPtParticipante[];
   medicoes: readonly SgsstPtMedicaoAtmosfera[];
@@ -120,6 +148,13 @@ export function pendenciasPt(dados: PtDocumentoDados, hoje = new Date()): string
     p.push("Nenhum risco levantado na PT");
   }
 
+  const semMedida = riscos.filter((r) => medidasDoRiscoPt(dados, r.id).length === 0);
+  if (semMedida.length > 0) {
+    p.push(
+      `${semMedida.length} risco(s) sem medida de controle — a folha informa o perigo e não diz o que fazer a respeito`
+    );
+  }
+
   const obrigatoriosPendentes = checklist.filter(
     (i) => i.obrigatorio && i.resposta === "Pendente"
   );
@@ -152,6 +187,16 @@ export function pendenciasPt(dados: PtDocumentoDados, hoje = new Date()): string
   }
 
   return p;
+}
+
+/** Medidas de um risco, da mais alta para a mais baixa na hierarquia. */
+export function medidasDoRiscoPt(
+  dados: PtDocumentoDados,
+  riscoId: string
+): SgsstPtMedida[] {
+  return dados.medidas
+    .filter((m) => m.pt_risco_id === riscoId)
+    .sort((a, b) => (ORDEM_HIERARQUIA[a.tipo] ?? 9) - (ORDEM_HIERARQUIA[b.tipo] ?? 9));
 }
 
 /** Bloco de assinatura de uma pessoa, em linha de tabela. */
@@ -380,18 +425,41 @@ export function montarHtmlPt(dados: PtDocumentoDados, hoje = new Date()): string
                   identificado não descreve o trabalho que está autorizando.</p>`
               : `<table class="doc-tabela">
                   <thead>
-                    <tr><th>Perigo</th><th>Risco</th><th>Consequência</th><th>Classificação</th></tr>
+                    <tr>
+                      <th>Perigo</th><th>Risco</th><th>Consequência</th>
+                      <th>Classificação</th><th>Medidas de controle</th>
+                    </tr>
                   </thead>
                   <tbody>
                     ${riscos
-                      .map(
-                        (r) => `<tr>
+                      .map((r) => {
+                        const medidas = medidasDoRiscoPt(dados, r.id);
+                        const textoMedidas =
+                          medidas.length === 0
+                            ? `<span class="doc-inapto">Nenhuma medida de controle definida</span>`
+                            : medidas
+                                .map(
+                                  (m) =>
+                                    `<div><strong>${esc(m.tipo)}</strong>: ${esc(
+                                      m.descricao
+                                    )} <span class="doc-neutro">(${esc(
+                                      STATUS_MEDIDA_LABEL[m.status] ?? m.status
+                                    )}${
+                                      m.responsavel?.nome
+                                        ? ` · ${esc(m.responsavel.nome)}`
+                                        : ""
+                                    })</span></div>`
+                                )
+                                .join("");
+
+                        return `<tr>
                           <td>${esc(r.perigo)}</td>
                           <td>${esc(r.risco)}</td>
                           <td>${esc(r.consequencia) || "—"}</td>
                           <td>${esc(r.classificacao) || "—"}</td>
-                        </tr>`
-                      )
+                          <td>${textoMedidas}</td>
+                        </tr>`;
+                      })
                       .join("")}
                   </tbody>
                  </table>`

@@ -11,6 +11,9 @@ import {
   ResultadoVerificacao,
 } from "@/hooks/sgsst/useSgsstNaoConformidades";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import { gerarPdfNc, pendenciasNc } from "@/lib/ncDocumento";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +39,8 @@ import {
   Siren,
   History,
   Clock,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
@@ -55,6 +60,9 @@ export default function SgsstNaoConformidadesDetailPage() {
 
   const { updateNaoConformidade, updateStatusNaoConformidade, verificarNaoConformidade } = useSgsstNaoConformidades();
   const { data: currentNc, isLoading: loadingDetail } = useSgsstNaoConformidadesDetail(ncId);
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
+  const [emitindo, setEmitindo] = useState(false);
 
   const { acoes, addAcao, updateAcao, removeAcao, isLoading: loadingAcoes } = useSgsstNaoConformidadeAcoes(ncId);
   const { historico } = useSgsstNaoConformidadeHistorico(ncId);
@@ -91,6 +99,31 @@ export default function SgsstNaoConformidadesDetailPage() {
   }
 
   const isReadOnly = currentNc.status === "CONCLUIDA" || currentNc.status === "CANCELADA";
+
+  const emitirPdf = async () => {
+    const dadosDoDocumento = {
+      nc: currentNc,
+      acoes,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    const pendencias = pendenciasNc(dadosDoDocumento);
+    if (pendencias.length > 0) {
+      toast.warning(`NC com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfNc(dadosDoDocumento);
+    } catch (e) {
+      toast.error(`Erro ao emitir o relatório: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -173,6 +206,24 @@ export default function SgsstNaoConformidadesDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Obra: <strong>{currentNc.projeto ? `[${currentNc.projeto.codigo}] ${currentNc.projeto.nome}` : "—"}</strong> | Canteiro: <strong>{currentNc.site ? currentNc.site.nome : "Geral"}</strong> | Setor: <strong>{currentNc.area ? currentNc.area.nome : "Geral"}</strong>
               </p>
+            </div>
+
+            {/* Emitir fica fora do allowEdit: emitir e leitura. */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={emitirPdf}
+                disabled={emitindo}
+                title="Emitir o relatório desta não conformidade em PDF"
+              >
+                {emitindo ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5 mr-1" />
+                )}
+                Emitir relatório
+              </Button>
             </div>
 
             {/* Workflow Action Buttons */}

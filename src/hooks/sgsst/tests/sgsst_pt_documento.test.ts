@@ -10,6 +10,7 @@ import type {
   SgsstPtChecklistItem,
   SgsstPtParticipante,
   SgsstPtRisco,
+  SgsstPtMedida,
   SgsstPtMedicaoAtmosfera,
 } from "@/hooks/sgsst/useSgsstPt";
 
@@ -53,6 +54,16 @@ const RISCO: SgsstPtRisco = {
   probabilidade: 3,
   severidade: 5,
   classificacao: "CRÍTICO",
+};
+
+const MEDIDA: SgsstPtMedida = {
+  id: "md1",
+  empresa_id: "e1",
+  pt_risco_id: "r1",
+  descricao: "Exaustão mecânica contínua durante toda a permanência",
+  tipo: "Engenharia",
+  status: "implementado",
+  responsavel: { id: "u1", nome: "Marina Reis" },
 };
 
 const CHECKLIST: SgsstPtChecklistItem[] = [
@@ -113,6 +124,7 @@ function dados(over: Partial<PtDocumentoDados> = {}): PtDocumentoDados {
   return {
     pt: PT,
     riscos: [RISCO],
+    medidas: [MEDIDA],
     checklist: CHECKLIST,
     participantes: [EXECUTANTE, VIGIA],
     medicoes: [MEDICAO_BOA],
@@ -177,6 +189,53 @@ describe("montarHtmlPt — o que a folha do local precisa dizer", () => {
 
     const ausentes = [...usadas].filter((c) => !estilosDocumentoSgsst.includes(`.${c}`));
     expect(ausentes).toEqual([]);
+  });
+});
+
+describe("montarHtmlPt — medidas de controle", () => {
+  it("imprime a medida ao lado do risco", () => {
+    // Risco sem a medida ao lado informa o perigo e nao diz o que fazer — e a
+    // folha existe justamente para quem vai executar.
+    const html = montarHtmlPt(dados(), HOJE);
+    expect(html).toContain("Medidas de controle");
+    expect(html).toContain("Exaustão mecânica contínua durante toda a permanência");
+    expect(html).toContain("Engenharia");
+  });
+
+  it("risco sem medida sai marcado, não em branco", () => {
+    const html = montarHtmlPt(dados({ medidas: [] }), HOJE);
+    expect(html).toContain("Nenhuma medida de controle definida");
+    expect(html).toContain("doc-inapto");
+  });
+
+  it("ordena as medidas pela hierarquia de controle da NR-01", () => {
+    // Protecao coletiva antes do EPI: e a ordem que a norma estabelece, e a que
+    // quem le a folha precisa ver.
+    const html = montarHtmlPt(
+      dados({
+        medidas: [
+          { ...MEDIDA, id: "md2", tipo: "EPI", descricao: "Cinto tipo paraquedista" },
+          { ...MEDIDA, id: "md3", tipo: "Eliminação", descricao: "Suprimir a entrada" },
+        ],
+      }),
+      HOJE
+    );
+    expect(html.indexOf("Suprimir a entrada")).toBeLessThan(
+      html.indexOf("Cinto tipo paraquedista")
+    );
+  });
+
+  it("medida de outro risco não aparece neste", () => {
+    const html = montarHtmlPt(
+      dados({ medidas: [{ ...MEDIDA, pt_risco_id: "outro" }] }),
+      HOJE
+    );
+    expect(html).toContain("Nenhuma medida de controle definida");
+  });
+
+  it("acusa risco sem medida como pendência", () => {
+    const p = pendenciasPt(dados({ medidas: [] }), HOJE);
+    expect(p.join(" ")).toContain("sem medida de controle");
   });
 });
 
