@@ -199,6 +199,4 @@ const App = () => {
   );
 };
 
-// 'Implemente prefetch dos chunks das rotas mais acessadas, como /medicoes/dashboard e /medicoes/cadastros, para reduzir o atraso na transição.' (on element 'body' at '/src/routes/index.tsx:1')
-
 export default App;
