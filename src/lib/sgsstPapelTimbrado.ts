@@ -87,7 +87,21 @@ export async function aplicarPapelTimbrado(
   // bundle das telas que apenas listam documentos.
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
-  const pdf = await PDFDocument.load(pdfBytes);
+  const origem = await PDFDocument.load(pdfBytes);
+
+  // Monta um PDF NOVO em vez de desenhar no original.
+  //
+  // O motivo é a ordem de pintura: `drawImage` do pdf-lib acrescenta ao fim do
+  // stream de conteúdo, ou seja, desenha POR CIMA do que já existe. A marca
+  // d'água ficaria sobre o texto e, em qualquer opacidade que a tornasse
+  // visível, lavaria a leitura.
+  //
+  // Aqui cada página nasce vazia, recebe a marca primeiro e só então o conteúdo
+  // original embutido em cima. Como o conteúdo é rasterizado em PNG com fundo
+  // transparente (ver `opcoesPdfTimbrado`), a marca aparece nos espaços vazios e
+  // o texto fica nítido.
+  const pdf = await PDFDocument.create();
+
   const fonte = await pdf.embedFont(StandardFonts.Helvetica);
   const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
 
@@ -98,31 +112,57 @@ export async function aplicarPapelTimbrado(
     opcoes.marcaDagua === false ? null : await buscarAtivo(MARCA_DAGUA_URL);
   const marca = marcaBytes ? await pdf.embedPng(marcaBytes) : null;
 
-  const paginas = pdf.getPages();
-  const total = paginas.length;
+  const paginasOrigem = origem.getPages();
+  const total = paginasOrigem.length;
+
+  // Página em branco não tem stream de conteúdo, e o `embedPages` recusa o lote
+  // inteiro se uma delas estiver nessa condição. Então só entram as que têm
+  // conteúdo; a página vazia continua existindo no resultado, com timbre e sem
+  // conteúdo — que é exatamente o que ela é.
+  const comConteudo = paginasOrigem.filter((p) => !!p.node.Contents());
+  const embutidos = comConteudo.length > 0 ? await pdf.embedPages(comConteudo) : [];
+
+  const porOrigem = new Map(comConteudo.map((p, i) => [p, embutidos[i]]));
+
+  const paginas = paginasOrigem.map((paginaOrigem) => {
+    const { width, height } = paginaOrigem.getSize();
+    const pagina = pdf.addPage([width, height]);
+
+    if (marca) {
+      const largura = width;
+      const altura = (largura * marca.height) / marca.width;
+      pagina.drawImage(marca, {
+        x: 0,
+        // Centraliza a sobra: a arte tem proporção de A4, mas eventual diferença
+        // não pode cair só para um lado.
+        y: (height - altura) / 2,
+        width: largura,
+        height: altura,
+        // Alta de propósito: a arte de origem já é pálida — os tons dela estão a
+        // menos de 8% do branco. Reduzir aqui a apaga, e foi o que aconteceu na
+        // primeira versão, a 6%.
+        opacity: 0.85,
+      });
+    }
+
+    // O conteúdo por cima da marca, em tamanho natural.
+    const conteudo = porOrigem.get(paginaOrigem);
+    if (conteudo) {
+      pagina.drawPage(conteudo, { x: 0, y: 0, width, height });
+    }
+
+    return pagina;
+  });
 
   const tinta = rgb(0.12, 0.23, 0.37); // mesmo tom escuro dos documentos
   const tintaSuave = rgb(0.45, 0.5, 0.56);
 
   const margemLateral = 12 * MM_PARA_PT;
 
+  // Logo, rodapé e numeração vão POR CIMA do conteúdo — são o timbre, e não
+  // podem ser cobertos por ele.
   paginas.forEach((pagina, indice) => {
     const { width, height } = pagina.getSize();
-
-    // A marca d'água vai primeiro, para ficar atrás de tudo. O PDF do html2pdf
-    // tem fundo branco opaco, então desenhar aqui a deixaria escondida — por
-    // isso ela entra com opacidade baixa e o conteúdo permanece legível.
-    if (marca) {
-      const largura = width * 0.62;
-      const altura = (largura * marca.height) / marca.width;
-      pagina.drawImage(marca, {
-        x: (width - largura) / 2,
-        y: (height - altura) / 2,
-        width: largura,
-        height: altura,
-        opacity: 0.06,
-      });
-    }
 
     if (logo) {
       const larguraLogo = 42 * MM_PARA_PT;
@@ -203,13 +243,39 @@ export async function aplicarPapelTimbrado(
 }
 
 /**
+ * CSS que zera o fundo branco do conteúdo.
+ *
+ * `pdfGlobalStyles` declara `body { background: white }`, e o html2canvas usa o
+ * fundo computado do elemento. Sem este override o conteúdo sai com fundo
+ * chapado e a marca d'água fica escondida por baixo.
+ *
+ * Os fundos dos BLOCOS (`.doc-ident`, `.doc-aviso`, cabeçalho de tabela)
+ * continuam: eles são intencionais e é bom que cubram a marca localmente.
+ */
+const CSS_FUNDO_TRANSPARENTE = `
+  <style>
+    html, body, .doc { background: transparent !important; }
+  </style>
+`;
+
+/**
  * Opções do html2pdf para documento timbrado.
  *
- * Só difere do padrão nas margens: o timbre é estampado depois, e sem a reserva
- * de espaço o conteúdo passaria por baixo do logo e do rodapé.
+ * Duas diferenças em relação ao padrão:
+ *
+ * 1. MARGENS maiores. O timbre é estampado por cima do PDF já paginado, e sem a
+ *    reserva de espaço o conteúdo passaria por baixo do logo e do rodapé.
+ *
+ * 2. PNG com fundo transparente, em vez de JPEG. O JPEG não tem canal alfa, ou
+ *    seja, cada página viraria um retângulo branco opaco — e a marca d'água,
+ *    desenhada depois pelo pdf-lib, cairia por cima do texto. Em PNG
+ *    transparente o texto flutua sobre a marca, que é o comportamento de papel
+ *    timbrado. O arquivo fica maior; é o custo de ter a marca por baixo.
  */
 export function opcoesPdfTimbrado(nomeArquivo: string) {
   const base = getPdfOptions(nomeArquivo) as Record<string, unknown>;
+  const html2canvasBase = (base.html2canvas ?? {}) as Record<string, unknown>;
+
   return {
     ...base,
     margin: [MARGEM_SUPERIOR_MM, 12, MARGEM_INFERIOR_MM, 12] as [
@@ -218,6 +284,8 @@ export function opcoesPdfTimbrado(nomeArquivo: string) {
       number,
       number,
     ],
+    image: { type: "png" as const },
+    html2canvas: { ...html2canvasBase, backgroundColor: null },
   };
 }
 
@@ -236,7 +304,7 @@ export async function emitirPdfTimbrado(params: {
   const { default: html2pdf } = await import("html2pdf.js");
 
   const container = document.createElement("div");
-  container.innerHTML = params.html;
+  container.innerHTML = CSS_FUNDO_TRANSPARENTE + params.html;
 
   // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
   // estampar o timbre antes de entregar o arquivo.
