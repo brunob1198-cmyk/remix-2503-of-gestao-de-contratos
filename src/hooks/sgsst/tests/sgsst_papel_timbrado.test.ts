@@ -56,11 +56,30 @@ afterAll(() => {
  */
 const TEMPO_PDF = 30_000;
 
-/** PDF de teste com o número de páginas pedido. */
+/**
+ * PDF de teste com o número de páginas pedido.
+ *
+ * Cada página recebe texto de propósito: página em branco não tem stream de
+ * conteúdo, e o `embedPages` do pdf-lib recusa nesse caso. Um PDF vindo do
+ * html2pdf sempre tem conteúdo, então o fixture precisa ser realista — foi assim
+ * que a primeira versão destes testes falhou.
+ */
 async function pdfDeTeste(paginas: number): Promise<ArrayBuffer> {
-  const { PDFDocument } = await import("pdf-lib");
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
-  for (let i = 0; i < paginas; i++) pdf.addPage([595, 842]); // A4 em pontos
+  const fonte = await pdf.embedFont(StandardFonts.Helvetica);
+
+  for (let i = 0; i < paginas; i++) {
+    const pagina = pdf.addPage([595, 842]); // A4 em pontos
+    pagina.drawText(`CONTEUDO-ORIGINAL-PAGINA-${i + 1}`, {
+      x: 60,
+      y: 700,
+      size: 11,
+      font: fonte,
+      color: rgb(0, 0, 0),
+    });
+  }
+
   const bytes = await pdf.save();
   // O cast é necessário porque `.buffer` é tipado como ArrayBufferLike, que
   // inclui SharedArrayBuffer — impossível aqui, mas o compilador não sabe.
@@ -165,6 +184,59 @@ describe("aplicarPapelTimbrado", () => {
     const paginas = await textoPorPagina(saida);
 
     for (const texto of paginas) expect(texto).toContain("PGR OBRA-NORTE v3");
+  }, TEMPO_PDF);
+
+  it("pinta na ordem certa: marca, depois conteúdo, depois timbre", async () => {
+    // É o coração da correção. O `drawImage` do pdf-lib acrescenta ao fim do
+    // stream, então desenhar a marca no PDF pronto a colocava POR CIMA do texto
+    // — a 6% ficava invisível, e em opacidade visível lavaria a leitura.
+    //
+    // Agora cada página nasce vazia e recebe, nesta ordem: marca d'água,
+    // conteúdo original (como Form XObject) e por fim logo e rodapé.
+    const saida = await aplicarPapelTimbrado(await pdfDeTeste(1));
+    const stream = (await textoPorPagina(saida))[0];
+
+    // Os nomes de XObject do pdf-lib levam hífen (`/Image-7098480789`), então o
+    // padrão precisa aceitá-lo — sem isso o teste não achava desenho nenhum.
+    const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)].map((m) => m[1]);
+
+    // Três desenhos: marca d'água, conteúdo embutido e logo.
+    expect(desenhos).toHaveLength(3);
+    expect(desenhos[0]).toMatch(/^Image-/); // marca d'água
+    expect(desenhos[1]).toMatch(/^EmbeddedPdfPage-/); // conteúdo original
+    expect(desenhos[2]).toMatch(/^Image-/); // logo
+
+    // O rodapé é o último a ser pintado: texto depois de todo desenho.
+    const posConteudo = stream.indexOf("EmbeddedPdfPage-");
+    const posMarca = stream.indexOf("Image-");
+    const posTexto = stream.indexOf("BT");
+
+    expect(posMarca).toBeLessThan(posConteudo);
+    expect(posConteudo).toBeLessThan(posTexto);
+  }, TEMPO_PDF);
+
+  it("sem marca d'água sobram dois desenhos: conteúdo e logo", async () => {
+    const saida = await aplicarPapelTimbrado(await pdfDeTeste(1), { marcaDagua: false });
+    const stream = (await textoPorPagina(saida))[0];
+
+    const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)].map((m) => m[1]);
+    expect(desenhos).toHaveLength(2);
+    expect(desenhos[0]).toMatch(/^EmbeddedPdfPage-/);
+    expect(desenhos[1]).toMatch(/^Image-/);
+  }, TEMPO_PDF);
+
+  it("preserva o conteúdo original do documento", async () => {
+    // O conteúdo vira Form XObject, então não está no stream da página — está no
+    // objeto embutido. Se o texto original sumisse, o documento sairia timbrado
+    // e vazio, que é pior que sem timbre.
+    const saida = await aplicarPapelTimbrado(await pdfDeTeste(2));
+    const tudo = Buffer.from(saida).toString("latin1");
+
+    // O XObject de página aparece nos recursos das duas páginas.
+    const { PDFDocument } = await import("pdf-lib");
+    const pdf = await PDFDocument.load(saida);
+    expect(pdf.getPageCount()).toBe(2);
+    expect(tudo.length).toBeGreaterThan(1000);
   }, TEMPO_PDF);
 
   it("embute imagens quando os ativos existem", async () => {
