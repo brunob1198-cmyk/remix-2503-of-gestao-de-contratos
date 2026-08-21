@@ -9,6 +9,13 @@ import {
   CategoriaEpi,
 } from "@/hooks/sgsst/useSgsstEpis";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  gerarPdfFichaEpi,
+  pendenciasFichaEpi,
+  type FichaEpiDados,
+} from "@/lib/fichaEpiDocumento";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
@@ -21,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -35,6 +43,8 @@ import {
   Clock,
   CheckCircle2,
   UserCheck,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { EpiFormDialog } from "@/components/sgsst/EpiFormDialog";
@@ -63,6 +73,8 @@ export default function SgsstEpisListPage() {
   const { entregas, isLoading: loadingEntregas, error: errEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
   const { devolucoes, isLoading: loadingDevolucoes, error: errDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
   const { colaboradores } = useSgsstColaboradoresResumo();
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
 
   // Active Tab
   const [activeTab, setActiveTab] = useState("catalogo");
@@ -82,6 +94,56 @@ export default function SgsstEpisListPage() {
   // Ficha de Posse Filter
   const [selectedColabPosse, setSelectedColabPosse] = useState<string>("todos");
   const { historico: historicoColab } = useSgsstEpiHistoricoColaborador(selectedColabPosse !== "todos" ? selectedColabPosse : undefined);
+
+  // ------------------------------------------------------------------
+  // Ficha de Entrega de EPI — NR-06 6.6.1
+  // ------------------------------------------------------------------
+  // A ficha e por trabalhador e cumulativa: e assim que ela e usada quando o
+  // fornecimento e contestado. As entregas e devolucoes desta tela ja estao
+  // carregadas, entao o recorte e feito aqui mesmo.
+  const [emitindoFicha, setEmitindoFicha] = useState(false);
+
+  const colabDaFicha = colaboradores.find((c) => c.id === selectedColabPosse) ?? null;
+
+  const entregasDaFicha = entregas.filter((e) => e.colaborador_id === selectedColabPosse);
+
+  const devolucoesDaFicha = devolucoes.filter((d) =>
+    entregasDaFicha.some((e) => e.id === d.entrega_id)
+  );
+
+  const emitirFichaEpi = async () => {
+    if (!colabDaFicha) return;
+
+    const dadosDaFicha: FichaEpiDados = {
+      entregas: entregasDaFicha,
+      devolucoes: devolucoesDaFicha,
+      // `displayNome` ja resolve cadastro proprio, profile e recurso na ordem certa.
+      nomeTrabalhador: colabDaFicha.displayNome,
+      cpfTrabalhador: colabDaFicha.cpf ?? null,
+      funcaoTrabalhador: colabDaFicha.funcao ?? null,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    // Pendencia nao impede a emissao: a ficha sai marcando cada falta. Uma ficha
+    // que esconde a entrega feita com CA vencido afirma mais do que os dados
+    // sustentam — e e exatamente esse ponto que se contesta depois.
+    const pendencias = pendenciasFichaEpi(dadosDaFicha);
+    if (pendencias.length > 0) {
+      toast.warning(`Ficha com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindoFicha(true);
+    try {
+      await gerarPdfFichaEpi(dadosDaFicha);
+    } catch (e) {
+      toast.error(`Erro ao emitir a ficha: ${(e as Error).message}`);
+    } finally {
+      setEmitindoFicha(false);
+    }
+  };
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -596,7 +658,24 @@ export default function SgsstEpisListPage() {
               <p className="text-xs text-muted-foreground">Consulte todos os EPIs entregues, devolvidos e atualmente sob responsabilidade do trabalhador.</p>
             </div>
 
-            <Select value={selectedColabPosse} onValueChange={setSelectedColabPosse}>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+                disabled={!colabDaFicha || emitindoFicha}
+                onClick={emitirFichaEpi}
+                title="Emitir a ficha de entrega de EPI deste trabalhador em PDF"
+              >
+                {emitindoFicha ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5" />
+                )}
+                Emitir ficha
+              </Button>
+
+              <Select value={selectedColabPosse} onValueChange={setSelectedColabPosse}>
               <SelectTrigger className="w-[280px] text-xs">
                 <SelectValue placeholder="Selecione o colaborador..." />
               </SelectTrigger>
@@ -611,7 +690,8 @@ export default function SgsstEpisListPage() {
                   );
                 })}
               </SelectContent>
-            </Select>
+              </Select>
+            </div>
           </div>
 
           <Card>

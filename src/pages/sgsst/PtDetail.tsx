@@ -15,6 +15,9 @@ import {
   SgsstPtChecklistItem,
 } from "@/hooks/sgsst/useSgsstPt";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
+import { gerarPdfPt, pendenciasPt } from "@/lib/ptDocumento";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +47,8 @@ import {
   Users,
   History,
   AlertTriangle,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PtFormDialog } from "@/components/sgsst/PtFormDialog";
@@ -70,6 +75,8 @@ export default function SgsstPtDetailPage() {
   const { participantes, addParticipante, removeParticipante } = useSgsstPtParticipantes(ptId);
   const { medicoes: medicoesAtmosfera } = useSgsstPtAtmosfera(ptId);
   const { historico } = useSgsstPtHistorico(ptId);
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
 
   // Dialog States
   const [isEditPtOpen, setIsEditPtOpen] = useState(false);
@@ -80,6 +87,10 @@ export default function SgsstPtDetailPage() {
   const [isAddChecklistOpen, setIsAddChecklistOpen] = useState(false);
   const [newItemTexto, setNewItemTexto] = useState("");
   const [newItemObrigatorio, setNewItemObrigatorio] = useState(true);
+
+  // Emissao da PT. Fica fora do allowEdit: emitir e leitura, e quem confere no
+  // local costuma nao ter permissao de editar.
+  const [emitindo, setEmitindo] = useState(false);
 
   // Participante State
   const [isAddParticipanteOpen, setIsAddParticipanteOpen] = useState(false);
@@ -122,6 +133,38 @@ export default function SgsstPtDetailPage() {
   const temVigia = participantes.some(
     (p) => (p.responsabilidade ?? "").trim().toLowerCase() === "vigia"
   );
+
+  // A folha da PT fica no local da atividade durante a execucao — e por isso a
+  // emissao mora aqui, na tela onde a permissao e montada e liberada.
+  const emitirPdf = async () => {
+    const dadosDoDocumento = {
+      pt: currentPt,
+      riscos,
+      checklist,
+      participantes,
+      medicoes: medicoesAtmosfera,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    // Pendencia nao impede a emissao: o documento sai marcando cada falta, e a
+    // folha marcada e justamente o que faz a falta ser resolvida antes da entrada.
+    const pendencias = pendenciasPt(dadosDoDocumento);
+    if (pendencias.length > 0) {
+      toast.warning(`PT com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      await gerarPdfPt(dadosDoDocumento);
+    } catch (e) {
+      toast.error(`Erro ao emitir a PT: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
+    }
+  };
 
   const formatDateStr = (dateStr?: string | null) => {
     if (!dateStr) return "—";
@@ -236,6 +279,23 @@ export default function SgsstPtDetailPage() {
             </div>
 
             {/* Workflow Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={emitirPdf}
+                disabled={emitindo}
+                title="Emitir a PT em PDF para afixar no local da atividade"
+              >
+                {emitindo ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <FileDown className="h-3.5 w-3.5 mr-1" />
+                )}
+                Emitir PT
+              </Button>
+            </div>
+
             {allowEdit && (
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 {!isReadOnly && (
