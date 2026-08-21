@@ -1,4 +1,5 @@
-import { pdfGlobalStyles, getPdfOptions } from "@/lib/pdfTemplates";
+import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
 import {
   FAIXA_ETARIA_LABEL,
@@ -253,16 +254,13 @@ export function pendenciasPcmso(pcmso: SgsstPcmso, exames: SgsstPcmsoExame[]): s
 }
 
 export async function gerarPdfPcmso(dados: PcmsoDocumentoDados): Promise<void> {
-  // Import dinâmico: html2pdf traz html2canvas e jspdf, e não faz sentido pesar
-  // o bundle das telas com isso quando só a emissão precisa.
-  const { default: html2pdf } = await import("html2pdf.js");
-
-  const container = document.createElement("div");
-  container.innerHTML = montarHtmlPcmso(dados);
-
   const nome = `PCMSO_${(dados.pcmso.codigo || dados.pcmso.titulo)
     .replace(/[^\w-]+/g, "_")
     .slice(0, 40)}.pdf`;
 
-  await html2pdf().set(getPdfOptions(nome)).from(container).save();
+  await emitirPdfTimbrado({
+    html: montarHtmlPcmso(dados),
+    nomeArquivo: nome,
+    identificacao: `PCMSO ${dados.pcmso.codigo || dados.pcmso.titulo}`,
+  });
 }

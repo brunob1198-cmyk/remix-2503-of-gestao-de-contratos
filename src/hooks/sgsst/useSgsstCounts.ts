@@ -22,7 +22,7 @@ export interface SgsstCountQuery {
   ilike(column: string, pattern: string): SgsstCountQuery;
 }
 
-/** Resultado de uma consulta `head: true`: só a contagem, sem linhas. */
+/** O que interessa na resposta: o total do cabeçalho, não as linhas. */
 interface CountResult {
   count: number | null;
   error: { message?: string; code?: string } | null;
@@ -81,9 +81,21 @@ export function useSgsstCounts(
       // rodar a migration: a coluna que o filtro usa ainda não existe.
       Promise.all(
         specs.map(async (spec): Promise<ResultadoContagem> => {
+          // Sem `head: true`, e com `limit(1)` no lugar dele.
+          //
+          // Com `head: true` o supabase-js faz um HEAD e le o total do cabecalho
+          // `Content-Range`. Na tela de Riscos isso voltava `count` nulo — e o
+          // hook, corretamente, mostrava o fallback 0 — enquanto a MESMA tabela,
+          // na mesma sessao, devolvia 25 na consulta da lista, que usa
+          // `count: "exact"` sem head. A unica diferenca entre as duas era o
+          // head, entao ele saiu.
+          //
+          // O `limit(1)` mantem o trafego baixo: vem uma linha de uma coluna, e
+          // o total continua vindo no cabecalho.
           const base = supabase
             .from(table as never)
-            .select("id", { count: "exact", head: true }) as unknown as SgsstCountQuery;
+            .select("id", { count: "exact" })
+            .limit(1) as unknown as SgsstCountQuery;
 
           const query = spec.build ? spec.build(base) : base;
           const { count, error: countError } = await (query as unknown as PromiseLike<CountResult>);

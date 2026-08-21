@@ -1,4 +1,5 @@
-import { pdfGlobalStyles, getPdfOptions } from "@/lib/pdfTemplates";
+import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
 import type { SgsstAso } from "@/hooks/sgsst/useSgsstAsosAndExames";
 
@@ -257,14 +258,15 @@ export function montarHtmlAso(aso: SgsstAso, geradoPor?: string | null): string 
 }
 
 export async function gerarPdfAso(aso: SgsstAso, geradoPor?: string | null): Promise<void> {
-  // Import dinâmico: html2pdf carrega html2canvas e jspdf, e só a emissão precisa.
-  const { default: html2pdf } = await import("html2pdf.js");
-
-  const container = document.createElement("div");
-  container.innerHTML = montarHtmlAso(aso, geradoPor);
-
   const identificador = aso.numero_documento || nomeColaborador(aso);
   const nome = `ASO_${identificador.replace(/[^\w-]+/g, "_").slice(0, 40)}.pdf`;
 
-  await html2pdf().set(getPdfOptions(nome)).from(container).save();
+  await emitirPdfTimbrado({
+    html: montarHtmlAso(aso, geradoPor),
+    nomeArquivo: nome,
+    identificacao: `ASO ${identificador}`,
+    // O ASO vai para a mão do trabalhador e é conferido contra o atestado.
+    // Marca d'água atrás de campo assinado atrapalha a leitura.
+    marcaDagua: false,
+  });
 }

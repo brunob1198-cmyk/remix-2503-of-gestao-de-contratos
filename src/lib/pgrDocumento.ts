@@ -1,4 +1,5 @@
-import { pdfGlobalStyles, getPdfOptions } from "@/lib/pdfTemplates";
+import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import {
   estilosDocumentoSgsst,
   escDoc as esc,
@@ -488,16 +489,13 @@ export function pendenciasPgr(dados: PgrDocumentoDados): string[] {
 }
 
 export async function gerarPdfPgr(dados: PgrDocumentoDados): Promise<void> {
-  // Import dinâmico: html2pdf traz html2canvas e jspdf, e não faz sentido pesar
-  // o bundle das telas com isso quando só a emissão precisa.
-  const { default: html2pdf } = await import("html2pdf.js");
-
-  const container = document.createElement("div");
-  container.innerHTML = montarHtmlPgr(dados);
-
   const nome = `PGR_${(dados.pgr.codigo || dados.pgr.titulo)
     .replace(/[^\w-]+/g, "_")
     .slice(0, 40)}_v${dados.pgr.versao ?? 1}.pdf`;
 
-  await html2pdf().set(getPdfOptions(nome)).from(container).save();
+  await emitirPdfTimbrado({
+    html: montarHtmlPgr(dados),
+    nomeArquivo: nome,
+    identificacao: `PGR ${dados.pgr.codigo || dados.pgr.titulo} — v${dados.pgr.versao ?? 1}`,
+  });
 }

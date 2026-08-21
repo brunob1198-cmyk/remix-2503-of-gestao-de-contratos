@@ -4,7 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit2, Siren } from "lucide-react";
+import { Plus, Edit2, Siren, FileDown, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { gerarPdfCat, pendenciasCat } from "@/lib/catDocumento";
 import { format, parseISO } from "date-fns";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -38,6 +42,41 @@ export function SgsstCatsTab() {
 
   const { cats, total, isLoading, error, refetch, createCat, updateCat, removeCat } =
     useSgsstCats({ page, pageSize, search: debouncedSearch, tipo: filterTipo });
+
+  const { profile } = useAuth();
+  const { empresa } = useEmpresaAtual();
+  const [emitindoId, setEmitindoId] = useState<string | null>(null);
+
+  /**
+   * Emite a CAT em PDF.
+   *
+   * As pendências saem como aviso e não como bloqueio: a comunicação existe e
+   * precisa poder ser impressa mesmo incompleta — o PDF marca cada campo
+   * faltante em vez de omitir. Impedir a emissão só esconderia o problema.
+   */
+  const emitir = async (cat: SgsstCat) => {
+    setEmitindoId(cat.id);
+    try {
+      const dados = { cat, empresa, geradoPor: profile?.nome ?? null };
+      const pendencias = pendenciasCat(dados);
+
+      await gerarPdfCat(dados);
+
+      if (pendencias.length > 0) {
+        toast.warning(
+          `CAT emitida com ${pendencias.length} pendência(s): ${pendencias.join(" · ")}`,
+          { duration: 10000 }
+        );
+      } else {
+        toast.success("CAT emitida.");
+      }
+    } catch (err) {
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast.error(`Erro ao emitir a CAT: ${detalhe}`);
+    } finally {
+      setEmitindoId(null);
+    }
+  };
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<SgsstCat | null>(null);
@@ -173,13 +212,13 @@ export function SgsstCatsTab() {
                 <TableHead>CID</TableHead>
                 <TableHead className="text-right">Afast.</TableHead>
                 <TableHead>Óbito</TableHead>
-                {allowEdit && <TableHead className="text-right">Ações</TableHead>}
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tableState ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={allowEdit ? 9 : 8} className="p-0">
+                  <TableCell colSpan={9} className="p-0">
                     {tableState}
                   </TableCell>
                 </TableRow>
@@ -217,28 +256,47 @@ export function SgsstCatsTab() {
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    {allowEdit && (
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingCat(c);
-                              setIsFormOpen(true);
-                            }}
-                            title="Editar CAT"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <SgsstConfirmDelete
-                            alvo={`a CAT ${c.numero_cat || "sem número"}`}
-                            consequencia="O registro sai do relatório analítico do PCMSO, incluindo os dias de afastamento e a estatística por setor. A comunicação ao INSS não é afetada."
-                            onConfirm={() => removeCat.mutate(c.id)}
-                          />
-                        </div>
-                      </TableCell>
-                    )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Emitir fica fora do bloco de edicao: imprimir a
+                            comunicacao para apresentar a cliente ou seguradora
+                            nao e edicao. */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => emitir(c)}
+                          disabled={emitindoId === c.id}
+                          title="Emitir CAT em PDF"
+                        >
+                          {emitindoId === c.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )}
+                        </Button>
+
+                        {allowEdit && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingCat(c);
+                                setIsFormOpen(true);
+                              }}
+                              title="Editar CAT"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <SgsstConfirmDelete
+                              alvo={`a CAT ${c.numero_cat || "sem número"}`}
+                              consequencia="O registro sai do relatório analítico do PCMSO, incluindo os dias de afastamento e a estatística por setor. A comunicação ao INSS não é afetada."
+                              onConfirm={() => removeCat.mutate(c.id)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
