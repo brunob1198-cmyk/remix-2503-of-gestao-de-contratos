@@ -7,11 +7,22 @@ import { getPdfOptions } from "@/lib/pdfTemplates";
  * parecia documento da empresa, o que importa quando a folha vai para cliente,
  * seguradora ou fiscal.
  *
- * O timbre é aplicado com pdf-lib DEPOIS de o html2pdf gerar o PDF, e não em
- * CSS. O motivo é simples: o html2pdf quebra o conteúdo em páginas por conta
- * própria e não repete cabeçalho nem rodapé — um `background-image` no HTML sai
- * só na primeira página, ou cortado. Estampando página por página no PDF
- * pronto, TODA página recebe logo, rodapé e numeração.
+ * O timbre é montado em DUAS ETAPAS, e cada uma existe por um motivo diferente:
+ *
+ * 1. MARCA D'ÁGUA em CSS, como `background-image` com `repeat-y` no conteúdo.
+ *    O html2pdf rasteriza tudo num canvas único e depois fatia em páginas, então
+ *    um fundo que se repete a cada altura de página cai certo em cada folha. E,
+ *    por ser fundo, o navegador o pinta ANTES do texto — a marca fica embaixo
+ *    sem nenhum truque.
+ *
+ *    Isto substituiu uma versão que desenhava a marca com pdf-lib no PDF pronto.
+ *    Funcionava visualmente, mas obrigava a rasterizar o conteúdo em PNG
+ *    transparente para a marca aparecer, e o arquivo ia a ~1,2 MB por página —
+ *    inviável para anexar. Com a marca dentro do JPEG, o peso volta ao normal.
+ *
+ * 2. LOGO, RODAPÉ e NUMERAÇÃO com pdf-lib, página por página, depois. Estes
+ *    precisam de posição exata e texto selecionável, e o html2pdf não repete
+ *    cabeçalho nem rodapé por conta própria.
  */
 
 /** Dados da organização, transcritos do rodapé do papel timbrado oficial. */
@@ -38,8 +49,38 @@ const LOGO_PROPORCAO = 505 / 2500;
  */
 const MARGEM_SUPERIOR_MM = 26;
 const MARGEM_INFERIOR_MM = 20;
+const MARGEM_LATERAL_MM = 12;
 
 const MM_PARA_PT = 72 / 25.4;
+
+/** A4 em milímetros. */
+const A4_LARGURA_MM = 210;
+const A4_ALTURA_MM = 297;
+
+/**
+ * Largura em pixels com que o html2canvas renderiza o conteúdo.
+ *
+ * Precisa casar com o `windowWidth` das opções: é dela que sai a escala
+ * pixel-por-milímetro usada para alinhar a marca d'água com a quebra de página.
+ */
+const LARGURA_RENDER_PX = 1024;
+
+/**
+ * Altura, em pixels de render, da área de conteúdo de UMA página.
+ *
+ * O html2pdf rasteriza o container inteiro num canvas só e depois fatia em
+ * páginas. Uma marca d'água com `background-size: 100% <esta altura>` e
+ * `repeat-y` cai, portanto, uma vez por folha.
+ *
+ * A conta: a largura de render mapeia a largura útil da página, o que dá a escala
+ * px/mm; a altura útil convertida nessa escala é a altura do azulejo.
+ */
+export function alturaPaginaEmPixels(): number {
+  const larguraUtilMm = A4_LARGURA_MM - MARGEM_LATERAL_MM * 2;
+  const alturaUtilMm = A4_ALTURA_MM - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
+  const pxPorMm = LARGURA_RENDER_PX / larguraUtilMm;
+  return alturaUtilMm * pxPorMm;
+}
 
 /** Cache por URL: o mesmo ativo é usado em toda emissão da sessão. */
 const cacheAtivos = new Map<string, ArrayBuffer | null>();
@@ -69,8 +110,6 @@ async function buscarAtivo(url: string): Promise<ArrayBuffer | null> {
 export interface OpcoesTimbre {
   /** Texto curto identificando o documento, impresso no rodapé de cada página. */
   identificacao?: string;
-  /** Inclui a marca d'água da marca ao fundo. Ligada por padrão. */
-  marcaDagua?: boolean;
 }
 
 /**
@@ -87,20 +126,17 @@ export async function aplicarPapelTimbrado(
   // bundle das telas que apenas listam documentos.
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
-  const origem = await PDFDocument.load(pdfBytes);
-
-  // Monta um PDF NOVO em vez de desenhar no original.
+  // Desenha no PDF recebido, sem remontar documento.
   //
-  // O motivo é a ordem de pintura: `drawImage` do pdf-lib acrescenta ao fim do
-  // stream de conteúdo, ou seja, desenha POR CIMA do que já existe. A marca
-  // d'água ficaria sobre o texto e, em qualquer opacidade que a tornasse
-  // visível, lavaria a leitura.
+  // Uma versão anterior montava um PDF novo para conseguir colocar a marca
+  // d'água por baixo do conteúdo — o `drawImage` do pdf-lib acrescenta ao fim do
+  // stream, ou seja, pinta por cima. Aquilo funcionava, mas obrigava o conteúdo
+  // a sair em PNG transparente e o arquivo ia a ~1,2 MB por página.
   //
-  // Aqui cada página nasce vazia, recebe a marca primeiro e só então o conteúdo
-  // original embutido em cima. Como o conteúdo é rasterizado em PNG com fundo
-  // transparente (ver `opcoesPdfTimbrado`), a marca aparece nos espaços vazios e
-  // o texto fica nítido.
-  const pdf = await PDFDocument.create();
+  // Agora a marca é fundo CSS (ver `cssMarcaDagua`) e já vem embutida no
+  // conteúdo rasterizado. O que sobra aqui — logo, rodapé, numeração — É o
+  // timbre, e pintar por cima do conteúdo é justamente o correto.
+  const pdf = await PDFDocument.load(pdfBytes);
 
   const fonte = await pdf.embedFont(StandardFonts.Helvetica);
   const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -108,56 +144,13 @@ export async function aplicarPapelTimbrado(
   const logoBytes = await buscarAtivo(LOGO_URL);
   const logo = logoBytes ? await pdf.embedPng(logoBytes) : null;
 
-  const marcaBytes =
-    opcoes.marcaDagua === false ? null : await buscarAtivo(MARCA_DAGUA_URL);
-  const marca = marcaBytes ? await pdf.embedPng(marcaBytes) : null;
-
-  const paginasOrigem = origem.getPages();
-  const total = paginasOrigem.length;
-
-  // Página em branco não tem stream de conteúdo, e o `embedPages` recusa o lote
-  // inteiro se uma delas estiver nessa condição. Então só entram as que têm
-  // conteúdo; a página vazia continua existindo no resultado, com timbre e sem
-  // conteúdo — que é exatamente o que ela é.
-  const comConteudo = paginasOrigem.filter((p) => !!p.node.Contents());
-  const embutidos = comConteudo.length > 0 ? await pdf.embedPages(comConteudo) : [];
-
-  const porOrigem = new Map(comConteudo.map((p, i) => [p, embutidos[i]]));
-
-  const paginas = paginasOrigem.map((paginaOrigem) => {
-    const { width, height } = paginaOrigem.getSize();
-    const pagina = pdf.addPage([width, height]);
-
-    if (marca) {
-      const largura = width;
-      const altura = (largura * marca.height) / marca.width;
-      pagina.drawImage(marca, {
-        x: 0,
-        // Centraliza a sobra: a arte tem proporção de A4, mas eventual diferença
-        // não pode cair só para um lado.
-        y: (height - altura) / 2,
-        width: largura,
-        height: altura,
-        // Alta de propósito: a arte de origem já é pálida — os tons dela estão a
-        // menos de 8% do branco. Reduzir aqui a apaga, e foi o que aconteceu na
-        // primeira versão, a 6%.
-        opacity: 0.85,
-      });
-    }
-
-    // O conteúdo por cima da marca, em tamanho natural.
-    const conteudo = porOrigem.get(paginaOrigem);
-    if (conteudo) {
-      pagina.drawPage(conteudo, { x: 0, y: 0, width, height });
-    }
-
-    return pagina;
-  });
+  const paginas = pdf.getPages();
+  const total = paginas.length;
 
   const tinta = rgb(0.12, 0.23, 0.37); // mesmo tom escuro dos documentos
   const tintaSuave = rgb(0.45, 0.5, 0.56);
 
-  const margemLateral = 12 * MM_PARA_PT;
+  const margemLateral = MARGEM_LATERAL_MM * MM_PARA_PT;
 
   // Logo, rodapé e numeração vão POR CIMA do conteúdo — são o timbre, e não
   // podem ser cobertos por ele.
@@ -243,34 +236,55 @@ export async function aplicarPapelTimbrado(
 }
 
 /**
- * CSS que zera o fundo branco do conteúdo.
+ * CSS da marca d'água, aplicado ao conteúdo antes de rasterizar.
  *
- * `pdfGlobalStyles` declara `body { background: white }`, e o html2canvas usa o
- * fundo computado do elemento. Sem este override o conteúdo sai com fundo
- * chapado e a marca d'água fica escondida por baixo.
+ * `background-repeat: repeat-y` com o azulejo na altura exata de uma página faz
+ * a marca cair uma vez por folha. Sendo fundo, o navegador a pinta antes do
+ * texto — a marca fica embaixo por construção, sem depender de ordem de
+ * desenho no PDF.
  *
- * Os fundos dos BLOCOS (`.doc-ident`, `.doc-aviso`, cabeçalho de tabela)
- * continuam: eles são intencionais e é bom que cubram a marca localmente.
+ * `opacity` alta de propósito: a arte de origem já é pálida, com tons a menos de
+ * 8% do branco. Foi por não perceber isso que a primeira versão, a 6%, saiu
+ * invisível.
+ *
+ * Os fundos dos BLOCOS (`.doc-ident`, `.doc-aviso`, cabeçalho de tabela) ficam
+ * como estão: são intencionais e é bom que cubram a marca localmente.
  */
-const CSS_FUNDO_TRANSPARENTE = `
+export function cssMarcaDagua(): string {
+  const alturaAzulejo = alturaPaginaEmPixels().toFixed(2);
+
+  // `background-size: 100% <altura>` ESTICA a arte para casar exatamente com a
+  // área útil da página. A arte é 1814×2565 (proporção 0,707) e a área útil é
+  // 186×251 mm (0,741), então há ~5% de distorção vertical.
+  //
+  // É deliberado: o alinhamento exato com a quebra de página vale mais que a
+  // proporção original numa marca abstrata e quase invisível. Usar `contain`
+  // manteria a proporção, mas o azulejo deixaria de coincidir com a folha.
+
+  return `
   <style>
-    html, body, .doc { background: transparent !important; }
+    html, body { background: transparent !important; }
+    .doc {
+      background-image: url("${MARCA_DAGUA_URL}") !important;
+      background-repeat: repeat-y !important;
+      background-position: top center !important;
+      background-size: 100% ${alturaAzulejo}px !important;
+    }
   </style>
 `;
+}
 
 /**
  * Opções do html2pdf para documento timbrado.
  *
- * Duas diferenças em relação ao padrão:
+ * A única diferença em relação ao padrão são as MARGENS, maiores: o logo e o
+ * rodapé são estampados por cima do PDF já paginado, e sem a reserva de espaço o
+ * conteúdo passaria por baixo deles.
  *
- * 1. MARGENS maiores. O timbre é estampado por cima do PDF já paginado, e sem a
- *    reserva de espaço o conteúdo passaria por baixo do logo e do rodapé.
- *
- * 2. PNG com fundo transparente, em vez de JPEG. O JPEG não tem canal alfa, ou
- *    seja, cada página viraria um retângulo branco opaco — e a marca d'água,
- *    desenhada depois pelo pdf-lib, cairia por cima do texto. Em PNG
- *    transparente o texto flutua sobre a marca, que é o comportamento de papel
- *    timbrado. O arquivo fica maior; é o custo de ter a marca por baixo.
+ * O formato continua JPEG, o do padrão. Uma versão anterior trocou por PNG
+ * transparente para deixar a marca d'água aparecer por baixo — funcionava, mas
+ * levava o arquivo a ~1,2 MB por página. Com a marca embutida no fundo via CSS,
+ * o JPEG volta a servir e o peso normaliza.
  */
 export function opcoesPdfTimbrado(nomeArquivo: string) {
   const base = getPdfOptions(nomeArquivo) as Record<string, unknown>;
@@ -278,14 +292,15 @@ export function opcoesPdfTimbrado(nomeArquivo: string) {
 
   return {
     ...base,
-    margin: [MARGEM_SUPERIOR_MM, 12, MARGEM_INFERIOR_MM, 12] as [
+    margin: [MARGEM_SUPERIOR_MM, MARGEM_LATERAL_MM, MARGEM_INFERIOR_MM, MARGEM_LATERAL_MM] as [
       number,
       number,
       number,
       number,
     ],
-    image: { type: "png" as const },
-    html2canvas: { ...html2canvasBase, backgroundColor: null },
+    // `windowWidth` precisa casar com LARGURA_RENDER_PX: é dela que sai a escala
+    // usada para alinhar o azulejo da marca d'água com a quebra de página.
+    html2canvas: { ...html2canvasBase, windowWidth: LARGURA_RENDER_PX },
   };
 }
 
@@ -299,15 +314,20 @@ export async function emitirPdfTimbrado(params: {
   html: string;
   nomeArquivo: string;
   identificacao?: string;
+  /**
+   * Marca d'água ao fundo. Ligada por padrão; desligar em documento conferido
+   * campo a campo e com área de assinatura, como o ASO e a CAT.
+   */
   marcaDagua?: boolean;
 }): Promise<void> {
   const { default: html2pdf } = await import("html2pdf.js");
 
   const container = document.createElement("div");
-  container.innerHTML = CSS_FUNDO_TRANSPARENTE + params.html;
+  container.innerHTML =
+    (params.marcaDagua === false ? "" : cssMarcaDagua()) + params.html;
 
   // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
-  // estampar o timbre antes de entregar o arquivo.
+  // estampar logo e rodapé antes de entregar o arquivo.
   const bytes: ArrayBuffer = await html2pdf()
     .set(opcoesPdfTimbrado(params.nomeArquivo))
     .from(container)
@@ -315,7 +335,6 @@ export async function emitirPdfTimbrado(params: {
 
   const timbrado = await aplicarPapelTimbrado(bytes, {
     identificacao: params.identificacao,
-    marcaDagua: params.marcaDagua,
   });
 
   baixar(timbrado, params.nomeArquivo);
