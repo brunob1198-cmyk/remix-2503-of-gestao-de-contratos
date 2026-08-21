@@ -1,4 +1,5 @@
-import { pdfGlobalStyles, getPdfOptions } from "@/lib/pdfTemplates";
+import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
 import {
   percentualAlterados,
@@ -275,12 +276,11 @@ export function montarHtmlRelatorioAnalitico(dados: RelatorioDocumentoDados): st
 export async function gerarPdfRelatorioAnalitico(
   dados: RelatorioDocumentoDados
 ): Promise<void> {
-  // Import dinâmico: html2pdf carrega html2canvas e jspdf, e só a emissão precisa.
-  const { default: html2pdf } = await import("html2pdf.js");
-
-  const container = document.createElement("div");
-  container.innerHTML = montarHtmlRelatorioAnalitico(dados);
-
   const nome = `Relatorio_Analitico_PCMSO_${dados.relatorio.atual.ano}.pdf`;
-  await html2pdf().set(getPdfOptions(nome)).from(container).save();
+
+  await emitirPdfTimbrado({
+    html: montarHtmlRelatorioAnalitico(dados),
+    nomeArquivo: nome,
+    identificacao: `Relatório analítico do PCMSO — ${dados.relatorio.atual.ano}`,
+  });
 }
