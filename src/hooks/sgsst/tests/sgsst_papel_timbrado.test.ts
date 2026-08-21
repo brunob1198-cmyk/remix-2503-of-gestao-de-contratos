@@ -1,15 +1,23 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { aplicarPapelTimbrado, ORGANIZACAO_TIMBRE } from "@/lib/sgsstPapelTimbrado";
+import {
+  aplicarPapelTimbrado,
+  alturaPaginaEmPixels,
+  cssMarcaDagua,
+  opcoesPdfTimbrado,
+  ORGANIZACAO_TIMBRE,
+} from "@/lib/sgsstPapelTimbrado";
 
 /**
- * O timbre é aplicado com pdf-lib depois de o html2pdf gerar o PDF, e não em
- * CSS — o html2pdf pagina por conta própria e não repete cabeçalho nem rodapé.
+ * O timbre é montado em duas etapas, e os testes cobrem as duas:
  *
- * Esta suíte roda em Node, sem navegador: `aplicarPapelTimbrado` recebe e
- * devolve bytes, então dá para verificar de verdade que TODA página foi
- * estampada, que é justamente o que o CSS não conseguia garantir.
+ * - a MARCA D'ÁGUA é fundo CSS com `repeat-y`, e o que importa é o alinhamento
+ *   do azulejo com a quebra de página — verificado pelas funções puras;
+ * - LOGO, RODAPÉ e NUMERAÇÃO são estampados com pdf-lib no PDF pronto, e o que
+ *   importa é que apareçam em TODA página, por cima do conteúdo.
+ *
+ * Roda em Node, sem navegador: `aplicarPapelTimbrado` recebe e devolve bytes.
  */
 
 const RAIZ = resolve(__dirname, "../../../..");
@@ -148,6 +156,64 @@ describe("ativos do papel timbrado", () => {
   });
 });
 
+describe("marca d'água como fundo CSS", () => {
+  it("o azulejo tem a altura de uma página de conteúdo", () => {
+    // A conta que faz a marca cair uma vez por folha. Área útil do A4 com as
+    // margens do timbrado: 186 × 251 mm. A largura de render (1024 px) mapeia os
+    // 186 mm, o que dá ~5,5054 px/mm; 251 mm nessa escala dão ~1381,9 px.
+    //
+    // Se alguém mexer nas margens sem revisar isto, a marca desalinha da quebra
+    // de página e este teste cai.
+    const altura = alturaPaginaEmPixels();
+    expect(altura).toBeCloseTo((251 * 1024) / 186, 1);
+    expect(altura).toBeGreaterThan(1300);
+    expect(altura).toBeLessThan(1450);
+  });
+
+  it("o CSS repete verticalmente e usa a altura calculada", () => {
+    const css = cssMarcaDagua();
+
+    expect(css).toContain("repeat-y");
+    expect(css).toContain("marca-dagua.png");
+    // A altura no CSS tem de ser a mesma que a função calcula; divergir aqui era
+    // o jeito silencioso de desalinhar a marca.
+    expect(css).toContain(`${alturaPaginaEmPixels().toFixed(2)}px`);
+    expect(css).toContain("top center");
+  });
+
+  it("a largura de render do CSS casa com a das opções do html2pdf", () => {
+    // A escala px/mm do azulejo vem do `windowWidth`. Se os dois divergirem, a
+    // marca desalinha — e nada mais avisaria.
+    const opcoes = opcoesPdfTimbrado("x.pdf") as {
+      html2canvas: { windowWidth: number };
+      margin: number[];
+    };
+
+    const larguraUtilMm = 210 - opcoes.margin[1] - opcoes.margin[3];
+    const alturaUtilMm = 297 - opcoes.margin[0] - opcoes.margin[2];
+    const esperado = (alturaUtilMm * opcoes.html2canvas.windowWidth) / larguraUtilMm;
+
+    expect(alturaPaginaEmPixels()).toBeCloseTo(esperado, 4);
+  });
+
+  it("mantém JPEG: PNG transparente pesava ~1,2 MB por página", () => {
+    const opcoes = opcoesPdfTimbrado("x.pdf") as { image?: { type?: string } };
+    // Sem `image` explícito vale o padrão do projeto, que é JPEG. O que não pode
+    // voltar é o PNG que a versão anterior forçava.
+    expect(opcoes.image?.type).not.toBe("png");
+  });
+
+  it("reserva margem para o logo e o rodapé estampados depois", () => {
+    const opcoes = opcoesPdfTimbrado("x.pdf") as { margin: number[] };
+    const [topo, dir, baixo, esq] = opcoes.margin;
+
+    // Sem a reserva, a primeira linha da tabela sai embaixo do logo.
+    expect(topo).toBeGreaterThanOrEqual(24);
+    expect(baixo).toBeGreaterThanOrEqual(18);
+    expect(dir).toBe(esq);
+  });
+});
+
 describe("aplicarPapelTimbrado", () => {
   it("preserva a quantidade de páginas", async () => {
     const { PDFDocument } = await import("pdf-lib");
@@ -186,71 +252,40 @@ describe("aplicarPapelTimbrado", () => {
     for (const texto of paginas) expect(texto).toContain("PGR OBRA-NORTE v3");
   }, TEMPO_PDF);
 
-  it("pinta na ordem certa: marca, depois conteúdo, depois timbre", async () => {
-    // É o coração da correção. O `drawImage` do pdf-lib acrescenta ao fim do
-    // stream, então desenhar a marca no PDF pronto a colocava POR CIMA do texto
-    // — a 6% ficava invisível, e em opacidade visível lavaria a leitura.
-    //
-    // Agora cada página nasce vazia e recebe, nesta ordem: marca d'água,
-    // conteúdo original (como Form XObject) e por fim logo e rodapé.
-    const saida = await aplicarPapelTimbrado(await pdfDeTeste(1));
-    const stream = (await textoPorPagina(saida))[0];
+  it("preserva o conteúdo original do documento", async () => {
+    // O timbre desenha SOBRE o PDF recebido, sem remontar documento. Se o
+    // conteúdo original sumisse, sairia uma folha timbrada e vazia — pior que
+    // sem timbre.
+    const paginas = await textoPorPagina(await aplicarPapelTimbrado(await pdfDeTeste(2)));
+
+    expect(paginas[0]).toContain("CONTEUDO-ORIGINAL-PAGINA-1");
+    expect(paginas[1]).toContain("CONTEUDO-ORIGINAL-PAGINA-2");
+  }, TEMPO_PDF);
+
+  it("o timbre é pintado DEPOIS do conteúdo, não antes", async () => {
+    // Logo, rodapé e numeração são o timbre: precisam ficar visíveis sobre o
+    // conteúdo. A marca d'água é o caso oposto e por isso saiu daqui — virou
+    // fundo CSS, pintado pelo navegador antes do texto.
+    const stream = (await textoPorPagina(await aplicarPapelTimbrado(await pdfDeTeste(1))))[0];
+
+    const posConteudo = stream.indexOf("CONTEUDO-ORIGINAL-PAGINA-1");
+    const posRodape = stream.indexOf("58.106.347/0001-01");
+
+    expect(posConteudo).toBeGreaterThan(-1);
+    expect(posRodape).toBeGreaterThan(-1);
+    expect(posConteudo).toBeLessThan(posRodape);
+  }, TEMPO_PDF);
+
+  it("embute o logo uma vez e o referencia em cada página", async () => {
+    const saida = await aplicarPapelTimbrado(await pdfDeTeste(3));
+    const paginas = await textoPorPagina(saida);
 
     // Os nomes de XObject do pdf-lib levam hífen (`/Image-7098480789`), então o
     // padrão precisa aceitá-lo — sem isso o teste não achava desenho nenhum.
-    const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)].map((m) => m[1]);
-
-    // Três desenhos: marca d'água, conteúdo embutido e logo.
-    expect(desenhos).toHaveLength(3);
-    expect(desenhos[0]).toMatch(/^Image-/); // marca d'água
-    expect(desenhos[1]).toMatch(/^EmbeddedPdfPage-/); // conteúdo original
-    expect(desenhos[2]).toMatch(/^Image-/); // logo
-
-    // O rodapé é o último a ser pintado: texto depois de todo desenho.
-    const posConteudo = stream.indexOf("EmbeddedPdfPage-");
-    const posMarca = stream.indexOf("Image-");
-    const posTexto = stream.indexOf("BT");
-
-    expect(posMarca).toBeLessThan(posConteudo);
-    expect(posConteudo).toBeLessThan(posTexto);
-  }, TEMPO_PDF);
-
-  it("sem marca d'água sobram dois desenhos: conteúdo e logo", async () => {
-    const saida = await aplicarPapelTimbrado(await pdfDeTeste(1), { marcaDagua: false });
-    const stream = (await textoPorPagina(saida))[0];
-
-    const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)].map((m) => m[1]);
-    expect(desenhos).toHaveLength(2);
-    expect(desenhos[0]).toMatch(/^EmbeddedPdfPage-/);
-    expect(desenhos[1]).toMatch(/^Image-/);
-  }, TEMPO_PDF);
-
-  it("preserva o conteúdo original do documento", async () => {
-    // O conteúdo vira Form XObject, então não está no stream da página — está no
-    // objeto embutido. Se o texto original sumisse, o documento sairia timbrado
-    // e vazio, que é pior que sem timbre.
-    const saida = await aplicarPapelTimbrado(await pdfDeTeste(2));
-    const tudo = Buffer.from(saida).toString("latin1");
-
-    // O XObject de página aparece nos recursos das duas páginas.
-    const { PDFDocument } = await import("pdf-lib");
-    const pdf = await PDFDocument.load(saida);
-    expect(pdf.getPageCount()).toBe(2);
-    expect(tudo.length).toBeGreaterThan(1000);
-  }, TEMPO_PDF);
-
-  it("embute imagens quando os ativos existem", async () => {
-    const comImagens = await aplicarPapelTimbrado(await pdfDeTeste(1));
-    const semMarca = await aplicarPapelTimbrado(await pdfDeTeste(1), { marcaDagua: false });
-
-    // Com marca d'água o arquivo carrega uma imagem grande a mais.
-    expect(comImagens.byteLength).toBeGreaterThan(semMarca.byteLength);
-  }, TEMPO_PDF);
-
-  it("marcaDagua: false não embute a marca", async () => {
-    const semMarca = await aplicarPapelTimbrado(await pdfDeTeste(1), { marcaDagua: false });
-    // O logo continua: só a marca d'água sai.
-    expect((await textoDesenhado(semMarca))).toContain("58.106.347/0001-01");
+    for (const [i, stream] of paginas.entries()) {
+      const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)];
+      expect(desenhos.length, `página ${i + 1} sem o logo`).toBeGreaterThanOrEqual(1);
+    }
   }, TEMPO_PDF);
 
   it("gera documento válido mesmo se os ativos não puderem ser carregados", async () => {
