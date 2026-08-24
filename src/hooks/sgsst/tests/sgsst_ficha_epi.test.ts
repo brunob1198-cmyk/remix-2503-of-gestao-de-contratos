@@ -43,6 +43,7 @@ const ENTREGA: SgsstEpiEntrega = {
   motivo: "PRIMEIRA_ENTREGA",
   tamanho_modelo: "Tam. G",
   confirmacao_recebimento: true,
+  orientacao_uso: true,
   epi: LUVA,
   responsavel: { id: "u1", nome: "Ana Técnica" },
 };
@@ -249,6 +250,61 @@ describe("montarHtmlFichaEpi — devoluções", () => {
     const html = montarHtmlFichaEpi(dados({ devolucoes: [DEVOLUCAO] }));
     expect(html).toContain("Danificado");
     expect(html).toContain("Rasgo na costura");
+  });
+});
+
+describe("orientação de uso e previsão de troca", () => {
+  it("entrega com orientação registrada sai como Sim", () => {
+    expect(montarHtmlFichaEpi(dados())).toContain("Orientado");
+  });
+
+  it("entrega sem orientação sai marcada, não em branco", () => {
+    // NR-06 6.6.1 "d". Em branco leria como "nao se aplica".
+    const html = montarHtmlFichaEpi(
+      dados({ entregas: [{ ...ENTREGA, orientacao_uso: false }] })
+    );
+    expect(html).toContain("Não registrada");
+    expect(html).toContain("doc-inapto");
+  });
+
+  it("acusa a falta de orientação como pendência, citando a norma", () => {
+    const p = pendenciasFichaEpi(
+      dados({ entregas: [{ ...ENTREGA, orientacao_uso: false }] })
+    );
+    expect(p.join(" ")).toContain("orientação de uso");
+    expect(p.join(" ")).toContain('6.6.1 alínea "d"');
+  });
+
+  it("EPI sem vida útil cadastrada mostra sem prazo, não uma data inventada", () => {
+    const html = montarHtmlFichaEpi(dados(), new Date(2026, 7, 22));
+    expect(html).toContain("sem prazo");
+  });
+
+  it("com vida útil, calcula a troca a partir da entrega", () => {
+    // Entrega 10/03/2026 + 12 meses = 10/03/2027.
+    const html = montarHtmlFichaEpi(
+      dados({ entregas: [{ ...ENTREGA, epi: { ...LUVA, vida_util_meses: 12 } }] }),
+      new Date(2026, 7, 22)
+    );
+    expect(html).toContain("10/03/2027");
+  });
+
+  it("troca já vencida sai destacada", () => {
+    const html = montarHtmlFichaEpi(
+      dados({
+        entregas: [
+          { ...ENTREGA, data_entrega: "2024-01-10", epi: { ...LUVA, vida_util_meses: 6 } },
+        ],
+      }),
+      new Date(2026, 7, 22)
+    );
+    expect(html).toContain("(vencida)");
+  });
+
+  it("a coluna da troca é separada da do CA — são perguntas diferentes", () => {
+    const html = montarHtmlFichaEpi(dados());
+    expect(html).toContain("Troca prevista");
+    expect(html).toContain("<th>CA</th>");
   });
 });
 

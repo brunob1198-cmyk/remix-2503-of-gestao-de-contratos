@@ -4,6 +4,7 @@ import {
   useSgsstEpiEntregas,
   useSgsstEpiDevolucoes,
   useSgsstEpiHistoricoColaborador,
+  useSgsstFichaEpiDoColaborador,
   SgsstEpi,
   SgsstEpiEntrega,
   CategoriaEpi,
@@ -70,8 +71,33 @@ export default function SgsstEpisListPage() {
 
   const totalPagesCat = Math.ceil(totalCat / pageSizeCat) || 1;
 
-  const { entregas, isLoading: loadingEntregas, error: errEntregas, createEntrega, removeEntrega } = useSgsstEpiEntregas();
-  const { devolucoes, isLoading: loadingDevolucoes, error: errDevolucoes, createDevolucao } = useSgsstEpiDevolucoes();
+  // Entregas e devolucoes acumulam a cada reposicao de cada trabalhador. As duas
+  // consultas nao tinham limite nenhum e o PostgREST cortava no teto padrao em
+  // silencio — a tela mostrava lista incompleta sem dizer que era incompleta.
+  const [pageEnt, setPageEnt] = useState(0);
+  const [pageSizeEnt, setPageSizeEnt] = useState(25);
+  const [pageDev, setPageDev] = useState(0);
+  const [pageSizeDev, setPageSizeDev] = useState(25);
+
+  const {
+    entregas,
+    total: totalEntregas,
+    isLoading: loadingEntregas,
+    error: errEntregas,
+    createEntrega,
+    removeEntrega,
+  } = useSgsstEpiEntregas({ page: pageEnt, pageSize: pageSizeEnt });
+
+  const {
+    devolucoes,
+    total: totalDevolucoes,
+    isLoading: loadingDevolucoes,
+    error: errDevolucoes,
+    createDevolucao,
+  } = useSgsstEpiDevolucoes({ page: pageDev, pageSize: pageSizeDev });
+
+  const totalPagesEnt = Math.ceil(totalEntregas / pageSizeEnt) || 1;
+  const totalPagesDev = Math.ceil(totalDevolucoes / pageSizeDev) || 1;
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { empresa } = useEmpresaAtual();
   const { profile } = useAuth();
@@ -105,10 +131,16 @@ export default function SgsstEpisListPage() {
 
   const colabDaFicha = colaboradores.find((c) => c.id === selectedColabPosse) ?? null;
 
-  const entregasDaFicha = entregas.filter((e) => e.colaborador_id === selectedColabPosse);
-
-  const devolucoesDaFicha = devolucoes.filter((d) =>
-    entregasDaFicha.some((e) => e.id === d.entrega_id)
+  // Consulta propria: recortar a pagina carregada faria a ficha sair com as
+  // entregas dos ultimos registros da empresa e faltando as antigas — que sao
+  // justamente as que se contesta.
+  const {
+    entregas: entregasDaFicha,
+    devolucoes: devolucoesDaFicha,
+    isLoading: carregandoFicha,
+    truncado: fichaTruncada,
+  } = useSgsstFichaEpiDoColaborador(
+    selectedColabPosse !== "todos" ? selectedColabPosse : undefined
   );
 
   const emitirFichaEpi = async () => {
@@ -124,6 +156,13 @@ export default function SgsstEpisListPage() {
       empresa: empresa ?? null,
       geradoPor: profile?.nome ?? null,
     };
+
+    if (fichaTruncada) {
+      toast.warning("Histórico possivelmente incompleto", {
+        description:
+          "A consulta atingiu o limite de linhas. A ficha pode não conter as entregas mais antigas.",
+      });
+    }
 
     // Pendencia nao impede a emissao: a ficha sai marcando cada falta. Uma ficha
     // que esconde a entrega feita com CA vencido afirma mais do que os dados
@@ -556,6 +595,17 @@ export default function SgsstEpisListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageEnt + 1}
+                totalPages={totalPagesEnt}
+                onPageChange={(pg) => setPageEnt(pg - 1)}
+                itemsPerPage={pageSizeEnt}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeEnt(v);
+                  setPageEnt(0);
+                }}
+                totalItems={totalEntregas}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -601,6 +651,17 @@ export default function SgsstEpisListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageDev + 1}
+                totalPages={totalPagesDev}
+                onPageChange={(pg) => setPageDev(pg - 1)}
+                itemsPerPage={pageSizeDev}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeDev(v);
+                  setPageDev(0);
+                }}
+                totalItems={totalDevolucoes}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -663,7 +724,7 @@ export default function SgsstEpisListPage() {
                 variant="outline"
                 size="sm"
                 className="gap-1 text-xs"
-                disabled={!colabDaFicha || emitindoFicha}
+                disabled={!colabDaFicha || emitindoFicha || carregandoFicha}
                 onClick={emitirFichaEpi}
                 title="Emitir a ficha de entrega de EPI deste trabalhador em PDF"
               >

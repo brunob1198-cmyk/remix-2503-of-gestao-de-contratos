@@ -419,16 +419,26 @@ export function useSgsstEpiEntregas(params?: {
 }
 
 // 3. Hook Devoluções de EPI
-export function useSgsstEpiDevolucoes() {
+/**
+ * 3. Hook Devolucoes de EPI
+ *
+ * Mesma correcao das entregas: a consulta trazia todas as devolucoes da empresa
+ * sem limite, com `entrega:...(*, epi:sgsst_epis(*))` dentro. Passando do teto do
+ * PostgREST, a lista saia cortada em silencio.
+ */
+export function useSgsstEpiDevolucoes(params?: { page?: number; pageSize?: number }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: devolucoes = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_epi_devolucoes", empresaId],
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 100;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_epi_devolucoes", empresaId, page, pageSize],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      const { data, error, count } = await (supabase
         .from("sgsst_epi_devolucoes" as any)
         .select(`
           *,
@@ -442,13 +452,18 @@ export function useSgsstEpiDevolucoes() {
             epi:sgsst_epis(*)
           ),
           responsavel:profiles!sgsst_epi_devolucoes_responsavel_devolucao_id_fkey(id, nome)
-        `)
-        .order("data_devolucao", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("data_devolucao", { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1) as any);
 
       if (error) throw error;
-      return (data as SgsstEpiDevolucao[]) || [];
+
+      const rows = (data as SgsstEpiDevolucao[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
+
+  const devolucoes = data?.rows ?? [];
 
   const createDevolucao = useMutation({
     mutationFn: async ({
@@ -522,6 +537,7 @@ export function useSgsstEpiDevolucoes() {
 
   return {
     devolucoes,
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,
@@ -556,5 +572,80 @@ export function useSgsstEpiHistoricoColaborador(colaboradorId?: string) {
   return {
     historico,
     isLoading,
+  };
+}
+
+/**
+ * 5. Hook Ficha de EPI de um colaborador
+ *
+ * A tela pagina entregas e devolucoes, e isso e correto para navegar. Mas a ficha
+ * de entrega e do TRABALHADOR e cumulativa: montada a partir da pagina carregada,
+ * sairia com as entregas dos ultimos 25 registros da empresa — e faltando
+ * justamente as antigas, que sao as que se contesta.
+ *
+ * Por isso duas consultas proprias, ligadas so quando um colaborador esta
+ * selecionado: todas as entregas dele e as devolucoes dessas entregas.
+ */
+export const FICHA_EPI_LIMITE_LINHAS = 500;
+
+export function useSgsstFichaEpiDoColaborador(
+  colaboradorId?: string,
+  options?: { enabled?: boolean }
+) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+  const habilitado = !!colaboradorId && !!empresaId && options?.enabled !== false;
+
+  const entregas = useQuery({
+    queryKey: ["sgsst_ficha_epi_entregas", colaboradorId],
+    enabled: habilitado,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_epi_entregas" as any)
+        .select(`
+          *,
+          colaborador:sgsst_colaborador_dados(
+            id, cpf,
+            profile:profiles(id, nome),
+            recurso:recursos(id, nome),
+            funcao:sgsst_funcoes(id, nome)
+          ),
+          epi:sgsst_epis(*),
+          responsavel:profiles!sgsst_epi_entregas_responsavel_entrega_id_fkey(id, nome)
+        `)
+        .eq("colaborador_id", colaboradorId!)
+        .order("data_entrega", { ascending: true })
+        .limit(FICHA_EPI_LIMITE_LINHAS) as any);
+
+      if (error) throw error;
+      return (data as SgsstEpiEntrega[]) || [];
+    },
+  });
+
+  const idsDasEntregas = (entregas.data ?? []).map((e) => e.id);
+
+  const devolucoes = useQuery({
+    // Ordenado para a chave nao mudar so porque a lista chegou em outra ordem.
+    queryKey: ["sgsst_ficha_epi_devolucoes", [...idsDasEntregas].sort().join(",")],
+    enabled: habilitado && idsDasEntregas.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_epi_devolucoes" as any)
+        .select("*, responsavel:profiles!sgsst_epi_devolucoes_responsavel_devolucao_id_fkey(id, nome)")
+        .in("entrega_id", idsDasEntregas)
+        .order("data_devolucao", { ascending: true })
+        .limit(FICHA_EPI_LIMITE_LINHAS) as any);
+
+      if (error) throw error;
+      return (data as SgsstEpiDevolucao[]) || [];
+    },
+  });
+
+  return {
+    entregas: entregas.data ?? [],
+    devolucoes: devolucoes.data ?? [],
+    isLoading: entregas.isLoading || devolucoes.isLoading,
+    error: entregas.error ?? devolucoes.error,
+    truncado: (entregas.data ?? []).length >= FICHA_EPI_LIMITE_LINHAS,
   };
 }

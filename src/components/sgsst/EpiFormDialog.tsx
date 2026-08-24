@@ -33,6 +33,7 @@ export function EpiFormDialog({
   const [unidadeMedida, setUnidadeMedida] = useState("UN");
   const [estoqueAtual, setEstoqueAtual] = useState(10);
   const [estoqueMinimo, setEstoqueMinimo] = useState(5);
+  const [vidaUtilMeses, setVidaUtilMeses] = useState<number | "">("");
   const [status, setStatus] = useState<StatusEpi>("ATIVO");
   const [descricao, setDescricao] = useState("");
 
@@ -48,6 +49,11 @@ export function EpiFormDialog({
       setUnidadeMedida(epi.unidade_medida || "UN");
       setEstoqueAtual(epi.estoque_atual || 0);
       setEstoqueMinimo(epi.estoque_minimo || 5);
+      setVidaUtilMeses(
+        epi.vida_util_meses !== null && epi.vida_util_meses !== undefined
+          ? epi.vida_util_meses
+          : ""
+      );
       setStatus(epi.status || "ATIVO");
       setDescricao(epi.descricao || "");
     } else {
@@ -61,6 +67,7 @@ export function EpiFormDialog({
       setUnidadeMedida("UN");
       setEstoqueAtual(10);
       setEstoqueMinimo(5);
+      setVidaUtilMeses("");
       setStatus("ATIVO");
       setDescricao("");
     }
@@ -81,6 +88,7 @@ export function EpiFormDialog({
       unidade_medida: unidadeMedida,
       estoque_atual: Number(estoqueAtual) || 0,
       estoque_minimo: Number(estoqueMinimo) || 5,
+      vida_util_meses: vidaUtilMeses !== "" ? Number(vidaUtilMeses) : null,
       status,
       descricao: descricao.trim() || null,
     });
@@ -223,6 +231,24 @@ export function EpiFormDialog({
                 onChange={(e) => setEstoqueMinimo(Number(e.target.value))}
                 required
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="vidaUtil">Vida útil (meses)</Label>
+              <Input
+                id="vidaUtil"
+                type="number"
+                min={1}
+                placeholder="Em branco = sem prazo"
+                value={vidaUtilMeses}
+                onChange={(e) =>
+                  setVidaUtilMeses(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Contada da entrega, para prever a troca. É diferente da validade do CA: o
+                CA é do modelo e vence para todos na mesma data.
+              </p>
             </div>
 
             <div className="space-y-1.5">

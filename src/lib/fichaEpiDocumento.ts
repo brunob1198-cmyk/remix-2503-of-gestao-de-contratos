@@ -6,6 +6,7 @@ import {
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import type { SgsstEpiEntrega, SgsstEpiDevolucao } from "@/hooks/sgsst/useSgsstEpis";
+import { previsaoTroca } from "@/utils/sgsstEpiVidaUtil";
 
 /**
  * Ficha de Entrega de EPI — NR-06 item 6.6.1 alínea "h".
@@ -129,10 +130,41 @@ export function pendenciasFichaEpi(dados: FichaEpiDados): string[] {
     p.push(`${semResponsavel.length} entrega(s) sem responsável pelo fornecimento registrado`);
   }
 
+  const semOrientacao = entregas.filter((e) => !e.orientacao_uso);
+  if (semOrientacao.length > 0) {
+    p.push(
+      `${semOrientacao.length} entrega(s) sem registro de orientação de uso — a NR-06 6.6.1 alínea "d" obriga orientar e treinar`
+    );
+  }
+
   return p;
 }
 
-export function montarHtmlFichaEpi(dados: FichaEpiDados): string {
+/**
+ * Texto da previsao de troca de uma entrega.
+ *
+ * Sem vida util cadastrada no EPI, a coluna diz que nao ha prazo — e nao inventa
+ * um. Um padrao aplicado a tudo cobraria troca de cinto de seguranca no ritmo de
+ * luva de raspa, e o usuario aprenderia a ignorar o aviso.
+ */
+function textoDaTroca(entrega: SgsstEpiEntrega, hoje: Date): string {
+  const r = previsaoTroca({
+    dataEntrega: entrega.data_entrega,
+    vidaUtilMeses: entrega.epi?.vida_util_meses ?? null,
+    hoje,
+  });
+
+  if (r.situacao === "SEM_PRAZO") return `<span class="doc-neutro">sem prazo</span>`;
+  if (r.situacao === "VENCIDO") {
+    return `<span class="doc-inapto">${dataBr(r.dataPrevista)} (vencida)</span>`;
+  }
+  if (r.situacao === "PROXIMO_DA_TROCA") {
+    return `<span class="doc-restr">${dataBr(r.dataPrevista)}</span>`;
+  }
+  return dataBr(r.dataPrevista);
+}
+
+export function montarHtmlFichaEpi(dados: FichaEpiDados, hoje = new Date()): string {
   const {
     entregas,
     devolucoes,
@@ -181,6 +213,12 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados): string {
         }</td>
         <td class="doc-num">${esc(e.quantidade)}</td>
         <td>${esc(MOTIVO_LABEL[e.motivo] ?? e.motivo)}</td>
+        <td>${
+          e.orientacao_uso
+            ? "Sim"
+            : `<span class="doc-inapto">Não registrada</span>`
+        }</td>
+        <td>${textoDaTroca(e, hoje)}</td>
         <td class="doc-num">${saldo}</td>
         <td>${esc(e.responsavel?.nome) || faltando("não registrado")}</td>
         <td class="doc-assin-linha"></td>
@@ -248,14 +286,15 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados): string {
                   <thead>
                     <tr>
                       <th>Data</th><th>EPI</th><th>CA</th><th>Qtd.</th>
-                      <th>Motivo</th><th>Em posse</th><th>Entregue por</th>
+                      <th>Motivo</th><th>Orientado</th><th>Troca prevista</th>
+                      <th>Em posse</th><th>Entregue por</th>
                       <th>Recebi o EPI (assinatura)</th>
                     </tr>
                   </thead>
                   <tbody>${linhasEntrega}</tbody>
                   <tfoot>
                     <tr>
-                      <td colspan="5"><strong>Total sob responsabilidade do trabalhador</strong></td>
+                      <td colspan="7"><strong>Total sob responsabilidade do trabalhador</strong></td>
                       <td class="doc-num"><strong>${totalEmPosse}</strong></td>
                       <td colspan="2"></td>
                     </tr>

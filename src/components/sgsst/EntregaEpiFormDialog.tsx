@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SgsstEpiEntregaInput, MotivoEntregaEpi, useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { PackageCheck, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EntregaEpiFormDialogProps {
   open: boolean;
@@ -32,6 +33,10 @@ export function EntregaEpiFormDialog({
   const [motivo, setMotivo] = useState<MotivoEntregaEpi>("PRIMEIRA_ENTREGA");
   const [tamanhoModelo, setTamanhoModelo] = useState("");
   const [observacao, setObservacao] = useState("");
+  // NR-06 6.6.1 "d": orientar o trabalhador sobre uso, guarda e conservacao. O
+  // padrao e falso de proposito — marcar por padrao transformaria a exigencia da
+  // norma em texto decorativo que ninguem le.
+  const [orientacaoUso, setOrientacaoUso] = useState(false);
 
   useEffect(() => {
     setColaboradorId("");
@@ -41,6 +46,7 @@ export function EntregaEpiFormDialog({
     setMotivo("PRIMEIRA_ENTREGA");
     setTamanhoModelo("");
     setObservacao("");
+    setOrientacaoUso(false);
   }, [open]);
 
   const selectedEpi = epis.find((e) => e.id === epiId);
@@ -59,6 +65,7 @@ export function EntregaEpiFormDialog({
       tamanho_modelo: tamanhoModelo.trim() || null,
       confirmacao_recebimento: true,
       observacao: observacao.trim() || null,
+      orientacao_uso: orientacaoUso,
     });
 
     onOpenChange(false);
@@ -168,6 +175,25 @@ export function EntregaEpiFormDialog({
               value={tamanhoModelo}
               onChange={(e) => setTamanhoModelo(e.target.value)}
             />
+          </div>
+
+          {/* NR-06 6.6.1 alínea "d" */}
+          <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3">
+            <Checkbox
+              id="orientacao"
+              checked={orientacaoUso}
+              onCheckedChange={(v) => setOrientacaoUso(v === true)}
+              className="mt-0.5"
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="orientacao" className="text-xs font-semibold cursor-pointer">
+                Trabalhador orientado quanto ao uso, guarda e conservação
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Exigência da NR-06 item 6.6.1 alínea "d". A ficha de entrega mostra esta
+                marcação por fornecimento — entrega sem orientação sai apontada.
+              </p>
+            </div>
           </div>
 
           <div className="space-y-1.5">
