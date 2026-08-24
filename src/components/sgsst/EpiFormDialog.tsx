@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstEpi, SgsstEpiInput, CategoriaEpi, StatusEpi } from "@/hooks/sgsst/useSgsstEpis";
 import { Shield } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EpiFormDialogProps {
   open: boolean;
@@ -34,6 +35,9 @@ export function EpiFormDialog({
   const [estoqueAtual, setEstoqueAtual] = useState(10);
   const [estoqueMinimo, setEstoqueMinimo] = useState(5);
   const [vidaUtilMeses, setVidaUtilMeses] = useState<number | "">("");
+  // NR-06 6.6.1 alinea "f": higienizacao e manutencao periodica.
+  const [exigeHigienizacao, setExigeHigienizacao] = useState(false);
+  const [higienizacaoDias, setHigienizacaoDias] = useState<number | "">("");
   const [status, setStatus] = useState<StatusEpi>("ATIVO");
   const [descricao, setDescricao] = useState("");
 
@@ -54,6 +58,13 @@ export function EpiFormDialog({
           ? epi.vida_util_meses
           : ""
       );
+      setExigeHigienizacao(!!epi.exige_higienizacao);
+      setHigienizacaoDias(
+        epi.higienizacao_periodicidade_dias !== null &&
+          epi.higienizacao_periodicidade_dias !== undefined
+          ? epi.higienizacao_periodicidade_dias
+          : ""
+      );
       setStatus(epi.status || "ATIVO");
       setDescricao(epi.descricao || "");
     } else {
@@ -68,6 +79,8 @@ export function EpiFormDialog({
       setEstoqueAtual(10);
       setEstoqueMinimo(5);
       setVidaUtilMeses("");
+      setExigeHigienizacao(false);
+      setHigienizacaoDias("");
       setStatus("ATIVO");
       setDescricao("");
     }
@@ -89,6 +102,9 @@ export function EpiFormDialog({
       estoque_atual: Number(estoqueAtual) || 0,
       estoque_minimo: Number(estoqueMinimo) || 5,
       vida_util_meses: vidaUtilMeses !== "" ? Number(vidaUtilMeses) : null,
+      exige_higienizacao: exigeHigienizacao,
+      higienizacao_periodicidade_dias:
+        higienizacaoDias !== "" ? Number(higienizacaoDias) : null,
       status,
       descricao: descricao.trim() || null,
     });
@@ -231,6 +247,52 @@ export function EpiFormDialog({
                 onChange={(e) => setEstoqueMinimo(Number(e.target.value))}
                 required
               />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-3">
+              {/* NR-06 6.6.1 alínea "f" */}
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="exigeHig"
+                    checked={exigeHigienizacao}
+                    onCheckedChange={(v) => setExigeHigienizacao(v === true)}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="exigeHig" className="text-xs font-semibold cursor-pointer">
+                      Equipamento reutilizável — exige higienização/manutenção
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Marque para cinto, máscara facial, protetor tipo concha. Deixe
+                      desmarcado para descartável: cobrar higienização de máscara PFF1 é
+                      ruído, e ruído ensina a ignorar o aviso verdadeiro.
+                    </p>
+                  </div>
+                </div>
+
+                {exigeHigienizacao && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="higDias">Periodicidade da higienização (dias)</Label>
+                    <Input
+                      id="higDias"
+                      type="number"
+                      min={1}
+                      placeholder="Em branco = sem periodicidade definida"
+                      value={higienizacaoDias}
+                      onChange={(e) =>
+                        setHigienizacaoDias(
+                          e.target.value === "" ? "" : Number(e.target.value)
+                        )
+                      }
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Sem periodicidade, o painel não cobra prazo — diz "sem
+                      periodicidade" em vez de inventar um número.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">

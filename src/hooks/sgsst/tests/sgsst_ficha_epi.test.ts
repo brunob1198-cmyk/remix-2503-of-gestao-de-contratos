@@ -10,6 +10,7 @@ import type {
   SgsstEpi,
   SgsstEpiEntrega,
   SgsstEpiDevolucao,
+  SgsstEpiManutencao,
 } from "@/hooks/sgsst/useSgsstEpis";
 
 /**
@@ -57,6 +58,44 @@ const DEVOLUCAO: SgsstEpiDevolucao = {
   condicao_epi: "DANIFICADO",
   motivo: "Rasgo na costura",
   responsavel: { id: "u1", nome: "Ana Técnica" },
+};
+
+const CINTO: SgsstEpi = {
+  id: "epi2",
+  empresa_id: "e1",
+  nome: "Cinto paraquedista",
+  categoria: "Proteção Contra Quedas",
+  ca: "40021",
+  validade_ca: "2028-01-01",
+  unidade_medida: "UN",
+  estoque_atual: 5,
+  estoque_minimo: 1,
+  status: "ATIVO",
+  exige_higienizacao: true,
+  higienizacao_periodicidade_dias: 30,
+};
+
+const ENTREGA_CINTO: SgsstEpiEntrega = {
+  ...ENTREGA,
+  id: "en9",
+  epi_id: "epi2",
+  quantidade: 1,
+  data_entrega: "2026-01-10",
+  epi: CINTO,
+};
+
+const EXECUCAO: SgsstEpiManutencao = {
+  id: "mn1",
+  empresa_id: "e1",
+  epi_id: "epi2",
+  entrega_id: "en9",
+  tipo: "HIGIENIZACAO",
+  data_execucao: "2026-06-01",
+  quantidade: 1,
+  resultado: "APROVADO",
+  executado_por_nome: "Lavanderia Industrial XYZ",
+  proxima_prevista: "2026-07-01",
+  epi: CINTO,
 };
 
 function dados(over: Partial<FichaEpiDados> = {}): FichaEpiDados {
@@ -305,6 +344,95 @@ describe("orientação de uso e previsão de troca", () => {
     const html = montarHtmlFichaEpi(dados());
     expect(html).toContain("Troca prevista");
     expect(html).toContain("<th>CA</th>");
+  });
+});
+
+describe("higienização e manutenção — NR-06 6.6.1 alínea \"f\"", () => {
+  const HOJE = new Date(2026, 7, 23); // 23/08/2026
+
+  it("a seção existe mesmo sem registro, dizendo que não há", () => {
+    // Secao que desaparece quando esta vazia le como "nao se aplica".
+    const html = montarHtmlFichaEpi(dados(), HOJE);
+    expect(html).toContain("Higienização e manutenção");
+    expect(html).toContain("Nenhuma higienização");
+    expect(html).toContain("6.6.1");
+  });
+
+  it("lista as execuções com executante e resultado", () => {
+    const html = montarHtmlFichaEpi(
+      dados({ entregas: [ENTREGA_CINTO], manutencoes: [EXECUCAO] }),
+      HOJE
+    );
+    expect(html).toContain("Lavanderia Industrial XYZ");
+    expect(html).toContain("Higienização");
+    expect(html).toContain("01/06/2026");
+  });
+
+  it("descarte sai destacado na lista", () => {
+    const html = montarHtmlFichaEpi(
+      dados({
+        entregas: [ENTREGA_CINTO],
+        manutencoes: [{ ...EXECUCAO, resultado: "DESCARTADO" }],
+      }),
+      HOJE
+    );
+    expect(html).toContain("Descartado");
+    expect(html).toContain("doc-inapto");
+  });
+
+  it("aponta equipamento reutilizável em posse com higienização atrasada", () => {
+    // Ultima em 01/06 + 30 dias = 01/07, ja passou em 23/08.
+    const html = montarHtmlFichaEpi(
+      dados({ entregas: [ENTREGA_CINTO], manutencoes: [EXECUCAO] }),
+      HOJE
+    );
+    expect(html).toContain("higienização pendente");
+    expect(html).toContain("Cinto paraquedista");
+  });
+
+  it("equipamento em dia não é apontado", () => {
+    const html = montarHtmlFichaEpi(
+      dados({
+        entregas: [ENTREGA_CINTO],
+        manutencoes: [{ ...EXECUCAO, data_execucao: "2026-08-20" }],
+      }),
+      HOJE
+    );
+    expect(html).not.toContain("higienização pendente");
+  });
+
+  it("descartável nunca é cobrado por higienização", () => {
+    // A luva do fixture nao exige higienizacao. Cobrar dela seria ruido.
+    const html = montarHtmlFichaEpi(dados({ manutencoes: [] }), HOJE);
+    expect(html).not.toContain("higienização pendente");
+  });
+
+  it("peça já devolvida sai da conta de pendência", () => {
+    // Deixou de ser responsabilidade deste trabalhador.
+    const html = montarHtmlFichaEpi(
+      dados({
+        entregas: [ENTREGA_CINTO],
+        devolucoes: [{ ...DEVOLUCAO, entrega_id: "en9", quantidade_devolvida: 1 }],
+        manutencoes: [],
+      }),
+      HOJE
+    );
+    expect(html).not.toContain("higienização pendente");
+  });
+
+  it("acusa a pendência de higienização citando a norma", () => {
+    const p = pendenciasFichaEpi(
+      dados({ entregas: [ENTREGA_CINTO], manutencoes: [EXECUCAO] })
+    );
+    expect(p.join(" ")).toContain("higienização pendente");
+    expect(p.join(" ")).toContain('6.6.1 alínea "f"');
+  });
+
+  it("nunca higienizado é pendência tanto quanto atrasado", () => {
+    const p = pendenciasFichaEpi(
+      dados({ entregas: [ENTREGA_CINTO], manutencoes: [] })
+    );
+    expect(p.join(" ")).toContain("higienização pendente");
   });
 });
 
