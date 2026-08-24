@@ -36,6 +36,12 @@ import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { toast } from "sonner";
 import html2pdf from "html2pdf.js";
+import { escDoc } from "@/lib/sgsstDocumentoEstilos";
+import { seloDaFoto } from "@/utils/fotoGeolocalizada";
+import {
+  temMetadadoDeCaptura,
+  SeloDaFotoNaMiniatura,
+} from "@/components/comum/SeloDaFotoNaMiniatura";
 import { pdfGlobalStyles, getLogoHtml, getClientLogoHtml, getPdfOptions } from "@/lib/pdfTemplates";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -226,13 +232,42 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
           const title = first.item_evidencia
             ? `${first.item_evidencia.codigo} — ${first.item_evidencia.descricao}`
             : (first.classificacao && first.classificacao !== '__geral__' ? first.classificacao : 'Geral');
-          const renderCard = (f: RdoFoto) => `
+          const renderCard = (f: RdoFoto) => {
+            /**
+             * O selo da foto: onde, quando e por qual meio.
+             *
+             * O relatório é o que o cliente lê e a medição é paga em cima dele. A
+             * glosa costuma vir de foto que o fiscal não reconhece como sendo
+             * daquela frente de serviço — e até aqui a folha não trazia nada com
+             * que responder.
+             *
+             * Foto anterior a esta versão não tem metadado nenhum, e aí o selo não
+             * sai: escrever "sem localização" numa foto de 2025 acusaria de falta
+             * algo que o sistema nem pedia.
+             */
+            const selo = temMetadadoDeCaptura(f)
+              ? seloDaFoto({
+                  coord: {
+                    latitude: f.latitude,
+                    longitude: f.longitude,
+                    precisao: f.precisao_metros,
+                  },
+                  capturadaEm: f.capturada_em,
+                  origem: f.origem_captura,
+                  motivoSemCoordenada: f.motivo_sem_geo,
+                })
+              : null;
+
+            return `
               <div class="foto-card">
                 <img src="${resolveFileUrl(f.url, false, 'diario_fotos')}" alt="foto" loading="lazy" />
                 <div class="foto-label-bar">
                   <span class="foto-label-badge" style="background-color: ${classificacaoColors[first.classificacao || ''] || '#6b7280'}; color: white;">${title}</span>
                 </div>
+                ${f.legenda ? `<div class="foto-legenda-doc">${escDoc(f.legenda)}</div>` : ''}
+                ${selo ? `<div class="foto-selo${selo.alerta ? ' alerta' : ''}">${escDoc(selo.texto)}</div>` : ''}
               </div>`;
+          };
           
           const rows: string[] = [];
           for (let i = 0; i < photos.length; i += 2) {
@@ -1535,6 +1570,9 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                           )}>
                             {label}
                           </span>
+                          {/* O mesmo selo que sai no PDF. Quem revisa o relatório
+                              antes de enviar vê aqui o que o cliente vai ver. */}
+                          <SeloDaFotoNaMiniatura foto={f} className="px-0" />
                         </div>
                       </div>
                     ))}

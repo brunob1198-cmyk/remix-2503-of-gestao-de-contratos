@@ -10,6 +10,18 @@ export interface RdoFoto {
   legenda: string | null;
   diario_producao_id: string | null;
   item_evidencia?: { codigo: string; descricao: string } | null;
+  /**
+   * Onde e quando a foto foi tirada. Nulos em foto anterior a esta versão.
+   *
+   * Entra no relatório porque a medição é paga em cima dele, e a glosa costuma vir
+   * de foto que o fiscal não reconhece como sendo daquela frente de serviço.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao_metros?: number | null;
+  capturada_em?: string | null;
+  origem_captura?: "CAMERA" | "ARQUIVO" | null;
+  motivo_sem_geo?: string | null;
 }
 
 export interface RdoDiarioResumo {
@@ -80,7 +92,9 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           const chunk = ids.slice(i, i + CHUNK_SIZE);
           const { data, error } = await supabase
             .from("diario_fotos")
-            .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id")
+            .select(
+              "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo"
+            )
             .in("diario_id", chunk)
             .limit(MAX_PHOTOS - all.length);
           

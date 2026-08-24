@@ -56,6 +56,14 @@ interface CapturaFotoCampoProps {
   comGeolocalizacao?: boolean;
   /** Aceita mais de um arquivo na escolha pela galeria. */
   multiplo?: boolean;
+  /**
+   * Tipos aceitos no botao de arquivo. A camera fica sempre em `image/*` — camera
+   * nao devolve PDF.
+   *
+   * Existe porque o Diario de Obra aceita PDF de ART e converte cada pagina em
+   * imagem: prender o componente a `image/*` teria custado esse recurso.
+   */
+  aceitarArquivo?: string;
   className?: string;
 }
 
@@ -66,6 +74,7 @@ export function CapturaFotoCampo({
   rotuloArquivo = "Escolher arquivo",
   comGeolocalizacao = true,
   multiplo = false,
+  aceitarArquivo = "image/*",
   className,
 }: CapturaFotoCampoProps) {
   const inputCamera = useRef<HTMLInputElement>(null);
@@ -146,7 +155,7 @@ export function CapturaFotoCampo({
         <input
           ref={inputArquivo}
           type="file"
-          accept="image/*"
+          accept={aceitarArquivo}
           multiple={multiplo}
           className="hidden"
           onChange={(e) => processar(e.target.files, "ARQUIVO")}

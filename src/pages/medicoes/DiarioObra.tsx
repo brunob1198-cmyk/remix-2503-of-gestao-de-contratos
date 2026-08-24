@@ -17,6 +17,7 @@ import { SmartImage } from "@/components/ui/SmartImage";
 import ProducaoSection from "@/components/diario/ProducaoSection";
 import EquipeSection from "@/components/diario/EquipeSection";
 import FotosSection from "@/components/diario/FotosSection";
+import type { FotoCapturada } from "@/components/comum/CapturaFotoCampo";
 
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
@@ -339,6 +340,59 @@ export default function DiarioObraPage() {
     }
     setUploadProgress(null);
     e.target.value = "";
+  };
+
+  /**
+   * Captura com câmera e com a coordenada do instante da foto.
+   *
+   * O caminho antigo (`handleUploadFoto`) continua existindo para o
+   * arrastar-e-soltar, que não tem como carregar metadado de captura. Este é o
+   * caminho de quem está na frente de serviço.
+   *
+   * O PDF é expandido aqui, e não no componente de captura: uma ART de três
+   * páginas vira três fotos, e todas as três herdam a MESMA coordenada e o mesmo
+   * instante — porque foi um envio só, no mesmo lugar.
+   */
+  const handleCapturarFoto = async (foto: FotoCapturada, classificacao: string, diarioProducaoId?: string) => {
+    const diarioId = await ensureDiario();
+    if (!diarioId) return;
+
+    const ehPdf = foto.arquivo.type === "application/pdf" || /\.pdf$/i.test(foto.arquivo.name);
+
+    let arquivos: File[] = [foto.arquivo];
+    if (ehPdf) {
+      const { expandPdfsToImages } = await import("@/lib/pdfToImages");
+      arquivos = await expandPdfsToImages([foto.arquivo]);
+    }
+
+    setUploadProgress({ current: 0, total: arquivos.length });
+
+    for (const arquivo of arquivos) {
+      try {
+        const { thumbUrl, mediumUrl, originalUrl } = await uploadImageWithVariants(arquivo);
+        await addFoto.mutateAsync({
+          diario_id: diarioId,
+          url: originalUrl,
+          thumb_url: thumbUrl,
+          thumb_600_url: mediumUrl,
+          classificacao,
+          ...(diarioProducaoId ? { diario_producao_id: diarioProducaoId } : {}),
+          latitude: foto.coordenada?.latitude ?? null,
+          longitude: foto.coordenada?.longitude ?? null,
+          precisao_metros: foto.coordenada?.precisao ?? null,
+          capturada_em: foto.capturadaEm,
+          origem_captura: foto.origem,
+          // Excludente com a coordenada no banco: o motivo só vai quando de fato
+          // não houve ponto.
+          motivo_sem_geo: foto.coordenada ? null : foto.motivoSemGeo,
+        });
+        setUploadProgress(prev => (prev ? { ...prev, current: prev.current + 1 } : null));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    setUploadProgress(null);
   };
 
   const handleAddEquipe = useCallback(async (eqRecursoId: string, eqHorasStr: string, eqCustoHoraStr: string) => {
@@ -924,6 +978,8 @@ export default function DiarioObraPage() {
               setPhotoView={setPhotoView}
               onReorder={ordens => reordenarFotos.mutate(ordens)}
               onUpdateLegenda={(id, legenda) => atualizarFoto.mutate({ id, legenda })}
+              onCapturar={(foto, group) => handleCapturarFoto(foto, group)}
+              podeCapturar={!uploadProgress}
             />
 
             <Card>

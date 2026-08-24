@@ -24,6 +24,19 @@ export interface DiarioCampoFoto {
   thumb_600_url?: string | null;
   legenda: string | null;
   created_at: string | null;
+  /**
+   * Onde e quando a foto foi tirada, que não é onde e quando ela foi enviada.
+   *
+   * O Diário de Campo enfileira as fotos e envia quando o sinal volta, então
+   * `created_at` é hora de upload e `capturada_em` é hora da foto. Nulos em foto
+   * anterior a esta versão.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao_metros?: number | null;
+  capturada_em?: string | null;
+  origem_captura?: "CAMERA" | "ARQUIVO" | null;
+  motivo_sem_geo?: string | null;
 }
 
 /** Fetches ALL activities for a given date + projeto (optionally filtered by site) */
