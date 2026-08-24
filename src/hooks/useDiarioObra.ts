@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import type { OrigemFoto } from "@/utils/fotoGeolocalizada";
 
 export interface DiarioObra {
   id: string;
@@ -67,6 +68,19 @@ export interface DiarioFoto {
   classificacao: string;
   legenda: string | null;
   ordem?: number | null;
+  /**
+   * Onde, quando e por qual meio a foto foi feita.
+   *
+   * Nulos em toda foto anterior a esta versão: o diário guardava grupo, ordem e
+   * legenda, e não guardava nem onde nem quando. O selo impresso no relatório diz
+   * "sem localização registrada" nesse caso, em vez de inventar um ponto.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao_metros?: number | null;
+  capturada_em?: string | null;
+  origem_captura?: OrigemFoto | null;
+  motivo_sem_geo?: string | null;
 }
 
 export function useDiarioObra(siteId?: string, data?: string) {
@@ -725,7 +739,11 @@ export function useDiarioObra(siteId?: string, data?: string) {
       while (true) {
         const { data: d, error } = await supabase
           .from("diario_fotos")
-          .select("id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem")
+          // A geolocalização entra na seleção porque o selo é montado dela — tanto
+          // na miniatura da tela quanto debaixo da foto no relatório emitido.
+          .select(
+            "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo"
+          )
           .eq("diario_id", diario.id)
           .order("ordem", { ascending: true })
           .order("created_at", { ascending: true })
@@ -748,11 +766,19 @@ export function useDiarioObra(siteId?: string, data?: string) {
       url: string; 
       thumb_url?: string | null; 
       thumb_600_url?: string | null;
-      classificacao: string; 
-      legenda?: string; 
-      diario_producao_id?: string 
+      classificacao: string;
+      legenda?: string;
+      diario_producao_id?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+      precisao_metros?: number | null;
+      capturada_em?: string | null;
+      origem_captura?: OrigemFoto | null;
+      motivo_sem_geo?: string | null;
     }) => {
-      const { error } = await supabase.from("diario_fotos").insert([item]);
+      // `as never` porque as colunas de geolocalização são novas e o `types.ts`
+      // gerado ainda não as conhece. O trigger do banco valida a coerência.
+      const { error } = await supabase.from("diario_fotos").insert([item] as never);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["diario_fotos"] }),

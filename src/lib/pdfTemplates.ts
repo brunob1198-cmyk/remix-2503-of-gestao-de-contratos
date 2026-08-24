@@ -106,6 +106,11 @@ export const pdfGlobalStyles = `
     .foto-row .foto-card { width: calc(50% - 8px); }
     /* Group label bar below each photo */
     .foto-label-bar { padding: 6px 10px 8px; background: #fff; display: flex; align-items: center; justify-content: flex-start; min-height: 28px; }
+    /* Selo da foto: onde, quando e por qual meio. E o que separa evidencia de
+       ilustracao — sem ele a foto no relatorio nao prova de que frente de servico e. */
+    .foto-selo { padding: 0 10px 7px; background: #fff; font-size: 7.5px; line-height: 1.25; color: #64748b; }
+    .foto-selo.alerta { color: #b45309; }
+    .foto-legenda-doc { padding: 0 10px 6px; background: #fff; font-size: 8.5px; line-height: 1.3; color: #334155; }
     .foto-label-badge { display: inline-flex; align-items: center; justify-content: center; padding: 0 10px; border-radius: 20px; background-color: #059669; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; line-height: 24px; text-align: center; height: 24px; vertical-align: middle; }
     /* Section group header above each set of photos */
     .foto-group-header { font-size: 12px; font-weight: 700; color: #065f46; background: #d1fae5; border-left: 4px solid #059669; padding: 0 12px; border-radius: 0 4px 4px 0; margin: 14px 0 8px; page-break-after: avoid; display: flex; align-items: center; justify-content: flex-start; height: 32px; line-height: 32px; }

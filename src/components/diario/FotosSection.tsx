@@ -17,6 +17,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { CapturaFotoCampo, type FotoCapturada } from "@/components/comum/CapturaFotoCampo";
+import { SeloDaFotoNaMiniatura } from "@/components/comum/SeloDaFotoNaMiniatura";
 
 interface DeleteAllButtonProps {
   label: string;
@@ -59,6 +61,16 @@ interface FotosSectionProps {
   producoes?: any[];
   onReorder?: (ordens: Array<{ id: string; ordem: number }>) => void;
   onUpdateLegenda?: (id: string, legenda: string) => void;
+  /**
+   * Captura com câmera e com a coordenada do instante da foto.
+   *
+   * Separado do `onUpload` porque este carrega metadado que o evento de `<input>`
+   * não tem. Enquanto ausente, a seção continua funcionando pelo caminho antigo —
+   * o que mantém o arrastar-e-soltar e o PDF de ART sem geolocalização.
+   */
+  onCapturar?: (foto: FotoCapturada, classificacao: string) => void | Promise<void>;
+  /** Falso desativa os botões durante um envio em curso. */
+  podeCapturar?: boolean;
 }
 
 /** Campo de descrição individual da foto, com salvamento no blur/Enter. */
@@ -268,6 +280,11 @@ function PhotoGrid({
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+          {/* O selo fica na própria miniatura: quem revisa o diário antes de
+              enviar ao cliente vê na hora qual foto não tem localização, em vez
+              de descobrir na glosa da medição. */}
+          <SeloDaFotoNaMiniatura foto={f} />
+
           {onUpdateLegenda && (
             <PhotoCaptionField fotoId={f.id} legenda={f.legenda} onSave={onUpdateLegenda} />
           )}
@@ -294,6 +311,8 @@ function FotosSection({
   producoes = [],
   onReorder,
   onUpdateLegenda,
+  onCapturar,
+  podeCapturar = true,
 }: FotosSectionProps) {
   const [newGroupName, setNewGroupName] = useState("");
   const [dragActiveGroup, setDragActiveGroup] = useState<string | null>(null);
@@ -413,18 +432,35 @@ function FotosSection({
                   <Badge variant="outline" className="text-[10px]">{groupPhotos.length}</Badge>
                 </div>
                 <div className="flex gap-1">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    id={`foto-${group}`}
-                    ref={el => (photoGroupUploadRefs.current[group] = el)}
-                    onChange={e => handleUploadWithPdf(e, group)}
-                  />
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
-                    <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos/PDF
-                  </Button>
+                  {onCapturar ? (
+                    /* Câmera direto e coordenada no instante da foto. Antes o único
+                       caminho era o seletor de arquivos: quem estava na frente de
+                       serviço tinha de sair do app, fotografar e voltar procurar o
+                       arquivo — e a foto entrava sem dizer onde foi tirada. */
+                    <CapturaFotoCampo
+                      onCapturar={(foto) => onCapturar(foto, group)}
+                      disabled={!podeCapturar}
+                      multiplo
+                      rotuloCamera="Tirar foto"
+                      rotuloArquivo="Fotos / PDF"
+                      aceitarArquivo="image/*,application/pdf"
+                    />
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        id={`foto-${group}`}
+                        ref={el => (photoGroupUploadRefs.current[group] = el)}
+                        onChange={e => handleUploadWithPdf(e, group)}
+                      />
+                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => photoGroupUploadRefs.current[group]?.click()}>
+                        <Camera className="h-3.5 w-3.5 mr-1" /> Add Fotos/PDF
+                      </Button>
+                    </>
+                  )}
                   <DeleteAllButton
                     label={group}
                     count={groupPhotos.length}

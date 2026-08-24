@@ -25,6 +25,8 @@ import type { DiarioCalendarioEntry } from "@/components/medicoes/DiarioCalendar
 import { getUploadQueue, updateUploadStatus, addToUploadQueue, UploadItem, clearCompletedUploads, removeFromUploadQueue } from "@/lib/db";
 
 import { uploadImage, verifyImageUrl, uploadImageWithVariants } from "@/services/uploadImage";
+import { getCurrentDeviceLocation } from "@/utils/geolocationUtils";
+import { SeloDaFotoNaMiniatura } from "@/components/comum/SeloDaFotoNaMiniatura";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
 
@@ -89,12 +91,22 @@ export default function DiarioCampoPage() {
 
           const { error: insertError } = await supabase
             .from("diario_campo_fotos")
-            .insert([{ 
-              diario_campo_id: item.diarioId, 
+            .insert([{
+              diario_campo_id: item.diarioId,
               url: originalUrl,
               thumb_url: thumbUrl,
-              thumb_600_url: mediumUrl
-            }])
+              thumb_600_url: mediumUrl,
+              // A coordenada vem DA FILA, do instante da foto. Ler o GPS aqui
+              // registraria onde estava quem enviou, que pode ser o alojamento
+              // horas depois. `as never` porque as colunas são novas e o
+              // `types.ts` gerado ainda não as conhece.
+              latitude: item.latitude ?? null,
+              longitude: item.longitude ?? null,
+              precisao_metros: item.precisaoMetros ?? null,
+              capturada_em: item.capturadaEm ?? null,
+              origem_captura: item.origemCaptura ?? null,
+              motivo_sem_geo: item.latitude != null ? null : item.motivoSemGeo ?? null,
+            }] as never)
             .select();
           
           if (insertError) throw insertError;
@@ -271,7 +283,11 @@ export default function DiarioCampoPage() {
     setActiveAtividadeIdx("new");
   };
 
-  const handleUploadFotos = async (files: FileList, input?: HTMLInputElement | null) => {
+  const handleUploadFotos = async (
+    files: FileList,
+    input?: HTMLInputElement | null,
+    origem: "CAMERA" | "ARQUIVO" = "ARQUIVO"
+  ) => {
     if (!files.length) return;
 
     let diarioId = currentAtividade?.id;
@@ -301,6 +317,33 @@ export default function DiarioCampoPage() {
       }
     }
 
+    /**
+     * A coordenada é lida UMA vez para o lote, aqui, e viaja na fila.
+     *
+     * Aqui é o instante da foto; o envio pode acontecer horas depois, quando o
+     * sinal voltar. Ler o GPS na hora do envio responderia onde estava quem
+     * enviou, que é outra pergunta.
+     *
+     * A falta de GPS não impede o envio: a foto entra marcada com o motivo.
+     * Bloquear deixaria a frente de serviço sem registro, que é o oposto do
+     * objetivo.
+     */
+    let coordenada: { latitude: number; longitude: number; precisao: number | null } | null = null;
+    let motivoSemGeo: string | null = null;
+
+    try {
+      const coords = await getCurrentDeviceLocation();
+      coordenada = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        precisao: coords.accuracy ?? null,
+      };
+    } catch (e) {
+      motivoSemGeo = (e as Error).message;
+    }
+
+    const capturadaEm = new Date().toISOString();
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const id = crypto.randomUUID();
@@ -308,7 +351,13 @@ export default function DiarioCampoPage() {
         id,
         diarioId,
         file,
-        status: 'pending'
+        status: 'pending',
+        latitude: coordenada?.latitude ?? null,
+        longitude: coordenada?.longitude ?? null,
+        precisaoMetros: coordenada?.precisao ?? null,
+        capturadaEm,
+        origemCaptura: origem,
+        motivoSemGeo,
       });
     }
 
@@ -590,7 +639,9 @@ export default function DiarioCampoPage() {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={e => e.target.files && handleUploadFotos(e.target.files, e.currentTarget)}
+                      onChange={e =>
+                        e.target.files && handleUploadFotos(e.target.files, e.currentTarget, "CAMERA")
+                      }
                     />
                   </div>
 
@@ -611,6 +662,7 @@ export default function DiarioCampoPage() {
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
+                          <SeloDaFotoNaMiniatura foto={foto} className="px-1.5 pb-1" />
                         </div>
                       ))}
                     </div>

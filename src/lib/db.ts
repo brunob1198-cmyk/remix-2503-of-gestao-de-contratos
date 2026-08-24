@@ -23,6 +23,21 @@ export interface UploadItem {
   error?: string;
   path?: string;
   url?: string;
+  /**
+   * Onde e quando a foto foi tirada, capturado no momento de entrar na fila.
+   *
+   * Precisa viajar NA FILA, e não ser lido na hora do envio: a foto é tirada no
+   * campo e enviada quando o sinal volta — às vezes horas depois e quilômetros
+   * adiante. Ler o GPS no envio registraria onde estava quem enviou.
+   *
+   * Ausentes em item enfileirado por uma versão anterior do aplicativo.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  precisaoMetros?: number | null;
+  capturadaEm?: string | null;
+  origemCaptura?: 'CAMERA' | 'ARQUIVO' | null;
+  motivoSemGeo?: string | null;
 }
 
 export async function initDB() {
