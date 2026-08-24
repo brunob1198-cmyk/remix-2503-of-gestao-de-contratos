@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TablePagination } from "@/components/medicoes/TablePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,8 +59,29 @@ export default function ChecklistsListPage() {
   const allowEdit = canEdit("checklists");
 
   const { modelos, isLoading: loadingModelos, isTableMissing, createModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
-  const { aplicacoes, isLoading: loadingAplicacoes, deleteAplicacao } = useChecklistAplicacoes();
-  const { planosAcao, isLoading: loadingPlanos } = useChecklistPlanosAcao();
+  // As duas consultas não tinham limite: aplicação de checklist e plano de ação são
+  // os registros que mais acumulam nesta tela, e a lista aparecia cortada em
+  // silêncio quando passava do teto do PostgREST.
+  const [pageApl, setPageApl] = useState(0);
+  const [pageSizeApl, setPageSizeApl] = useState(25);
+  const [pagePlano, setPagePlano] = useState(0);
+  const [pageSizePlano, setPageSizePlano] = useState(25);
+
+  const {
+    aplicacoes,
+    total: totalAplicacoes,
+    isLoading: loadingAplicacoes,
+    deleteAplicacao,
+  } = useChecklistAplicacoes({ page: pageApl, pageSize: pageSizeApl });
+
+  const {
+    planosAcao,
+    total: totalPlanos,
+    isLoading: loadingPlanos,
+  } = useChecklistPlanosAcao({ page: pagePlano, pageSize: pageSizePlano });
+
+  const totalPagesApl = Math.ceil(totalAplicacoes / pageSizeApl) || 1;
+  const totalPagesPlano = Math.ceil(totalPlanos / pageSizePlano) || 1;
 
   const [activeTab, setActiveTab] = useState("modelos");
 
@@ -114,11 +136,28 @@ export default function ChecklistsListPage() {
   const reprovadosNC = aplicacoes.filter((a) => a.total_nao_conforme > 0).length;
   const planosAtrasados = planosAcao.filter((p) => p.status === "Atrasado" || (p.status === "Aberto" && p.quando_prazo && p.quando_prazo < new Date().toISOString().split("T")[0])).length;
 
-  let mediaConformidade = 100;
-  if (concluidos > 0) {
-    const soma = aplicacoes.reduce((acc, curr) => acc + (curr.percentual_conformidade || 0), 0);
-    mediaConformidade = Math.round(soma / concluidos);
-  }
+  /**
+   * Média de conformidade das aplicações CONCLUÍDAS.
+   *
+   * Duas correções aqui. A soma percorria todas as aplicações e dividia pelo número
+   * de concluídas — aplicação em andamento com percentual parcial gravado entrava no
+   * numerador e não no denominador, inflando a média. E o valor inicial era 100:
+   * sem nenhum checklist concluído, o painel exibia conformidade total, que é o
+   * oposto do que "nenhum dado" significa.
+   *
+   * Agora é `null` quando não há base, e a tela mostra "—".
+   */
+  const aplicacoesConcluidas = aplicacoes.filter((a) => a.status === "concluido");
+
+  const mediaConformidade =
+    aplicacoesConcluidas.length === 0
+      ? null
+      : Math.round(
+          aplicacoesConcluidas.reduce(
+            (acc, curr) => acc + (curr.percentual_conformidade || 0),
+            0
+          ) / aplicacoesConcluidas.length
+        );
 
   const handleCreateModelo = () => {
     setEditingModelo(null);
@@ -458,6 +497,17 @@ export default function ChecklistsListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pageApl + 1}
+                totalPages={totalPagesApl}
+                onPageChange={(pg) => setPageApl(pg - 1)}
+                itemsPerPage={pageSizeApl}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeApl(v);
+                  setPageApl(0);
+                }}
+                totalItems={totalAplicacoes}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -540,6 +590,17 @@ export default function ChecklistsListPage() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                currentPage={pagePlano + 1}
+                totalPages={totalPagesPlano}
+                onPageChange={(pg) => setPagePlano(pg - 1)}
+                itemsPerPage={pageSizePlano}
+                onItemsPerPageChange={(v) => {
+                  setPageSizePlano(v);
+                  setPagePlano(0);
+                }}
+                totalItems={totalPlanos}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -607,7 +668,16 @@ export default function ChecklistsListPage() {
                 <CardTitle className="text-xs font-medium text-muted-foreground">Média Conformidade</CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
-                <div className="text-2xl font-bold text-emerald-700">{mediaConformidade}%</div>
+                {/* "—" quando não há checklist concluído: sem base, nenhum número é
+                    verdade — e 100% seria a leitura mais enganosa possível. */}
+                <div className="text-2xl font-bold text-emerald-700">
+                  {mediaConformidade === null ? "—" : `${mediaConformidade}%`}
+                </div>
+                {mediaConformidade === null && (
+                  <p className="text-[11px] text-muted-foreground">
+                    nenhum checklist concluído
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

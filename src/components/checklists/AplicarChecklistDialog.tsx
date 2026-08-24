@@ -35,6 +35,13 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SignatureService } from "@/services/SignatureService";
 import { getCurrentDeviceLocation, isWithinRadius, GeoCoordinates } from "@/utils/geolocationUtils";
+import {
+  pendenciasDaAplicacao,
+  textoDasPendencias,
+  calcularPontuacao,
+} from "@/utils/checklistPontuacao";
+import { gerarPdfChecklist } from "@/lib/checklistDocumento";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { saveOfflinePhoto } from "@/lib/checklistsOfflineDb";
@@ -73,6 +80,8 @@ export function AplicarChecklistDialog({
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
   const { createAplicacao, finishAplicacao } = useChecklistAplicacoes();
+  const { empresa } = useEmpresaAtual();
+  const [emitindo, setEmitindo] = useState(false);
 
   const [step, setStep] = useState<"header" | "execution" | "result">("header");
 
@@ -341,21 +350,38 @@ export function AplicarChecklistDialog({
   };
 
   const handleFinish = async () => {
-    // 1. Validar itens obrigatórios
-    const missingItems: string[] = [];
-    (modelo.secoes || []).forEach((secao) => {
-      (secao.itens || []).forEach((item) => {
-        if (item.obrigatorio) {
-          const resp = respostas[item.id];
-          if (!resp || !resp.resposta_valor) {
-            missingItems.push(item.titulo);
-          }
-        }
-      });
+    /**
+     * Validação das exigências do modelo.
+     *
+     * Antes só o `obrigatorio` era verificado. As outras três — comentário, foto e
+     * plano de ação em item não conforme — eram configuráveis no modelo e **não
+     * exigiam nada**: dava para concluir com "não conforme" sem nenhuma das três,
+     * mesmo com as três marcadas. Configuração que não obriga é pior que
+     * configuração ausente, porque quem monta o modelo acredita ter travado algo.
+     */
+    const itensDoModelo = (modelo.secoes || []).flatMap((secao) => secao.itens || []);
+
+    const pendencias = pendenciasDaAplicacao({
+      itens: itensDoModelo,
+      respostas: Object.fromEntries(
+        Object.entries(respostas).map(([itemId, r]) => [
+          itemId,
+          {
+            item_id: r.item_id,
+            resposta_valor: r.resposta_valor,
+            is_nao_conforme: r.is_nao_conforme,
+            comentario: r.comentario,
+            quantidadeEvidencias: r.evidencias_urls?.length ?? 0,
+            temPlanoAcao: !!r.plano_acao?.o_que_fazer?.trim(),
+          },
+        ])
+      ),
     });
 
-    if (missingItems.length > 0) {
-      toast.error(`Responda todos os itens obrigatórios: ${missingItems.slice(0, 3).join(", ")}${missingItems.length > 3 ? "..." : ""}`);
+    if (pendencias.length > 0) {
+      toast.error(`Falta preencher: ${textoDasPendencias(pendencias)}`, {
+        duration: 10000,
+      });
       return;
     }
 
@@ -397,7 +423,18 @@ export function AplicarChecklistDialog({
       }
     }
 
-    const listRespostas = Object.values(respostas);
+    // O peso do item viaja junto: sem ele a pontuação volta a tratar todo item
+    // como 1, que era o bug que fazia "extintor obstruído" valer o mesmo que
+    // "quadro de avisos atualizado".
+    const pesoPorItem = new Map(
+      itensDoModelo.map((item) => [item.id, item.peso_pontuacao ?? null])
+    );
+
+    const listRespostas = Object.values(respostas).map((r) => ({
+      ...r,
+      peso_pontuacao: pesoPorItem.get(r.item_id) ?? null,
+    }));
+
     const listPlanosAcao: any[] = [];
 
     listRespostas.forEach((r) => {
@@ -453,7 +490,19 @@ export function AplicarChecklistDialog({
             setAplicacaoIdCreated(app.id);
           }
         } catch (cErr) {
-          console.warn("Aviso ao criar aplicação remota:", cErr);
+          // Estando online, falhar aqui significa que não há aplicação no
+          // servidor para receber as respostas — e o fluxo seguia adiante como se
+          // houvesse, gravando nada e anunciando sucesso.
+          if (isOnline) {
+            toast.error(
+              `Não foi possível abrir a aplicação no servidor: ${
+                (cErr as Error).message ?? cErr
+              }. Nada foi gravado — tente novamente.`,
+              { duration: 10000 }
+            );
+            return;
+          }
+          console.warn("Aviso ao criar aplicação remota (offline):", cErr);
         }
       }
 
@@ -480,30 +529,107 @@ export function AplicarChecklistDialog({
         }
       }
 
-      setResultSummary(summary || {
-        id: currentAplicacaoId || `app_${Date.now()}`,
-        status: "concluido",
-        percentual_conformidade: 100,
-        total_itens: listRespostas.length,
-        total_conforme: listRespostas.filter((r) => !r.is_nao_conforme).length,
-        total_nao_conforme: listRespostas.filter((r) => r.is_nao_conforme).length,
-        total_na: 0,
-      });
+      // O resumo vem do que foi de fato gravado. O fallback antigo montava um
+      // objeto com `percentual_conformidade: 100` fixo — número que não vinha de
+      // nenhum cálculo e aparecia como conformidade total.
+      setResultSummary(summary);
       setStep("result");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      /**
+       * Antes este `catch` fabricava um resumo com 100% de conformidade, avançava
+       * para a tela de resultado e chamava `toast.success("Checklist concluído!")`.
+       * Falha total de gravação virava tela verde de sucesso: quem estava na obra
+       * ia embora convencido de que havia registro.
+       *
+       * Agora a tela NÃO avança. As respostas continuam preenchidas, o erro é dito,
+       * e "Concluir" pode ser tentado outra vez.
+       */
       console.error("Erro ao finalizar checklist:", err);
-      // Fallback: Transicionar para a tela de resultado com pontuação calculada
-      setResultSummary({
-        id: currentAplicacaoId || `app_${Date.now()}`,
-        status: "concluido",
-        percentual_conformidade: 100,
-        total_itens: listRespostas.length,
-        total_conforme: listRespostas.filter((r) => !r.is_nao_conforme).length,
-        total_nao_conforme: listRespostas.filter((r) => r.is_nao_conforme).length,
-        total_na: 0,
+      toast.error(
+        `${(err as Error).message ?? err} — as respostas continuam preenchidas nesta tela.`,
+        { duration: 12000 }
+      );
+    }
+  };
+
+  /**
+   * Emissão do checklist aplicado, no papel timbrado da empresa.
+   *
+   * Substitui o `window.print()`, que imprimia a página do navegador — diálogo,
+   * botões e cores de tela — sem timbre e sem o recorte do que foi respondido.
+   * Aqui o documento é montado dos dados: a mesma pontuação ponderada que fechou
+   * a aplicação, com o peso de cada item à vista.
+   */
+  const emitirPdf = async () => {
+    const itensDoModelo = (modelo.secoes || []).flatMap((secao) => secao.itens || []);
+
+    const pontuacao = calcularPontuacao(
+      itensDoModelo.map((item) => ({
+        item_id: item.id,
+        resposta_valor: respostas[item.id]?.resposta_valor,
+        is_nao_conforme: respostas[item.id]?.is_nao_conforme,
+        peso_pontuacao: item.peso_pontuacao,
+      }))
+    );
+
+    // As duas listas vêm de consultas com a tabela em `as any`, então o resultado
+    // chega sem tipo útil. O `unknown` no meio é o que o TypeScript exige para a
+    // conversão — e é honesto: o formato só é conhecido por convenção aqui.
+    type Nomeado = { id: string; nome?: string | null };
+    const listaColaboradores = colaboradores as unknown as Nomeado[];
+    const listaProjetos = projetos as unknown as Nomeado[];
+
+    const nomeDoResponsavel = (id?: string) =>
+      listaColaboradores.find((c) => c.id === id)?.nome ?? null;
+
+    setEmitindo(true);
+    try {
+      await gerarPdfChecklist({
+        modeloNome: modelo.nome,
+        modeloCodigo: modelo.codigo ?? null,
+        categoria: modelo.categoria ?? null,
+        aplicacaoCodigo: resultSummary?.codigo ?? null,
+        secoes: (modelo.secoes || []).map((secao) => ({
+          id: secao.id,
+          titulo: secao.titulo,
+          ordem: secao.ordem,
+          itens: secao.itens || [],
+        })),
+        respostas: Object.fromEntries(
+          Object.entries(respostas).map(([itemId, r]) => [
+            itemId,
+            {
+              item_id: r.item_id,
+              resposta_valor: r.resposta_valor,
+              comentario: r.comentario,
+              is_nao_conforme: r.is_nao_conforme,
+              quantidadeEvidencias: r.evidencias_urls?.length ?? 0,
+              planoAcao: r.plano_acao?.o_que_fazer
+                ? {
+                    o_que_fazer: r.plano_acao.o_que_fazer,
+                    quando_prazo: r.plano_acao.quando_prazo,
+                    quem: nomeDoResponsavel(r.plano_acao.quem_responsavel_id),
+                    prioridade: r.plano_acao.prioridade,
+                  }
+                : null,
+            },
+          ])
+        ),
+        pontuacao,
+        empresa: empresa ?? null,
+        obra: listaProjetos.find((p) => p.id === projetoId)?.nome ?? null,
+        area: null,
+        aplicador: profile?.nome ?? null,
+        responsavel: nomeDoResponsavel(responsavelId),
+        dataAplicacao: new Date().toISOString().slice(0, 10),
+        observacoesGerais: observacoesGerais || null,
+        geolocalizacao: geoFinish ?? geoStart ?? null,
+        geradoPor: profile?.nome ?? null,
       });
-      setStep("result");
-      toast.success("Checklist concluído!");
+    } catch (e) {
+      toast.error(`Erro ao emitir o checklist: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
     }
   };
 
@@ -941,8 +1067,19 @@ export function AplicarChecklistDialog({
             </div>
 
             <DialogFooter className="pt-4 border-t flex items-center justify-between">
-              <Button type="button" variant="outline" onClick={() => window.print()} className="gap-1.5">
-                <Printer className="h-4 w-4" /> Imprimir / PDF
+              <Button
+                type="button"
+                variant="outline"
+                onClick={emitirPdf}
+                disabled={emitindo}
+                className="gap-1.5"
+              >
+                {emitindo ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4" />
+                )}
+                Emitir PDF timbrado
               </Button>
               <Button onClick={() => onOpenChange(false)}>
                 Finalizar e Fechar

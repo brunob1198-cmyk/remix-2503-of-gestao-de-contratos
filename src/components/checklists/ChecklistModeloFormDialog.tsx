@@ -559,7 +559,37 @@ export function ChecklistModeloFormDialog({
                           />
                           Gerar Plano de Ação 5W2H
                         </label>
+
+                        {/* O peso já existia no banco e no tipo, e não tinha campo:
+                            era gravado sempre como 1 e ignorado no cálculo. Agora
+                            entra na conta do índice de conformidade. */}
+                        <label className="flex items-center gap-1.5">
+                          <span>Peso no índice</span>
+                          <Input
+                            type="number"
+                            min={1}
+                            step={1}
+                            className="h-7 w-16 text-[11px]"
+                            value={item.peso_pontuacao}
+                            onChange={(e) => {
+                              const updated = [...secoes];
+                              const valor = Number(e.target.value);
+                              // Peso zero tiraria o item da conta sem ninguém ter
+                              // marcado "não aplicável" — desvio invisível.
+                              updated[sIdx].itens[iIdx].peso_pontuacao =
+                                Number.isFinite(valor) && valor > 0 ? valor : 1;
+                              setSecoes(updated);
+                            }}
+                          />
+                        </label>
                       </div>
+
+                      <p className="text-[11px] text-muted-foreground px-2">
+                        Peso maior derruba mais o índice quando o item sai não conforme.
+                        Use 1 para item de rotina e valores altos para o que envolve risco
+                        grave — é o que faz o percentual medir risco e não quantidade de
+                        linhas.
+                      </p>
                     </div>
                   ))}
 
