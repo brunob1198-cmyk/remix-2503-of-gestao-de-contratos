@@ -601,7 +601,7 @@ export function useSgsstFichaEpiDoColaborador(
     enabled: habilitado,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sgsst_epi_entregas" as any)
+        .from("sgsst_epi_entregas" as never)
         .select(`
           *,
           colaborador:sgsst_colaborador_dados(
@@ -615,10 +615,13 @@ export function useSgsstFichaEpiDoColaborador(
         `)
         .eq("colaborador_id", colaboradorId!)
         .order("data_entrega", { ascending: true })
-        .limit(FICHA_EPI_LIMITE_LINHAS) as any);
+        .limit(FICHA_EPI_LIMITE_LINHAS) as never as Promise<{
+        data: SgsstEpiEntrega[] | null;
+        error: { message?: string } | null;
+      }>);
 
       if (error) throw error;
-      return (data as SgsstEpiEntrega[]) || [];
+      return data ?? [];
     },
   });
 
@@ -630,14 +633,17 @@ export function useSgsstFichaEpiDoColaborador(
     enabled: habilitado && idsDasEntregas.length > 0,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("sgsst_epi_devolucoes" as any)
+        .from("sgsst_epi_devolucoes" as never)
         .select("*, responsavel:profiles!sgsst_epi_devolucoes_responsavel_devolucao_id_fkey(id, nome)")
         .in("entrega_id", idsDasEntregas)
         .order("data_devolucao", { ascending: true })
-        .limit(FICHA_EPI_LIMITE_LINHAS) as any);
+        .limit(FICHA_EPI_LIMITE_LINHAS) as never as Promise<{
+        data: SgsstEpiDevolucao[] | null;
+        error: { message?: string } | null;
+      }>);
 
       if (error) throw error;
-      return (data as SgsstEpiDevolucao[]) || [];
+      return data ?? [];
     },
   });
 

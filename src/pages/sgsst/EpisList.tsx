@@ -53,6 +53,10 @@ import { EntregaEpiFormDialog } from "@/components/sgsst/EntregaEpiFormDialog";
 import { DevolucaoEpiFormDialog } from "@/components/sgsst/DevolucaoEpiFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
+import {
+  previsaoTroca,
+  SITUACAO_VIDA_UTIL_LABEL,
+} from "@/utils/sgsstEpiVidaUtil";
 
 export default function SgsstEpisListPage() {
   const { canEdit } = usePermissions();
@@ -125,8 +129,7 @@ export default function SgsstEpisListPage() {
   // Ficha de Entrega de EPI — NR-06 6.6.1
   // ------------------------------------------------------------------
   // A ficha e por trabalhador e cumulativa: e assim que ela e usada quando o
-  // fornecimento e contestado. As entregas e devolucoes desta tela ja estao
-  // carregadas, entao o recorte e feito aqui mesmo.
+  // fornecimento e contestado.
   const [emitindoFicha, setEmitindoFicha] = useState(false);
 
   const colabDaFicha = colaboradores.find((c) => c.id === selectedColabPosse) ?? null;
@@ -545,14 +548,15 @@ export default function SgsstEpisListPage() {
                     <TableHead>Quantidade</TableHead>
                     <TableHead>Data Entrega</TableHead>
                     <TableHead>Motivo</TableHead>
+                    <TableHead>Troca prevista</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingEntregas ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando entregas de EPIs...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando entregas de EPIs...</TableCell></TableRow>
                   ) : filteredEntregas.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma entrega registrada.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma entrega registrada.</TableCell></TableRow>
                   ) : (
                     filteredEntregas.map((ent) => {
                       const colabNome = ent.colaborador?.profile?.nome || ent.colaborador?.recurso?.nome || "Sem Nome";
@@ -567,6 +571,39 @@ export default function SgsstEpisListPage() {
                           <TableCell className="text-xs font-mono font-bold">{ent.quantidade} {ent.epi?.unidade_medida || "UN"}</TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(ent.data_entrega)}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{ent.motivo}</Badge></TableCell>
+                          <TableCell className="text-xs">
+                            {(() => {
+                              // Sem vida util cadastrada no EPI nao ha prazo a
+                              // mostrar — e inventar um faria o usuario aprender a
+                              // ignorar o aviso.
+                              const troca = previsaoTroca({
+                                dataEntrega: ent.data_entrega,
+                                vidaUtilMeses: ent.epi?.vida_util_meses ?? null,
+                                hoje: new Date(),
+                              });
+
+                              if (troca.situacao === "SEM_PRAZO") {
+                                return <span className="text-muted-foreground">—</span>;
+                              }
+
+                              const tom =
+                                troca.situacao === "VENCIDO"
+                                  ? "bg-red-100 text-red-800 border-red-300"
+                                  : troca.situacao === "PROXIMO_DA_TROCA"
+                                    ? "bg-amber-100 text-amber-800 border-amber-300"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-300";
+
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs whitespace-nowrap ${tom}`}
+                                  title={SITUACAO_VIDA_UTIL_LABEL[troca.situacao]}
+                                >
+                                  {formatDateStr(troca.dataPrevista)}
+                                </Badge>
+                              );
+                            })()}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {allowEdit && (
