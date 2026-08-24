@@ -21,10 +21,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("GESTAO_CONTRATOS_KEYSTORE"))
-            storePassword System.getenv("GESTAO_CONTRATOS_STORE_PASSWORD")
-            keyAlias System.getenv("GESTAO_CONTRATOS_KEY_ALIAS")
-            keyPassword System.getenv("GESTAO_CONTRATOS_KEY_PASSWORD")
+            storeFile file(GESTAO_CONTRATOS_KEYSTORE)
+            storePassword GESTAO_CONTRATOS_STORE_PASSWORD
+            keyAlias GESTAO_CONTRATOS_KEY_ALIAS
+            keyPassword GESTAO_CONTRATOS_KEY_PASSWORD
             storeType "PKCS12"
         }
     }

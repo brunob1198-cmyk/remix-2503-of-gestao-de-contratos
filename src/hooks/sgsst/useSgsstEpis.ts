@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { escapeSearchTerm } from "@/utils/sgsstSearch";
 import { calculateValidadeCa, StatusValidadeCa } from "@/utils/sgsstEpiUtils";
 
 export type CategoriaEpi =
@@ -39,6 +40,12 @@ export interface SgsstEpi {
   unidade_medida: string;
   estoque_atual: number;
   estoque_minimo: number;
+  /**
+   * Vida util em meses, contada da entrega. Nao confundir com `validade_ca`: o CA
+   * e do modelo e vence para todos na mesma data; a vida util e da unidade que o
+   * trabalhador recebeu.
+   */
+  vida_util_meses?: number | null;
   status: StatusEpi;
   descricao?: string | null;
   created_by?: string | null;
@@ -66,6 +73,9 @@ export interface SgsstEpiEntrega {
   motivo: MotivoEntregaEpi;
   tamanho_modelo?: string | null;
   confirmacao_recebimento: boolean;
+  /** NR-06 6.6.1 "d": orientado quanto ao uso, guarda e conservacao. */
+  orientacao_uso?: boolean | null;
+  orientacao_observacao?: string | null;
   observacao?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -133,7 +143,10 @@ export function useSgsstEpis(params?: { page?: number; pageSize?: number; search
         .order("nome", { ascending: true });
 
       if (params?.search) {
-        query = query.or(`nome.ilike.%${params.search}%,ca.ilike.%${params.search}%`);
+        // Sem escapar, um "%" ou uma virgula na busca quebram o filtro `or` do
+        // PostgREST e a tela devolve resultado errado sem avisar.
+        const termo = escapeSearchTerm(params.search);
+        query = query.or(`nome.ilike.%${termo}%,ca.ilike.%${termo}%`);
       }
       if (params?.status && params.status !== "todos") {
         query = query.eq("status", params.status);
@@ -246,17 +259,40 @@ export function useSgsstEpis(params?: { page?: number; pageSize?: number; search
   };
 }
 
-// 2. Hook Entregas de EPI
-export function useSgsstEpiEntregas() {
+/**
+ * 2. Hook Entregas de EPI
+ *
+ * A consulta trazia TODAS as entregas da empresa, sem limite e sem paginacao, com
+ * os joins completos (`epi:sgsst_epis(*)`). O PostgREST corta no teto padrao em
+ * silencio: passando dele, a tela mostrava uma lista incompleta sem dizer que era
+ * incompleta — e entregas de EPI acumulam a cada reposicao de cada trabalhador.
+ *
+ * Sem `params`, devolve a primeira pagina com o teto explicito (uso como lista de
+ * apoio). Com `params`, pagina no servidor.
+ */
+export function useSgsstEpiEntregas(params?: {
+  page?: number;
+  pageSize?: number;
+  colaboradorId?: string;
+}) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: entregas = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_epi_entregas", empresaId],
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 100;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_epi_entregas",
+      empresaId,
+      page,
+      pageSize,
+      params?.colaboradorId ?? null,
+    ],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      const consulta = (supabase
         .from("sgsst_epi_entregas" as any)
         .select(`
           *,
@@ -268,13 +304,26 @@ export function useSgsstEpiEntregas() {
           ),
           epi:sgsst_epis(*),
           responsavel:profiles!sgsst_epi_entregas_responsavel_entrega_id_fkey(id, nome)
-        `)
+        `, { count: "exact" })
         .order("data_entrega", { ascending: false }) as any);
 
+      const filtrada = params?.colaboradorId
+        ? consulta.eq("colaborador_id", params.colaboradorId)
+        : consulta;
+
+      const { data, error, count } = await (filtrada.range(
+        page * pageSize,
+        page * pageSize + pageSize - 1
+      ) as any);
+
       if (error) throw error;
-      return (data as SgsstEpiEntrega[]) || [];
+
+      const rows = (data as SgsstEpiEntrega[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
+
+  const entregas = data?.rows ?? [];
 
   const createEntrega = useMutation({
     mutationFn: async (input: SgsstEpiEntregaInput) => {
@@ -311,12 +360,10 @@ export function useSgsstEpiEntregas() {
 
       if (error) throw error;
 
-      // Decrementa estoque do EPI
-      const novoEstoque = Math.max(0, (epiData?.estoque_atual || 0) - input.quantidade);
-      await supabase
-        .from("sgsst_epis" as any)
-        .update({ estoque_atual: novoEstoque, updated_at: new Date().toISOString() })
-        .eq("id", input.epi_id);
+      // O estoque e movimentado por trigger no banco (trg_sgsst_epi_estoque_entrega).
+      // Fazer a conta aqui tambem derrubaria o estoque duas vezes por entrega — e
+      // era aqui que estava a corrida: duas entregas simultaneas liam o mesmo
+      // valor e a segunda sobrescrevia a primeira.
 
       // Log no histórico
       await supabase.from("sgsst_epi_historico" as any).insert({
@@ -362,6 +409,7 @@ export function useSgsstEpiEntregas() {
 
   return {
     entregas,
+    total: data?.total ?? 0,
     isLoading,
     error,
     refetch,
@@ -445,20 +493,8 @@ export function useSgsstEpiDevolucoes() {
 
       if (error) throw error;
 
-      // Se condição for BOM, reincorpora o EPI ao estoque
-      if (condicaoEpi === "BOM") {
-        const { data: epiData } = await (supabase
-          .from("sgsst_epis" as any)
-          .select("estoque_atual")
-          .eq("id", entregaData.epi_id)
-          .single() as any);
-
-        const novoEstoque = (epiData?.estoque_atual || 0) + quantidadeDevolvida;
-        await supabase
-          .from("sgsst_epis" as any)
-          .update({ estoque_atual: novoEstoque, updated_at: new Date().toISOString() })
-          .eq("id", entregaData.epi_id);
-      }
+      // A reincorporacao ao estoque (so em condicao BOM) e feita por trigger no
+      // banco: trg_sgsst_epi_estoque_devolucao.
 
       // Log no histórico
       await supabase.from("sgsst_epi_historico" as any).insert({
