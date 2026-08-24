@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import {
+  fotosDoRegistroParaDocumento,
+  fotosDosRegistrosParaDocumento,
+} from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
 import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
@@ -129,7 +133,15 @@ export default function SgsstNaoConformidadesDetailPage() {
 
     setEmitindo(true);
     try {
-      await gerarPdfNc(dadosDoDocumento);
+      const [fotos, fotosPorAcao] = await Promise.all([
+        fotosDoRegistroParaDocumento("NAO_CONFORMIDADE", currentNc.id),
+        fotosDosRegistrosParaDocumento(
+          "NC_ACAO",
+          acoes.map((a) => a.id)
+        ),
+      ]);
+
+      await gerarPdfNc({ ...dadosDoDocumento, fotos, fotosPorAcao });
     } catch (e) {
       toast.error(`Erro ao emitir o relatório: ${(e as Error).message}`);
     } finally {

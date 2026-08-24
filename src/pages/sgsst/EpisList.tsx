@@ -56,7 +56,10 @@ import { EntregaEpiFormDialog } from "@/components/sgsst/EntregaEpiFormDialog";
 import { DevolucaoEpiFormDialog } from "@/components/sgsst/DevolucaoEpiFormDialog";
 import { ManutencaoEpiFormDialog } from "@/components/sgsst/ManutencaoEpiFormDialog";
 import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
-import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
+import {
+  fotosDosRegistrosParaDocumento,
+  type EntidadeEvidencia,
+} from "@/hooks/sgsst/useSgsstEvidencias";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
 import {
@@ -225,7 +228,27 @@ export default function SgsstEpisListPage() {
 
     setEmitindoFicha(true);
     try {
-      await gerarPdfFichaEpi(dadosDaFicha);
+      const [fotosPorEntrega, fotosPorDevolucao, fotosPorManutencao] = await Promise.all([
+        fotosDosRegistrosParaDocumento(
+          "EPI_ENTREGA",
+          entregasDaFicha.map((e) => e.id)
+        ),
+        fotosDosRegistrosParaDocumento(
+          "EPI_DEVOLUCAO",
+          devolucoesDaFicha.map((d) => d.id)
+        ),
+        fotosDosRegistrosParaDocumento(
+          "EPI_MANUTENCAO",
+          manutencoesDaFicha.map((m) => m.id)
+        ),
+      ]);
+
+      await gerarPdfFichaEpi({
+        ...dadosDaFicha,
+        fotosPorEntrega,
+        fotosPorDevolucao,
+        fotosPorManutencao,
+      });
     } catch (e) {
       toast.error(`Erro ao emitir a ficha: ${(e as Error).message}`);
     } finally {

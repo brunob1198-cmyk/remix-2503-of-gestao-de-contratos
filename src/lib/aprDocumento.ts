@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 import type {
   SgsstApr,
   SgsstAprEtapa,
@@ -46,6 +51,16 @@ export interface AprDocumentoDados {
   participantes: readonly SgsstAprParticipante[];
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /** Fotos da APR como um todo. */
+  fotos?: FotosPreparadas;
+  /**
+   * Fotos por etapa, dentro do bloco da etapa.
+   *
+   * A APR circula ANTES do serviço, e a foto da etapa mostra a condição que o
+   * texto descreve. Numa galeria ao fim, a mesma foto viraria ilustração: quem lê
+   * a etapa 4 no campo não vai folhear até o fim para achar a foto dela.
+   */
+  fotosPorEtapa?: ReadonlyMap<string, FotosPreparadas>;
 }
 
 /** Status em que a APR não vale como análise aprovada. */
@@ -228,6 +243,10 @@ function blocoDaEtapa(dados: AprDocumentoDados, etapa: SgsstAprEtapa): string {
             ? `<p>${esc(etapa.observacoes)}</p>`
             : ""
         }
+        ${blocoDeFotos(dados.fotosPorEtapa?.get(etapa.id)?.fotos ?? [], {
+          colunas: 3,
+          omitidas: dados.fotosPorEtapa?.get(etapa.id)?.omitidas,
+        })}
       </div>
     </div>
   `;
@@ -243,6 +262,7 @@ export function montarHtmlApr(dados: AprDocumentoDados): string {
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -381,6 +401,11 @@ export function montarHtmlApr(dados: AprDocumentoDados): string {
              </div>`
           : ""
       }
+
+      ${blocoDeFotos(dados.fotos?.fotos ?? [], {
+        titulo: "Evidência fotográfica do local da atividade",
+        omitidas: dados.fotos?.omitidas,
+      })}
 
       <div class="doc-assin">
         <div class="doc-assin-centro">

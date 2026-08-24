@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 import type {
   SgsstEpiEntrega,
   SgsstEpiDevolucao,
@@ -60,6 +65,17 @@ export interface FichaEpiDados {
   matriculaTrabalhador?: string | null;
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /**
+   * Fotos das entregas, devoluções e higienizações, por id do registro.
+   *
+   * Saem numa galeria só ao fim, e não em três blocos: as três respondem à mesma
+   * pergunta — em que estado o equipamento estava naquele momento — e o rótulo de
+   * cada foto diz de qual evento ela é. Três blocos separariam o "entreguei novo"
+   * do "devolveu rasgado", que é justamente o par que precisa ser visto junto.
+   */
+  fotosPorEntrega?: ReadonlyMap<string, FotosPreparadas>;
+  fotosPorDevolucao?: ReadonlyMap<string, FotosPreparadas>;
+  fotosPorManutencao?: ReadonlyMap<string, FotosPreparadas>;
 }
 
 const MOTIVO_LABEL: Record<string, string> = {
@@ -325,9 +341,45 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados, hoje = new Date()): str
     })
     .join("");
 
+  /**
+   * A galeria de fotos do equipamento, com os três eventos na mesma sequência.
+   *
+   * Cada foto diz de que evento é — entrega, devolução ou higienização — e de que
+   * EPI. É o rótulo que faz a foto do "entreguei novo" e a do "devolveu rasgado"
+   * poderem ser comparadas na mesma folha.
+   */
+  const galeriaDeFotos = blocoDeFotos(
+    [
+      ...entregas.flatMap((e) =>
+        (dados.fotosPorEntrega?.get(e.id)?.fotos ?? []).map((f) => ({
+          ...f,
+          rotulo: `Entrega ${dataBr(e.data_entrega)} · ${e.epi?.nome ?? "EPI"}`,
+        }))
+      ),
+      ...devolucoes.flatMap((d) => {
+        const entrega = entregas.find((e) => e.id === d.entrega_id);
+        return (dados.fotosPorDevolucao?.get(d.id)?.fotos ?? []).map((f) => ({
+          ...f,
+          rotulo: `Devolução ${dataBr(d.data_devolucao)} · ${entrega?.epi?.nome ?? "EPI"}`,
+        }));
+      }),
+      ...execucoes.flatMap((m) => {
+        const entrega = entregas.find((e) => e.id === m.entrega_id);
+        return (dados.fotosPorManutencao?.get(m.id)?.fotos ?? []).map((f) => ({
+          ...f,
+          rotulo: `${TIPO_MANUTENCAO_LABEL[m.tipo] ?? m.tipo} ${dataBr(
+            m.data_execucao
+          )} · ${m.epi?.nome ?? entrega?.epi?.nome ?? "EPI"}`,
+        }));
+      }),
+    ],
+    { titulo: "Registro fotográfico dos equipamentos", colunas: 3 }
+  );
+
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -448,6 +500,8 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados, hoje = new Date()): str
           }
         </div>
       </div>
+
+      ${galeriaDeFotos}
 
       <div class="doc-bloco">
         <div class="tit">Termo de responsabilidade — NR-06 item 6.7.1</div>

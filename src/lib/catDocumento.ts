@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado, ORGANIZACAO_TIMBRE } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 import { TIPO_CAT_LABEL, type SgsstCat } from "@/hooks/sgsst/useSgsstCats";
 
 /**
@@ -25,6 +30,15 @@ export interface CatDocumentoDados {
   /** Identificação da organização emitente. */
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /**
+   * Fotos do incidente vinculado.
+   *
+   * O incidente não tem documento próprio, e a CAT é o único lugar onde as fotos
+   * do acidente saem impressas. Entram aqui porque este PDF é o **registro
+   * interno** da empresa sobre a comunicação — não a CAT oficial do INSS, que tem
+   * formulário próprio e não recebe anexo assim.
+   */
+  fotosDoIncidente?: FotosPreparadas;
 }
 
 function nomeTrabalhador(cat: SgsstCat): string {
@@ -72,6 +86,7 @@ export function montarHtmlCat(dados: CatDocumentoDados): string {
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -182,6 +197,11 @@ export function montarHtmlCat(dados: CatDocumentoDados): string {
              <div class="doc-bloco">${esc(cat.observacoes.trim())}</div>`
           : ""
       }
+
+      ${blocoDeFotos(dados.fotosDoIncidente?.fotos ?? [], {
+        titulo: "6. Registro fotográfico do local e das condições",
+        omitidas: dados.fotosDoIncidente?.omitidas,
+      })}
 
       <div class="doc-assin">
         <div class="doc-assin-centro">

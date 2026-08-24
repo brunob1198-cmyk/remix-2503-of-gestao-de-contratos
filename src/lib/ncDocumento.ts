@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 import type {
   SgsstNaoConformidade,
   SgsstNaoConformidadeAcao,
@@ -38,6 +43,16 @@ export interface NcDocumentoDados {
   acoes: readonly SgsstNaoConformidadeAcao[];
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /** Fotos do desvio: como foi encontrado e, depois de tratado, como ficou. */
+  fotos?: FotosPreparadas;
+  /**
+   * Fotos de cada ação do plano, por id.
+   *
+   * Saem debaixo da tabela do plano, numeradas conforme a linha. A eficácia é
+   * verificada por alguém que não esteve no local: a foto do "depois" é a única
+   * coisa que sustenta o "ACEITA".
+   */
+  fotosPorAcao?: ReadonlyMap<string, FotosPreparadas>;
 }
 
 const ORIGEM_LABEL: Record<string, string> = {
@@ -183,15 +198,19 @@ export function montarHtmlNc(dados: NcDocumentoDados, hoje = new Date()): string
   const hojeIso = comoIso(hoje);
   const atrasadas = acoesAtrasadas(acoes, hoje);
 
-  const linhasAcoes = [...acoes]
-    // Prazo mais curto primeiro; sem prazo no fim, onde chama atenção.
-    .sort((a, b) => (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999"))
-    .map((a) => {
+  // Prazo mais curto primeiro; sem prazo no fim, onde chama atenção. A ordem é
+  // guardada porque a foto de cada ação sai numerada conforme a linha da tabela.
+  const acoesOrdenadas = [...acoes].sort((a, b) =>
+    (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999")
+  );
+
+  const linhasAcoes = acoesOrdenadas
+    .map((a, indice) => {
       const emAberto = a.status !== "CONCLUIDA" && a.status !== "CANCELADA";
       const atrasada = emAberto && !!a.prazo && a.prazo < hojeIso;
 
       return `<tr>
-        <td>${esc(a.descricao)}</td>
+        <td><strong>${indice + 1}.</strong> ${esc(a.descricao)}</td>
         <td>${esc(TIPO_ACAO_LABEL[a.tipo] ?? a.tipo)}</td>
         <td>${esc(a.responsavel?.nome) || faltando("não designado")}</td>
         <td>${
@@ -210,9 +229,21 @@ export function montarHtmlNc(dados: NcDocumentoDados, hoje = new Date()): string
     })
     .join("");
 
+  const fotosDasAcoes = blocoDeFotos(
+    acoesOrdenadas.flatMap((a, indice) => {
+      const doGrupo = dados.fotosPorAcao?.get(a.id);
+      if (!doGrupo || doGrupo.fotos.length === 0) return [];
+
+      const rotulo = `Ação ${indice + 1}`;
+      return doGrupo.fotos.map((f) => ({ ...f, rotulo }));
+    }),
+    { colunas: 3 }
+  );
+
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -323,7 +354,8 @@ export function montarHtmlNc(dados: NcDocumentoDados, hoje = new Date()): string
                     </tr>
                   </thead>
                   <tbody>${linhasAcoes}</tbody>
-                 </table>`
+                 </table>
+                 ${fotosDasAcoes}`
           }
         </div>
       </div>
@@ -392,6 +424,14 @@ export function montarHtmlNc(dados: NcDocumentoDados, hoje = new Date()): string
              </div>`
           : ""
       }
+
+      ${blocoDeFotos(dados.fotos?.fotos ?? [], {
+        titulo: "Evidência fotográfica do desvio",
+        omitidas: dados.fotos?.omitidas,
+        vazio:
+          "Nenhuma foto anexada. O desvio e o resultado do tratamento estão " +
+          "descritos apenas por escrito.",
+      })}
 
       <div class="doc-assin">
         <div class="doc-assin-centro">

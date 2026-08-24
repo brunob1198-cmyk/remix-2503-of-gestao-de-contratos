@@ -41,6 +41,10 @@ import {
   calcularPontuacao,
 } from "@/utils/checklistPontuacao";
 import { gerarPdfChecklist } from "@/lib/checklistDocumento";
+import {
+  prepararFotosDoDocumento,
+  type FotoPreparada,
+} from "@/lib/fotosDoDocumento";
 import { CapturaFotoCampo, type FotoCapturada } from "@/components/comum/CapturaFotoCampo";
 import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
@@ -670,6 +674,47 @@ export function AplicarChecklistDialog({
 
     setEmitindo(true);
     try {
+      /**
+       * As fotos são baixadas e reduzidas ANTES de montar o documento.
+       *
+       * Tudo numa chamada só, e não uma por item: são requisições independentes, e
+       * um checklist de trinta itens com foto em dez deles faria dez esperas em
+       * série. Depois cada foto volta para o item dela pelo índice.
+       */
+      const itensComFoto = Object.entries(respostas).filter(
+        ([, r]) => (r.evidencias?.length ?? 0) > 0
+      );
+
+      const preparadasPorItem = new Map<string, FotoPreparada[]>();
+
+      if (itensComFoto.length > 0) {
+        const todas = itensComFoto.flatMap(([itemId, r]) =>
+          (r.evidencias ?? []).map((ev) => ({
+            itemId,
+            foto: {
+              url: ev.url,
+              latitude: ev.latitude,
+              longitude: ev.longitude,
+              precisao: ev.precisao,
+              capturadaEm: ev.capturadaEm,
+              origem: ev.origem,
+              motivoSemGeo: ev.motivoSemGeo,
+            },
+          }))
+        );
+
+        // Sem contexto de bucket: a evidencia do checklist ja guarda a URL
+        // completa devolvida pelo upload.
+        const { fotos: prontas } = await prepararFotosDoDocumento(
+          todas.map((t) => t.foto)
+        );
+
+        prontas.forEach((pronta, indice) => {
+          const itemId = todas[indice].itemId;
+          preparadasPorItem.set(itemId, [...(preparadasPorItem.get(itemId) ?? []), pronta]);
+        });
+      }
+
       await gerarPdfChecklist({
         modeloNome: modelo.nome,
         modeloCodigo: modelo.codigo ?? null,
@@ -698,6 +743,7 @@ export function AplicarChecklistDialog({
                 precisao: ev.precisao,
                 motivoSemGeo: ev.motivoSemGeo,
               })),
+              fotos: preparadasPorItem.get(itemId) ?? [],
               planoAcao: r.plano_acao?.o_que_fazer
                 ? {
                     o_que_fazer: r.plano_acao.o_que_fazer,
