@@ -194,7 +194,10 @@ export default function ChecklistsListPage() {
       Status: a.status,
       "Data Aplicação": a.data_aplicacao ? format(parseISO(a.data_aplicacao), "dd/MM/yyyy HH:mm") : "—",
       Aplicador: a.aplicador?.nome || "—",
-      "Conformidade (%)": `${a.percentual_conformidade}%`,
+      Resultado: a.reprovado_por_item_critico ? "REPROVADO (item crítico)" : "Aprovado",
+      "Conformidade (%)":
+        a.percentual_conformidade === null ? "não avaliado" : `${a.percentual_conformidade}%`,
+      "Críticos NC": a.itens_criticos_nao_conformes ?? 0,
       Conforme: a.total_conforme,
       "Não Conforme": a.total_nao_conforme,
       "N/A": a.total_na,
@@ -451,17 +454,34 @@ export default function ChecklistsListPage() {
                         </TableCell>
                         <TableCell className="text-xs">{app.aplicador?.nome || "Aplicador de Campo"}</TableCell>
                         <TableCell>
+                          {/* Reprovado por item crítico aparece ANTES do percentual:
+                              97,5% com o extintor obstruído é um número certo com uma
+                              conclusão errada, e a linha da lista tem de dizer as
+                              duas coisas na ordem em que importam. */}
+                          {app.reprovado_por_item_critico && (
+                            <Badge
+                              variant="outline"
+                              className="font-bold text-xs bg-red-100 text-red-800 border-red-400 mb-1 block w-fit"
+                              title={`${app.itens_criticos_nao_conformes ?? 0} item(ns) crítico(s) não conforme(s)`}
+                            >
+                              REPROVADO
+                            </Badge>
+                          )}
                           <Badge
                             variant="outline"
                             className={`font-bold text-xs ${
-                              app.percentual_conformidade >= 90
+                              app.percentual_conformidade === null
+                                ? "bg-slate-100 text-slate-700 border-slate-300"
+                                : app.percentual_conformidade >= 90
                                 ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                                 : app.percentual_conformidade >= 70
                                 ? "bg-amber-100 text-amber-800 border-amber-300"
                                 : "bg-red-100 text-red-800 border-red-300"
                             }`}
                           >
-                            {app.percentual_conformidade}%
+                            {app.percentual_conformidade === null
+                              ? "não avaliado"
+                              : `${app.percentual_conformidade}%`}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">

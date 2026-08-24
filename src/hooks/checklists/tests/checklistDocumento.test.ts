@@ -298,3 +298,130 @@ describe("montarHtmlChecklist — estrutura e identificação", () => {
     expect(ausentes).toEqual([]);
   });
 });
+
+describe("montarHtmlChecklist — veredito por item crítico", () => {
+  const SECOES_COM_CRITICO = [
+    {
+      id: "s1",
+      titulo: "Impeditivos",
+      ordem: 1,
+      itens: [
+        {
+          id: "k1",
+          titulo: "Extintor desobstruído",
+          peso_pontuacao: 1,
+          critico: true,
+          obrigatorio: true,
+        },
+        { id: "k2", titulo: "Quadro de avisos", peso_pontuacao: 1 },
+      ],
+    },
+  ];
+
+  function comCritico(respostaCritico: string) {
+    const respostas = {
+      k1: { item_id: "k1", resposta_valor: respostaCritico },
+      k2: { item_id: "k2", resposta_valor: "Conforme" },
+    };
+
+    return dados({
+      secoes: SECOES_COM_CRITICO,
+      respostas,
+      pontuacao: calcularPontuacao([
+        { item_id: "k1", resposta_valor: respostaCritico, peso_pontuacao: 1, critico: true },
+        { item_id: "k2", resposta_valor: "Conforme", peso_pontuacao: 1 },
+      ]),
+    });
+  }
+
+  it("imprime REPROVADO em bloco de conclusão quando o crítico falha", () => {
+    const html = montarHtmlChecklist(comCritico("NaoConforme"));
+    expect(html).toContain("REPROVADO");
+    expect(html).toContain("doc-conclusao");
+  });
+
+  it("o aviso explica que a reprovação não depende do percentual", () => {
+    const html = montarHtmlChecklist(comCritico("NaoConforme"));
+    expect(html).toContain("CHECKLIST REPROVADO");
+    expect(html).toContain("não depende do");
+  });
+
+  it("o percentual continua impresso ao lado do veredito", () => {
+    // As duas informacoes convivem: a nota diz quanto esta certo, o veto diz que
+    // nao se opera.
+    const html = montarHtmlChecklist(comCritico("NaoConforme"));
+    expect(html).toContain("50,0%");
+    expect(html).toContain("REPROVADO");
+  });
+
+  it("crítico conforme sai APROVADO", () => {
+    const html = montarHtmlChecklist(comCritico("Conforme"));
+    expect(html).toContain("APROVADO");
+    expect(html).not.toContain("CHECKLIST REPROVADO");
+  });
+
+  it("marca o item crítico na própria linha da tabela", () => {
+    // Quem le precisa saber que AQUELE item veta, sem conferir legenda no rodape.
+    const html = montarHtmlChecklist(comCritico("Conforme"));
+    expect(html).toContain("[CRÍTICO]");
+  });
+
+  it("item não crítico não recebe a marca", () => {
+    const html = montarHtmlChecklist(dados());
+    expect(html).not.toContain("[CRÍTICO]");
+  });
+
+  it("checklist sem item crítico sai APROVADO mesmo com não conformidade comum", () => {
+    const html = montarHtmlChecklist(
+      dados({
+        respostas: {
+          i1: { item_id: "i1", resposta_valor: "NaoConforme" },
+          i2: { item_id: "i2", resposta_valor: "Conforme" },
+          i3: { item_id: "i3", resposta_valor: "Conforme" },
+        },
+      })
+    );
+    expect(html).toContain("APROVADO");
+    expect(html).not.toContain("CHECKLIST REPROVADO");
+  });
+
+  it("diz quantos críticos falharam, não só que falhou algum", () => {
+    const html = montarHtmlChecklist(
+      dados({
+        secoes: [
+          {
+            id: "s1",
+            titulo: "Impeditivos",
+            ordem: 1,
+            itens: [
+              { id: "k1", titulo: "A", critico: true },
+              { id: "k2", titulo: "B", critico: true },
+            ],
+          },
+        ],
+        respostas: {
+          k1: { item_id: "k1", resposta_valor: "NaoConforme" },
+          k2: { item_id: "k2", resposta_valor: "NaoConforme" },
+        },
+        pontuacao: calcularPontuacao([
+          { item_id: "k1", resposta_valor: "NaoConforme", critico: true },
+          { item_id: "k2", resposta_valor: "NaoConforme", critico: true },
+        ]),
+      })
+    );
+    expect(html).toContain("2 item(ns) crítico(s)");
+  });
+
+  it("todas as classes doc- do documento reprovado existem na folha de estilos", async () => {
+    const { estilosDocumentoSgsst } = await import("@/lib/sgsstDocumentoEstilos");
+    const html = montarHtmlChecklist(comCritico("NaoConforme"));
+    const usadas = new Set(
+      [...html.matchAll(/class="([^"]*)"/g)]
+        .flatMap((m) => m[1].split(/\s+/))
+        .filter((c) => c.startsWith("doc"))
+    );
+
+    const ausentes = [...usadas].filter((c) => !estilosDocumentoSgsst.includes(`.${c}`));
+    expect(ausentes).toEqual([]);
+  });
+});

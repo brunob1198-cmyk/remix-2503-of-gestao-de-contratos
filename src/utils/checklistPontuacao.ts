@@ -66,6 +66,11 @@ export interface RespostaParaPontuacao {
   is_nao_conforme?: boolean | null;
   /** Peso do item, vindo do modelo. Ausente ou inválido cai em 1. */
   peso_pontuacao?: number | null;
+  /**
+   * Item impeditivo, vindo do modelo. Não conformidade nele reprova o checklist
+   * inteiro. Não confundir com o peso: peso gradua a nota, crítico veta.
+   */
+  critico?: boolean | null;
 }
 
 export interface PontuacaoAplicacao {
@@ -79,6 +84,21 @@ export interface PontuacaoAplicacao {
   pontuacaoMaxima: number;
   /** Percentual sobre os pesos avaliados; nulo quando nada foi avaliado. */
   percentualConformidade: number | null;
+  /**
+   * Quantos itens **críticos** saíram não conformes. Um já reprova; o número diz o
+   * tamanho do problema.
+   */
+  itensCriticosNaoConformes: number;
+  /**
+   * Verdadeiro quando há item crítico não conforme.
+   *
+   * O veredito é separado do percentual, e nenhum dos dois altera o outro. Um
+   * checklist de quarenta itens com o extintor obstruído e trinta e nove conformes
+   * dá 97,5% — o número está certo e a conclusão está errada, porque o canteiro não
+   * pode operar. Zerar o percentual esconderia quantos itens estavam certos;
+   * ignorar o item crítico esconderia que o trabalho não pode começar.
+   */
+  reprovadoPorItemCritico: boolean;
 }
 
 /**
@@ -107,6 +127,7 @@ export function calcularPontuacao(
   let totalNa = 0;
   let pontuacaoObtida = 0;
   let pontuacaoMaxima = 0;
+  let itensCriticosNaoConformes = 0;
 
   // Respondidas de fato. Item em branco não é conforme nem não conforme — é item
   // não respondido, e contá-lo como qualquer um dos dois seria inventar resposta.
@@ -125,6 +146,10 @@ export function calcularPontuacao(
     if (ehNaoConforme(r)) {
       totalNaoConforme += 1;
       pontuacaoMaxima += peso;
+
+      // O item crítico continua pesando na nota normalmente. O veto é adicional,
+      // não substituto: a nota diz quanto está certo, o veto diz que não se opera.
+      if (r.critico) itensCriticosNaoConformes += 1;
       continue;
     }
 
@@ -142,6 +167,8 @@ export function calcularPontuacao(
     pontuacaoMaxima: arredondar(pontuacaoMaxima),
     percentualConformidade:
       pontuacaoMaxima === 0 ? null : arredondar((pontuacaoObtida / pontuacaoMaxima) * 100),
+    itensCriticosNaoConformes,
+    reprovadoPorItemCritico: itensCriticosNaoConformes > 0,
   };
 }
 
@@ -170,6 +197,8 @@ export interface ExigenciasDoItem {
   exigir_comentario_nao_conforme?: boolean | null;
   exigir_foto_nao_conforme?: boolean | null;
   gerar_plano_acao_nao_conforme?: boolean | null;
+  /** Item impeditivo. Nunca pode ficar sem resposta: ele decide o veredito. */
+  critico?: boolean | null;
 }
 
 export interface RespostaParaValidacao {
@@ -205,6 +234,18 @@ export function pendenciasDaAplicacao(params: {
   for (const item of itens) {
     const resposta = respostas[item.id];
     const respondido = !!(resposta?.resposta_valor ?? "").trim();
+
+    // Item crítico decide o veredito da aplicação inteira. Deixá-lo em branco
+    // deixaria a conclusão indefinida — não é "não avaliado", é a pergunta que
+    // precisava ser respondida.
+    if (item.critico && !respondido) {
+      pendencias.push({
+        itemId: item.id,
+        titulo: item.titulo,
+        motivo: "item crítico sem resposta — ele decide a aprovação do checklist",
+      });
+      continue;
+    }
 
     if (item.obrigatorio && !respondido) {
       pendencias.push({
