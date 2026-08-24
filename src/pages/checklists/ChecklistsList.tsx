@@ -23,6 +23,8 @@ import { ChecklistAgendamentosTab } from "@/components/checklists/ChecklistAgend
 import { ChecklistQrCodeDialog } from "@/components/checklists/ChecklistQrCodeDialog";
 import { ChecklistSyncCenterDialog } from "@/components/checklists/ChecklistSyncCenterDialog";
 import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
+import { useChecklistsAutoSync } from "@/hooks/checklists/useChecklistsAutoSync";
+import { useChecklistsCacheAutomatico } from "@/hooks/checklists/useChecklistsCacheAutomatico";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { exportToExcel } from "@/lib/excelExport";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
@@ -108,6 +110,17 @@ export default function ChecklistsListPage() {
   // Connection & Offline Hooks (PROMPT 021)
   const { statusLabel } = useConnectionStatus();
   const { offlineModels, toggleModelOfflineAvailability } = useChecklistsOffline();
+
+  // A fila offline passa a subir sozinha: ao voltar a conexao, na abertura da tela
+  // e periodicamente enquanto houver pendencia. Antes nada disparava a
+  // sincronizacao — o checklist ficava no celular ate alguem abrir o Centro de
+  // Sincronizacao e clicar.
+  useChecklistsAutoSync();
+
+  // E os modelos ativos ficam disponiveis offline sem ninguem marcar um por um. A
+  // marcacao manual continua existindo, mas deixou de ser o que faz o offline
+  // funcionar.
+  useChecklistsCacheAutomatico(modelos);
 
   // Modelos Filtered
   const filteredModelos = modelos.filter((m) => {

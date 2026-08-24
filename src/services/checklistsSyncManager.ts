@@ -157,7 +157,15 @@ export class ChecklistsSyncManager {
       }
 
       // Anexar URLs das fotos enviadas para o R2
-      const evidencias = [...(r.evidencias_urls || []), ...(photoUrlMap[r.item_id] || [])];
+      // Aceita as duas formas: a nova (`evidencias`, com coordenada por foto) e a
+      // antiga (`evidencias_urls`). Itens ja enfileirados em algum celular foram
+      // gravados na forma antiga, e trocar sem aceitar deixaria esses checklists
+      // sem sincronizar para sempre.
+      const urlsDoDraft: string[] = Array.isArray(r.evidencias)
+        ? r.evidencias.map((ev: { url: string }) => ev.url).filter(Boolean)
+        : r.evidencias_urls || [];
+
+      const evidencias = [...urlsDoDraft, ...(photoUrlMap[r.item_id] || [])];
 
       await supabase.from("checklist_respostas" as any).insert({
         empresa_id,

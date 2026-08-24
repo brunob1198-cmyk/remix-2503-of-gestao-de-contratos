@@ -6,6 +6,7 @@ import {
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { pesoEfetivo, type PontuacaoAplicacao } from "@/utils/checklistPontuacao";
+import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 
 /**
  * Emissão do checklist aplicado.
@@ -48,12 +49,26 @@ export interface SecaoDoDocumento {
   itens: readonly ItemDoDocumento[];
 }
 
+export interface EvidenciaDoDocumento {
+  origem?: OrigemFoto | null;
+  capturadaEm?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  precisao?: number | null;
+  motivoSemGeo?: string | null;
+}
+
 export interface RespostaDoDocumento {
   item_id: string;
   resposta_valor?: string | null;
   comentario?: string | null;
   is_nao_conforme?: boolean | null;
   quantidadeEvidencias?: number;
+  /**
+   * Cada foto com onde e quando foi tirada. E o que transforma a foto em evidencia:
+   * "2 fotos anexadas" nao diz nada a quem confere; a coordenada e o horario dizem.
+   */
+  evidencias?: readonly EvidenciaDoDocumento[];
   planoAcao?: {
     o_que_fazer?: string | null;
     quando_prazo?: string | null;
@@ -134,9 +149,38 @@ function linhaDoItem(
   if (resposta?.comentario?.trim()) {
     detalhe.push(esc(resposta.comentario.trim()));
   }
-  if ((resposta?.quantidadeEvidencias ?? 0) > 0) {
+  /**
+   * O selo de cada foto — onde, quando e por qual meio.
+   *
+   * "2 evidência(s) anexada(s)" não diz nada a quem confere a folha: a foto pode
+   * ser de outro dia e de outro lugar. A coordenada e o horário do instante da
+   * captura é o que transforma a foto em evidência, e é isso que sai impresso.
+   */
+  const evidencias = resposta?.evidencias ?? [];
+
+  if (evidencias.length > 0) {
+    const selos = evidencias.map((ev, indice) => {
+      const selo = seloDaFoto({
+        coord: {
+          latitude: ev.latitude,
+          longitude: ev.longitude,
+          precisao: ev.precisao,
+        },
+        capturadaEm: ev.capturadaEm,
+        origem: ev.origem,
+        motivoSemCoordenada: ev.motivoSemGeo,
+      });
+
+      const classe = selo.alerta ? "doc-restr" : "doc-neutro";
+      return `<span class="${classe}">Foto ${indice + 1}: ${esc(selo.texto)}</span>`;
+    });
+
+    detalhe.push(selos.join("<br>"));
+  } else if ((resposta?.quantidadeEvidencias ?? 0) > 0) {
+    // Aplicação antiga, gravada antes de a coordenada por foto existir: a folha diz
+    // a quantidade e não inventa uma localização que não foi registrada.
     detalhe.push(
-      `<span class="doc-neutro">${resposta?.quantidadeEvidencias} evidência(s) anexada(s)</span>`
+      `<span class="doc-neutro">${resposta?.quantidadeEvidencias} evidência(s) anexada(s), sem localização registrada</span>`
     );
   }
   if (resposta?.planoAcao?.o_que_fazer?.trim()) {
