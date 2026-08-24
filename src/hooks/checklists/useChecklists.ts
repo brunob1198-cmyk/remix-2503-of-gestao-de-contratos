@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import {
+  calcularPontuacao,
+  pontosDaResposta,
+  ehNaoConforme,
+} from "@/utils/checklistPontuacao";
 
 export type TipoRespostaChecklist =
   | "Sim_Nao"
@@ -190,7 +195,12 @@ export function useChecklistModelos() {
             itens:checklist_itens(*)
           )
         `)
-        .order("created_at", { ascending: false }) as any);
+        .order("created_at", { ascending: false })
+        // Teto explícito. A consulta traz o modelo INTEIRO — seções e itens de cada
+        // um —, então o payload cresce por item cadastrado, não por modelo. Sem
+        // limite, o PostgREST cortava no teto padrão sem avisar; com ele, ao menos
+        // o corte é conhecido. Modelo é catálogo: quinhentos é folga larga.
+        .limit(500) as any);
 
       if (error) throw error;
       return (data as ChecklistModelo[]) || [];
@@ -389,16 +399,27 @@ export function useChecklistModelos() {
 }
 
 // 2. APLICAÇÕES HOOK
-export function useChecklistAplicacoes() {
+/**
+ * Aplicações de checklist.
+ *
+ * A consulta trazia TODAS as aplicações da empresa, sem limite, com os planos de
+ * ação embutidos. O PostgREST corta no teto padrão em silêncio — e aplicação de
+ * checklist é o registro que mais acumula nesta tela: uma por inspeção, por turno,
+ * por frente de serviço. A lista aparecia incompleta sem dizer que era incompleta.
+ */
+export function useChecklistAplicacoes(params?: { page?: number; pageSize?: number }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: aplicacoes = [], isLoading, refetch } = useQuery({
-    queryKey: ["checklist_aplicacoes", empresaId],
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 50;
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["checklist_aplicacoes", empresaId, page, pageSize],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      const { data, error, count } = await (supabase
         .from("checklist_aplicacoes" as any)
         .select(`
           *,
@@ -408,11 +429,14 @@ export function useChecklistAplicacoes() {
           aplicador:profiles!checklist_aplicacoes_aplicador_id_fkey(id, nome),
           responsavel:profiles!checklist_aplicacoes_responsavel_id_fkey(id, nome),
           planos_acao:checklist_planos_acao(*)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1) as any);
 
       if (error) throw error;
-      return (data as ChecklistAplicacao[]) || [];
+
+      const rows = (data as ChecklistAplicacao[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
 
@@ -473,6 +497,8 @@ export function useChecklistAplicacoes() {
         is_critico?: boolean;
         is_nao_conforme?: boolean;
         pontos_obtidos?: number;
+        /** Peso do item, vindo do modelo. Sem ele o cálculo trata tudo como 1. */
+        peso_pontuacao?: number | null;
         evidencias_urls?: string[];
       }>;
       planos_acao: Array<{
@@ -487,26 +513,26 @@ export function useChecklistAplicacoes() {
         prioridade?: "Baixa" | "Media" | "Alta" | "Critica";
       }>;
     }) => {
-      // Calculate Scores
-      let totalConforme = 0;
-      let totalNaoConforme = 0;
-      let totalNa = 0;
-      let pontuacaoObtida = 0;
-      let pontuacaoMaxima = 0;
+      // A pontuação usa o `peso_pontuacao` do item, que antes era ignorado: o
+      // cálculo somava 1.0 fixo e "extintor obstruído" pesava igual a "quadro de
+      // avisos atualizado". A regra está em `checklistPontuacao`, com teste.
+      const pontuacao = calcularPontuacao(input.respostas);
+
+      /**
+       * Falhas de gravação, acumuladas para serem RELATADAS.
+       *
+       * Antes cada erro caía num `console.warn` e a mutação seguia até devolver um
+       * objeto sintético — o `onSuccess` então anunciava "Checklist concluído e
+       * enviado com sucesso!" mesmo quando nada tinha sido gravado. Quem estava na
+       * obra ia embora achando que havia registro.
+       *
+       * Agora as respostas individuais são tentadas uma a uma (uma falhar não deve
+       * derrubar as outras) e, no fim, o que falhou vira exceção.
+       */
+      const falhas: string[] = [];
 
       for (const r of input.respostas) {
         if (!r.item_id || !r.resposta_valor) continue;
-
-        if (r.resposta_valor === "NA" || r.resposta_valor === "N/A") {
-          totalNa++;
-        } else if (r.is_nao_conforme || r.resposta_valor === "NaoConforme" || r.resposta_valor === "Nao" || r.resposta_valor === "NaoOK") {
-          totalNaoConforme++;
-          pontuacaoMaxima += 1.0;
-        } else {
-          totalConforme++;
-          pontuacaoObtida += 1.0;
-          pontuacaoMaxima += 1.0;
-        }
 
         if (empresaId && input.aplicacao_id && !input.aplicacao_id.startsWith("app_")) {
           try {
@@ -520,14 +546,15 @@ export function useChecklistAplicacoes() {
                 resposta_valor: r.resposta_valor,
                 comentario: r.comentario || null,
                 is_critico: r.is_critico ?? false,
-                is_nao_conforme: r.is_nao_conforme ?? (r.resposta_valor === "NaoConforme" || r.resposta_valor === "Nao"),
-                pontos_obtidos: r.is_nao_conforme ? 0 : 1.0,
+                is_nao_conforme: ehNaoConforme(r),
+                // Vale o peso do item, não 1.0 fixo.
+                pontos_obtidos: pontosDaResposta(r),
               })
               .select()
               .single() as any);
 
             if (rErr) {
-              console.warn("Aviso ao salvar resposta individual:", rErr);
+              falhas.push(`resposta do item ${r.item_id}: ${rErr.message ?? rErr}`);
             } else if (respDb && r.evidencias_urls && r.evidencias_urls.length > 0) {
               const evidInserts = r.evidencias_urls.map((url) => ({
                 empresa_id: empresaId,
@@ -536,10 +563,23 @@ export function useChecklistAplicacoes() {
                 r2_url: url,
                 r2_key: url,
               }));
-              await (supabase.from("checklist_evidencias" as any).insert(evidInserts) as any);
+
+              const { error: eErr } = await (supabase
+                .from("checklist_evidencias" as any)
+                .insert(evidInserts) as any);
+
+              // A foto é a prova do desvio. Perdê-la em silêncio esvazia o
+              // registro exatamente no item que mais precisa dele.
+              if (eErr) {
+                falhas.push(
+                  `evidência(s) do item ${r.item_id}: ${eErr.message ?? eErr}`
+                );
+              }
             }
           } catch (respErr) {
-            console.warn("Exceção ao salvar resposta:", respErr);
+            falhas.push(
+              `resposta do item ${r.item_id}: ${(respErr as Error).message ?? respErr}`
+            );
           }
         }
       }
@@ -548,13 +588,17 @@ export function useChecklistAplicacoes() {
       if (empresaId && input.aplicacao_id && !input.aplicacao_id.startsWith("app_")) {
         for (const pa of input.planos_acao) {
           try {
-            await (supabase
+            const { error: paErrDb } = await (supabase
               .from("checklist_planos_acao" as any)
               .insert({
                 empresa_id: empresaId,
                 aplicacao_id: input.aplicacao_id,
                 item_id: pa.item_id || null,
-                codigo: `PA-${Math.floor(1000 + Math.random() * 9000)}`,
+                // O código é gerado no banco, sequencial por empresa e ano. Antes
+                // era um sorteio de quatro dígitos sem unicidade: colisão passava
+                // de 50% de chance perto do centésimo plano, e dois planos com o
+                // mesmo código destroem a rastreabilidade do que precisa ser
+                // rastreado.
                 o_que_fazer: pa.o_que_fazer,
                 por_que: pa.por_que || null,
                 onde: pa.onde || null,
@@ -565,62 +609,88 @@ export function useChecklistAplicacoes() {
                 prioridade: pa.prioridade || "Media",
                 status: "Aberto",
               }) as any);
+
+            if (paErrDb) {
+              falhas.push(`plano de ação "${pa.o_que_fazer}": ${paErrDb.message ?? paErrDb}`);
+            }
           } catch (paErr) {
-            console.warn("Exceção ao salvar plano de ação:", paErr);
+            falhas.push(
+              `plano de ação "${pa.o_que_fazer}": ${(paErr as Error).message ?? paErr}`
+            );
           }
         }
       }
 
-      const percentual = pontuacaoMaxima > 0 ? (pontuacaoObtida / pontuacaoMaxima) * 100 : 100;
+      // Aplicação apenas local (offline) não tem o que atualizar no servidor: a
+      // fila de sincronização cuida dela.
+      const apenasLocal =
+        !empresaId || !input.aplicacao_id || input.aplicacao_id.startsWith("app_");
 
-      if (empresaId && input.aplicacao_id && !input.aplicacao_id.startsWith("app_")) {
-        try {
-          // Update Aplicacao Record
-          const { data: updated, error: uErr } = await (supabase
-            .from("checklist_aplicacoes" as any)
-            .update({
-              status: "concluido",
-              data_conclusao: new Date().toISOString(),
-              pontuacao_obtida: pontuacaoObtida,
-              pontuacao_maxima: pontuacaoMaxima,
-              percentual_conformidade: Math.round(percentual),
-              total_itens: input.respostas.length,
-              total_conforme: totalConforme,
-              total_nao_conforme: totalNaoConforme,
-              total_na: totalNa,
-              observacoes_gerais: input.observacoes_gerais || null,
-            })
-            .eq("id", input.aplicacao_id)
-            .select()
-            .single() as any);
-
-          if (!uErr && updated) {
-            return updated as ChecklistAplicacao;
-          }
-        } catch (updErr) {
-          console.warn("Exceção ao atualizar aplicação:", updErr);
-        }
+      if (apenasLocal) {
+        return {
+          id: input.aplicacao_id,
+          empresa_id: empresaId || "",
+          modelo_id: "",
+          status: "concluido",
+          pontuacao_obtida: pontuacao.pontuacaoObtida,
+          pontuacao_maxima: pontuacao.pontuacaoMaxima,
+          percentual_conformidade: pontuacao.percentualConformidade ?? 0,
+          total_itens: pontuacao.totalItens,
+          total_conforme: pontuacao.totalConforme,
+          total_nao_conforme: pontuacao.totalNaoConforme,
+          total_na: pontuacao.totalNa,
+          observacoes_gerais: input.observacoes_gerais || null,
+        } as ChecklistAplicacao;
       }
 
-      return {
-        id: input.aplicacao_id,
-        empresa_id: empresaId || "",
-        modelo_id: "",
-        status: "concluido",
-        pontuacao_obtida: pontuacaoObtida,
-        pontuacao_maxima: pontuacaoMaxima,
-        percentual_conformidade: Math.round(percentual),
-        total_itens: input.respostas.length,
-        total_conforme: totalConforme,
-        total_nao_conforme: totalNaoConforme,
-        total_na: totalNa,
-        observacoes_gerais: input.observacoes_gerais || null,
-      } as ChecklistAplicacao;
+      const { data: updated, error: uErr } = await (supabase
+        .from("checklist_aplicacoes" as any)
+        .update({
+          status: "concluido",
+          data_conclusao: new Date().toISOString(),
+          pontuacao_obtida: pontuacao.pontuacaoObtida,
+          pontuacao_maxima: pontuacao.pontuacaoMaxima,
+          // Nulo quando nada foi avaliado. Antes o código gravava 100% nesse
+          // caso — um checklist inteiro marcado "não aplicável" aparecia como
+          // conformidade total, que é o oposto do que os dados dizem.
+          percentual_conformidade: pontuacao.percentualConformidade,
+          total_itens: pontuacao.totalItens,
+          total_conforme: pontuacao.totalConforme,
+          total_nao_conforme: pontuacao.totalNaoConforme,
+          total_na: pontuacao.totalNa,
+          observacoes_gerais: input.observacoes_gerais || null,
+        })
+        .eq("id", input.aplicacao_id)
+        .select()
+        .single() as any);
+
+      // A falha do fechamento é a mais grave e não pode ser engolida: sem ela a
+      // aplicação fica "em andamento" para sempre, e o usuário foi embora com um
+      // aviso de sucesso.
+      if (uErr) {
+        throw new Error(
+          `Não foi possível fechar o checklist: ${uErr.message ?? uErr}. As respostas já gravadas foram mantidas — reabra a aplicação e conclua novamente.`
+        );
+      }
+
+      if (falhas.length > 0) {
+        throw new Error(
+          `O checklist foi fechado, mas ${falhas.length} registro(s) não foram gravados: ${falhas
+            .slice(0, 3)
+            .join("; ")}${falhas.length > 3 ? "; …" : ""}`
+        );
+      }
+
+      return updated as ChecklistAplicacao;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["checklist_aplicacoes"] });
       queryClient.invalidateQueries({ queryKey: ["checklist_planos_acao"] });
       toast.success("Checklist concluído e enviado com sucesso!");
+    },
+    // Sem este `onError`, qualquer falha desta mutação era anunciada como sucesso.
+    onError: (err: { message?: string }) => {
+      toast.error(err.message || "Erro ao concluir o checklist.", { duration: 10000 });
     },
   });
 
@@ -643,7 +713,8 @@ export function useChecklistAplicacoes() {
   });
 
   return {
-    aplicacoes,
+    aplicacoes: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     refetch,
     createAplicacao,
@@ -653,28 +724,43 @@ export function useChecklistAplicacoes() {
 }
 
 // 3. PLANOS DE AÇÃO 5W2H HOOK
-export function useChecklistPlanosAcao() {
+/**
+ * Planos de ação 5W2H.
+ *
+ * Mesma correção das aplicações: a consulta trazia todos os planos da empresa sem
+ * limite. Plano de ação acumula mais rápido que aplicação — um checklist com dez
+ * não conformidades gera dez planos.
+ */
+export function useChecklistPlanosAcao(params?: { page?: number; pageSize?: number }) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const empresaId = profile?.empresa_id;
 
-  const { data: planosAcao = [], isLoading, refetch } = useQuery({
-    queryKey: ["checklist_planos_acao", empresaId],
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 50;
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["checklist_planos_acao", empresaId, page, pageSize],
     enabled: !!empresaId,
     queryFn: async () => {
-      const { data, error } = await (supabase
+      const { data, error, count } = await (supabase
         .from("checklist_planos_acao" as any)
         .select(`
           *,
           quem_responsavel:profiles!checklist_planos_acao_quem_responsavel_id_fkey(id, nome),
           validado_por:profiles!checklist_planos_acao_validado_por_id_fkey(id, nome),
-          aplicacao:checklist_aplicacoes(id, codigo, modelo:checklist_modelos(nome)),
+          aplicacao:checklist_aplicacoes(
+            id, codigo, projeto_id, area_id, modelo:checklist_modelos(nome)
+          ),
           item:checklist_itens(id, titulo)
-        `)
-        .order("created_at", { ascending: false }) as any);
+        `, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1) as any);
 
       if (error) throw error;
-      return (data as ChecklistPlanoAcao[]) || [];
+
+      const rows = (data as ChecklistPlanoAcao[]) || [];
+      return { rows, total: count ?? rows.length };
     },
   });
 
@@ -703,23 +789,56 @@ export function useChecklistPlanosAcao() {
     mutationFn: async (plano: ChecklistPlanoAcao) => {
       if (!empresaId) throw new Error("Empresa não identificada.");
 
-      // Create record in sgsst_nao_conformidades without duplicate logic
-      const codigo = `NC-CHK-${Math.floor(1000 + Math.random() * 9000)}`;
+      /**
+       * Esta escalação nunca funcionou. O insert usava quatro nomes de coluna que
+       * `sgsst_nao_conformidades` não tem — `gravidade`, `responsavel_tratamento`,
+       * `data_limite` — e um `origem_tipo: "CHECKLIST"` que o CHECK da tabela não
+       * aceitava. Faltava também `projeto_id`, que é NOT NULL. O erro aparecia em
+       * toast, então o botão falhava à vista de todos, sempre.
+       *
+       * Agora os nomes são os reais, a obra vem da aplicação de origem e o valor
+       * CHECKLIST passou a ser aceito pela migration 20260824100000.
+       */
+      const projetoId = plano.aplicacao?.projeto_id;
+
+      if (!projetoId) {
+        throw new Error(
+          "A aplicação de origem não tem obra vinculada, e a não conformidade do SGSST exige obra. Edite a aplicação e informe a obra antes de escalar."
+        );
+      }
 
       const { data: ncDb, error: ncErr } = await (supabase
         .from("sgsst_nao_conformidades" as any)
         .insert({
           empresa_id: empresaId,
-          codigo,
+          projeto_id: projetoId,
+          area_id: plano.aplicacao?.area_id || null,
+          // Numeração da própria tabela de NC, que já tem índice único por
+          // empresa. O sorteio anterior de quatro dígitos colidia com o índice.
+          codigo: null,
           titulo: `[Checklist 5W2H] ${plano.o_que_fazer}`,
-          descricao: `Origem: Aplicação de Checklist | ${plano.por_que || ""}`,
+          descricao: [
+            `Origem: aplicação de checklist ${plano.aplicacao?.codigo ?? ""}`.trim(),
+            plano.por_que ? `Por que: ${plano.por_que}` : "",
+            plano.como_fazer ? `Como: ${plano.como_fazer}` : "",
+            plano.onde ? `Onde: ${plano.onde}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
           origem_tipo: "CHECKLIST",
           origem_id: plano.aplicacao_id,
-          gravidade: plano.prioridade === "Critica" ? "CRITICA" : plano.prioridade === "Alta" ? "ALTA" : "MEDIA",
+          criticidade:
+            plano.prioridade === "Critica"
+              ? "CRITICA"
+              : plano.prioridade === "Alta"
+                ? "ALTA"
+                : plano.prioridade === "Baixa"
+                  ? "BAIXA"
+                  : "MEDIA",
           status: "ABERTA",
-          responsavel_tratamento: plano.quem_responsavel?.nome || "Responsável Checklist",
+          responsavel_id: plano.quem_responsavel_id || null,
           data_identificacao: new Date().toISOString().split("T")[0],
-          data_limite: plano.quando_prazo || null,
+          prazo: plano.quando_prazo || null,
         })
         .select()
         .single() as any);
@@ -745,7 +864,8 @@ export function useChecklistPlanosAcao() {
   });
 
   return {
-    planosAcao,
+    planosAcao: data?.rows ?? [],
+    total: data?.total ?? 0,
     isLoading,
     refetch,
     updatePlanoAcao,
