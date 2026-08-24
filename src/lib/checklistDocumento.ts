@@ -37,6 +37,8 @@ export interface ItemDoDocumento {
   descricao?: string | null;
   peso_pontuacao?: number | null;
   obrigatorio?: boolean | null;
+  /** Item impeditivo: nao conformidade nele reprova o checklist inteiro. */
+  critico?: boolean | null;
 }
 
 export interface SecaoDoDocumento {
@@ -149,9 +151,15 @@ function linhaDoItem(
     detalhe.push(`<span class="doc-inapto">Sem plano de ação registrado</span>`);
   }
 
+  // A marca do item crítico fica no título, não numa coluna própria: quem lê
+  // precisa saber que AQUELE item veta, e não conferir uma legenda no rodapé.
+  const marcaCritico = item.critico
+    ? ` <span class="doc-inapto">[CRÍTICO]</span>`
+    : "";
+
   return `<tr>
     <td>
-      ${esc(item.titulo)}${item.obrigatorio ? " *" : ""}
+      ${esc(item.titulo)}${item.obrigatorio ? " *" : ""}${marcaCritico}
       ${item.descricao ? `<br><span class="doc-neutro">${esc(item.descricao)}</span>` : ""}
       ${detalhe.length > 0 ? `<br>${detalhe.join("<br>")}` : ""}
     </td>
@@ -203,6 +211,17 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
       </div>
 
       ${
+        pontuacao.reprovadoPorItemCritico
+          ? `<div class="doc-aviso">
+              <strong>CHECKLIST REPROVADO.</strong>
+              ${pontuacao.itensCriticosNaoConformes} item(ns) crítico(s) saiu(ram) não
+              conforme(s). Item crítico é impeditivo: a reprovação não depende do
+              percentual de conformidade, e o percentual abaixo não a substitui.
+             </div>`
+          : ""
+      }
+
+      ${
         naoRespondidos > 0
           ? `<div class="doc-aviso">
               <strong>${naoRespondidos} item(ns) sem resposta.</strong> Item não respondido
@@ -248,6 +267,18 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
       <div class="doc-bloco">
         <div class="tit">Resultado</div>
         <div class="corpo">
+          <div class="doc-conclusao">
+            <div class="rot">Resultado</div>
+            <div class="valor ${
+              pontuacao.reprovadoPorItemCritico ? "doc-inapto" : "doc-apto"
+            }">${pontuacao.reprovadoPorItemCritico ? "REPROVADO" : "APROVADO"}</div>
+            ${
+              pontuacao.reprovadoPorItemCritico
+                ? `<div class="rot">por ${pontuacao.itensCriticosNaoConformes} item(ns) crítico(s) não conforme(s)</div>`
+                : ""
+            }
+          </div>
+
           <div class="doc-cards">
             <div class="doc-card">
               <div class="rot">Conformidade</div>
@@ -362,15 +393,18 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
 
 function nomeArquivo(dados: ChecklistDocumentoDados): string {
   const base = dados.aplicacaoCodigo || dados.modeloNome || "Checklist";
-  return `Checklist_${base.replace(/[^\w-]+/g, "_").slice(0, 48)}.pdf`;
+  // O veredito entra no nome do arquivo: quem recebe uma pasta de PDFs consegue
+  // separar os reprovados sem abrir cada um.
+  const veredito = dados.pontuacao.reprovadoPorItemCritico ? "REPROVADO_" : "";
+  return `Checklist_${veredito}${base.replace(/[^\w-]+/g, "_").slice(0, 48)}.pdf`;
 }
 
 export async function gerarPdfChecklist(dados: ChecklistDocumentoDados): Promise<void> {
   await emitirPdfTimbrado({
     html: montarHtmlChecklist(dados),
     nomeArquivo: nomeArquivo(dados),
-    identificacao: `${dados.modeloNome} — ${textoDoIndice(
-      dados.pontuacao.percentualConformidade
-    )}`.slice(0, 88),
+    identificacao: `${dados.modeloNome} — ${
+      dados.pontuacao.reprovadoPorItemCritico ? "REPROVADO · " : ""
+    }${textoDoIndice(dados.pontuacao.percentualConformidade)}`.slice(0, 88),
   });
 }

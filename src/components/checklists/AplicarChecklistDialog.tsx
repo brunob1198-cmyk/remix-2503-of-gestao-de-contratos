@@ -426,13 +426,19 @@ export function AplicarChecklistDialog({
     // O peso do item viaja junto: sem ele a pontuação volta a tratar todo item
     // como 1, que era o bug que fazia "extintor obstruído" valer o mesmo que
     // "quadro de avisos atualizado".
-    const pesoPorItem = new Map(
-      itensDoModelo.map((item) => [item.id, item.peso_pontuacao ?? null])
+    const configPorItem = new Map(
+      itensDoModelo.map((item) => [
+        item.id,
+        { peso: item.peso_pontuacao ?? null, critico: !!item.critico },
+      ])
     );
 
     const listRespostas = Object.values(respostas).map((r) => ({
       ...r,
-      peso_pontuacao: pesoPorItem.get(r.item_id) ?? null,
+      peso_pontuacao: configPorItem.get(r.item_id)?.peso ?? null,
+      // Sem isto o veredito por item critico nao chega a mutation, e a aplicacao
+      // seria fechada como aprovada mesmo com o item impeditivo reprovado.
+      critico: configPorItem.get(r.item_id)?.critico ?? false,
     }));
 
     const listPlanosAcao: any[] = [];
@@ -569,6 +575,7 @@ export function AplicarChecklistDialog({
         resposta_valor: respostas[item.id]?.resposta_valor,
         is_nao_conforme: respostas[item.id]?.is_nao_conforme,
         peso_pontuacao: item.peso_pontuacao,
+        critico: item.critico,
       }))
     );
 
@@ -952,14 +959,54 @@ export function AplicarChecklistDialog({
         {/* STEP 3: RESULT & SCORING */}
         {step === "result" && resultSummary && (
           <div className="space-y-6 py-4 text-xs text-center">
-            <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
-              <div className="inline-flex p-3 bg-emerald-100 rounded-full text-emerald-700">
-                <Award className="h-10 w-10" />
+            {/* Item crítico não conforme reprova, independente do percentual: a tela
+                de resultado não pode ser verde nesse caso. As duas informações
+                aparecem juntas — o veredito e a nota — porque zerar a nota
+                esconderia quantos itens estavam certos. */}
+            <div
+              className={`p-6 border rounded-xl space-y-3 ${
+                resultSummary.reprovado_por_item_critico
+                  ? "bg-red-50 border-red-300"
+                  : "bg-emerald-50 border-emerald-200"
+              }`}
+            >
+              <div
+                className={`inline-flex p-3 rounded-full ${
+                  resultSummary.reprovado_por_item_critico
+                    ? "bg-red-100 text-red-700"
+                    : "bg-emerald-100 text-emerald-700"
+                }`}
+              >
+                {resultSummary.reprovado_por_item_critico ? (
+                  <XCircle className="h-10 w-10" />
+                ) : (
+                  <Award className="h-10 w-10" />
+                )}
               </div>
-              <h2 className="text-xl font-bold text-emerald-900">CHECKLIST CONCLUÍDO COM SUCESSO!</h2>
 
-              <div className="text-3xl font-extrabold text-emerald-700">
-                {resultSummary.percentual_conformidade}% de Conformidade
+              {resultSummary.reprovado_por_item_critico ? (
+                <>
+                  <h2 className="text-xl font-bold text-red-900">CHECKLIST REPROVADO</h2>
+                  <p className="text-xs text-red-800 max-w-md mx-auto">
+                    {resultSummary.itens_criticos_nao_conformes} item(ns) crítico(s) saiu(ram)
+                    não conforme(s). Item crítico é impeditivo — a reprovação não depende do
+                    percentual abaixo.
+                  </p>
+                </>
+              ) : (
+                <h2 className="text-xl font-bold text-emerald-900">CHECKLIST CONCLUÍDO COM SUCESSO!</h2>
+              )}
+
+              <div
+                className={`text-3xl font-extrabold ${
+                  resultSummary.reprovado_por_item_critico
+                    ? "text-red-700"
+                    : "text-emerald-700"
+                }`}
+              >
+                {resultSummary.percentual_conformidade === null
+                  ? "não avaliado"
+                  : `${resultSummary.percentual_conformidade}% de Conformidade`}
               </div>
             </div>
 

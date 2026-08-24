@@ -74,6 +74,11 @@ export interface ChecklistItem {
   exigir_foto_nao_conforme: boolean;
   gerar_plano_acao_nao_conforme: boolean;
   peso_pontuacao: number;
+  /**
+   * Item impeditivo: nao conformidade nele reprova o checklist inteiro,
+   * independente do percentual. Peso gradua a nota; critico veta.
+   */
+  critico?: boolean | null;
   created_at?: string;
 }
 
@@ -104,6 +109,13 @@ export interface ChecklistAplicacao {
   total_conforme: number;
   total_nao_conforme: number;
   total_na: number;
+  /**
+   * Veredito por item impeditivo, separado do percentual. Um checklist pode ter
+   * 97,5% de conformidade e estar reprovado — e as duas informacoes precisam
+   * caber na mesma linha da lista.
+   */
+  reprovado_por_item_critico?: boolean | null;
+  itens_criticos_nao_conformes?: number | null;
   observacoes_gerais?: string | null;
   created_at?: string;
   // Joined
@@ -236,6 +248,7 @@ export function useChecklistModelos() {
           exigir_foto_nao_conforme?: boolean;
           gerar_plano_acao_nao_conforme?: boolean;
           peso_pontuacao?: number;
+          critico?: boolean;
         }>;
       }>;
     }) => {
@@ -297,6 +310,7 @@ export function useChecklistModelos() {
             exigir_foto_nao_conforme: it.exigir_foto_nao_conforme ?? false,
             gerar_plano_acao_nao_conforme: it.gerar_plano_acao_nao_conforme ?? true,
             peso_pontuacao: it.peso_pontuacao ?? 1.0,
+            critico: it.critico ?? false,
           }));
 
           const { error: iErr } = await (supabase.from("checklist_itens" as any).insert(itensToInsert) as any);
@@ -347,6 +361,7 @@ export function useChecklistModelos() {
             exigir_foto_nao_conforme: it.exigir_foto_nao_conforme,
             gerar_plano_acao_nao_conforme: it.gerar_plano_acao_nao_conforme,
             peso_pontuacao: it.peso_pontuacao,
+            critico: it.critico ?? false,
           })),
         })),
       });
@@ -499,6 +514,8 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
         pontos_obtidos?: number;
         /** Peso do item, vindo do modelo. Sem ele o cálculo trata tudo como 1. */
         peso_pontuacao?: number | null;
+        /** Item impeditivo, vindo do modelo. */
+        critico?: boolean | null;
         evidencias_urls?: string[];
       }>;
       planos_acao: Array<{
@@ -545,7 +562,10 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
                 item_id: r.item_id,
                 resposta_valor: r.resposta_valor,
                 comentario: r.comentario || null,
-                is_critico: r.is_critico ?? false,
+                // Copia a marcação `critico` do item. A coluna existia desde o
+                // início e era gravada sempre como falso, porque nada a alimentava:
+                // a tela nunca preenchia `is_critico` no payload.
+                is_critico: r.critico ?? r.is_critico ?? false,
                 is_nao_conforme: ehNaoConforme(r),
                 // Vale o peso do item, não 1.0 fixo.
                 pontos_obtidos: pontosDaResposta(r),
@@ -639,6 +659,8 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
           total_conforme: pontuacao.totalConforme,
           total_nao_conforme: pontuacao.totalNaoConforme,
           total_na: pontuacao.totalNa,
+          reprovado_por_item_critico: pontuacao.reprovadoPorItemCritico,
+          itens_criticos_nao_conformes: pontuacao.itensCriticosNaoConformes,
           observacoes_gerais: input.observacoes_gerais || null,
         } as ChecklistAplicacao;
       }
@@ -658,6 +680,9 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
           total_conforme: pontuacao.totalConforme,
           total_nao_conforme: pontuacao.totalNaoConforme,
           total_na: pontuacao.totalNa,
+          // O veredito nao substitui o percentual: os dois convivem na mesma linha.
+          reprovado_por_item_critico: pontuacao.reprovadoPorItemCritico,
+          itens_criticos_nao_conformes: pontuacao.itensCriticosNaoConformes,
           observacoes_gerais: input.observacoes_gerais || null,
         })
         .eq("id", input.aplicacao_id)

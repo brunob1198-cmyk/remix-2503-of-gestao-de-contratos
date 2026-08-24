@@ -34,6 +34,7 @@ interface SecaoDraft {
     exigir_foto_nao_conforme: boolean;
     gerar_plano_acao_nao_conforme: boolean;
     peso_pontuacao: number;
+    critico: boolean;
   }>;
 }
 
@@ -76,6 +77,7 @@ export function ChecklistModeloFormDialog({
           exigir_foto_nao_conforme: true,
           gerar_plano_acao_nao_conforme: true,
           peso_pontuacao: 1.0,
+          critico: false,
         },
       ],
     },
@@ -135,6 +137,7 @@ export function ChecklistModeloFormDialog({
               exigir_foto_nao_conforme: i.exigir_foto_nao_conforme,
               gerar_plano_acao_nao_conforme: i.gerar_plano_acao_nao_conforme,
               peso_pontuacao: i.peso_pontuacao,
+              critico: !!i.critico,
             })),
           }))
         );
@@ -142,7 +145,9 @@ export function ChecklistModeloFormDialog({
     } else {
       setNome("");
       setCategoria("Segurança do Trabalho");
-      setCodigo(`CHK-${Math.floor(1000 + Math.random() * 9000)}`);
+      // Em branco de propósito: o banco numera sequencialmente por empresa e ano.
+      // Sugerir um código sorteado aqui anularia essa numeração.
+      setCodigo("");
       setDescricao("");
       setPeriodicidade("Diario");
       setProjetoId("");
@@ -167,6 +172,7 @@ export function ChecklistModeloFormDialog({
               exigir_foto_nao_conforme: true,
               gerar_plano_acao_nao_conforme: true,
               peso_pontuacao: 1.0,
+              critico: false,
             },
           ],
         },
@@ -190,6 +196,7 @@ export function ChecklistModeloFormDialog({
             exigir_foto_nao_conforme: true,
             gerar_plano_acao_nao_conforme: true,
             peso_pontuacao: 1.0,
+            critico: false,
           },
         ],
       },
@@ -211,6 +218,7 @@ export function ChecklistModeloFormDialog({
       exigir_foto_nao_conforme: true,
       gerar_plano_acao_nao_conforme: true,
       peso_pontuacao: 1.0,
+          critico: false,
     });
     setSecoes(updatedSecoes);
   };
@@ -237,7 +245,9 @@ export function ChecklistModeloFormDialog({
       await onSave({
         nome: nome.trim(),
         categoria,
-        codigo: codigo || `CHK-${Math.floor(1000 + Math.random() * 9000)}`,
+        // Vazio deixa o banco numerar sequencialmente. O sorteio de quatro dígitos
+        // que estava aqui não tinha unicidade e colidia com o índice único.
+        codigo: codigo.trim() || null,
         descricao: descricao.trim() || null,
         periodicidade_sugerida: periodicidade,
         projeto_id: projetoId && projetoId !== "todas" && projetoId !== "todos" ? projetoId : null,
@@ -560,6 +570,25 @@ export function ChecklistModeloFormDialog({
                           Gerar Plano de Ação 5W2H
                         </label>
 
+                        {/* Item impeditivo. Marcar também como obrigatório é
+                            deliberado: item crítico em branco deixaria o veredito
+                            da aplicação indefinido. */}
+                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-red-700">
+                          <input
+                            type="checkbox"
+                            checked={item.critico}
+                            onChange={(e) => {
+                              const updated = [...secoes];
+                              updated[sIdx].itens[iIdx].critico = e.target.checked;
+                              if (e.target.checked) {
+                                updated[sIdx].itens[iIdx].obrigatorio = true;
+                              }
+                              setSecoes(updated);
+                            }}
+                          />
+                          Item crítico (reprova o checklist)
+                        </label>
+
                         {/* O peso já existia no banco e no tipo, e não tinha campo:
                             era gravado sempre como 1 e ignorado no cálculo. Agora
                             entra na conta do índice de conformidade. */}
@@ -590,6 +619,15 @@ export function ChecklistModeloFormDialog({
                         grave — é o que faz o percentual medir risco e não quantidade de
                         linhas.
                       </p>
+
+                      {item.critico && (
+                        <p className="text-[11px] text-red-700 px-2 font-medium">
+                          Item crítico: não conformidade aqui <strong>reprova o checklist
+                          inteiro</strong>, independente do percentual. Peso gradua a nota;
+                          crítico veta. Ele passa a ser obrigatório, porque em branco
+                          deixaria a aprovação indefinida.
+                        </p>
+                      )}
                     </div>
                   ))}
 

@@ -378,3 +378,160 @@ describe("textoDasPendencias", () => {
     expect(textoDasPendencias(lista)).not.toContain("e mais");
   });
 });
+
+describe("item crítico — o veredito é separado do percentual", () => {
+  it("não conformidade em item crítico reprova o checklist", () => {
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "NaoConforme", critico: true }),
+    ]);
+    expect(r.reprovadoPorItemCritico).toBe(true);
+    expect(r.itensCriticosNaoConformes).toBe(1);
+  });
+
+  it("reprova mesmo com o percentual altíssimo", () => {
+    // Trinta e nove conformes e o extintor obstruido: 97,5% de conformidade, e o
+    // canteiro nao pode operar. O numero esta certo, a conclusao seria errada.
+    const r = calcularPontuacao([
+      ...Array.from({ length: 39 }, (_, i) =>
+        resp({ item_id: `c${i}`, resposta_valor: "Conforme" })
+      ),
+      resp({ item_id: "critico", resposta_valor: "NaoConforme", critico: true }),
+    ]);
+
+    expect(r.percentualConformidade).toBe(97.5);
+    expect(r.reprovadoPorItemCritico).toBe(true);
+  });
+
+  it("o percentual NÃO é zerado pela reprovação", () => {
+    // Zerar esconderia quantos itens estavam certos, e a folha precisa dizer as
+    // duas coisas.
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "Conforme" }),
+      resp({ item_id: "b", resposta_valor: "NaoConforme", critico: true }),
+    ]);
+    expect(r.percentualConformidade).toBe(50);
+    expect(r.reprovadoPorItemCritico).toBe(true);
+  });
+
+  it("item crítico CONFORME não reprova nada", () => {
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "Conforme", critico: true }),
+    ]);
+    expect(r.reprovadoPorItemCritico).toBe(false);
+    expect(r.itensCriticosNaoConformes).toBe(0);
+  });
+
+  it("item crítico marcado N/A não reprova", () => {
+    // "Nao se aplica" e uma decisao de quem inspeciona: o item nao existe naquele
+    // contexto. Reprovar por isso puniria a resposta correta.
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "NA", critico: true }),
+    ]);
+    expect(r.reprovadoPorItemCritico).toBe(false);
+  });
+
+  it("item não crítico não conforme não reprova", () => {
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "NaoConforme", critico: false }),
+    ]);
+    expect(r.reprovadoPorItemCritico).toBe(false);
+  });
+
+  it("crítico ausente no dado conta como não crítico", () => {
+    const r = calcularPontuacao([resp({ resposta_valor: "NaoConforme" })]);
+    expect(r.reprovadoPorItemCritico).toBe(false);
+  });
+
+  it("conta quantos críticos falharam, não só se algum falhou", () => {
+    // Um ja reprova; o numero diz o tamanho do problema.
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "NaoConforme", critico: true }),
+      resp({ item_id: "b", resposta_valor: "NaoConforme", critico: true }),
+      resp({ item_id: "c", resposta_valor: "NaoConforme", critico: false }),
+    ]);
+    expect(r.itensCriticosNaoConformes).toBe(2);
+    expect(r.totalNaoConforme).toBe(3);
+  });
+
+  it("o item crítico continua pesando na nota normalmente", () => {
+    // O veto e adicional, nao substituto: peso gradua, critico veta.
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "Conforme", peso_pontuacao: 1 }),
+      resp({ item_id: "b", resposta_valor: "NaoConforme", critico: true, peso_pontuacao: 9 }),
+    ]);
+    expect(r.pontuacaoMaxima).toBe(10);
+    expect(r.percentualConformidade).toBe(10);
+  });
+
+  it("item crítico em branco não reprova nem aprova — é pendência", () => {
+    const r = calcularPontuacao([
+      resp({ item_id: "a", resposta_valor: "", critico: true }),
+    ]);
+    expect(r.reprovadoPorItemCritico).toBe(false);
+    expect(r.totalItens).toBe(0);
+  });
+});
+
+describe("pendenciasDaAplicacao — item crítico não pode ficar em branco", () => {
+  it("crítico sem resposta é pendência, mesmo não sendo obrigatório", () => {
+    // Ele decide o veredito da aplicacao inteira: em branco deixaria a conclusao
+    // indefinida.
+    const p = pendenciasDaAplicacao({
+      itens: [{ id: "i1", titulo: "Extintor", obrigatorio: false, critico: true }],
+      respostas: {},
+    });
+    expect(p).toHaveLength(1);
+    expect(p[0].motivo).toContain("item crítico sem resposta");
+  });
+
+  it("a mensagem explica por que ele não pode ficar em branco", () => {
+    const p = pendenciasDaAplicacao({
+      itens: [{ id: "i1", titulo: "Extintor", critico: true }],
+      respostas: {},
+    });
+    expect(p[0].motivo).toContain("decide a aprovação");
+  });
+
+  it("crítico respondido não gera pendência", () => {
+    const p = pendenciasDaAplicacao({
+      itens: [{ id: "i1", titulo: "Extintor", critico: true }],
+      respostas: { i1: { item_id: "i1", resposta_valor: "Conforme" } },
+    });
+    expect(p).toEqual([]);
+  });
+
+  it("crítico não conforme com tudo preenchido não gera pendência — reprova, mas está completo", () => {
+    const p = pendenciasDaAplicacao({
+      itens: [
+        {
+          id: "i1",
+          titulo: "Extintor",
+          critico: true,
+          exigir_comentario_nao_conforme: true,
+          exigir_foto_nao_conforme: true,
+          gerar_plano_acao_nao_conforme: true,
+        },
+      ],
+      respostas: {
+        i1: {
+          item_id: "i1",
+          resposta_valor: "NaoConforme",
+          comentario: "Obstruído",
+          quantidadeEvidencias: 1,
+          temPlanoAcao: true,
+        },
+      },
+    });
+    expect(p).toEqual([]);
+  });
+
+  it("crítico em branco tem prioridade sobre a cobrança de obrigatório", () => {
+    // Uma pendencia por item, com o motivo mais especifico.
+    const p = pendenciasDaAplicacao({
+      itens: [{ id: "i1", titulo: "Extintor", obrigatorio: true, critico: true }],
+      respostas: { i1: { item_id: "i1", resposta_valor: "" } },
+    });
+    expect(p).toHaveLength(1);
+    expect(p[0].motivo).toContain("crítico");
+  });
+});
