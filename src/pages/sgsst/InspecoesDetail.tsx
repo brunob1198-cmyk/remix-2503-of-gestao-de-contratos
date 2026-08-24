@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
+import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -42,6 +45,7 @@ import {
   AlertTriangle,
   FileDown,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
@@ -72,6 +76,14 @@ export default function SgsstInspecoesDetailPage() {
   const { historico } = useSgsstInspecaoHistorico(inspecaoId);
 
   // Dialog States
+  // As sub-entidades vivem em linha de tabela: o dialogo e o lugar da foto, sem
+  // exigir uma tela de detalhe para cada uma.
+  const [fotosDe, setFotosDe] = useState<{
+    entidade: EntidadeEvidencia;
+    id: string;
+    subtitulo: string;
+  } | null>(null);
+
   const [isEditInspecaoOpen, setIsEditInspecaoOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState<StatusInspecao>("EM_EXECUCAO");
@@ -322,7 +334,10 @@ export default function SgsstInspecoesDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="checklist" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-5">
+          <TabsTrigger value="fotos" className="gap-2">
+            <Camera className="h-4 w-4" /> Fotos
+          </TabsTrigger>
           <TabsTrigger value="checklist" className="gap-2">
             <ClipboardCheck className="h-4 w-4" /> Checklist ({itens.length})
           </TabsTrigger>
@@ -502,6 +517,20 @@ export default function SgsstInspecoesDetailPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Fotos deste registro"
+                                onClick={() =>
+                                  setFotosDe({
+                                    entidade: "INSPECAO_NC",
+                                    id: nc.id,
+                                    subtitulo: `Não conformidade: ${nc.descricao?.slice(0, 60) ?? ""}`,
+                                  })
+                                }
+                              >
+                                <Camera className="h-4 w-4" />
+                              </Button>
                               <SgsstConfirmDelete
                                 alvo="esta não conformidade"
                                 consequencia={"O desvio apontado nesta inspeção é apagado, junto com o prazo e o responsável pelo tratamento."}
@@ -617,6 +646,17 @@ export default function SgsstInspecoesDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Evidencia fotografica. Nenhuma tela do SGSST tinha anexo de foto: o
+            modulo registrava desvio em texto. */}
+        <TabsContent value="fotos" className="space-y-4 pt-4">
+          <SgsstEvidenciasPanel
+            entidade="INSPECAO"
+            entidadeId={inspecaoId}
+            permiteEditar={allowEdit}
+            ajuda="Fotografe o ponto verificado. A foto sustenta o achado no relatório — sem ela o registro depende só da descrição escrita."
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
@@ -701,6 +741,16 @@ export default function SgsstInspecoesDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <SgsstEvidenciasDialog
+        open={!!fotosDe}
+        onOpenChange={(aberto) => !aberto && setFotosDe(null)}
+        entidade={fotosDe?.entidade ?? "INSPECAO_NC"}
+        entidadeId={fotosDe?.id}
+        permiteEditar={allowEdit}
+        subtitulo={fotosDe?.subtitulo}
+        ajuda="Fotografe o desvio apontado. O campo de evidência escrito continua servindo de descrição — a foto é a prova."
+      />
+
     </div>
   );
 }

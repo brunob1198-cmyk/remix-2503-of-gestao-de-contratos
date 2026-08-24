@@ -48,12 +48,15 @@ import {
   FileDown,
   Loader2,
   Sparkles,
+  Camera,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { EpiFormDialog } from "@/components/sgsst/EpiFormDialog";
 import { EntregaEpiFormDialog } from "@/components/sgsst/EntregaEpiFormDialog";
 import { DevolucaoEpiFormDialog } from "@/components/sgsst/DevolucaoEpiFormDialog";
 import { ManutencaoEpiFormDialog } from "@/components/sgsst/ManutencaoEpiFormDialog";
+import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
+import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
 import {
@@ -116,6 +119,15 @@ export default function SgsstEpisListPage() {
   const [pageManut, setPageManut] = useState(0);
   const [pageSizeManut, setPageSizeManut] = useState(25);
   const [isManutencaoFormOpen, setIsManutencaoFormOpen] = useState(false);
+
+  // Um dialogo de fotos para as tres tabelas da tela. Entrega, devolucao e
+  // higienizacao vivem em LINHA, sem tela de detalhe onde encaixar o painel — e
+  // abrir uma so para anexar foto seria mais navegacao do que a tarefa merece.
+  const [fotosDe, setFotosDe] = useState<{
+    entidade: EntidadeEvidencia;
+    id: string;
+    subtitulo: string;
+  } | null>(null);
 
   const {
     manutencoes,
@@ -667,6 +679,21 @@ export default function SgsstEpisListPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Fotos deste registro"
+                                onClick={() =>
+                                  setFotosDe({
+                                    entidade: "EPI_ENTREGA",
+                                    id: ent.id,
+                                    subtitulo: `${ent.epi?.nome ?? "EPI"} · entregue em ${formatDateStr(ent.data_entrega)}`,
+                                  })
+                                }
+                              >
+                                <Camera className="h-4 w-4" />
+                              </Button>
+
                               {allowEdit && (
                                 <>
                                   <Button
@@ -721,13 +748,14 @@ export default function SgsstEpisListPage() {
                     <TableHead>Data Devolução</TableHead>
                     <TableHead>Condição do EPI</TableHead>
                     <TableHead>Motivo / Obs</TableHead>
+                    <TableHead className="text-right">Fotos</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingDevolucoes ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando devoluções...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando devoluções...</TableCell></TableRow>
                   ) : devolucoes.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma devolução registrada.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma devolução registrada.</TableCell></TableRow>
                   ) : (
                     devolucoes.map((dev) => {
                       const colabNome = dev.entrega?.colaborador?.profile?.nome || dev.entrega?.colaborador?.recurso?.nome || "Sem Nome";
@@ -743,6 +771,22 @@ export default function SgsstEpisListPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground max-w-xs">{dev.motivo || dev.observacao || "—"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Fotos desta devolução"
+                              onClick={() =>
+                                setFotosDe({
+                                  entidade: "EPI_DEVOLUCAO",
+                                  id: dev.id,
+                                  subtitulo: `${dev.entrega?.epi?.nome ?? "EPI"} · devolvido em ${formatDateStr(dev.data_devolucao)} · ${dev.condicao_epi}`,
+                                })
+                              }
+                            >
+                              <Camera className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })
@@ -824,7 +868,7 @@ export default function SgsstEpisListPage() {
                       <TableHead>Executado por</TableHead>
                       <TableHead>Resultado</TableHead>
                       <TableHead>Próxima</TableHead>
-                      {allowEdit && <TableHead className="text-right">Ações</TableHead>}
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -896,17 +940,37 @@ export default function SgsstEpisListPage() {
                           <TableCell className="text-xs font-mono">
                             {formatDateStr(m.proxima_prevista)}
                           </TableCell>
-                          {allowEdit && (
-                            <TableCell className="text-right">
-                              <SgsstConfirmDelete
-                                alvo="este registro de execução"
-                                consequencia={
-                                  "O registro de higienização/manutenção é apagado e a prova da periodicidade exigida pela NR-06 deixa de existir. Se era um descarte de estoque, as unidades voltam ao estoque."
+                          {/* A célula sai de dentro do `allowEdit`: ver as fotos é
+                              leitura, e quem confere no campo costuma não ter
+                              permissão de editar. Só a remoção fica restrita. */}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Fotos deste registro"
+                                onClick={() =>
+                                  setFotosDe({
+                                    entidade: "EPI_MANUTENCAO",
+                                    id: m.id,
+                                    subtitulo: `${TIPO_MANUTENCAO_LABEL[m.tipo] ?? m.tipo} · ${m.epi?.nome ?? "EPI"} · ${formatDateStr(m.data_execucao)}`,
+                                  })
                                 }
-                                onConfirm={() => removeManutencao.mutate(m.id)}
-                              />
-                            </TableCell>
-                          )}
+                              >
+                                <Camera className="h-4 w-4" />
+                              </Button>
+
+                              {allowEdit && (
+                                <SgsstConfirmDelete
+                                  alvo="este registro de execução"
+                                  consequencia={
+                                    "O registro de higienização/manutenção é apagado e a prova da periodicidade exigida pela NR-06 deixa de existir. Se era um descarte de estoque, as unidades voltam ao estoque."
+                                  }
+                                  onConfirm={() => removeManutencao.mutate(m.id)}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -1076,6 +1140,16 @@ export default function SgsstEpisListPage() {
         initialEntregaId={initialEntregaForDev}
         onSave={handleSaveDevolucao}
         isLoading={createDevolucao.isPending}
+      />
+
+      <SgsstEvidenciasDialog
+        open={!!fotosDe}
+        onOpenChange={(aberto) => !aberto && setFotosDe(null)}
+        entidade={fotosDe?.entidade ?? "EPI_ENTREGA"}
+        entidadeId={fotosDe?.id}
+        permiteEditar={allowEdit}
+        subtitulo={fotosDe?.subtitulo}
+        ajuda="Fotografe o equipamento: o estado em que foi entregue, o dano que motivou a devolução ou a condição após a higienização."
       />
 
       <ManutencaoEpiFormDialog
