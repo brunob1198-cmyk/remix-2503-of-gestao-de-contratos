@@ -516,7 +516,18 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
         peso_pontuacao?: number | null;
         /** Item impeditivo, vindo do modelo. */
         critico?: boolean | null;
+        /** Forma antiga: só as URLs. Mantida para a fila offline já gravada. */
         evidencias_urls?: string[];
+        /** Forma nova: cada foto com a coordenada do instante em que foi tirada. */
+        evidencias?: Array<{
+          url: string;
+          origem?: "CAMERA" | "ARQUIVO" | null;
+          capturadaEm?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          precisao?: number | null;
+          motivoSemGeo?: string | null;
+        }>;
       }>;
       planos_acao: Array<{
         item_id?: string;
@@ -575,14 +586,41 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
 
             if (rErr) {
               falhas.push(`resposta do item ${r.item_id}: ${rErr.message ?? rErr}`);
-            } else if (respDb && r.evidencias_urls && r.evidencias_urls.length > 0) {
-              const evidInserts = r.evidencias_urls.map((url) => ({
+            } else if (respDb && (r.evidencias?.length || r.evidencias_urls?.length)) {
+              /**
+               * Duas formas aceitas de propósito.
+               *
+               * `evidencias` é a nova, com a coordenada capturada no instante da
+               * foto. `evidencias_urls` é a antiga, apenas as URLs — e continua
+               * aceita porque itens já enfileirados no IndexedDB de algum celular
+               * foram gravados nesse formato. Trocar a forma sem aceitar a antiga
+               * deixaria esses checklists sem sincronizar para sempre.
+               */
+              const comGeo = (r.evidencias ?? []).map((ev) => ({
+                empresa_id: empresaId,
+                aplicacao_id: input.aplicacao_id,
+                resposta_id: respDb.id,
+                r2_url: ev.url,
+                r2_key: ev.url,
+                latitude: ev.latitude ?? null,
+                longitude: ev.longitude ?? null,
+                precisao_metros: ev.precisao ?? null,
+                capturada_em: ev.capturadaEm ?? null,
+                origem_captura: ev.origem ?? null,
+                // A coluna é excludente com a coordenada no banco: só vai o motivo
+                // quando de fato não houve ponto.
+                motivo_sem_geo: ev.latitude ? null : ev.motivoSemGeo ?? null,
+              }));
+
+              const legado = (r.evidencias_urls ?? []).map((url) => ({
                 empresa_id: empresaId,
                 aplicacao_id: input.aplicacao_id,
                 resposta_id: respDb.id,
                 r2_url: url,
                 r2_key: url,
               }));
+
+              const evidInserts = comGeo.length > 0 ? comGeo : legado;
 
               const { error: eErr } = await (supabase
                 .from("checklist_evidencias" as any)

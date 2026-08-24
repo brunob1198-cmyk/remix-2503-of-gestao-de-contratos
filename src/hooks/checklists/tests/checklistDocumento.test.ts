@@ -425,3 +425,102 @@ describe("montarHtmlChecklist — veredito por item crítico", () => {
     expect(ausentes).toEqual([]);
   });
 });
+
+describe("montarHtmlChecklist — selo de localização das fotos", () => {
+  function comFoto(evidencias: Array<Record<string, unknown>>) {
+    return dados({
+      respostas: {
+        i1: {
+          item_id: "i1",
+          resposta_valor: "NaoConforme",
+          quantidadeEvidencias: evidencias.length,
+          evidencias: evidencias as never,
+        },
+        i2: { item_id: "i2", resposta_valor: "Conforme" },
+        i3: { item_id: "i3", resposta_valor: "Conforme" },
+      },
+    });
+  }
+
+  it("imprime coordenada, precisão, horário e origem de cada foto", () => {
+    // "2 evidencias anexadas" nao diz nada a quem confere: a foto pode ser de outro
+    // dia e de outro lugar.
+    const html = montarHtmlChecklist(
+      comFoto([
+        {
+          latitude: -16.6799,
+          longitude: -49.255,
+          precisao: 12,
+          capturadaEm: "2026-08-26T13:45:00.000Z",
+          origem: "CAMERA",
+        },
+      ])
+    );
+
+    expect(html).toContain("Foto 1:");
+    expect(html).toContain("-16.679900, -49.255000");
+    expect(html).toContain("±12 m");
+    expect(html).toContain("Foto tirada na hora");
+  });
+
+  it("numera as fotos do item", () => {
+    const html = montarHtmlChecklist(
+      comFoto([
+        { latitude: -16.6799, longitude: -49.255, origem: "CAMERA" },
+        { latitude: -16.6798, longitude: -49.2551, origem: "CAMERA" },
+      ])
+    );
+    expect(html).toContain("Foto 1:");
+    expect(html).toContain("Foto 2:");
+  });
+
+  it("foto sem localização sai destacada, com o motivo", () => {
+    const html = montarHtmlChecklist(
+      comFoto([{ motivoSemGeo: "permissão de localização negada", origem: "CAMERA" }])
+    );
+    expect(html).toContain("Sem localização");
+    expect(html).toContain("permissão de localização negada");
+    expect(html).toContain(`<span class="doc-restr">Foto 1:`);
+  });
+
+  it("arquivo da galeria é identificado como tal", () => {
+    // Pode ser de outro dia e de outro lugar. Nao e erro, mas muda o peso da
+    // evidencia, e a folha precisa dizer.
+    const html = montarHtmlChecklist(
+      comFoto([{ latitude: -16.6799, longitude: -49.255, origem: "ARQUIVO" }])
+    );
+    expect(html).toContain("Arquivo escolhido da galeria");
+    expect(html).toContain(`<span class="doc-restr">Foto 1:`);
+  });
+
+  it("foto boa da câmera sai em tom neutro, não em alerta", () => {
+    // Procura o selo pelo atributo, e não pela palavra solta: `.doc-restr` também
+    // existe na folha de estilos embutida no documento, e a primeira versão deste
+    // teste comparou com essa ocorrência.
+    const html = montarHtmlChecklist(
+      comFoto([{ latitude: -16.6799, longitude: -49.255, precisao: 8, origem: "CAMERA" }])
+    );
+    expect(html).toContain(`<span class="doc-neutro">Foto 1:`);
+    expect(html).not.toContain(`<span class="doc-restr">Foto 1:`);
+  });
+
+  it("aplicação antiga, sem selo, diz que a localização não foi registrada", () => {
+    // Nao inventa uma localizacao que nao existe no dado.
+    const html = montarHtmlChecklist(
+      dados({
+        respostas: {
+          i1: { item_id: "i1", resposta_valor: "NaoConforme", quantidadeEvidencias: 2 },
+          i2: { item_id: "i2", resposta_valor: "Conforme" },
+          i3: { item_id: "i3", resposta_valor: "Conforme" },
+        },
+      })
+    );
+    expect(html).toContain("2 evidência(s) anexada(s), sem localização registrada");
+  });
+
+  it("item sem foto não imprime nada sobre evidência", () => {
+    const html = montarHtmlChecklist(dados());
+    expect(html).not.toContain("evidência(s) anexada(s)");
+    expect(html).not.toContain("Foto 1:");
+  });
+});

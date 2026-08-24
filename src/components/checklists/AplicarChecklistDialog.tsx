@@ -41,6 +41,8 @@ import {
   calcularPontuacao,
 } from "@/utils/checklistPontuacao";
 import { gerarPdfChecklist } from "@/lib/checklistDocumento";
+import { CapturaFotoCampo, type FotoCapturada } from "@/components/comum/CapturaFotoCampo";
+import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
@@ -53,12 +55,27 @@ interface AplicarChecklistDialogProps {
   modelo: ChecklistModelo | null;
 }
 
+interface EvidenciaDraft {
+  url: string;
+  origem: OrigemFoto;
+  capturadaEm: string;
+  latitude: number | null;
+  longitude: number | null;
+  precisao: number | null;
+  motivoSemGeo: string | null;
+}
+
 interface RespostaDraft {
   item_id: string;
   resposta_valor: string;
   comentario: string;
   is_nao_conforme: boolean;
-  evidencias_urls: string[];
+  /**
+   * Cada foto com a coordenada do instante em que foi tirada. Antes era so a lista
+   * de URLs, e a coordenada vinha da abertura da aplicacao — que responde onde a
+   * pessoa estava ao abrir o checklist, nao onde a foto foi tirada.
+   */
+  evidencias: EvidenciaDraft[];
   // 5W2H Plan of Action if Non-Conform
   plano_acao?: {
     o_que_fazer: string;
@@ -154,6 +171,46 @@ export function AplicarChecklistDialog({
     }
   }, [modelo, open]);
 
+  /**
+   * Autosave contínuo do rascunho no dispositivo.
+   *
+   * Antes o rascunho só era gravado ao FINALIZAR, e só no caminho offline. Fechar o
+   * aplicativo no meio de um checklist de trinta itens — bateria, ligação, aba
+   * trocada — perdia tudo o que havia sido respondido, online ou offline.
+   *
+   * Grava com atraso curto depois da última alteração: salvar a cada tecla digitada
+   * num comentário escreveria no IndexedDB dezenas de vezes por item, sem ganho.
+   */
+  useEffect(() => {
+    if (step !== "execution" || !modelo || !localAppId) return;
+    if (Object.keys(respostas).length === 0) return;
+
+    const timer = setTimeout(() => {
+      void autoSaveLocalApplication({
+        localAppId,
+        modeloId: modelo.id,
+        modeloNome: modelo.nome,
+        respostas,
+        observacoesGerais,
+        geoStart,
+        geoFinish,
+        // Rascunho, não conclusão: não entra na fila de sincronização.
+        isFinalizing: false,
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [
+    step,
+    modelo,
+    localAppId,
+    respostas,
+    observacoesGerais,
+    geoStart,
+    geoFinish,
+    autoSaveLocalApplication,
+  ]);
+
   if (!modelo) return null;
 
   const handleStartExecution = async () => {
@@ -207,7 +264,7 @@ export function AplicarChecklistDialog({
           resposta_valor: "",
           comentario: "",
           is_nao_conforme: false,
-          evidencias_urls: [],
+          evidencias: [],
         };
       });
     });
@@ -296,54 +353,76 @@ export function AplicarChecklistDialog({
     }
   };
 
-  const handlePhotoUpload = async (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  /** Lê o arquivo como data URL, para guardar a foto no dispositivo sem conexão. */
+  const lerComoDataUrl = (arquivo: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Falha ao ler o arquivo da foto."));
+      reader.readAsDataURL(arquivo);
+    });
+
+  /**
+   * Anexa a foto ao item, com a coordenada do instante da captura.
+   *
+   * Duas correções em relação ao fluxo anterior:
+   *
+   * 1. **A coordenada é da foto**, e vem pronta do componente de captura. Antes a
+   *    única coordenada da aplicação era a da abertura e a do fechamento, que não
+   *    responde onde a foto foi tirada.
+   *
+   * 2. **O caminho offline era uma Promise solta.** O `reader.onload` era `async` e
+   *    ninguém esperava por ele: o `finally` do bloco desligava o indicador de
+   *    carregamento antes de a foto ter sido gravada, e um erro dentro do callback
+   *    não chegava ao `catch`. Agora a leitura é aguardada.
+   */
+  const handleFotoCapturada = async (itemId: string, foto: FotoCapturada) => {
+    const metaDaFoto = {
+      origem: foto.origem,
+      capturadaEm: foto.capturadaEm,
+      latitude: foto.coordenada?.latitude ?? null,
+      longitude: foto.coordenada?.longitude ?? null,
+      precisao: foto.coordenada?.precisao ?? null,
+      motivoSemGeo: foto.motivoSemGeo,
+    };
+
+    const anexar = (url: string) =>
+      setRespostas((prev) => ({
+        ...prev,
+        [itemId]: {
+          ...prev[itemId],
+          evidencias: [...(prev[itemId]?.evidencias || []), { url, ...metaDaFoto }],
+        },
+      }));
 
     try {
       setUploadingItemId(itemId);
 
       if (isOnline) {
-        const res = await uploadImage(file);
+        const res = await uploadImage(foto.arquivo);
         if (res) {
-          setRespostas((prev) => ({
-            ...prev,
-            [itemId]: {
-              ...prev[itemId],
-              evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), res],
-            },
-          }));
-          toast.success("Foto anexada com sucesso no Cloudflare R2!");
+          anexar(res);
+          toast.success("Foto anexada com a localização do momento da captura.");
         }
-      } else {
-        // Fluxo Offline: Salvar Foto DataURL no IndexedDB
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const dataUrl = reader.result as string;
-          const photoId = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-          await saveOfflinePhoto({
-            id: photoId,
-            local_application_id: aplicacaoIdCreated || localAppId,
-            item_id: itemId,
-            data_url: dataUrl,
-            file_name: file.name,
-            status: "PENDENTE",
-            created_at: new Date().toISOString(),
-          });
-
-          setRespostas((prev) => ({
-            ...prev,
-            [itemId]: {
-              ...prev[itemId],
-              evidencias_urls: [...(prev[itemId]?.evidencias_urls || []), dataUrl],
-            },
-          }));
-          toast.info("Foto salva localmente no dispositivo (Aguardando Sync R2)");
-        };
-        reader.readAsDataURL(file);
+        return;
       }
-    } catch (err: any) {
-      toast.error(`Erro ao anexar foto: ${err.message || err}`);
+
+      const dataUrl = await lerComoDataUrl(foto.arquivo);
+
+      await saveOfflinePhoto({
+        id: `photo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        local_application_id: aplicacaoIdCreated || localAppId,
+        item_id: itemId,
+        data_url: dataUrl,
+        file_name: foto.arquivo.name,
+        status: "PENDENTE",
+        created_at: new Date().toISOString(),
+      });
+
+      anexar(dataUrl);
+      toast.info("Foto guardada no dispositivo. Vai subir sozinha quando houver sinal.");
+    } catch (err) {
+      toast.error(`Erro ao anexar a foto: ${(err as Error).message ?? err}`);
     } finally {
       setUploadingItemId(null);
     }
@@ -371,7 +450,7 @@ export function AplicarChecklistDialog({
             resposta_valor: r.resposta_valor,
             is_nao_conforme: r.is_nao_conforme,
             comentario: r.comentario,
-            quantidadeEvidencias: r.evidencias_urls?.length ?? 0,
+            quantidadeEvidencias: r.evidencias?.length ?? 0,
             temPlanoAcao: !!r.plano_acao?.o_que_fazer?.trim(),
           },
         ])
@@ -610,7 +689,15 @@ export function AplicarChecklistDialog({
               resposta_valor: r.resposta_valor,
               comentario: r.comentario,
               is_nao_conforme: r.is_nao_conforme,
-              quantidadeEvidencias: r.evidencias_urls?.length ?? 0,
+              quantidadeEvidencias: r.evidencias?.length ?? 0,
+              evidencias: (r.evidencias ?? []).map((ev) => ({
+                origem: ev.origem,
+                capturadaEm: ev.capturadaEm,
+                latitude: ev.latitude,
+                longitude: ev.longitude,
+                precisao: ev.precisao,
+                motivoSemGeo: ev.motivoSemGeo,
+              })),
               planoAcao: r.plano_acao?.o_que_fazer
                 ? {
                     o_que_fazer: r.plano_acao.o_que_fazer,
@@ -855,28 +942,58 @@ export function AplicarChecklistDialog({
                               />
                             </div>
 
-                            {/* Photo Upload via Cloudflare R2 */}
+                            {/* Evidencia fotografica: camera + arquivo, com a
+                                coordenada capturada no instante da foto. */}
                             <div className="space-y-1">
                               <Label className="text-xs font-semibold text-red-900 flex items-center gap-1">
-                                <Camera className="h-3.5 w-3.5" /> Anexar Evidência Fotográfica (Cloudflare R2)
+                                <Camera className="h-3.5 w-3.5" /> Evidência fotográfica
+                                {item.exigir_foto_nao_conforme && (
+                                  <span className="text-red-600 font-bold">*</span>
+                                )}
                               </Label>
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handlePhotoUpload(item.id, e)}
-                                  disabled={uploadingItemId === item.id}
-                                  className="bg-white text-xs max-w-xs"
-                                />
-                                {uploadingItemId === item.id && <Loader2 className="h-4 w-4 animate-spin text-red-600" />}
-                              </div>
-                              {resp.evidencias_urls?.length > 0 && (
-                                <div className="flex flex-wrap gap-2 pt-1">
-                                  {resp.evidencias_urls.map((url, uIdx) => (
-                                    <Badge key={uIdx} variant="outline" className="bg-white text-emerald-700 text-[10px]">
-                                      ✓ Foto {uIdx + 1} Salva R2
-                                    </Badge>
-                                  ))}
+
+                              <CapturaFotoCampo
+                                onCapturar={(foto) => handleFotoCapturada(item.id, foto)}
+                                disabled={uploadingItemId === item.id}
+                                multiplo
+                              />
+
+                              {resp.evidencias?.length > 0 && (
+                                <div className="space-y-1 pt-1">
+                                  {resp.evidencias.map((ev, uIdx) => {
+                                    // O selo de cada foto fica visivel na propria
+                                    // tela: o inspetor confere na hora se a
+                                    // coordenada saiu, em vez de descobrir depois.
+                                    const selo = seloDaFoto({
+                                      coord: {
+                                        latitude: ev.latitude,
+                                        longitude: ev.longitude,
+                                        precisao: ev.precisao,
+                                      },
+                                      capturadaEm: ev.capturadaEm,
+                                      origem: ev.origem,
+                                      motivoSemCoordenada: ev.motivoSemGeo,
+                                    });
+
+                                    return (
+                                      <div
+                                        key={uIdx}
+                                        className="flex items-start gap-1.5 text-[10px] bg-white border rounded px-2 py-1"
+                                      >
+                                        <Badge
+                                          variant="outline"
+                                          className={
+                                            selo.alerta
+                                              ? "bg-amber-50 text-amber-800 text-[10px] shrink-0"
+                                              : "bg-emerald-50 text-emerald-700 text-[10px] shrink-0"
+                                          }
+                                        >
+                                          Foto {uIdx + 1}
+                                        </Badge>
+                                        <span className="text-muted-foreground">{selo.texto}</span>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
