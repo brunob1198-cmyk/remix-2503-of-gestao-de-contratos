@@ -25,8 +25,10 @@ import {
   AlertTriangle,
   XCircle,
   HelpCircle,
+  Camera,
 } from "lucide-react";
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
+import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
 import {
   useSgsstPtAtmosfera,
   type SgsstPtParticipante,
@@ -77,6 +79,10 @@ export function PtAtmosferaPanel({
   participantes,
   allowEdit = false,
 }: PtAtmosferaPanelProps) {
+  // A foto do visor do detector e o que sustenta a leitura no documento: o numero
+  // digitado a mao nao mostra o equipamento nem a hora do aparelho.
+  const [fotosDe, setFotosDe] = useState<{ id: string; subtitulo: string } | null>(null);
+
   const { medicoes, isLoading, error, refetch, criarMedicao, removerMedicao } =
     useSgsstPtAtmosfera(ptId);
 
@@ -598,19 +604,40 @@ export function PtAtmosferaPanel({
                           </Badge>
                         )}
                       </TableCell>
-                      {allowEdit && (
-                        <TableCell>
+                      {/* A celula sai de dentro do allowEdit: ver a foto do
+                          detector e leitura, e o vigia que confere no local
+                          costuma nao ter permissao de editar. */}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-destructive hover:text-destructive"
-                            title="Remover medição"
-                            onClick={() => removerMedicao.mutate(m.id)}
+                            title="Fotos desta medição"
+                            onClick={() =>
+                              setFotosDe({
+                                id: m.id,
+                                subtitulo: `Medição de ${new Date(
+                                  m.medido_em
+                                ).toLocaleString("pt-BR")}`,
+                              })
+                            }
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Camera className="h-4 w-4" />
                           </Button>
-                        </TableCell>
-                      )}
+
+                          {allowEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              title="Remover medição"
+                              onClick={() => removerMedicao.mutate(m.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -626,6 +653,16 @@ export function PtAtmosferaPanel({
         calibração não conta como avaliação. Contaminante medido sem limite informado também não
         libera: há um número, mas nada contra o que compará-lo.
       </p>
+      <SgsstEvidenciasDialog
+        open={!!fotosDe}
+        onOpenChange={(aberto) => !aberto && setFotosDe(null)}
+        entidade="PT_MEDICAO"
+        entidadeId={fotosDe?.id}
+        permiteEditar={allowEdit}
+        subtitulo={fotosDe?.subtitulo}
+        ajuda="Fotografe o visor do detector com a leitura e o número de série. O valor digitado à mão não mostra o equipamento nem a hora do aparelho."
+      />
+
     </div>
   );
 }

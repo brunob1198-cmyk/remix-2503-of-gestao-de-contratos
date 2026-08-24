@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -50,6 +51,7 @@ import {
   AlertTriangle,
   FileDown,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PtFormDialog } from "@/components/sgsst/PtFormDialog";
@@ -389,7 +391,10 @@ export default function SgsstPtDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="checklist" className="w-full">
-        <TabsList className={`grid w-full sm:w-auto ${eEspacoConfinado ? "grid-cols-5" : "grid-cols-4"}`}>
+        <TabsList className={`grid w-full grid-cols-3 sm:w-auto ${eEspacoConfinado ? "sm:grid-cols-6" : "sm:grid-cols-5"}`}>
+          <TabsTrigger value="fotos" className="gap-2">
+            <Camera className="h-4 w-4" /> Fotos
+          </TabsTrigger>
           {eEspacoConfinado && (
             <TabsTrigger value="atmosfera" className="gap-2">
               <Wind className="h-4 w-4" /> Atmosfera
@@ -693,6 +698,17 @@ export default function SgsstPtDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Evidencia fotografica. Nenhuma tela do SGSST tinha anexo de foto: o
+            modulo registrava desvio em texto. */}
+        <TabsContent value="fotos" className="space-y-4 pt-4">
+          <SgsstEvidenciasPanel
+            entidade="PT"
+            entidadeId={ptId}
+            permiteEditar={allowEdit}
+            ajuda="Fotografe a condição do local antes da liberação: isolamento, sinalização, ventilação e os equipamentos de resgate no ponto."
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}

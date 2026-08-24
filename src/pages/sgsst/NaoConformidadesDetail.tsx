@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
+import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -41,6 +44,7 @@ import {
   Clock,
   FileDown,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
@@ -68,6 +72,14 @@ export default function SgsstNaoConformidadesDetailPage() {
   const { historico } = useSgsstNaoConformidadeHistorico(ncId);
 
   // Dialog States
+  // As sub-entidades vivem em linha de tabela: o dialogo e o lugar da foto, sem
+  // exigir uma tela de detalhe para cada uma.
+  const [fotosDe, setFotosDe] = useState<{
+    entidade: EntidadeEvidencia;
+    id: string;
+    subtitulo: string;
+  } | null>(null);
+
   const [isEditNcOpen, setIsEditNcOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isVerificacaoDialogOpen, setIsVerificacaoDialogOpen] = useState(false);
@@ -297,7 +309,10 @@ export default function SgsstNaoConformidadesDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="acoes" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-5">
+          <TabsTrigger value="fotos" className="gap-2">
+            <Camera className="h-4 w-4" /> Fotos
+          </TabsTrigger>
           <TabsTrigger value="acoes" className="gap-2">
             <CheckSquare className="h-4 w-4" /> Planos de Ação ({acoes.length})
           </TabsTrigger>
@@ -376,6 +391,20 @@ export default function SgsstNaoConformidadesDetailPage() {
                                 title="Editar Ação"
                               >
                                 <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Fotos deste registro"
+                                onClick={() =>
+                                  setFotosDe({
+                                    entidade: "NC_ACAO",
+                                    id: a.id,
+                                    subtitulo: `Ação: ${a.descricao?.slice(0, 60) ?? ""}`,
+                                  })
+                                }
+                              >
+                                <Camera className="h-4 w-4" />
                               </Button>
                               <SgsstConfirmDelete
                                 alvo="esta ação corretiva"
@@ -504,6 +533,17 @@ export default function SgsstNaoConformidadesDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Evidencia fotografica. Nenhuma tela do SGSST tinha anexo de foto: o
+            modulo registrava desvio em texto. */}
+        <TabsContent value="fotos" className="space-y-4 pt-4">
+          <SgsstEvidenciasPanel
+            entidade="NAO_CONFORMIDADE"
+            entidadeId={ncId}
+            permiteEditar={allowEdit}
+            ajuda="Fotografe o desvio e, depois de tratado, a correção. As duas juntas comprovam a eficácia da ação."
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
@@ -540,6 +580,16 @@ export default function SgsstNaoConformidadesDetailPage() {
         onSave={handleSaveAcao}
         isLoading={addAcao.isPending || updateAcao.isPending}
       />
+      <SgsstEvidenciasDialog
+        open={!!fotosDe}
+        onOpenChange={(aberto) => !aberto && setFotosDe(null)}
+        entidade={fotosDe?.entidade ?? "NC_ACAO"}
+        entidadeId={fotosDe?.id}
+        permiteEditar={allowEdit}
+        subtitulo={fotosDe?.subtitulo}
+        ajuda="Fotografe a evidência de conclusão da ação. É o que sustenta a verificação de eficácia."
+      />
+
     </div>
   );
 }

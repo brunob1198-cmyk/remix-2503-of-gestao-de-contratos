@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -46,6 +48,7 @@ import {
   Send,
   FileDown,
   Loader2,
+  Camera,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { AprFormDialog } from "@/components/sgsst/AprFormDialog";
@@ -122,6 +125,9 @@ export default function SgsstAprDetailPage() {
   const { medidas, isLoading: loadingMedidas, createMedida, updateMedida, removeMedida } = useSgsstAprMedidas(selectedRiscoId || undefined);
 
   // Dialog States
+  // A etapa vive num cartao, nao em tela propria: o dialogo e o lugar da foto.
+  const [fotosDe, setFotosDe] = useState<{ id: string; subtitulo: string } | null>(null);
+
   const [isEditAprOpen, setIsEditAprOpen] = useState(false);
   const [isEtapaFormOpen, setIsEtapaFormOpen] = useState(false);
   const [editingEtapaItem, setEditingEtapaItem] = useState<SgsstAprEtapa | null>(null);
@@ -402,7 +408,10 @@ export default function SgsstAprDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="etapas" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
+          <TabsTrigger value="fotos" className="gap-2">
+            <Camera className="h-4 w-4" /> Fotos
+          </TabsTrigger>
           <TabsTrigger value="etapas" className="gap-2">
             <ListOrdered className="h-4 w-4" /> Etapas & Riscos ({etapas.length})
           </TabsTrigger>
@@ -459,6 +468,21 @@ export default function SgsstAprDetailPage() {
                         onClick={() => handleOpenRiscos(etapa)}
                       >
                         <AlertTriangle className="h-3.5 w-3.5" /> Ver Riscos
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1"
+                        title="Fotos desta etapa"
+                        onClick={() =>
+                          setFotosDe({
+                            id: etapa.id,
+                            subtitulo: `Etapa ${etapa.ordem} — ${etapa.descricao}`,
+                          })
+                        }
+                      >
+                        <Camera className="h-3.5 w-3.5" /> Fotos
                       </Button>
 
                       {allowEdit && !isReadOnly && (
@@ -744,6 +768,17 @@ export default function SgsstAprDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Evidencia fotografica. Nenhuma tela do SGSST tinha anexo de foto: o
+            modulo registrava desvio em texto. */}
+        <TabsContent value="fotos" className="space-y-4 pt-4">
+          <SgsstEvidenciasPanel
+            entidade="APR"
+            entidadeId={aprId}
+            permiteEditar={allowEdit}
+            ajuda="Fotografe as condições da atividade analisada. A APR circula antes do serviço, e a foto mostra o que o texto descreve."
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
@@ -842,6 +877,16 @@ export default function SgsstAprDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <SgsstEvidenciasDialog
+        open={!!fotosDe}
+        onOpenChange={(aberto) => !aberto && setFotosDe(null)}
+        entidade="APR_ETAPA"
+        entidadeId={fotosDe?.id}
+        permiteEditar={allowEdit}
+        subtitulo={fotosDe?.subtitulo}
+        ajuda="Fotografe a condição desta etapa da atividade. A APR circula antes do serviço, e a foto mostra o que o texto descreve."
+      />
+
     </div>
   );
 }

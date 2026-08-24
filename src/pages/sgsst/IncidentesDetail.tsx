@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -44,6 +45,7 @@ import {
   SearchCheck,
   History,
   AlertTriangle,
+  Camera,
 } from "lucide-react";
 import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
@@ -309,7 +311,10 @@ export default function SgsstIncidentesDetailPage() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="envolvidos" className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-6">
+          <TabsTrigger value="fotos" className="gap-2">
+            <Camera className="h-4 w-4" /> Fotos
+          </TabsTrigger>
           <TabsTrigger value="envolvidos" className="gap-2">
             <Users className="h-4 w-4" /> Envolvidos ({envolvidos.length})
           </TabsTrigger>
@@ -722,6 +727,17 @@ export default function SgsstIncidentesDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* Evidencia fotografica. Nenhuma tela do SGSST tinha anexo de foto: o
+            modulo registrava desvio em texto. */}
+        <TabsContent value="fotos" className="space-y-4 pt-4">
+          <SgsstEvidenciasPanel
+            entidade="INCIDENTE"
+            entidadeId={incidenteId}
+            permiteEditar={allowEdit}
+            ajuda="Fotografe o local e as condições encontradas. A investigação do acidente (NR-01 1.5.5.5) se sustenta no que foi registrado na hora."
+          />
+        </TabsContent>
+
       </Tabs>
 
       {/* Dialogs */}
