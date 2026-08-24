@@ -6,6 +6,11 @@ import {
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
+import {
   avaliarLiberacaoEntrada,
   avaliarMedicao,
   MOMENTO_LABEL,
@@ -93,6 +98,21 @@ export interface PtDocumentoDados {
   medicoes: readonly SgsstPtMedicaoAtmosfera[];
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /**
+   * Fotos da PT, já baixadas e reduzidas.
+   *
+   * Ausente quando a emissão ocorre sem evidência — a folha continua válida, e o
+   * documento diz que não há foto em vez de omitir a seção.
+   */
+  fotos?: FotosPreparadas;
+  /**
+   * Fotos das medições atmosféricas, por id de medição.
+   *
+   * Ficam DENTRO da seção da NR-33, e não numa galeria ao fim: o que a foto prova
+   * ali é o visor do detector com a leitura, e essa prova só vale ao lado do
+   * número que foi digitado à mão.
+   */
+  fotosPorMedicao?: ReadonlyMap<string, FotosPreparadas>;
 }
 
 function faltando(rotulo: string): string {
@@ -257,6 +277,25 @@ function secaoAtmosfera(dados: PtDocumentoDados, hoje: Date): string {
     })
     .join("");
 
+  /**
+   * As fotos das medições, todas juntas depois da tabela.
+   *
+   * O rótulo de cada uma diz de que medição ela é — sem isso, a foto do visor
+   * marcando 18% de oxigênio poderia ser lida como prova da medição aprovada
+   * logo acima dela.
+   */
+  const preparadasDasMedicoes = medicoes.flatMap((m) => {
+    const doGrupo = dados.fotosPorMedicao?.get(m.id);
+    if (!doGrupo || doGrupo.fotos.length === 0) return [];
+
+    const rotulo = `${dataHoraBr(m.medido_em)} · ${MOMENTO_LABEL[m.momento] ?? m.momento}`;
+    return doGrupo.fotos.map((f) => ({ ...f, rotulo }));
+  });
+
+  const fotosDasMedicoes = blocoDeFotos(preparadasDasMedicoes, {
+    colunas: 3,
+  });
+
   return `
     <div class="doc-bloco">
       <div class="tit">Avaliação atmosférica — NR-33</div>
@@ -279,7 +318,8 @@ function secaoAtmosfera(dados: PtDocumentoDados, hoje: Date): string {
                  Critérios: oxigênio entre ${OXIGENIO_MINIMO_ENTRADA}% e ${OXIGENIO_MAXIMO}%
                  (NR-33 33.5.15.2); inflamáveis abaixo de ${INFLAMAVEIS_MAXIMO_LIE}% do LIE
                  (Anexo II); contaminantes conforme o limite informado na medição.
-               </p>`
+               </p>
+               ${fotosDasMedicoes}`
         }
 
         <table class="doc-grid">
@@ -336,6 +376,7 @@ export function montarHtmlPt(dados: PtDocumentoDados, hoje = new Date()): string
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -539,6 +580,17 @@ export function montarHtmlPt(dados: PtDocumentoDados, hoje = new Date()): string
              </div>`
           : ""
       }
+
+      ${blocoDeFotos(dados.fotos?.fotos ?? [], {
+        titulo: "Evidência fotográfica do local",
+        omitidas: dados.fotos?.omitidas,
+        // Sai o texto do vazio, e não a seção suprimida: a PT que autoriza entrada
+        // em espaço confinado sem uma foto do isolamento é uma informação, não uma
+        // ausência de informação.
+        vazio:
+          "Nenhuma foto anexada a esta permissão. As condições descritas acima " +
+          "não têm registro visual do local.",
+      })}
 
       <div class="doc-assin">
         <div class="doc-assin-centro">

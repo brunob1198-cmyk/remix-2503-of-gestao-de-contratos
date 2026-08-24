@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 import type {
   SgsstInspecao,
   SgsstInspecaoItem,
@@ -41,6 +46,16 @@ export interface InspecaoDocumentoDados {
   naoConformidades: readonly SgsstInspecaoNaoConformidade[];
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
+  /** Fotos gerais da inspeção — o percurso, a área, o que foi verificado. */
+  fotos?: FotosPreparadas;
+  /**
+   * Fotos de cada não conformidade, por id.
+   *
+   * Saem logo abaixo da tabela de não conformidades, com o número da NC no rótulo.
+   * O campo `evidencia` da NC é texto livre: dava para escrever "foto 03" sem que
+   * a foto 03 existisse. Aqui a foto está ao lado da linha que ela sustenta.
+   */
+  fotosPorNaoConformidade?: ReadonlyMap<string, FotosPreparadas>;
 }
 
 const RESPOSTA_LABEL: Record<string, string> = {
@@ -199,11 +214,17 @@ export function montarHtmlInspecao(dados: InspecaoDocumentoDados): string {
     })
     .join("");
 
-  const linhasNc = [...naoConformidades]
-    .sort((a, b) => (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999"))
+  // Ordenadas pelo prazo, e NUMERADAS nessa ordem. O número existe para a foto ter
+  // a que se referir: "NC 2" debaixo da foto liga a imagem à linha da tabela, e sem
+  // essa ligação a foto do desvio poderia ser lida como sendo de outro desvio.
+  const ncOrdenadas = [...naoConformidades].sort((a, b) =>
+    (a.prazo ?? "9999").localeCompare(b.prazo ?? "9999")
+  );
+
+  const linhasNc = ncOrdenadas
     .map(
-      (nc) => `<tr>
-        <td>${esc(nc.descricao)}${
+      (nc, indice) => `<tr>
+        <td><strong>NC ${indice + 1}.</strong> ${esc(nc.descricao)}${
           nc.evidencia ? `<br><span class="doc-neutro">${esc(nc.evidencia)}</span>` : ""
         }</td>
         <td>${esc(CRITICIDADE_LABEL[nc.criticidade] ?? nc.criticidade)}</td>
@@ -214,9 +235,21 @@ export function montarHtmlInspecao(dados: InspecaoDocumentoDados): string {
     )
     .join("");
 
+  const fotosDasNc = blocoDeFotos(
+    ncOrdenadas.flatMap((nc, indice) => {
+      const doGrupo = dados.fotosPorNaoConformidade?.get(nc.id);
+      if (!doGrupo || doGrupo.fotos.length === 0) return [];
+
+      const rotulo = `NC ${indice + 1}`;
+      return doGrupo.fotos.map((f) => ({ ...f, rotulo }));
+    }),
+    { colunas: 3 }
+  );
+
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -362,7 +395,8 @@ export function montarHtmlInspecao(dados: InspecaoDocumentoDados): string {
                     <tr><th>Descrição / evidência</th><th>Criticidade</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
                   </thead>
                   <tbody>${linhasNc}</tbody>
-                 </table>`
+                 </table>
+                 ${fotosDasNc}`
           }
         </div>
       </div>
@@ -375,6 +409,11 @@ export function montarHtmlInspecao(dados: InspecaoDocumentoDados): string {
              </div>`
           : ""
       }
+
+      ${blocoDeFotos(dados.fotos?.fotos ?? [], {
+        titulo: "Evidência fotográfica da inspeção",
+        omitidas: dados.fotos?.omitidas,
+      })}
 
       <div class="doc-assin">
         <div class="doc-assin-centro">

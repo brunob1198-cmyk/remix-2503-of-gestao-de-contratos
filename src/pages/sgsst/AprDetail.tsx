@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import {
+  fotosDoRegistroParaDocumento,
+  fotosDosRegistrosParaDocumento,
+} from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
@@ -107,7 +111,15 @@ export default function SgsstAprDetailPage() {
 
     setEmitindo(true);
     try {
-      await gerarPdfApr(dadosDoDocumento);
+      const [fotos, fotosPorEtapa] = await Promise.all([
+        fotosDoRegistroParaDocumento("APR", currentApr.id),
+        fotosDosRegistrosParaDocumento(
+          "APR_ETAPA",
+          arvore.etapas.map((e) => e.id)
+        ),
+      ]);
+
+      await gerarPdfApr({ ...dadosDoDocumento, fotos, fotosPorEtapa });
     } catch (e) {
       toast.error(`Erro ao emitir a APR: ${(e as Error).message}`);
     } finally {

@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import {
+  fotosDoRegistroParaDocumento,
+  fotosDosRegistrosParaDocumento,
+} from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstEvidenciasDialog } from "@/components/sgsst/SgsstEvidenciasDialog";
 import type { EntidadeEvidencia } from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
@@ -141,7 +145,15 @@ export default function SgsstInspecoesDetailPage() {
 
     setEmitindo(true);
     try {
-      await gerarPdfInspecao(dadosDoDocumento);
+      const [fotos, fotosPorNaoConformidade] = await Promise.all([
+        fotosDoRegistroParaDocumento("INSPECAO", currentInspecao.id),
+        fotosDosRegistrosParaDocumento(
+          "INSPECAO_NC",
+          naoConformidades.map((nc) => nc.id)
+        ),
+      ]);
+
+      await gerarPdfInspecao({ ...dadosDoDocumento, fotos, fotosPorNaoConformidade });
     } catch (e) {
       toast.error(`Erro ao emitir o relatório: ${(e as Error).message}`);
     } finally {

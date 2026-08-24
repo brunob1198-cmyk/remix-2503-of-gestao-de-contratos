@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import {
+  fotosDoRegistroParaDocumento,
+  fotosDosRegistrosParaDocumento,
+} from "@/hooks/sgsst/useSgsstEvidencias";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -167,7 +171,17 @@ export default function SgsstPtDetailPage() {
 
     setEmitindo(true);
     try {
-      await gerarPdfPt(dadosDoDocumento);
+      // As fotos sao baixadas e embutidas na hora da emissao, e nao mantidas em
+      // cache de tela: sao alguns MB que so interessam a quem clicou em emitir.
+      const [fotos, fotosPorMedicao] = await Promise.all([
+        fotosDoRegistroParaDocumento("PT", currentPt.id),
+        fotosDosRegistrosParaDocumento(
+          "PT_MEDICAO",
+          medicoesAtmosfera.map((m) => m.id)
+        ),
+      ]);
+
+      await gerarPdfPt({ ...dadosDoDocumento, fotos, fotosPorMedicao });
     } catch (e) {
       toast.error(`Erro ao emitir a PT: ${(e as Error).message}`);
     } finally {

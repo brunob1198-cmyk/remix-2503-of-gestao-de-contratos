@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { OrigemFoto } from "@/utils/fotoGeolocalizada";
+import {
+  prepararFotosDoDocumento,
+  type FotoParaDocumento,
+  type FotosPreparadas,
+} from "@/lib/fotosDoDocumento";
 
 /**
  * Evidência fotográfica do SGSST.
@@ -90,6 +95,126 @@ export interface SgsstEvidenciaInput {
 
 /** Teto por registro. Um desvio rende algumas fotos, não centenas. */
 export const EVIDENCIAS_LIMITE = 100;
+
+/**
+ * Busca as fotos de vários registros de uma vez, para a emissão do documento.
+ *
+ * Função avulsa, e não um hook, por dois motivos: o documento é emitido por um
+ * clique e não precisa das fotos em cache de tela, e uma inspeção com quinze não
+ * conformidades precisaria de quinze hooks — que o React não permite montar em
+ * laço.
+ *
+ * Devolve um mapa `entidade_id → fotos`, porque quem monta o documento precisa
+ * saber a QUAL registro cada foto pertence: a foto da não conformidade 3 impressa
+ * debaixo da não conformidade 1 é pior que foto nenhuma.
+ */
+export async function buscarEvidenciasParaDocumento(
+  entidade: EntidadeEvidencia,
+  ids: readonly string[]
+): Promise<Map<string, SgsstEvidencia[]>> {
+  const mapa = new Map<string, SgsstEvidencia[]>();
+
+  const unicos = [...new Set(ids.filter(Boolean))];
+  if (unicos.length === 0) return mapa;
+
+  // Teto explícito: o PostgREST corta a resposta em silêncio no limite do
+  // servidor, e documento com foto faltando sem aviso é exatamente o que este
+  // módulo existe para evitar. O `blocoDeFotos` avisa quando trunca.
+  const TETO = EVIDENCIAS_LIMITE * 4;
+
+  const { data, error } = await (supabase
+    .from("sgsst_evidencias" as never)
+    .select("*")
+    .eq("entidade", entidade)
+    .in("entidade_id", unicos)
+    .order("created_at", { ascending: true })
+    .limit(TETO) as never as Promise<{
+    data: SgsstEvidencia[] | null;
+    error: { message?: string } | null;
+  }>);
+
+  if (error) throw error;
+
+  for (const ev of data ?? []) {
+    const atuais = mapa.get(ev.entidade_id) ?? [];
+    atuais.push(ev);
+    mapa.set(ev.entidade_id, atuais);
+  }
+
+  return mapa;
+}
+
+/** Converte a evidência do banco no formato que o documento consome. */
+export function evidenciaParaDocumento(
+  ev: SgsstEvidencia,
+  rotulo?: string | null
+): FotoParaDocumento {
+  return {
+    url: ev.r2_url,
+    descricao: ev.descricao,
+    latitude: ev.latitude,
+    longitude: ev.longitude,
+    precisao: ev.precisao_metros,
+    capturadaEm: ev.capturada_em,
+    origem: ev.origem_captura,
+    motivoSemGeo: ev.motivo_sem_geo,
+    rotulo: rotulo ?? null,
+  };
+}
+
+/**
+ * Fotos de UM registro, já baixadas e reduzidas, prontas para o documento.
+ *
+ * A emissão não deve falhar por causa das fotos: um erro de rede aqui derrubaria a
+ * geração da PT inteira, e a folha sem foto continua sendo a folha que precisa ir
+ * para o campo. Falha devolve lista vazia.
+ */
+export async function fotosDoRegistroParaDocumento(
+  entidade: EntidadeEvidencia,
+  id?: string | null
+): Promise<FotosPreparadas> {
+  if (!id) return { fotos: [], omitidas: 0 };
+
+  try {
+    const mapa = await buscarEvidenciasParaDocumento(entidade, [id]);
+    const evidencias = mapa.get(id) ?? [];
+    return await prepararFotosDoDocumento(evidencias.map((ev) => evidenciaParaDocumento(ev)));
+  } catch {
+    return { fotos: [], omitidas: 0 };
+  }
+}
+
+/**
+ * Fotos de vários registros do mesmo tipo, indexadas por id.
+ *
+ * O rótulo identifica a que registro a foto pertence quando ela é impressa fora
+ * do bloco dele — numa seção de fotos ao fim do documento, por exemplo.
+ */
+export async function fotosDosRegistrosParaDocumento(
+  entidade: EntidadeEvidencia,
+  ids: readonly string[],
+  rotuloDe?: (id: string) => string | null
+): Promise<Map<string, FotosPreparadas>> {
+  const resultado = new Map<string, FotosPreparadas>();
+  if (ids.length === 0) return resultado;
+
+  try {
+    const mapa = await buscarEvidenciasParaDocumento(entidade, ids);
+
+    await Promise.all(
+      [...mapa.entries()].map(async ([id, evidencias]) => {
+        const preparadas = await prepararFotosDoDocumento(
+          evidencias.map((ev) => evidenciaParaDocumento(ev, rotuloDe?.(id) ?? null))
+        );
+        resultado.set(id, preparadas);
+      })
+    );
+  } catch {
+    // Documento sem as fotos ainda é o documento. Ver o comentário acima.
+  }
+
+  return resultado;
+}
 
 export function useSgsstEvidencias(
   entidade: EntidadeEvidencia,

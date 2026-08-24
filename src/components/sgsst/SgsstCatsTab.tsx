@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { gerarPdfCat, pendenciasCat } from "@/lib/catDocumento";
+import { fotosDoRegistroParaDocumento } from "@/hooks/sgsst/useSgsstEvidencias";
 import { format, parseISO } from "date-fns";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,7 +61,14 @@ export function SgsstCatsTab() {
       const dados = { cat, empresa, geradoPor: profile?.nome ?? null };
       const pendencias = pendenciasCat(dados);
 
-      await gerarPdfCat(dados);
+      // As fotos do incidente vinculado. O incidente nao tem documento proprio, e
+      // este registro interno e o unico lugar onde elas saem impressas.
+      const fotosDoIncidente = await fotosDoRegistroParaDocumento(
+        "INCIDENTE",
+        cat.incidente_id
+      );
+
+      await gerarPdfCat({ ...dados, fotosDoIncidente });
 
       if (pendencias.length > 0) {
         toast.warning(

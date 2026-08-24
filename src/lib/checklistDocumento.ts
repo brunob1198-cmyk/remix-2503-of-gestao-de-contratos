@@ -5,6 +5,11 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  blocoDeFotos,
+  estilosFotosDocumento,
+  type FotoPreparada,
+} from "@/lib/fotosDoDocumento";
 import { pesoEfetivo, type PontuacaoAplicacao } from "@/utils/checklistPontuacao";
 import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 
@@ -69,6 +74,14 @@ export interface RespostaDoDocumento {
    * "2 fotos anexadas" nao diz nada a quem confere; a coordenada e o horario dizem.
    */
   evidencias?: readonly EvidenciaDoDocumento[];
+  /**
+   * As mesmas fotos, já baixadas, para saírem impressas na galeria ao fim.
+   *
+   * Separado de `evidencias` porque o selo é sempre impresso e a imagem só quando a
+   * emissão conseguiu baixá-la: aplicação antiga tem selo e não tem arquivo
+   * recuperável, e o documento continua tendo de dizer o que sabe.
+   */
+  fotos?: readonly FotoPreparada[];
   planoAcao?: {
     o_que_fazer?: string | null;
     quando_prazo?: string | null;
@@ -127,9 +140,37 @@ function ehNaoAplicavelValor(valor: string | null | undefined): boolean {
   return v === "NA" || v === "N/A" || v === "NaoAplicavel";
 }
 
+/**
+ * Numera as fotos de todo o checklist numa sequência só.
+ *
+ * A linha do item diz "Foto 7" e a galeria ao fim traz a Foto 7 — é o que liga o
+ * selo impresso na linha à imagem. Numerar por item daria uma "Foto 1" em cada
+ * linha, e a galeria com dez "Foto 1" não referencia nada.
+ */
+function numerosDasFotos(
+  secoes: readonly SecaoDoDocumento[],
+  respostas: Readonly<Record<string, RespostaDoDocumento>>
+): Map<string, number> {
+  const inicioPorItem = new Map<string, number>();
+  let proximo = 1;
+
+  for (const secao of [...secoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))) {
+    for (const item of secao.itens) {
+      const quantas = respostas[item.id]?.evidencias?.length ?? 0;
+      if (quantas === 0) continue;
+
+      inicioPorItem.set(item.id, proximo);
+      proximo += quantas;
+    }
+  }
+
+  return inicioPorItem;
+}
+
 function linhaDoItem(
   item: ItemDoDocumento,
-  resposta: RespostaDoDocumento | undefined
+  resposta: RespostaDoDocumento | undefined,
+  primeiraFoto?: number
 ): string {
   const valor = (resposta?.resposta_valor ?? "").trim();
   const respondido = !!valor;
@@ -172,7 +213,8 @@ function linhaDoItem(
       });
 
       const classe = selo.alerta ? "doc-restr" : "doc-neutro";
-      return `<span class="${classe}">Foto ${indice + 1}: ${esc(selo.texto)}</span>`;
+      const numero = (primeiraFoto ?? 1) + indice;
+      return `<span class="${classe}">Foto ${numero}: ${esc(selo.texto)}</span>`;
     });
 
     detalhe.push(selos.join("<br>"));
@@ -240,9 +282,33 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
     .flatMap((s) => s.itens)
     .filter((i) => !(respostas[i.id]?.resposta_valor ?? "").trim()).length;
 
+  const numeracaoFotos = numerosDasFotos(ordenadas, respostas);
+
+  /**
+   * A galeria vai ao fim, e não dentro da tabela de itens.
+   *
+   * Imagem em célula de tabela quebra a paginação: o html2canvas fatia o canvas
+   * em folhas, e a linha que não cabe é cortada no meio. Ao fim, cada quadro é um
+   * bloco que não se parte, e o número na linha do item aponta para ele.
+   */
+  const galeriaDeFotos = blocoDeFotos(
+    ordenadas.flatMap((secao) =>
+      secao.itens.flatMap((item) => {
+        const preparadas = respostas[item.id]?.fotos ?? [];
+        return preparadas.map((f) => ({ ...f, rotulo: item.titulo }));
+      })
+    ),
+    {
+      titulo: "Evidência fotográfica",
+      colunas: 3,
+      primeiroNumero: 1,
+    }
+  );
+
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
+    ${estilosFotosDocumento}
     <div class="doc">
 
       <div class="doc-cab">
@@ -376,7 +442,9 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
                     </thead>
                     <tbody>
                       ${secao.itens
-                        .map((item) => linhaDoItem(item, respostas[item.id]))
+                        .map((item) =>
+                          linhaDoItem(item, respostas[item.id], numeracaoFotos.get(item.id))
+                        )
                         .join("")}
                     </tbody>
                    </table>`
@@ -385,6 +453,8 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
         </div>`
         )
         .join("")}
+
+      ${galeriaDeFotos}
 
       ${
         observacoesGerais?.trim()
