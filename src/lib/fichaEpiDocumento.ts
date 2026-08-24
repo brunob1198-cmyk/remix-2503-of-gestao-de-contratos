@@ -5,8 +5,18 @@ import {
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
-import type { SgsstEpiEntrega, SgsstEpiDevolucao } from "@/hooks/sgsst/useSgsstEpis";
+import type {
+  SgsstEpiEntrega,
+  SgsstEpiDevolucao,
+  SgsstEpiManutencao,
+} from "@/hooks/sgsst/useSgsstEpis";
 import { previsaoTroca } from "@/utils/sgsstEpiVidaUtil";
+import {
+  TIPO_MANUTENCAO_LABEL,
+  situacaoHigienizacao,
+  higienizacaoPendente,
+  SITUACAO_HIGIENIZACAO_LABEL,
+} from "@/utils/sgsstEpiHigienizacao";
 
 /**
  * Ficha de Entrega de EPI — NR-06 item 6.6.1 alínea "h".
@@ -38,6 +48,12 @@ export interface FichaEpiDados {
   entregas: readonly SgsstEpiEntrega[];
   /** Devoluções ligadas a essas entregas. */
   devolucoes: readonly SgsstEpiDevolucao[];
+  /**
+   * Higienizações, manutenções e inspeções das peças que estão com este
+   * trabalhador — NR-06 6.6.1 alínea "f". Opcional para não quebrar chamadas
+   * antigas; quando vazia, a seção diz que não há registro em vez de desaparecer.
+   */
+  manutencoes?: readonly SgsstEpiManutencao[];
   nomeTrabalhador: string;
   cpfTrabalhador?: string | null;
   funcaoTrabalhador?: string | null;
@@ -137,6 +153,29 @@ export function pendenciasFichaEpi(dados: FichaEpiDados): string[] {
     );
   }
 
+  // Higienização pendente só é cobrada de equipamento reutilizável e com saldo em
+  // posse: peça já devolvida deixou de ser responsabilidade deste trabalhador, e
+  // descartável não tem higienização a fazer.
+  const higienizacaoPendenteAqui = entregas.filter((e) => {
+    if (!e.epi?.exige_higienizacao) return false;
+    if (saldoEmPosse(e, dados.devolucoes) === 0) return false;
+
+    const situacao = situacaoHigienizacao({
+      exigeHigienizacao: e.epi.exige_higienizacao,
+      periodicidadeDias: e.epi.higienizacao_periodicidade_dias,
+      execucoes: (dados.manutencoes ?? []).filter((m) => m.entrega_id === e.id),
+      hoje: new Date(),
+    });
+
+    return higienizacaoPendente(situacao.situacao);
+  });
+
+  if (higienizacaoPendenteAqui.length > 0) {
+    p.push(
+      `${higienizacaoPendenteAqui.length} equipamento(s) em posse com higienização pendente — a NR-06 6.6.1 alínea "f" exige higienização e manutenção periódica`
+    );
+  }
+
   return p;
 }
 
@@ -225,6 +264,51 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados, hoje = new Date()): str
       </tr>`;
     })
     .join("");
+
+  // Higienização e manutenção — NR-06 6.6.1 alínea "f".
+  const execucoes = dados.manutencoes ?? [];
+
+  const linhasManutencao = [...execucoes]
+    .sort((a, b) => (a.data_execucao ?? "").localeCompare(b.data_execucao ?? ""))
+    .map((m) => {
+      const entrega = entregas.find((e) => e.id === m.entrega_id);
+      return `<tr>
+        <td>${dataBr(m.data_execucao)}</td>
+        <td>${esc(m.epi?.nome) || esc(entrega?.epi?.nome) || "—"}</td>
+        <td>${esc(TIPO_MANUTENCAO_LABEL[m.tipo] ?? m.tipo)}</td>
+        <td class="doc-num">${esc(m.quantidade)}</td>
+        <td>${esc(m.executado_por_nome) || esc(m.executado_por?.nome) || "—"}</td>
+        <td>${
+          m.resultado === "DESCARTADO"
+            ? `<span class="doc-inapto">Descartado</span>`
+            : m.resultado === "REPROVADO"
+              ? `<span class="doc-restr">Reprovado</span>`
+              : "Aprovado"
+        }</td>
+        <td>${m.proxima_prevista ? dataBr(m.proxima_prevista) : "—"}</td>
+      </tr>`;
+    })
+    .join("");
+
+  /**
+   * Equipamentos reutilizáveis ainda em posse do trabalhador com higienização
+   * atrasada ou nunca registrada.
+   *
+   * Peça já devolvida sai da conta: deixou de ser responsabilidade dele. E
+   * descartável nunca entra — cobrar higienização de máscara PFF1 é ruído.
+   */
+  const equipamentosPendentes = entregas
+    .filter((e) => e.epi?.exige_higienizacao && saldoEmPosse(e, devolucoes) > 0)
+    .map((e) => ({
+      nome: e.epi?.nome ?? "EPI",
+      situacao: situacaoHigienizacao({
+        exigeHigienizacao: e.epi?.exige_higienizacao,
+        periodicidadeDias: e.epi?.higienizacao_periodicidade_dias,
+        execucoes: execucoes.filter((m) => m.entrega_id === e.id),
+        hoje,
+      }).situacao,
+    }))
+    .filter((x) => higienizacaoPendente(x.situacao));
 
   const linhasDevolucao = [...devolucoes]
     .sort((a, b) => (a.data_devolucao ?? "").localeCompare(b.data_devolucao ?? ""))
@@ -326,6 +410,44 @@ export function montarHtmlFichaEpi(dados: FichaEpiDados, hoje = new Date()): str
              </div>`
           : ""
       }
+
+      <div class="doc-bloco">
+        <div class="tit">Higienização e manutenção — NR-06 item 6.6.1 alínea "f"</div>
+        <div class="corpo">
+          ${
+            execucoes.length === 0
+              ? `<p class="doc-aviso">Nenhuma higienização, manutenção ou inspeção
+                  registrada para os equipamentos deste trabalhador. A NR-06 põe no
+                  empregador a responsabilidade pela higienização e manutenção
+                  periódica — sem registro, a periodicidade não tem como ser
+                  comprovada.</p>`
+              : `<table class="doc-tabela">
+                  <thead>
+                    <tr>
+                      <th>Data</th><th>EPI</th><th>Tipo</th><th>Qtd.</th>
+                      <th>Executado por</th><th>Resultado</th><th>Próxima</th>
+                    </tr>
+                  </thead>
+                  <tbody>${linhasManutencao}</tbody>
+                 </table>`
+          }
+
+          ${
+            equipamentosPendentes.length === 0
+              ? ""
+              : `<p class="doc-aviso"><strong>${equipamentosPendentes.length}
+                  equipamento(s) em posse com higienização pendente:</strong>
+                  ${equipamentosPendentes
+                    .map(
+                      (x) =>
+                        `${esc(x.nome)} — ${esc(
+                          SITUACAO_HIGIENIZACAO_LABEL[x.situacao]
+                        )}`
+                    )
+                    .join(" · ")}</p>`
+          }
+        </div>
+      </div>
 
       <div class="doc-bloco">
         <div class="tit">Termo de responsabilidade — NR-06 item 6.7.1</div>

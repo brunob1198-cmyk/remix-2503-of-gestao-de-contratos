@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { escapeSearchTerm } from "@/utils/sgsstSearch";
+import type {
+  TipoManutencaoEpi,
+  ResultadoManutencaoEpi,
+} from "@/utils/sgsstEpiHigienizacao";
 import { calculateValidadeCa, StatusValidadeCa } from "@/utils/sgsstEpiUtils";
 
 export type CategoriaEpi =
@@ -46,6 +50,16 @@ export interface SgsstEpi {
    * trabalhador recebeu.
    */
   vida_util_meses?: number | null;
+  /**
+   * De quantos em quantos dias o equipamento deve ser higienizado ou revisado
+   * (NR-06 6.6.1 alínea "f"). Nulo = sem periodicidade, e o sistema não cobra prazo.
+   */
+  higienizacao_periodicidade_dias?: number | null;
+  /**
+   * Verdadeiro para reutilizável. Falso para descartável — cobrar higienização de
+   * máscara PFF1 é ruído, e ruído ensina o usuário a ignorar o aviso verdadeiro.
+   */
+  exige_higienizacao?: boolean | null;
   status: StatusEpi;
   descricao?: string | null;
   created_by?: string | null;
@@ -653,5 +667,203 @@ export function useSgsstFichaEpiDoColaborador(
     isLoading: entregas.isLoading || devolucoes.isLoading,
     error: entregas.error ?? devolucoes.error,
     truncado: (entregas.data ?? []).length >= FICHA_EPI_LIMITE_LINHAS,
+  };
+}
+
+/**
+ * 6. Higienização, manutenção e inspeção de EPI — NR-06 6.6.1 alínea "f"
+ *
+ * A norma cobra higienização e manutenção PERIÓDICA. Periódica significa histórico,
+ * e por isso é uma tabela e não um campo `ultima_higienizacao` no EPI — que
+ * guardaria a última e apagaria justamente a prova da periodicidade.
+ *
+ * O registro aponta sempre para o EPI e opcionalmente para a entrega: higienizar o
+ * lote de máscaras do estoque (sem entrega) e higienizar o cinto que um trabalhador
+ * usa (com entrega, e portanto com trabalhador identificado) são os dois casos
+ * reais da obra.
+ */
+export interface SgsstEpiManutencao {
+  id: string;
+  empresa_id: string;
+  epi_id: string;
+  /** Nula quando a execução é sobre itens do estoque. */
+  entrega_id?: string | null;
+  tipo: TipoManutencaoEpi;
+  data_execucao: string;
+  quantidade: number;
+  executado_por_id?: string | null;
+  executado_por_nome?: string | null;
+  resultado: ResultadoManutencaoEpi;
+  proxima_prevista?: string | null;
+  observacao?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  // Joined Data
+  epi?: SgsstEpi | null;
+  entrega?: {
+    id: string;
+    data_entrega: string;
+    colaborador_id: string;
+    colaborador?: {
+      id: string;
+      profile?: { nome: string } | null;
+      recurso?: { nome: string } | null;
+    } | null;
+  } | null;
+  executado_por?: { id: string; nome: string | null } | null;
+}
+
+export type SgsstEpiManutencaoInput = Omit<
+  SgsstEpiManutencao,
+  "id" | "empresa_id" | "created_at" | "updated_at" | "epi" | "entrega" | "executado_por"
+>;
+
+export const MANUTENCAO_LIMITE_LINHAS = 500;
+
+export function useSgsstEpiManutencoes(params?: {
+  page?: number;
+  pageSize?: number;
+  epiId?: string;
+  /** Ids de entregas — usado pela ficha de um trabalhador. */
+  entregaIds?: readonly string[];
+  enabled?: boolean;
+}) {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const empresaId = profile?.empresa_id;
+
+  const page = params?.page ?? 0;
+  const pageSize = params?.pageSize ?? 50;
+
+  // Ordenado para a chave do cache não mudar só porque a lista chegou em outra ordem.
+  const chaveEntregas = [...(params?.entregaIds ?? [])].sort().join(",");
+
+  const habilitado =
+    !!empresaId &&
+    params?.enabled !== false &&
+    // Filtro por entregas com lista vazia significa "nada a buscar", não "buscar
+    // tudo": sem esta guarda, a ficha de um trabalhador sem entrega nenhuma
+    // carregaria as execuções da empresa inteira.
+    (params?.entregaIds === undefined || params.entregaIds.length > 0);
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [
+      "sgsst_epi_manutencoes",
+      empresaId,
+      page,
+      pageSize,
+      params?.epiId ?? null,
+      chaveEntregas,
+    ],
+    enabled: habilitado,
+    queryFn: async () => {
+      type Encadeavel = {
+        eq: (coluna: string, valor: string) => Encadeavel;
+        in: (coluna: string, valores: string[]) => Encadeavel;
+        range: (de: number, ate: number) => unknown;
+      };
+
+      const base = supabase
+        .from("sgsst_epi_manutencoes" as never)
+        .select(
+          `*,
+           epi:sgsst_epis(id, nome, ca, unidade_medida, exige_higienizacao, higienizacao_periodicidade_dias),
+           entrega:sgsst_epi_entregas(
+             id, data_entrega, colaborador_id,
+             colaborador:sgsst_colaborador_dados(
+               id, profile:profiles(nome), recurso:recursos(nome)
+             )
+           ),
+           executado_por:profiles!sgsst_epi_manutencoes_executado_por_id_fkey(id, nome)`,
+          { count: "exact" }
+        )
+        .order("data_execucao", { ascending: false }) as unknown as Encadeavel;
+
+      let consulta = base;
+      if (params?.epiId) consulta = consulta.eq("epi_id", params.epiId);
+      if (params?.entregaIds && params.entregaIds.length > 0) {
+        consulta = consulta.in("entrega_id", [...params.entregaIds]);
+      }
+
+      const { data, error, count } = await (consulta.range(
+        page * pageSize,
+        page * pageSize + pageSize - 1
+      ) as never as Promise<{
+        data: SgsstEpiManutencao[] | null;
+        error: { message?: string } | null;
+        count: number | null;
+      }>);
+
+      if (error) throw error;
+
+      const rows = data ?? [];
+      return { rows, total: count ?? rows.length };
+    },
+  });
+
+  const createManutencao = useMutation({
+    mutationFn: async (input: SgsstEpiManutencaoInput) => {
+      if (!empresaId) throw new Error("Empresa não selecionada.");
+
+      // A tabela e nova e ainda nao esta no `types.ts` gerado, entao o payload vai
+      // como `never` — mesmo tratamento das outras tabelas SGSST recem-criadas.
+      const payload = {
+        ...input,
+        empresa_id: empresaId,
+        created_by: profile?.id,
+      } as never;
+
+      const { data, error } = await (supabase
+        .from("sgsst_epi_manutencoes" as never)
+        .insert(payload)
+        .select()
+        .single() as never as Promise<{
+        data: SgsstEpiManutencao | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_epi_manutencoes"] });
+      // O descarte de itens do estoque movimenta o estoque, por trigger.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_epis"] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_epi_historico_colab"] });
+      toast.success("Execução registrada!");
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(`Erro ao registrar a execução: ${err.message || err}`);
+    },
+  });
+
+  const removeManutencao = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("sgsst_epi_manutencoes" as never)
+        .delete()
+        .eq("id", id) as never as Promise<{ error: { message?: string } | null }>);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_epi_manutencoes"] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_epis"] });
+      toast.success("Registro removido.");
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(`Erro ao remover: ${err.message || err}`);
+    },
+  });
+
+  return {
+    manutencoes: data?.rows ?? [],
+    total: data?.total ?? 0,
+    isLoading,
+    error,
+    refetch,
+    createManutencao,
+    removeManutencao,
   };
 }

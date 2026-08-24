@@ -5,6 +5,7 @@ import {
   useSgsstEpiDevolucoes,
   useSgsstEpiHistoricoColaborador,
   useSgsstFichaEpiDoColaborador,
+  useSgsstEpiManutencoes,
   SgsstEpi,
   SgsstEpiEntrega,
   CategoriaEpi,
@@ -46,17 +47,25 @@ import {
   UserCheck,
   FileDown,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { EpiFormDialog } from "@/components/sgsst/EpiFormDialog";
 import { EntregaEpiFormDialog } from "@/components/sgsst/EntregaEpiFormDialog";
 import { DevolucaoEpiFormDialog } from "@/components/sgsst/DevolucaoEpiFormDialog";
+import { ManutencaoEpiFormDialog } from "@/components/sgsst/ManutencaoEpiFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, parseISO } from "date-fns";
 import {
   previsaoTroca,
   SITUACAO_VIDA_UTIL_LABEL,
 } from "@/utils/sgsstEpiVidaUtil";
+import {
+  situacaoHigienizacao,
+  higienizacaoPendente,
+  SITUACAO_HIGIENIZACAO_LABEL,
+  TIPO_MANUTENCAO_LABEL,
+} from "@/utils/sgsstEpiHigienizacao";
 
 export default function SgsstEpisListPage() {
   const { canEdit } = usePermissions();
@@ -102,6 +111,22 @@ export default function SgsstEpisListPage() {
 
   const totalPagesEnt = Math.ceil(totalEntregas / pageSizeEnt) || 1;
   const totalPagesDev = Math.ceil(totalDevolucoes / pageSizeDev) || 1;
+
+  // Higienização e manutenção — NR-06 6.6.1 alínea "f".
+  const [pageManut, setPageManut] = useState(0);
+  const [pageSizeManut, setPageSizeManut] = useState(25);
+  const [isManutencaoFormOpen, setIsManutencaoFormOpen] = useState(false);
+
+  const {
+    manutencoes,
+    total: totalManutencoes,
+    isLoading: loadingManutencoes,
+    error: errManutencoes,
+    createManutencao,
+    removeManutencao,
+  } = useSgsstEpiManutencoes({ page: pageManut, pageSize: pageSizeManut });
+
+  const totalPagesManut = Math.ceil(totalManutencoes / pageSizeManut) || 1;
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { empresa } = useEmpresaAtual();
   const { profile } = useAuth();
@@ -146,12 +171,21 @@ export default function SgsstEpisListPage() {
     selectedColabPosse !== "todos" ? selectedColabPosse : undefined
   );
 
+  // As execucoes das entregas deste trabalhador. A ficha precisa delas para
+  // comprovar a alinea "f" — sem isso a secao sairia sempre dizendo que nao ha
+  // registro, mesmo havendo.
+  const { manutencoes: manutencoesDaFicha } = useSgsstEpiManutencoes({
+    entregaIds: entregasDaFicha.map((e) => e.id),
+    pageSize: 200,
+  });
+
   const emitirFichaEpi = async () => {
     if (!colabDaFicha) return;
 
     const dadosDaFicha: FichaEpiDados = {
       entregas: entregasDaFicha,
       devolucoes: devolucoesDaFicha,
+      manutencoes: manutencoesDaFicha,
       // `displayNome` ja resolve cadastro proprio, profile e recurso na ordem certa.
       nomeTrabalhador: colabDaFicha.displayNome,
       cpfTrabalhador: colabDaFicha.cpf ?? null,
@@ -195,6 +229,30 @@ export default function SgsstEpisListPage() {
       return dateStr;
     }
   };
+
+  /**
+   * Equipamentos reutilizáveis com higienização atrasada ou nunca registrada.
+   *
+   * Só o que exige higienização entra: cobrar de descartável seria ruído, e ruído
+   * ensina o usuário a ignorar o aviso verdadeiro. "Próxima do prazo" também fica
+   * fora — é aviso de antecedência, não pendência.
+   *
+   * As execuções consideradas são as da página carregada. Isso subestima o número
+   * quando há muitos registros, e por isso o painel fala em "pendente", nunca em
+   * "total" — número que pode estar por baixo não deve se apresentar como fechado.
+   */
+  const pendenciasHigienizacao = epis
+    .filter((epi) => epi.exige_higienizacao)
+    .map((epi) => ({
+      epi,
+      situacao: situacaoHigienizacao({
+        exigeHigienizacao: epi.exige_higienizacao,
+        periodicidadeDias: epi.higienizacao_periodicidade_dias,
+        execucoes: manutencoes.filter((m) => m.epi_id === epi.id),
+        hoje: new Date(),
+      }),
+    }))
+    .filter((x) => higienizacaoPendente(x.situacao.situacao));
 
   // Filter Catálogo
   const filteredEpis = epis.filter((e) => {
@@ -378,15 +436,18 @@ export default function SgsstEpisListPage() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full sm:w-auto grid-cols-5">
+        <TabsList className="grid w-full sm:w-auto grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="catalogo" className="gap-2">
             <Shield className="h-4 w-4" /> Catálogo ({epis.length})
           </TabsTrigger>
           <TabsTrigger value="entregas" className="gap-2">
-            <PackageCheck className="h-4 w-4" /> Entregas ({entregas.length})
+            <PackageCheck className="h-4 w-4" /> Entregas ({totalEntregas})
           </TabsTrigger>
           <TabsTrigger value="devolucoes" className="gap-2">
-            <RotateCcw className="h-4 w-4" /> Devoluções ({devolucoes.length})
+            <RotateCcw className="h-4 w-4" /> Devoluções ({totalDevolucoes})
+          </TabsTrigger>
+          <TabsTrigger value="higienizacao" className="gap-2">
+            <Sparkles className="h-4 w-4" /> Higienização
           </TabsTrigger>
           <TabsTrigger value="estoque" className="gap-2">
             <Boxes className="h-4 w-4" /> Estoque SST
@@ -703,6 +764,170 @@ export default function SgsstEpisListPage() {
           </Card>
         </TabsContent>
 
+        {/* TAB 3.5: HIGIENIZAÇÃO E MANUTENÇÃO — NR-06 6.6.1 alínea "f" */}
+        <TabsContent value="higienizacao" className="space-y-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 justify-between">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">Higienização & Manutenção</h3>
+              <p className="text-xs text-muted-foreground">
+                A NR-06 6.6.1 alínea "f" põe no empregador a responsabilidade pela
+                higienização e manutenção <strong>periódica</strong> do EPI. É o
+                histórico que comprova a periodicidade.
+              </p>
+            </div>
+
+            {allowEdit && (
+              <Button onClick={() => setIsManutencaoFormOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Registrar execução
+              </Button>
+            )}
+          </div>
+
+          {/* Equipamentos reutilizáveis com a higienização em atraso ou nunca feita */}
+          {pendenciasHigienizacao.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                {pendenciasHigienizacao.length} equipamento(s) reutilizável(is) com
+                higienização pendente
+              </p>
+              <ul className="mt-2 space-y-1">
+                {pendenciasHigienizacao.map((p) => (
+                  <li key={p.epi.id} className="text-[11px] text-amber-900 dark:text-amber-200">
+                    <strong>{p.epi.nome}</strong> —{" "}
+                    {SITUACAO_HIGIENIZACAO_LABEL[p.situacao.situacao]}
+                    {p.situacao.proximaEm
+                      ? ` · prazo era ${formatDateStr(p.situacao.proximaEm)}`
+                      : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <Card>
+            <CardContent className="p-0">
+              {errManutencoes && (
+                <div className="p-3">
+                  <SgsstErrorState error={errManutencoes} modulo="EPI" inline />
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>EPI</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Qtd.</TableHead>
+                      <TableHead>Alvo</TableHead>
+                      <TableHead>Executado por</TableHead>
+                      <TableHead>Resultado</TableHead>
+                      <TableHead>Próxima</TableHead>
+                      {allowEdit && <TableHead className="text-right">Ações</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingManutencoes ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          Carregando execuções...
+                        </TableCell>
+                      </TableRow>
+                    ) : manutencoes.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">
+                          Nenhuma higienização ou manutenção registrada. Enquanto não
+                          houver registro, a periodicidade da NR-06 não tem como ser
+                          comprovada.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      manutencoes.map((m) => (
+                        <TableRow key={m.id}>
+                          <TableCell className="text-xs font-mono">
+                            {formatDateStr(m.data_execucao)}
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold">
+                            {m.epi?.nome || "—"}
+                            <div className="text-[11px] text-muted-foreground font-normal">
+                              CA {m.epi?.ca || "—"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant="outline" className="text-xs">
+                              {TIPO_MANUTENCAO_LABEL[m.tipo] ?? m.tipo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-mono">{m.quantidade}</TableCell>
+                          <TableCell className="text-xs">
+                            {/* Estoque e peça do trabalhador têm efeitos diferentes;
+                                a coluna diz qual dos dois é. */}
+                            {m.entrega_id ? (
+                              <span>
+                                {m.entrega?.colaborador?.profile?.nome ||
+                                  m.entrega?.colaborador?.recurso?.nome ||
+                                  "trabalhador"}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Estoque</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {m.executado_por_nome || m.executado_por?.nome || "—"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {m.resultado === "APROVADO" && (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-xs">
+                                Aprovado
+                              </Badge>
+                            )}
+                            {m.resultado === "REPROVADO" && (
+                              <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                                Reprovado
+                              </Badge>
+                            )}
+                            {m.resultado === "DESCARTADO" && (
+                              <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs font-bold">
+                                Descartado
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs font-mono">
+                            {formatDateStr(m.proxima_prevista)}
+                          </TableCell>
+                          {allowEdit && (
+                            <TableCell className="text-right">
+                              <SgsstConfirmDelete
+                                alvo="este registro de execução"
+                                consequencia={
+                                  "O registro de higienização/manutenção é apagado e a prova da periodicidade exigida pela NR-06 deixa de existir. Se era um descarte de estoque, as unidades voltam ao estoque."
+                                }
+                                onConfirm={() => removeManutencao.mutate(m.id)}
+                              />
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <TablePagination
+                currentPage={pageManut + 1}
+                totalPages={totalPagesManut}
+                onPageChange={(pg) => setPageManut(pg - 1)}
+                itemsPerPage={pageSizeManut}
+                onItemsPerPageChange={(v) => {
+                  setPageSizeManut(v);
+                  setPageManut(0);
+                }}
+                totalItems={totalManutencoes}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* TAB 4: ESTOQUE E ALERTA DE REPOSIÇÃO */}
         <TabsContent value="estoque" className="space-y-4 pt-4">
           <Card>
@@ -851,6 +1076,15 @@ export default function SgsstEpisListPage() {
         initialEntregaId={initialEntregaForDev}
         onSave={handleSaveDevolucao}
         isLoading={createDevolucao.isPending}
+      />
+
+      <ManutencaoEpiFormDialog
+        open={isManutencaoFormOpen}
+        onOpenChange={setIsManutencaoFormOpen}
+        onSave={async (dados) => {
+          await createManutencao.mutateAsync(dados);
+        }}
+        isLoading={createManutencao.isPending}
       />
     </div>
   );
