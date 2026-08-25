@@ -35,7 +35,13 @@ export const CLASSIFICACAO_LABEL: Record<ClassificacaoResultado, string> = {
   INCONCLUSIVO: "Inconclusivo",
 };
 
-export type AptidaoAso = "APTO" | "APTO_COM_RESTRICAO" | "INAPTO";
+// A aptidao mora em src/utils/sgsstAptidaoAso.ts, junto das regras que dizem o
+// que cada estado autoriza. Reexportado aqui porque as telas importam daqui.
+export type { AptidaoAso, AptidaoAtividade } from "@/utils/sgsstAptidaoAso";
+import type {
+  AptidaoAso as AptidaoAsoTipo,
+  AptidaoAtividade as AptidaoAtividadeTipo,
+} from "@/utils/sgsstAptidaoAso";
 
 export type StatusAso = "ATIVO" | "SUBSTITUIDO" | "CANCELADO";
 
@@ -66,6 +72,8 @@ export interface SgsstExame {
   colaborador?: {
     id: string;
     cpf: string;
+    /** NR-07 7.5.15.1 "a" pede o numero de registro de identidade, nao so o CPF. */
+    rg?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -87,8 +95,28 @@ export interface SgsstAso {
   numero_documento?: string | null;
   data_emissao: string;
   tipo: TipoExameOcupacional;
-  aptidao: AptidaoAso;
+  /**
+   * Conclusao medica de aptidao. NULA = o medico ainda nao concluiu.
+   *
+   * A coluna nascia `NOT NULL DEFAULT APTO`, o que fazia todo ASO criado sem
+   * tocar no campo afirmar que o trabalhador esta apto — a unica afirmacao do
+   * documento que so um medico pode fazer, feita pelo sistema por omissao.
+   */
+  aptidao?: AptidaoAsoTipo | null;
   validade: string;
+  /** Aptidao por atividade. NULL = nao avaliado; NAO_SE_APLICA nao e inapto. */
+  apto_altura?: AptidaoAtividadeTipo | null;
+  apto_espaco_confinado?: AptidaoAtividadeTipo | null;
+  apto_maquinas?: AptidaoAtividadeTipo | null;
+  /** Codigos do catalogo de agentes de risco. Vazio = nao preenchido. */
+  riscos_marcados?: string[] | null;
+  /** Afirmacao expressa de inexistencia de risco (NR-07 7.5.15.1 "b"). */
+  sem_risco_especifico?: boolean | null;
+  unidade?: string | null;
+  /** Funcao para a qual esta sendo avaliado, no exame de mudanca de funcao. */
+  nova_funcao?: string | null;
+  /** Data do exame clinico, distinta da emissao e das datas dos complementares. */
+  data_exame_clinico?: string | null;
   /** Médico EXAMINADOR: quem realizou o exame e assina o ASO. */
   medico_responsavel?: string | null;
   crm_medico?: string | null;
@@ -114,6 +142,8 @@ export interface SgsstAso {
   colaborador?: {
     id: string;
     cpf: string;
+    /** NR-07 7.5.15.1 "a" pede o número de registro de identidade, não só o CPF. */
+    rg?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -206,7 +236,7 @@ export function useSgsstExames(params?: SgsstExamesParams) {
           `
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, rg,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
@@ -379,7 +409,7 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
           `
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, rg,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)

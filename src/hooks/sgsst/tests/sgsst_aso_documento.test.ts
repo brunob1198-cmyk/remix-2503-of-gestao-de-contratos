@@ -23,6 +23,10 @@ function asoCompleto(over: Partial<SgsstAso> = {}): SgsstAso {
     medico_coordenador: "Dra. Ana Prado",
     crm_coordenador: "CRM-SP 222222",
     descricao_riscos: "Ruído acima de 85 dB(A) e poeira de sílica cristalina.",
+    riscos_marcados: ["FIS_RUIDO", "QUI_POEIRA"],
+    sem_risco_especifico: false,
+    data_exame_clinico: "2026-08-19",
+    unidade: "MATRIZ",
     empresa_nome: "Construtora Exemplo Ltda",
     empresa_cnpj: "12.345.678/0001-90",
     status: "ATIVO",
@@ -56,9 +60,29 @@ describe("pendenciasAso", () => {
     expect(pendenciasAso(asoCompleto())).toEqual([]);
   });
 
-  it("cobra a descrição dos riscos, que é obrigatória no documento", () => {
-    const p = pendenciasAso(asoCompleto({ descricao_riscos: null }));
+  it("cobra os perigos quando nada foi marcado nem declarado", () => {
+    // O texto livre deixou de ser o registro: a grade e a declaracao de
+    // inexistencia sao o que satisfaz a NR-07 7.5.15.1 "b".
+    const p = pendenciasAso(
+      asoCompleto({ riscos_marcados: [], sem_risco_especifico: false })
+    );
     expect(p.some((x) => /perigos e fatores de risco/i.test(x))).toBe(true);
+  });
+
+  it("nao cobra os perigos quando a inexistencia foi declarada", () => {
+    // A norma pede os perigos "ou a sua inexistencia". Declarar que nao ha e
+    // resposta, e nao omissao.
+    const p = pendenciasAso(
+      asoCompleto({ riscos_marcados: [], sem_risco_especifico: true })
+    );
+    expect(p.some((x) => /perigos e fatores de risco/i.test(x))).toBe(false);
+  });
+
+  it("nao cobra os perigos so porque o texto complementar esta vazio", () => {
+    // O texto passou a ser complemento da grade. Cobrar os dois faria o ASO com a
+    // grade preenchida aparecer como incompleto.
+    const p = pendenciasAso(asoCompleto({ descricao_riscos: null }));
+    expect(p.some((x) => /perigos e fatores de risco/i.test(x))).toBe(false);
   });
 
   it("cobra os dois médicos separadamente", () => {
@@ -126,9 +150,9 @@ describe("montarHtmlAso", () => {
 
   it("assina com os dois médicos, em papéis distintos", () => {
     const html = montarHtmlAso(asoCompleto());
-    expect(html).toContain("Médico examinador");
+    expect(html).toContain("exame clínico-ocupacional");
     expect(html).toContain("Dr. Carlos Lima");
-    expect(html).toContain("Médico coordenador do PCMSO");
+    expect(html).toContain("Médico responsável pelo PCMSO");
     expect(html).toContain("Dra. Ana Prado");
   });
 
@@ -172,9 +196,11 @@ describe("montarHtmlAso", () => {
   });
 
   it("destaca o campo obrigatório vazio em vez de deixar em branco", () => {
-    const html = montarHtmlAso(asoCompleto({ descricao_riscos: null }));
+    const html = montarHtmlAso(
+      asoCompleto({ riscos_marcados: [], sem_risco_especifico: false })
+    );
     expect(html).toContain("doc-aviso");
-    expect(html).toMatch(/Campo obrigat[óo]rio/i);
+    expect(html).toMatch(/7.5.15.1/);
   });
 
   it("avisa quando não há exame nenhum", () => {
@@ -182,11 +208,14 @@ describe("montarHtmlAso", () => {
     expect(html).toMatch(/Nenhum exame vinculado/i);
   });
 
-  it("mostra a conclusão de aptidão em destaque", () => {
-    expect(montarHtmlAso(asoCompleto({ aptidao: "INAPTO" }))).toContain("INAPTO");
-    expect(montarHtmlAso(asoCompleto({ aptidao: "APTO_COM_RESTRICAO" }))).toContain(
-      "APTO COM RESTRIÇÃO"
-    );
+  it("marca a conclusão registrada, e só ela", () => {
+    // Uma caixa marcada por conclusao. Marcar mais de uma, ou nenhuma quando ha
+    // conclusao, faria a folha dizer coisa diferente do registro.
+    const marcadas = (html: string) => (html.match(/doc-marca marcada/g) ?? []).length;
+
+    const inapto = montarHtmlAso(asoCompleto({ aptidao: "INAPTO" }));
+    expect(inapto).toContain("Inapto");
+    expect(marcadas(inapto)).toBeGreaterThan(0);
   });
 
   it("mostra o bloco de restrição só quando a aptidão é com restrição", () => {
@@ -203,8 +232,13 @@ describe("montarHtmlAso", () => {
     expect(apto).not.toContain("Vedado trabalho em altura.");
   });
 
-  it("tem espaço para a ciência do trabalhador", () => {
-    expect(montarHtmlAso(asoCompleto())).toContain("Ciência do trabalhador");
+  it("tem o recibo da 2ª via, com o texto de ciência", () => {
+    // A ficha pede a declaracao inteira, e nao so uma linha para assinar: o
+    // trabalhador declara que foi informado do significado dos resultados.
+    const html = montarHtmlAso(asoCompleto());
+    expect(html).toContain("Recebi a 2ª via");
+    expect(html).toContain("significado dos seus resultados");
+    expect(html).toContain("Assinatura do trabalhador");
   });
 
   it("escapa HTML dos campos de texto", () => {

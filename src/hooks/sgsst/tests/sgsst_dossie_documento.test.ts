@@ -238,6 +238,21 @@ describe("situacaoOcupacional — sem ASO não é inapto", () => {
     expect(r).toBe("APTO_COM_RESTRICAO");
   });
 
+  it("ASO vigente sem conclusão médica não é APTO", () => {
+    // O `return "APTO"` que fechava a funcao fazia o dossie afirmar aptidao a
+    // partir de um campo vazio — e como a coluna nascia com DEFAULT APTO, o vazio
+    // era o caso comum. Estado proprio: nao e falta de ASO, nao e prazo perdido e
+    // nao e conclusao medica.
+    const semConclusao = { ...ASO_VALIDO, aptidao: null } as SgsstAso;
+    expect(situacaoOcupacional([semConclusao], HOJE)).toBe("ASO_SEM_CONCLUSAO");
+  });
+
+  it("a falta de conclusão entra nas pendências do dossiê", () => {
+    const semConclusao = { ...ASO_VALIDO, aptidao: null } as SgsstAso;
+    const p = pendenciasDossie(dados({ asos: [semConclusao] }));
+    expect(p.some((x) => /sem conclusão médica/i.test(x))).toBe(true);
+  });
+
   it("inapto vigente é INAPTO", () => {
     const r = situacaoOcupacional(
       [{ ...ASO_VALIDO, aptidao: "INAPTO" as SgsstAso["aptidao"] }],
