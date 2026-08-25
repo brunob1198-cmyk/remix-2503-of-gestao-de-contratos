@@ -7,6 +7,10 @@ import {
   cssMarcaDagua,
   opcoesPdfTimbrado,
   ORGANIZACAO_TIMBRE,
+  alturaCabecalhoPt,
+  alturaRodapePt,
+  MARGEM_SUPERIOR_MM,
+  MARGEM_INFERIOR_MM,
 } from "@/lib/sgsstPapelTimbrado";
 
 /**
@@ -158,14 +162,17 @@ describe("ativos do papel timbrado", () => {
 
 describe("marca d'água como fundo CSS", () => {
   it("o azulejo tem a altura de uma página de conteúdo", () => {
-    // A conta que faz a marca cair uma vez por folha. Área útil do A4 com as
-    // margens do timbrado: 186 × 251 mm. A largura de render (1024 px) mapeia os
-    // 186 mm, o que dá ~5,5054 px/mm; 251 mm nessa escala dão ~1381,9 px.
+    // A conta que faz a marca cair uma vez por folha: a largura de render
+    // (1024 px) mapeia a largura útil, o que dá a escala px/mm, e a altura útil
+    // nessa escala é a altura do azulejo.
     //
-    // Se alguém mexer nas margens sem revisar isto, a marca desalinha da quebra
-    // de página e este teste cai.
+    // A área útil vem das margens EXPORTADAS, e não de um número repetido aqui.
+    // Repetir era o jeito silencioso de as duas divergirem — e as margens agora
+    // são calculadas a partir do tamanho do timbre, então mudam sozinhas.
+    const alturaUtilMm = 297 - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
     const altura = alturaPaginaEmPixels();
-    expect(altura).toBeCloseTo((251 * 1024) / 186, 1);
+
+    expect(altura).toBeCloseTo((alturaUtilMm * 1024) / 186, 4);
     expect(altura).toBeGreaterThan(1300);
     expect(altura).toBeLessThan(1450);
   });
@@ -211,6 +218,57 @@ describe("marca d'água como fundo CSS", () => {
     expect(topo).toBeGreaterThanOrEqual(24);
     expect(baixo).toBeGreaterThanOrEqual(18);
     expect(dir).toBe(esq);
+  });
+});
+
+/**
+ * O timbre é estampado por cima do PDF já paginado, então o conteúdo tem de
+ * nascer com espaço reservado. Faltava exatamente esta checagem, e o defeito que
+ * ela cobre chegou ao usuário: o rodapé era ancorado na LINHA DE MARGEM e
+ * desenhado para cima dela, ou seja, os 9 mm mais altos do bloco caíam dentro da
+ * área de conteúdo — e o pé de página saía atravessado por cima do texto do
+ * documento.
+ */
+describe("o timbre cabe na margem que o conteúdo reserva", () => {
+  const MM = 72 / 25.4;
+
+  it("o rodapé inteiro fica abaixo da linha de margem inferior", () => {
+    // Em milímetros, medidos da borda de baixo da folha.
+    const topoDoRodapeMm = alturaRodapePt() / MM;
+    expect(topoDoRodapeMm).toBeLessThan(MARGEM_INFERIOR_MM);
+  });
+
+  it("o logo fica acima da linha de margem superior", () => {
+    const baseDoLogoMm = alturaCabecalhoPt() / MM;
+    expect(baseDoLogoMm).toBeLessThan(MARGEM_SUPERIOR_MM);
+  });
+
+  it("há folga entre o timbre e o conteúdo, e não apenas encaixe justo", () => {
+    // Encostado, uma letra com descida (g, p, ç) na última linha já toca o
+    // rodapé. A folga é o que faz a folha parecer diagramada.
+    const folgaBaixo = MARGEM_INFERIOR_MM - alturaRodapePt() / MM;
+    const folgaTopo = MARGEM_SUPERIOR_MM - alturaCabecalhoPt() / MM;
+
+    expect(folgaBaixo).toBeGreaterThanOrEqual(3);
+    expect(folgaTopo).toBeGreaterThanOrEqual(3);
+  });
+
+  it("as margens usadas pelo html2pdf são as mesmas que o timbre assume", () => {
+    // Divergir aqui reabre o defeito: o timbre desenharia num lugar e o conteúdo
+    // reservaria outro.
+    const opcoes = opcoesPdfTimbrado("x.pdf") as { margin: number[] };
+    const [topo, , baixo] = opcoes.margin;
+
+    expect(topo).toBeCloseTo(MARGEM_SUPERIOR_MM, 6);
+    expect(baixo).toBeCloseTo(MARGEM_INFERIOR_MM, 6);
+  });
+
+  it("a área útil não encolheu para caber o rodapé", () => {
+    // A correção poderia ter sido só aumentar a margem inferior, ao custo de
+    // umas quatro linhas por página em todo documento do sistema. Ancorar o
+    // rodapé na borda resolve sem cobrar esse preço.
+    const alturaUtilMm = 297 - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
+    expect(alturaUtilMm).toBeGreaterThan(248);
   });
 });
 

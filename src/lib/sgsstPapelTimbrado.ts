@@ -40,18 +40,72 @@ const MARCA_DAGUA_URL = "/papel-timbrado/marca-dagua.png";
 /** Proporção original do logo (2500 × 505), para não distorcer ao redimensionar. */
 const LOGO_PROPORCAO = 505 / 2500;
 
+const MM_PARA_PT = 72 / 25.4;
+
+/**
+ * Geometria do rodapé, medida A PARTIR DA BORDA INFERIOR DA FOLHA.
+ *
+ * A primeira versão ancorava o rodapé na linha de margem do conteúdo e o
+ * desenhava para CIMA dela. O resultado é o defeito que isto corrige: as quatro
+ * linhas do rodapé nasciam a 21 mm da borda e subiam até 29 mm, ou seja, os 9 mm
+ * mais altos caíam dentro da área de conteúdo — e o pé de página aparecia
+ * atravessado por cima do texto do documento.
+ *
+ * Agora a origem é a borda da folha, e a margem inferior é CALCULADA a partir da
+ * altura deste bloco. Assim as duas não podem mais divergir: mexer no rodapé
+ * reajusta a margem sozinho.
+ */
+const RODAPE_BORDA_PT = 14;
+/** Deslocamentos de cada linha, a partir da base do bloco. */
+const RODAPE_ENDERECO_PT = 0;
+const RODAPE_CONTATO_PT = 9;
+const RODAPE_FILETE_PT = 19;
+const RODAPE_PAGINACAO_PT = 23;
+/** Corpo do maior texto do bloco, que define onde está o topo dele. */
+const RODAPE_CORPO_MAIOR_PT = 6.5;
+
+/**
+ * Altura total do rodapé: da borda da folha até o topo da linha mais alta.
+ *
+ * Exportada para o teste conferir que ela cabe na margem reservada — a checagem
+ * que faltava e que deixou o defeito passar.
+ */
+export function alturaRodapePt(): number {
+  return RODAPE_BORDA_PT + RODAPE_PAGINACAO_PT + RODAPE_CORPO_MAIOR_PT;
+}
+
+/** Geometria do logo, medida a partir da borda superior. */
+const LOGO_BORDA_TOPO_MM = 12;
+const LOGO_LARGURA_MM = 42;
+
+/**
+ * Altura do cabeçalho: da borda da folha até a base do logo.
+ *
+ * O filete separador fica de fora da conta de propósito — ele é traçado logo
+ * acima da linha de margem justamente para marcar onde o conteúdo começa, e é um
+ * fio, não texto que possa ser encoberto.
+ */
+export function alturaCabecalhoPt(): number {
+  return (LOGO_BORDA_TOPO_MM + LOGO_LARGURA_MM * LOGO_PROPORCAO) * MM_PARA_PT;
+}
+
+/** Respiro entre o timbre e a primeira/última linha do conteúdo. */
+const FOLGA_TIMBRE_MM = 5;
+
 /**
  * Margens em milímetros, maiores que as do PDF comum.
  *
  * O timbre é desenhado por cima do PDF já paginado, então o conteúdo precisa
  * nascer com espaço reservado — sem isso, a primeira linha da tabela fica
  * embaixo do logo.
+ *
+ * As duas verticais são derivadas do tamanho real do que é estampado, e não
+ * escolhidas à mão: número escolhido à mão foi exatamente o que produziu a
+ * sobreposição no pé da página.
  */
-const MARGEM_SUPERIOR_MM = 26;
-const MARGEM_INFERIOR_MM = 20;
+export const MARGEM_SUPERIOR_MM = alturaCabecalhoPt() / MM_PARA_PT + FOLGA_TIMBRE_MM;
+export const MARGEM_INFERIOR_MM = alturaRodapePt() / MM_PARA_PT + FOLGA_TIMBRE_MM;
 const MARGEM_LATERAL_MM = 12;
-
-const MM_PARA_PT = 72 / 25.4;
 
 /** A4 em milímetros. */
 const A4_LARGURA_MM = 210;
@@ -181,11 +235,11 @@ export async function aplicarPapelTimbrado(
     const { width, height } = pagina.getSize();
 
     if (logo) {
-      const larguraLogo = 42 * MM_PARA_PT;
+      const larguraLogo = LOGO_LARGURA_MM * MM_PARA_PT;
       const alturaLogo = larguraLogo * LOGO_PROPORCAO;
       pagina.drawImage(logo, {
         x: margemLateral,
-        y: height - 12 * MM_PARA_PT - alturaLogo,
+        y: height - LOGO_BORDA_TOPO_MM * MM_PARA_PT - alturaLogo,
         width: larguraLogo,
         height: alturaLogo,
       });
@@ -201,11 +255,14 @@ export async function aplicarPapelTimbrado(
     });
 
     // ---- rodapé ----
-    const yRodape = MARGEM_INFERIOR_MM * MM_PARA_PT - 6;
+    // Ancorado na BORDA da folha, e não na linha de margem: ancorado na margem, o
+    // bloco crescia para dentro do conteúdo e o pé de página saía por cima do
+    // texto do documento.
+    const yRodape = RODAPE_BORDA_PT;
 
     pagina.drawLine({
-      start: { x: margemLateral, y: yRodape + 22 },
-      end: { x: width - margemLateral, y: yRodape + 22 },
+      start: { x: margemLateral, y: yRodape + RODAPE_FILETE_PT },
+      end: { x: width - margemLateral, y: yRodape + RODAPE_FILETE_PT },
       thickness: 0.5,
       color: rgb(0.85, 0.88, 0.92),
     });
@@ -215,7 +272,7 @@ export async function aplicarPapelTimbrado(
     const largura1 = fonte.widthOfTextAtSize(linha1, tamanho1);
     pagina.drawText(linha1, {
       x: (width - largura1) / 2,
-      y: yRodape + 12,
+      y: yRodape + RODAPE_CONTATO_PT,
       size: tamanho1,
       font: fonte,
       color: tinta,
@@ -226,7 +283,7 @@ export async function aplicarPapelTimbrado(
     const largura2 = fonte.widthOfTextAtSize(linha2, tamanho2);
     pagina.drawText(linha2, {
       x: (width - largura2) / 2,
-      y: yRodape + 3,
+      y: yRodape + RODAPE_ENDERECO_PT,
       size: tamanho2,
       font: fonte,
       color: tintaSuave,
@@ -235,11 +292,11 @@ export async function aplicarPapelTimbrado(
     // Numeração à direita e identificação do documento à esquerda: uma folha
     // solta que caiu do grampo precisa dizer de qual documento veio.
     const paginacao = `Página ${indice + 1} de ${total}`;
-    const larguraPag = fonteNegrito.widthOfTextAtSize(paginacao, 6.5);
+    const larguraPag = fonteNegrito.widthOfTextAtSize(paginacao, RODAPE_CORPO_MAIOR_PT);
     pagina.drawText(paginacao, {
       x: width - margemLateral - larguraPag,
-      y: yRodape + 26,
-      size: 6.5,
+      y: yRodape + RODAPE_PAGINACAO_PT,
+      size: RODAPE_CORPO_MAIOR_PT,
       font: fonteNegrito,
       color: tintaSuave,
     });
@@ -247,8 +304,8 @@ export async function aplicarPapelTimbrado(
     if (opcoes.identificacao) {
       pagina.drawText(opcoes.identificacao.slice(0, 90), {
         x: margemLateral,
-        y: yRodape + 26,
-        size: 6.5,
+        y: yRodape + RODAPE_PAGINACAO_PT,
+        size: RODAPE_CORPO_MAIOR_PT,
         font: fonte,
         color: tintaSuave,
       });
