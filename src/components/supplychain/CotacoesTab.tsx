@@ -292,9 +292,8 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
       ),
       filterFn: multiSelectFilter,
       cell: ({ row }) => {
-        const s = row.getValue("workflow_status") as string;
-        const cfg = WORKFLOW_STATUS_MAP[s] || { label: s, variant: "outline" };
-        return <Badge variant={cfg.variant as any}>{cfg.label}</Badge>;
+        const r = rotuloRequisicao(row.getValue("workflow_status") as string);
+        return <Badge variant={r.variante} title={r.ajuda}>{r.label}</Badge>;
       },
     },
     {

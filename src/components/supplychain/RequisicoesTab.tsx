@@ -17,7 +17,12 @@ import { parseLocalDate } from "@/lib/utils";
 import { RequisitionTimeline } from "./RequisitionTimeline";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import { WORKFLOW_STATUS_MAP, getStatusLabel, getStatusVariant } from "@/lib/requisicaoStatus";
+import {
+  ESTADOS_REQUISICAO,
+  ESTADO_REQUISICAO_LABEL,
+  normalizarEstadoRequisicao,
+  rotuloRequisicao,
+} from "@/lib/fluxoCompras";
 
 const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   baixa: { label: "Baixa", variant: "secondary" },
@@ -26,7 +31,13 @@ const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "seco
   urgente: { label: "Urgente", variant: "destructive" },
 };
 
-export function RequisicoesTab({ filter }: { filter?: string }) {
+export function RequisicoesTab({
+  filter,
+  onNavigate,
+}: {
+  filter?: string;
+  onNavigate?: (tab: string, filter?: string) => void;
+}) {
   const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
   const [scItensSearch, setScItensSearch] = useState("");
@@ -55,7 +66,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
   ]);
 
   const requisicoes = filter === "PENDING_APPROVAL" 
-    ? allRequisicoes.filter((r: any) => r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED")
+    ? allRequisicoes.filter((r: any) => ["PENDING_APPROVAL", "SUBMITTED"].includes(normalizarEstadoRequisicao(r.workflow_status) ?? ""))
     : allRequisicoes;
 
   const resetForm = () => {
@@ -192,14 +203,14 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
           <DataTableColumnFilter 
             column={column} 
             title="Filtrar Status" 
-            options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
+            options={ESTADOS_REQUISICAO.map(e => ({ label: ESTADO_REQUISICAO_LABEL[e], value: e }))} 
           />
         </div>
       ),
       filterFn: multiSelectFilter,
       cell: ({ row }) => {
-        const st = WORKFLOW_STATUS_MAP[row.getValue("workflow_status") as string] || { label: row.getValue("workflow_status"), variant: "outline" as const };
-        return <Badge variant={st.variant}>{st.label}</Badge>;
+        const r = rotuloRequisicao(row.getValue("workflow_status") as string);
+        return <Badge variant={r.variante} title={r.ajuda}>{r.label}</Badge>;
       },
     },
     {
@@ -211,7 +222,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
           <div className="flex justify-end gap-1">
             <Button variant="ghost" size="icon" title="Ver Detalhes" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
             
-            {r.workflow_status === "DRAFT" && (
+            {normalizarEstadoRequisicao(r.workflow_status) === "DRAFT" && (
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -222,7 +233,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {r.workflow_status === "SUBMITTED" && hasActionPermission("pode_aprovar_compra") && (
+            {normalizarEstadoRequisicao(r.workflow_status) === "SUBMITTED" && hasActionPermission("pode_aprovar_compra") && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -233,18 +244,29 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {r.workflow_status === "PENDING_APPROVAL" && hasActionPermission("pode_aprovar_compra") && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-green-600 border-green-200 hover:bg-green-50"
-                onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "APPROVED", observacoes: "Cotações aprovadas pelo gestor." })}
-              >
-                <Check className="h-4 w-4 mr-1" /> Aprovar
-              </Button>
-            )}
+            {/*
+              A porta duplicada de aprovação foi removida daqui.
 
-            {(r.workflow_status === "PENDING_APPROVAL" || r.workflow_status === "SUBMITTED") && hasActionPermission("pode_rejeitar_compra") && (
+              Havia dois botões "Aprovar" no sistema: este, que só mudava o status, e
+              o da aba de Aprovação, que escolhe o vencedor E gera o pedido. Aprovar
+              por este caminho deixava a requisição aprovada sem pedido nenhum — e
+              sem registrar de quem foi a cotação escolhida.
+
+              Aqui fica o encaminhamento para onde a decisão acontece.
+            */}
+            {normalizarEstadoRequisicao(r.workflow_status) === "PENDING_APPROVAL" &&
+              hasActionPermission("pode_aprovar_compra") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-green-600 border-green-200 hover:bg-green-50"
+                  onClick={() => onNavigate?.("comparativo", r.id)}
+                >
+                  <Check className="h-4 w-4 mr-1" /> Escolher vencedor
+                </Button>
+              )}
+
+            {["PENDING_APPROVAL", "SUBMITTED"].includes(normalizarEstadoRequisicao(r.workflow_status) ?? "") && hasActionPermission("pode_rejeitar_compra") && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -255,7 +277,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {(r.workflow_status === "PURCHASED" || r.workflow_status === "PARTIALLY_RECEIVED") && hasActionPermission("pode_receber_compra") && (
+            {["PURCHASED", "PARTIALLY_RECEIVED"].includes(normalizarEstadoRequisicao(r.workflow_status) ?? "") && hasActionPermission("pode_receber_compra") && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -265,7 +287,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {r.workflow_status === "DRAFT" && (
+            {normalizarEstadoRequisicao(r.workflow_status) === "DRAFT" && (
               <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             )}
           </div>
@@ -389,7 +411,7 @@ export function RequisicoesTab({ filter }: { filter?: string }) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-3 rounded-lg border">
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> {selected.projeto?.codigo} - {selected.projeto?.nome || "—"}</div>
-                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={WORKFLOW_STATUS_MAP[selected.workflow_status]?.variant || "outline"}>{WORKFLOW_STATUS_MAP[selected.workflow_status]?.label || selected.workflow_status}</Badge></div>
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={rotuloRequisicao(selected.workflow_status).variante} title={rotuloRequisicao(selected.workflow_status).ajuda}>{rotuloRequisicao(selected.workflow_status).label}</Badge></div>
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> <Badge variant={PRIORIDADE_MAP[selected.prioridade]?.variant || "outline"}>{PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</Badge></div>
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>
               </div>

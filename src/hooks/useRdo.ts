@@ -179,7 +179,9 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
       }).filter(d =>
         d.totalItens > 0 || d.totalFotos > 0 || d.equipe.length > 0 ||
         d.equipamentos.length > 0 || d.veiculos.length > 0 ||
-        (d.observacoes && d.observacoes.trim().length > 0)
+        (d.observacoes && d.observacoes.trim().length > 0) ||
+        (d.status_ativo && d.status_ativo.trim().length > 0) ||
+        (d.clima && d.clima.trim().length > 0)
       );
 
       if (itemLpuId) {
