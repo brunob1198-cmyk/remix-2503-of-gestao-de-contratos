@@ -7,40 +7,37 @@ import { Eye, Clock, AlertCircle } from "lucide-react";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  WORKFLOW_STATUS_OPTIONS,
-  getStatusLabel,
-  getStatusVariant,
-} from "@/lib/requisicaoStatus";
+  ESTADOS_REQUISICAO,
+  ESTADO_REQUISICAO_LABEL,
+  ESTADOS_PEDIDO,
+  ESTADO_PEDIDO_LABEL,
+  normalizarEstadoRequisicao,
+  rotuloRequisicao,
+  rotuloPedido,
+} from "@/lib/fluxoCompras";
 
-// Pedido (purchase order) statuses remain in Portuguese lowercase for now.
-const PEDIDO_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  rascunho: { label: "Rascunho", variant: "secondary" },
-  emitido: { label: "Emitido", variant: "default" },
-  confirmado: { label: "Confirmado", variant: "default" },
-  entrega_parcial: { label: "Entrega Parcial", variant: "outline" },
-  entregue: { label: "Entregue", variant: "default" },
-  cancelado: { label: "Cancelado", variant: "destructive" },
-};
-
+// Rótulo, variante e ajuda vêm de `@/lib/fluxoCompras`. Os dois mapas locais que
+// estavam aqui eram mais duas cópias do vocabulário de status.
 function requisicaoStatusBadge(workflow_status: string) {
+  const r = rotuloRequisicao(workflow_status);
   return (
-    <Badge variant={getStatusVariant(workflow_status)} className="text-[10px] px-1.5 py-0">
-      {getStatusLabel(workflow_status)}
+    <Badge variant={r.variante} className="text-[10px] px-1.5 py-0" title={r.ajuda}>
+      {r.label}
     </Badge>
   );
 }
 
 function pedidoStatusBadge(status: string) {
-  const cfg = PEDIDO_STATUS_MAP[status] || { label: status, variant: "outline" as const };
+  const r = rotuloPedido(status);
   return (
-    <Badge variant={cfg.variant} className="text-[10px] px-1.5 py-0">
-      {cfg.label}
+    <Badge variant={r.variante} className="text-[10px] px-1.5 py-0" title={r.ajuda}>
+      {r.label}
     </Badge>
   );
 }
 
 // Columns definition for Requisicoes
-const reqColumns: ColumnDef<any>[] = [
+const reqColumns = (abrir: (r: any) => void): ColumnDef<any>[] => [
   {
     accessorKey: "numero",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
@@ -68,7 +65,7 @@ const reqColumns: ColumnDef<any>[] = [
         <DataTableColumnFilter
           column={column}
           title="Filtro Status"
-          options={WORKFLOW_STATUS_OPTIONS.map(o => ({ label: o.label, value: o.value }))}
+          options={ESTADOS_REQUISICAO.map(e => ({ label: ESTADO_REQUISICAO_LABEL[e], value: e }))}
         />
       </div>
     ),
@@ -77,14 +74,24 @@ const reqColumns: ColumnDef<any>[] = [
   },
   {
     id: "actions",
-    cell: () => (
-      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+    // O botão não tinha `onClick`. Esta é a aba que abre por padrão: a fila dizia
+    // que havia trabalho e não dava caminho para fazê-lo.
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        title="Abrir na aba correspondente"
+        onClick={() => abrir(row.original)}
+      >
+        <Eye className="h-3.5 w-3.5" />
+      </Button>
     ),
   },
 ];
 
 // Columns definition for Pedidos
-const pedColumns: ColumnDef<any>[] = [
+const pedColumns = (abrir: (p: any) => void): ColumnDef<any>[] => [
   {
     accessorKey: "numero",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Número" />,
@@ -112,7 +119,7 @@ const pedColumns: ColumnDef<any>[] = [
         <DataTableColumnFilter
           column={column}
           title="Filtro Status"
-          options={Object.keys(PEDIDO_STATUS_MAP).map(k => ({ label: PEDIDO_STATUS_MAP[k].label, value: k }))}
+          options={ESTADOS_PEDIDO.map(e => ({ label: ESTADO_PEDIDO_LABEL[e], value: e }))}
         />
       </div>
     ),
@@ -121,16 +128,56 @@ const pedColumns: ColumnDef<any>[] = [
   },
   {
     id: "actions",
-    cell: () => (
-      <Button variant="ghost" size="icon" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button>
+    // O botão não tinha `onClick`. Esta é a aba que abre por padrão: a fila dizia
+    // que havia trabalho e não dava caminho para fazê-lo.
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        title="Abrir na aba correspondente"
+        onClick={() => abrir(row.original)}
+      >
+        <Eye className="h-3.5 w-3.5" />
+      </Button>
     ),
   },
 ];
 
 
-export function MinhaFilaTab() {
+interface MinhaFilaTabProps {
+  /**
+   * Leva o registro para a aba onde ele pode ser trabalhado.
+   *
+   * Sem isto a fila era terminal: mostrava o número e deixava o usuário descobrir
+   * sozinho em qual aba encontrá-lo.
+   */
+  onNavigate?: (tab: string, filter?: string) => void;
+}
+
+export function MinhaFilaTab({ onNavigate }: MinhaFilaTabProps) {
   const { data, isLoading } = useMinhaFila();
   const { hasActionPermission } = usePermissions();
+
+  /**
+   * A aba de destino depende do estado da requisição: o que se faz com ela em
+   * cotação é diferente do que se faz com ela em aprovação. Mandar tudo para a aba
+   * de Requisições daria um clique a mais em todos os casos.
+   */
+  const abrirRequisicao = (r: any) => {
+    const estado = normalizarEstadoRequisicao(r.workflow_status);
+    const destino =
+      estado === "QUOTING"
+        ? "cotacoes"
+        : estado === "PENDING_APPROVAL"
+          ? "comparativo"
+          : estado === "APPROVED" || estado === "PURCHASED" || estado === "PARTIALLY_RECEIVED"
+            ? "pedidos"
+            : "requisicoes";
+    onNavigate?.(destino, r.numero ?? r.id);
+  };
+
+  const abrirPedido = (ped: any) => onNavigate?.("pedidos", ped.id);
 
   const isRequisitante = true;
   const isCompras = hasActionPermission("pode_criar_cotacao") || hasActionPermission("pode_criar_pedido");
@@ -153,7 +200,7 @@ export function MinhaFilaTab() {
         <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
       ) : (
         <DataTable 
-          columns={reqColumns} 
+          columns={reqColumns(abrirRequisicao)} 
           data={rows} 
           searchKey="numero" 
           searchPlaceholder="Buscar por número..." 
@@ -174,7 +221,7 @@ export function MinhaFilaTab() {
         <div className="text-center py-4 border rounded-md text-muted-foreground italic">{emptyMsg}</div>
       ) : (
         <DataTable 
-          columns={pedColumns} 
+          columns={pedColumns(abrirPedido)} 
           data={rows} 
           searchKey="numero" 
           searchPlaceholder="Buscar por número..." 

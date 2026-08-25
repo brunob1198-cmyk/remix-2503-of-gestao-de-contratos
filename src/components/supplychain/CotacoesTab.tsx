@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { useCotacoesMestreDetalhe, useFornecedores, useCotacoes } from "@/hooks/useSupplyChain";
+import { useCotacoesMestreDetalhe, useFornecedores, useCotacoes, useRequisicoes } from "@/hooks/useSupplyChain";
+import {
+  ESTADOS_REQUISICAO,
+  ESTADO_REQUISICAO_LABEL,
+  normalizarEstadoRequisicao,
+  rotuloRequisicao,
+  rotuloCotacao,
+} from "@/lib/fluxoCompras";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -18,20 +25,15 @@ import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFil
 import { ColumnDef } from "@tanstack/react-table";
 
 
-// WORKFLOW_STATUS in the DB
-const WORKFLOW_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "warning" }> = {
-  SUBMITTED: { label: "Aguardando cotação", variant: "warning" },
-  PENDING_APPROVAL: { label: "Aguardando cotação", variant: "warning" },
-  QUOTING: { label: "Em cotação", variant: "outline" }, // Azulzinho ou primário, usando outline para diferenciar
-  APPROVED: { label: "Aprovada", variant: "default" },
-};
-
-const COTACAO_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pendente: { label: "Pendente", variant: "secondary" },
-  recebida: { label: "Recebida", variant: "outline" },
-  aprovada: { label: "Vencedora", variant: "default" },
-  rejeitada: { label: "Perdida", variant: "destructive" },
-};
+/**
+ * Os rótulos vêm de `@/lib/fluxoCompras`. Os dois mapas que estavam aqui eram mais
+ * duas cópias do vocabulário, e ambas estavam erradas de um jeito diferente:
+ *
+ * - o da requisição rotulava `SUBMITTED` e `PENDING_APPROVAL` com o MESMO texto
+ *   ("Aguardando cotação"), somando dois estágios distintos do fluxo num só;
+ * - o da cotação esperava `rejeitada` enquanto o código gravava `perdida`, e a tela
+ *   mostrava a string crua.
+ */
 
 const PRIORIDADE_MAP: Record<string, { label: string; bg: string; text: string }> = {
   baixa: { label: "Baixa", bg: "bg-slate-100", text: "text-slate-700" },
@@ -46,7 +48,35 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
   const debouncedFornecedorSearch = useDebounce(fornecedorSearch, 250);
   const { fornecedores } = useFornecedores({ search: debouncedFornecedorSearch });
   const { create: createCotacao } = useCotacoes(); // Using only the mutation part for creation
+  const { updateStatus: updateStatusRequisicao } = useRequisicoes();
   const { hasActionPermission } = usePermissions();
+
+  const [enviandoAprovacao, setEnviandoAprovacao] = useState<string | null>(null);
+
+  /**
+   * Verdadeiro quando ao menos uma cotação da requisição já tem preço lançado.
+   *
+   * Nesta etapa do produto é o comprador quem registra a resposta do fornecedor, e
+   * cotação aberta sem preço vale zero: mandada para aprovação, ganharia de todas no
+   * comparativo por ser a mais barata.
+   */
+  const temCotacaoComPreco = (req: any) =>
+    (req.cotacoes ?? []).some((c: any) => Number(c.valor_total || 0) > 0);
+
+  const enviarParaAprovacao = (req: any) => {
+    setEnviandoAprovacao(req.id);
+    updateStatusRequisicao.mutate(
+      {
+        id: req.id,
+        workflow_status: "PENDING_APPROVAL",
+        observacoes: `Cotações enviadas para aprovação (${(req.cotacoes ?? []).length} fornecedor(es) consultado(s)).`,
+      },
+      {
+        onSuccess: () => onNavigate?.("comparativo", req.id),
+        onSettled: () => setEnviandoAprovacao(null),
+      }
+    );
+  };
 
   const [expandedReqs, setExpandedReqs] = useState<Set<string>>(new Set());
   
@@ -76,7 +106,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     if (requisicoesMestreDetalhe.length > 0) {
       const toExpand = new Set(expandedReqs);
       requisicoesMestreDetalhe.forEach((r: any) => {
-        if (r.workflow_status === "QUOTING" && (r.cotacoes?.length || 0) >= 1) {
+        if (normalizarEstadoRequisicao(r.workflow_status) === "QUOTING" && (r.cotacoes?.length || 0) >= 1) {
           toExpand.add(r.id);
         }
       });
@@ -92,7 +122,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
     
     // External filter support (e.g., from Dashboard)
     if (filter === "QUOTING") {
-      filtered = filtered.filter((r: any) => r.workflow_status === "QUOTING" || r.workflow_status === "SUBMITTED");
+      filtered = filtered.filter((r: any) => ["QUOTING", "SUBMITTED", "PENDING_APPROVAL"].includes(normalizarEstadoRequisicao(r.workflow_status) ?? ""));
     } else if (filter === "prioridade_alta") {
       filtered = filtered.filter((r: any) => 
         (r.prioridade === "alta" || r.prioridade === "urgente") &&
@@ -122,9 +152,9 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
 
     if (statusFilter !== "todas") {
       filtered = filtered.filter((r: any) => {
-        if (statusFilter === "aguardando") return r.workflow_status === "SUBMITTED" || r.workflow_status === "PENDING_APPROVAL";
-        if (statusFilter === "cotacao") return r.workflow_status === "QUOTING";
-        if (statusFilter === "aprovada") return r.workflow_status === "APPROVED";
+        if (statusFilter === "aguardando") return ["SUBMITTED", "PENDING_APPROVAL"].includes(normalizarEstadoRequisicao(r.workflow_status) ?? "");
+        if (statusFilter === "cotacao") return normalizarEstadoRequisicao(r.workflow_status) === "QUOTING";
+        if (statusFilter === "aprovada") return normalizarEstadoRequisicao(r.workflow_status) === "APPROVED";
         return true;
       });
     }
@@ -256,7 +286,7 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
           <DataTableColumnFilter 
             column={column} 
             title="Filtrar Status" 
-            options={Object.keys(WORKFLOW_STATUS_MAP).map(k => ({ label: WORKFLOW_STATUS_MAP[k].label, value: k }))} 
+            options={ESTADOS_REQUISICAO.map(e => ({ label: ESTADO_REQUISICAO_LABEL[e], value: e }))} 
           />
         </div>
       ),
@@ -301,7 +331,38 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                 + Cotação
               </Button>
             )}
-            {req.workflow_status === "APPROVED" && (
+            {/*
+              O passo que faltava no fluxo. `PENDING_APPROVAL` era lido em quatro
+              lugares e escrito em nenhum: o estágio "Em aprovação" do funil era
+              estruturalmente zero, e a fila do gestor nunca enchia.
+
+              Só habilita com cotação de preço lançado — mandar para aprovação um
+              conjunto de cotações sem preço deixaria o gestor escolher entre zeros.
+            */}
+            {normalizarEstadoRequisicao(req.workflow_status) === "QUOTING" &&
+              hasActionPermission("pode_criar_cotacao") && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={!temCotacaoComPreco(req) || enviandoAprovacao === req.id}
+                  title={
+                    temCotacaoComPreco(req)
+                      ? "Envia as cotações para o gestor escolher o vencedor"
+                      : "Lance o preço de ao menos uma cotação antes de enviar para aprovação"
+                  }
+                  onClick={() => enviarParaAprovacao(req)}
+                >
+                  Enviar para aprovação
+                </Button>
+              )}
+
+            {normalizarEstadoRequisicao(req.workflow_status) === "PENDING_APPROVAL" && (
+              <Button variant="ghost" size="sm" onClick={() => onNavigate?.("comparativo", req.id)}>
+                Ver aprovação
+              </Button>
+            )}
+
+            {normalizarEstadoRequisicao(req.workflow_status) === "APPROVED" && (
               <Button variant="ghost" size="sm" onClick={() => onNavigate && onNavigate("pedidos", req.numero)}>
                 Pedido
               </Button>
@@ -606,8 +667,8 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                   <h3 className="text-xl font-bold font-mono text-primary">{selectedCotacao.numero}</h3>
                   <p className="text-sm text-muted-foreground">Fornecedor: {selectedCotacao.fornecedor?.razao_social}</p>
                 </div>
-                <Badge variant={COTACAO_STATUS_MAP[selectedCotacao.status]?.variant || "outline"} className="text-base py-1">
-                  {COTACAO_STATUS_MAP[selectedCotacao.status]?.label || selectedCotacao.status}
+                <Badge variant={rotuloCotacao(selectedCotacao.status).variante} className="text-base py-1">
+                  {rotuloCotacao(selectedCotacao.status).label}
                 </Badge>
               </div>
 

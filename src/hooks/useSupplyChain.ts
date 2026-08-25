@@ -1,3 +1,16 @@
+import {
+  validarTransicaoRequisicao,
+  validarTransicaoCotacao,
+  validarTransicaoPedido,
+  normalizarEstadoPedido,
+  normalizarEstadoRequisicao,
+  normalizarEstadoCotacao,
+  rotuloPedido,
+  ESTADOS_PEDIDO_EM_ABERTO,
+  grafiasRequisicao,
+  grafiasCotacao,
+  grafiasPedido,
+} from "@/lib/fluxoCompras";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,16 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 
-// Friendly labels used in realtime notifications
-const PEDIDO_STATUS_LABELS: Record<string, string> = {
-  emitido: "Emitido",
-  confirmado: "Confirmado pelo fornecedor",
-  em_transito: "Em trânsito",
-  saiu_para_entrega: "Saiu para entrega",
-  entregue_parcial: "Entregue parcialmente",
-  entregue: "Entregue",
-  cancelado: "Cancelado",
-};
+// Os rotulos do pedido moram em @/lib/fluxoCompras. O mapa que estava aqui trazia
+// "entregue_parcial" enquanto o codigo gravava "entrega_parcial", e o aviso em tempo
+// real saia com a string crua.
 
 async function getEmpresaId(): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,6 +57,31 @@ async function logHistorico(params: {
     observacoes: params.observacoes ?? null,
   });
   if (error) console.error("sc_historico insert failed", error);
+}
+
+/**
+ * Registra várias linhas de histórico de uma vez.
+ *
+ * Exportada porque a aba de Aprovação insere o pedido direto no banco, sem passar
+ * por `usePedidosCompra.create` — e era o hook que registrava histórico. A linha do
+ * tempo do pedido nascia vazia por causa disso.
+ *
+ * Falha aqui não derruba a operação: o pedido criado vale mais que o registro de
+ * auditoria dele, e o erro vai para o console.
+ */
+export async function registrarHistorico(
+  entradas: Array<{
+    entidade_tipo: ScEntidadeTipo;
+    entidade_id: string;
+    status_anterior?: string | null;
+    status_novo?: string | null;
+    observacoes?: string | null;
+  }>,
+  empresaId: string
+): Promise<void> {
+  for (const entrada of entradas) {
+    await logHistorico({ ...entrada, empresa_id: empresaId });
+  }
 }
 
 export function useHistorico(entidadeTipo: ScEntidadeTipo, entidadeId?: string) {
@@ -453,9 +484,17 @@ export function useRequisicoes() {
 
       if (fetchErr) throw fetchErr;
 
+      // A transição é validada contra a máquina de estados. Antes, esta função
+      // aceitava qualquer string — `DRAFT → RECEIVED` num clique programático passava,
+      // e foi assim que `pedido_emitido` entrou na coluna.
+      const transicao = validarTransicaoRequisicao(current.workflow_status, workflow_status);
+      if (!transicao.permitida) {
+        throw new Error(transicao.motivo ?? "Transição de status não permitida.");
+      }
+
       const { error } = await supabase
         .from("requisicoes_compra")
-        .update({ workflow_status })
+        .update({ workflow_status: transicao.para })
         .eq("id", id);
       if (error) throw error;
 
@@ -571,7 +610,15 @@ export function useCotacoes(requisicaoId?: string) {
         .single();
       if (fetchErr) throw fetchErr;
 
-      const { error } = await supabase.from("cotacoes").update({ status }).eq("id", id);
+      const transicao = validarTransicaoCotacao(current.status, status);
+      if (!transicao.permitida) {
+        throw new Error(transicao.motivo ?? "Transição de status da cotação não permitida.");
+      }
+
+      const { error } = await supabase
+        .from("cotacoes")
+        .update({ status: transicao.para })
+        .eq("id", id);
       if (error) throw error;
 
       await logHistorico({
@@ -618,19 +665,31 @@ export function useSupplyChainFunnelCounts() {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-      // Estágio 1: Aguardando cotação
-      const stage1Reqs = (reqs || []).filter(r => 
-        r.workflow_status === 'SUBMITTED' || 
-        r.workflow_status === 'PENDING_APPROVAL' ||
-        (r.workflow_status === 'QUOTING' && (!r.cotacoes || r.cotacoes.length === 0))
-      );
+      /**
+       * Os cinco estágios PARTICIONAM as requisições em andamento: cada uma cai em
+       * exatamente um deles, decidido pelo estado normalizado.
+       *
+       * Antes, o estágio 1 exigia `QUOTING` sem cotação e o estágio 2 exigia `QUOTING`
+       * com cotação `pendente`. Uma requisição em cotação cujas cotações já tinham
+       * sido decididas não entrava em nenhum dos cinco: o funil mostrava cinco zeros
+       * enquanto o card "Em Cotação" mostrava 1.
+       */
+      const estadoDe = (r: any) => normalizarEstadoRequisicao(r.workflow_status);
 
-      // Estágio 2: Em cotação
-      const stage2Reqs = (reqs || []).filter(r => 
-        r.workflow_status === 'QUOTING' &&
-        r.cotacoes?.some((c: any) => c.status === 'pendente')
+      // Estágio 1: liberada, ainda sem o comprador ter aberto cotação
+      const stage1Reqs = (reqs || []).filter(r => estadoDe(r) === 'SUBMITTED');
+
+      // Estágio 2: em cotação — o comprador está registrando as respostas
+      const stage2Reqs = (reqs || []).filter(r => estadoDe(r) === 'QUOTING');
+      const stage2QuotesCount = stage2Reqs.reduce(
+        (acc, r) =>
+          acc +
+          (r.cotacoes?.filter((c: any) => {
+            const e = normalizarEstadoCotacao(c.status);
+            return e === 'pendente' || e === 'recebida';
+          }).length || 0),
+        0
       );
-      const stage2QuotesCount = stage2Reqs.reduce((acc, r) => acc + (r.cotacoes?.filter((c: any) => c.status === 'pendente').length || 0), 0);
 
       // Sub-indicador: cotações pendentes atrasadas (sem resposta do fornecedor)
       const atrasadasReqs = (reqs || []).filter(r =>
@@ -642,24 +701,47 @@ export function useSupplyChainFunnelCounts() {
         0
       );
 
-      // Estágio 3: Em aprovação
-      const stage3Reqs = (reqs || []).filter(r => r.workflow_status === 'PENDING_APPROVAL');
+      // Estágio 3: em aprovação — cotações prontas, aguardando escolha do vencedor.
+      // Este estágio era estruturalmente zero: nada no código escrevia
+      // PENDING_APPROVAL. Agora a aba de Cotação envia para cá.
+      const stage3Reqs = (reqs || []).filter(r => estadoDe(r) === 'PENDING_APPROVAL');
 
-      // Estágio 4: Pedido emitido
-      const stage4Peds = (peds || []).filter(p => ['emitido', 'confirmado', 'entrega_parcial'].includes(p.status || ''));
+      // Estágio 4: pedido emitido — inclui a requisição aprovada cujo pedido ainda
+      // está em rascunho, que antes desaparecia entre os estágios 3 e 4.
+      const stage4Reqs = (reqs || []).filter(r => {
+        const e = estadoDe(r);
+        return e === 'APPROVED' || e === 'PURCHASED' || e === 'PARTIALLY_RECEIVED';
+      });
+      const stage4Peds = (peds || []).filter(p =>
+        ESTADOS_PEDIDO_EM_ABERTO.includes(normalizarEstadoPedido(p.status) as never)
+      );
 
-      // Estágio 5: Recebido
+      // Estágio 5: recebido nos últimos 30 dias
       const stage5Peds = (peds || []).filter(p => {
-        if (p.status !== 'entregue') return false;
+        if (normalizarEstadoPedido(p.status) !== 'entregue') return false;
         const dateStr = p.data_entrega_real || p.created_at;
         if (!dateStr) return false;
         return new Date(dateStr) >= thirtyDaysAgo;
       });
 
+      /**
+       * Requisições em andamento que não caíram em nenhum estágio.
+       *
+       * Existe para o funil nunca mais mentir em silêncio: se a conta não fecha, a
+       * tela diz quantas ficaram de fora em vez de simplesmente somar menos.
+       */
+      const emAndamento = (reqs || []).filter(r => {
+        const e = estadoDe(r);
+        return !!e && !['RECEIVED', 'CANCELLED', 'REJECTED', 'DRAFT'].includes(e);
+      });
+      const foraDosEstagios =
+        emAndamento.length - (stage1Reqs.length + stage2Reqs.length + stage3Reqs.length + stage4Reqs.length);
+
       // Alerta de Alta Prioridade Atrasada
       const alertReqs = (reqs || []).filter(r => {
         if (r.prioridade !== 'alta' && r.prioridade !== 'urgente') return false;
-        if (!['SUBMITTED', 'PENDING_APPROVAL', 'QUOTING'].includes(r.workflow_status)) return false;
+        const e = estadoDe(r);
+        if (!e || !['SUBMITTED', 'PENDING_APPROVAL', 'QUOTING'].includes(e)) return false;
         if (r.cotacoes && r.cotacoes.length > 0) return false;
         if (!r.data_necessidade) return false;
         const dataNec = new Date(r.data_necessidade);
@@ -675,9 +757,10 @@ export function useSupplyChainFunnelCounts() {
           atrasadasReqsCount: atrasadasReqs.length,
         },
         stage3: { count: stage3Reqs.length },
-        stage4: { count: stage4Peds.length },
+        stage4: { count: stage4Peds.length, reqsCount: stage4Reqs.length },
         stage5: { count: stage5Peds.length },
-        alert: { count: alertReqs.length }
+        alert: { count: alertReqs.length },
+        foraDosEstagios: Math.max(0, foraDosEstagios),
       };
     }
   });
@@ -792,7 +875,7 @@ export function usePedidosCompra() {
                       description: `O pedido foi recebido integralmente.`,
                     });
                   } else {
-                    const label = PEDIDO_STATUS_LABELS[newStatus] || newStatus;
+                    const label = rotuloPedido(newStatus).label;
                     toast(`Pedido atualizado`, {
                       description: `Pedido ${numero} → ${label}`,
                     });
@@ -885,6 +968,14 @@ export function usePedidosCompra() {
         .single();
       if (fetchErr) throw fetchErr;
 
+      if (status) {
+        const transicao = validarTransicaoPedido(current.status, status);
+        if (!transicao.permitida) {
+          throw new Error(transicao.motivo ?? "Transição de status do pedido não permitida.");
+        }
+        updates.status = transicao.para;
+      }
+
       const { error } = await supabase.from("pedidos").update(updates).eq("id", id);
       if (error) throw error;
 
@@ -970,16 +1061,55 @@ export function usePedidoRecebimentos() {
       // Recalcular status do pedido com base nos totais
       const { data: pedAtual } = await supabase
         .from("pedidos")
-        .select("status, empresa_id")
+        .select("status, empresa_id, requisicao_id")
         .eq("id", pedidoId)
         .single();
 
-      const { data: pedItens } = await supabase
+      /**
+       * As colunas são `quantidade` (pedida) e `quantidade_entregue` (recebida).
+       *
+       * Esta consulta pedia `quantidade_pedida` e `quantidade_recebida` — nomes que
+       * não existem na tabela. O erro não era conferido, então `pedItens` vinha
+       * vazio, e `[].every(...)` devolve **true** em JavaScript: qualquer recebimento
+       * parcial marcava o pedido como entregue por inteiro e gravava a data de
+       * entrega real. Receber 1 de 100 encerrava a compra.
+       */
+      const { data: pedItens, error: itensErr } = await supabase
         .from("pedido_itens")
-        .select("quantidade_pedida, quantidade_recebida")
+        .select("id, quantidade, quantidade_entregue")
         .eq("pedido_id", pedidoId);
 
-      const tudoRecebido = (pedItens || []).every((it: any) => Number(it.quantidade_recebida || 0) >= Number(it.quantidade_pedida || 0));
+      if (itensErr) throw itensErr;
+
+      // Soma o que este recebimento acrescenta a cada item, para não depender de a
+      // coluna acumulada estar atualizada por outro caminho.
+      const recebidoAgora = new Map<string, number>();
+      for (const it of itens as { pedido_item_id: string; quantidade_recebida: number }[]) {
+        recebidoAgora.set(
+          it.pedido_item_id,
+          (recebidoAgora.get(it.pedido_item_id) ?? 0) + Number(it.quantidade_recebida || 0)
+        );
+      }
+
+      // Acumula no item o que acabou de entrar.
+      for (const it of pedItens ?? []) {
+        const acrescimo = recebidoAgora.get(it.id) ?? 0;
+        if (acrescimo === 0) continue;
+
+        await supabase
+          .from("pedido_itens")
+          .update({ quantidade_entregue: Number(it.quantidade_entregue || 0) + acrescimo })
+          .eq("id", it.id);
+      }
+
+      // Pedido sem item nenhum não está entregue: não há o que entregar, e tratar
+      // lista vazia como "tudo recebido" é exatamente o defeito anterior.
+      const tudoRecebido =
+        (pedItens?.length ?? 0) > 0 &&
+        (pedItens ?? []).every((it: { id: string; quantidade: number | null; quantidade_entregue: number | null }) => {
+          const recebido = Number(it.quantidade_entregue || 0) + (recebidoAgora.get(it.id) ?? 0);
+          return recebido >= Number(it.quantidade || 0);
+        });
 
       const pedUpdates: any = {};
       if (tudoRecebido) {
@@ -1004,6 +1134,47 @@ export function usePedidoRecebimentos() {
         });
       }
 
+      /**
+       * O elo que faltava: o recebimento avança a REQUISIÇÃO.
+       *
+       * Esta função só mexia em `pedidos` e `pedido_recebimentos`. A requisição ficava
+       * presa no estado da emissão para sempre, e quem a abriu nunca via que ela foi
+       * atendida. Sem isto, o ciclo de compras não fecha.
+       */
+      if (pedAtual?.requisicao_id) {
+        const novoEstadoReq = tudoRecebido ? "RECEIVED" : "PARTIALLY_RECEIVED";
+
+        const { data: reqAtual } = await supabase
+          .from("requisicoes_compra")
+          .select("workflow_status")
+          .eq("id", pedAtual.requisicao_id)
+          .single();
+
+        const transicao = validarTransicaoRequisicao(reqAtual?.workflow_status, novoEstadoReq);
+
+        // Transição inválida não derruba o recebimento: a mercadoria chegou, e o
+        // registro do que chegou vale mais que a consistência do status. O histórico
+        // guarda a recusa para alguém investigar.
+        if (transicao.permitida) {
+          await supabase
+            .from("requisicoes_compra")
+            .update({ workflow_status: transicao.para })
+            .eq("id", pedAtual.requisicao_id);
+        }
+
+        await logHistorico({
+          empresa_id: pedAtual.empresa_id,
+          entidade_tipo: "requisicao",
+          entidade_id: pedAtual.requisicao_id,
+          status_anterior: reqAtual?.workflow_status ?? null,
+          status_novo: transicao.permitida ? novoEstadoReq : (reqAtual?.workflow_status ?? null),
+          observacoes: transicao.permitida
+            ? tudoRecebido
+              ? "Itens recebidos integralmente e conferidos."
+              : "Recebimento parcial registrado no almoxarifado."
+            : `Recebimento registrado, mas o status da requisição não avançou: ${transicao.motivo}`,
+        });
+      }
 
       return data;
     },
@@ -1062,33 +1233,29 @@ export function useSupplyChainCounts() {
       const basePed = () =>
         supabase.from("pedidos").select("id", { count: "exact", head: true }).eq("empresa_id", empresaId);
 
-      const [pendentesRes, emCotacaoRes, pedidosAbertosRes, paraReceberRes, cotacoesAbertasRes] = await Promise.all([
-        baseReq().in("workflow_status", ["DRAFT", "SUBMITTED", "PENDING_APPROVAL"]),
-        baseReq().eq("workflow_status", "QUOTING"),
-        basePed().in("status", ["rascunho", "emitido", "confirmado", "entrega_parcial"]),
-        basePed().in("status", ["emitido", "confirmado", "entrega_parcial"]),
-        supabase.from("cotacoes").select("requisicao_id").eq("empresa_id", empresaId).eq("status", "aberta"),
-      ]);
-
-      const reqIdsComCotacao = new Set(
-        (cotacoesAbertasRes.data || []).map((c: any) => c.requisicao_id).filter(Boolean)
-      );
-
-      let paraAprovar = 0;
-      if (reqIdsComCotacao.size > 0) {
-        const { count } = await supabase
-          .from("requisicoes_compra")
-          .select("id", { count: "exact", head: true })
-          .eq("empresa_id", empresaId)
-          .in("workflow_status", ["QUOTING", "PENDING_APPROVAL"])
-          .in("id", Array.from(reqIdsComCotacao));
-        paraAprovar = count || 0;
-      }
+      /**
+       * As grafias vêm do módulo do fluxo: os filtros rodam no servidor, onde a
+       * normalização não alcança, e havia linha gravada como `pedido_emitido` que
+       * nenhuma contagem encontrava.
+       *
+       * O card "Para Aprovar" procurava cotação com status `aberta` — valor que nunca
+       * existiu no vocabulário (`pendente`, `recebida`, `aprovada`, `perdida`). Ele
+       * marcava zero em qualquer situação. Agora conta o que o nome diz: requisição
+       * parada no estágio de aprovação.
+       */
+      const [pendentesRes, emCotacaoRes, paraAprovarRes, pedidosAbertosRes, paraReceberRes] =
+        await Promise.all([
+          baseReq().in("workflow_status", grafiasRequisicao("DRAFT", "SUBMITTED")),
+          baseReq().in("workflow_status", grafiasRequisicao("QUOTING")),
+          baseReq().in("workflow_status", grafiasRequisicao("PENDING_APPROVAL")),
+          basePed().in("status", grafiasPedido("rascunho", "emitido", "confirmado", "entrega_parcial") as never),
+          basePed().in("status", grafiasPedido("emitido", "confirmado", "entrega_parcial") as never),
+        ]);
 
       return {
         requisicoesPendentes: pendentesRes.count || 0,
         emCotacao: emCotacaoRes.count || 0,
-        paraAprovar,
+        paraAprovar: paraAprovarRes.count || 0,
         pedidosEmAberto: pedidosAbertosRes.count || 0,
         recebimentosPendentes: paraReceberRes.count || 0,
       };
@@ -1115,10 +1282,10 @@ export function useMinhaFila() {
         userId
           ? supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("solicitante_id", userId).order("created_at", { ascending: false }).limit(10)
           : Promise.resolve({ data: [] as any[] }),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).eq("workflow_status", "QUOTING").order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
-        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).eq("status", "rascunho").order("created_at", { ascending: true }).limit(10),
-        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).in("workflow_status", ["PENDING_APPROVAL", "SUBMITTED"]).order("prioridade", { ascending: false }).limit(10),
-        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", ["emitido", "confirmado", "entrega_parcial"]).order("data_prevista_entrega", { ascending: true, nullsFirst: false }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).in("workflow_status", grafiasRequisicao("QUOTING")).order("prioridade", { ascending: false }).order("data_necessidade", { ascending: true }).limit(10),
+        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", grafiasPedido("rascunho") as never).order("created_at", { ascending: true }).limit(10),
+        supabase.from("requisicoes_compra").select(selectReq).eq("empresa_id", empresaId).in("workflow_status", grafiasRequisicao("PENDING_APPROVAL")).order("prioridade", { ascending: false }).limit(10),
+        supabase.from("pedidos").select(selectPed).eq("empresa_id", empresaId).in("status", grafiasPedido("emitido", "confirmado", "entrega_parcial") as never).order("data_prevista_entrega", { ascending: true, nullsFirst: false }).limit(10),
       ]);
 
       return {
@@ -1158,9 +1325,9 @@ export function useEconomiaGerada(dias: number = 30) {
       // 1) Cotações vencedoras no período
       const { data: vencedoras, error: err1 } = await supabase
         .from("cotacoes")
-        .select("id, requisicao_id, valor_total, updated_at, fornecedor:fornecedores(nome)")
+        .select("id, requisicao_id, valor_total, updated_at, fornecedor:fornecedores(razao_social)")
         .eq("empresa_id", empresaId)
-        .eq("status", "aprovada")
+        .in("status", grafiasCotacao("aprovada"))
         .gte("updated_at", desde.toISOString());
 
       if (err1) throw err1;
@@ -1182,7 +1349,7 @@ export function useEconomiaGerada(dias: number = 30) {
       // 2) Todas as cotações dessas requisições (para calcular média das perdedoras)
       const { data: todas, error: err2 } = await supabase
         .from("cotacoes")
-        .select("id, requisicao_id, valor_total, status, fornecedor:fornecedores(nome)")
+        .select("id, requisicao_id, valor_total, status, fornecedor:fornecedores(razao_social)")
         .eq("empresa_id", empresaId)
         .in("requisicao_id", reqIds);
 
@@ -1226,12 +1393,12 @@ export function useEconomiaGerada(dias: number = 30) {
         detalhes.push({
           requisicao_id: venc.requisicao_id,
           requisicao_numero: numeroPorReq.get(venc.requisicao_id) ?? null,
-          fornecedor_vencedor: venc.fornecedor?.nome ?? null,
+          fornecedor_vencedor: venc.fornecedor?.razao_social ?? null,
           valor_vencedora: pago,
           media_perdedoras: mediaPerdedoras,
           perdedoras: perdedoras.map((p: any) => ({
             id: p.id,
-            fornecedor: p.fornecedor?.nome ?? null,
+            fornecedor: p.fornecedor?.razao_social ?? null,
             valor_total: Number(p.valor_total || 0),
           })),
           economia,

@@ -38,7 +38,7 @@ export const SmartImage = React.forwardRef<HTMLDivElement, SmartImageProps>(func
     setCurrentIndex(0);
     setIsLoading(true);
     setHasFailedAll(urls.length === 0);
-  }, [src, JSON.stringify(fallbackUrls), context]);
+  }, [src, context, fallbackUrls.length]);
 
   const handleError = () => {
     const nextIndex = currentIndex + 1;

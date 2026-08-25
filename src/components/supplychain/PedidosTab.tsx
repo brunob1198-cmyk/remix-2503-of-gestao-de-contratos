@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { usePedidosCompra } from "@/hooks/useSupplyChain";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,21 +16,40 @@ import { RecebimentoModal } from "./RecebimentoModal";
 import { AvaliacaoFornecedorModal } from "./AvaliacaoFornecedorModal";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+import {
+  ESTADOS_PEDIDO,
+  ESTADO_PEDIDO_LABEL,
+  ESTADO_PEDIDO_AJUDA,
+  normalizarEstadoPedido,
+  rotuloPedido,
+} from "@/lib/fluxoCompras";
 
-const STATUS_LIST = [
-  { value: "rascunho", label: "Rascunho", className: "bg-gray-200 text-gray-800 hover:bg-gray-200" },
-  { value: "emitido", label: "Emitido", className: "bg-blue-100 text-blue-800 hover:bg-blue-100" },
-  { value: "confirmado", label: "Confirmado", className: "bg-purple-100 text-purple-800 hover:bg-purple-100" },
-  { value: "entrega_parcial", label: "Entrega Parcial", className: "bg-orange-100 text-orange-800 hover:bg-orange-100" },
-  { value: "entregue", label: "Entregue", className: "bg-green-100 text-green-800 hover:bg-green-100" },
-  { value: "cancelado", label: "Cancelado", className: "bg-red-100 text-red-800 hover:bg-red-100" },
-];
+/**
+ * Só a cor de cada estado fica aqui. O rótulo vem de `@/lib/fluxoCompras`, para
+ * não haver duas listas de status do pedido divergindo — era assim que o aviso em
+ * tempo real dizia "entregue_parcial" e a tabela dizia "entrega_parcial".
+ */
+const COR_DO_ESTADO: Record<string, string> = {
+  rascunho: "bg-gray-200 text-gray-800 hover:bg-gray-200",
+  emitido: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+  confirmado: "bg-purple-100 text-purple-800 hover:bg-purple-100",
+  entrega_parcial: "bg-orange-100 text-orange-800 hover:bg-orange-100",
+  entregue: "bg-green-100 text-green-800 hover:bg-green-100",
+  cancelado: "bg-red-100 text-red-800 hover:bg-red-100",
+};
+
+const STATUS_LIST = ESTADOS_PEDIDO.map((value) => ({
+  value,
+  label: ESTADO_PEDIDO_LABEL[value],
+  className: COR_DO_ESTADO[value],
+}));
 
 const fmt = (v: number) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDate = (d?: string | null) => (d ? parseLocalDate(d).toLocaleDateString("pt-BR") : "—");
 
 export function PedidosTab({ filter }: { filter?: string }) {
   const { pedidos: allPedidos, isLoading, updateStatus, remove } = usePedidosCompra();
+  const { hasActionPermission } = usePermissions();
   const isUuid = !!filter && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filter);
   const isRcNumber = !!filter && filter.startsWith("RC-");
   const highlightId = isUuid ? filter : undefined;
@@ -46,15 +66,15 @@ export function PedidosTab({ filter }: { filter?: string }) {
   const pedidos = useMemo(() => {
     let list = allPedidos as any[];
     if (filter === "OPEN" || filter === "para_receber") {
-      list = list.filter((p) => ["emitido", "confirmado", "entrega_parcial"].includes(p.status));
+      list = list.filter((p) => ["emitido", "confirmado", "entrega_parcial"].includes(normalizarEstadoPedido(p.status) ?? ""));
     } else if (filter === "entregues") {
-      list = list.filter((p) => p.status === "entregue");
+      list = list.filter((p) => normalizarEstadoPedido(p.status) === "entregue");
     } else if (isRcNumber) {
       list = list.filter((p) => p.requisicao?.numero === filter);
     }
     
     if (statusFilter !== "ALL") {
-      list = list.filter((p) => p.status === statusFilter);
+      list = list.filter((p) => normalizarEstadoPedido(p.status) === statusFilter);
     }
     return list;
   }, [allPedidos, filter, statusFilter, isRcNumber]);
@@ -66,12 +86,24 @@ export function PedidosTab({ filter }: { filter?: string }) {
   }, [highlightId, pedidos.length]);
 
   const statusBadge = (status: string) => {
-    const s = STATUS_LIST.find((x) => x.value === status);
-    return <Badge className={s?.className || ""}>{s?.label || status}</Badge>;
+    // Passa pelo normalizador para reconhecer também a linha antiga. Status que o
+    // fluxo não conhece sai marcado, com o valor cru — em vez de encaixado no
+    // estado mais parecido.
+    const e = normalizarEstadoPedido(status);
+    const r = rotuloPedido(status);
+    return (
+      <Badge
+        className={e ? COR_DO_ESTADO[e] : ""}
+        variant={e ? undefined : "destructive"}
+        title={e ? ESTADO_PEDIDO_AJUDA[e] : r.ajuda}
+      >
+        {r.label}
+      </Badge>
+    );
   };
 
   const isOverdue = (p: any) =>
-    p.data_prevista_entrega && p.data_prevista_entrega < today && p.status !== "entregue" && p.status !== "cancelado";
+    p.data_prevista_entrega && p.data_prevista_entrega < today && normalizarEstadoPedido(p.status) !== "entregue" && normalizarEstadoPedido(p.status) !== "cancelado";
 
   const handleEmit = () => {
     const p = emitDialog.pedido;
@@ -83,7 +115,9 @@ export function PedidosTab({ filter }: { filter?: string }) {
         data_emissao: today,
         observacoes: emitDialog.obs || undefined,
         requisicao_id: p.requisicao_id,
-        requisicao_status_after: "pedido_emitido",
+        // Canonico do modulo do fluxo. Gravava "pedido_emitido" — minusculo, fora do
+        // mapa — e o botao "Receber" da requisicao, que exige PURCHASED, nunca aparecia.
+        requisicao_status_after: "PURCHASED",
       },
       { onSuccess: () => setEmitDialog({ open: false, pedido: null, obs: "" }) }
     );
@@ -98,7 +132,7 @@ export function PedidosTab({ filter }: { filter?: string }) {
         status: "cancelado",
         motivo_cancelamento: cancelDialog.motivo,
         requisicao_id: p.requisicao_id,
-        requisicao_status_after: "em_cotacao",
+        requisicao_status_after: "QUOTING",
       },
       { onSuccess: () => setCancelDialog({ open: false, pedido: null, motivo: "" }) }
     );
@@ -113,7 +147,7 @@ export function PedidosTab({ filter }: { filter?: string }) {
       .sort((a: any, b: any) => (a.data_recebimento || "").localeCompare(b.data_recebimento || ""))
       .forEach((r: any) => items.push({ label: `Recebimento registrado${r.observacao ? ` — ${r.observacao}` : ""}`, date: r.data_recebimento }));
     if (p.data_entrega_real) items.push({ label: "Entrega concluída", date: p.data_entrega_real });
-    if (p.status === "cancelado") items.push({ label: `Cancelado${p.motivo_cancelamento ? ` — ${p.motivo_cancelamento}` : ""}`, date: p.updated_at });
+    if (normalizarEstadoPedido(p.status) === "cancelado") items.push({ label: `Cancelado${p.motivo_cancelamento ? ` — ${p.motivo_cancelamento}` : ""}`, date: p.updated_at });
     return items;
   };
 
@@ -230,11 +264,15 @@ export function PedidosTab({ filter }: { filter?: string }) {
               <Eye className="h-4 w-4" />
             </Button>
 
-            {p.status === "rascunho" && (
+            {normalizarEstadoPedido(p.status) === "rascunho" && (
               <>
-                <Button size="sm" onClick={() => setEmitDialog({ open: true, pedido: p, obs: "" })}>
-                  <Send className="h-4 w-4 mr-1" /> Emitir
-                </Button>
+                {/* Emitir é o ato que compromete o dinheiro da empresa, e não exigia
+                    permissão nenhuma: quem alcançava a tela emitia. */}
+                {hasActionPermission("pode_criar_pedido") && (
+                  <Button size="sm" onClick={() => setEmitDialog({ open: true, pedido: p, obs: "" })}>
+                    <Send className="h-4 w-4 mr-1" /> Emitir
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -260,7 +298,7 @@ export function PedidosTab({ filter }: { filter?: string }) {
               </Button>
             )}
 
-            {(p.status === "rascunho" || p.status === "emitido") && (
+            {["rascunho", "emitido"].includes(normalizarEstadoPedido(p.status) ?? "") && (
               <Button
                 variant="ghost"
                 size="sm"

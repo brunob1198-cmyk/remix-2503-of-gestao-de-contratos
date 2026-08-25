@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useCotacoes, useRequisicoes } from "@/hooks/useSupplyChain";
+import { useCotacoes, useRequisicoes, registrarHistorico } from "@/hooks/useSupplyChain";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +13,11 @@ import { Star, TrendingDown, Clock, ShieldCheck, Truck, AlertTriangle } from "lu
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  normalizarEstadoRequisicao,
+  validarTransicaoRequisicao,
+  rotuloCotacao,
+} from "@/lib/fluxoCompras";
 
 interface ComparativoTabProps {
   onNavigate?: (tab: string, filter?: string) => void;
@@ -30,9 +35,13 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
   const [justificativa, setJustificativa] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const eligibleRequisicoes = requisicoes.filter((r: any) =>
-    ["QUOTING", "QUOTE_COMPLETED", "SUBMITTED"].includes(r.workflow_status)
-  );
+  // A aprovação mora aqui, e chega por "Enviar para aprovação" na aba de Cotação.
+  // QUOTING continua elegível para não travar requisição que já estava no meio do
+  // caminho antes desta mudança.
+  const eligibleRequisicoes = requisicoes.filter((r: any) => {
+    const e = normalizarEstadoRequisicao(r.workflow_status);
+    return e === "PENDING_APPROVAL" || e === "QUOTING";
+  });
 
   const relevantCotacoes = useMemo(() => {
     if (!selectedReqId) return [];
@@ -41,17 +50,51 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
 
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  /**
+   * Os destaques do quadro comparativo.
+   *
+   * O selo de "melhor avaliação" era decidido por `razao_social.length % 5` — o
+   * número de letras do nome do fornecedor, resto da divisão por cinco. Não era
+   * cálculo impreciso: era número inventado apresentado como avaliação, no momento
+   * em que alguém decide para quem vai o dinheiro.
+   *
+   * Agora vem do score real do cadastro, e o selo **só aparece quando existe
+   * score**. Sem avaliação registrada não há o que destacar, e dizer isso é melhor
+   * que eleger um vencedor por sorteio.
+   */
   const highlights = useMemo(() => {
-    if (relevantCotacoes.length === 0) return { minPrice: null, minLeadTime: null, bestRating: null };
-    let minPrice = relevantCotacoes[0].id;
-    let minLeadTime = relevantCotacoes[0].id;
-    let bestRating = relevantCotacoes[0].id;
-    relevantCotacoes.forEach((c: any) => {
-      if ((c.valor_total || 0) < (relevantCotacoes.find((x: any) => x.id === minPrice)?.valor_total || Infinity)) minPrice = c.id;
-      if ((c.prazo_entrega_dias || Infinity) < (relevantCotacoes.find((x: any) => x.id === minLeadTime)?.prazo_entrega_dias || Infinity)) minLeadTime = c.id;
-      if ((c.fornecedor?.razao_social?.length || 0) % 5 > (relevantCotacoes.find((x: any) => x.id === bestRating)?.fornecedor?.razao_social?.length || 0) % 5) bestRating = c.id;
-    });
-    return { minPrice, minLeadTime, bestRating };
+    const vazio = { minPrice: null, minLeadTime: null, bestRating: null, temScore: false };
+    if (relevantCotacoes.length === 0) return vazio;
+
+    // Só entra no comparativo a cotação com preço lançado: uma cotação sem resposta
+    // vale zero e ganharia de todas no menor preço.
+    const comPreco = relevantCotacoes.filter((c: any) => Number(c.valor_total || 0) > 0);
+    if (comPreco.length === 0) return vazio;
+
+    const menorPreco = comPreco.reduce((a: any, b: any) =>
+      Number(b.valor_total || 0) < Number(a.valor_total || 0) ? b : a
+    );
+
+    const comPrazo = comPreco.filter((c: any) => Number(c.prazo_entrega_dias || 0) > 0);
+    const menorPrazo = comPrazo.length
+      ? comPrazo.reduce((a: any, b: any) =>
+          Number(b.prazo_entrega_dias) < Number(a.prazo_entrega_dias) ? b : a
+        )
+      : null;
+
+    const comScore = comPreco.filter((c: any) => Number(c.fornecedor?.score || 0) > 0);
+    const melhorScore = comScore.length
+      ? comScore.reduce((a: any, b: any) =>
+          Number(b.fornecedor?.score || 0) > Number(a.fornecedor?.score || 0) ? b : a
+        )
+      : null;
+
+    return {
+      minPrice: menorPreco?.id ?? null,
+      minLeadTime: menorPrazo?.id ?? null,
+      bestRating: melhorScore?.id ?? null,
+      temScore: comScore.length > 0,
+    };
   }, [relevantCotacoes]);
 
   const isPendingMinPrice = pendingWinner && pendingWinner.id === highlights.minPrice;
@@ -92,19 +135,31 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
         .neq("id", cotacao.id);
       if (e2) throw e2;
 
-      // c) atualizar requisição
+      // c) atualizar requisição.
+      //
+      // Só `workflow_status`. A coluna `status` era uma segunda fonte de verdade na
+      // mesma tabela, escrita com outro vocabulário — e ninguém a lia.
+      //
+      // A transição passa pela máquina de estados: aprovar a partir de um estado que
+      // não permite aprovação deixa de passar em silêncio.
+      const transicaoReq = validarTransicaoRequisicao(req.workflow_status, "APPROVED");
+      if (!transicaoReq.permitida) throw new Error(transicaoReq.motivo);
+
       const { error: e3 } = await supabase
         .from("requisicoes_compra")
-        .update({ status: "aprovada", workflow_status: "APPROVED", updated_at: new Date().toISOString() })
+        .update({ workflow_status: "APPROVED", updated_at: new Date().toISOString() })
         .eq("id", cotacao.requisicao_id);
       if (e3) throw e3;
 
-      // d) gerar número do pedido
-      const { count } = await supabase
-        .from("pedidos")
-        .select("id", { count: "exact", head: true })
-        .eq("empresa_id", cotacao.empresa_id);
-      const numero = `PED-${String((count || 0) + 1).padStart(4, "0")}`;
+      // d) número do pedido pela mesma RPC que o hook usa.
+      //
+      // Aqui era `COUNT(*) + 1`: duas aprovações simultâneas geravam o mesmo
+      // PED-0001, e excluir um pedido fazia o número seguinte repetir um já usado.
+      const { data: numero, error: numeroErr } = await supabase.rpc("gerar_proximo_numero_sc", {
+        p_empresa_id: cotacao.empresa_id,
+        p_prefixo: "PED",
+      });
+      if (numeroErr) throw numeroErr;
 
       const { data: pedido, error: e4 } = await supabase
         .from("pedidos")
@@ -147,6 +202,40 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
         const { error: e5 } = await supabase.from("pedido_itens").insert(pedidoItens);
         if (e5) throw e5;
       }
+
+      /**
+       * Histórico das três entidades.
+       *
+       * Esta tela inseria o pedido direto no banco, sem passar pelo hook — e o hook
+       * era quem registrava o histórico. Resultado: a linha do tempo do pedido
+       * nascia vazia, sem sequer o "rascunho criado", e a aprovação da requisição
+       * não deixava rastro de quem escolheu o vencedor nem por quê.
+       */
+      await registrarHistorico([
+        {
+          entidade_tipo: "requisicao",
+          entidade_id: cotacao.requisicao_id,
+          status_anterior: req.workflow_status ?? null,
+          status_novo: "APPROVED",
+          observacoes: justificativa
+            ? `Vencedora: ${cotacao.fornecedor?.razao_social ?? "fornecedor"}. Justificativa: ${justificativa}`
+            : `Vencedora: ${cotacao.fornecedor?.razao_social ?? "fornecedor"} (menor preço).`,
+        },
+        {
+          entidade_tipo: "cotacao",
+          entidade_id: cotacao.id,
+          status_anterior: cotacao.status ?? null,
+          status_novo: "aprovada",
+          observacoes: "Escolhida como vencedora no comparativo.",
+        },
+        {
+          entidade_tipo: "pedido",
+          entidade_id: pedido.id,
+          status_anterior: null,
+          status_novo: "rascunho",
+          observacoes: `Gerado pela aprovação da cotação ${cotacao.numero ?? ""}.`.trim(),
+        },
+      ], cotacao.empresa_id);
 
       toast.success(`Pedido ${numero} criado com sucesso`);
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
