@@ -118,6 +118,14 @@ export type SituacaoAptidao =
   | "APTO_COM_RESTRICAO"
   | "INAPTO"
   | "ASO_VENCIDO"
+  /**
+   * Existe ASO vigente, e o medico nao registrou a conclusao.
+   *
+   * Estado proprio porque nao e nenhum dos outros: nao e falta de ASO, nao e prazo
+   * perdido e nao e conclusao medica. Antes caia no `return "APTO"` do fim da
+   * funcao — o dossie afirmava aptidao a partir de um campo vazio.
+   */
+  | "ASO_SEM_CONCLUSAO"
   | "SEM_ASO";
 
 /**
@@ -138,7 +146,12 @@ export function situacaoOcupacional(
 
   if (vigente.aptidao === "INAPTO") return "INAPTO";
   if (vigente.aptidao === "APTO_COM_RESTRICAO") return "APTO_COM_RESTRICAO";
-  return "APTO";
+  if (vigente.aptidao === "APTO") return "APTO";
+
+  // Sem conclusao registrada. O `return "APTO"` que estava aqui fazia o dossie
+  // afirmar aptidao a partir de um campo vazio — e como a coluna nascia com
+  // DEFAULT APTO, o vazio era o caso comum.
+  return "ASO_SEM_CONCLUSAO";
 }
 
 export const SITUACAO_APTIDAO_LABEL: Record<SituacaoAptidao, string> = {
@@ -146,6 +159,7 @@ export const SITUACAO_APTIDAO_LABEL: Record<SituacaoAptidao, string> = {
   APTO_COM_RESTRICAO: "Apto com restrições",
   INAPTO: "Inapto",
   ASO_VENCIDO: "ASO vencido",
+  ASO_SEM_CONCLUSAO: "ASO sem conclusão médica",
   SEM_ASO: "Sem ASO registrado",
 };
 
@@ -167,6 +181,9 @@ export function pendenciasDossie(dados: DossieDados, hoje = new Date()): string[
     p.push("ASO vencido — o trabalhador não tem aptidão vigente");
   } else if (situacao === "INAPTO") {
     p.push("Último ASO conclui INAPTO");
+  } else if (situacao === "ASO_SEM_CONCLUSAO") {
+    // Vigente e sem conclusão não é aptidão: o médico ainda não assinou o campo.
+    p.push("ASO vigente sem conclusão médica — a aptidão não foi atestada");
   }
 
   if (!colaborador.funcao_id) {
@@ -410,9 +427,14 @@ export function montarHtmlDossie(dados: DossieDados, hoje = new Date()): string 
                           <td>${dataBr(a.data_emissao)}</td>
                           <td>${esc(a.tipo)}</td>
                           <td>${
-                            a.aptidao === "INAPTO"
-                              ? `<span class="doc-inapto">${esc(a.aptidao)}</span>`
-                              : esc(a.aptidao)
+                            // Sem conclusão a célula diz isso, e não fica vazia:
+                            // célula vazia numa coluna chamada "aptidão" é lida
+                            // como falha de impressão.
+                            !a.aptidao
+                              ? `<span class="doc-falta">sem conclusão</span>`
+                              : a.aptidao === "INAPTO"
+                                ? `<span class="doc-inapto">${esc(a.aptidao)}</span>`
+                                : esc(a.aptidao)
                           }</td>
                           <td>${
                             vencido

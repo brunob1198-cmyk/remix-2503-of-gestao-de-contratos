@@ -108,6 +108,32 @@ export const estilosDocumentoSgsst = `
       border-bottom: 1px solid ${CORES_DOC.texto}; }
     .doc-centro-txt { text-align: center; }
 
+    /* Caixa de marcação, para os campos que as fichas oficiais trazem como opção
+       e não como texto livre: tipo de exame, agentes de risco, validade, aptidão.
+
+       Duas regras que a caixa carrega:
+
+       - Campo que ninguém respondeu sai EM BRANCO, e não ausente. É o que permite
+         o médico preencher à mão na folha impressa.
+       - A marca é um X em texto, e não uma cor de fundo. O PDF sai do html2canvas
+         e é impresso em preto e branco com frequência; marcação que depende de cor
+         desaparece na fotocópia. */
+    .doc-marca { display: inline-block; width: 9px; height: 9px; line-height: 9px;
+      border: 1px solid ${CORES_DOC.linhaForte}; text-align: center;
+      font-size: 8px; font-weight: 700; color: ${CORES_DOC.tinta};
+      margin-right: 3px; background: #fff; }
+    .doc-marca.marcada { border-color: ${CORES_DOC.tinta}; }
+    /* A opção inteira, caixa mais rótulo, sem quebrar entre as duas. */
+    .doc-opcao { display: inline-block; font-size: 9px; color: ${CORES_DOC.texto};
+      margin: 0 10px 3px 0; white-space: nowrap; }
+    .doc-opcao.marcada { font-weight: 600; color: ${CORES_DOC.tinta}; }
+    /* Linha de rótulo da categoria à esquerda e opções à direita. */
+    table.doc-opcoes { width: 100%; border-collapse: collapse; }
+    table.doc-opcoes td { padding: 3px 0; border-bottom: 1px solid ${CORES_DOC.linha}; }
+    table.doc-opcoes td.cat { width: 20%; font-size: 8.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em; color: ${CORES_DOC.tinta}; }
+    table.doc-opcoes tr:last-child td { border-bottom: 0; }
+
     /* Indicadores em cartão, usados pelo relatório. */
     .doc-cards { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
     .doc-card { flex: 1 1 22%; border: 1px solid ${CORES_DOC.linha};

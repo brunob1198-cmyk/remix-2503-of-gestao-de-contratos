@@ -7,6 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstAso, SgsstAsoInput, TipoExameOcupacional, AptidaoAso, StatusAso } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import {
+  ATIVIDADE_ESPECIFICA_CURTO,
+  APTIDAO_ATIVIDADE_LABEL,
+  type AptidaoAtividade,
+} from "@/utils/sgsstAptidaoAso";
+import {
+  CATEGORIAS_RISCO_ASO,
+  CATEGORIA_RISCO_ASO_LABEL,
+  agentesDaCategoria,
+} from "@/utils/sgsstRiscosAso";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import { useSgsstExames } from "@/hooks/sgsst/useSgsstAsosAndExames";
@@ -41,7 +51,19 @@ export function AsoFormDialog({
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const [dataEmissao, setDataEmissao] = useState("");
   const [tipo, setTipo] = useState<TipoExameOcupacional>("Periódico");
-  const [aptidao, setAptidao] = useState<AptidaoAso>("APTO");
+  /**
+   * Vazio = a preencher pelo medico. Nao ha valor inicial: a coluna nascia com
+   * DEFAULT APTO e o ASO saia afirmando aptidao que ninguem tinha concluido.
+   */
+  const [aptidao, setAptidao] = useState<AptidaoAso | "">("");
+  const [aptoAltura, setAptoAltura] = useState<AptidaoAtividade | "">("");
+  const [aptoEspacoConfinado, setAptoEspacoConfinado] = useState<AptidaoAtividade | "">("");
+  const [aptoMaquinas, setAptoMaquinas] = useState<AptidaoAtividade | "">("");
+  const [riscosMarcados, setRiscosMarcados] = useState<string[]>([]);
+  const [semRiscoEspecifico, setSemRiscoEspecifico] = useState(false);
+  const [unidade, setUnidade] = useState("");
+  const [novaFuncao, setNovaFuncao] = useState("");
+  const [dataExameClinico, setDataExameClinico] = useState("");
   const [validade, setValidade] = useState("");
   const [medicoResponsavel, setMedicoResponsavel] = useState("");
   const [crmMedico, setCrmMedico] = useState("");
@@ -64,7 +86,15 @@ export function AsoFormDialog({
       setNumeroDocumento(aso.numero_documento || "");
       setDataEmissao(aso.data_emissao ? aso.data_emissao.split("T")[0] : "");
       setTipo(aso.tipo || "Periódico");
-      setAptidao(aso.aptidao || "APTO");
+      setAptidao(aso.aptidao || "");
+      setAptoAltura(aso.apto_altura || "");
+      setAptoEspacoConfinado(aso.apto_espaco_confinado || "");
+      setAptoMaquinas(aso.apto_maquinas || "");
+      setRiscosMarcados(aso.riscos_marcados ?? []);
+      setSemRiscoEspecifico(!!aso.sem_risco_especifico);
+      setUnidade(aso.unidade || "");
+      setNovaFuncao(aso.nova_funcao || "");
+      setDataExameClinico(aso.data_exame_clinico ? aso.data_exame_clinico.split("T")[0] : "");
       setValidade(aso.validade ? aso.validade.split("T")[0] : "");
       setMedicoResponsavel(aso.medico_responsavel || "");
       setCrmMedico(aso.crm_medico || "");
@@ -87,7 +117,15 @@ export function AsoFormDialog({
       setNumeroDocumento("");
       setDataEmissao(todayStr);
       setTipo("Periódico");
-      setAptidao("APTO");
+      setAptidao("");
+      setAptoAltura("");
+      setAptoEspacoConfinado("");
+      setAptoMaquinas("");
+      setRiscosMarcados([]);
+      setSemRiscoEspecifico(false);
+      setUnidade("");
+      setNovaFuncao("");
+      setDataExameClinico("");
       setValidade(nextYearStr);
       setMedicoResponsavel("");
       setCrmMedico("");
@@ -138,7 +176,17 @@ export function AsoFormDialog({
       numero_documento: numeroDocumento.trim() || null,
       data_emissao: dataEmissao,
       tipo,
-      aptidao,
+      // Vazio vira NULL: o banco deixou de ter DEFAULT, e o PDF sai com as caixas
+      // em branco para o medico preencher e assinar.
+      aptidao: aptidao || null,
+      apto_altura: aptoAltura || null,
+      apto_espaco_confinado: aptoEspacoConfinado || null,
+      apto_maquinas: aptoMaquinas || null,
+      riscos_marcados: semRiscoEspecifico ? [] : riscosMarcados,
+      sem_risco_especifico: semRiscoEspecifico,
+      unidade: unidade.trim() || null,
+      nova_funcao: novaFuncao.trim() || null,
+      data_exame_clinico: dataExameClinico || null,
       validade,
       medico_responsavel: medicoResponsavel.trim() || null,
       crm_medico: crmMedico.trim() || null,
@@ -219,18 +267,124 @@ export function AsoFormDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="aptidao">Conclusão de Aptidão *</Label>
-              <Select value={aptidao} onValueChange={(val: AptidaoAso) => setAptidao(val)} disabled={isReadOnly}>
+              <Label htmlFor="aptidao">Conclusão de aptidão</Label>
+              {/*
+                Sem asterisco, e o vazio é uma opção com nome próprio. A conclusão
+                é a única afirmação do ASO que só um médico pode fazer, e a coluna
+                nascia com DEFAULT APTO — o documento saía atestando aptidão que
+                ninguém tinha concluído.
+              */}
+              <Select
+                value={aptidao || "PENDENTE"}
+                onValueChange={(val) => setAptidao(val === "PENDENTE" ? "" : (val as AptidaoAso))}
+                disabled={isReadOnly}
+              >
                 <SelectTrigger id="aptidao" className="font-semibold">
-                  <SelectValue placeholder="Selecione..." />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="PENDENTE" className="text-muted-foreground">
+                    A preencher pelo médico
+                  </SelectItem>
                   <SelectItem value="APTO" className="text-emerald-700 font-bold">APTO</SelectItem>
                   <SelectItem value="APTO_COM_RESTRICAO" className="text-amber-700 font-bold">APTO COM RESTRIÇÃO</SelectItem>
                   <SelectItem value="INAPTO" className="text-red-700 font-bold">INAPTO</SelectItem>
                 </SelectContent>
               </Select>
+              {!aptidao && (
+                <p className="text-[11px] text-muted-foreground">
+                  O PDF sai com as caixas em branco, para o médico examinador marcar
+                  e assinar.
+                </p>
+              )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="unidade">Unidade</Label>
+              <Input
+                id="unidade"
+                value={unidade}
+                onChange={(e) => setUnidade(e.target.value)}
+                placeholder="Matriz, filial, obra..."
+                disabled={isReadOnly}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="novaFuncao">
+                Nova função
+                {tipo === "Mudança de Risco/Função" && " *"}
+              </Label>
+              {/* Só o exame de mudança precisa dela: sem isso, o ASO de mudança
+                  não diz para QUAL função o trabalhador está apto. */}
+              <Input
+                id="novaFuncao"
+                value={novaFuncao}
+                onChange={(e) => setNovaFuncao(e.target.value)}
+                placeholder={tipo === "Mudança de Risco/Função" ? "Função de destino" : "N/A"}
+                disabled={isReadOnly}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dataExameClinico">Data do exame clínico</Label>
+              <Input
+                id="dataExameClinico"
+                type="date"
+                value={dataExameClinico}
+                onChange={(e) => setDataExameClinico(e.target.value)}
+                disabled={isReadOnly}
+              />
+            </div>
+          </div>
+
+          {/*
+            Aptidão por atividade. Três estados, e a distinção entre dois deles é o
+            que evita erro dos dois lados: "não se aplica" não é "inapto", e campo
+            em branco não é liberação.
+          */}
+          <div className="space-y-2 rounded-md border p-3">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              E também foi considerado
+            </Label>
+            <div className="grid grid-cols-3 gap-3">
+              {(
+                [
+                  ["ALTURA", aptoAltura, setAptoAltura],
+                  ["ESPACO_CONFINADO", aptoEspacoConfinado, setAptoEspacoConfinado],
+                  ["MAQUINAS", aptoMaquinas, setAptoMaquinas],
+                ] as const
+              ).map(([chave, valor, definir]) => (
+                <div key={chave} className="space-y-1.5">
+                  <Label className="text-xs">{ATIVIDADE_ESPECIFICA_CURTO[chave]}</Label>
+                  <Select
+                    value={valor || "PENDENTE"}
+                    onValueChange={(v) =>
+                      definir(v === "PENDENTE" ? "" : (v as AptidaoAtividade))
+                    }
+                    disabled={isReadOnly}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDENTE" className="text-muted-foreground">
+                        Não avaliado
+                      </SelectItem>
+                      {(["APTO", "INAPTO", "NAO_SE_APLICA"] as const).map((op) => (
+                        <SelectItem key={op} value={op}>
+                          {APTIDAO_ATIVIDADE_LABEL[op]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              "Não avaliado" e "não se aplica" não autorizam a atividade. A PT de
+              altura e a de espaço confinado consultam estes campos.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -371,21 +525,78 @@ export function AsoFormDialog({
                 Campos obrigatórios do ASO · NR-07
               </p>
 
+              {/*
+                A grade substituiu o campo de texto como registro dos perigos.
+                Texto livre não se conta nem se confere: "Ruído", "ruido excessivo"
+                e "exposição a ruído" são o mesmo agente e três strings. O texto
+                continua abaixo, como complemento.
+              */}
+              <div className="space-y-2">
+                <Label>Perigos e fatores de risco identificados *</Label>
+
+                <div className="space-y-2 rounded-md border bg-background p-2 max-h-64 overflow-y-auto">
+                  {CATEGORIAS_RISCO_ASO.map((categoria) => (
+                    <div key={categoria}>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {CATEGORIA_RISCO_ASO_LABEL[categoria]}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+                        {agentesDaCategoria(categoria).map((agente) => (
+                          <label
+                            key={agente.codigo}
+                            className="flex items-center gap-1.5 text-xs"
+                          >
+                            <Checkbox
+                              checked={riscosMarcados.includes(agente.codigo)}
+                              // Marcar um agente desfaz a declaração de que não há
+                              // risco: as duas coisas juntas são contraditórias, e o
+                              // banco recusa a gravação.
+                              disabled={isReadOnly || semRiscoEspecifico}
+                              onCheckedChange={(marcado) =>
+                                setRiscosMarcados((atuais) =>
+                                  marcado
+                                    ? [...atuais, agente.codigo]
+                                    : atuais.filter((c) => c !== agente.codigo)
+                                )
+                              }
+                            />
+                            {agente.nome}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <label className="flex items-center gap-2 text-xs font-medium">
+                  <Checkbox
+                    checked={semRiscoEspecifico}
+                    disabled={isReadOnly}
+                    onCheckedChange={(marcado) => {
+                      setSemRiscoEspecifico(!!marcado);
+                      if (marcado) setRiscosMarcados([]);
+                    }}
+                  />
+                  Não há risco específico para a atividade
+                </label>
+
+                <p className="text-xs text-muted-foreground">
+                  A NR-07 pede os perigos <strong>ou a sua inexistência</strong>. Deixar
+                  tudo em branco não equivale a dizer que não há risco — é campo não
+                  preenchido, e sai marcado como tal no ASO.
+                </p>
+              </div>
+
               <div className="space-y-1.5">
-                <Label htmlFor="descRiscos">
-                  Perigos e fatores de risco a que o trabalhador está exposto *
-                </Label>
+                <Label htmlFor="descRiscos">Complemento em texto</Label>
                 <Textarea
                   id="descRiscos"
                   rows={2}
-                  placeholder="Ex.: Ruído ocupacional acima de 85 dB(A); poeira de sílica cristalina; trabalho em altura acima de 2 m."
+                  placeholder="O que a lista acima não cobre, e a classificação vinda do inventário de riscos do PGR."
                   value={descricaoRiscos}
                   onChange={(e) => setDescricaoRiscos(e.target.value)}
                   disabled={isReadOnly}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Sai impresso no ASO. Um campo obrigatório em branco é autuação.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

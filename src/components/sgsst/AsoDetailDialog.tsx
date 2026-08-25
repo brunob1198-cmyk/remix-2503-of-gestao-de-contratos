@@ -30,7 +30,16 @@ export function AsoDetailDialog({
     }
   };
 
-  const getAptidaoBadge = (apt: string) => {
+  const getAptidaoBadge = (apt?: string | null) => {
+    // Sem conclusão é estado próprio, e não o ramo do apto: quem abre o ASO precisa
+    // distinguir "o médico concluiu apto" de "ninguém concluiu nada".
+    if (!apt) {
+      return (
+        <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300">
+          A concluir pelo médico
+        </Badge>
+      );
+    }
     switch (apt) {
       case "APTO":
         return <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold">APTO</Badge>;

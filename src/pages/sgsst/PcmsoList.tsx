@@ -289,7 +289,17 @@ export default function SgsstPcmsoListPage() {
     }
   };
 
-  const getAptidaoBadge = (apt: AptidaoAso) => {
+    const getAptidaoBadge = (apt?: AptidaoAso | null) => {
+    // Sem conclusao a celula NAO fica vazia nem cai no ramo do apto: e um estado
+    // proprio, e quem olha a lista precisa distinguir "o medico concluiu apto" de
+    // "ninguem concluiu nada".
+    if (!apt) {
+      return (
+        <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300">
+          A CONCLUIR
+        </Badge>
+      );
+    }
     switch (apt) {
       case "APTO":
         return <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold">APTO</Badge>;
