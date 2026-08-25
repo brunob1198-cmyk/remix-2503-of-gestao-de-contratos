@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
 import { uploadImage, verifyImageUrl } from "@/services/uploadImage";
-import { pdfToImageFiles } from "@/lib/pdfToImages";
 import { useLancamentosMedicao } from "@/hooks/useLancamentos";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -193,6 +192,7 @@ export default function AcompanhamentoMedicoesPage() {
         const isPdf = data.capaFile.type === "application/pdf" || /\.pdf$/i.test(data.capaFile.name);
         if (isPdf) {
           // Converte cada página da capa em imagem para exibição no relatório
+          const { pdfToImageFiles } = await import("@/lib/pdfToImages");
           const paginas = await pdfToImageFiles(data.capaFile);
           const pageUrls = (await Promise.all(paginas.map(p => uploadImage(p)))).filter(Boolean);
           capaUrl = pageUrls.length > 0 ? pageUrls.join(",") : null;
@@ -206,8 +206,6 @@ export default function AcompanhamentoMedicoesPage() {
       }
     }
 
-
-
     let anexoUrl = null;
     const anexoFiles: File[] = data.anexoFiles ?? (data.anexoFile ? [data.anexoFile] : []);
     if (anexoFiles.length > 0) {
@@ -217,6 +215,7 @@ export default function AcompanhamentoMedicoesPage() {
           const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
           if (isPdf) {
             // Converte cada página do PDF (ex.: ART) em imagem para exibição no relatório
+            const { pdfToImageFiles } = await import("@/lib/pdfToImages");
             const paginas = await pdfToImageFiles(file);
             const pageUrls = await Promise.all(paginas.map(p => uploadImage(p)));
             urls.push(...pageUrls.filter(Boolean));

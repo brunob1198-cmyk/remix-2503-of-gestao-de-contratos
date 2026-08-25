@@ -1,4 +1,3 @@
-import { compressImage } from "@/lib/imageCompression";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
 const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
@@ -24,6 +23,7 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
   let fileToUpload = file;
   
   if (!folder && file.type.startsWith('image/')) {
+    const { compressImage } = await import("@/lib/imageCompression");
     fileToUpload = await compressImage(file);
   }
 
