@@ -1,4 +1,5 @@
 import { useHistorico, type ScEntidadeTipo } from "@/hooks/useSupplyChain";
+import { rotuloRequisicao, rotuloCotacao, rotuloPedido } from "@/lib/fluxoCompras";
 import { CheckCircle2, Circle, Clock, MessageSquare, User } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -11,19 +12,17 @@ interface RequisitionTimelineProps {
   entidadeTipo?: ScEntidadeTipo;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Criação",
-  SUBMITTED: "Envio para Compras",
-  QUOTING: "Em Cotação",
-  QUOTE_COMPLETED: "Cotação Finalizada",
-  PENDING_APPROVAL: "Aguardando Aprovação",
-  APPROVED: "Aprovada",
-  REJECTED: "Rejeitada",
-  PURCHASE_ORDER_CREATED: "Pedido Gerado",
-  PURCHASED: "Comprado",
-  RECEIVED: "Recebimento",
-  CLOSED: "Finalizado",
-};
+/**
+ * A linha do tempo mostra o histórico das TRÊS entidades, e cada uma tem o seu
+ * vocabulário. A quarta cópia do mapa de status estava aqui — com rótulos próprios
+ * ("Comprado", "Finalizado") que não apareciam em nenhuma outra tela.
+ */
+function rotuloDoHistorico(entidade: ScEntidadeTipo, status?: string | null): string {
+  if (!status) return "—";
+  if (entidade === "cotacao") return rotuloCotacao(status).label;
+  if (entidade === "pedido") return rotuloPedido(status).label;
+  return rotuloRequisicao(status).label;
+}
 
 export function RequisitionTimeline({ requisicaoId, entidadeId, entidadeTipo = "requisicao" }: RequisitionTimelineProps) {
   const id = entidadeId ?? requisicaoId;
@@ -40,7 +39,7 @@ export function RequisitionTimeline({ requisicaoId, entidadeId, entidadeTipo = "
     <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-primary/20 before:via-primary/20 before:to-transparent">
       {historico.map((item: any, idx: number) => {
         const isLast = idx === historico.length - 1;
-        const statusLabel = STATUS_LABELS[item.status_novo] || item.status_novo;
+        const statusLabel = rotuloDoHistorico(entidadeTipo, item.status_novo);
         const date = new Date(item.created_at);
         
         return (

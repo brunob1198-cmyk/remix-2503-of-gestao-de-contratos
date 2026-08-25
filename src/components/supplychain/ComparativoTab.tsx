@@ -23,6 +23,14 @@ interface ComparativoTabProps {
   onNavigate?: (tab: string, filter?: string) => void;
 }
 
+/** O recorte da cotação que o quadro comparativo compara. */
+interface CotacaoComparada {
+  id: string;
+  valor_total?: number | null;
+  prazo_entrega_dias?: number | null;
+  fornecedor?: { razao_social?: string | null; score?: number | null } | null;
+}
+
 export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
   const { requisicoes } = useRequisicoes();
   const { cotacoes } = useCotacoes();
@@ -66,34 +74,35 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
     const vazio = { minPrice: null, minLeadTime: null, bestRating: null, temScore: false };
     if (relevantCotacoes.length === 0) return vazio;
 
+    const lista = relevantCotacoes as CotacaoComparada[];
+
     // Só entra no comparativo a cotação com preço lançado: uma cotação sem resposta
     // vale zero e ganharia de todas no menor preço.
-    const comPreco = relevantCotacoes.filter((c: any) => Number(c.valor_total || 0) > 0);
+    const comPreco = lista.filter((c) => Number(c.valor_total || 0) > 0);
     if (comPreco.length === 0) return vazio;
 
-    const menorPreco = comPreco.reduce((a: any, b: any) =>
-      Number(b.valor_total || 0) < Number(a.valor_total || 0) ? b : a
-    );
+    /** O menor valor por um critério, ou nulo se ninguém tem o dado. */
+    const melhorPor = (
+      candidatos: CotacaoComparada[],
+      valor: (c: CotacaoComparada) => number,
+      preferirMaior = false
+    ): CotacaoComparada | null => {
+      const validos = candidatos.filter((c) => valor(c) > 0);
+      if (validos.length === 0) return null;
+      return validos.reduce((a, b) =>
+        preferirMaior ? (valor(b) > valor(a) ? b : a) : valor(b) < valor(a) ? b : a
+      );
+    };
 
-    const comPrazo = comPreco.filter((c: any) => Number(c.prazo_entrega_dias || 0) > 0);
-    const menorPrazo = comPrazo.length
-      ? comPrazo.reduce((a: any, b: any) =>
-          Number(b.prazo_entrega_dias) < Number(a.prazo_entrega_dias) ? b : a
-        )
-      : null;
-
-    const comScore = comPreco.filter((c: any) => Number(c.fornecedor?.score || 0) > 0);
-    const melhorScore = comScore.length
-      ? comScore.reduce((a: any, b: any) =>
-          Number(b.fornecedor?.score || 0) > Number(a.fornecedor?.score || 0) ? b : a
-        )
-      : null;
+    const menorPreco = melhorPor(comPreco, (c) => Number(c.valor_total || 0));
+    const menorPrazo = melhorPor(comPreco, (c) => Number(c.prazo_entrega_dias || 0));
+    const melhorScore = melhorPor(comPreco, (c) => Number(c.fornecedor?.score || 0), true);
 
     return {
       minPrice: menorPreco?.id ?? null,
       minLeadTime: menorPrazo?.id ?? null,
       bestRating: melhorScore?.id ?? null,
-      temScore: comScore.length > 0,
+      temScore: !!melhorScore,
     };
   }, [relevantCotacoes]);
 
