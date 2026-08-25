@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, ChevronRight, Search } from "lucide-react";
+import { Plus, Eye, PackageCheck, Calendar, Briefcase, AlertCircle, History, ChevronRight, Search, Star } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 import { diasCotacaoAtrasada, isCotacaoAtrasada } from "@/lib/cotacaoAtraso";
 import { RequisitionTimeline } from "./RequisitionTimeline";
@@ -481,7 +481,22 @@ export function CotacoesTab({ filter, onNavigate }: { filter?: string; onNavigat
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {fornecedores.map((f: any) => (
-                      <SelectItem key={f.id} value={f.id}>{f.razao_social}</SelectItem>
+                      // Preferido primeiro, com estrela, e o score ao lado quando há
+                      // avaliação. Escolher quem cotar era rolar uma lista
+                      // alfabética sem nenhuma informação de histórico.
+                      <SelectItem key={f.id} value={f.id}>
+                        <span className="flex items-center gap-1.5">
+                          {f.preferido && (
+                            <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" />
+                          )}
+                          {f.razao_social}
+                          {Number(f.avaliacoes_total || 0) > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              · score {Number(f.score || 0).toFixed(0)} ({f.avaliacoes_total})
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
