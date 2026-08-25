@@ -9,13 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, Download, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+import { HistoricoAvaliacoesDialog } from "./HistoricoAvaliacoesDialog";
+import { PONTOS_POR_ESTRELA, textoDaForca } from "@/lib/avaliacaoFornecedor";
 
 const SCORE_WEIGHTS = {
   prazo: 0.4,
@@ -25,7 +27,11 @@ const SCORE_WEIGHTS = {
 };
 
 export function FornecedoresTab() {
-  const { fornecedores, isLoading, create, update, remove, bulkCreate, bulkRemove } = useFornecedores({ includeInactive: true });
+  const { fornecedores, isLoading, create, update, remove, alternarPreferido, bulkCreate, bulkRemove } =
+    useFornecedores({ includeInactive: true });
+
+  // Fornecedor cujo historico de avaliacoes esta aberto.
+  const [fornecedorAvaliado, setFornecedorAvaliado] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
@@ -296,6 +302,37 @@ export function FornecedoresTab() {
       enableHiding: false,
     },
     {
+      accessorKey: "preferido",
+      header: () => <span title="Preferido">★</span>,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const f = row.original;
+        // Preferido é decisão de quem compra, e não consequência do score: pode
+        // haver fornecedor homologado com pouca avaliação, e fornecedor com score
+        // alto que a empresa não quer usar.
+        return (
+          <button
+            type="button"
+            title={
+              f.preferido
+                ? "Fornecedor preferido — aparece no topo ao escolher quem cotar. Clique para desmarcar."
+                : "Marcar como preferido, para aparecer no topo ao escolher quem cotar."
+            }
+            onClick={() => alternarPreferido.mutate({ id: f.id, preferido: !f.preferido })}
+            className="p-0.5"
+          >
+            <Star
+              className={`h-4 w-4 ${
+                f.preferido
+                  ? "fill-amber-400 text-amber-500"
+                  : "text-muted-foreground/30 hover:text-amber-400"
+              }`}
+            />
+          </button>
+        );
+      },
+    },
+    {
       accessorKey: "razao_social",
       header: ({ column }) => (
         <div className="flex items-center gap-1">
@@ -424,9 +461,19 @@ export function FornecedoresTab() {
                 {Number(f.score || 0).toFixed(1)}
               </Badge>
             </HoverCardTrigger>
-            <HoverCardContent className="w-60">
+            <HoverCardContent className="w-72">
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold">Detalhamento do Score</h4>
+
+                {/*
+                  Quantas avaliações sustentam o número. Score 100 vindo de uma
+                  avaliação não é a mesma coisa que score 100 vindo de vinte, e é com
+                  ele que se decide para quem vai o pedido.
+                */}
+                <p className="text-xs text-muted-foreground">
+                  {textoDaForca(f.avaliacoes_total)}
+                </p>
+
                 <div className="grid grid-cols-2 gap-1 text-xs">
                   <span className="text-muted-foreground">Prazo (40%) - 0 a 100:</span>
                   <span className="text-right font-medium">{f.score_prazo || 0}</span>
@@ -437,6 +484,22 @@ export function FornecedoresTab() {
                   <span className="text-muted-foreground">Resp. (10%) - 0 a 100:</span>
                   <span className="text-right font-medium">{f.score_responsividade || 0}</span>
                 </div>
+
+                <p className="text-[11px] text-muted-foreground border-t pt-2">
+                  Cada avaliação é dada de 1 a 5 estrelas ao fim de um pedido entregue.
+                  Uma estrela vale {PONTOS_POR_ESTRELA} pontos.
+                </p>
+
+                {Number(f.avaliacoes_total || 0) > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={() => setFornecedorAvaliado(f)}
+                  >
+                    Ver as {f.avaliacoes_total} avaliação(ões)
+                  </Button>
+                )}
                 <div className="h-20 w-full mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
@@ -691,6 +754,11 @@ export function FornecedoresTab() {
           />
 
         )}
+        <HistoricoAvaliacoesDialog
+          fornecedor={fornecedorAvaliado}
+          open={!!fornecedorAvaliado}
+          onOpenChange={(aberto) => !aberto && setFornecedorAvaliado(null)}
+        />
       </CardContent>
     </Card>
   );

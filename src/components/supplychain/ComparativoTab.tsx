@@ -13,6 +13,7 @@ import { Star, TrendingDown, Clock, ShieldCheck, Truck, AlertTriangle } from "lu
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { PONTOS_POR_ESTRELA, textoDaForca } from "@/lib/avaliacaoFornecedor";
 import {
   normalizarEstadoRequisicao,
   validarTransicaoRequisicao,
@@ -28,7 +29,12 @@ interface CotacaoComparada {
   id: string;
   valor_total?: number | null;
   prazo_entrega_dias?: number | null;
-  fornecedor?: { razao_social?: string | null; score?: number | null } | null;
+  fornecedor?: {
+    razao_social?: string | null;
+    score?: number | null;
+    /** Quantas avaliacoes sustentam o score. Zero = sem historico. */
+    avaliacoes_total?: number | null;
+  } | null;
 }
 
 export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
@@ -343,15 +349,44 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
                         <TableCell>{c.frete > 0 ? fmt(c.frete) : "Incluso/FOB"}</TableCell>
                         <TableCell className="text-xs">{c.condicao_pagamento || "—"}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <Star
-                                key={star}
-                                className={`h-3 w-3 ${star <= (4 + (c.fornecedor?.razao_social?.length % 2)) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                              />
-                            ))}
-                            {isBestRating && <ShieldCheck className="h-3 w-3 text-primary ml-1" />}
-                          </div>
+                          {/*
+                            As estrelas eram `4 + (razao_social.length % 2)`: todo
+                            fornecedor recebia 4 ou 5 estrelas conforme o nome ter
+                            número par ou ímpar de letras. Era a segunda instância do
+                            mesmo número inventado nesta tela.
+
+                            Agora vêm do score real, e fornecedor SEM avaliação não
+                            recebe estrela nenhuma — a ausência de histórico é dita, e
+                            não preenchida com nota alta.
+                          */}
+                          {Number(c.fornecedor?.avaliacoes_total || 0) === 0 ? (
+                            <span
+                              className="text-xs text-muted-foreground italic"
+                              title={textoDaForca(0)}
+                            >
+                              sem avaliação
+                            </span>
+                          ) : (
+                            <div
+                              className="flex items-center gap-0.5"
+                              title={textoDaForca(c.fornecedor?.avaliacoes_total)}
+                            >
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`h-3 w-3 ${
+                                    star <= Math.round(Number(c.fornecedor?.score || 0) / PONTOS_POR_ESTRELA)
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-1 text-[10px] text-muted-foreground">
+                                ({c.fornecedor?.avaliacoes_total})
+                              </span>
+                              {isBestRating && <ShieldCheck className="ml-1 h-3 w-3 text-primary" />}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           {isWinner ? (

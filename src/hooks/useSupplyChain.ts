@@ -113,21 +113,36 @@ export function useHistorico(entidadeTipo: ScEntidadeTipo, entidadeId?: string) 
 }
 
 // ─── Fornecedores ───
-export function useFornecedores(options?: { search?: string; includeInactive?: boolean; limit?: number }) {
+export function useFornecedores(options?: {
+  search?: string;
+  includeInactive?: boolean;
+  limit?: number;
+  /** Verdadeiro devolve so os preferidos. */
+  somentePreferidos?: boolean;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const search = options?.search?.trim() ?? "";
   const includeInactive = options?.includeInactive ?? false;
   const limit = options?.limit ?? 200;
+  const somentePreferidos = options?.somentePreferidos ?? false;
 
   const { data: fornecedores = [], isLoading } = useQuery({
-    queryKey: ["fornecedores", { search, includeInactive, limit }],
+    queryKey: ["fornecedores", { search, includeInactive, limit, somentePreferidos }],
     staleTime: 10 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      let q = supabase.from("fornecedores").select("*").order("razao_social").limit(limit);
+      // Preferidos primeiro: quem escolhe quem cotar quer ver o homologado no topo,
+      // e nao rolar a lista inteira em ordem alfabetica para achar.
+      let q = supabase
+        .from("fornecedores")
+        .select("*")
+        .order("preferido" as never, { ascending: false })
+        .order("razao_social")
+        .limit(limit);
       if (!includeInactive) q = q.eq("ativo", true);
+      if (somentePreferidos) q = q.eq("preferido" as never, true as never);
       if (search) q = q.ilike("razao_social", `%${search}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -137,7 +152,12 @@ export function useFornecedores(options?: { search?: string; includeInactive?: b
 
   const searchFornecedores = async (termo: string, opts?: { includeInactive?: boolean; limit?: number }) => {
     const l = opts?.limit ?? 50;
-    let q = supabase.from("fornecedores").select("*").order("razao_social").limit(l);
+    let q = supabase
+      .from("fornecedores")
+      .select("*")
+      .order("preferido" as never, { ascending: false })
+      .order("razao_social")
+      .limit(l);
     if (!(opts?.includeInactive ?? false)) q = q.eq("ativo", true);
     if (termo?.trim()) q = q.ilike("razao_social", `%${termo.trim()}%`);
     const { data, error } = await q;
@@ -191,6 +211,33 @@ export function useFornecedores(options?: { search?: string; includeInactive?: b
       } else {
         toast({ title: "Fornecedor excluído!" });
       }
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+
+  /**
+   * Liga e desliga o fornecedor preferido.
+   *
+   * Mutation propria, e nao o `update` generico, para a tela poder alternar com um
+   * clique sem montar o formulario inteiro — e para o toast dizer o que mudou.
+   */
+  const alternarPreferido = useMutation({
+    mutationFn: async ({ id, preferido }: { id: string; preferido: boolean }) => {
+      const { error } = await supabase
+        .from("fornecedores")
+        .update({ preferido } as never)
+        .eq("id", id);
+      if (error) throw error;
+      return preferido;
+    },
+    onSuccess: (preferido) => {
+      queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
+      toast({
+        title: preferido ? "Fornecedor marcado como preferido" : "Marcação de preferido removida",
+        description: preferido
+          ? "Ele passa a aparecer no topo da lista ao escolher quem cotar."
+          : undefined,
+      });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
@@ -297,7 +344,7 @@ export function useFornecedores(options?: { search?: string; includeInactive?: b
     onError: (e: Error) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
   });
 
-  return { fornecedores, isLoading, searchFornecedores, create, update, remove, bulkCreate, bulkRemove };
+  return { fornecedores, isLoading, searchFornecedores, create, update, remove, alternarPreferido, bulkCreate, bulkRemove };
 }
 
 // ─── SC Itens ───
@@ -547,7 +594,7 @@ export function useCotacoes(requisicaoId?: string) {
     queryFn: async () => {
       let q = supabase
         .from("cotacoes")
-        .select("*, fornecedor:fornecedores(razao_social), requisicao:requisicoes_compra(numero, projeto:projetos(codigo, nome)), itens:cotacao_itens(*, req_item:requisicao_itens(descricao_livre, quantidade, unidade, sc_item:sc_itens(codigo, descricao)))")
+        .select("*, fornecedor:fornecedores(razao_social, score, avaliacoes_total, preferido), requisicao:requisicoes_compra(numero, projeto:projetos(codigo, nome)), itens:cotacao_itens(*, req_item:requisicao_itens(descricao_livre, quantidade, unidade, sc_item:sc_itens(codigo, descricao)))")
         .order("created_at", { ascending: false });
       if (requisicaoId) q = q.eq("requisicao_id", requisicaoId);
       const { data, error } = await q;
@@ -1191,6 +1238,35 @@ export function usePedidoRecebimentos() {
 }
 
 // ─── Avaliações de Fornecedor ───
+/**
+ * Avaliações de um fornecedor, da mais recente para a mais antiga.
+ *
+ * As avaliações eram gravadas e nunca lidas de volta por tela nenhuma: não havia
+ * como saber POR QUE um fornecedor tem score baixo, só que tem. Sem o histórico, o
+ * score é um número sem argumento — e é com ele que se decide para quem vai o
+ * pedido.
+ */
+export function useAvaliacoesDoFornecedor(fornecedorId?: string) {
+  return useQuery({
+    queryKey: ["avaliacoes_fornecedor", fornecedorId],
+    enabled: !!fornecedorId,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avaliacoes_fornecedor")
+        .select(
+          "*, pedido:pedidos(numero, data_emissao, data_entrega_real, valor_total), avaliador:profiles!avaliacoes_fornecedor_avaliado_por_fkey(id, nome)"
+        )
+        .eq("fornecedor_id", fornecedorId as string)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useAvaliacoesFornecedor() {
   const queryClient = useQueryClient();
 
@@ -1206,11 +1282,15 @@ export function useAvaliacoesFornecedor() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // O score do fornecedor e recalculado por trigger no banco a partir de TODAS
+      // as avaliacoes dele — por isso a lista de fornecedores tambem e invalidada.
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
+      queryClient.invalidateQueries({ queryKey: ["avaliacoes_fornecedor"] });
+      queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
       queryClient.invalidateQueries({ queryKey: ["pedidos"] });
       queryClient.invalidateQueries({ queryKey: ["sc_counts"] });
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
-      toast.success("Avaliação registrada com sucesso!");
+      toast.success("Avaliação registrada. O score do fornecedor foi recalculado.");
     },
     onError: (e: Error) => toast.error("Erro ao registrar avaliação: " + e.message),
   });
