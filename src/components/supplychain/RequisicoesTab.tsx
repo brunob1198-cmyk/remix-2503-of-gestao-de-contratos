@@ -23,6 +23,14 @@ import {
   normalizarEstadoRequisicao,
   rotuloRequisicao,
 } from "@/lib/fluxoCompras";
+import {
+  TIPOS_COMPRA,
+  TIPO_COMPRA_LABEL,
+  TIPO_COMPRA_AJUDA,
+  rotuloTipoCompra,
+} from "@/lib/alcadaCompras";
+
+const SEM_TIPO_COMPRA = "__NAO_CLASSIFICADA__";
 
 const PRIORIDADE_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   baixa: { label: "Baixa", variant: "secondary" },
@@ -52,6 +60,8 @@ export function RequisicoesTab({
   const [form, setForm] = useState({
     projeto_id: "",
     prioridade: "normal",
+    /** Vazio = não classificada. A alçada sem tipo é quem cobre esse caso. */
+    tipo_compra: "",
     data_necessidade: "",
     justificativa: "",
   });
@@ -70,13 +80,16 @@ export function RequisicoesTab({
     : allRequisicoes;
 
   const resetForm = () => {
-    setForm({ projeto_id: "", prioridade: "normal", data_necessidade: "", justificativa: "" });
+    setForm({ projeto_id: "", prioridade: "normal", tipo_compra: "", data_necessidade: "", justificativa: "" });
     setItemRows([{ sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]);
   };
 
   const handleSave = () => {
     create.mutate({
       ...form,
+      // Vazio vira NULL: a alçada sem tipo (que vale para qualquer um) é quem cobre
+      // a requisição não classificada.
+      tipo_compra: form.tipo_compra || null,
       data_necessidade: form.data_necessidade || null,
       itens: itemRows.filter(r => r.descricao_livre || r.sc_item_id)
     }, {
@@ -331,6 +344,31 @@ export function RequisicoesTab({
                 </div>
               </div>
               <div>
+                <Label>Tipo de compra</Label>
+                {/* A alçada pode ter regra por tipo: material de R$ 50 mil não é a
+                    mesma decisão que serviço de R$ 50 mil, e a empresa pode querer
+                    aprovadores diferentes para cada um. */}
+                <Select
+                  value={form.tipo_compra || SEM_TIPO_COMPRA}
+                  onValueChange={(v) =>
+                    setForm((p) => ({ ...p, tipo_compra: v === SEM_TIPO_COMPRA ? "" : v }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_TIPO_COMPRA}>Não classificada</SelectItem>
+                    {TIPOS_COMPRA.map((t) => (
+                      <SelectItem key={t} value={t}>{TIPO_COMPRA_LABEL[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!!form.tipo_compra && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {TIPO_COMPRA_AJUDA[form.tipo_compra as keyof typeof TIPO_COMPRA_AJUDA]}
+                  </p>
+                )}
+              </div>
+              <div>
                 <Label>Data de Necessidade</Label>
                 <Input type="date" value={form.data_necessidade} onChange={e => setForm(p => ({ ...p, data_necessidade: e.target.value }))} />
               </div>
@@ -411,6 +449,7 @@ export function RequisicoesTab({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-3 rounded-lg border">
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Projeto</span> {selected.projeto?.codigo} - {selected.projeto?.nome || "—"}</div>
+                <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Tipo de compra</span> {rotuloTipoCompra(selected.tipo_compra)}</div>
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Status</span> <Badge variant={rotuloRequisicao(selected.workflow_status).variante} title={rotuloRequisicao(selected.workflow_status).ajuda}>{rotuloRequisicao(selected.workflow_status).label}</Badge></div>
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Prioridade</span> <Badge variant={PRIORIDADE_MAP[selected.prioridade]?.variant || "outline"}>{PRIORIDADE_MAP[selected.prioridade]?.label || selected.prioridade}</Badge></div>
                 <div><span className="text-muted-foreground block text-xs uppercase font-semibold">Data Necessidade</span> {selected.data_necessidade ? parseLocalDate(selected.data_necessidade).toLocaleDateString("pt-BR") : "—"}</div>

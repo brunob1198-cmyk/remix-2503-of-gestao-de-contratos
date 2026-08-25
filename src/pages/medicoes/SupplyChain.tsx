@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList, Scale, ChevronRight } from "lucide-react";
+import { Package, ShoppingCart, FileText, ClipboardCheck, Truck, LayoutList, Scale, ChevronRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FornecedoresTab } from "@/components/supplychain/FornecedoresTab";
 import { ItensTab } from "@/components/supplychain/ItensTab";
@@ -10,6 +10,7 @@ import { MinhaFilaTab } from "@/components/supplychain/MinhaFilaTab";
 import { SupplyChainDashboard } from "@/components/supplychain/Dashboard";
 import { StatusFunnel } from "@/components/supplychain/StatusFunnel";
 import { ComparativoTab } from "@/components/supplychain/ComparativoTab";
+import { AlcadasTab } from "@/components/supplychain/AlcadasTab";
 
 const PIPELINE_STEPS = [
   { id: "requisicoes", label: "Requisição", icon: FileText },
@@ -100,6 +101,15 @@ export default function SupplyChainPage() {
           >
             <Package className="h-4 w-4 mr-2" /> Itens
           </Button>
+          {/* Alçadas fica ao lado dos cadastros, e não no fluxo: é configuração de
+              quem pode aprovar quanto, não um passo da compra. */}
+          <Button
+            variant={tab === "alcadas" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => { setTab("alcadas"); setFilter(undefined); }}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" /> Alçadas
+          </Button>
         </div>
       </div>
 
@@ -112,6 +122,7 @@ export default function SupplyChainPage() {
         {tab === "pedidos" && <PedidosTab filter={filter} />}
         {tab === "fornecedores" && <FornecedoresTab />}
         {tab === "itens" && <ItensTab />}
+        {tab === "alcadas" && <AlcadasTab />}
       </div>
     </div>
   );
