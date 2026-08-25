@@ -58,7 +58,7 @@ export const estilosDocumentoSgsst = `
       border-left: 3px solid ${CORES_DOC.tinta}; border-radius: 3px;
       padding: 9px 13px; margin-bottom: 16px; }
     .doc-ident table { width: 100%; border-collapse: collapse; }
-    .doc-ident td { font-size: 10.5px; color: ${CORES_DOC.texto}; padding: 2px 0; vertical-align: top; }
+    .doc-ident td { font-size: 10.5px; color: ${CORES_DOC.texto}; padding: 2px 0; vertical-align: middle; }
     .doc-ident td.rot { color: ${CORES_DOC.textoFraco}; width: 22%; }
 
     h2.doc-sec { font-size: 11.5px; color: ${CORES_DOC.tinta}; text-transform: uppercase;
@@ -82,16 +82,22 @@ export const estilosDocumentoSgsst = `
       padding: 5px 10px; border-bottom: 1px solid ${CORES_DOC.linha}; }
     .doc-bloco > .corpo { padding: 9px 10px; }
     .doc-grid { width: 100%; border-collapse: collapse; }
-    .doc-grid td { font-size: 10.5px; color: ${CORES_DOC.texto}; padding: 3px 0; vertical-align: top; }
+    .doc-grid td { font-size: 10.5px; color: ${CORES_DOC.texto}; padding: 3px 0; vertical-align: middle; }
     .doc-grid td.rot { color: ${CORES_DOC.textoFraco}; width: 22%; }
 
-    /* Tabelas: cabeçalho em fundo claro com tinta escura. */
+    /* Tabelas: cabeçalho em fundo claro com tinta escura.
+
+       As células são alinhadas no MEIO, e não no topo. Numa fileira em que uma
+       célula quebra em três linhas — descrição de risco, endereço completo,
+       medida de controle — o alinhamento no topo joga as vizinhas curtas para
+       cima e a fileira deixa de ser lida como uma fileira. No meio, o olho
+       percorre a linha reta. */
     table.doc-tabela { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
     table.doc-tabela th { background: ${CORES_DOC.fundoCabecalho}; color: ${CORES_DOC.tinta};
       font-size: 8.5px; text-transform: uppercase; letter-spacing: .03em; font-weight: 700;
       padding: 5px 6px; text-align: left; border-bottom: 1px solid ${CORES_DOC.linhaForte}; }
     table.doc-tabela td { font-size: 9.5px; color: ${CORES_DOC.texto}; padding: 5px 6px;
-      border-bottom: 1px solid ${CORES_DOC.linha}; vertical-align: top; }
+      border-bottom: 1px solid ${CORES_DOC.linha}; vertical-align: middle; }
     table.doc-tabela tr { page-break-inside: avoid; }
     table.doc-tabela tfoot td { border-top: 1px solid ${CORES_DOC.linhaForte}; border-bottom: 0;
       background: ${CORES_DOC.fundoSuave}; }
