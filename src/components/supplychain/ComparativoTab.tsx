@@ -14,6 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { PONTOS_POR_ESTRELA, textoDaForca } from "@/lib/avaliacaoFornecedor";
+import { avaliarAlcada, rotuloTipoCompra } from "@/lib/alcadaCompras";
+import { useAlcadasCompra } from "@/hooks/useAlcadasCompra";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   normalizarEstadoRequisicao,
   validarTransicaoRequisicao,
@@ -41,6 +44,8 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
   const { requisicoes } = useRequisicoes();
   const { cotacoes } = useCotacoes();
   const { hasActionPermission } = usePermissions();
+  const { alcadas } = useAlcadasCompra();
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
 
   const [selectedReqId, setSelectedReqId] = useState<string>("");
@@ -56,6 +61,11 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
     const e = normalizarEstadoRequisicao(r.workflow_status);
     return e === "PENDING_APPROVAL" || e === "QUOTING";
   });
+
+  const requisicaoSelecionada = useMemo(
+    () => requisicoes.find((r: { id: string }) => r.id === selectedReqId) ?? null,
+    [requisicoes, selectedReqId]
+  );
 
   const relevantCotacoes = useMemo(() => {
     if (!selectedReqId) return [];
@@ -115,8 +125,40 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
   const isPendingMinPrice = pendingWinner && pendingWinner.id === highlights.minPrice;
   const requiresJustification = pendingWinner && !isPendingMinPrice;
 
+  /**
+   * A alçada do usuário para o valor daquela cotação.
+   *
+   * A checagem acontece por cotação, e não uma vez para a requisição: o valor que
+   * importa é o do vencedor escolhido, e escolher o fornecedor mais caro pode
+   * mudar a faixa de quem precisa aprovar.
+   */
+  const alcadaDaCotacao = (cotacao: { valor_total?: number | null } | null) =>
+    avaliarAlcada({
+      alcadas,
+      valor: Number(cotacao?.valor_total ?? 0),
+      tipoCompra: (requisicaoSelecionada as { tipo_compra?: string | null } | null)?.tipo_compra ?? null,
+      usuarioId: profile?.id ?? null,
+      podeAprovarPelaRegraAntiga: hasActionPermission("pode_aprovar_compra"),
+    });
+
   const openConfirm = (cotacao: any) => {
     if (!hasActionPermission("pode_criar_pedido")) return;
+
+    // A alçada é conferida ANTES de abrir o diálogo: deixar abrir e falhar no
+    // salvamento faria o usuário escrever a justificativa para depois descobrir que
+    // não podia aprovar.
+    const alcada = alcadaDaCotacao(cotacao);
+    if (!alcada.podeAprovar) {
+      toast.error(alcada.mensagem, {
+        description:
+          alcada.alcadasDaFaixa.length > 0
+            ? `Alçada desta faixa: ${alcada.alcadasDaFaixa.map((a) => a.nome).join(", ")}.`
+            : undefined,
+        duration: 9000,
+      });
+      return;
+    }
+
     setPendingWinner(cotacao);
     setJustificativa("");
     setConfirmOpen(true);
@@ -293,6 +335,44 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
             </Select>
           </div>
 
+          {/*
+            A alçada aparece ANTES de escolher o vencedor, e não como erro depois de
+            clicar: quem está decidindo precisa saber, ao ver o quadro, se vai poder
+            aprovar a opção que está pensando em escolher.
+          */}
+          {selectedReqId && relevantCotacoes.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  Tipo de compra:{" "}
+                  <strong>
+                    {rotuloTipoCompra(
+                      (requisicaoSelecionada as { tipo_compra?: string | null } | null)?.tipo_compra
+                    )}
+                  </strong>
+                </span>
+                {alcadas.filter((a) => a.ativo).length === 0 && (
+                  <Badge variant="outline" className="text-[10px]">
+                    sem alçada cadastrada — qualquer valor
+                  </Badge>
+                )}
+              </div>
+
+              {relevantCotacoes.some(
+                (c: { valor_total?: number | null }) => !alcadaDaCotacao(c).podeAprovar
+              ) && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Há cotações acima da sua alçada nesta requisição. O botão de
+                    vencedor fica desabilitado nelas, e o motivo aparece ao passar o
+                    mouse.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {!selectedReqId ? (
             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
               Selecione uma requisição para visualizar o comparativo de cotações.
@@ -394,14 +474,28 @@ export function ComparativoTab({ onNavigate }: ComparativoTabProps) {
                           ) : isLost ? (
                             <Badge variant="outline">Perdida</Badge>
                           ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openConfirm(c)}
-                              disabled={!hasActionPermission("pode_criar_pedido")}
-                            >
-                              Vencedor
-                            </Button>
+                            (() => {
+                              // O botão desabilitado com o motivo no `title` é melhor
+                              // que o botão ativo que falha no clique: a informação
+                              // chega antes da tentativa.
+                              const alcada = alcadaDaCotacao(c);
+                              const semPermissao = !hasActionPermission("pode_criar_pedido");
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openConfirm(c)}
+                                  disabled={semPermissao || !alcada.podeAprovar}
+                                  title={
+                                    semPermissao
+                                      ? "Você não tem permissão de gerar pedido de compra."
+                                      : alcada.mensagem
+                                  }
+                                >
+                                  Vencedor
+                                </Button>
+                              );
+                            })()
                           )}
                         </TableCell>
                       </TableRow>

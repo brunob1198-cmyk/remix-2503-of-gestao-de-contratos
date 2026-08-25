@@ -67,6 +67,7 @@ function nomeColaborador(aso: SgsstAso): string {
   return (
     aso.colaborador?.profile?.nome ||
     aso.colaborador?.recurso?.nome ||
+    aso.colaborador?.nome ||
     "Trabalhador não identificado"
   );
 }

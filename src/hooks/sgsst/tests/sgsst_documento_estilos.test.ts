@@ -21,8 +21,20 @@ describe("alinhamento vertical das células", () => {
     // `.doc-ident` (barra de identificação), `.doc-grid` (pares rótulo/valor
     // dentro de bloco) e `.doc-tabela` (listagens). Alinhar duas e esquecer a
     // terceira produziria folha com dois padrões na mesma página.
-    const ocorrencias = estilosDocumentoSgsst.match(/vertical-align: middle/g) ?? [];
-    expect(ocorrencias).toHaveLength(3);
+    //
+    // Conta só as regras de CÉLULA: outros elementos podem usar
+    // `vertical-align` legitimamente — a caixa de marcação usa, para centrar o X.
+    for (const regra of [
+      ".doc-ident td",
+      ".doc-grid td",
+      "table.doc-tabela td",
+    ]) {
+      const bloco = estilosDocumentoSgsst.slice(
+        estilosDocumentoSgsst.indexOf(regra),
+        estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(regra))
+      );
+      expect(bloco, regra).toContain("vertical-align: middle");
+    }
   });
 
   it("a célula de assinatura mantém a linha no pé, e não no meio", () => {

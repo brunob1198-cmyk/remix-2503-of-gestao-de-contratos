@@ -118,10 +118,11 @@ export const estilosDocumentoSgsst = `
        - A marca é um X em texto, e não uma cor de fundo. O PDF sai do html2canvas
          e é impresso em preto e branco com frequência; marcação que depende de cor
          desaparece na fotocópia. */
-    .doc-marca { display: inline-block; width: 9px; height: 9px; line-height: 9px;
-      border: 1px solid ${CORES_DOC.linhaForte}; text-align: center;
-      font-size: 8px; font-weight: 700; color: ${CORES_DOC.tinta};
-      margin-right: 3px; background: #fff; }
+    .doc-marca { display: inline-flex; align-items: center; justify-content: center;
+      width: 9px; height: 9px; box-sizing: border-box; padding: 0;
+      border: 1px solid ${CORES_DOC.linhaForte};
+      font-size: 8px; line-height: 1; font-weight: 700; color: ${CORES_DOC.tinta};
+      margin-right: 3px; background: #fff; vertical-align: middle; }
     .doc-marca.marcada { border-color: ${CORES_DOC.tinta}; }
     /* A opção inteira, caixa mais rótulo, sem quebrar entre as duas. */
     .doc-opcao { display: inline-block; font-size: 9px; color: ${CORES_DOC.texto};

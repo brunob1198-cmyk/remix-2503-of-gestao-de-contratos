@@ -74,6 +74,8 @@ export interface SgsstExame {
     cpf: string;
     /** NR-07 7.5.15.1 "a" pede o numero de registro de identidade, nao so o CPF. */
     rg?: string | null;
+    /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+    nome?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -144,6 +146,8 @@ export interface SgsstAso {
     cpf: string;
     /** NR-07 7.5.15.1 "a" pede o número de registro de identidade, não só o CPF. */
     rg?: string | null;
+    /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+    nome?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -236,7 +240,7 @@ export function useSgsstExames(params?: SgsstExamesParams) {
           `
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf, rg,
+            id, cpf, rg, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
@@ -409,7 +413,7 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
           `
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf, rg,
+            id, cpf, rg, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
