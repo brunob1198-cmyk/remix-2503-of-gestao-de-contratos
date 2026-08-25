@@ -333,6 +333,7 @@ export type Database = {
           id: string
           incidente_id: string | null
           inspecao_id: string | null
+          itens_criticos_nao_conformes: number
           modelo_id: string
           nao_conformidade_id: string | null
           observacoes_gerais: string | null
@@ -342,6 +343,7 @@ export type Database = {
           pontuacao_obtida: number | null
           projeto_id: string | null
           pt_id: string | null
+          reprovado_por_item_critico: boolean
           responsavel_id: string | null
           status: string
           total_conforme: number | null
@@ -364,6 +366,7 @@ export type Database = {
           id?: string
           incidente_id?: string | null
           inspecao_id?: string | null
+          itens_criticos_nao_conformes?: number
           modelo_id: string
           nao_conformidade_id?: string | null
           observacoes_gerais?: string | null
@@ -373,6 +376,7 @@ export type Database = {
           pontuacao_obtida?: number | null
           projeto_id?: string | null
           pt_id?: string | null
+          reprovado_por_item_critico?: boolean
           responsavel_id?: string | null
           status?: string
           total_conforme?: number | null
@@ -395,6 +399,7 @@ export type Database = {
           id?: string
           incidente_id?: string | null
           inspecao_id?: string | null
+          itens_criticos_nao_conformes?: number
           modelo_id?: string
           nao_conformidade_id?: string | null
           observacoes_gerais?: string | null
@@ -404,6 +409,7 @@ export type Database = {
           pontuacao_obtida?: number | null
           projeto_id?: string | null
           pt_id?: string | null
+          reprovado_por_item_critico?: boolean
           responsavel_id?: string | null
           status?: string
           total_conforme?: number | null
@@ -502,10 +508,16 @@ export type Database = {
       checklist_evidencias: {
         Row: {
           aplicacao_id: string
+          capturada_em: string | null
           created_at: string
           empresa_id: string
           id: string
+          latitude: number | null
+          longitude: number | null
+          motivo_sem_geo: string | null
           nome_arquivo: string | null
+          origem_captura: string | null
+          precisao_metros: number | null
           r2_key: string | null
           r2_url: string
           resposta_id: string | null
@@ -514,10 +526,16 @@ export type Database = {
         }
         Insert: {
           aplicacao_id: string
+          capturada_em?: string | null
           created_at?: string
           empresa_id: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
           nome_arquivo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
           r2_key?: string | null
           r2_url: string
           resposta_id?: string | null
@@ -526,10 +544,16 @@ export type Database = {
         }
         Update: {
           aplicacao_id?: string
+          capturada_em?: string | null
           created_at?: string
           empresa_id?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
           nome_arquivo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
           r2_key?: string | null
           r2_url?: string
           resposta_id?: string | null
@@ -563,6 +587,7 @@ export type Database = {
       checklist_itens: {
         Row: {
           created_at: string
+          critico: boolean
           descricao: string | null
           empresa_id: string
           exigir_comentario_nao_conforme: boolean
@@ -580,6 +605,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          critico?: boolean
           descricao?: string | null
           empresa_id: string
           exigir_comentario_nao_conforme?: boolean
@@ -597,6 +623,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          critico?: boolean
           descricao?: string | null
           empresa_id?: string
           exigir_comentario_nao_conforme?: boolean
@@ -1496,28 +1523,46 @@ export type Database = {
       }
       diario_campo_fotos: {
         Row: {
+          capturada_em: string | null
           created_at: string | null
           diario_campo_id: string
           id: string
+          latitude: number | null
           legenda: string | null
+          longitude: number | null
+          motivo_sem_geo: string | null
+          origem_captura: string | null
+          precisao_metros: number | null
           thumb_600_url: string | null
           thumb_url: string | null
           url: string
         }
         Insert: {
+          capturada_em?: string | null
           created_at?: string | null
           diario_campo_id: string
           id?: string
+          latitude?: number | null
           legenda?: string | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
           url: string
         }
         Update: {
+          capturada_em?: string | null
           created_at?: string | null
           diario_campo_id?: string
           id?: string
+          latitude?: number | null
           legenda?: string | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
           url?: string
@@ -1613,37 +1658,55 @@ export type Database = {
       }
       diario_fotos: {
         Row: {
+          capturada_em: string | null
           classificacao: string
           created_at: string | null
           diario_id: string
           diario_producao_id: string | null
           id: string
+          latitude: number | null
           legenda: string | null
+          longitude: number | null
+          motivo_sem_geo: string | null
           ordem: number
+          origem_captura: string | null
+          precisao_metros: number | null
           thumb_600_url: string | null
           thumb_url: string | null
           url: string
         }
         Insert: {
+          capturada_em?: string | null
           classificacao?: string
           created_at?: string | null
           diario_id: string
           diario_producao_id?: string | null
           id?: string
+          latitude?: number | null
           legenda?: string | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
           ordem?: number
+          origem_captura?: string | null
+          precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
           url: string
         }
         Update: {
+          capturada_em?: string | null
           classificacao?: string
           created_at?: string | null
           diario_id?: string
           diario_producao_id?: string | null
           id?: string
+          latitude?: number | null
           legenda?: string | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
           ordem?: number
+          origem_captura?: string | null
+          precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
           url?: string
@@ -5757,12 +5820,16 @@ export type Database = {
       }
       sgsst_asos: {
         Row: {
-          aptidao: string
+          aptidao: string | null
+          apto_altura: string | null
+          apto_espaco_confinado: string | null
+          apto_maquinas: string | null
           colaborador_id: string
           created_at: string
           crm_coordenador: string | null
           crm_medico: string | null
           data_emissao: string
+          data_exame_clinico: string | null
           data_inicio_restricao: string | null
           data_termino_restricao: string | null
           descricao_restricao: string | null
@@ -5774,21 +5841,29 @@ export type Database = {
           id: string
           medico_coordenador: string | null
           medico_responsavel: string | null
+          nova_funcao: string | null
           numero_documento: string | null
           observacoes: string | null
           pcmso_id: string | null
+          riscos_marcados: string[]
+          sem_risco_especifico: boolean
           status: string
           tipo: string
+          unidade: string | null
           updated_at: string
           validade: string
         }
         Insert: {
-          aptidao?: string
+          aptidao?: string | null
+          apto_altura?: string | null
+          apto_espaco_confinado?: string | null
+          apto_maquinas?: string | null
           colaborador_id: string
           created_at?: string
           crm_coordenador?: string | null
           crm_medico?: string | null
           data_emissao?: string
+          data_exame_clinico?: string | null
           data_inicio_restricao?: string | null
           data_termino_restricao?: string | null
           descricao_restricao?: string | null
@@ -5800,21 +5875,29 @@ export type Database = {
           id?: string
           medico_coordenador?: string | null
           medico_responsavel?: string | null
+          nova_funcao?: string | null
           numero_documento?: string | null
           observacoes?: string | null
           pcmso_id?: string | null
+          riscos_marcados?: string[]
+          sem_risco_especifico?: boolean
           status?: string
           tipo: string
+          unidade?: string | null
           updated_at?: string
           validade: string
         }
         Update: {
-          aptidao?: string
+          aptidao?: string | null
+          apto_altura?: string | null
+          apto_espaco_confinado?: string | null
+          apto_maquinas?: string | null
           colaborador_id?: string
           created_at?: string
           crm_coordenador?: string | null
           crm_medico?: string | null
           data_emissao?: string
+          data_exame_clinico?: string | null
           data_inicio_restricao?: string | null
           data_termino_restricao?: string | null
           descricao_restricao?: string | null
@@ -5826,11 +5909,15 @@ export type Database = {
           id?: string
           medico_coordenador?: string | null
           medico_responsavel?: string | null
+          nova_funcao?: string | null
           numero_documento?: string | null
           observacoes?: string | null
           pcmso_id?: string | null
+          riscos_marcados?: string[]
+          sem_risco_especifico?: boolean
           status?: string
           tipo?: string
+          unidade?: string | null
           updated_at?: string
           validade?: string
         }
@@ -6695,6 +6782,8 @@ export type Database = {
           id: string
           motivo: string
           observacao: string | null
+          orientacao_observacao: string | null
+          orientacao_uso: boolean
           quantidade: number
           responsavel_entrega_id: string | null
           tamanho_modelo: string | null
@@ -6710,6 +6799,8 @@ export type Database = {
           id?: string
           motivo?: string
           observacao?: string | null
+          orientacao_observacao?: string | null
+          orientacao_uso?: boolean
           quantidade?: number
           responsavel_entrega_id?: string | null
           tamanho_modelo?: string | null
@@ -6725,6 +6816,8 @@ export type Database = {
           id?: string
           motivo?: string
           observacao?: string | null
+          orientacao_observacao?: string | null
+          orientacao_uso?: boolean
           quantidade?: number
           responsavel_entrega_id?: string | null
           tamanho_modelo?: string | null
@@ -6812,6 +6905,96 @@ export type Database = {
           },
         ]
       }
+      sgsst_epi_manutencoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_execucao: string
+          empresa_id: string
+          entrega_id: string | null
+          epi_id: string
+          executado_por_id: string | null
+          executado_por_nome: string | null
+          id: string
+          observacao: string | null
+          proxima_prevista: string | null
+          quantidade: number
+          resultado: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_execucao?: string
+          empresa_id: string
+          entrega_id?: string | null
+          epi_id: string
+          executado_por_id?: string | null
+          executado_por_nome?: string | null
+          id?: string
+          observacao?: string | null
+          proxima_prevista?: string | null
+          quantidade?: number
+          resultado?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_execucao?: string
+          empresa_id?: string
+          entrega_id?: string | null
+          epi_id?: string
+          executado_por_id?: string | null
+          executado_por_nome?: string | null
+          id?: string
+          observacao?: string | null
+          proxima_prevista?: string | null
+          quantidade?: number
+          resultado?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_epi_manutencoes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_manutencoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_manutencoes_entrega_id_fkey"
+            columns: ["entrega_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epi_entregas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_manutencoes_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_epis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_epi_manutencoes_executado_por_id_fkey"
+            columns: ["executado_por_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sgsst_epis: {
         Row: {
           abaixo_minimo: boolean | null
@@ -6824,7 +7007,9 @@ export type Database = {
           empresa_id: string
           estoque_atual: number
           estoque_minimo: number
+          exige_higienizacao: boolean
           fabricante: string | null
+          higienizacao_periodicidade_dias: number | null
           id: string
           modelo: string | null
           nome: string
@@ -6833,6 +7018,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           validade_ca: string | null
+          vida_util_meses: number | null
         }
         Insert: {
           abaixo_minimo?: boolean | null
@@ -6845,7 +7031,9 @@ export type Database = {
           empresa_id: string
           estoque_atual?: number
           estoque_minimo?: number
+          exige_higienizacao?: boolean
           fabricante?: string | null
+          higienizacao_periodicidade_dias?: number | null
           id?: string
           modelo?: string | null
           nome: string
@@ -6854,6 +7042,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           validade_ca?: string | null
+          vida_util_meses?: number | null
         }
         Update: {
           abaixo_minimo?: boolean | null
@@ -6866,7 +7055,9 @@ export type Database = {
           empresa_id?: string
           estoque_atual?: number
           estoque_minimo?: number
+          exige_higienizacao?: boolean
           fabricante?: string | null
+          higienizacao_periodicidade_dias?: number | null
           id?: string
           modelo?: string | null
           nome?: string
@@ -6875,8 +7066,90 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           validade_ca?: string | null
+          vida_util_meses?: number | null
         }
         Relationships: []
+      }
+      sgsst_evidencias: {
+        Row: {
+          capturada_em: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          empresa_id: string
+          entidade: string
+          entidade_id: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          motivo_sem_geo: string | null
+          nome_arquivo: string | null
+          origem_captura: string | null
+          precisao_metros: number | null
+          r2_key: string
+          r2_url: string
+          tamanho: number | null
+          tipo_mime: string | null
+          updated_at: string
+        }
+        Insert: {
+          capturada_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id: string
+          entidade: string
+          entidade_id: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
+          nome_arquivo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
+          r2_key: string
+          r2_url: string
+          tamanho?: number | null
+          tipo_mime?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capturada_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          entidade?: string
+          entidade_id?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_sem_geo?: string | null
+          nome_arquivo?: string | null
+          origem_captura?: string | null
+          precisao_metros?: number | null
+          r2_key?: string
+          r2_url?: string
+          tamanho?: number | null
+          tipo_mime?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sgsst_evidencias_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_evidencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sgsst_exames: {
         Row: {
@@ -6894,6 +7167,7 @@ export type Database = {
           natureza: string
           nome_exame: string
           observacoes: string | null
+          ordem_exame: string | null
           pcmso_exame_id: string | null
           pcmso_id: string | null
           remarcacoes: number
@@ -6918,6 +7192,7 @@ export type Database = {
           natureza?: string
           nome_exame: string
           observacoes?: string | null
+          ordem_exame?: string | null
           pcmso_exame_id?: string | null
           pcmso_id?: string | null
           remarcacoes?: number
@@ -6942,6 +7217,7 @@ export type Database = {
           natureza?: string
           nome_exame?: string
           observacoes?: string | null
+          ordem_exame?: string | null
           pcmso_exame_id?: string | null
           pcmso_id?: string | null
           remarcacoes?: number
@@ -11402,6 +11678,10 @@ export type Database = {
               error: true
             } & "Could not choose the best candidate function between: public.first_of_month(d => date), public.first_of_month(d => timestamptz). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
           }
+      fn_checklist_proximo_codigo: {
+        Args: { p_empresa_id: string; p_prefixo: string; p_tabela: string }
+        Returns: string
+      }
       fn_get_bdi: {
         Args: { p_competencia: string; p_projeto_id: string }
         Returns: number
