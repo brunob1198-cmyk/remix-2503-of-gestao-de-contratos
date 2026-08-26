@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
-import { SmartImage } from "@/components/ui/SmartImage";
 
 
 
@@ -151,7 +150,7 @@ export default function MeuPerfilPage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                {avatarUrl && <SmartImage src={avatarUrl} context="profiles" className="h-full w-full object-cover" />}
+                {avatarUrl && <AvatarImage src={avatarUrl} context="profiles" className="object-cover" />}
                 <AvatarFallback className="text-xl">{initials}</AvatarFallback>
               </Avatar>
               <label
