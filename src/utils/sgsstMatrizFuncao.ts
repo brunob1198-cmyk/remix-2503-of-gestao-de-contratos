@@ -65,6 +65,15 @@ export interface PendenciaItem {
   chave: string;
   colaboradorId: string;
   colaborador: string;
+  /**
+   * Id da função, e não só o nome.
+   *
+   * Filtrar por nome parece funcionar e erra em silêncio: dois cargos parecidos
+   * ("Montador" e "Montador de Estruturas") se confundem, e renomear a função
+   * desliga o filtro sem nenhum aviso. Nulo quando o colaborador está sem
+   * função — que é a própria pendência.
+   */
+  funcaoId?: string | null;
   funcaoNome?: string | null;
   obra?: string | null;
   tipo: "TREINAMENTO" | "EPI";
@@ -163,9 +172,38 @@ export interface ResumoMatriz {
   pendenciasEpi: number;
 }
 
+/**
+ * O mesmo resumo, recortado por função.
+ *
+ * Permite a uma tela de função responder "quem exerce isto está regular?" sem
+ * varrer a lista inteira de pendências no cliente — e sem depender do nome da
+ * função para agrupar.
+ */
+export interface ResumoDaFuncao {
+  colaboradores: number;
+  emDia: number;
+  comPendencia: number;
+  pendenciasTreinamento: number;
+  pendenciasEpi: number;
+}
+
+export const RESUMO_DA_FUNCAO_VAZIO: ResumoDaFuncao = {
+  colaboradores: 0,
+  emDia: 0,
+  comPendencia: 0,
+  pendenciasTreinamento: 0,
+  pendenciasEpi: 0,
+};
+
 export interface ResultadoMatriz {
   pendencias: PendenciaItem[];
   resumo: ResumoMatriz;
+  /**
+   * Indexado por id de função. Função sem ninguém não aparece aqui — quem
+   * consome trata a ausência como zero, mas só depois de saber que o cálculo
+   * terminou: ausência durante o carregamento não é zero.
+   */
+  porFuncao: Record<string, ResumoDaFuncao>;
 }
 
 /**
@@ -186,8 +224,12 @@ export function calcularMatriz(params: {
     params;
 
   const pendencias: PendenciaItem[] = [];
+  const porFuncao: Record<string, ResumoDaFuncao> = {};
   let semFuncao = 0;
   let emDia = 0;
+
+  const daFuncao = (funcaoId: string): ResumoDaFuncao =>
+    (porFuncao[funcaoId] ??= { ...RESUMO_DA_FUNCAO_VAZIO });
 
   for (const colaborador of colaboradores) {
     // Sem função não há como saber o que é exigido. Isto é uma pendência de
@@ -198,6 +240,7 @@ export function calcularMatriz(params: {
         chave: `${colaborador.id}:sem-funcao`,
         colaboradorId: colaborador.id,
         colaborador: colaborador.nome,
+        funcaoId: null,
         funcaoNome: null,
         obra: colaborador.obra,
         tipo: "TREINAMENTO",
@@ -208,6 +251,9 @@ export function calcularMatriz(params: {
       });
       continue;
     }
+
+    const resumoFuncao = daFuncao(colaborador.funcaoId);
+    resumoFuncao.colaboradores += 1;
 
     const minhasParticipacoes = participacoes.filter(
       (p) => p.colaboradorId === colaborador.id
@@ -232,10 +278,12 @@ export function calcularMatriz(params: {
       if (situacao === "OK") continue;
 
       temPendencia = true;
+      resumoFuncao.pendenciasTreinamento += 1;
       pendencias.push({
         chave: `${colaborador.id}:tr:${exigencia.treinamentoId}`,
         colaboradorId: colaborador.id,
         colaborador: colaborador.nome,
+        funcaoId: colaborador.funcaoId,
         funcaoNome: colaborador.funcaoNome,
         obra: colaborador.obra,
         tipo: "TREINAMENTO",
@@ -256,10 +304,12 @@ export function calcularMatriz(params: {
       if (situacao === "OK") continue;
 
       temPendencia = true;
+      resumoFuncao.pendenciasEpi += 1;
       pendencias.push({
         chave: `${colaborador.id}:epi:${exigencia.epiId}`,
         colaboradorId: colaborador.id,
         colaborador: colaborador.nome,
+        funcaoId: colaborador.funcaoId,
         funcaoNome: colaborador.funcaoNome,
         obra: colaborador.obra,
         tipo: "EPI",
@@ -270,7 +320,12 @@ export function calcularMatriz(params: {
       });
     }
 
-    if (!temPendencia) emDia += 1;
+    if (temPendencia) {
+      resumoFuncao.comPendencia += 1;
+    } else {
+      emDia += 1;
+      resumoFuncao.emDia += 1;
+    }
   }
 
   return {
@@ -287,6 +342,7 @@ export function calcularMatriz(params: {
       ).length,
       pendenciasEpi: pendencias.filter((p) => p.tipo === "EPI").length,
     },
+    porFuncao,
   };
 }
 
@@ -306,4 +362,32 @@ export function ordenarPendencias<T extends { situacao: SituacaoItem; colaborado
     if (porSituacao !== 0) return porSituacao;
     return a.colaborador.localeCompare(b.colaborador, "pt-BR");
   });
+}
+
+/**
+ * O que a tela deve mostrar na contagem de quem exerce uma função.
+ *
+ * Existe como função pura porque a ORDEM dos casos é a regra, e regra em JSX não
+ * se testa: se "sem colaborador" for avaliado antes de "calculando", a tela
+ * afirma que ninguém exerce a função enquanto a consulta ainda está em curso —
+ * e ausência de resultado não é resultado zero.
+ */
+export type EstadoContagemFuncao =
+  | { tipo: "CALCULANDO" }
+  | { tipo: "ERRO" }
+  | { tipo: "SEM_COLABORADOR" }
+  | { tipo: "CONTAGEM"; resumo: ResumoDaFuncao };
+
+export function estadoDaContagem(params: {
+  isLoading: boolean;
+  temErro: boolean;
+  /** Recorte da função, ou `undefined` quando ela não está no mapa. */
+  resumo: ResumoDaFuncao | undefined;
+}): EstadoContagemFuncao {
+  // Carregando vem primeiro: durante a consulta não se sabe nada ainda.
+  if (params.isLoading) return { tipo: "CALCULANDO" };
+  // Erro antes de zero: falhar em contar não é contar zero.
+  if (params.temErro) return { tipo: "ERRO" };
+  if (!params.resumo) return { tipo: "SEM_COLABORADOR" };
+  return { tipo: "CONTAGEM", resumo: params.resumo };
 }

@@ -212,6 +212,10 @@ export function useSgsstFuncaoMatriz(options?: { enabled?: boolean }): MatrizFun
         pendenciasTreinamento: 0,
         pendenciasEpi: 0,
       },
+    // Vazio enquanto não há resultado. Quem lê precisa olhar `isLoading` antes
+    // de concluir "esta função não tem ninguém": mapa vazio durante a consulta
+    // não é zero colaborador.
+    porFuncao: data?.porFuncao ?? {},
     truncado: data?.truncado ?? false,
     isLoading,
     error,
